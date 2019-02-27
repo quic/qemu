@@ -445,6 +445,7 @@ fuse="auto"
 fuse_lseek="auto"
 multiprocess="auto"
 slirp_smbd="$default_feature"
+libqemu="no"
 
 malloc_trim="auto"
 gio="$default_feature"
@@ -1581,6 +1582,10 @@ for opt do
   ;;
   --disable-slirp-smbd) slirp_smbd=no
   ;;
+  --enable-libqemu) libqemu=yes
+  ;;
+  --disable-libqemu) libqemu=no
+  ;;
   *)
       echo "ERROR: unknown option $opt"
       echo "Try '$0 --help' for more information"
@@ -1968,6 +1973,7 @@ disabled with --disable-FEATURE, default is enabled if available
   multiprocess    Out of process device emulation support
   gio             libgio support
   slirp-smbd      use smbd (at path --smbd=*) in slirp networking
+  libqemu         libqemu support
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -2251,7 +2257,13 @@ if compile_prog "-Werror -fno-pie" "-no-pie"; then
   CFLAGS_NOPIE="-fno-pie"
 fi
 
-if test "$static" = "yes"; then
+if test "$libqemu" = "yes"; then
+  if compile_prog "-fPIC -DPIC" ""; then
+    QEMU_CFLAGS="-fPIC -DPIC $QEMU_CFLAGS"
+  else
+    error_exit "PIC compilation required to build libqemu but not available"
+  fi
+elif test "$static" = "yes"; then
   if test "$pie" != "no" && compile_prog "-Werror -fPIE -DPIE" "-static-pie"; then
     CONFIGURE_CFLAGS="-fPIE -DPIE $CONFIGURE_CFLAGS"
     QEMU_LDFLAGS="-static-pie $QEMU_LDFLAGS"
@@ -5013,6 +5025,10 @@ fi
 
 if test "$safe_stack" = "yes"; then
   echo "CONFIG_SAFESTACK=y" >> $config_host_mak
+fi
+
+if test "$libqemu" = "yes"; then
+  echo "CONFIG_LIBQEMU=y" >> $config_host_mak
 fi
 
 # If we're using a separate build tree, set it up now.
