@@ -11,7 +11,7 @@
 uintptr_t qemu_real_host_page_size;
 intptr_t qemu_real_host_page_mask;
 
-static void __attribute__((constructor)) init_real_host_page_size(void)
+static void QEMU_CONSTRUCTOR(init_real_host_page_size)(void)
 {
     qemu_real_host_page_size = getpagesize();
     qemu_real_host_page_mask = -(intptr_t)qemu_real_host_page_size;
