@@ -65,3 +65,7 @@ else
   stub_ss.add(files('qdev.c'))
 endif
 stub_ss.add(files('semihost-all.c'))
+
+if enable_libqemu
+  stub_ss.add(files('libqemu.c'))
+endif
