@@ -238,7 +238,7 @@ select_accel_cpuinfo(unsigned info)
 }
 
 #if defined(CONFIG_AVX512F_OPT) || defined(CONFIG_AVX2_OPT)
-static void __attribute__((constructor)) init_accel(void)
+static void QEMU_CONSTRUCTOR(init_accel)(void)
 {
     used_accel = select_accel_cpuinfo(cpuinfo_init());
 }
