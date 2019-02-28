@@ -57,3 +57,6 @@ if have_system
 else
   stub_ss.add(files('qdev.c'))
 endif
+if build_libqemu
+  stub_ss.add(files('libqemu.c'))
+endif
