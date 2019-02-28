@@ -57,7 +57,7 @@ int qemu_log(const char *fmt, ...)
     return ret;
 }
 
-static void __attribute__((__constructor__)) qemu_logfile_init(void)
+static void QEMU_CONSTRUCTOR(qemu_logfile_init)(void)
 {
     qemu_mutex_init(&qemu_logfile_mutex);
 }
