@@ -33,6 +33,7 @@
 #include "qemu/thread.h"
 #include "qemu/plugin-event.h"
 #include "qom/object.h"
+#include "qemu/coroutine.h"
 
 typedef int (*WriteCoreDumpFunction)(const void *buf, size_t size,
                                      void *opaque);
@@ -462,6 +463,7 @@ struct CPUState {
     int nr_threads;
 
     struct QemuThread *thread;
+    Coroutine *coroutine;
 #ifdef _WIN32
     QemuSemaphore sem;
 #endif
@@ -601,6 +603,8 @@ extern __thread CPUState *current_cpu;
  */
 extern bool mttcg_enabled;
 #define qemu_tcg_mttcg_enabled() (mttcg_enabled)
+
+extern bool coroutine_tcg;
 
 /**
  * cpu_paging_enabled:
