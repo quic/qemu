@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 ##
 ##  Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
@@ -20,12 +22,15 @@
 import sys
 import re
 import string
-import cStringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 import operator
 from itertools import chain
-from itertools import izip
-from itertools import imap
+
+
 
 behdict = {}          # tag ->behavior
 semdict = {}          # tag -> semantics
@@ -71,7 +76,7 @@ def expand_macro_attribs(macro,allmac_re):
 immextre = re.compile(r'f(MUST_)?IMMEXT[(]([UuSsRr])')
 def calculate_attribs():
     # Recurse down macros, find attributes from sub-macros
-    macroValues = macros.values()
+    macroValues = list(macros.values())
     allmacros_restr = "|".join(set([ m.re.pattern for m in macroValues ]))
     allmacros_re = re.compile(allmacros_restr)
     for macro in macroValues:
@@ -144,7 +149,7 @@ def MACROATTRIB(macname,beh,attribstring,ext=""):
 
 # read in file.  Evaluate each line: each line calls a function above
 
-for line in open(sys.argv[1]).readlines():
+for line in open(sys.argv[1], 'rt').readlines():
     if not line.startswith("#"):
         eval(line.strip())
 
@@ -154,7 +159,7 @@ calculate_attribs()
 
 attribre = re.compile(r'DEF_ATTRIB\(([A-Za-z0-9_]+),([^,]*),' +
         r'"([A-Za-z0-9_\.]*)","([A-Za-z0-9_\.]*)"\)')
-for line in open(sys.argv[2]).readlines():
+for line in open(sys.argv[2], 'rt').readlines():
     if not attribre.match(line):
         continue
     (attrib_base,descr,rreg,wreg) = attribre.findall(line)[0]
@@ -187,7 +192,7 @@ def compute_tag_immediates(tag):
 ##          ss, tt, uu, vv   source register pair
 ##          x, y             read-write register
 ##          xx, yy           read-write register pair
-tagregs = dict(izip(tags, map(compute_tag_regs, tags)))
+tagregs = dict(zip(tags, list(map(compute_tag_regs, tags))))
 
 def is_pair(regid):
     return len(regid) == 2
@@ -219,7 +224,7 @@ def is_old_val(regtype, regid, tag):
 def is_new_val(regtype, regid, tag):
     return regtype+regid+'N' in semdict[tag]
 
-tagimms = dict(izip(tags, map(compute_tag_immediates, tags)))
+tagimms = dict(zip(tags, list(map(compute_tag_immediates, tags))))
 
 
 def need_slot(tag):
@@ -262,7 +267,7 @@ def gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i):
     elif (is_single(regid)):
         f.write(", %s" % (def_helper_types[regtype]))
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 
 
@@ -287,9 +292,9 @@ def genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i):
         elif is_new_val(regtype, regid, tag):
             genptr_decl_new(f,regtype,regid,i)
         else:
-            print "Bad register parse: ",regtype,regid,toss,numregs
+            print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def imm_name(immlett):
     return "%siV" % immlett
@@ -312,9 +317,9 @@ def gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i):
         elif is_new_val(regtype, regid, tag):
             f.write("%s%sN" % (regtype,regid))
         else:
-            print "Bad register parse: ",regtype,regid,toss,numregs
+            print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def gen_helper_call_imm(f,immlett):
     f.write(", %s" % imm_name(immlett))
@@ -337,9 +342,9 @@ def genptr_free_opn(f,regtype,regid,i):
         elif is_new_val(regtype, regid, tag):
             genptr_free_new(f,regtype,regid,i)
         else:
-            print "Bad register parse: ",regtype,regid,toss,numregs
+            print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def genptr_free_imm(f,immlett):
     f.write("FREE_IMM(%s);\n" % (imm_name(immlett)))
@@ -364,9 +369,9 @@ def genptr_src_read_opn(f,regtype,regid):
         elif is_new_val(regtype, regid, tag):
             genptr_src_read_new(f,regtype,regid)
         else:
-            print "Bad register parse: ",regtype,regid,toss,numregs
+            print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 
 def genptr_dst_write(f,regtype, regid):
@@ -401,7 +406,7 @@ def genptr_dst_write_opn(f,regtype, regid, tag):
         else:
             genptr_dst_write(f, regtype, regid)
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def gen_helper_return_type(f,regtype,regid,regno):
     if regno > 1 : f.write(", ")
@@ -447,9 +452,9 @@ def gen_helper_arg_opn(f,regtype,regid,i):
         elif is_new_val(regtype, regid, tag):
             gen_helper_arg_new(f,regtype,regid,i)
         else:
-            print "Bad register parse: ",regtype,regid,toss,numregs
+            print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def gen_helper_arg_imm(f,immlett):
     f.write(", int32_t %s" % (imm_name(immlett)))
@@ -483,7 +488,7 @@ def gen_helper_dest_decl_opn(f,regtype,regid,i):
         else:
             gen_helper_dest_decl(f,regtype,regid,i)
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def gen_helper_src_var_ext(f,regtype,regid):
     f.write("/* %s%sV is *(mmvector_t*)(%s%sV_void) */\n" % \
@@ -520,7 +525,7 @@ def gen_helper_return_opn(f, regtype, regid, i):
         else:
             gen_helper_return(f,regtype,regid,i)
     else:
-        print "Bad register parse: ",regtype,regid,toss,numregs
+        print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def gen_decl_ea(f):
     f.write("size4u_t EA;\n")
@@ -716,7 +721,7 @@ def gen_helper_definition(f, tag, regs, imms):
                     else:
                         gen_helper_return_type(f,regtype,regid,i)
                 else:
-                    print "Bad register parse: ",regtype,regid,toss,numregs
+                    print("Bad register parse: ",regtype,regid,toss,numregs)
             i += 1
 
         if (numscalarresults == 0):
@@ -739,7 +744,7 @@ def gen_helper_definition(f, tag, regs, imms):
                         # This is the return value of the function
                         continue
                 else:
-                    print "Bad register parse: ",regtype,regid,toss,numregs
+                    print("Bad register parse: ",regtype,regid,toss,numregs)
                 i += 1
 
         ## Arguments to the helper function are the source regs and immediates
@@ -778,7 +783,7 @@ def gen_helper_definition(f, tag, regs, imms):
                     if (is_hvx_reg(regtype)):
                         gen_helper_src_var_ext(f,regtype,regid)
                 else:
-                    print "Bad register parse: ",regtype,regid,toss,numregs
+                    print("Bad register parse: ",regtype,regid,toss,numregs)
 
         if 'A_FPOP' in attribdict[tag]:
             f.write('fFPOP_START();\n');
@@ -810,14 +815,14 @@ def gen_qemu(f, tag):
     f.write(")\n")
 
 
-wrap_hdr = open ('qemu_wrap.h', 'w')
+wrap_hdr = open('qemu_wrap.h', 'wt')
 for tag in tags:
     wrap_hdr.write( "#ifndef fWRAP_%s\n" % tag )
     wrap_hdr.write( "#define fWRAP_%s(GENHLPR, SHORTCODE) GENHLPR\n" % tag )
     wrap_hdr.write( "#endif\n\n" )
 wrap_hdr.close()
 
-f = cStringIO.StringIO()
+f = StringIO()
 
 f.write("""
 #ifndef DEF_QEMU
@@ -850,7 +855,7 @@ for tag in tags:
 
     gen_qemu(f, tag)
 
-realf = open('qemu.odef','w')
+realf = open('qemu.odef', 'wt')
 realf.write(f.getvalue())
 realf.close()
 f.close()
