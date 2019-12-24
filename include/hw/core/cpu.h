@@ -258,6 +258,7 @@ typedef struct CPUCoroutineIOInfo {
     unsigned int size;
     MemTxAttrs *attrs;
     void *opaque;
+    bool done;
 
     MemTxResult result;
 } CPUCoroutineIOInfo;
