@@ -36,6 +36,9 @@
  */
 #define COUNT_HEX_HELPERS 0
 
+extern int hexagon_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);
+extern int hexagon_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
+
 extern void hexagon_debug(CPUHexagonState *env);
 
 #if COUNT_HEX_HELPERS
