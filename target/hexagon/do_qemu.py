@@ -766,3 +766,17 @@ realf = open('qemu_def_generated.h','w')
 realf.write(f.getvalue())
 realf.close()
 f.close()
+
+##
+## Generate the qemu_wrap_generated.h file
+##     Gives a default definition of fWRAP_<tag> for each instruction
+##
+f = StringIO()
+for tag in tags:
+    f.write( "#ifndef fWRAP_%s\n" % tag )
+    f.write( "#define fWRAP_%s(GENHLPR, SHORTCODE) GENHLPR\n" % tag )
+    f.write( "#endif\n\n" )
+realf = open('qemu_wrap_generated.h', 'wt')
+realf.write(f.getvalue())
+realf.close()
+f.close()
