@@ -792,3 +792,16 @@ realf = open('opcodes_def_generated.h', 'wt')
 realf.write(f.getvalue())
 realf.close()
 f.close()
+
+##
+## Generate the op_attribs_generated.h file
+##     Lists all the attributes associated with each instruction
+##
+f = StringIO()
+for tag in tags:
+    f.write('OP_ATTRIB(%s,ATTRIBS(%s))\n' % \
+        (tag, ','.join(sorted(attribdict[tag]))))
+realf = open('op_attribs_generated.h', 'wt')
+realf.write(f.getvalue())
+realf.close()
+f.close()
