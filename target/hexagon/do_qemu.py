@@ -780,3 +780,15 @@ realf = open('qemu_wrap_generated.h', 'wt')
 realf.write(f.getvalue())
 realf.close()
 f.close()
+
+##
+## Generate the opcodes_def_generated.h file
+##     Gives a list of all the opcodes
+##
+f = StringIO()
+for tag in tags:
+    f.write ( "OPCODE(%s),\n" % (tag) )
+realf = open('opcodes_def_generated.h', 'wt')
+realf.write(f.getvalue())
+realf.close()
+f.close()
