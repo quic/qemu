@@ -23,6 +23,7 @@
 #include "decode.h"
 #include "insn.h"
 #include "printinsn.h"
+#include "mmvec/decode_ext_mmvec.h"
 
 #define fZXTN(N, M, VAL) ((VAL) & ((1LL << (N)) - 1))
 
@@ -148,6 +149,9 @@ static void decode_ext_init(void)
     int i;
     for (i = EXT_IDX_noext; i < EXT_IDX_noext_AFTER; i++) {
         ext_trees[i] = &dectree_table_DECODE_EXT_EXT_noext;
+    }
+    for (i = EXT_IDX_mmvec; i < EXT_IDX_mmvec_AFTER; i++) {
+        ext_trees[i] = &dectree_table_DECODE_EXT_EXT_mmvec;
     }
 }
 
@@ -446,6 +450,9 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
 
         if (GET_ATTRIB(opcode, A_STORE)) {
             pkt->insn[i].is_store = 1;
+            if (GET_ATTRIB(opcode, A_VMEM)) {
+                pkt->insn[i].is_vmem_st = 1;
+            }
 
             if (pkt->insn[i].slot == 0) {
                 pkt->pkt_has_store_s0 = 1;
@@ -458,12 +465,19 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
         }
         if (GET_ATTRIB(opcode, A_LOAD)) {
             pkt->insn[i].is_load = 1;
+            if (GET_ATTRIB(opcode, A_VMEM))  {
+                pkt->insn[i].is_vmem_ld = 1;
+            }
 
             if (pkt->insn[i].slot == 0) {
                 pkt->pkt_has_load_s0 = 1;
             } else {
                 pkt->pkt_has_load_s1 = 1;
             }
+        }
+        if (GET_ATTRIB(opcode, A_CVI_GATHER) ||
+            GET_ATTRIB(opcode, A_CVI_SCATTER)) {
+            pkt->insn[i].is_scatgath = 1;
         }
         if (GET_ATTRIB(opcode, A_MEMOP)) {
             pkt->insn[i].is_memop = 1;
@@ -738,8 +752,12 @@ static int decode_remove_extenders(packet_t *packet)
 static const char *
 get_valid_slot_str(const packet_t *pkt, unsigned int slot)
 {
-    return find_iclass_slots(pkt->insn[slot].opcode,
-                             pkt->insn[slot].iclass);
+    if (GET_ATTRIB(pkt->insn[slot].opcode, A_EXTENSION)) {
+        return mmvec_ext_decode_find_iclass_slots(pkt->insn[slot].opcode);
+    } else {
+        return find_iclass_slots(pkt->insn[slot].opcode,
+                                 pkt->insn[slot].iclass);
+    }
 }
 
 #include "q6v_decode.c"
