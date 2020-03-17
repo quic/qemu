@@ -27,7 +27,7 @@
 #define SYSTICK_CLKSOURCE (1 << 2)
 #define SYSTICK_COUNTFLAG (1 << 16)
 
-int system_clock_scale = 1;
+int system_clock_scale = 2; /* 2 --> 500 Mhz */
 
 /* Conversion factor from qemu timer to SysTick frequencies.  */
 static inline int64_t systick_scale(SysTickState *s)
@@ -35,7 +35,7 @@ static inline int64_t systick_scale(SysTickState *s)
     if (s->control & SYSTICK_CLKSOURCE) {
         return system_clock_scale;
     } else {
-        return 1000;
+        return 10; /* 10 --> 100 MHz */
     }
 }
 
