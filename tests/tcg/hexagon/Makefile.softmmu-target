@@ -1,0 +1,42 @@
+# -*- Mode: makefile -*-
+#
+# Hexagon SoftMMU tests - included from tests/tcg/Makefile
+#
+
+HEXAGON_SYSTEM_SRC=$(SRC_PATH)/tests/tcg/hexagon/system
+
+# Set search path for all sources
+VPATH 		+= $(HEXAGON_SYSTEM_SRC)
+
+# FIXME: correct build config for multiarch system tests, & minilib etc
+#TESTS += $(MULTIARCH_TESTS)
+TESTS += standalone_hw
+
+CRT_OBJS=boot.o
+
+LDFLAGS+= -static
+
+# Build and link the tests
+%.o: $(HEXAGON_SYSTEM_SRC)/%.S
+	$(CC) $(ASFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+%.o: %.c
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+hello: hello.o $(CRT_OBJS) $(MINILIB_OBJS)
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
+#memory: %.c $(CRT_OBJS) $(MINILIB_OBJS)
+#	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
+standalone_hw: standalone_hw.o
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
+
+# Specific Test Rules
+
+memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
+hello: EXTRA_CFLAGS+=-I../../minilib
+
+# TODO: We should see if we can find a way to avoid this:
+standalone: LDFLAGS+= -lc -lstandalone -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
+
+QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67 -nographic
+#QEMU_OPTS+=$(QEMU_BASE_MACHINE) -semihosting-config enable=on,target=native,chardev=output -kernel
+QEMU_OPTS+=$(QEMU_BASE_MACHINE) -no-reboot -device loader,file=standalone_hw -kernel
+
