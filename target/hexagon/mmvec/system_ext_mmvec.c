@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright (c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,11 +15,16 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdio.h>
+#include <string.h>
 #include "qemu/osdep.h"
-#include "qemu.h"
-#include "cpu.h"
-#include "hex_arch_types.h"
+#include "opcodes.h"
+#include "insn.h"
 #include "mmvec/macros.h"
+#ifdef CONFIG_USER_ONLY
+#include "qemu.h"
+#endif
+#include "internal.h"
 
 #define TYPE_LOAD 'L'
 #define TYPE_STORE 'S'
@@ -93,7 +98,7 @@ target_ulong mem_init_access(CPUHexagonState *env, int slot, size4u_t vaddr,
     /* Nothing to do for Linux user mode in qemu */
     return vaddr;
 #else
-#error System mode not yet implemented for Hexagon
+  return vaddr;
 #endif
 }
 
@@ -174,7 +179,7 @@ void mem_load_vector_oddva(CPUHexagonState *env, vaddr_t vaddr,
     }
 
     for (i = 0; i < size; i++) {
-        get_user_u8(data[i], vaddr);
+        hexagon_load_byte(env, &data[i], vaddr);
         vaddr++;
     }
 }

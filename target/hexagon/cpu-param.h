@@ -21,6 +21,10 @@
 #define TARGET_PHYS_ADDR_SPACE_BITS 36
 #define TARGET_VIRT_ADDR_SPACE_BITS 32
 
+#ifdef CONFIG_USER_ONLY
 #define NB_MMU_MODES 1
+#else
+#define NB_MMU_MODES 3
+#endif
 
 #endif

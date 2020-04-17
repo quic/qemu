@@ -235,7 +235,7 @@ void cpu_exec_step_atomic(CPUState *cpu)
     CPUClass *cc = CPU_GET_CLASS(cpu);
     TranslationBlock *tb;
     target_ulong cs_base, pc;
-    uint32_t flags;
+    uint32_t flags = 0;
     uint32_t cflags = 1;
     uint32_t cf_mask = cflags & CF_HASH_MASK;
 

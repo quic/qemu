@@ -17,9 +17,15 @@
 
 #include <math.h>
 #include "qemu/osdep.h"
+#include "cpu.h"
+#ifdef CONFIG_USER_ONLY
 #include "qemu.h"
 #include "exec/helper-proto.h"
-#include "cpu.h"
+#endif
+#include "exec/exec-all.h"
+#include "exec/cpu_ldst.h"
+#include "qemu/log.h"
+#include "tcg/tcg-op.h"
 #include "internal.h"
 #include "macros.h"
 #include "arch.h"
@@ -71,7 +77,11 @@ static void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
     cs->exception_index = exception;
-    cpu_loop_exit_restore(cs, pc);
+    cpu_loop_exit_restore(cs, pc+4);
+#ifndef CONFIG_USER_ONLY
+    while(1)
+      ;
+#endif
 }
 
 void HELPER(raise_exception)(CPUHexagonState *env, uint32_t exception)
@@ -92,6 +102,7 @@ static inline void log_reg_write(CPUHexagonState *env, int rnum,
     }
     HEX_DEBUG_LOG("\n");
     if (!(env->slot_cancelled & (1 << slot))) {
+        HEX_DEBUG_LOG("\treg register set to 0x%x\n", val);
         env->new_value[rnum] = val;
 #if HEX_DEBUG
         /* Do this so HELPER(debug_commit_end) will know */
@@ -109,6 +120,35 @@ inline void log_reg_write_pair(CPUHexagonState *env, int rnum,
     log_reg_write(env, rnum + 1, (val >> 32) & 0xFFFFFFFF, slot);
 }
 
+static inline void log_sreg_write(CPUHexagonState *env, int rnum,
+                                 target_ulong val, uint32_t slot)
+{
+    HEX_DEBUG_LOG("log_sreg_write[%s/%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
+                  hexagon_sregnames[rnum], rnum, val, val);
+    if (env->slot_cancelled & (1 << slot)) {
+        HEX_DEBUG_LOG(" CANCELLED");
+    }
+    if (val == env->sreg[rnum]) {
+        HEX_DEBUG_LOG(" NO CHANGE");
+    }
+    HEX_DEBUG_LOG("\n");
+    if (!(env->slot_cancelled & (1 << slot))) {
+        HEX_DEBUG_LOG("\tsreg register set to 0x%x\n", val);
+        env->new_sreg_value[rnum] = val;
+    }
+    else
+      HEX_DEBUG_LOG("\tsreg register not set\n");
+}
+
+static __attribute__((unused))
+inline void log_sreg_write_pair(CPUHexagonState *env, int rnum,
+                                      int64_t val, uint32_t slot)
+{
+    HEX_DEBUG_LOG("log_sreg_write_pair[%d:%d] = %ld\n", rnum + 1, rnum, val);
+    log_sreg_write(env, rnum, val & 0xFFFFFFFF, slot);
+    log_sreg_write(env, rnum + 1, (val >> 32) & 0xFFFFFFFF, slot);
+}
+
 static inline void log_pred_write(CPUHexagonState *env, int pnum,
                                   target_ulong val)
 {
@@ -123,6 +163,27 @@ static inline void log_pred_write(CPUHexagonState *env, int pnum,
         env->new_pred_value[pnum] = val & 0xff;
         env->pred_written |= 1 << pnum;
     }
+}
+
+static inline void log_store32(CPUHexagonState *env, target_ulong addr,
+                               target_ulong val, int width, int slot)
+{
+    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx ", " TARGET_FMT_ld
+                  " [0x" TARGET_FMT_lx "])\n",
+                  width, addr, val, val);
+    env->mem_log_stores[slot].va = addr;
+    env->mem_log_stores[slot].width = width;
+    env->mem_log_stores[slot].data32 = val;
+}
+
+static inline void log_store64(CPUHexagonState *env, target_ulong addr,
+                               int64_t val, int width, int slot)
+{
+    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx ", %ld [0x%lx])\n",
+                   width, addr, val, val);
+    env->mem_log_stores[slot].va = addr;
+    env->mem_log_stores[slot].width = width;
+    env->mem_log_stores[slot].data64 = val;
 }
 
 static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
@@ -153,6 +214,9 @@ void HELPER(debug_start_packet)(CPUHexagonState *env)
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         env->reg_written[i] = 0;
     }
+    for (i = 0; i < NUM_SREGS; i++) {
+        env->sreg_written[i] = 0;
+    }
 }
 
 static inline int32_t new_pred_value(CPUHexagonState *env, int pnum)
@@ -170,6 +234,59 @@ void HELPER(debug_check_store_width)(CPUHexagonState *env, int slot, int check)
     }
 }
 
+void hexagon_load_byte(CPUHexagonState *env, uint8_t *load_byte, target_ulong src_vaddr)
+
+{
+#ifdef CONFIG_USER_ONLY
+  uint8_t B;
+  get_user_u8(B, src_vaddr);
+  *load_byte = B;
+#else
+#if 1
+  unsigned mmu_idx = cpu_mmu_index(env, false);
+  *load_byte = cpu_ldub_mmuidx_ra(env, src_vaddr, mmu_idx, GETPC());
+#else
+  unsigned mmu_idx = cpu_mmu_index(env, false);
+  uint8_t *hostaddr = (uint_8_t *)tlb_vaddr_to_host(env,
+                                                    src_vaddr,
+                                                    MMU_DATA_LOAD,
+                                                    mmu_idx);
+  if (hostaddr)
+    *load_byte = *hostaddr;
+  else {
+    TCGMemOpIdx oi = make_memop_idx(MO_UB, mmu_idx);
+    *load_byte = helper_ret_ldub_mmu(env, src_vaddr, oi, GETPC());
+  }
+#endif
+#endif
+}
+
+void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte, target_ulong dst_vaddr)
+
+{
+#ifdef CONFIG_USER_ONLY
+  put_user_u8(store_byte, dst_vaddr);
+#else
+#if 1
+  unsigned mmu_idx = cpu_mmu_index(env, false);
+  cpu_stb_mmuidx_ra(env, dst_vaddr, store_byte, mmu_idx, GETPC());
+#else
+  unsigned mmu_idx = cpu_mmu_index(env, false);
+  uint8_t *hostaddr = (uint_8_t *)tlb_vaddr_to_host(env,
+                                                    dst_vaddr,
+                                                    MMU_DATA_STORE,
+                                                    mmu_idx);
+  if (hostaddr)
+    *hostaddr = store_byte;
+  else {
+    TCGMemOpIdx oi = make_memop_idx(MO_UB, mmu_idx);
+    helper_ret_stb_mmu(env, dst_vaddr, store_byte, oi, GETPC());
+  }
+#endif
+#endif
+}
+
+
 void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 {
     int i;
@@ -182,7 +299,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
             int size = env->vstore[i].size;
             for (int j = 0; j < size; j++) {
                 if (env->vstore[i].mask.ub[j]) {
-                    put_user_u8(env->vstore[i].data.ub[j], va + j);
+                    hexagon_store_byte(env, env->vstore[i].data.ub[j], va + j);
                 }
             }
         }
@@ -204,7 +321,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
         } else {
             for (int i = 0; i < env->vtcm_log.size; i++) {
                 if (env->vtcm_log.mask.ub[i] != 0) {
-                    put_user_u8(env->vtcm_log.data.ub[i], env->vtcm_log.va[i]);
+                    hexagon_store_byte(env, env->vtcm_log.data.ub[i], env->vtcm_log.va[i]);
                     env->vtcm_log.mask.ub[i] = 0;
                     env->vtcm_log.data.ub[i] = 0;
                     env->vtcm_log.offsets.ub[i] = 0;
@@ -247,6 +364,7 @@ static void print_store(CPUHexagonState *env, int slot)
 void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
 {
     bool reg_printed = false;
+    bool sreg_printed = false;
     bool pred_printed = false;
     int i;
 
@@ -262,6 +380,17 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
             }
             HEX_DEBUG_LOG("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
                           i, env->new_value[i], env->new_value[i]);
+        }
+    }
+
+    for (i = 0; i < NUM_SREGS; i++) {
+        if (env->sreg_written[i]) {
+            if (!sreg_printed) {
+                HEX_DEBUG_LOG("SRegs written\n");
+                sreg_printed = true;
+            }
+            HEX_DEBUG_LOG("\tset s%d (%s) = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
+                          i, hexagon_sregnames[i], env->new_sreg_value[i], env->new_sreg_value[i]);
         }
     }
 
@@ -528,9 +657,12 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
     env->slot_cancelled |= (1 << slot);
 }
 
+#include "hexswi.c"
+
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();
+#define thread env
 
 #define BOGUS_HELPER(tag) \
     printf("ERROR: bogus helper: " #tag "\n")

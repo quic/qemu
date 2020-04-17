@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright (c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,8 +15,10 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <math.h>
 #include "qemu/osdep.h"
+
+#include <stdio.h>
+#include <math.h>
 #include "macros.h"
 #include "conv_emu.h"
 #include "fma_emu.h"
@@ -237,7 +239,7 @@ static inline int128_t int128_shr(int128_t a, size4u_t amt)
     return ret;
 }
 
-static inline int128_t int128_add(int128_t a, int128_t b)
+static inline int128_t int128_add_hex(int128_t a, int128_t b)
 {
     int128_t ret;
     ret.low = a.low + b.low;
@@ -249,7 +251,7 @@ static inline int128_t int128_add(int128_t a, int128_t b)
     return ret;
 }
 
-static inline int128_t int128_sub(int128_t a, int128_t b, int borrow)
+static inline int128_t int128_sub_hex(int128_t a, int128_t b, int borrow)
 {
     int128_t ret;
     ret.low = a.low - b.low;
@@ -263,11 +265,11 @@ static inline int128_t int128_sub(int128_t a, int128_t b, int borrow)
     } else {
         a.high = 0;
         a.low = 1;
-        return int128_sub(ret, a, 0);
+        return int128_sub_hex(ret, a, 0);
     }
 }
 
-static inline int int128_gt(int128_t a, int128_t b)
+static inline int int128_gt_hex(int128_t a, int128_t b)
 {
     if (a.high == b.high) {
         return a.low > b.low;
@@ -339,7 +341,7 @@ static inline xf_t xf_sub(xf_t a, xf_t b, int negate)
         /* small - big == - (big - small) */
         return xf_sub(b, a, !negate);
     }
-    if ((b.exp == a.exp) && (int128_gt(b.mant, a.mant))) {
+    if ((b.exp == a.exp) && (int128_gt_hex(b.mant, a.mant))) {
         /* small - big == - (big - small) */
         return xf_sub(b, a, !negate);
     }
@@ -369,7 +371,7 @@ static inline xf_t xf_sub(xf_t a, xf_t b, int negate)
     xf_debug("norm_r: Sub/a: ", a);
     xf_debug("norm_r: Sub/b: ", b);
 
-    if ((int128_gt(b.mant, a.mant))) {
+    if ((int128_gt_hex(b.mant, a.mant))) {
         xf_debug("retry: Sub/a: ", a);
         xf_debug("retry: Sub/b: ", b);
         return xf_sub(b, a, !negate);
@@ -378,9 +380,9 @@ static inline xf_t xf_sub(xf_t a, xf_t b, int negate)
     /* OK, now things should be normalized! */
     ret.sign = a.sign;
     ret.exp = a.exp;
-    assert(!int128_gt(b.mant, a.mant));
+    assert(!int128_gt_hex(b.mant, a.mant));
     borrow = (b.round << 2) | (b.guard << 1) | b.sticky;
-    ret.mant = int128_sub(a.mant, b.mant, (borrow != 0));
+    ret.mant = int128_sub_hex(a.mant, b.mant, (borrow != 0));
     borrow = 0 - borrow;
     ret.guard = (borrow >> 2) & 1;
     ret.round = (borrow >> 1) & 1;
@@ -405,7 +407,7 @@ static xf_t xf_add(xf_t a, xf_t b)
         /* small + big ==  (big + small) */
         return xf_add(b, a);
     }
-    if ((b.exp == a.exp) && int128_gt(b.mant, a.mant)) {
+    if ((b.exp == a.exp) && int128_gt_hex(b.mant, a.mant)) {
         /* small + big ==  (big + small) */
         return xf_add(b, a);
     }
@@ -436,15 +438,15 @@ static xf_t xf_add(xf_t a, xf_t b)
     xf_debug("norm_r: Add/b: ", b);
 
     /* OK, now things should be normalized! */
-    if (int128_gt(b.mant, a.mant)) {
+    if (int128_gt_hex(b.mant, a.mant)) {
         xf_debug("retry: Add/a: ", a);
         xf_debug("retry: Add/b: ", b);
         return xf_add(b, a);
     };
     ret.sign = a.sign;
     ret.exp = a.exp;
-    assert(!int128_gt(b.mant, a.mant));
-    ret.mant = int128_add(a.mant, b.mant);
+    assert(!int128_gt_hex(b.mant, a.mant));
+    ret.mant = int128_add_hex(a.mant, b.mant);
     ret.guard = b.guard;
     ret.round = b.round;
     ret.sticky = b.sticky;
@@ -884,7 +886,7 @@ double internal_mpyhh(double a_in, double b_in,
     x.mant = int128_mul_6464(accumulated, 1);
     x.sticky = sticky;
     prod = fGETUWORD(1, df_getmant(a)) * fGETUWORD(1, df_getmant(b));
-    x.mant = int128_add(x.mant, int128_mul_6464(prod, 0x100000000ULL));
+    x.mant = int128_add_hex(x.mant, int128_mul_6464(prod, 0x100000000ULL));
     x.exp = df_getexp(a) + df_getexp(b) - DF_BIAS - 20;
     xf_debug("formed: ", x);
     if (!isnormal(a_in) || !isnormal(b_in)) {

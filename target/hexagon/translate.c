@@ -54,6 +54,11 @@ TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
 TCGv hex_VRegs_select;
 TCGv hex_QRegs_updated;
+TCGv hex_sreg[NUM_SREGS];
+TCGv hex_new_sreg_value[NUM_SREGS];
+#if HEX_DEBUG
+TCGv hex_sreg_written[NUM_SREGS];
+#endif
 
 static const char * const hexagon_prednames[] = {
   "p0", "p1", "p2", "p3"
@@ -139,6 +144,7 @@ static void gen_start_packet(DisasContext *ctx, packet_t *pkt)
 
     /* Clear out the disassembly context */
     ctx->ctx_reg_log_idx = 0;
+    ctx->ctx_sreg_log_idx = 0;
     ctx->ctx_preg_log_idx = 0;
     ctx->ctx_temp_vregs_idx = 0;
     ctx->ctx_temp_qregs_idx = 0;
@@ -194,6 +200,16 @@ static void mark_implicit_reg_write(DisasContext *ctx, insn_t *insn,
     }
 }
 
+
+static void mark_implicit_sreg_write(DisasContext *ctx, insn_t *insn,
+                                     int attrib, int snum)
+{
+    if (GET_ATTRIB(insn->opcode, attrib)) {
+        ctx->ctx_sreg_log[ctx->ctx_sreg_log_idx] = snum;
+        ctx->ctx_sreg_log_idx++;
+    }
+}
+
 static void mark_implicit_pred_write(DisasContext *ctx, insn_t *insn,
                                      int attrib, int pnum)
 {
@@ -210,6 +226,9 @@ static void mark_implicit_writes(DisasContext *ctx, insn_t *insn)
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_SA0, HEX_REG_SA0);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_LC1, HEX_REG_LC1);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_SA1, HEX_REG_SA1);
+
+    mark_implicit_sreg_write(ctx, insn, A_IMPLICIT_WRITES_SGP0, HEX_SREG_SGP0);
+    mark_implicit_sreg_write(ctx, insn, A_IMPLICIT_WRITES_SGP1, HEX_SREG_SGP1);
 
     mark_implicit_pred_write(ctx, insn, A_IMPLICIT_WRITES_P0, 0);
     mark_implicit_pred_write(ctx, insn, A_IMPLICIT_WRITES_P1, 1);
@@ -247,6 +266,21 @@ static void gen_reg_writes(DisasContext *ctx)
         int reg_num = ctx->ctx_reg_log[i];
 
         tcg_gen_mov_tl(hex_gpr[reg_num], hex_new_value[reg_num]);
+    }
+}
+
+static void gen_sreg_writes(DisasContext *ctx)
+{
+    int i;
+
+    for (i = 0; i < ctx->ctx_sreg_log_idx; i++) {
+        int reg_num = ctx->ctx_sreg_log[i];
+
+        tcg_gen_mov_tl(hex_sreg[reg_num], hex_new_sreg_value[reg_num]);
+#if HEX_DEBUG
+        /* Do this so HELPER(debug_commit_end) will know */
+        tcg_gen_movi_tl(hex_sreg_written[reg_num], 1);
+#endif
     }
 }
 
@@ -649,6 +683,7 @@ static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
     bool end_tb = false;
 
     gen_reg_writes(ctx);
+    gen_sreg_writes(ctx);
     gen_pred_writes(ctx, pkt);
     process_store_log(ctx, pkt);
     process_dczeroa(ctx, pkt);
@@ -847,6 +882,16 @@ void hexagon_translate_init(void)
         hex_reg_written[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, reg_written[i]),
             reg_written_names[i]);
+#endif
+    }
+    for (i = 0; i < NUM_SREGS; i++) {
+        hex_sreg[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPUHexagonState, sreg[i]), hexagon_sregnames[i]);
+        hex_new_sreg_value[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPUHexagonState, new_sreg_value[i]), "new_sreg_value");
+#if HEX_DEBUG
+        hex_sreg_written[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPUHexagonState, sreg_written[i]), "sreg_written");
 #endif
     }
     for (i = 0; i < NUM_PREGS; i++) {

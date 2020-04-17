@@ -77,8 +77,20 @@ OPCODES_DEF_H = $(BUILD_USER_DIR)/opcodes_def_generated.h
 OP_ATTRIBS_H = $(BUILD_USER_DIR)/op_attribs_generated.h
 OP_REGS_H = $(BUILD_USER_DIR)/op_regs_generated.h
 PRINTINSN_H = $(BUILD_USER_DIR)/printinsn_generated.h
+SOFTMMU_QEMU_DEF_H = $(BUILD_DIR)/hexagon-softmmu/qemu_def_generated.h
+SOFTMMU_QEMU_WRAP_H = $(BUILD_DIR)/hexagon-softmmu/qemu_wrap_generated.h
+SOFTMMU_OPCODES_DEF_H = $(BUILD_DIR)/hexagon-softmmu/opcodes_def_generated.h
+SOFTMMU_OP_ATTRIBS_H = $(BUILD_DIR)/hexagon-softmmu/op_attribs_generated.h
+SOFTMMU_OP_REGS_H = $(BUILD_DIR)/hexagon-softmmu/op_regs_generated.h
+SOFTMMU_PRINTINSN_H = $(BUILD_DIR)/hexagon-softmmu/printinsn_generated.h
 
 GENERATED_HEXAGON_FILES = \
+    $(SOFTMMU_QEMU_DEF_H) \
+    $(SOFTMMU_QEMU_WRAP_H) \
+    $(SOFTMMU_OPCODES_DEF_H) \
+    $(SOFTMMU_OP_ATTRIBS_H) \
+    $(SOFTMMU_OP_REGS_H) \
+    $(SOFTMMU_PRINTINSN_H) \
     $(QEMU_DEF_H) \
     $(QEMU_WRAP_H) \
     $(OPCODES_DEF_H) \

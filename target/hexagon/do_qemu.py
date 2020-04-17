@@ -214,6 +214,9 @@ def is_readwrite(regid):
 def is_scalar_reg(regtype):
     return regtype in "RPC"
 
+def is_sreg(regtype):
+    return regtype in "S"
+
 def is_hvx_reg(regtype):
     return regtype in "VQ"
 
@@ -252,6 +255,7 @@ def_helper_types = {
     'M' : 's32',
     'C' : 's32',
     'R' : 's32',
+    'S' : 's32',
     'V' : 'ptr',
     'Q' : 'ptr'
 }
@@ -285,12 +289,15 @@ def gen_helper_prototype(f, tag, regs, imms):
     f.write('#ifndef fWRAP_%s\n' % tag)
     numresults = 0
     numscalarresults = 0
+    numsuperresults = 0
     numscalarreadwrite = 0
     for regtype,regid,toss,numregs in regs:
         if (is_written(regid)):
             numresults += 1
             if (is_scalar_reg(regtype)):
                 numscalarresults += 1
+            if (is_sreg(regtype)):
+                numsuperresults += 1
         if (is_readwrite(regid)):
             if (is_scalar_reg(regtype)):
                 numscalarreadwrite += 1
@@ -300,7 +307,7 @@ def gen_helper_prototype(f, tag, regs, imms):
         f.write('DEF_HELPER_1(%s, void, env)\n' % tag)
     else:
         ## Figure out how many arguments the helper will take
-        if (numscalarresults == 0):
+        if (numscalarresults == 0 and numsuperresults == 0):
             def_helper_size = len(regs)+len(imms)+numscalarreadwrite+1
             if need_part1(tag): def_helper_size += 1
             if need_slot(tag): def_helper_size += 1
@@ -750,12 +757,15 @@ def gen_helper_definition(f, tag, regs, imms):
     f.write('#ifndef fWRAP_%s\n' % tag)
     numresults = 0
     numscalarresults = 0
+    numsuperresults = 0
     numscalarreadwrite = 0
     for regtype,regid,toss,numregs in regs:
         if (is_written(regid)):
             numresults += 1
             if (is_scalar_reg(regtype)):
                 numscalarresults += 1
+            if (is_sreg(regtype)):
+                numsuperresults += 1
         if (is_readwrite(regid)):
             if (is_scalar_reg(regtype)):
                 numscalarreadwrite += 1
@@ -784,7 +794,7 @@ def gen_helper_definition(f, tag, regs, imms):
                     print("Bad register parse: ",regtype,regid,toss,numregs)
             i += 1
 
-        if (numscalarresults == 0):
+        if (numscalarresults == 0 and numsuperresults == 0):
             f.write("void")
         f.write(" HELPER(%s)(CPUHexagonState *env" % tag)
 
@@ -863,6 +873,16 @@ def gen_helper_definition(f, tag, regs, imms):
         ## End of the helper definition
     f.write('#endif\n')
 
+supported_privs = [
+  'Y2_tfrscrr', 'Y2_tfrsrcr', 'Y4_tfrscpp', 'Y4_tfrspcp',
+  'Y2_crswap0', 'Y4_crswap1', 'Y4_crswap10',
+  'Y2_tlbp', 'Y2_tlbw', 'Y2_tlblock', 'Y2_tlbunlock',
+  'Y2_dckill', 'Y2_ickill', 'Y2_l2kill',
+  'L4_loadw_phys',
+  'J2_rte',
+  'Y2_cswi',
+]
+
 ##
 ## Bring it all together in the DEF_QEMU macro
 ##
@@ -896,7 +916,7 @@ for tag in tags:
     if ( "A_FAKEINSN" in attribdict[tag] ) :
         continue
     ## Skip the priv instructions
-    if ( "A_PRIV" in attribdict[tag] ) :
+    if ( "A_PRIV" in attribdict[tag] ) and ( tag not in supported_privs ) :
         continue
     ## Skip the guest instructions
     if ( "A_GUEST" in attribdict[tag] ) :

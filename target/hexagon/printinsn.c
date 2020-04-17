@@ -27,8 +27,8 @@
 
 static const char *sreg2str(unsigned int reg)
 {
-    if (reg < TOTAL_PER_THREAD_REGS) {
-        return hexagon_regnames[reg];
+    if (reg < NUM_SREGS) {
+        return hexagon_sregnames[reg];
     } else {
         return "???";
     }
@@ -36,7 +36,11 @@ static const char *sreg2str(unsigned int reg)
 
 static const char *creg2str(unsigned int reg)
 {
-    return sreg2str(reg + NUM_GEN_REGS);
+    if (reg < TOTAL_PER_THREAD_REGS) {
+        return hexagon_regnames[reg];
+    } else {
+        return "???";
+    }
 }
 
 static void snprintinsn(char *buf, int n, insn_t * insn)

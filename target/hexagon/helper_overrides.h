@@ -1465,7 +1465,8 @@
           fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
                                            fCAST4_4u(fREAD_FP()))); \
           fWRITE_FP(EA); \
-          fFRAMECHECK(EA - uiV, EA); \
+          tcg_gen_subi_tl(tmp, EA, uiV); \
+          fFRAMECHECK(tmp, EA); \
           tcg_gen_subi_tl(RxV, EA, uiV); \
         } \
         tcg_temp_free_i64(scramble_tmp); \
@@ -1480,8 +1481,8 @@
           fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
                                            fCAST4_4u(fREAD_FP()))); \
           fWRITE_FP(EA); \
-          fFRAMECHECK(EA - uiV, EA); \
           tcg_gen_subi_tl(tmp, EA, uiV); \
+          fFRAMECHECK(tmp, EA); \
           fWRITE_SP(tmp); \
         } \
         tcg_temp_free_i64(scramble_tmp); \

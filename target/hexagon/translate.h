@@ -28,6 +28,8 @@ typedef struct DisasContext {
     uint32_t mem_idx;
     int ctx_reg_log[REG_WRITES_MAX];
     int ctx_reg_log_idx;
+    int ctx_sreg_log[SREG_WRITES_MAX];
+    int ctx_sreg_log_idx;
     int ctx_preg_log[PRED_WRITES_MAX];
     int ctx_preg_log_idx;
     uint8_t ctx_store_width[STORES_MAX];
@@ -53,6 +55,12 @@ static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
 #endif
     ctx->ctx_reg_log[ctx->ctx_reg_log_idx] = rnum;
     ctx->ctx_reg_log_idx++;
+}
+
+static inline void ctx_log_sreg_write(DisasContext *ctx, int snum)
+{
+    ctx->ctx_sreg_log[ctx->ctx_sreg_log_idx] = snum;
+    ctx->ctx_sreg_log_idx++;
 }
 
 static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
@@ -101,6 +109,9 @@ extern TCGv hex_VRegs_updated_tmp;
 extern TCGv hex_VRegs_updated;
 extern TCGv hex_VRegs_select;
 extern TCGv hex_QRegs_updated;
+extern TCGv hex_sreg[NUM_SREGS];
+extern TCGv hex_new_sreg_value[NUM_SREGS];
+extern TCGv hex_sreg_written[NUM_SREGS];
 
 static inline void gen_slot_cancelled_check(TCGv check, int slot_num)
 {

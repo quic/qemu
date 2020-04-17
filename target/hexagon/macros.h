@@ -36,6 +36,9 @@
             tcg_gen_mov_tl(hex_new_value[NUM], hex_gpr[NUM]); \
         } \
     } while (0)
+#define DECL_SREG_WRITABLE(NAME, NUM, X, OFF) \
+    TCGv NAME = tcg_temp_local_new(); \
+    int NUM = REGNO(X) + OFF;
 /*
  * For read-only temps, avoid allocating and freeing
  */
@@ -100,6 +103,14 @@
 #define DECL_NEW_OREG_s(NAME, NUM, X, OFF) \
     DECL_REG_READONLY(NAME, NUM, X, OFF)
 
+#define DECL_SREG_READONLY(NAME, NUM, X, OFF) \
+    TCGv NAME; \
+    int NUM = REGNO(X) + OFF
+#define DECL_SREG_d(NAME, NUM, X, OFF) \
+    DECL_SREG_WRITABLE(NAME, NUM, X, OFF)
+#define DECL_SREG_s(NAME, NUM, X, OFF) \
+    DECL_SREG_READONLY(NAME, NUM, X, OFF)
+
 #define DECL_PAIR(NAME, NUM, X, OFF) \
     TCGv_i64 NAME = tcg_temp_local_new_i64(); \
     size1u_t NUM = REGNO(X) + OFF
@@ -118,6 +129,18 @@
             } \
         } \
     } while (0)
+
+#define DECL_SREG_PAIR(NAME, NUM, X, OFF) \
+    TCGv_i64 NAME = tcg_temp_local_new_i64(); \
+    size1u_t NUM = REGNO(X) + OFF
+#define DECL_SREG_PAIR_WRITABLE(NAME, NUM, X, OFF) \
+    TCGv_i64 NAME = tcg_temp_local_new_i64(); \
+    size1u_t NUM = REGNO(X) + OFF;
+
+#define DECL_SREG_ss(NAME, NUM, X, OFF) \
+    DECL_SREG_PAIR(NAME, NUM, X, OFF)
+#define DECL_SREG_dd(NAME, NUM, X, OFF) \
+    DECL_SREG_PAIR_WRITABLE(NAME, NUM, X, OFF)
 
 #define DECL_RREG_dd(NAME, NUM, X, OFF) \
     DECL_PAIR_WRITABLE(NAME, NUM, X, OFF)
@@ -160,15 +183,34 @@
         ctx_log_reg_write(ctx, (RNUM)); \
     } while (0)
 
+#define LOG_SREG_WRITE(SNUM, VAL)\
+    do { \
+        gen_log_sreg_write(SNUM, VAL); \
+        ctx_log_sreg_write(ctx, (SNUM)); \
+    } while (0)
+
 #define LOG_PRED_WRITE(PNUM, VAL) \
     do { \
         gen_log_pred_write(PNUM, VAL); \
         ctx_log_pred_write(ctx, (PNUM)); \
     } while (0)
 
+#define WRITE_SREG(NUM, VAL)             LOG_SREG_WRITE(NUM, VAL)
+#define WRITE_SREG_d(NUM, VAL)           LOG_SREG_WRITE(NUM, VAL)
+#define WRITE_SGP0(VAL)                  LOG_SREG_WRITE(HEX_SREG_SGP0, VAL)
+#define WRITE_SGP1(VAL)                  LOG_SREG_WRITE(HEX_SREG_SGP1, VAL)
+#define WRITE_SGP10(VAL) { \
+  LOG_SREG_WRITE(HEX_SREG_SGP0, (VAL) & 0xFFFFFFFF); \
+  LOG_SREG_WRITE(HEX_SREG_SGP1, (VAL) >> 32); \
+}
+
 #define FREE_REG(NAME) \
     tcg_temp_free(NAME)
 #define FREE_REG_READONLY(NAME) \
+    /* Nothing */
+#define FREE_SREG(NAME) \
+    tcg_temp_free(NAME)
+#define FREE_SREG_READONLY(NAME) \
     /* Nothing */
 
 #define FREE_RREG_d(NAME)            FREE_REG(NAME)
@@ -202,8 +244,14 @@
 
 #define FREE_NEW_OREG_s(NAME)        FREE_REG(NAME)
 
+#define FREE_SREG_d(NAME)            FREE_SREG(NAME)
+#define FREE_SREG_s(NAME)            FREE_SREG_READONLY(NAME)
+
 #define FREE_REG_PAIR(NAME) \
     tcg_temp_free_i64(NAME)
+#define FREE_SREG_PAIR(NAME) \
+    tcg_temp_free_i64(NAME)
+
 
 #define FREE_RREG_dd(NAME)           FREE_REG_PAIR(NAME)
 #define FREE_RREG_ss(NAME)           FREE_REG_PAIR(NAME)
@@ -214,6 +262,9 @@
 #define FREE_CREG_dd(NAME)           FREE_REG_PAIR(NAME)
 #define FREE_CREG_ss(NAME)           FREE_REG_PAIR(NAME)
 
+#define FREE_SREG_ss(NAME)           FREE_SREG_PAIR(NAME)
+#define FREE_SREG_dd(NAME)           FREE_SREG_PAIR(NAME)
+
 #define FREE_IMM(NAME)               /* nothing */
 #define FREE_TCG_IMM(NAME)           tcg_temp_free(NAME)
 
@@ -222,9 +273,19 @@
 #else
 #define LOG_REG_WRITE(RNUM, VAL)\
     log_reg_write(env, RNUM, VAL, slot)
+#define LOG_SREG_WRITE(SNUM, VAL)\
+    log_sreg_write(env, SNUM, VAL, slot)
 #define LOG_PRED_WRITE(RNUM, VAL)\
     log_pred_write(env, RNUM, VAL)
 #endif
+#define WRITE_SREG(NUM, VAL)             LOG_SREG_WRITE(NUM, VAL)
+#define WRITE_SREG_d(NUM, VAL)           LOG_SREG_WRITE(NUM, VAL)
+#define WRITE_SGP0(VAL)                  LOG_SREG_WRITE(HEX_SREG_SGP0, VAL)
+#define WRITE_SGP1(VAL)                  LOG_SREG_WRITE(HEX_SREG_SGP1, VAL)
+#define WRITE_SGP10(VAL) { \
+  LOG_SREG_WRITE(HEX_SREG_SGP0, (VAL) & 0xFFFFFFFF); \
+  LOG_SREG_WRITE(HEX_SREG_SGP1, (VAL) >> 32); \
+}
 
 #define SLOT_WRAP(CODE) \
     do { \
@@ -265,6 +326,13 @@
 #define READ_OREG_s(dest, NUM) \
     READ_REG_READONLY(dest, NUM)
 
+#define READ_SREG(dest, NUM) \
+    gen_read_sreg(dest, NUM)
+#define READ_SREG_READONLY(dest, NUM) \
+    do { dest = hex_sreg[NUM]; } while (0)
+#define READ_SREG_s(dest, NUM) \
+    READ_SREG_READONLY(dest, NUM)
+
 #define READ_CREG_s(dest, NUM) \
     do { \
         if ((NUM) + HEX_REG_SA0 == HEX_REG_P3_0) { \
@@ -282,6 +350,11 @@
 #else
 #define READ_REG(NUM) \
     (env->gpr[(NUM)])
+#define READ_SREG(NUM) \
+    (((NUM) == HEX_SREG_ELR) ? env->sreg[(NUM)] : env->sreg[(NUM)])
+#define READ_SGP0() (env->sreg[HEX_SREG_SGP0])
+#define READ_SGP1() (env->sreg[HEX_SREG_SGP1])
+#define READ_SGP10() ((uint64_t)env->sreg[HEX_SREG_SGP0] | ((uint64_t)env->sreg[HEX_SREG_SGP1] << 32))
 #endif
 
 #ifdef QEMU_GENERATE
@@ -291,6 +364,11 @@
 #define READ_RREG_tt(tmp, NUM)          READ_REG_PAIR(tmp, NUM)
 #define READ_RREG_xx(tmp, NUM)          READ_REG_PAIR(tmp, NUM)
 #define READ_RREG_yy(tmp, NUM)          READ_REG_PAIR(tmp, NUM)
+
+#define READ_SREG_PAIR(tmp, NUM) \
+    tcg_gen_concat_i32_i64(tmp, hex_sreg[NUM], hex_sreg[(NUM) + 1])
+#define READ_SREG_ss(tmp, NUM)          READ_SREG_PAIR(tmp, NUM)
+#define READ_SGP10() (READ_SREG_PAIR(tmp, HEX_SREG_SGP0), tmp)
 
 #define READ_CREG_PAIR(tmp, i) \
     READ_REG_PAIR(tmp, ((i) + HEX_REG_SA0))
@@ -321,7 +399,6 @@
 #else
 #define READ_PREG(NUM)                (env->pred[NUM])
 #endif
-
 
 #define WRITE_RREG(NUM, VAL)             LOG_REG_WRITE(NUM, VAL)
 #define WRITE_RREG_d(NUM, VAL)           LOG_REG_WRITE(NUM, VAL)
@@ -359,6 +436,13 @@
 #define WRITE_RREG_dd(NUM, VAL)          WRITE_REG_PAIR(NUM, VAL)
 #define WRITE_RREG_xx(NUM, VAL)          WRITE_REG_PAIR(NUM, VAL)
 #define WRITE_RREG_yy(NUM, VAL)          WRITE_REG_PAIR(NUM, VAL)
+#define WRITE_SREG_PAIR(NUM, VAL) \
+    do { \
+        gen_log_sreg_write_pair(NUM, VAL); \
+        ctx_log_sreg_write(ctx, (NUM)); \
+        ctx_log_sreg_write(ctx, (NUM) + 1); \
+    } while (0)
+#define WRITE_SREG_dd(NUM, VAL)          WRITE_SREG_PAIR(NUM, VAL)
 #endif
 
 #define PCALIGN 4
@@ -691,13 +775,15 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fREAD_IREG(VAL, SHIFT) gen_read_ireg(ireg, (VAL), (SHIFT))
 #define fREAD_R0() (READ_REG(tmp, 0))
 #define fREAD_LR() (READ_REG(tmp, HEX_REG_LR))
-#define fREAD_SSR() (READ_REG(tmp, HEX_REG_SSR))
+#define fREAD_SSR() (READ_SREG(tmp, HEX_SREG_SSR))
+#define fREAD_ELR() (READ_SREG(tmp, HEX_SREG_ELR))
 #else
 #define fREAD_IREG(VAL) \
     (fSXTN(11, 64, (((VAL) & 0xf0000000) >> 21) | ((VAL >> 17) & 0x7f)))
 #define fREAD_R0() (READ_REG(0))
 #define fREAD_LR() (READ_REG(HEX_REG_LR))
-#define fREAD_SSR() (READ_REG(HEX_REG_SSR))
+#define fREAD_SSR() (READ_SREG(HEX_SREG_SSR))
+#define fREAD_ELR() (READ_SREG(HEX_SREG_ELR))
 #endif
 
 #define fWRITE_R0(A) WRITE_RREG(0, A)
@@ -706,12 +792,13 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fWRITE_SP(A) WRITE_RREG(HEX_REG_SP, A)
 #define fWRITE_GOSP(A) WRITE_RREG(HEX_REG_GOSP, A)
 #define fWRITE_GP(A) WRITE_RREG(HEX_REG_GP, A)
+#define fWRITE_SSR(VAL) WRITE_SREG(HEX_SREG_SSR,VAL)
 
 #ifdef QEMU_GENERATE
 #define fREAD_SP() (READ_REG(tmp, HEX_REG_SP))
 #define fREAD_GOSP() (READ_REG(tmp, HEX_REG_GOSP))
 #define fREAD_GELR() (READ_REG(tmp, HEX_REG_GELR))
-#define fREAD_GEVB() (READ_REG(tmp, HEX_REG_GEVB))
+#define fREAD_GEVB() (READ_SREG(tmp, HEX_SREG_GEVB))
 #define fREAD_CSREG(N) (READ_REG(tmp, HEX_REG_CS0 + N))
 #define fREAD_LC0 (READ_REG(tmp, HEX_REG_LC0))
 #define fREAD_LC1 (READ_REG(tmp, HEX_REG_LC1))
@@ -725,7 +812,7 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fREAD_SP() (READ_REG(HEX_REG_SP))
 #define fREAD_GOSP() (READ_REG(HEX_REG_GOSP))
 #define fREAD_GELR() (READ_REG(HEX_REG_GELR))
-#define fREAD_GEVB() (READ_REG(HEX_REG_GEVB))
+#define fREAD_GEVB() (READ_SREG(HEX_SREG_GEVB))
 #define fREAD_CSREG(N) (READ_REG(HEX_REG_CS0 + N))
 #define fREAD_LC0 (READ_REG(HEX_REG_LC0))
 #define fREAD_LC1 (READ_REG(HEX_REG_LC1))
@@ -760,6 +847,7 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #endif
 
 #define fLOOPSTATS(A)
+#define CALLBACK(...)
 #define fCOF_CALLBACK(LOC, TYPE)
 #define fBRANCH(LOC, TYPE) \
     do { \
@@ -1234,8 +1322,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #ifdef CONFIG_USER_ONLY
 #define fFRAMECHECK(ADDR, EA) do { } while (0) /* Not modelled in linux-user */
 #else
-/* System mode not implemented yet */
-#define fFRAMECHECK(ADDR, EA)  g_assert_not_reached();
+#define fFRAMECHECK(ADDR, EA) do { } while (0)
 #endif
 
 #ifdef QEMU_GENERATE
@@ -1246,7 +1333,51 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     DST = (size##SIZE##SIGN##_t)mem_load_locked##SIZE(env, EA);
 #endif
 
-#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST)
+#if 1
+#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST) { \
+  const uintptr_t cfgbase = 0xde000000;  \
+  const uintptr_t rs = ((unsigned long)(unsigned)(SRC1)) & 0x7ff; \
+  const uintptr_t rt = ((unsigned long)(unsigned)(SRC2)) << 11; \
+  const uintptr_t addr = rs + rt;         \
+  if (addr == (cfgbase))                  \
+    (DST) = 0xd800; /* l2tcm base */      \
+  else if (addr == (cfgbase | 0x10))      \
+    (DST) = 0xd81a; /* l2cfg base */      \
+  else if (addr == (cfgbase | 0x2c))      \
+    (DST) = 128;    /* num tlb entries */ \
+  else if (addr == (cfgbase | 0x30))      \
+    (DST) = 1;      /* coproc present */  \
+  else if (addr == (cfgbase | 0x34))      \
+    (DST) = 4;      /* ext_contents  */   \
+  else if (addr == (cfgbase | 0x38))      \
+    (DST) = 0xd840; /* vtcm base  */      \
+  else if (addr == (cfgbase | 0x3c))      \
+    (DST) = 0x1000; /* vtcm size  */      \
+  else if (addr == (cfgbase | 0x40))      \
+    (DST) = 1024;   /* l2 tag size */     \
+  else                                    \
+    (DST) = 0;                            \
+}
+#else
+#ifdef QEMU_GENERATE
+#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST) { \
+  printf("fLOAD_PHYS: mgl\n"); \
+  TCGv __tmp = tcg_temp_new(); \
+  tcg_gen_add_tl(SRC1, SRC2, __tmp); \
+  fLOAD(NUM,SIZE,SIGN,__tmp,DST);\
+  (MEM_LOAD##SIZE##SIGN(DST, __tmp)) \
+  tcg_temp_free(__tmp); \
+}
+#else
+#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST) { \
+  const uintptr_t rs = ((uintptr_t)(unsigned)(SRC1)) & 0x7ff; \
+  const uintptr_t rt = ((uintptr_t)(unsigned)(SRC2)) << 11; \
+  const uintptr_t addr = rs + rt; \
+  printf("fLOAD_PHYS: mgl\n"); \
+  fLOAD(NUM, SIZE, SIGN, addr, DST); \
+}
+#endif
+#endif
 
 #ifdef QEMU_GENERATE
 #define fSTORE(NUM, SIZE, EA, SRC) MEM_STORE##SIZE(EA, SRC, insn->slot)
@@ -1368,7 +1499,17 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fGP_DOCHKPAGECROSS(BASE, SUM)
 #define fDOCHKPAGECROSS(BASE, SUM)
 #define fPAUSE(IMM)
-#define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EXCP_TRAP0)
+#define fTRAP(TRAPTYPE, IMM) { \
+  register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM /*HEX_EXCP_TRAP0*/); \
+}
+#if 0
+#define fCHECKFORPRIV()  do {} while(0)
+#else
+#define fCHECKFORPRIV() { \
+    if (get_cpu_mode(env) != HEX_CPU_MODE_MONITOR)  \
+      helper_raise_exception(env, HEX_EXCP_PREV_USER_NO_SINSN); \
+  }
+#endif
 
 #define fALIGN_REG_FIELD_VALUE(FIELD, VAL) \
     ((VAL) << reg_field_info[FIELD].offset)
@@ -1423,8 +1564,21 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define fDCZEROA(REG) tcg_gen_mov_tl(hex_dczero_addr, (REG))
+#define fCLEAR_RTE_EX() \
+    do { \
+        TCGv tmp = tcg_temp_new(); \
+        fREAD_SSR(); \
+        tcg_gen_andi_tl(tmp, tmp, ~(SSR_EX)) \
+        fWRITE_SSR(tmp);  \
+    } while (0)
 #else
 #define fDCZEROA(REG) do { REG = REG; g_assert_not_reached(); } while (0)
+#define fCLEAR_RTE_EX() \
+    do { \
+        uint32_t tmp = fREAD_SSR(); \
+        tmp &= ~(SSR_EX); \
+        fWRITE_SSR(tmp);  \
+    } while (0)
 #endif
 
 #define fDCINVIDX(REG)
@@ -1443,5 +1597,28 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     (((IMM) == 1) || ((IMM) == 3) || ((IMM) == 4) || ((IMM) == 6))
 #define fNOP_EXECUTED
 #define fPREDUSE_TIMING()
+#define fTLBP(x) ((x))
+#define fTLBW(RtV,RssV)
+#define fSET_TLB_LOCK()
+#define fCLEAR_TLB_LOCK()
+
+#ifdef QEMU_GENERATE
+#define DO_CSWI(RS) \
+    do { \
+        TCGv tmp = tcg_temp_new(); \
+        TCGv not_rs = tcg_temp_new(); \
+        tcg_gen_not_i32(not_rs, (RS)); \
+        fREAD_SREG(HEX_SREG_IPEND); \
+        tcg_gen_andi_tl(tmp, tmp, not_rs); \
+        fWRITE_SREG(HEX_SREG_IPEND, tmp);  \
+    } while (0)
+#else
+#define DO_CSWI(RS) \
+    do { \
+        uint32_t tmp = READ_SREG(HEX_SREG_IPEND); \
+        tmp &= ~(RS); \
+        WRITE_SREG(HEX_SREG_IPEND, tmp);  \
+    } while (0)
+#endif
 
 #endif

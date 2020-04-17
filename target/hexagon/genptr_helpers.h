@@ -32,6 +32,12 @@ static inline TCGv gen_read_reg(TCGv result, int num)
     return result;
 }
 
+static inline TCGv gen_read_sreg(TCGv result, int num)
+{
+    tcg_gen_mov_tl(result, hex_sreg[num]);
+    return result;
+}
+
 static inline TCGv gen_read_preg(TCGv pred, uint8_t num)
 {
     tcg_gen_mov_tl(pred, hex_pred[num]);
@@ -110,6 +116,27 @@ static inline void gen_log_reg_write_pair(int rnum, TCGv_i64 val, int slot,
         tcg_gen_extrh_i64_i32(val32, val);
         tcg_gen_mov_tl(hex_new_value[rnum + 1], val32);
     }
+
+    tcg_temp_free(val32);
+}
+
+static inline void gen_log_sreg_write(int snum, TCGv val)
+
+{
+    tcg_gen_mov_tl(hex_new_sreg_value[snum], val);
+}
+
+static inline void gen_log_sreg_write_pair(int rnum, TCGv_i64 val)
+
+{
+    TCGv val32 = tcg_temp_new();
+
+    /* Low word */
+    tcg_gen_extrl_i64_i32(val32, val);
+    tcg_gen_mov_tl(hex_new_sreg_value[rnum], val32);
+    /* High word */
+    tcg_gen_extrh_i64_i32(val32, val);
+    tcg_gen_mov_tl(hex_new_sreg_value[rnum + 1], val32);
 
     tcg_temp_free(val32);
 }

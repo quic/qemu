@@ -56,6 +56,14 @@ const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
   "c24", "c25", "c26", "c27", "c28",  "c29", "c30", "c31",
 };
 
+/* per thread: sgp0, sgp1, ssr, ccr, imask, gevb, badva0, badva1, badva, elr, stid, htid */
+const char * const hexagon_sregnames[] = {
+  "sgp0",    "sgp1",     "stid",     "elr",      "badva0",    "badva1",     "ssr",        "ccr",       "htid",      "badva",      "imask",  "gevb",    "rsv12",   "rsv13",   "rsv14",    "rsv15",
+  "evb",     "modectl",  "syscfg",   "free19",   "ipendad",   "vid",        "vid1",       "bestwait",  "free24",    "schedcfg",   "free26", "cfgbase", "diag",    "rev",     "pcyclelo", "pcyclehi",
+  "isdbst",  "isdbcfg0", "isdbcfg1", "livelock", "brkptpc0",  "brkptccfg0", "brkptpc1",   "brkptcfg1", "isdbmbxin", "isdbmbxout", "isdben", "isdbgpr", "pmucnt4", "pmucnt5", "pmucnt6",  "pmucnt7",
+  "pmucnt0", "pmucnt1",  "pmucnt2",  "pmucnt3",  "pmuevtcfg", "pmustid0",   "pmuevtcfg1", "pmustid1",  "timerlo",   "timerhi",    "pmucfg", "rsv59",   "rsv60",   "rsv61",   "rsv62",    "rsv64"
+};
+
 /*
  * One of the main debugging techniques is to use "-d cpu" and compare against
  * LLDB output when single stepping.  However, the target and qemu put the
@@ -107,6 +115,13 @@ static inline target_ulong read_p3_0(CPUHexagonState *env)
     return control_reg;
 }
 
+#ifndef CONFIG_USER_ONLY
+static void print_val(FILE *f, const char *str, unsigned val)
+{
+    fprintf(f, "  %s = 0x%x\n", str, val);
+}
+#endif
+
 static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 {
     target_ulong value;
@@ -120,6 +135,24 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 
     fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_regnames[regnum], value);
 }
+
+#ifndef CONFIG_USER_ONLY
+static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
+{
+    fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
+        hexagon_sregnames[regnum], env->sreg[regnum]);
+}
+
+
+static target_ulong get_badva(CPUHexagonState *env)
+
+{
+  if (env->sreg[HEX_SREG_SSR] & SSR_BVS)
+    return env->sreg[HEX_SREG_BADVA1];
+  else
+    return env->sreg[HEX_SREG_BADVA0];
+}
+#endif
 
 static void print_vreg(FILE *f, CPUHexagonState *env, int regnum)
 {
@@ -192,10 +225,17 @@ static void hexagon_dump(CPUHexagonState *env, FILE *f)
     fprintf(f, "  cs0 = 0x00000000\n");
     fprintf(f, "  cs1 = 0x00000000\n");
 #else
-    print_reg(f, env, HEX_REG_CAUSE);
-    print_reg(f, env, HEX_REG_BADVA);
+    print_val(f, "cause", env->sreg[HEX_SREG_SSR] & SSR_CAUSE);
+    print_sreg(f, env, get_badva(env));
     print_reg(f, env, HEX_REG_CS0);
     print_reg(f, env, HEX_REG_CS1);
+
+    for (int j = 0; j < 4 ; ++j) { // mgl
+      char buf[128];
+      buf[0]= 0;
+      sprintf(buf, "p%d", j);
+      print_val(f, buf, env->pred[j]);
+    }
 #endif
     fprintf(f, "}\n");
 
@@ -293,6 +333,20 @@ static void hexagon_cpu_init(Object *obj)
     cpu_set_cpustate_pointers(cpu);
 }
 
+#ifndef CONFIG_USER_ONLY
+static bool get_physical_address(CPUHexagonState *env, hwaddr *phys,
+                                int *prot, target_ulong address,
+                                int rw)
+
+{
+  *phys = address & 0xFFFFFFFF;
+  *prot = PAGE_VALID | PAGE_READ |
+          PAGE_WRITE |
+          PAGE_EXEC;
+  return true;
+}
+#endif
+
 static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
                              MMUAccessType access_type, int mmu_idx,
                              bool probe, uintptr_t retaddr)
@@ -311,7 +365,19 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
     }
     cpu_loop_exit_restore(cs, retaddr);
 #else
-#error System mode not implemented for Hexagon
+  HexagonCPU *cpu = HEXAGON_CPU(cs);
+  CPUHexagonState *env = &cpu->env;
+  hwaddr phys;
+  int prot = 0;
+  bool ret = 0;
+
+  HEX_DEBUG_LOG("%s: vaddr = 0x%lx, size = %d, access_type = 0x%x, probe = %d, mmu_idx = %d\n",
+    __FUNCTION__, address, size, access_type, probe, mmu_idx);
+  ret = get_physical_address(env, &phys, &prot, address, access_type);
+  tlb_set_page(cs, address & TARGET_PAGE_MASK,
+               phys & TARGET_PAGE_MASK, prot,
+               mmu_idx, TARGET_PAGE_SIZE);
+  return ret;
 #endif
 }
 
@@ -333,12 +399,19 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 
     cc->class_by_name = hexagon_cpu_class_by_name;
     cc->has_work = hexagon_cpu_has_work;
+#ifndef CONFIG_USER_ONLY
+    cc->do_interrupt = hexagon_cpu_do_interrupt;
+#endif
     cc->dump_state = hexagon_dump_state;
     cc->set_pc = hexagon_cpu_set_pc;
     cc->synchronize_from_tb = hexagon_cpu_synchronize_from_tb;
     cc->gdb_read_register = hexagon_gdb_read_register;
     cc->gdb_write_register = hexagon_gdb_write_register;
+#ifdef CONFIG_USER_ONLY
     cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS + NUM_VREGS + NUM_QREGS;
+#else
+    cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS + NUM_VREGS + NUM_QREGS + NUM_SREGS;
+#endif
     cc->gdb_stop_before_watchpoint = true;
     cc->disas_set_info = hexagon_cpu_disas_set_info;
 #ifdef CONFIG_TCG
