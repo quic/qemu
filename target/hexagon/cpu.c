@@ -143,7 +143,6 @@ static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
         hexagon_sregnames[regnum], env->sreg[regnum]);
 }
 
-
 static target_ulong get_badva(CPUHexagonState *env)
 
 {

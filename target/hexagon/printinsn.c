@@ -27,11 +27,12 @@
 
 static const char *sreg2str(unsigned int reg)
 {
+#ifndef CONFIG_USER_ONLY
     if (reg < NUM_SREGS) {
         return hexagon_sregnames[reg];
-    } else {
-        return "???";
     }
+#endif
+    return "???";
 }
 
 static const char *creg2str(unsigned int reg)

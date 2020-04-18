@@ -147,7 +147,7 @@ def MACROATTRIB(macname,beh,attribstring,ext=""):
 
 # read in file.  Evaluate each line: each line calls a function above
 
-for line in open(sys.argv[1], 'rt').readlines():
+for line in open(sys.argv[2], 'rt').readlines():
     if not line.startswith("#"):
         eval(line.strip())
 
@@ -157,7 +157,7 @@ calculate_attribs()
 
 attribre = re.compile(r'DEF_ATTRIB\(([A-Za-z0-9_]+), ([^,]*), ' +
         r'"([A-Za-z0-9_\.]*)", "([A-Za-z0-9_\.]*)"\)')
-for line in open(sys.argv[2], 'rt').readlines():
+for line in open(sys.argv[3], 'rt').readlines():
     if not attribre.match(line):
         continue
     (attrib_base,descr,rreg,wreg) = attribre.findall(line)[0]
@@ -873,15 +873,6 @@ def gen_helper_definition(f, tag, regs, imms):
         ## End of the helper definition
     f.write('#endif\n')
 
-supported_privs = [
-  'Y2_tfrscrr', 'Y2_tfrsrcr', 'Y4_tfrscpp', 'Y4_tfrspcp',
-  'Y2_crswap0', 'Y4_crswap1', 'Y4_crswap10',
-  'Y2_tlbp', 'Y2_tlbw', 'Y2_tlblock', 'Y2_tlbunlock',
-  'Y2_dckill', 'Y2_ickill', 'Y2_l2kill',
-  'L4_loadw_phys',
-  'J2_rte',
-  'Y2_cswi',
-]
 
 ##
 ## Bring it all together in the DEF_QEMU macro
@@ -907,6 +898,15 @@ f.write("#ifndef DEF_QEMU\n")
 f.write("#define DEF_QEMU(TAG,SHORTCODE,HELPER,GENFN,HELPFN)   /* Nothing */\n")
 f.write("#endif\n\n")
 
+supported_privs = [
+    'Y2_tfrscrr', 'Y2_tfrsrcr', 'Y4_tfrscpp', 'Y4_tfrspcp',
+    'Y2_crswap0', 'Y4_crswap1', 'Y4_crswap10',
+    'Y2_tlbp', 'Y2_tlbw', 'Y2_tlblock', 'Y2_tlbunlock',
+    'Y2_dckill', 'Y2_ickill', 'Y2_l2kill',
+    'L4_loadw_phys',
+    'J2_rte',
+    'Y2_cswi',
+]
 
 for tag in tags:
     ## Skip assembler mapped instructions

@@ -82,9 +82,9 @@ typedef struct {
 #define HEX_CPU_MODE_USER    1
 #define HEX_CPU_MODE_GUEST   2
 #define HEX_CPU_MODE_MONITOR 3
-#define MMU_USER_IDX         1
-#define MMU_GUEST_IDX        2
-#define MMU_KERNEL_IDX       0
+#define MMU_USER_IDX         0
+#define MMU_GUEST_IDX        1
+#define MMU_KERNEL_IDX       2
 
 #define EXEC_STATUS_OK          0x0000
 #define EXEC_STATUS_STOP        0x0002
@@ -275,8 +275,10 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 #endif
 }
 
-#define GET_SSR_FIELD(BIT) (env->sreg[HEX_SREG_SSR] & (BIT))
 
+#ifndef CONFIG_USER_ONLY
+
+#define GET_SSR_FIELD(BIT) (env->sreg[HEX_SREG_SSR] & (BIT))
 static inline int sys_in_monitor_mode(CPUHexagonState *env)
 {
     return ((GET_SSR_FIELD(SSR_UM) == 0)
@@ -322,7 +324,6 @@ static inline int get_cpu_mode(CPUHexagonState *env)
 
 static inline int cpu_mmu_index(CPUHexagonState *env, bool ifetch)
 {
-#if 1
   if (!(env->sreg[HEX_SREG_SYSCFG] & SYSCFG_M)) {
     return MMU_KERNEL_IDX;
   }
@@ -336,10 +337,8 @@ static inline int cpu_mmu_index(CPUHexagonState *env, bool ifetch)
   }
 
   return MMU_USER_IDX;
-#else
-  return 0;
-#endif
 }
+#endif
 
 typedef struct CPUHexagonState CPUArchState;
 typedef HexagonCPU ArchCPU;

@@ -85,12 +85,6 @@ SOFTMMU_OP_REGS_H = $(BUILD_DIR)/hexagon-softmmu/op_regs_generated.h
 SOFTMMU_PRINTINSN_H = $(BUILD_DIR)/hexagon-softmmu/printinsn_generated.h
 
 GENERATED_HEXAGON_FILES = \
-    $(SOFTMMU_QEMU_DEF_H) \
-    $(SOFTMMU_QEMU_WRAP_H) \
-    $(SOFTMMU_OPCODES_DEF_H) \
-    $(SOFTMMU_OP_ATTRIBS_H) \
-    $(SOFTMMU_OP_REGS_H) \
-    $(SOFTMMU_PRINTINSN_H) \
     $(QEMU_DEF_H) \
     $(QEMU_WRAP_H) \
     $(OPCODES_DEF_H) \
@@ -98,12 +92,32 @@ GENERATED_HEXAGON_FILES = \
     $(OP_REGS_H) \
     $(PRINTINSN_H)
 
+GENERATED_SOFTMMU_HEXAGON_FILES = \
+    $(SOFTMMU_QEMU_DEF_H) \
+    $(SOFTMMU_QEMU_WRAP_H) \
+    $(SOFTMMU_OPCODES_DEF_H) \
+    $(SOFTMMU_OP_ATTRIBS_H) \
+    $(SOFTMMU_OP_REGS_H) \
+    $(SOFTMMU_PRINTINSN_H)
+
 $(GENERATED_HEXAGON_FILES): \
     $(SRC_PATH)/target/hexagon/do_qemu.py \
     $(SEMANTICS) \
     $(SRC_PATH)/target/hexagon/attribs_def.h
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/do_qemu.py \
+                "-USER" \
+                $(SEMANTICS) \
+                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+	    "GEN", "Hexagon generated files") \
+
+$(GENERATED_SOFTMMU_HEXAGON_FILES): \
+    $(SRC_PATH)/target/hexagon/do_qemu.py \
+    $(SEMANTICS) \
+    $(SRC_PATH)/target/hexagon/attribs_def.h
+	$(call quiet-command, \
+	    $(SRC_PATH)/target/hexagon/do_qemu.py \
+                "-SYSTEM" \
                 $(SEMANTICS) \
                 $(SRC_PATH)/target/hexagon/attribs_def.h, \
 	    "GEN", "Hexagon generated files")
@@ -116,7 +130,7 @@ $(GENERATED_HEXAGON_FILES): \
 GEN_DECTREE_IMPORT=gen_dectree_import
 GEN_DECTREE_IMPORT_SRC = $(SRC_PATH)/target/hexagon/gen_dectree_import.c
 
-$(GEN_DECTREE_IMPORT): $(GEN_DECTREE_IMPORT_SRC) $(GENERATED_HEXAGON_FILES)
+$(GEN_DECTREE_IMPORT): $(GEN_DECTREE_IMPORT_SRC) $(GENERATED_HEXAGON_FILES) $(GENERATED_SOFTMMU_HEXAGON_FILES)
 	$(CC) $(CFLAGS) -I$(BUILD_USER_DIR) $(GEN_DECTREE_IMPORT_SRC) -o $(GEN_DECTREE_IMPORT)
 
 DECTREE_IMPORT=iset.py
@@ -136,4 +150,4 @@ $(DECTREE_HEADER): $(SRC_PATH)/target/hexagon/dectree.py $(DECTREE_IMPORT)
                 $(BUILD_USER_DIR), \
 	    "GEN", "Hexagon decode tree")
 
-generated-files-y += $(GENERATED_HEXAGON_FILES) $(DECTREE_HEADER)
+generated-files-y += $(GENERATED_HEXAGON_FILES) $(GENERATED_SOFTMMU_HEXAGON_FILES) $(DECTREE_HEADER)

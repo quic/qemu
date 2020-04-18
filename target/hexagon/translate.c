@@ -54,10 +54,12 @@ TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
 TCGv hex_VRegs_select;
 TCGv hex_QRegs_updated;
+#ifndef CONFIG_USEr_ONLY
 TCGv hex_sreg[NUM_SREGS];
 TCGv hex_new_sreg_value[NUM_SREGS];
 #if HEX_DEBUG
 TCGv hex_sreg_written[NUM_SREGS];
+#endif
 #endif
 
 static const char * const hexagon_prednames[] = {

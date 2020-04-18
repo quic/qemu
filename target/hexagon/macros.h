@@ -350,8 +350,7 @@
 #else
 #define READ_REG(NUM) \
     (env->gpr[(NUM)])
-#define READ_SREG(NUM) \
-    (((NUM) == HEX_SREG_ELR) ? env->sreg[(NUM)] : env->sreg[(NUM)])
+#define READ_SREG(NUM) (env->sreg[(NUM)])
 #define READ_SGP0() (env->sreg[HEX_SREG_SGP0])
 #define READ_SGP1() (env->sreg[HEX_SREG_SGP1])
 #define READ_SGP10() ((uint64_t)env->sreg[HEX_SREG_SGP0] | ((uint64_t)env->sreg[HEX_SREG_SGP1] << 32))
@@ -1333,7 +1332,9 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     DST = (size##SIZE##SIGN##_t)mem_load_locked##SIZE(env, EA);
 #endif
 
-#if 1
+#ifdef CONFIG_USER_ONLY
+#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST)
+#else
 #define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST) { \
   const uintptr_t cfgbase = 0xde000000;  \
   const uintptr_t rs = ((unsigned long)(unsigned)(SRC1)) & 0x7ff; \
@@ -1358,25 +1359,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
   else                                    \
     (DST) = 0;                            \
 }
-#else
-#ifdef QEMU_GENERATE
-#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST) { \
-  printf("fLOAD_PHYS: mgl\n"); \
-  TCGv __tmp = tcg_temp_new(); \
-  tcg_gen_add_tl(SRC1, SRC2, __tmp); \
-  fLOAD(NUM,SIZE,SIGN,__tmp,DST);\
-  (MEM_LOAD##SIZE##SIGN(DST, __tmp)) \
-  tcg_temp_free(__tmp); \
-}
-#else
-#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST) { \
-  const uintptr_t rs = ((uintptr_t)(unsigned)(SRC1)) & 0x7ff; \
-  const uintptr_t rt = ((uintptr_t)(unsigned)(SRC2)) << 11; \
-  const uintptr_t addr = rs + rt; \
-  printf("fLOAD_PHYS: mgl\n"); \
-  fLOAD(NUM, SIZE, SIGN, addr, DST); \
-}
-#endif
 #endif
 
 #ifdef QEMU_GENERATE
@@ -1499,12 +1481,14 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fGP_DOCHKPAGECROSS(BASE, SUM)
 #define fDOCHKPAGECROSS(BASE, SUM)
 #define fPAUSE(IMM)
+
+#ifdef CONFIG_USER_ONLY
+#define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EXCP_TRAP0)
+#define fCHECKFORPRIV() helper_raise_exception(env, HEX_EXCP_PREV_USER_NO_SINSN)
+#else
 #define fTRAP(TRAPTYPE, IMM) { \
   register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM /*HEX_EXCP_TRAP0*/); \
 }
-#if 0
-#define fCHECKFORPRIV()  do {} while(0)
-#else
 #define fCHECKFORPRIV() { \
     if (get_cpu_mode(env) != HEX_CPU_MODE_MONITOR)  \
       helper_raise_exception(env, HEX_EXCP_PREV_USER_NO_SINSN); \

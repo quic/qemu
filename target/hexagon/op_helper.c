@@ -77,7 +77,7 @@ static void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
     cs->exception_index = exception;
-    cpu_loop_exit_restore(cs, pc+4);
+    cpu_loop_exit_restore(cs, pc);
 #ifndef CONFIG_USER_ONLY
     while(1)
       ;
@@ -657,7 +657,9 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
     env->slot_cancelled |= (1 << slot);
 }
 
+#ifndef CONFIG_USER_ONLY
 #include "hexswi.c"
+#endif
 
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
