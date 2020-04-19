@@ -907,7 +907,6 @@ supported_privs = [
     'J2_rte',
    'Y2_cswi',
 ]
-print('MGL ' + sys.argv[1])
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 
 for tag in tags:
