@@ -905,8 +905,10 @@ supported_privs = [
     'Y2_dckill', 'Y2_ickill', 'Y2_l2kill',
     'L4_loadw_phys',
     'J2_rte',
-    'Y2_cswi',
+   'Y2_cswi',
 ]
+print('MGL ' + sys.argv[1])
+system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 
 for tag in tags:
     ## Skip assembler mapped instructions
@@ -916,8 +918,11 @@ for tag in tags:
     if ( "A_FAKEINSN" in attribdict[tag] ) :
         continue
     ## Skip the priv instructions
-    if ( "A_PRIV" in attribdict[tag] ) and ( tag not in supported_privs ) :
-        continue
+    if ( "A_PRIV" in attribdict[tag] ):
+        if not system_mode:
+            continue
+        if ( tag not in supported_privs ) :
+            continue
     ## Skip the guest instructions
     if ( "A_GUEST" in attribdict[tag] ) :
         continue
