@@ -30,43 +30,30 @@
 #include "hw/hexagon/hexagon.h"
 #include "qemu/error-report.h"
 
-#if 0
-    kernel_size = load_elf(
-loaderparams.kernel_filename,
-NULL,
-cpu_mips_kseg0_to_phys,
-NULL,
-(uint64_t *)&entry,
-NULL,
-(uint64_t *)&kernel_high,
-NULL,
-big_endian,
-EM_MIPS, 1, 0);
-#endif
-
 /* Board init.  */
 static struct hexagon_board_boot_info hexagon_binfo;
 
 static void hexagon_load_kernel(CPUHexagonState *env)
+
 {
     uint64_t pentry;
     long kernel_size;
 
     printf("%s\n", __FUNCTION__);
     kernel_size = load_elf(hexagon_binfo.kernel_filename,
-                           NULL,
-                           NULL,
-                           NULL,
-                           &pentry,
-                           NULL,
-                           NULL,
-                           NULL,
-                           0,
-                           EM_HEXAGON, 0, 0);
+        NULL,
+        NULL,
+        NULL,
+        &pentry,
+        NULL,
+        NULL,
+        NULL,
+        0,
+        EM_HEXAGON, 0, 0);
     printf("load_elf() : failed\n");
     if (kernel_size <= 0) {
         error_report("no kernel file '%s'",
-                hexagon_binfo.kernel_filename);
+            hexagon_binfo.kernel_filename);
         exit(1);
     }
     env->gpr[HEX_REG_PC] = pentry;
@@ -79,26 +66,29 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     CPUHexagonState *env;
 
     printf("cpu_type = %s\nfilename = %s\nram_size = %lu/0x%lx\n",
-      machine->cpu_type,
-      machine->kernel_filename,
-      machine->ram_size, machine->ram_size);
+        machine->cpu_type,
+        machine->kernel_filename,
+        machine->ram_size, machine->ram_size);
 
     cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
     env = &cpu->env;
 
     MemoryRegion *address_space = get_system_memory();
     MemoryRegion *sram = g_new(MemoryRegion, 1);
-    memory_region_init_ram(sram, NULL, "lpddr4.ram", machine->ram_size, &error_fatal);
+    memory_region_init_ram(sram, NULL, "lpddr4.ram",
+        machine->ram_size, &error_fatal);
     memory_region_add_subregion(address_space, 0x0, sram);
 
-    // vtcm 0xd8000000 for 4MB
+    /* vtcm 0xd8000000 for 4MB */
     MemoryRegion *vtcm = g_new(MemoryRegion, 1);
-    memory_region_init_ram(vtcm, NULL, "vtcm.ram", 1024 * 1024 * 4, &error_fatal);
+    memory_region_init_ram(vtcm, NULL, "vtcm.ram", 1024 * 1024 * 4,
+        &error_fatal);
     memory_region_add_subregion(address_space, 0xd8000000, vtcm);
 
-    // tcm at 0xd8400000 for 1mb
+    /* tcm at 0xd8400000 for 1mb */
     MemoryRegion *tcm = g_new(MemoryRegion, 1);
-    memory_region_init_ram(tcm, NULL, "tcm.ram", 1024 * 1024, &error_fatal);
+    memory_region_init_ram(tcm, NULL, "tcm.ram", 1024 * 1024,
+        &error_fatal);
     memory_region_add_subregion(address_space, 0xd8400000, tcm);
 
 //    MemoryRegion *iomem = g_new(MemoryRegion, 1);
@@ -111,8 +101,9 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
 
     if (machine->kernel_filename) {
         hexagon_load_kernel(env);
-    } else
-      env->gpr[HEX_REG_PC] = 0x0; /* 0 or 0x20;*/
+    } else {
+        env->gpr[HEX_REG_PC] = 0x0; /* 0 or 0x20;*/
+    }
 
     env->sreg[HEX_SREG_EVB] = 0x0;
     env->sreg[HEX_SREG_CFGBASE] = 0xde00;
@@ -120,12 +111,14 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
 }
 
 static void hexagonboard_init(MachineState *machine)
+
 {
     printf("%s\n", __FUNCTION__);
-    hexagon_testboard_init(machine, 845); // 0x34D
+    hexagon_testboard_init(machine, 845);
 }
 
 static void hex_machine_init(MachineClass *mc)
+
 {
     printf("%s\n", __FUNCTION__);
     mc->desc = "a minimal Hexagon board";

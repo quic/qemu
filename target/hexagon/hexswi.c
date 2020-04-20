@@ -17,7 +17,7 @@
 
 #include "sysemu/runstate.h"
 
-#define SYS_OPEN    0x01
+#define SYS_OPEN            0x01
 #define SYS_CLOSE           0x02
 #define SYS_WRITEC          0x03
 #define SYS_WRITE0          0x04
@@ -41,22 +41,22 @@
 #define SYS_EXCEPTION       0x18  /* from newlib */
 #define SYS_ELAPSED         0x30
 #define SYS_TICKFREQ        0x31
-#define SYS_READ_CYCLES 0x40
-#define SYS_PROF_ON     0x41
-#define SYS_PROF_OFF    0x42
-#define SYS_WRITECREG   0x43
-#define SYS_READ_TCYCLES 0x44
-#define SYS_LOG_EVENT   0x45
-#define SYS_REDRAW      0x46
-#define SYS_READ_ICOUNT 0x47
+#define SYS_READ_CYCLES     0x40
+#define SYS_PROF_ON         0x41
+#define SYS_PROF_OFF        0x42
+#define SYS_WRITECREG       0x43
+#define SYS_READ_TCYCLES    0x44
+#define SYS_LOG_EVENT       0x45
+#define SYS_REDRAW          0x46
+#define SYS_READ_ICOUNT     0x47
 #define SYS_PROF_STATSRESET 0x48
-#define SYS_DUMP_PMU_STATS 0x4a
+#define SYS_DUMP_PMU_STATS  0x4a
 #define SYS_CAPTURE_SIGINT  0x50
 #define SYS_OBSERVE_SIGINT  0x51
-#define SYS_READ_PCYCLES 0x52
-#define SYS_APP_REPORTED 0x53
-#define SYS_COREDUMP    0xCD
-#define SYS_SWITCH_THREADS 0x75
+#define SYS_READ_PCYCLES    0x52
+#define SYS_APP_REPORTED    0x53
+#define SYS_COREDUMP        0xCD
+#define SYS_SWITCH_THREADS  0x75
 #define SYS_ISESCKEY_PRESSED 0x76
 #define SYS_FTELL           0x100
 #define SYS_FSTAT           0x101
@@ -72,737 +72,729 @@
 #define SYS_MKDIR           0x183
 #define SYS_RMDIR           0x184
 
-static size1u_t
-swi_mem_read1(CPUHexagonState *env, vaddr_t paddr)
+static size1u_t swi_mem_read1(CPUHexagonState *env, vaddr_t paddr)
 
 {
-  size1u_t data = 0;
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  data = cpu_ldub_mmuidx_ra(env, paddr, mmu_idx, GETPC());
+    size1u_t data = 0;
+    unsigned mmu_idx = cpu_mmu_index(env, false);
+    data = cpu_ldub_mmuidx_ra(env, paddr, mmu_idx, GETPC());
 
-  return data;
+    return data;
 }
 
-static size2u_t
-swi_mem_read2(CPUHexagonState *env, vaddr_t paddr)
+static size2u_t swi_mem_read2(CPUHexagonState *env, vaddr_t paddr)
 
 {
-  size2u_t data = 0;
-  size1u_t tdata;
-  int i;
+    size2u_t data = 0;
+    size1u_t tdata;
+    int i;
 
-  for (i = 0; i < 2; i++) {
-    tdata = swi_mem_read1(env, paddr + i);
-    data = ((size2u_t) tdata << (8 * i)) | data;
-  }
+    for (i = 0; i < 2; i++) {
+        tdata = swi_mem_read1(env, paddr + i);
+        data = ((size2u_t) tdata << (8 * i)) | data;
+    }
 
-  return data;
+    return data;
 }
 
-static target_ulong
-swi_mem_read4(CPUHexagonState *env, vaddr_t paddr)
+static target_ulong swi_mem_read4(CPUHexagonState *env, vaddr_t paddr)
 
 {
-  target_ulong data = 0;
-  size1u_t tdata;
-  int i;
+    target_ulong data = 0;
+    size1u_t tdata;
+    int i;
 
-  for (i = 0; i < 4; i++) {
-    tdata = swi_mem_read1(env, paddr + i);
-    data = ((target_ulong) tdata << (8 * i)) | data;
-  }
+    for (i = 0; i < 4; i++) {
+        tdata = swi_mem_read1(env, paddr + i);
+        data = ((target_ulong) tdata << (8 * i)) | data;
+    }
 
-  return data;
+    return data;
 }
 
 
-static size8u_t
-swi_mem_read8(CPUHexagonState *env, vaddr_t paddr)
+static size8u_t swi_mem_read8(CPUHexagonState *env, vaddr_t paddr)
 
 {
-  size8u_t data = 0;
-  size1u_t tdata;
-  int i;
+    size8u_t data = 0;
+    size1u_t tdata;
+    int i;
 
-  for (i = 0; i < 8; i++) {
-    tdata = swi_mem_read1(env, paddr + i);
-    data = ((size8u_t) tdata << (8 * i)) | data;
-  }
+    for (i = 0; i < 8; i++) {
+        tdata = swi_mem_read1(env, paddr + i);
+        data = ((size8u_t) tdata << (8 * i)) | data;
+    }
 
-  return data;
+    return data;
 }
 
-static void
-swi_mem_write1(CPUHexagonState *env, vaddr_t paddr, size1u_t value)
+static void swi_mem_write1(CPUHexagonState *env, vaddr_t paddr, size1u_t value)
 
 {
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  cpu_stb_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
+    unsigned mmu_idx = cpu_mmu_index(env, false);
+    cpu_stb_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void
-swi_mem_write2(CPUHexagonState *env, vaddr_t paddr, size2u_t value)
+static void swi_mem_write2(CPUHexagonState *env, vaddr_t paddr, size2u_t value)
 
 {
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  cpu_stw_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
+    unsigned mmu_idx = cpu_mmu_index(env, false);
+    cpu_stw_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void
-swi_mem_write4(CPUHexagonState *env, vaddr_t paddr, target_ulong value)
+static void swi_mem_write4(CPUHexagonState *env, vaddr_t paddr,
+    target_ulong value)
 
 {
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  cpu_stl_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
+    unsigned mmu_idx = cpu_mmu_index(env, false);
+    cpu_stl_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void
-swi_mem_write8(CPUHexagonState *env, vaddr_t paddr, size8u_t value)
+static void swi_mem_write8(CPUHexagonState *env, vaddr_t paddr, size8u_t value)
 {
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  cpu_stq_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
+    unsigned mmu_idx = cpu_mmu_index(env, false);
+    cpu_stq_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void
-ToolsMemoryRead(CPUHexagonState *env, vaddr_t vaddr, int size, void *retptr)
+static void tools_memory_read(CPUHexagonState *env, vaddr_t vaddr, int size,
+    void *retptr)
 
 {
-  vaddr_t paddr = vaddr; //vaddr2paddr(vaddr);
+    vaddr_t paddr = vaddr;
 
-  switch (size) {
-  case 1:
-    (*(size1u_t *) retptr) = swi_mem_read1(env, paddr);
-    break;
-  case 2:
-    (*(size2u_t *) retptr) = swi_mem_read2(env, paddr);
-    break;
-  case 4:
-    (*(target_ulong *) retptr) = swi_mem_read4(env, paddr);
-    break;
-  case 8:
-    (*(size8u_t *) retptr) = swi_mem_read8(env, paddr);
-    break;
-  default:
-    printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
-  }
+    switch (size) {
+    case 1:
+        (*(size1u_t *) retptr) = swi_mem_read1(env, paddr);
+        break;
+    case 2:
+        (*(size2u_t *) retptr) = swi_mem_read2(env, paddr);
+        break;
+    case 4:
+        (*(target_ulong *) retptr) = swi_mem_read4(env, paddr);
+        break;
+    case 8:
+        (*(size8u_t *) retptr) = swi_mem_read8(env, paddr);
+        break;
+    default:
+        printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
+    }
 }
 
-static void
-ToolsMemoryWrite(CPUHexagonState *env, vaddr_t vaddr, int size, size8u_t data)
+static void tools_memory_write(CPUHexagonState *env, vaddr_t vaddr, int size,
+    size8u_t data)
 {
-  paddr_t paddr = vaddr; //vaddr2paddr(vaddr);
+    paddr_t paddr = vaddr;
 
-  switch (size) {
-  case 1:
-    swi_mem_write1(env, paddr, (size1u_t) data);
-    log_store32(env, paddr, (size4u_t)data, 1, 0);
-    break;
-  case 2:
-    swi_mem_write2(env, paddr, (size2u_t) data);
-    log_store32(env, paddr, (size4u_t)data, 2, 0);
-    break;
-  case 4:
-    swi_mem_write4(env, paddr, (target_ulong) data);
-    log_store32(env, paddr, (size4u_t)data, 4, 0);
-    break;
-  case 8:
-    swi_mem_write8(env, paddr, (size8u_t) data);
-    log_store32(env, paddr, data, 8, 0);
-    break;
-  default:
-    printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
-  }
+    switch (size) {
+    case 1:
+        swi_mem_write1(env, paddr, (size1u_t) data);
+        log_store32(env, paddr, (size4u_t)data, 1, 0);
+        break;
+    case 2:
+        swi_mem_write2(env, paddr, (size2u_t) data);
+        log_store32(env, paddr, (size4u_t)data, 2, 0);
+        break;
+    case 4:
+        swi_mem_write4(env, paddr, (target_ulong) data);
+        log_store32(env, paddr, (size4u_t)data, 4, 0);
+        break;
+    case 8:
+        swi_mem_write8(env, paddr, (size8u_t) data);
+        log_store32(env, paddr, data, 8, 0);
+        break;
+    default:
+        printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
+    }
 }
 
-static int
-ToolsMemoryReadLocked(CPUHexagonState *env, vaddr_t vaddr, int size, void *retptr)
+static int tools_memory_readLocked(CPUHexagonState *env, vaddr_t vaddr,
+    int size, void *retptr)
 
 {
-  vaddr_t paddr = vaddr; //vaddr2paddr(vaddr);
-  int ret = 0;
+    vaddr_t paddr = vaddr;
+    int ret = 0;
 
-  switch (size) {
-  case 4:
-    (*(target_ulong *) retptr) = swi_mem_read4(env, paddr);
-    break;
-  case 8:
-    (*(size8u_t *) retptr) = swi_mem_read8(env, paddr);
-    break;
-  default:
-    printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
-    ret = 1;
-    break;
-  }
+    switch (size) {
+    case 4:
+        (*(target_ulong *) retptr) = swi_mem_read4(env, paddr);
+        break;
+    case 8:
+        (*(size8u_t *) retptr) = swi_mem_read8(env, paddr);
+        break;
+    default:
+        printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
+        ret = 1;
+        break;
+     }
 
-  return ret;
+    return ret;
 }
 
-static int
-ToolsMemoryWriteLocked(CPUHexagonState *env, vaddr_t vaddr, int size, size8u_t data)
+static int tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
+    int size, size8u_t data)
+
 {
-  paddr_t paddr = vaddr; //vaddr2paddr(vaddr);
-  int ret = 0;
+    paddr_t paddr = vaddr;
+    int ret = 0;
 
-  switch (size) {
-  case 4:
-    swi_mem_write4(env, paddr, (target_ulong) data);
-    log_store32(env, vaddr, (size4u_t)data, 4, 0);
-    break;
-  case 8:
-    swi_mem_write8(env, paddr, (size8u_t) data);
-    log_store64(env, vaddr, data, 8, 0);
-    break;
-  default:
-    printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
-    ret = 1;
-    break;
-  }
+    switch (size) {
+    case 4:
+        swi_mem_write4(env, paddr, (target_ulong) data);
+        log_store32(env, vaddr, (size4u_t)data, 4, 0);
+        break;
+    case 8:
+        swi_mem_write8(env, paddr, (size8u_t) data);
+        log_store64(env, vaddr, data, 8, 0);
+        break;
+    default:
+        printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
+        ret = 1;
+        break;
+    }
 
-  return ret;
+    return ret;
 }
 
 #define arch_get_thread_reg(ENV,REG)     ((ENV)->gpr[(REG)])
 #define arch_set_thread_reg(ENV,REG,VAL) ((ENV)->gpr[(REG)] = (VAL))
 #define arch_set_global_reg(ENV,REG,VAL) ((ENV)->sreg[(REG)] = (VAL))
-#define DebugMemoryRead(ADDR,SIZE,PTR) ToolsMemoryRead(env, ADDR, SIZE, PTR)
-#define DebugMemoryWrite(ADDR,SIZE,DATA) ToolsMemoryWrite(env,ADDR,SIZE,(size8u_t)DATA)
-#define DebugMemoryReadLocked(ADDR,SIZE,PTR) ToolsMemoryReadLocked(env, ADDR, SIZE, PTR)
-#define DebugMemoryWriteLocked(ADDR,SIZE,DATA) ToolsMemoryWriteLocked(env,ADDR,SIZE,(size8u_t)DATA)
+#define DEBUGMEMORYREADg(ADDR,SIZE,PTR) \
+    tools_memory_read(env, ADDR, SIZE, PTR)
+#define DEBUGMEMORYWRITE(ADDR,SIZE,DATA) \
+    tools_memory_write(env,ADDR,SIZE,(size8u_t)DATA)
+#define DEBUGMEMORYREADgLocked(ADDR,SIZE,PTR) \
+    tools_memory_readLocked(env, ADDR, SIZE, PTR)
+#define DEBUGMEMORYWRITELOCKED(ADDR,SIZE,DATA) \
+    tools_memory_write_locked(env,ADDR,SIZE,(size8u_t)DATA)
 
 
 static int MapError(int ERR)
 {
-  errno = ERR;
-  return (ERR);
+    errno = ERR;
+    return (ERR);
 }
 
 static int sim_handle_trap_functional(CPUHexagonState *env)
 
 {
-  target_ulong what_swi = arch_get_thread_reg(env, HEX_REG_R00);
-  target_ulong swi_info = arch_get_thread_reg(env, HEX_REG_R01);
-  int i = 0, c;
-  int retval = 1;
+    target_ulong what_swi = arch_get_thread_reg(env, HEX_REG_R00);
+    target_ulong swi_info = arch_get_thread_reg(env, HEX_REG_R01);
+    int i = 0, c;
+    int retval = 1;
 
-  HEX_DEBUG_LOG("%s:%d: what_swi 0x%x, swi_info 0x%x\n", __FUNCTION__, __LINE__, what_swi, swi_info);
-  switch (what_swi) {
-  case SYS_HEAPINFO:
+    HEX_DEBUG_LOG("%s:%d: what_swi 0x%x, swi_info 0x%x\n",
+                  __FUNCTION__, __LINE__, what_swi, swi_info);
+    switch (what_swi) {
+    case SYS_HEAPINFO:
     {
-      HEX_DEBUG_LOG("%s:%d: SYS_HEAPINFO\n", __FUNCTION__, __LINE__);
+        HEX_DEBUG_LOG("%s:%d: SYS_HEAPINFO\n", __FUNCTION__, __LINE__);
 #if 0
-      size4u_t bufptr;
+        size4u_t bufptr;
 
-      DebugMemoryRead(swi_info, 4, &bufptr);
-      DebugMemoryWrite(bufptr+0, 4, 0);
-      DebugMemoryWrite(bufptr+1, 4, 0);
-      DebugMemoryWrite(bufptr+2, 4, 0);
-      DebugMemoryWrite(bufptr+3, 4, 0);
+        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
+         DEBUGMEMORYWRITE(bufptr+0, 4, 0);
+        DEBUGMEMORYWRITE(bufptr+1, 4, 0);
+        DEBUGMEMORYWRITE(bufptr+2, 4, 0);
+         DEBUGMEMORYWRITE(bufptr+3, 4, 0);
 #endif
     }
     break;
 
-  case SYS_GET_CMDLINE:
+    case SYS_GET_CMDLINE:
     {
-      HEX_DEBUG_LOG("%s:%d: SYS_GET_CMDLINE\n", __FUNCTION__, __LINE__);
-      //char *mycmd = NULL;
-      target_ulong bufptr;
-      target_ulong bufsize;
-      //target_ulong to_copy;
+        HEX_DEBUG_LOG("%s:%d: SYS_GET_CMDLINE\n", __FUNCTION__, __LINE__);
+        /*char *mycmd = NULL;*/
+        target_ulong bufptr;
+        target_ulong bufsize;
+        /*target_ulong to_copy;*/
 
-
-      DebugMemoryRead(swi_info, 4, &bufptr);
-      DebugMemoryRead(swi_info + 4, 4, &bufsize);
+        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
+        DEBUGMEMORYREADg(swi_info + 4, 4, &bufsize);
 
 #if 0
-      /* mgl tbd: how to get program its parms */
-      if (S->cmdline == NULL) {
-        mycmd = "no command line";
-      } else {
-        mycmd = S->cmdline;
-      }
-      if (bufsize <= (unsigned int) strlen(mycmd)) {
-        err_warn("sim_handle_trap", __FILE__, __LINE__,
-                 "Cmdline too long, bufsize=%d",bufsize);
-        to_copy = bufsize - 1;
-      } else {
-        to_copy = strlen(mycmd);
-      }
+        /* mgl tbd: how to get program its parms */
+        if (S->cmdline == NULL) {
+            mycmd = "no command line";
+        } else {
+            mycmd = S->cmdline;
+        }
+        if (bufsize <= (unsigned int) strlen(mycmd)) {
+            err_warn("sim_handle_trap", __FILE__, __LINE__,
+                     "Cmdline too long, bufsize=%d",bufsize);
+            to_copy = bufsize - 1;
+        } else {
+            to_copy = strlen(mycmd);
+        }
 
-      for (i = 0; i < (int) to_copy; i++) {
-        DebugMemoryWrite(bufptr + i, 1, (size8u_t) mycmd[i]);
-      }
+        for (i = 0; i < (int) to_copy; i++) {
+            DEBUGMEMORYWRITE(bufptr + i, 1, (size8u_t) mycmd[i]);
+        }
 #endif
-      DebugMemoryWrite(bufptr + i, 1, (size8u_t) 0);
+      DEBUGMEMORYWRITE(bufptr + i, 1, (size8u_t) 0);
       arch_set_thread_reg(env, HEX_REG_R00, 0);
     }
     break;
 
-  case SYS_EXCEPTION:
+    case SYS_EXCEPTION:
     {
-      HEX_DEBUG_LOG("%s:%d: SYS_EXCEPTION\n\tProgram terminated successfully\n", __FUNCTION__, __LINE__);
-      arch_set_global_reg(env, HEX_SREG_MODECTL, 0);
-//      CPUState *cs = env_cpu(env);
-//      cs->halted = 1;
-//      cs->exception_index = EXCP_HLT;
-//      SHUTDOWN_CAUSE_HOST_SIGNAL,
-//      cpu_loop_exit(cs);
+        HEX_DEBUG_LOG("%s:%d: SYS_EXCEPTION\n\tProgram terminated successfully\n",
+                       __FUNCTION__, __LINE__);
+        arch_set_global_reg(env, HEX_SREG_MODECTL, 0);
         #ifndef CONFIG_USER_ONLY
         qemu_system_reset_request(SHUTDOWN_CAUSE_HOST_SIGNAL);
         #endif
-      //cpu_abort(cs, "Hexagon Unsupported exception %d/0x%x\n", cs->exception_index, cs->exception_index);
-      //env->tnum_sys_exception_trap0 = tnum;
     }
     break;
 
-	case SYS_WRITEC:
-	{
-	    FILE *fp = stdout;
-	    DebugMemoryRead(swi_info, 1, &c);
-	    fprintf(fp, "%c", c);
-	    fflush(fp);
-	}
-	break;
+    case SYS_WRITEC:
+    {
+        FILE *fp = stdout;
+        DEBUGMEMORYREADg(swi_info, 1, &c);
+        fprintf(fp, "%c", c);
+        fflush(fp);
+    }
+    break;
 
-	case SYS_WRITECREG:
-	{
-	    char c = swi_info;
-	    FILE *fp = stdout;
+    case SYS_WRITECREG:
+    {
+        char c = swi_info;
+        FILE *fp = stdout;
 
-	    fprintf(fp, "%c", c);
-	    fflush(stdout);
-	}
-	break;
+        fprintf(fp, "%c", c);
+        fflush(stdout);
+    }
+    break;
 
-	case SYS_WRITE0:
-	{
-	    FILE *fp = stdout;
-	    i = 0;
-	    do {
-		    DebugMemoryRead(swi_info + i, 1, &c);
-		    fprintf(fp, "%c", c);
-		    i++;
-	    } while (c);
-	    fflush(fp);
-	    break;
-	}
+    case SYS_WRITE0:
+    {
+        FILE *fp = stdout;
+        i = 0;
+        do {
+            DEBUGMEMORYREADg(swi_info + i, 1, &c);
+            fprintf(fp, "%c", c);
+            i++;
+        } while (c);
+        fflush(fp);
+        break;
+    }
 
 
   case SYS_WRITE:
     {
-      HEX_DEBUG_LOG("%s:%d: SYS_WRITE\n", __FUNCTION__, __LINE__);
-      char *buf;
-      int fd;
-      target_ulong bufaddr;
-      int count;
-      int retval;
+        HEX_DEBUG_LOG("%s:%d: SYS_WRITE\n", __FUNCTION__, __LINE__);
+        char *buf;
+        int fd;
+        target_ulong bufaddr;
+        int count;
+        int retval;
 
-      DebugMemoryRead(swi_info, 4, &fd);
-      DebugMemoryRead(swi_info + 4, 4, &bufaddr);
-      DebugMemoryRead(swi_info + 8, 4, &count);
+        DEBUGMEMORYREADg(swi_info, 4, &fd);
+        DEBUGMEMORYREADg(swi_info + 4, 4, &bufaddr);
+        DEBUGMEMORYREADg(swi_info + 8, 4, &count);
 
-      if ((buf = (char *) malloc(count)) == NULL) {
-        printf("%s:%d: ERROR: Couldn't allocate temporary buffer (%d bytes)",
-                  __FUNCTION__, __LINE__, count);
-      }
+        if ((buf = (char *) g_malloc(count)) == NULL) {
+            printf("%s:%d: ERROR: Couldn't allocate temporary buffer (%d bytes)",
+                    __FUNCTION__, __LINE__, count);
+        }
 
-      for (i = 0; i < count; i++) {
-        DebugMemoryRead(bufaddr + i, 1, &buf[i]);
-      }
-      retval = write(fd, buf, count);
-      if (retval == count) {
-        arch_set_thread_reg(env, HEX_REG_R00, 0);
-      } else if (retval == -1) {
-        arch_set_thread_reg(env, HEX_REG_R00, retval);
-        arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-      } else {
-        arch_set_thread_reg(env, HEX_REG_R00, count - retval);
-      }
-      free(buf);
+        for (i = 0; i < count; i++) {
+            DEBUGMEMORYREADg(bufaddr + i, 1, &buf[i]);
+        }
+        retval = write(fd, buf, count);
+        if (retval == count) {
+            arch_set_thread_reg(env, HEX_REG_R00, 0);
+        } else if (retval == -1) {
+            arch_set_thread_reg(env, HEX_REG_R00, retval);
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+        } else {
+            arch_set_thread_reg(env, HEX_REG_R00, count - retval);
+        }
+        free(buf);
     }
     break;
 
-	case SYS_READ:
-	{
-	    int fd;
-	    char *buf;
-	    size4u_t bufaddr;
-	    int count;
-	    int retval;
+    case SYS_READ:
+    {
+        int fd;
+        char *buf;
+        size4u_t bufaddr;
+        int count;
+        int retval;
 
-	    DebugMemoryRead(swi_info, 4, &fd);
-	    DebugMemoryRead(swi_info + 4, 4, &bufaddr);
-	    DebugMemoryRead(swi_info + 8, 4, &count);
+        DEBUGMEMORYREADg(swi_info, 4, &fd);
+        DEBUGMEMORYREADg(swi_info + 4, 4, &bufaddr);
+        DEBUGMEMORYREADg(swi_info + 8, 4, &count);
 
-	    if ((buf = (char *) malloc(count)) == NULL) {
-        CPUState *cs = env_cpu(env);
-        cpu_abort(cs, "Error: sim_handle_trap couldn't allocate temporybuffer (%d bytes)", count);
-	    }
+        if ((buf = (char *) g_malloc(count)) == NULL) {
+            CPUState *cs = env_cpu(env);
+            cpu_abort(cs,
+                "Error: sim_handle_trap couldn't allocate temporybuffer (%d bytes)",
+                 count);
+        }
 
-	    retval = read(fd, buf, count);
-	    for (i = 0; i < retval; i++) {
-		    DebugMemoryWrite(bufaddr + i, 1, buf[i]);
-	    }
-	    if (retval == count) {
-		    arch_set_thread_reg(env, HEX_REG_R00, 0);
-	    } else if (retval == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-	    } else {
-		    arch_set_thread_reg(env, HEX_REG_R00, count - retval);
-	    }
-	    free(buf);
-	}
-	break;
+        retval = read(fd, buf, count);
+        for (i = 0; i < retval; i++) {
+            DEBUGMEMORYWRITE(bufaddr + i, 1, buf[i]);
+        }
+        if (retval == count) {
+            arch_set_thread_reg(env, HEX_REG_R00, 0);
+        } else if (retval == -1) {
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+        } else {
+            arch_set_thread_reg(env, HEX_REG_R00, count - retval);
+        }
+        free(buf);
+    }
+    break;
 
 #if 0
-	case SYS_FCNTL:
-	{
-	    struct __SYS_FCNTL sysfcntl;
-	    size4u_t fcntlFileDesc;
-	    size4u_t fcntlCmd;
-	    size4u_t fcntlPBA;	/* Physical Buffer Address */
-	    int rc;
-	    struct flock fl;
+    case SYS_FCNTL:
+    {
+        struct __SYS_FCNTL sysfcntl;
+        size4u_t fcntlFileDesc;
+        size4u_t fcntlCmd;
+        size4u_t fcntlPBA;  /* Physical Buffer Address */
+        int rc;
+        struct flock fl;
 
-	    DebugMemoryRead(swi_info, 4, &fcntlFileDesc);
-	    DebugMemoryRead(swi_info + 4, 4, &fcntlCmd);
-	    DebugMemoryRead(swi_info + 8, 4, &fcntlPBA);
-	    DebugMemoryRead(fcntlPBA, 4, &sysfcntl.l_type);
-	    DebugMemoryRead(fcntlPBA + 0x4, 4, &sysfcntl.l_whence);
-	    DebugMemoryRead(fcntlPBA + 0x8, 4, &sysfcntl.l_start);
-	    DebugMemoryRead(fcntlPBA + 0xc, 4, &sysfcntl.l_len);
+        DEBUGMEMORYREADg(swi_info, 4, &fcntlFileDesc);
+        DEBUGMEMORYREADg(swi_info + 4, 4, &fcntlCmd);
+        DEBUGMEMORYREADg(swi_info + 8, 4, &fcntlPBA);
+        DEBUGMEMORYREADg(fcntlPBA, 4, &sysfcntl.l_type);
+        DEBUGMEMORYREADg(fcntlPBA + 0x4, 4, &sysfcntl.l_whence);
+        DEBUGMEMORYREADg(fcntlPBA + 0x8, 4, &sysfcntl.l_start);
+        DEBUGMEMORYREADg(fcntlPBA + 0xc, 4, &sysfcntl.l_len);
 
-	    if (sysfcntl.l_type == DK_F_GETLK)
-		    fl.l_type = F_GETLK;
-	    else if (sysfcntl.l_type == DK_F_SETLK)
-		    fl.l_type = F_SETLK;
+        if (sysfcntl.l_type == DK_F_GETLK)
+            fl.l_type = F_GETLK;
+        else if (sysfcntl.l_type == DK_F_SETLK)
+            fl.l_type = F_SETLK;
 
-	    fl.l_whence = sysfcntl.l_whence;
-	    fl.l_start = sysfcntl.l_start;
-	    fl.l_len = sysfcntl.l_len;
-	    fl.l_pid = getpid();
+        fl.l_whence = sysfcntl.l_whence;
+        fl.l_start = sysfcntl.l_start;
+        fl.l_len = sysfcntl.l_len;
+        fl.l_pid = getpid();
 
-	    rc = fcntl(fcntlFileDesc, fcntlCmd, &fl);
+        rc = fcntl(fcntlFileDesc, fcntlCmd, &fl);
 
 /*
  * The F_GETLK updates the input fl structure so that must be copied
  * back out to the simulator.
  */
-	    if ((rc != -1) && (fcntlCmd == DK_F_GETLK)) {
-		    DebugMemoryWrite(fcntlPBA, 4, sysfcntl.l_type);
-		    DebugMemoryWrite(fcntlPBA + 0x4, 4, sysfcntl.l_whence);
-		    DebugMemoryWrite(fcntlPBA + 0x8, 4, sysfcntl.l_start);
-	  	  DebugMemoryWrite(fcntlPBA + 0xc, 4, sysfcntl.l_len);
-	    }
-	    arch_set_thread_reg(env, HEX_REG_R00, rc);
-	    break;
-	}
+        if ((rc != -1) && (fcntlCmd == DK_F_GETLK)) {
+            DEBUGMEMORYWRITE(fcntlPBA, 4, sysfcntl.l_type);
+            DEBUGMEMORYWRITE(fcntlPBA + 0x4, 4, sysfcntl.l_whence);
+            DEBUGMEMORYWRITE(fcntlPBA + 0x8, 4, sysfcntl.l_start);
+          DEBUGMEMORYWRITE(fcntlPBA + 0xc, 4, sysfcntl.l_len);
+        }
+        arch_set_thread_reg(env, HEX_REG_R00, rc);
+        break;
+    }
 #endif
 
-  case SYS_OPEN:
+    case SYS_OPEN:
     {
-      char filename[BUFSIZ];
-      target_ulong physicalFilenameAddr;
+        char filename[BUFSIZ];
+        target_ulong physicalFilenameAddr;
 
-      unsigned int filemode;
-      int length;
-      int real_openmode;
-      int fd;
-      static const unsigned int mode_table[] = {
-        O_RDONLY,
-        O_RDONLY | O_BINARY,
-        O_RDWR,
-        O_RDWR | O_BINARY,
-        O_WRONLY | O_CREAT | O_TRUNC,
-        O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
-        O_RDWR | O_CREAT | O_TRUNC,
-        O_RDWR | O_CREAT | O_TRUNC | O_BINARY,
-        O_WRONLY | O_APPEND | O_CREAT,
-        O_WRONLY | O_APPEND | O_CREAT | O_BINARY,
-        O_RDWR | O_APPEND | O_CREAT,
-        O_RDWR | O_APPEND | O_CREAT | O_BINARY,
-        O_RDWR | O_CREAT,
-        O_RDWR | O_CREAT | O_EXCL
-      };
-
-
-      DebugMemoryRead(swi_info, 4, &physicalFilenameAddr);
-      DebugMemoryRead(swi_info + 4, 4, &filemode);
-      DebugMemoryRead(swi_info + 8, 4, &length);
-
-      if (length >= BUFSIZ) {
-        printf("%s:%d: ERROR: filename too large\n", __FUNCTION__, __LINE__);
-      }
-
-      i = 0;
-      do {
-        DebugMemoryRead(physicalFilenameAddr + i, 1, &filename[i]);
-        i++;
-      } while (filename[i - 1]);
-      HEX_DEBUG_LOG("fname %s, fmode %d, len %d\n", filename, filemode, length);
-
-      /* convert ARM ANGEL filemode into host filemode */
-      if (filemode < 14)
-        real_openmode = mode_table[filemode];
-      else {
-        real_openmode = 0;
-        printf("%s:%d: ERROR: invalid OPEN mode: %d\n", __FUNCTION__, __LINE__, filemode);
-      }
+        unsigned int filemode;
+        int length;
+        int real_openmode;
+        int fd;
+        static const unsigned int mode_table[] = {
+            O_RDONLY,
+            O_RDONLY | O_BINARY,
+            O_RDWR,
+            O_RDWR | O_BINARY,
+            O_WRONLY | O_CREAT | O_TRUNC,
+            O_WRONLY | O_CREAT | O_TRUNC | O_BINARY,
+            O_RDWR | O_CREAT | O_TRUNC,
+            O_RDWR | O_CREAT | O_TRUNC | O_BINARY,
+            O_WRONLY | O_APPEND | O_CREAT,
+            O_WRONLY | O_APPEND | O_CREAT | O_BINARY,
+            O_RDWR | O_APPEND | O_CREAT,
+            O_RDWR | O_APPEND | O_CREAT | O_BINARY,
+            O_RDWR | O_CREAT,
+            O_RDWR | O_CREAT | O_EXCL
+        };
 
 
-      fd = open(filename, real_openmode, 0644);
-      arch_set_thread_reg(env, HEX_REG_R00, fd);
+        DEBUGMEMORYREADg(swi_info, 4, &physicalFilenameAddr);
+        DEBUGMEMORYREADg(swi_info + 4, 4, &filemode);
+        DEBUGMEMORYREADg(swi_info + 8, 4, &length);
 
-      if (fd == -1) {
-        printf("ERROR: fopen failed, errno = %d\n", errno);
-        arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-      }
-    }
-    break;
-
-  case SYS_CLOSE:
-    {
-      HEX_DEBUG_LOG("%s:%d: SYS_CLOSE\n", __FUNCTION__, __LINE__);
-      int fd;
-      DebugMemoryRead(swi_info, 4, &fd);
-
-      if (fd == 0 || fd == 1 || fd == 2) {
-        /* silently ignore request to close stdin/stdout */
-        arch_set_thread_reg(env, HEX_REG_R00, 0);
-      } else {
-        int closedret = close(fd);
-
-        if (closedret == -1) {
-          arch_set_thread_reg(env, HEX_REG_R01,
-                              MapError(errno));
-        } else {
-          arch_set_thread_reg(env, HEX_REG_R00, closedret);
+        if (length >= BUFSIZ) {
+            printf("%s:%d: ERROR: filename too large\n",
+                    __FUNCTION__, __LINE__);
         }
-      }
+
+        i = 0;
+        do {
+            DEBUGMEMORYREADg(physicalFilenameAddr + i, 1, &filename[i]);
+            i++;
+        } while (filename[i - 1]);
+        HEX_DEBUG_LOG("fname %s, fmode %d, len %d\n", filename, filemode, length);
+
+        /* convert ARM ANGEL filemode into host filemode */
+        if (filemode < 14)
+            real_openmode = mode_table[filemode];
+        else {
+            real_openmode = 0;
+            printf("%s:%d: ERROR: invalid OPEN mode: %d\n",
+                   __FUNCTION__, __LINE__, filemode);
+        }
+
+
+        fd = open(filename, real_openmode, 0644);
+        arch_set_thread_reg(env, HEX_REG_R00, fd);
+
+        if (fd == -1) {
+            printf("ERROR: fopen failed, errno = %d\n", errno);
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+        }
     }
     break;
 
-	case SYS_ISERROR:
-	    arch_set_thread_reg(env, HEX_REG_R00, 0);
-	    break;
+    case SYS_CLOSE:
+    {
+        HEX_DEBUG_LOG("%s:%d: SYS_CLOSE\n", __FUNCTION__, __LINE__);
+        int fd;
+        DEBUGMEMORYREADg(swi_info, 4, &fd);
 
-	case SYS_ISTTY:
-	{
-	    int fd;
-	    DebugMemoryRead(swi_info, 4, &fd);
-	    arch_set_thread_reg(env, HEX_REG_R00,
-				isatty(fd));
-	}
-	break;
+        if (fd == 0 || fd == 1 || fd == 2) {
+            /* silently ignore request to close stdin/stdout */
+            arch_set_thread_reg(env, HEX_REG_R00, 0);
+        } else {
+            int closedret = close(fd);
 
-	case SYS_SEEK:
-	{
-	    int fd;
-	    int pos;
-	    int retval;
+            if (closedret == -1) {
+            arch_set_thread_reg(env, HEX_REG_R01,
+                                MapError(errno));
+            } else {
+                arch_set_thread_reg(env, HEX_REG_R00, closedret);
+            }
+        }
+    }
+    break;
 
-	    DebugMemoryRead(swi_info, 4, &fd);
-	    DebugMemoryRead(swi_info + 4, 4, &pos);
+    case SYS_ISERROR:
+        arch_set_thread_reg(env, HEX_REG_R00, 0);
+        break;
 
-	    retval = lseek(fd, pos, SEEK_SET);
-	    if (retval == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R00, -1);
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-	    } else {
-		    arch_set_thread_reg(env, HEX_REG_R00, 0);
-	    }
-	}
-	break;
+    case SYS_ISTTY:
+    {
+        int fd;
+        DEBUGMEMORYREADg(swi_info, 4, &fd);
+        arch_set_thread_reg(env, HEX_REG_R00,
+                            isatty(fd));
+    }
+    break;
 
-	case SYS_FLEN:
-	{
-	    off_t oldpos;
-	    off_t len;
-	    int fd;
+    case SYS_SEEK:
+    {
+        int fd;
+        int pos;
+        int retval;
 
-	    DebugMemoryRead(swi_info, 4, &fd);
+        DEBUGMEMORYREADg(swi_info, 4, &fd);
+        DEBUGMEMORYREADg(swi_info + 4, 4, &pos);
 
-	    oldpos = lseek(fd, 0, SEEK_CUR);
-	    if (oldpos == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R00, -1);
-	    	arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-		    break;
-	    }
-	    len = lseek(fd, 0, SEEK_END);
-	    if (len == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R00, -1);
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-		    break;
-	    }
-	    if (lseek(fd, oldpos, SEEK_SET) == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R00, -1);
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-		    break;
-	    }
-	    arch_set_thread_reg(env, HEX_REG_R00, len);
-	}
-	break;
+        retval = lseek(fd, pos, SEEK_SET);
+        if (retval == -1) {
+            arch_set_thread_reg(env, HEX_REG_R00, -1);
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+        } else {
+            arch_set_thread_reg(env, HEX_REG_R00, 0);
+        }
+    }
+    break;
 
-	case SYS_FTELL:
-	{
-	    int fd;
-	    off_t current_pos;
+    case SYS_FLEN:
+    {
+        off_t oldpos;
+        off_t len;
+        int fd;
 
-	    DebugMemoryRead(swi_info, 4, &fd);
+        DEBUGMEMORYREADg(swi_info, 4, &fd);
 
-	    current_pos = lseek(fd, 0, SEEK_CUR);
-	    if (current_pos == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-	    }
-	    arch_set_thread_reg(env, HEX_REG_R00, current_pos);
+        oldpos = lseek(fd, 0, SEEK_CUR);
+        if (oldpos == -1) {
+            arch_set_thread_reg(env, HEX_REG_R00, -1);
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+            break;
+        }
+        len = lseek(fd, 0, SEEK_END);
+        if (len == -1) {
+            arch_set_thread_reg(env, HEX_REG_R00, -1);
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+            break;
+        }
+        if (lseek(fd, oldpos, SEEK_SET) == -1) {
+            arch_set_thread_reg(env, HEX_REG_R00, -1);
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+            break;
+        }
+        arch_set_thread_reg(env, HEX_REG_R00, len);
+    }
+    break;
 
-	}
-	break;
+    case SYS_FTELL:
+    {
+        int fd;
+        off_t current_pos;
 
-	case SYS_TMPNAM:
-	{
-	    char buf[40];
-	    size4u_t bufptr;
-	    int id, rc;
-	    int buflen;
-	    int ftry = 0;
-	    buf[39] = 0;
+        DEBUGMEMORYREADg(swi_info, 4, &fd);
 
-	    DebugMemoryRead(swi_info, 4, &bufptr);
-	    DebugMemoryRead(swi_info + 4, 4, &id);
-	    DebugMemoryRead(swi_info + 8, 4, &buflen);
+        current_pos = lseek(fd, 0, SEEK_CUR);
+        if (current_pos == -1) {
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+        }
+        arch_set_thread_reg(env, HEX_REG_R00, current_pos);
 
-	    if (buflen < 40) {
+    }
+    break;
+
+    case SYS_TMPNAM:
+    {
+        char buf[40];
+        size4u_t bufptr;
+        int id, rc;
+        int buflen;
+        int ftry = 0;
+        buf[39] = 0;
+
+        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
+        DEBUGMEMORYREADg(swi_info + 4, 4, &id);
+        DEBUGMEMORYREADg(swi_info + 8, 4, &buflen);
+
+        if (buflen < 40) {
+            CPUState *cs = env_cpu(env);
+            cpu_abort(cs, "Error: sim_handle_trap output buffer too small");
+        }
+        /*
+         * Loop until we find a file that doesn't alread exist.
+         */
+        do {
+            snprintf(buf, 40, "/tmp/sim-tmp-%d-%d", getpid() + ftry, id);
+            ftry++;
+        } while ((rc = access(buf, F_OK)) == 0);
+
+        for (i = 0; i <= (int) strlen(buf); i++) {
+            DEBUGMEMORYWRITE(bufptr + i, 1, buf[i]);
+        }
+
+        arch_set_thread_reg(env, HEX_REG_R00, 0);
+    }
+    break;
+
+    case SYS_REMOVE:
+    {
+        char buf[BUFSIZ];
+        size4u_t bufptr;
+        int retval;
+
+        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
+        i = 0;
+        do {
+            DEBUGMEMORYREADg(bufptr + i, 1, &buf[i]);
+            i++;
+        } while (buf[i - 1]);
+
+        retval = unlink(buf);
+        if (retval == -1) {
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+        }
+        arch_set_thread_reg(env, HEX_REG_R00, retval);
+    }
+    break;
+
+    case SYS_RENAME:
+    {
+        char buf[BUFSIZ];
+        char buf2[BUFSIZ];
+        size4u_t bufptr, bufptr2;
+        int retval;
+
+        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
+        DEBUGMEMORYREADg(swi_info + 8, 4, &bufptr2);
+        i = 0;
+        do {
+            DEBUGMEMORYREADg(bufptr + i, 1, &buf[i]);
+            i++;
+        } while (buf[i - 1]);
+        i = 0;
+        do {
+            DEBUGMEMORYREADg(bufptr2 + i, 1, &buf2[i]);
+            i++;
+        } while (buf2[i - 1]);
+
+        retval = rename(buf, buf2);
+        if (retval == -1) {
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+        }
+        arch_set_thread_reg(env, HEX_REG_R00, retval);
+    }
+    break;
+
+    case SYS_CLOCK:
+    {
+        int retval = time(NULL);
+        if (retval == -1) {
+            arch_set_thread_reg(env, HEX_REG_R00, -1);
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+            break;
+        }
+        arch_set_thread_reg(env, HEX_REG_R00, retval * 100);
+    }
+    break;
+
+    case SYS_TIME:
+    {
+        int retval = time(NULL);
+        if (retval == -1) {
+            arch_set_thread_reg(env, HEX_REG_R00, -1);
+            arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
+            break;
+        }
+        arch_set_thread_reg(env, HEX_REG_R00, retval);
+    }
+    break;
+
+    case SYS_ERRNO:
+        arch_set_thread_reg(env, HEX_REG_R00, errno);
+        break;
+
+    case SYS_PROF_ON:
+    case SYS_PROF_OFF:
+    case SYS_PROF_STATSRESET:
+    case SYS_DUMP_PMU_STATS:
+        break;
+
+    default:
+        printf("error: unknown swi call 0x%x\n", what_swi);
         CPUState *cs = env_cpu(env);
-        cpu_abort(cs, "Error: sim_handle_trap output buffer too small");
-	    }
-      /*
-       * Loop until we find a file that doesn't alread exist.
-      */
-	    do {
-		    snprintf(buf, 40, "/tmp/sim-tmp-%d-%d", getpid() + ftry,
-			    id);
-		    ftry++;
-	    } while ((rc = access(buf, F_OK)) == 0);
+        cpu_abort(cs, "Hexagon Unsupported swi call 0x%x\n", what_swi);
+        retval = 0;
+        break;
+    }
 
-	    for (i = 0; i <= (int) strlen(buf); i++) {
-		    DebugMemoryWrite(bufptr + i, 1, buf[i]);
-	    }
-
-	    arch_set_thread_reg(env, HEX_REG_R00, 0);
-	}
-	break;
-
-	case SYS_REMOVE:
-	{
-	    char buf[BUFSIZ];
-	    size4u_t bufptr;
-	    int retval;
-
-	    DebugMemoryRead(swi_info, 4, &bufptr);
-	    i = 0;
-	    do {
-		    DebugMemoryRead(bufptr + i, 1, &buf[i]);
-		    i++;
-	    } while (buf[i - 1]);
-
-	    retval = unlink(buf);
-	    if (retval == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-	    }
-	    arch_set_thread_reg(env, HEX_REG_R00, retval);
-	}
-	break;
-
-	case SYS_RENAME:
-	{
-	    char buf[BUFSIZ];
-	    char buf2[BUFSIZ];
-	    size4u_t bufptr, bufptr2;
-	    int retval;
-
-	    DebugMemoryRead(swi_info, 4, &bufptr);
-	    DebugMemoryRead(swi_info + 8, 4, &bufptr2);
-	    i = 0;
-	    do {
-		    DebugMemoryRead(bufptr + i, 1, &buf[i]);
-		    i++;
-	    } while (buf[i - 1]);
-	    i = 0;
-	    do {
-		    DebugMemoryRead(bufptr2 + i, 1, &buf2[i]);
-		    i++;
-	    } while (buf2[i - 1]);
-
-	    retval = rename(buf, buf2);
-	    if (retval == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-	    }
-	    arch_set_thread_reg(env, HEX_REG_R00, retval);
-	}
-	break;
-
-	case SYS_CLOCK:
-	{
-	    int retval = time(NULL);
-	    if (retval == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R00, -1);
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-		    break;
-	    }
-	    arch_set_thread_reg(env, HEX_REG_R00, retval * 100);
-	}
-	break;
-
-	case SYS_TIME:
-	{
-	    int retval = time(NULL);
-	    if (retval == -1) {
-		    arch_set_thread_reg(env, HEX_REG_R00, -1);
-		    arch_set_thread_reg(env, HEX_REG_R01, MapError(errno));
-		    break;
-	    }
-	    arch_set_thread_reg(env, HEX_REG_R00, retval);
-	}
-	break;
-
-	case SYS_ERRNO:
-	    arch_set_thread_reg(env, HEX_REG_R00, errno);
-	    break;
-
-  case SYS_PROF_ON:
-  case SYS_PROF_OFF:
-  case SYS_PROF_STATSRESET:
-  case SYS_DUMP_PMU_STATS:
-    break;
-
-  default:
-    printf("error: unknown swi call 0x%x\n", what_swi);
-    CPUState *cs = env_cpu(env);
-    cpu_abort(cs, "Hexagon Unsupported swi call 0x%x\n", what_swi);
-    retval = 0;
-    break;
-  }
-
-  return retval;
+    return retval;
 }
 
 
 static int sim_handle_trap(CPUHexagonState *env)
 
 {
-  int retval = 0;
-  target_ulong what_swi = arch_get_thread_reg(env, HEX_REG_R00);
+    int retval = 0;
+    target_ulong what_swi = arch_get_thread_reg(env, HEX_REG_R00);
 
-  retval = sim_handle_trap_functional(env);
-  if(!retval) {
-//    retval = sim_handle_trap_utilities(env);
-  }
+    retval = sim_handle_trap_functional(env);
 
-  if(!retval) {
-    fprintf(stderr, "I don't know that swi request: 0x%x\n", what_swi);
-  }
+    if(!retval) {
+        fprintf(stderr, "I don't know that swi request: 0x%x\n", what_swi);
+    }
 
-  return retval;
+    return retval;
 }
 
 static int do_store_exclusive(CPUHexagonState *env, bool single)
@@ -816,26 +808,25 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
     addr = env->llsc_addr;
     reg = env->llsc_reg;
 
-    //start_exclusive();
-    //mmap_lock();
-
     env->pred[reg] = 0;
     if (single) {
-        segv = DebugMemoryReadLocked(addr, 4, &val);
+        segv = DEBUGMEMORYREADgLocked(addr, 4, &val);
     } else {
-        segv = DebugMemoryReadLocked(addr, 8, &val_i64);
+        segv = DEBUGMEMORYREADgLocked(addr, 8, &val_i64);
     }
     if (!segv) {
         if (single) {
             if (val == env->llsc_val) {
-                segv = DebugMemoryWriteLocked(addr, 4, (size8u_t)(env->llsc_newval));
+                segv = DEBUGMEMORYWRITELOCKED(addr, 4,
+                                              (size8u_t)(env->llsc_newval));
                 if (!segv) {
                     env->pred[reg] = 0xff;
                 }
             }
         } else {
             if (val_i64 == env->llsc_val_i64) {
-                segv = DebugMemoryWriteLocked(addr, 8, (size8u_t)(env->llsc_newval_i64));
+                segv = DEBUGMEMORYWRITELOCKED(addr, 8,
+                                              (size8u_t)(env->llsc_newval_i64));
                 if (!segv) {
                     env->pred[reg] = 0xff;
                 }
@@ -847,8 +838,6 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
         env->next_PC += 4;
     }
 
-    //mmap_unlock();
-    //end_exclusive();
     return segv;
 }
 
@@ -859,17 +848,18 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     CPUHexagonState *env = &cpu->env;
 
     switch (cs->exception_index) {
-      case EXCP_TYPE_TRAP0:
+    case EXCP_TYPE_TRAP0:
         sim_handle_trap(env);
-        env->sreg[HEX_SREG_ELR] = env->next_PC; // mgl might need to be shifted
+        env->sreg[HEX_SREG_ELR] = env->next_PC;
         env->sreg[HEX_SREG_SSR] |= SSR_EX;
         env->sreg[HEX_SREG_SSR] &= ~(SSR_CAUSE);
         env->sreg[HEX_SREG_SSR] |= cs->exception_index & (SSR_CAUSE);
 
         target_ulong evb = env->sreg[HEX_SREG_EVB];
         target_ulong trap0_inst;
-        DebugMemoryRead(evb+(8<<2), 4, &trap0_inst);
-        HEX_DEBUG_LOG("\tEVB = 0x%x, trap0 = 0x%x, new PC = 0x%x\n", evb, trap0_inst, evb + (8<<2));
+        DEBUGMEMORYREADg(evb+(8<<2), 4, &trap0_inst);
+        HEX_DEBUG_LOG("\tEVB = 0x%x, trap0 = 0x%x, new PC = 0x%x\n",
+                      evb, trap0_inst, evb + (8<<2));
 
         fCHECK_PCALIGN(addr);
         env->branch_taken = 1;
@@ -878,11 +868,11 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         cs->exception_index = EXCP_NONE;
         break;
 
-      case EXCP_TYPE_SC4:
+    case EXCP_TYPE_SC4:
         do_store_exclusive(env, true);
         break;
 
-      default:
+    default:
         printf("%s:%d: throw error\n", __FUNCTION__, __LINE__);
         cpu_abort(cs, "Hexagon Unsupported exception %d/0x%x\n",
                   cs->exception_index, cs->exception_index);
@@ -890,7 +880,8 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     }
 }
 
-void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc, int traptype, int imm)
+void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
+    int traptype, int imm)
 
 {
     HEX_DEBUG_LOG("%s:\n\tpc = 0x%x, npc = 0x%lx, type %d, imm %d\n",
