@@ -50,7 +50,6 @@ static void hexagon_load_kernel(CPUHexagonState *env)
         NULL,
         0,
         EM_HEXAGON, 0, 0);
-    printf("load_elf() : failed\n");
     if (kernel_size <= 0) {
         error_report("no kernel file '%s'",
             hexagon_binfo.kernel_filename);
