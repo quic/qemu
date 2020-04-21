@@ -34,9 +34,9 @@ memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
 hello: EXTRA_CFLAGS+=-I../../minilib
 
 # TODO: We should see if we can find a way to avoid this:
-standalone: LDFLAGS+= -lc -lstandalone -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
+standalone_hw: LDFLAGS+= -lc -lstandalone -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 
-QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67 -nographic
+QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67
 #QEMU_OPTS+=$(QEMU_BASE_MACHINE) -semihosting-config enable=on,target=native,chardev=output -kernel
-QEMU_OPTS+=$(QEMU_BASE_MACHINE) -no-reboot -device loader,file=standalone_hw -kernel
+QEMU_OPTS+=$(QEMU_BASE_MACHINE) -no-reboot  -kernel
 
