@@ -30,6 +30,18 @@
 #include "hw/hexagon/hexagon.h"
 #include "qemu/error-report.h"
 
+static const struct MemmapEntry {
+    hwaddr base;
+    hwaddr size;
+} hexagon_board_memmap[] = {
+    [HEXAGON_LPDDR]        =    {  0x00000000,       0x0 },
+    [HEXAGON_IOMEM]        =    {  0x1f000000,   0x10000 },
+    [HEXAGON_CONFIG_TABLE] =    {  0xde000000,     0x400 },
+    [HEXAGON_VTCM]         =    {  0xd8000000,  0x400000 },
+    [HEXAGON_L2CFG]        =    {  0xd81a0000,       0x0 },
+    [HEXAGON_TCM]          =    {  0xd8400000,  0x100000 },
+};
+
 /* Board init.  */
 static struct hexagon_board_boot_info hexagon_binfo;
 
@@ -39,7 +51,6 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     uint64_t pentry;
     long kernel_size;
 
-    printf("%s\n", __FUNCTION__);
     kernel_size = load_elf(hexagon_binfo.kernel_filename,
         NULL,
         NULL,
@@ -50,6 +61,7 @@ static void hexagon_load_kernel(CPUHexagonState *env)
         NULL,
         0,
         EM_HEXAGON, 0, 0);
+
     if (kernel_size <= 0) {
         error_report("no kernel file '%s'",
             hexagon_binfo.kernel_filename);
@@ -58,42 +70,65 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     env->gpr[HEX_REG_PC] = pentry;
 }
 
+
 static void hexagon_testboard_init(MachineState *machine, int board_id)
 {
-    printf("%s\n", __FUNCTION__);
-    HexagonCPU *cpu;
-    CPUHexagonState *env;
-
+    const struct MemmapEntry *memmap = hexagon_board_memmap;
     printf("cpu_type = %s\nfilename = %s\nram_size = %lu/0x%lx\n",
         machine->cpu_type,
         machine->kernel_filename,
         machine->ram_size, machine->ram_size);
 
-    cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
-    env = &cpu->env;
+    HexagonCPU *cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
+    CPUHexagonState *env = &cpu->env;
 
     MemoryRegion *address_space = get_system_memory();
+
+    MemoryRegion *config_table_rom = g_new(MemoryRegion, 1);
+    memory_region_init_rom(config_table_rom, NULL, "config_table.rom", memmap[HEXAGON_CONFIG_TABLE].size,
+        &error_fatal);
+    memory_region_add_subregion(address_space, memmap[HEXAGON_CONFIG_TABLE].base, config_table_rom);
+
     MemoryRegion *sram = g_new(MemoryRegion, 1);
     memory_region_init_ram(sram, NULL, "lpddr4.ram",
         machine->ram_size, &error_fatal);
     memory_region_add_subregion(address_space, 0x0, sram);
 
-    /* vtcm 0xd8000000 for 4MB */
     MemoryRegion *vtcm = g_new(MemoryRegion, 1);
-    memory_region_init_ram(vtcm, NULL, "vtcm.ram", 1024 * 1024 * 4,
+    memory_region_init_ram(vtcm, NULL, "vtcm.ram", memmap[HEXAGON_VTCM].size,
         &error_fatal);
-    memory_region_add_subregion(address_space, 0xd8000000, vtcm);
+    memory_region_add_subregion(address_space, memmap[HEXAGON_VTCM].base, vtcm);
 
-    /* tcm at 0xd8400000 for 1mb */
+
     MemoryRegion *tcm = g_new(MemoryRegion, 1);
-    memory_region_init_ram(tcm, NULL, "tcm.ram", 1024 * 1024,
+    memory_region_init_ram(tcm, NULL, "tcm.ram", memmap[HEXAGON_TCM].size,
         &error_fatal);
-    memory_region_add_subregion(address_space, 0xd8400000, tcm);
+    memory_region_add_subregion(address_space, memmap[HEXAGON_TCM].base, tcm);
+
 
 //    MemoryRegion *iomem = g_new(MemoryRegion, 1);
 //    memory_region_init_io(iomem, NULL, &hexagon_qemu_ops,
 //                          NULL, "hexagon-qemu", 0x10000);
 //    memory_region_add_subregion(address_space, 0x1f000000, iomem);
+
+    struct hexagon_config_table config_table;
+    memset(&config_table, 0x0, sizeof(config_table));
+
+    assert(machine->smp.cores == 1);
+    config_table.core_id = 0;
+    config_table.core_count = machine->smp.cores;
+    config_table.thread_enable_mask = ~(machine->smp.threads);
+    config_table.coproc_present = HEXAGON_COPROC_HVX;
+    config_table.ext_contexts = HEXAGON_DEFAULT_HVX_CONTEXTS;
+    config_table.l2tcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_TCM].base);
+    config_table.vtcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_VTCM].base);
+    config_table.vtcm_size_kb = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_VTCM].size / 1024);
+    config_table.l2cfg_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2CFG].base);
+    config_table.l2tag_size = HEXAGON_DEFAULT_L2_TAG_SIZE;
+    config_table.jtlb_size_entries = HEXAGON_DEFAULT_TLB_ENTRIES;
+
+    rom_add_blob_fixed_as("config_table.rom", &config_table, sizeof(config_table),
+        memmap[HEXAGON_CONFIG_TABLE].base, &address_space_memory);
 
     hexagon_binfo.ram_size = machine->ram_size;
     hexagon_binfo.kernel_filename = machine->kernel_filename;
@@ -105,7 +140,7 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     }
 
     env->sreg[HEX_SREG_EVB] = 0x0;
-    env->sreg[HEX_SREG_CFGBASE] = 0xde00;
+    env->sreg[HEX_SREG_CFGBASE] = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_CONFIG_TABLE].base);
     env->sreg[HEX_SREG_REV] = 0x86d8;
 }
 

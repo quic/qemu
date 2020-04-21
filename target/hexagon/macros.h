@@ -1336,28 +1336,10 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST)
 #else
 #define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST) { \
-  const uintptr_t cfgbase = 0xde000000;  \
   const uintptr_t rs = ((unsigned long)(unsigned)(SRC1)) & 0x7ff; \
   const uintptr_t rt = ((unsigned long)(unsigned)(SRC2)) << 11; \
   const uintptr_t addr = rs + rt;         \
-  if (addr == (cfgbase))                  \
-    (DST) = 0xd800; /* l2tcm base */      \
-  else if (addr == (cfgbase | 0x10))      \
-    (DST) = 0xd81a; /* l2cfg base */      \
-  else if (addr == (cfgbase | 0x2c))      \
-    (DST) = 128;    /* num tlb entries */ \
-  else if (addr == (cfgbase | 0x30))      \
-    (DST) = 1;      /* coproc present */  \
-  else if (addr == (cfgbase | 0x34))      \
-    (DST) = 4;      /* ext_contents  */   \
-  else if (addr == (cfgbase | 0x38))      \
-    (DST) = 0xd840; /* vtcm base  */      \
-  else if (addr == (cfgbase | 0x3c))      \
-    (DST) = 0x1000; /* vtcm size  */      \
-  else if (addr == (cfgbase | 0x40))      \
-    (DST) = 1024;   /* l2 tag size */     \
-  else                                    \
-    (DST) = 0;                            \
+  cpu_physical_memory_read(addr, &DST, sizeof(uint32_t)); \
 }
 #endif
 
