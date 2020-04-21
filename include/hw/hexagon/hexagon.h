@@ -35,7 +35,7 @@ typedef enum {
 
 /* Config table address bases represent bits [35:16].
  */
-#define HEXAGON_CFG_ADDR_BASE(addr) ((addr >> 16) & 0xffff)
+#define HEXAGON_CFG_ADDR_BASE(addr) ((addr >> 16) & 0x0fffff)
 
 #define HEXAGON_DEFAULT_L2_TAG_SIZE (1024)
 #define HEXAGON_DEFAULT_TLB_ENTRIES (128)
