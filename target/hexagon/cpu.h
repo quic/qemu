@@ -234,6 +234,7 @@ struct CPUHexagonState {
     mmqreg_t temp_qregs[TEMP_VECTORS_MAX];
 
     int timing_on;
+    const char *cmdline;
 };
 
 #define HEXAGON_CPU_CLASS(klass) \

@@ -303,33 +303,22 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_GET_CMDLINE:
     {
         HEX_DEBUG_LOG("%s:%d: SYS_GET_CMDLINE\n", __FUNCTION__, __LINE__);
-        /*char *mycmd = NULL;*/
         target_ulong bufptr;
         target_ulong bufsize;
-        /*target_ulong to_copy;*/
 
         DEBUGMEMORYREADg(swi_info, 4, &bufptr);
         DEBUGMEMORYREADg(swi_info + 4, 4, &bufsize);
 
-#if 0
-        /* mgl tbd: how to get program its parms */
-        if (S->cmdline == NULL) {
-            mycmd = "no command line";
-        } else {
-            mycmd = S->cmdline;
-        }
-        if (bufsize <= (unsigned int) strlen(mycmd)) {
-            err_warn("sim_handle_trap", __FILE__, __LINE__,
-                     "Cmdline too long, bufsize=%d",bufsize);
-            to_copy = bufsize - 1;
-        } else {
-            to_copy = strlen(mycmd);
-        }
+        const target_ulong to_copy =
+            (bufsize <= (unsigned int) strlen(env->cmdline))
+                ? (bufsize - 1)
+                : strlen(env->cmdline);
 
+        HEX_DEBUG_LOG("\tcmdline '%s' len to copy %d buf max %d\n",
+            env->cmdline, to_copy, bufsize);
         for (i = 0; i < (int) to_copy; i++) {
-            DEBUGMEMORYWRITE(bufptr + i, 1, (size8u_t) mycmd[i]);
+            DEBUGMEMORYWRITE(bufptr + i, 1, (size8u_t) env->cmdline[i]);
         }
-#endif
       DEBUGMEMORYWRITE(bufptr + i, 1, (size8u_t) 0);
       arch_set_thread_reg(env, HEX_REG_R00, 0);
     }
@@ -339,10 +328,12 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         HEX_DEBUG_LOG("%s:%d: SYS_EXCEPTION\n\tProgram terminated successfully\n",
                        __FUNCTION__, __LINE__);
+        target_ulong ret = -1;
+        DEBUGMEMORYREADg(swi_info, 4, &ret);
+
         arch_set_global_reg(env, HEX_SREG_MODECTL, 0);
-        #ifndef CONFIG_USER_ONLY
-        qemu_system_reset_request(SHUTDOWN_CAUSE_HOST_SIGNAL);
-        #endif
+
+        exit(ret);
     }
     break;
 

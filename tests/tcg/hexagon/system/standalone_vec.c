@@ -1415,8 +1415,6 @@ int main()
 #endif
 	check_scatter_q_16_32();
 
-//	printf("\n\n");
-
     puts(err ? "FAIL" : "PASS");
     return err;
 }

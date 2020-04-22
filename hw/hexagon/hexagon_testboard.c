@@ -157,6 +157,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         );
 #endif
 
+    env->cmdline = machine->kernel_cmdline;
+
     if (machine->kernel_filename) {
         hexagon_load_kernel(env);
     } else {
