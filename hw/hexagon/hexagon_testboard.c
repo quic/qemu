@@ -117,7 +117,7 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     assert(machine->smp.cores == 1);
     config_table.core_id = 0;
     config_table.core_count = machine->smp.cores;
-    config_table.thread_enable_mask = ~(machine->smp.threads);
+    config_table.thread_enable_mask =  ((uint64_t) 1 << machine->smp.threads) - 1;
     config_table.coproc_present = HEXAGON_COPROC_HVX;
     config_table.ext_contexts = HEXAGON_DEFAULT_HVX_CONTEXTS;
     config_table.l2tcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_TCM].base);
@@ -136,6 +136,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     hexagon_binfo.kernel_filename = machine->kernel_filename;
 
 #if 0
+    printf("config_table.thread_enable_mask = 0x%x\n",
+        config_table.thread_enable_mask);
     printf(
         "config_table.coproc_present @0x%lx\n"
         "config_table.ext_contexts @0x%lx\n"
@@ -181,6 +183,7 @@ static void hex_machine_init(MachineClass *mc)
     mc->init = hexagonboard_init;
     mc->is_default = 0;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
+    mc->max_cpus = 32;
 }
 
 DEFINE_MACHINE("hexagon_testboard", hex_machine_init)
