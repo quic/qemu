@@ -10,7 +10,10 @@ VPATH 		+= $(HEXAGON_SYSTEM_SRC)
 
 # FIXME: correct build config for multiarch system tests, & minilib etc
 #TESTS += $(MULTIARCH_TESTS)
-TESTS += standalone_hw
+TESTS += \
+	standalone_hw \
+	standalone_vec \
+	$()
 
 CRT_OBJS=boot.o
 
@@ -25,7 +28,7 @@ hello: hello.o $(CRT_OBJS) $(MINILIB_OBJS)
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
 #memory: %.c $(CRT_OBJS) $(MINILIB_OBJS)
 #	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
-standalone_hw: standalone_hw.o
+standalone_%: standalone_%.o
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
 
 # Specific Test Rules
@@ -34,7 +37,9 @@ memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
 hello: EXTRA_CFLAGS+=-I../../minilib
 
 # TODO: We should see if we can find a way to avoid this:
-standalone_hw: LDFLAGS+= -lc -lstandalone -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
+standalone_%: LDFLAGS+= -lc -lstandalone -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2 -mhvx -fvectorize
+
+standalone_vec.o: CFLAGS+= -mv67 -O2 -mhvx  -fvectorize
 
 QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67
 #QEMU_OPTS+=$(QEMU_BASE_MACHINE) -semihosting-config enable=on,target=native,chardev=output -kernel

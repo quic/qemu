@@ -41,6 +41,10 @@ typedef enum {
 #define HEXAGON_DEFAULT_TLB_ENTRIES (128)
 #define HEXAGON_DEFAULT_HVX_CONTEXTS (4)
 
+/* TODO: make this default per-arch?
+ */
+#define HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES (11)
+
 struct hexagon_config_table {
     uint32_t l2tcm_base; /* Base address of L2TCM space */
     uint32_t reserved; /* Reserved */

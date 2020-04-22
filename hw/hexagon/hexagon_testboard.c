@@ -126,12 +126,34 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     config_table.l2cfg_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2CFG].base);
     config_table.l2tag_size = HEXAGON_DEFAULT_L2_TAG_SIZE;
     config_table.jtlb_size_entries = HEXAGON_DEFAULT_TLB_ENTRIES;
+    config_table.v2x_mode = HEXAGON_HVX_VEC_LEN_V2X_1 | HEXAGON_HVX_VEC_LEN_V2X_2;
+    config_table.hvx_vec_log_length = HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES;
 
     rom_add_blob_fixed_as("config_table.rom", &config_table, sizeof(config_table),
         memmap[HEXAGON_CONFIG_TABLE].base, &address_space_memory);
 
     hexagon_binfo.ram_size = machine->ram_size;
     hexagon_binfo.kernel_filename = machine->kernel_filename;
+
+#if 0
+    printf(
+        "config_table.coproc_present @0x%lx\n"
+        "config_table.ext_contexts @0x%lx\n"
+        "config_table.l2tcm_base @0x%lx\n"
+        "config_table.vtcm_base @0x%lx\n"
+        "config_table.v2x_mode @0x%lx\n"
+        "config_table.hvx_vec_log_length @0x%lx\n"
+        "config_table.axi3_lowaddr @0x%lx\n"
+            ,
+        offsetof(struct hexagon_config_table,coproc_present),
+        offsetof(struct hexagon_config_table,ext_contexts),
+        offsetof(struct hexagon_config_table,l2tcm_base),
+        offsetof(struct hexagon_config_table,vtcm_base),
+        offsetof(struct hexagon_config_table,v2x_mode),
+        offsetof(struct hexagon_config_table,hvx_vec_log_length),
+        offsetof(struct hexagon_config_table,axi3_lowaddr)
+        );
+#endif
 
     if (machine->kernel_filename) {
         hexagon_load_kernel(env);
