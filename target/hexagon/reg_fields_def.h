@@ -106,3 +106,10 @@ DEF_REG_FIELD(USR_PFA,
     "L2 Prefetch Active: Set when non-blocking l2fetch instruction is "
     "prefetching requested data, remains set until l2fetch prefetch operation "
     "is completed (or not active).") /* read-only */
+
+DEF_REG_FIELD(IPENDAD_IAD,
+    "iad", 16, 16,
+    "Interrupt-auto disable") /* read-only */
+DEF_REG_FIELD(IPENDAD_IPEND,
+    "ipend", 0, 16,
+    "Interrupt pending") /* read-only */

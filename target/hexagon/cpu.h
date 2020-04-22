@@ -108,6 +108,10 @@ typedef struct {
 #define EXCP_TYPE_TRAP1       0x9
 #define EXCP_TYPE_FPTRAP      0xb
 #define EXCP_TYPE_DEBUG       0xc
+#define EXCP_TYPE_VIC0        0x12
+#define EXCP_TYPE_VIC1        0x13
+#define EXCP_TYPE_VIC2        0x14
+#define EXCP_TYPE_VIC3        0x15
 #define EXCP_TYPE_SC4         0x100
 #define EXCP_TYPE_SC8         0x200
 

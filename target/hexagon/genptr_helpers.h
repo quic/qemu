@@ -562,6 +562,20 @@ static inline void gen_set_usr_fieldi(int field, int x)
     tcg_temp_free(val);
 }
 
+static inline void gen_get_sreg_field(int sreg, int field, TCGv dest)
+{
+    tcg_gen_extract_tl(dest, hex_sreg[sreg],
+                       reg_field_info[field].offset,
+                       reg_field_info[field].width);
+}
+
+static inline void gen_set_sreg_field(int sreg, int field, TCGv val)
+{
+    tcg_gen_deposit_tl(hex_sreg[sreg], hex_sreg[sreg], val,
+                       reg_field_info[field].offset,
+                       reg_field_info[field].width);
+}
+
 static inline void gen_cond_return(TCGv pred, TCGv addr)
 {
     TCGv zero = tcg_const_tl(0);

@@ -848,6 +848,14 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     CPUHexagonState *env = &cpu->env;
 
     switch (cs->exception_index) {
+    case EXCP_TYPE_VIC0:
+    case EXCP_TYPE_VIC1:
+    case EXCP_TYPE_VIC2:
+    case EXCP_TYPE_VIC3:
+        sim_handle_trap(env);
+        HEX_DEBUG_LOG("\tVIC interrupt ignored\n");
+        break;
+
     case EXCP_TYPE_TRAP0:
         sim_handle_trap(env);
         env->sreg[HEX_SREG_ELR] = env->next_PC;

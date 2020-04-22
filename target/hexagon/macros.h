@@ -1569,21 +1569,80 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fCLEAR_TLB_LOCK()
 
 #ifdef QEMU_GENERATE
+
+#if 0
+// FIXME: imask must be modeled as per-thread reg for this to work
+// properly
+#define DO_IASSIGNR(RS, RD) \
+    TCGv tmp = tcg_temp_new(); \
+    for (int thread_id = 0; thread_id < cpu->smp.threads; thread_id++) { \
+       tcg_gen_extract_tl(tmp, hex_sreg[HEX_SREG_IMASK], \
+                thread_id, 1); \
+       tcg_gen_or_tl(RD, RD, tmp); \
+    } \
+
+#define DO_IASSIGNW(RS) \
+    for (int thread_id = 0; thread_id < cpu->smp.threads; thread_id++) { \
+      tcg_gen_or_tl(RD, RD, tmp); \
+      tcg_gen_deposit_tl(RS, hex_sreg[HEX_SREG_IMASK], \
+                       thread_id, 1); \
+    } \
+
+#endif
+
+#define DO_SIAD(RS) \
+    do { \
+        TCGv tmp = tcg_temp_new(); \
+        gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp); \
+        tcg_gen_ori_tl(tmp, tmp, not_rs); \
+        gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp);  \
+    } while (0)
+
+#define DO_CIAD(RS) \
+    do { \
+        TCGv tmp = tcg_temp_new(); \
+        TCGv not_rs = tcg_temp_new(); \
+        tcg_gen_not_i32(not_rs, (RS)); \
+        gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp); \
+        tcg_gen_andi_tl(tmp, tmp, not_rs); \
+        gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp);  \
+    } while (0)
+
 #define DO_CSWI(RS) \
     do { \
         TCGv tmp = tcg_temp_new(); \
         TCGv not_rs = tcg_temp_new(); \
         tcg_gen_not_i32(not_rs, (RS)); \
-        fREAD_SREG(HEX_SREG_IPEND); \
+        gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IPEND, tmp); \
         tcg_gen_andi_tl(tmp, tmp, not_rs); \
-        fWRITE_SREG(HEX_SREG_IPEND, tmp);  \
+        gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IPEND, tmp);  \
     } while (0)
+
 #else
+
+#if 0
+#define DO_IASSIGNR(RS, RD)
+#define DO_IASSIGNW(RS)
+#endif
+
+#define DO_SIAD(RS) \
+    do { \
+        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
+        tmp |= RS; \
+        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
+    } while (0)
+
+#define DO_CIAD(RS) \
+    do { \
+        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
+        tmp &= ~(RS); \
+        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
+    } while (0)
 #define DO_CSWI(RS) \
     do { \
-        uint32_t tmp = READ_SREG(HEX_SREG_IPEND); \
+        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
         tmp &= ~(RS); \
-        WRITE_SREG(HEX_SREG_IPEND, tmp);  \
+        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
     } while (0)
 #endif
 

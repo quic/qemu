@@ -905,7 +905,7 @@ supported_privs = [
     'Y2_dckill', 'Y2_ickill', 'Y2_l2kill',
     'L4_loadw_phys',
     'J2_rte',
-   'Y2_cswi',
+    'Y2_cswi', 'Y2_ciad', 'Y4_siad',
 ]
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 
