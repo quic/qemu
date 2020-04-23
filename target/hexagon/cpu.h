@@ -49,6 +49,7 @@ typedef struct CPUHexagonState CPUHexagonState;
 #define REG_WRITES_MAX 32
 #define SREG_WRITES_MAX 64
 #define PRED_WRITES_MAX 5                   /* 4 insns + endloop */
+#define CACHE_TAGS_MAX 32
 #define VSTORES_MAX 2
 
 #define TYPE_HEXAGON_CPU "hexagon-cpu"
@@ -233,6 +234,7 @@ struct CPUHexagonState {
     mmvector_t temp_vregs[TEMP_VECTORS_MAX];
     mmqreg_t temp_qregs[TEMP_VECTORS_MAX];
 
+    target_ulong cache_tags[CACHE_TAGS_MAX];
     int timing_on;
     const char *cmdline;
 };

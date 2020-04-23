@@ -53,6 +53,7 @@ static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
         }
     }
 #endif
+
     ctx->ctx_reg_log[ctx->ctx_reg_log_idx] = rnum;
     ctx->ctx_reg_log_idx++;
 }
@@ -112,6 +113,7 @@ extern TCGv hex_QRegs_updated;
 extern TCGv hex_sreg[NUM_SREGS];
 extern TCGv hex_new_sreg_value[NUM_SREGS];
 extern TCGv hex_sreg_written[NUM_SREGS];
+extern TCGv hex_cache_tags[CACHE_TAGS_MAX];
 
 static inline void gen_slot_cancelled_check(TCGv check, int slot_num)
 {

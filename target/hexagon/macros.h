@@ -1647,3 +1647,18 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #endif
 
 #endif
+
+
+#ifdef QEMU_GENERATE
+#define fDCTAGW(RS, RT)                         \
+    do {                                        \
+        tcg_gen_mov_tl(RT, hex_cache_tags[RS]); \
+    } while (0)
+#define fDCTAGR(INDEX, DST, DST_REG_NUM)                          \
+    do {                                                          \
+        tcg_gen_mov_tl(hex_cache_tags[RS], hex_gpr[DST_REG_NUM]); \
+    } while (0)
+#else
+#define fDCTAGW(RS, RT)
+#define fDCTAGR(INDEX, DST, DST_REG_NUM)
+#endif

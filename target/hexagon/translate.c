@@ -54,13 +54,12 @@ TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
 TCGv hex_VRegs_select;
 TCGv hex_QRegs_updated;
-#ifndef CONFIG_USEr_ONLY
 TCGv hex_sreg[NUM_SREGS];
 TCGv hex_new_sreg_value[NUM_SREGS];
 #if HEX_DEBUG
 TCGv hex_sreg_written[NUM_SREGS];
 #endif
-#endif
+TCGv hex_cache_tags[CACHE_TAGS_MAX];
 
 static const char * const hexagon_prednames[] = {
   "p0", "p1", "p2", "p3"
@@ -937,6 +936,12 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, VRegs_select), "VRegs_select");
     hex_QRegs_updated = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, QRegs_updated), "QRegs_updated");
+
+    for (i = 0; i < CACHE_TAGS_MAX; i++) {
+        hex_cache_tags[i] = tcg_global_mem_new(
+            cpu_env, offsetof(CPUHexagonState, cache_tags[i]), "cache_tags");
+    }
+
     for (i = 0; i < STORES_MAX; i++) {
         sprintf(store_addr_names[i], "store_addr_%d", i);
         hex_store_addr[i] = tcg_global_mem_new(cpu_env,

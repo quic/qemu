@@ -906,6 +906,14 @@ supported_privs = [
     'L4_loadw_phys',
     'J2_rte',
     'Y2_cswi', 'Y2_ciad', 'Y4_siad',
+
+    'J2_pause', 'Y4_trace',
+    # Caching, prefetching:
+    'Y2_dctagr', 'Y2_dctagw',
+    'Y2_dccleana', 'Y2_dccleaninva', 'Y2_dccleanidx', 'Y2_dccleaninvidx',
+    'Y2_dcinvidx', 'Y2_dcfetchbo',
+    'Y4_l2fetch', 'Y5_l2fetch', 'Y2_icinva',
+    'Y2_dczeroa',
 ]
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 
