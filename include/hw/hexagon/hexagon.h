@@ -6,15 +6,21 @@
 struct hexagon_board_boot_info {
     uint64_t ram_size;
     const char *kernel_filename;
+    uint32_t kernel_elf_flags;
 };
 
 enum {
-   HEXAGON_LPDDR,
-   HEXAGON_IOMEM,
-   HEXAGON_CONFIG_TABLE,
-   HEXAGON_VTCM,
-   HEXAGON_L2CFG,
-   HEXAGON_TCM,
+    HEXAGON_LPDDR,
+    HEXAGON_IOMEM,
+    HEXAGON_CONFIG_TABLE,
+    HEXAGON_VTCM,
+    HEXAGON_L2CFG,
+    HEXAGON_TCM,
+    HEXAGON_L2VIC,
+    HEXAGON_CSR1,
+    HEXAGON_QTMR,
+    HEXAGON_CSR2,
+    HEXAGON_QTMR2,
 };
 
 typedef enum {
@@ -41,9 +47,19 @@ typedef enum {
 #define HEXAGON_DEFAULT_TLB_ENTRIES (128)
 #define HEXAGON_DEFAULT_HVX_CONTEXTS (4)
 
+#define HEXAGON_V65_L2_LINE_SIZE_BYTES (0x40)
+#define HEXAGON_V66_L2_LINE_SIZE_BYTES (0x40)
+#define HEXAGON_V67h_3072_L2_LINE_SIZE_BYTES (0x40)
+#define HEXAGON_V67_L2_LINE_SIZE_BYTES (HEXAGON_V67h_3072_L2_LINE_SIZE_BYTES)
+#define HEXAGON_V68n_1024_L2_LINE_SIZE_BYTES (0x80)
+
+#define HEXAGON_DEFAULT_L1D_SIZE_KB (10)
+#define HEXAGON_DEFAULT_L1I_SIZE_KB (20)
+#define HEXAGON_DEFAULT_L1D_WRITE_POLICY (HEXAGON_L1_WRITE_BACK)
+
 /* TODO: make this default per-arch?
  */
-#define HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES (11)
+#define HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES (7)
 
 struct hexagon_config_table {
     uint32_t l2tcm_base; /* Base address of L2TCM space */
@@ -51,7 +67,7 @@ struct hexagon_config_table {
     uint32_t subsystem_base; /* Base address of subsystem space */
     uint32_t etm_base; /* Base address of ETM space */
     uint32_t l2cfg_base; /* Base address of L2 configuration space */
-    uint32_t silver_config_reg_base; /* Base address of coprocessor configuration register base */
+    uint32_t reserved2;
     uint32_t l1s0_base; /* Base address of L1S */
     uint32_t axi2_lowaddr; /* Base address of AXI2 */
     uint32_t streamer_base; /* Base address of streamer base */
@@ -66,9 +82,9 @@ struct hexagon_config_table {
     uint32_t l2ecomem_size; /* Amount of physical L2 memory in released version */
     uint32_t thread_enable_mask; /* Hardware threads available on the core */
     uint32_t eccreg_base; /* Base address of the ECC registers */
-    uint32_t l2line_sz; /* L2 line size */
+    uint32_t l2line_size; /* L2 line size */
     uint32_t tiny_core; /* Small Core processor (also implies audio extension) */
-    uint32_t l2itcm_sz; /* Size of L2TCM */
+    uint32_t l2itcm_size; /* Size of L2TCM */
     uint32_t l2itcm_base; /* Base address of L2-ITCM */
     uint32_t clade2_base; /* Base address of Clade2 */
     uint32_t dtm_present; /* DTM is present */
@@ -91,11 +107,13 @@ struct hexagon_config_table {
 
     uint32_t acd_preset; /* Voltage droop mitigation technique parameter */
     uint32_t mnd_preset; /* Voltage droop mitigation technique parameter */
-    uint32_t l1d_sz_kb; /* L1 data cache size (in KB) */
-    uint32_t l1i_sz_kb; /* L1 instruction cache size in (KB) */
+    uint32_t l1d_size_kb; /* L1 data cache size (in KB) */
+    uint32_t l1i_size_kb; /* L1 instruction cache size in (KB) */
     uint32_t l1d_write_policy; /* L1 data cache write policy: see HexagonL1WritePolicy */
     uint32_t vtcm_bank_width; /* VTCM bank width  */
-    uint32_t reserved2[3]; /* FIXME: undocumented 'ATOMICS VERSION', 'HVX IEEE', 'VICTIM CACHE MODE' */
+    uint32_t
+        reserved3[3]; /* FIXME: undocumented 'ATOMICS VERSION', 'HVX IEEE',
+                         'VICTIM CACHE MODE' */
     uint32_t hmx_cvt_mpy_size; /* FIXME: undocumented Size of the fractional multiplier in the HMX Covert */
     uint32_t axi3_lowaddr; /* FIXME: undocumented */
 };

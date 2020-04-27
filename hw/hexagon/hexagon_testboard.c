@@ -34,12 +34,17 @@ static const struct MemmapEntry {
     hwaddr base;
     hwaddr size;
 } hexagon_board_memmap[] = {
-    [HEXAGON_LPDDR]        =    {  0x00000000,       0x0 },
-    [HEXAGON_IOMEM]        =    {  0x1f000000,   0x10000 },
-    [HEXAGON_CONFIG_TABLE] =    {  0xde000000,     0x400 },
-    [HEXAGON_VTCM]         =    {  0xd8000000,  0x400000 },
-    [HEXAGON_L2CFG]        =    {  0xd81a0000,       0x0 },
-    [HEXAGON_TCM]          =    {  0xd8400000,  0x100000 },
+        [HEXAGON_LPDDR] = { 0x00000000, 0x0 },
+        [HEXAGON_IOMEM] = { 0x1f000000, 0x10000 },
+        [HEXAGON_CONFIG_TABLE] = { 0xde000000, 0x400 },
+        [HEXAGON_VTCM] = { 0xd8000000, 0x400000 },
+        [HEXAGON_L2CFG] = { 0xd81a0000, 0x0 },
+        [HEXAGON_TCM] = { 0xd8400000, 0x100000 },
+        [HEXAGON_CSR1] = { 0xfab00000, 0x0 },
+        [HEXAGON_L2VIC] = { 0xfab10000, 0x0 },
+        [HEXAGON_QTMR] = { 0xfab20000, 0x0 },
+        [HEXAGON_CSR2] = { 0xfab40000, 0x0 },
+        [HEXAGON_QTMR2] = { 0xfab60000, 0x0 },
 };
 
 /* Board init.  */
@@ -51,16 +56,9 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     uint64_t pentry;
     long kernel_size;
 
-    kernel_size = load_elf(hexagon_binfo.kernel_filename,
-        NULL,
-        NULL,
-        NULL,
-        &pentry,
-        NULL,
-        NULL,
-        NULL,
-        0,
-        EM_HEXAGON, 0, 0);
+    kernel_size =
+        load_elf(hexagon_binfo.kernel_filename, NULL, NULL, NULL, &pentry, NULL,
+                 NULL, &hexagon_binfo.kernel_elf_flags, 0, EM_HEXAGON, 0, 0);
 
     if (kernel_size <= 0) {
         error_report("no kernel file '%s'",
@@ -68,6 +66,15 @@ static void hexagon_load_kernel(CPUHexagonState *env)
         exit(1);
     }
     env->gpr[HEX_REG_PC] = pentry;
+}
+
+static void hexagonboard_qtimer_init(hwaddr base, qemu_irq irq,
+                                     uint32_t region_size)
+{
+    DeviceState *dev = qdev_create(NULL, "Qtimer");
+
+    qdev_init_nofail(dev);
+    // TODO: implement this
 }
 
 
@@ -128,9 +135,23 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     config_table.jtlb_size_entries = HEXAGON_DEFAULT_TLB_ENTRIES;
     config_table.v2x_mode = HEXAGON_HVX_VEC_LEN_V2X_1 | HEXAGON_HVX_VEC_LEN_V2X_2;
     config_table.hvx_vec_log_length = HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES;
+    config_table.fastl2vic_base =
+        HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2VIC].base);
+    config_table.l1d_size_kb = HEXAGON_DEFAULT_L1D_SIZE_KB;
+    config_table.l1i_size_kb = HEXAGON_DEFAULT_L1I_SIZE_KB;
+    config_table.l1d_write_policy = HEXAGON_DEFAULT_L1D_WRITE_POLICY;
+    config_table.tiny_core = 0; // Or '1' to signal support for audio ext?
+    config_table.l2line_size = HEXAGON_V67_L2_LINE_SIZE_BYTES;
 
     rom_add_blob_fixed_as("config_table.rom", &config_table, sizeof(config_table),
         memmap[HEXAGON_CONFIG_TABLE].base, &address_space_memory);
+
+#if 0
+    hexagonboard_qtimer_init(memmap[HEXAGON_QTMR].base,
+            0, 0x0);
+#else
+    (void)hexagonboard_qtimer_init;
+#endif
 
     hexagon_binfo.ram_size = machine->ram_size;
     hexagon_binfo.kernel_filename = machine->kernel_filename;
