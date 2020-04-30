@@ -1489,8 +1489,15 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
                    reg_field_info[FIELD].width, \
                    reg_field_info[FIELD].offset)
 #define fREAD_GLOBAL_REG_FIELD(REG, FIELD)
-#define fGET_FIELD(VAL, FIELD)
-#define fSET_FIELD(VAL, FIELD, NEWVAL)
+#define fGET_FIELD(VAL, FIELD) \
+    fEXTRACTU_BITS(VAL, \
+                   reg_field_info[FIELD].width, \
+                   reg_field_info[FIELD].offset)
+#define fSET_FIELD(VAL, FIELD, NEWVAL) \
+    fINSERT_BITS(VAL, \
+                 reg_field_info[FIELD].width, \
+                 reg_field_info[FIELD].offset, \
+                 (NEWVAL))
 #define fPOW2_HELP_ROUNDUP(VAL) \
     ((VAL) | \
      ((VAL) >> 1) | \
