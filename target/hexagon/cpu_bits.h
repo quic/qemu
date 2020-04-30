@@ -18,6 +18,8 @@
 #ifndef HEXAGON_CPU_BITS_H
 #define HEXAGON_CPU_BITS_H
 
+#define HEX_EXCP_NONE                                           -1
+#define HEX_EXCP_RESET                                          0x000
 #define HEX_EXCP_FETCH_NO_XPAGE                                 0x011
 #define HEX_EXCP_FETCH_NO_UPAGE                                 0x012
 #define HEX_EXCP_INVALID_PACKET                                 0x015
@@ -31,6 +33,10 @@
 #define HEX_EXCP_TLBMISSRW_CAUSE_READ                           0x070
 #define HEX_EXCP_TLBMISSRW_CAUSE_WRITE                          0x071
 #define HEX_EXCP_PREV_USER_NO_SINSN                             0x01b
+#define HEX_EXCP_VIC0                                           0x0c2
+#define HEX_EXCP_VIC1                                           0x0c3
+#define HEX_EXCP_VIC2                                           0x0c4
+#define HEX_EXCP_VIC3                                           0x0c5
 
 #define HEX_EXCP_TRAP0                                          0x172
 #define HEX_EXCP_TRAP1                                          0x173

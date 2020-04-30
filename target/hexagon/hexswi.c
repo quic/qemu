@@ -631,6 +631,93 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     }
     break;
 
+  case SYS_COREDUMP:
+      printf("CRASH!\n");
+      printf("I think the exception was: ");
+      switch (0x0ff & arch_get_thread_sreg(env, HEX_SREG_SSR)) {
+      case 0x43:
+          printf("0x43, NMI");
+          break;
+      case 0x42:
+          printf("0x42, Data abort");
+          break;
+      case 0x44:
+          printf("0x44, Multi TLB match");
+          break;
+      case 0x01:
+          printf("0x01, Bus Error (Precise BIU error)");
+          break;
+      case 0x03:
+          printf("0x03, Exception observed when EX = 1 (double exception)");
+          break;
+      case HEX_EXCP_FETCH_NO_XPAGE:
+          printf("0x%x, Privilege violation: User/Guest mode execute"
+                 " to page with no execute permissions",
+                 HEX_EXCP_FETCH_NO_XPAGE);
+          break;
+      case HEX_EXCP_FETCH_NO_UPAGE:
+          printf("0x%x, Privilege violation: "
+                 "User mode exececute to page with no user permissions",
+                 HEX_EXCP_FETCH_NO_UPAGE);
+          break;
+      case HEX_EXCP_INVALID_PACKET:
+          printf("0x%x, Invalid packet",
+                 HEX_EXCP_INVALID_PACKET);
+          break;
+      case 0x1a:
+          printf("0x1a, Privelege violation: guest mode insn in user mode");
+          break;
+      case 0x1b:
+          printf("0x1b, Privelege violation: "
+                 "monitor mode insn ins user/guest mode");
+          break;
+      case 0x1d:
+          printf("0x1d, Multiple writes to same register");
+          break;
+      case 0x1e:
+          printf("0x1e, PC not aligned");
+          break;
+      case 0x20:
+          printf("0x20, Misaligned Load @ 0x%x",
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case 0x21:
+          printf("0x21, Misaligned Store @ 0x%x",
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case HEX_EXCP_PRIV_NO_READ:
+          printf("0x%x, Privilege violation: user/guest read permission @ 0x%x",
+                 HEX_EXCP_PRIV_NO_READ,
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case HEX_EXCP_PRIV_NO_WRITE:
+          printf("0x%x, Privilege violation: "
+                 "user/guest write permission @ 0x%x",
+                 HEX_EXCP_PRIV_NO_WRITE,
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case HEX_EXCP_PRIV_NO_UREAD:
+          printf("0x%x, Privilege violation: user read permission @ 0x%x",
+                 HEX_EXCP_PRIV_NO_UREAD,
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case HEX_EXCP_PRIV_NO_UWRITE:
+          printf("0x%x, Privilege violation: user write permission @ 0x%x",
+                 HEX_EXCP_PRIV_NO_UWRITE,
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case 0x26:
+          printf("0x26, Coprocessor VMEM address error. @ 0x%x",
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      default:
+          printf("Don't know");
+          break;
+      }
+      printf("\nRegister Dump:\n");
+      hexagon_dump(env, stdout);
+      break;
+
     case SYS_FTELL:
     {
         int fd;
@@ -740,93 +827,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         arch_set_thread_reg(env, HEX_REG_R00, retval * 100);
     }
 
-  case SYS_COREDUMP:
-      printf("CRASH!\n");
-      printf("I think the exception was: ");
-      switch (0x0ff & arch_get_thread_sreg(env, HEX_SREG_SSR)) {
-      case 0x43:
-          printf("0x43, NMI");
-          break;
-      case 0x42:
-          printf("0x42, Data abort");
-          break;
-      case 0x44:
-          printf("0x44, Multi TLB match");
-          break;
-      case 0x01:
-          printf("0x01, Bus Error (Precise BIU error)");
-          break;
-      case 0x03:
-          printf("0x03, Exception observed when EX = 1 (double exception)");
-          break;
-      case HEX_EXCP_FETCH_NO_XPAGE:
-          printf("0x%x, Privilege violation: User/Guest mode execute"
-                 " to page with no execute permissions",
-                 HEX_EXCP_FETCH_NO_XPAGE);
-          break;
-      case HEX_EXCP_FETCH_NO_UPAGE:
-          printf("0x%x, Privilege violation: "
-                 "User mode exececute to page with no user permissions",
-                 HEX_EXCP_FETCH_NO_UPAGE);
-          break;
-      case HEX_EXCP_INVALID_PACKET:
-          printf("0x%x, Invalid packet",
-                 HEX_EXCP_INVALID_PACKET);
-          break;
-      case 0x1a:
-          printf("0x1a, Privelege violation: guest mode insn in user mode");
-          break;
-      case 0x1b:
-          printf("0x1b, Privelege violation: "
-                 "monitor mode insn ins user/guest mode");
-          break;
-      case 0x1d:
-          printf("0x1d, Multiple writes to same register");
-          break;
-      case 0x1e:
-          printf("0x1e, PC not aligned");
-          break;
-      case 0x20:
-          printf("0x20, Misaligned Load @ 0x%x",
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
-          break;
-      case 0x21:
-          printf("0x21, Misaligned Store @ 0x%x",
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
-          break;
-      case HEX_EXCP_PRIV_NO_READ:
-          printf("0x%x, Privilege violation: user/guest read permission @ 0x%x",
-                 HEX_EXCP_PRIV_NO_READ,
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
-          break;
-      case HEX_EXCP_PRIV_NO_WRITE:
-          printf("0x%x, Privilege violation: "
-                 "user/guest write permission @ 0x%x",
-                 HEX_EXCP_PRIV_NO_WRITE,
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
-          break;
-      case HEX_EXCP_PRIV_NO_UREAD:
-          printf("0x%x, Privilege violation: user read permission @ 0x%x",
-                 HEX_EXCP_PRIV_NO_UREAD,
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
-          break;
-      case HEX_EXCP_PRIV_NO_UWRITE:
-          printf("0x%x, Privilege violation: user write permission @ 0x%x",
-                 HEX_EXCP_PRIV_NO_UWRITE,
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
-          break;
-      case 0x26:
-          printf("0x26, Coprocessor VMEM address error. @ 0x%x",
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
-          break;
-      default:
-          printf("Don't know");
-          break;
-      }
-      printf("\nRegister Dump:\n");
-      hexagon_dump(env, stdout);
-      break;
-
     case SYS_TIME:
     {
         int retval = time(NULL);
@@ -927,15 +927,15 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     CPUHexagonState *env = &cpu->env;
 
     switch (cs->exception_index) {
-    case EXCP_TYPE_VIC0:
-    case EXCP_TYPE_VIC1:
-    case EXCP_TYPE_VIC2:
-    case EXCP_TYPE_VIC3:
+    case HEX_EXCP_VIC0:
+    case HEX_EXCP_VIC1:
+    case HEX_EXCP_VIC2:
+    case HEX_EXCP_VIC3:
         sim_handle_trap(env);
         HEX_DEBUG_LOG("\tVIC interrupt ignored\n");
         break;
 
-    case EXCP_TYPE_TRAP0:
+    case HEX_EXCP_TRAP0:
         sim_handle_trap(env);
         env->sreg[HEX_SREG_ELR] = env->next_PC;
         env->sreg[HEX_SREG_SSR] |= SSR_EX;
@@ -952,10 +952,10 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         env->branch_taken = 1;
         env->next_PC = evb + (8<<2);
         env->gpr[HEX_REG_PC] = evb + (8<<2);
-        cs->exception_index = EXCP_NONE;
+        cs->exception_index = HEX_EXCP_NONE;
         break;
 
-    case EXCP_TYPE_SC4:
+    case HEX_EXCP_SC4:
         do_store_exclusive(env, true);
         break;
 
@@ -1023,7 +1023,7 @@ void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
         __FUNCTION__, env->gpr[HEX_REG_PC], next_pc, traptype, imm);
 
     CPUState *cs = env_cpu(env);
-    cs->exception_index = (traptype == 0) ? EXCP_TYPE_TRAP0 : EXCP_TYPE_TRAP1;
+    cs->exception_index = (traptype == 0) ? HEX_EXCP_TRAP0 : HEX_EXCP_TRAP1;
     cpu_loop_exit(cs);
 }
 

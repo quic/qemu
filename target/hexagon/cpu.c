@@ -358,7 +358,6 @@ static bool get_physical_address(CPUHexagonState *env, hwaddr *phys,
         return true;
     }
 }
-#endif
 
 /* qemu seems to only want to know about TARGET_PAGE_SIZE pages */
 static inline void find_qemu_subpage(vaddr *addr, hwaddr *phys,
@@ -430,6 +429,7 @@ static const char *mmu_idx_names[] = {
     "MMU_GUEST_IDX",
     "MMU_KERNEL_IDX"
 };
+#endif
 
 static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
                              MMUAccessType access_type, int mmu_idx,

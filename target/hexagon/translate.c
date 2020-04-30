@@ -270,6 +270,7 @@ static void gen_reg_writes(DisasContext *ctx)
     }
 }
 
+#ifndef CONFIG_USER_ONLY
 static void gen_sreg_writes(DisasContext *ctx)
 {
     int i;
@@ -294,6 +295,7 @@ static void gen_sreg_writes(DisasContext *ctx)
 #endif
     }
 }
+#endif
 
 static void gen_pred_writes(DisasContext *ctx, packet_t *pkt)
 {
@@ -694,7 +696,9 @@ static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
     bool end_tb = false;
 
     gen_reg_writes(ctx);
+#ifndef CONFIG_USER_ONLY
     gen_sreg_writes(ctx);
+#endif
     gen_pred_writes(ctx, pkt);
     process_store_log(ctx, pkt);
     process_dczeroa(ctx, pkt);

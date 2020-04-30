@@ -102,23 +102,6 @@ typedef struct {
 #define CLEAR_EXCEPTION         (env->status &= (~EXEC_STATUS_EXCEPTION))
 #define SET_EXCEPTION           (env->status |= EXEC_STATUS_EXCEPTION)
 
-#define EXCP_NONE             -1
-#define EXCP_TYPE_RESET       0x0
-#define EXCP_TYPE_IMPRECISE   0x1
-#define EXCP_TYPE_PRECISE     0x2
-#define EXCP_TYPE_TLB_MISS_X  0x4
-#define EXCP_TYPE_TLB_MISS_RW 0x6
-#define EXCP_TYPE_TRAP0       0x8
-#define EXCP_TYPE_TRAP1       0x9
-#define EXCP_TYPE_FPTRAP      0xb
-#define EXCP_TYPE_DEBUG       0xc
-#define EXCP_TYPE_VIC0        0x12
-#define EXCP_TYPE_VIC1        0x13
-#define EXCP_TYPE_VIC2        0x14
-#define EXCP_TYPE_VIC3        0x15
-#define EXCP_TYPE_SC4         0x100
-#define EXCP_TYPE_SC8         0x200
-
 /* This needs to be large enough for all the reads and writes in a packet */
 #define TEMP_VECTORS_MAX        25
 
