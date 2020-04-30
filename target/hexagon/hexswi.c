@@ -16,6 +16,7 @@
  */
 
 #include "sysemu/runstate.h"
+#include "internal.h"
 
 #define SYS_OPEN            0x01
 #define SYS_CLOSE           0x02
@@ -258,6 +259,7 @@ static int tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
 #define arch_get_thread_reg(ENV,REG)     ((ENV)->gpr[(REG)])
 #define arch_set_thread_reg(ENV,REG,VAL) ((ENV)->gpr[(REG)] = (VAL))
 #define arch_set_global_reg(ENV,REG,VAL) ((ENV)->sreg[(REG)] = (VAL))
+#define arch_get_thread_sreg(ENV, REG)     ((ENV)->sreg[(REG)])
 #define DEBUGMEMORYREADg(ADDR,SIZE,PTR) \
     tools_memory_read(env, ADDR, SIZE, PTR)
 #define DEBUGMEMORYWRITE(ADDR,SIZE,DATA) \
@@ -737,7 +739,93 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         }
         arch_set_thread_reg(env, HEX_REG_R00, retval * 100);
     }
-    break;
+
+  case SYS_COREDUMP:
+      printf("CRASH!\n");
+      printf("I think the exception was: ");
+      switch (0x0ff & arch_get_thread_sreg(env, HEX_SREG_SSR)) {
+      case 0x43:
+          printf("0x43, NMI");
+          break;
+      case 0x42:
+          printf("0x42, Data abort");
+          break;
+      case 0x44:
+          printf("0x44, Multi TLB match");
+          break;
+      case 0x01:
+          printf("0x01, Bus Error (Precise BIU error)");
+          break;
+      case 0x03:
+          printf("0x03, Exception observed when EX = 1 (double exception)");
+          break;
+      case HEX_EXCP_FETCH_NO_XPAGE:
+          printf("0x%x, Privilege violation: User/Guest mode execute"
+                 " to page with no execute permissions",
+                 HEX_EXCP_FETCH_NO_XPAGE);
+          break;
+      case HEX_EXCP_FETCH_NO_UPAGE:
+          printf("0x%x, Privilege violation: "
+                 "User mode exececute to page with no user permissions",
+                 HEX_EXCP_FETCH_NO_UPAGE);
+          break;
+      case HEX_EXCP_INVALID_PACKET:
+          printf("0x%x, Invalid packet",
+                 HEX_EXCP_INVALID_PACKET);
+          break;
+      case 0x1a:
+          printf("0x1a, Privelege violation: guest mode insn in user mode");
+          break;
+      case 0x1b:
+          printf("0x1b, Privelege violation: "
+                 "monitor mode insn ins user/guest mode");
+          break;
+      case 0x1d:
+          printf("0x1d, Multiple writes to same register");
+          break;
+      case 0x1e:
+          printf("0x1e, PC not aligned");
+          break;
+      case 0x20:
+          printf("0x20, Misaligned Load @ 0x%x",
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case 0x21:
+          printf("0x21, Misaligned Store @ 0x%x",
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case HEX_EXCP_PRIV_NO_READ:
+          printf("0x%x, Privilege violation: user/guest read permission @ 0x%x",
+                 HEX_EXCP_PRIV_NO_READ,
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case HEX_EXCP_PRIV_NO_WRITE:
+          printf("0x%x, Privilege violation: "
+                 "user/guest write permission @ 0x%x",
+                 HEX_EXCP_PRIV_NO_WRITE,
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case HEX_EXCP_PRIV_NO_UREAD:
+          printf("0x%x, Privilege violation: user read permission @ 0x%x",
+                 HEX_EXCP_PRIV_NO_UREAD,
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case HEX_EXCP_PRIV_NO_UWRITE:
+          printf("0x%x, Privilege violation: user write permission @ 0x%x",
+                 HEX_EXCP_PRIV_NO_UWRITE,
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      case 0x26:
+          printf("0x26, Coprocessor VMEM address error. @ 0x%x",
+                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+          break;
+      default:
+          printf("Don't know");
+          break;
+      }
+      printf("\nRegister Dump:\n");
+      hexagon_dump(env, stdout);
+      break;
 
     case SYS_TIME:
     {
@@ -871,7 +959,55 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         do_store_exclusive(env, true);
         break;
 
-    default:
+      case HEX_EXCP_TLBMISSX_CAUSE_NORMAL:
+      case HEX_EXCP_TLBMISSX_CAUSE_NEXTPAGE:
+          qemu_log_mask(CPU_LOG_MMU,
+                        "TLB miss EX exception (0x%x) caught: "
+                        "PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
+                        cs->exception_index, env->gpr[HEX_REG_PC],
+                        env->sreg[HEX_SREG_BADVA]);
+          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC];
+          env->sreg[HEX_SREG_SSR] =
+              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
+          env->sreg[HEX_SREG_SSR] |= SSR_EX;
+          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (4 << 2);
+          break;
+      case HEX_EXCP_TLBMISSRW_CAUSE_READ:
+      case HEX_EXCP_TLBMISSRW_CAUSE_WRITE:
+          qemu_log_mask(CPU_LOG_MMU,
+                        "TLB miss RW exception (0x%x) caught: "
+                        "PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
+                        cs->exception_index, env->gpr[HEX_REG_PC],
+                        env->sreg[HEX_SREG_BADVA]);
+          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC];
+          /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
+          env->sreg[HEX_SREG_SSR] =
+              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
+          env->sreg[HEX_SREG_SSR] |= SSR_EX;
+          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (6 << 2);
+          break;
+
+      case HEX_EXCP_FETCH_NO_XPAGE:
+      case HEX_EXCP_FETCH_NO_UPAGE:
+      case HEX_EXCP_PRIV_NO_READ:
+      case HEX_EXCP_PRIV_NO_UREAD:
+      case HEX_EXCP_PRIV_NO_WRITE:
+      case HEX_EXCP_PRIV_NO_UWRITE:
+          qemu_log_mask(CPU_LOG_MMU,
+                        "MMU permission exception (0x%x) caught: "
+                        "PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
+                        cs->exception_index, env->gpr[HEX_REG_PC],
+                        env->sreg[HEX_SREG_BADVA]);
+          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC];
+          /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
+          env->sreg[HEX_SREG_SSR] =
+              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
+          env->sreg[HEX_SREG_SSR] |= SSR_EX;
+          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (2 << 2);
+          break;
+
+
+      default:
         printf("%s:%d: throw error\n", __FUNCTION__, __LINE__);
         cpu_abort(cs, "Hexagon Unsupported exception %d/0x%x\n",
                   cs->exception_index, cs->exception_index);

@@ -277,6 +277,16 @@ static void gen_sreg_writes(DisasContext *ctx)
     for (i = 0; i < ctx->ctx_sreg_log_idx; i++) {
         int reg_num = ctx->ctx_sreg_log[i];
 
+        if (reg_num == HEX_SREG_SYSCFG) {
+            gen_helper_modify_syscfg(cpu_env, hex_new_sreg_value[reg_num],
+                                     hex_sreg[reg_num]);
+        }
+        if (reg_num == HEX_SREG_SSR) {
+            gen_helper_modify_ssr(cpu_env, hex_new_sreg_value[reg_num],
+                                  hex_sreg[reg_num]);
+            /* This can change processor state, so end the TB */
+            ctx->base.is_jmp = DISAS_TOO_MANY;
+        }
         tcg_gen_mov_tl(hex_sreg[reg_num], hex_new_sreg_value[reg_num]);
 #if HEX_DEBUG
         /* Do this so HELPER(debug_commit_end) will know */
@@ -745,7 +755,13 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
 
+#ifdef CONFIG_USER_ONLY
     ctx->mem_idx = MMU_USER_IDX;
+#else
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+    ctx->mem_idx = cpu_mmu_index(env, false);
+#endif
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)

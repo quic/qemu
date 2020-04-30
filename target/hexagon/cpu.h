@@ -20,6 +20,9 @@
 
 /* Forward declaration needed by some of the header files */
 typedef struct CPUHexagonState CPUHexagonState;
+#ifndef CONFIG_USER_ONLY
+typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
+#endif
 
 #include <fenv.h>
 
@@ -237,6 +240,9 @@ struct CPUHexagonState {
     target_ulong cache_tags[CACHE_TAGS_MAX];
     int timing_on;
     const char *cmdline;
+#ifndef CONFIG_USER_ONLY
+    CPUHexagonTLBContext *hex_tlb;
+#endif
 };
 
 #define HEXAGON_CPU_CLASS(klass) \
@@ -320,12 +326,13 @@ static inline int get_cpu_mode(CPUHexagonState *env)
     (env->sreg[HEX_SREG_SSR] & SSR_UM));
 #endif
 
-  if (env->sreg[HEX_SREG_SSR] & SSR_EX)
+  if (GET_SSR_FIELD(SSR_EX)) {
     return HEX_CPU_MODE_MONITOR;
-  else if (env->sreg[HEX_SREG_SSR] & SSR_GM && env->sreg[HEX_SREG_SSR] & SSR_UM)
+  } else if (GET_SSR_FIELD(SSR_GM) && GET_SSR_FIELD(SSR_UM)) {
     return HEX_CPU_MODE_GUEST;
-  else if (env->sreg[HEX_SREG_SSR] & SSR_UM)
+  } else if (GET_SSR_FIELD(SSR_UM)) {
     return HEX_CPU_MODE_USER;
+  }
   return HEX_CPU_MODE_MONITOR;
 }
 

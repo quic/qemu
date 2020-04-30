@@ -113,3 +113,175 @@ DEF_REG_FIELD(IPENDAD_IAD,
 DEF_REG_FIELD(IPENDAD_IPEND,
     "ipend", 0, 16,
     "Interrupt pending") /* read-only */
+
+/* PTE (aka TLB entry) fields */
+DEF_REG_FIELD(PTE_PPD,
+    "PPD", 0, 24,
+    "Physical page number that the corresponding virtual page maps to.")
+DEF_REG_FIELD(PTE_C,
+    "C", 24, 4,
+    "Cacheability attributes for the page.")
+DEF_REG_FIELD(PTE_U,
+    "U", 28, 1,
+    "User mode permitted.")
+DEF_REG_FIELD(PTE_R,
+    "R", 29, 1,
+    "Read-enable.")
+DEF_REG_FIELD(PTE_W,
+    "W", 30, 1,
+    "Write-enable.")
+DEF_REG_FIELD(PTE_X,
+    "X", 31, 1,
+    "Execute-enable.")
+DEF_REG_FIELD(PTE_VPN,
+    "VPN", 32, 20,
+    "Virtual page number that is matched against the load or store address.")
+DEF_REG_FIELD(PTE_ASID,
+    "ASID", 52, 7,
+    "7-bit address space identifier (tag extender)")
+DEF_REG_FIELD(PTE_ATR0,
+    "ATR0", 59, 1,
+    "General purpose attribute bit kept as an attribute of each cache line.")
+DEF_REG_FIELD(PTE_ATR1,
+    "ATR1", 60, 1,
+    "General purpose attribute bit kept as an attribute of each cache line.")
+DEF_REG_FIELD(PTE_PA35,
+    "PA35", 61, 1,
+    "The Extra Physical bit is the most-significant physical address bit.")
+DEF_REG_FIELD(PTE_G,
+    "G", 62, 1,
+    "Global bit. If set, then the ASID is ignored in the match.")
+DEF_REG_FIELD(PTE_V,
+    "V", 63, 1,
+    "Valid bit. indicates whether this entry should be used for matching.")
+
+/* SYSCFG fields */
+DEF_REG_FIELD(SYSCFG_MMUEN,
+    "MMUEN", 0, 1,
+    "read-write bit that enables the MMU.")
+#ifdef FIXME  /* FIXME - convert all the SYSCFG references to use this */
+DEF_REG_FIELD(SYSCFG_ICEN,
+    "ICEN", 1, 1,
+    "read-write bit that enables the instruction cache.")
+DEF_REG_FIELD(SYSCFG_DCEN,
+    "DCEN", 2, 1,
+    "read-write bit that enables the data cache.")
+DEF_REG_FIELD(SYSCFG_ISDBTRUSTED,
+    "ISDBTRUSTED", 3, 1,
+    "read-write bit that controls ISDB TRUSTED behavior.")
+DEF_REG_FIELD(SYSCFG_GIE,
+    "GIE", 4, 1,
+    "read-write global interrupt enable bit.")
+DEF_REG_FIELD(SYSCFG_ISDBREADY,
+    "ISDBCOREREADY", 5, 1,
+    "read-write bit that controls ISDB_CORE_READY.")
+DEF_REG_FIELD(SYSCFG_PCYCLEEN,
+    "PCYCLEEN", 6, 1,
+    "read-write bit that controls the operation of the 64-bit PCYCLE counter.")
+DEF_REG_FIELD(SYSCFG_V2X,
+    "V2X", 7, 1,
+    "read-write bit reserved for use by an optional coprocessor.")
+DEF_REG_FIELD(SYSCFG_IGNOREDABORT,
+    "IDA", 8, 1,
+    "read-write bit that causes data aborts to be ignored when set.")
+DEF_REG_FIELD(SYSCFG_PM,
+    "PM", 9, 1,
+    "Enables the Performance Monitor Unit (PMU).")
+DEF_REG_FIELD(SYSCFG_TLBLOCK,
+    "TL", 11, 1,
+    "Control the operation of the hardware TLB lock.")
+DEF_REG_FIELD(SYSCFG_K0LOCK,
+    "KL", 12, 1,
+    "Control the operation of the hardware kernel lock.")
+DEF_REG_FIELD(SYSCFG_BQ,
+    "BQ", 13, 1,
+    "Controls the bus Quality-of-Service.")
+DEF_REG_FIELD(SYSCFG_PRIO,
+    "PRIO", 14, 1,
+    "Controls the Hardware Priority Scheduling feature.")
+DEF_REG_FIELD(SYSCFG_DMT,
+    "DMT", 15, 1,
+    "Controls Multi-Thread Scheduling.")
+DEF_REG_FIELD(SYSCFG_L2CFG,
+    "L2CFG", 16, 3,
+    "read-write bits that configure L2 cache TCM/CACHE partition.")
+DEF_REG_FIELD(SYSCFG_ITCM,
+    "ITCM", 19, 1,
+    "read-write bit that enables the Instruction TCM.")
+DEF_REG_FIELD(SYSCFG_CLADEN,
+    "CLADEN", 20, 1,
+    "CLADE Cache Compression Enable.")
+DEF_REG_FIELD(SYSCFG_L2NWA,
+    "L2NWA", 21, 1,
+    "When set, L2 is configured as no-write-allocate.")
+DEF_REG_FIELD(SYSCFG_L2NRA,
+    "L2NRA", 22, 1,
+    "When set, L2 is configured as no-read-allocate.")
+DEF_REG_FIELD(SYSCFG_L2WB,
+    "L2WB", 23, 1,
+    "When set, L2 is configured as Write-back.")
+DEF_REG_FIELD(SYSCFG_L2P,
+    "L2P", 24, 1,
+    "read-write bit that enables L2 memory parity protection.")
+DEF_REG_FIELD(SYSCFG_SLVCTL0,
+    "SLVCTL0", 25, 2,
+    "Slave 0 Control - Sets the behavior of the slave.")
+DEF_REG_FIELD(SYSCFG_SLVCTL1,
+    "SLVCTL1", 27, 2,
+    "Slave 0 Control - Sets the behavior of the slave.")
+DEF_REG_FIELD(SYSCFG_L2PARTSIZE,
+    "L2PART", 29, 2,
+    "read-write bits that control partitioning for the L2 cache.")
+DEF_REG_FIELD(SYSCFG_L2GCA,
+    "L2GCA", 31, 1,
+    "Indicates that an L2 Global Cacheop is active.")
+#endif
+
+#ifdef FIXME
+/* SSR fields */
+DEF_REG_FIELD(SSR_CAUSE,
+    "cause", 0, 8,
+    "8-bit field that contains the reason for various exception.")
+DEF_REG_FIELD(SSR_ASID,
+    "asid", 8, 7,
+    "7-bit field that contains the Address Space Identifier.")
+DEF_REG_FIELD(SSR_UM,
+    "um", 16, 1,
+    "read-write bit.")
+DEF_REG_FIELD(SSR_EX,
+    "ex", 17, 1,
+    "set when an interrupt or exception is accepted.")
+DEF_REG_FIELD(SSR_IE,
+    "ie", 18, 1,
+    "indicates whether the global interrupt is enabled.")
+DEF_REG_FIELD(SSR_GM,
+    "gm", 19, 1,
+    "Guest mode bit.")
+DEF_REG_FIELD(SSR_V0,
+    "v0", 20, 1,
+    "if BADVA0 register contents are from a valid slot 0 instruction.")
+DEF_REG_FIELD(SSR_V1,
+     "v1", 21, 1,
+    "if BADVA1 register contents are from a valid slot 1 instruction.")
+DEF_REG_FIELD(SSR_BVS,
+    "bvs", 22, 1,
+    "BADVA Selector.")
+DEF_REG_FIELD(SSR_CE,
+    "ce", 23, 1,
+    "grants user or guest read permissions to the PCYCLE register aliases.")
+DEF_REG_FIELD(SSR_PE,
+    "pe", 24, 1,
+    "grants guest read permissions to the PMU register aliases.")
+DEF_REG_FIELD(SSR_BP,
+    "bp", 25, 1,
+    "Internal Bus Priority bit.")
+DEF_REG_FIELD(SSR_XA,
+    "xa", 27, 3,
+    "Extension Active, which control operation of an attached coprocessor.")
+DEF_REG_FIELD(SSR_SS,
+    "ss", 30, 1,
+    "Single Step, which enables single-step exceptions.")
+DEF_REG_FIELD(SSR_XE,
+    "xe", 31, 1,
+    "Coprocessor Enable, which enables use of an attached coprocessor.")
+#endif

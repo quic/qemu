@@ -901,7 +901,8 @@ f.write("#endif\n\n")
 supported_privs = [
     'Y2_tfrscrr', 'Y2_tfrsrcr', 'Y4_tfrscpp', 'Y4_tfrspcp',
     'Y2_crswap0', 'Y4_crswap1', 'Y4_crswap10',
-    'Y2_tlbp', 'Y2_tlbw', 'Y2_tlblock', 'Y2_tlbunlock',
+    'Y2_tlbp', 'Y2_tlbr', 'Y2_tlbw', 'Y5_ctlbw', 'Y5_tlboc',
+    'Y2_tlblock', 'Y2_tlbunlock',
     'Y2_dckill', 'Y2_ickill', 'Y2_l2kill',
     'L4_loadw_phys',
     'J2_rte',
@@ -914,6 +915,7 @@ supported_privs = [
     'Y2_dcinvidx', 'Y2_dcfetchbo',
     'Y4_l2fetch', 'Y5_l2fetch', 'Y2_icinva',
     'Y2_dczeroa',
+    'Y2_stop',
 ]
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 

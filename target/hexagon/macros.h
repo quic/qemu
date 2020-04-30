@@ -1563,10 +1563,35 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     (((IMM) == 1) || ((IMM) == 3) || ((IMM) == 4) || ((IMM) == 6))
 #define fNOP_EXECUTED
 #define fPREDUSE_TIMING()
-#define fTLBP(x) ((x))
-#define fTLBW(RtV,RssV)
 #define fSET_TLB_LOCK()
 #define fCLEAR_TLB_LOCK()
+
+#ifndef CONFIG_USER_ONLY
+#define fTLB_IDXMASK(INDEX) \
+    ((INDEX) & (fPOW2_ROUNDUP(fCAST4u(NUM_TLB_ENTRIES)) - 1))
+
+#define fTLB_NONPOW2WRAP(INDEX) \
+    (((INDEX) >= NUM_TLB_ENTRIES) ? ((INDEX) - NUM_TLB_ENTRIES) : (INDEX))
+
+#define fTLBW(INDEX, VALUE) \
+    hex_tlbw(env, (INDEX), (VALUE))
+#define fTLB_ENTRY_OVERLAP(VALUE) \
+    (hex_tlb_check_overlap(env, VALUE) != -2)
+#define fTLB_ENTRY_OVERLAP_IDX(VALUE) \
+    hex_tlb_check_overlap(env, VALUE)
+#define fTLBR(INDEX) \
+    (env->hex_tlb->entries[fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX))])
+#define fTLBP(TLBHI) \
+    hex_tlb_lookup(env, ((TLBHI) >> 12), ((TLBHI) << 12), 1)
+#endif
+
+/* FIXME - Update these when properly implementing stop instruction */
+#define fGET_TNUM() \
+    0    /* FIXME */
+#define fIN_DEBUG_MODE_NO_ISDB(TNUM) \
+    0    /* FIXME */
+#define fCLEAR_RUN_MODE(TNUM) \
+    qemu_system_reset_request(SHUTDOWN_CAUSE_HOST_SIGNAL)    /* FIXME */
 
 #ifdef QEMU_GENERATE
 

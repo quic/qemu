@@ -36,6 +36,11 @@
  */
 #define COUNT_HEX_HELPERS 0
 
+extern void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
+                                                 uint32_t exception,
+                                                 uintptr_t pc);
+
+extern void hexagon_dump(CPUHexagonState *env, FILE *f);
 extern int hexagon_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);
 extern int hexagon_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 
@@ -54,4 +59,6 @@ extern const char * const hexagon_sregnames[];
 
 extern void init_genptr(void);
 
+#define hexagon_cpu_mmu_enabled(env) \
+  GET_FIELD(SYSCFG_MMUEN, env->sreg[HEX_SREG_SYSCFG])
 #endif

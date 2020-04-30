@@ -22,6 +22,10 @@
 #include "exec/exec-all.h"
 #include "qapi/error.h"
 #include "migration/vmstate.h"
+#ifndef CONFIG_USER_ONLY
+#include "macros.h"
+#include "hex_mmu.h"
+#endif
 
 static void hexagon_v67_cpu_init(Object *obj)
 {
@@ -186,7 +190,7 @@ void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
     print_qreg(stdout, env, regnum);
 }
 
-static void hexagon_dump(CPUHexagonState *env, FILE *f)
+void hexagon_dump(CPUHexagonState *env, FILE *f)
 {
     static target_ulong last_pc;
     int i;
@@ -325,6 +329,9 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     cpu_reset(cs);
 
     mcc->parent_realize(dev, errp);
+#ifndef CONFIG_USER_ONLY
+    hex_mmu_init(cs);
+#endif
 }
 
 static void hexagon_cpu_init(Object *obj)
@@ -336,17 +343,93 @@ static void hexagon_cpu_init(Object *obj)
 
 #ifndef CONFIG_USER_ONLY
 static bool get_physical_address(CPUHexagonState *env, hwaddr *phys,
-                                int *prot, target_ulong address,
-                                int rw)
+                                int *prot, int *size, int32_t *excp,
+                                target_ulong address,
+                                MMUAccessType access_type, int mmu_idx)
 
 {
-  *phys = address & 0xFFFFFFFF;
-  *prot = PAGE_VALID | PAGE_READ |
-          PAGE_WRITE |
-          PAGE_EXEC;
-  return true;
+    if (hexagon_cpu_mmu_enabled(env)) {
+        return hex_tlb_find_match(env, address, access_type, phys, prot,
+                                  size, excp, mmu_idx);
+    } else {
+        *phys = address & 0xFFFFFFFF;
+        *prot = PAGE_VALID | PAGE_READ | PAGE_WRITE | PAGE_EXEC;
+        *size = TARGET_PAGE_SIZE;
+        return true;
+    }
 }
 #endif
+
+/* qemu seems to only want to know about TARGET_PAGE_SIZE pages */
+static inline void find_qemu_subpage(vaddr *addr, hwaddr *phys,
+                                     int page_size)
+{
+    vaddr page_start = *addr & ~((vaddr)(page_size - 1));
+    vaddr offset = ((*addr - page_start) / TARGET_PAGE_SIZE) * TARGET_PAGE_SIZE;
+    *addr = page_start + offset;
+    *phys += offset;
+}
+
+static hwaddr hexagon_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+    hwaddr phys_addr;
+    int prot;
+    int page_size = 0;
+    int32_t excp = 0;
+    int mmu_idx = MMU_KERNEL_IDX;
+
+    if (get_physical_address(env, &phys_addr, &prot, &page_size, &excp,
+                             addr, 0, mmu_idx)) {
+        find_qemu_subpage(&addr, &phys_addr, page_size);
+        return phys_addr;
+    }
+
+    return -1;
+}
+
+static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA,
+                                MMUAccessType access_type)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+
+    env->sreg[HEX_SREG_BADVA] = VA;
+
+    switch (access_type) {
+    case MMU_INST_FETCH:
+        cs->exception_index = HEX_EXCP_TLBMISSX_CAUSE_NORMAL;
+        break;
+    case MMU_DATA_LOAD:
+        cs->exception_index = HEX_EXCP_TLBMISSRW_CAUSE_READ;
+        break;
+    case MMU_DATA_STORE:
+        cs->exception_index = HEX_EXCP_TLBMISSRW_CAUSE_WRITE;
+        break;
+    }
+}
+
+static void raise_perm_exception(CPUState *cs, target_ulong VA, int32_t excp)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+
+    env->sreg[HEX_SREG_BADVA] = VA;
+    cs->exception_index = excp;
+}
+
+static const char *access_type_names[] = {
+    "MMU_DATA_LOAD ",
+    "MMU_DATA_STORE",
+    "MMU_INST_FETCH"
+};
+
+static const char *mmu_idx_names[] = {
+    "MMU_USER_IDX",
+    "MMU_GUEST_IDX",
+    "MMU_KERNEL_IDX"
+};
 
 static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
                              MMUAccessType access_type, int mmu_idx,
@@ -366,19 +449,37 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
     }
     cpu_loop_exit_restore(cs, retaddr);
 #else
-  HexagonCPU *cpu = HEXAGON_CPU(cs);
-  CPUHexagonState *env = &cpu->env;
-  hwaddr phys;
-  int prot = 0;
-  bool ret = 0;
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+    hwaddr phys;
+    int prot = 0;
+    int page_size = 0;
+    int32_t excp = 0;
+    bool ret = 0;
 
-  HEX_DEBUG_LOG("%s: vaddr = 0x%lx, size = %d, access_type = 0x%x, probe = %d, mmu_idx = %d\n",
-    __FUNCTION__, address, size, access_type, probe, mmu_idx);
-  ret = get_physical_address(env, &phys, &prot, address, access_type);
-  tlb_set_page(cs, address & TARGET_PAGE_MASK,
-               phys & TARGET_PAGE_MASK, prot,
-               mmu_idx, TARGET_PAGE_SIZE);
-  return ret;
+    qemu_log_mask(CPU_LOG_MMU,
+                  "%s: pc = 0x%08" PRIx32
+                  ", vaddr = 0x%08" VADDR_PRIx
+                  ", size = %d, %s,\tprobe = %d, %s\n",
+                  __func__, env->gpr[HEX_REG_PC], address, size,
+                  access_type_names[access_type],
+                  probe, mmu_idx_names[mmu_idx]);
+    ret = get_physical_address(env, &phys, &prot, &page_size, &excp,
+                               address, access_type, mmu_idx);
+    if (ret) {
+        if (!excp) {
+            find_qemu_subpage(&address, &phys, page_size);
+            tlb_set_page(cs, address, phys, prot,
+                         mmu_idx, TARGET_PAGE_SIZE);
+            return ret;
+        } else {
+            raise_perm_exception(cs, address, excp);
+            do_raise_exception_err(env, cs->exception_index, retaddr);
+        }
+    }
+
+    raise_tlbmiss_exception(cs, address, access_type);
+    do_raise_exception_err(env, cs->exception_index, retaddr);
 #endif
 }
 
@@ -415,6 +516,9 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 #endif
     cc->gdb_stop_before_watchpoint = true;
     cc->disas_set_info = hexagon_cpu_disas_set_info;
+#ifndef CONFIG_USER_ONLY
+    cc->get_phys_page_debug = hexagon_cpu_get_phys_page_debug;
+#endif
 #ifdef CONFIG_TCG
     cc->tcg_initialize = hexagon_translate_init;
     cc->tlb_fill = hexagon_tlb_fill;

@@ -32,6 +32,8 @@ obj-y += \
     mmvec/decode_ext_mmvec.o \
     mmvec/system_ext_mmvec.o
 
+obj-$(CONFIG_SOFTMMU) += hex_mmu.o
+
 #
 #  Step 1
 #  We use a C program to create semantics_generated.pyinc

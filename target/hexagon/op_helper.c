@@ -33,6 +33,9 @@
 #include "conv_emu.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/macros.h"
+#ifndef CONFIG_USER_ONLY
+#include "hex_mmu.h"
+#endif
 
 #if COUNT_HEX_HELPERS
 #include "opcodes.h"
@@ -70,9 +73,9 @@ void print_helper_counts(void)
 #endif
 
 /* Exceptions processing helpers */
-static void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
-                                                 uint32_t exception,
-                                                 uintptr_t pc)
+void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
+                                          uint32_t exception,
+                                          uintptr_t pc)
 {
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
@@ -611,6 +614,35 @@ MERGE_INFLIGHT(merge_inflight_store2u, int32_t, int32_t, uint16_t, 2)
 MERGE_INFLIGHT(merge_inflight_store4s, int32_t, int32_t,  int32_t, 4)
 MERGE_INFLIGHT(merge_inflight_store4u, int32_t, int32_t, uint32_t, 4)
 MERGE_INFLIGHT(merge_inflight_store8u, int64_t, int64_t,  int64_t, 8)
+
+#ifndef CONFIG_USER_ONLY
+void HELPER(modify_syscfg)(CPUHexagonState *env, uint32_t new, uint32_t old)
+{
+    target_ulong old_mmu_enable = GET_FIELD(SYSCFG_MMUEN, old);
+    target_ulong new_mmu_enable = GET_FIELD(SYSCFG_MMUEN, new);
+    if (new_mmu_enable && !old_mmu_enable) {
+        hex_mmu_on(env);
+    } else if (!new_mmu_enable && old_mmu_enable) {
+        hex_mmu_off(env);
+    }
+}
+
+void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
+{
+    target_ulong old_EX = old & SSR_EX;
+    target_ulong old_UM = old & SSR_UM;
+    target_ulong old_GM = old & SSR_GM;
+    target_ulong new_EX = new & SSR_EX;
+    target_ulong new_UM = new & SSR_UM;
+    target_ulong new_GM = new & SSR_GM;
+
+    if ((old_EX != new_EX) ||
+        (old_UM != new_UM) ||
+        (old_GM != new_GM)) {
+        hex_mmu_mode_change(env);
+    }
+}
+#endif
 
 /* Helpful for printing intermediate values within instructions */
 void HELPER(debug_value)(CPUHexagonState *env, int32_t value)
