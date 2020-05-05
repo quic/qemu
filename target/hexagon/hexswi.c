@@ -1006,6 +1006,13 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
           env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (2 << 2);
           break;
 
+      case HEX_EXCP_PRIV_USER_NO_SINSN:
+          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC];
+          env->sreg[HEX_SREG_SSR] =
+              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
+          env->sreg[HEX_SREG_SSR] |= SSR_EX;
+          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (2 << 2);
+          break;
 
       default:
         printf("%s:%d: throw error\n", __FUNCTION__, __LINE__);

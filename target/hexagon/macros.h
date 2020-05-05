@@ -1466,15 +1466,14 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef CONFIG_USER_ONLY
 #define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EXCP_TRAP0)
-#define fCHECKFORPRIV() helper_raise_exception(env, HEX_EXCP_PREV_USER_NO_SINSN)
+#define fCHECKFORPRIV() helper_raise_exception(env, HEX_EXCP_PRIV_USER_NO_SINSN)
 #else
 #define fTRAP(TRAPTYPE, IMM) { \
   register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM /*HEX_EXCP_TRAP0*/); \
 }
-#define fCHECKFORPRIV() { \
-    if (get_cpu_mode(env) != HEX_CPU_MODE_MONITOR)  \
-      helper_raise_exception(env, HEX_EXCP_PREV_USER_NO_SINSN); \
-  }
+#ifdef QEMU_GENERATE
+#define fCHECKFORPRIV() gen_helper_checkforpriv(cpu_env)
+#endif
 #endif
 
 #define fALIGN_REG_FIELD_VALUE(FIELD, VAL) \

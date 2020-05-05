@@ -355,12 +355,12 @@ static inline void hex_tlb_entry_get_perm(uint64_t entry,
     }
 }
 
-static inline bool hex_tlb_entry_match(uint64_t entry, target_ulong VA,
+static inline bool hex_tlb_entry_match(uint64_t entry, uint8_t asid, target_ulong VA,
                                        MMUAccessType access_type, hwaddr *PA,
                                        int *prot, int *size, int32_t *excp,
                                        int mmu_idx)
 {
-    if (hex_tlb_entry_match_noperm(entry, NO_ASID, VA)) {
+    if (hex_tlb_entry_match_noperm(entry, asid, VA)) {
         hex_tlb_entry_get_perm(entry, access_type, mmu_idx, prot, excp);
         *PA = hex_tlb_phys_addr(entry);
         *size = hex_tlb_page_size(entry);
@@ -373,10 +373,11 @@ bool hex_tlb_find_match(CPUHexagonState *env, target_ulong VA,
                         MMUAccessType access_type, hwaddr *PA, int *prot,
                         int *size, int32_t *excp, int mmu_idx)
 {
+    uint8_t asid = (env->sreg[HEX_SREG_SSR] & SSR_ASID) >> 8;
     int i;
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         uint64_t entry = env->hex_tlb->entries[i];
-        if (hex_tlb_entry_match(entry, VA, access_type, PA, prot, size,
+        if (hex_tlb_entry_match(entry, asid, VA, access_type, PA, prot, size,
                                 excp, mmu_idx)) {
             return true;
         }

@@ -629,6 +629,7 @@ void HELPER(modify_syscfg)(CPUHexagonState *env, uint32_t new, uint32_t old)
 
 void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
+    /* FIXME - Change these to GET_FIELD */
     target_ulong old_EX = old & SSR_EX;
     target_ulong old_UM = old & SSR_UM;
     target_ulong old_GM = old & SSR_GM;
@@ -640,6 +641,21 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
         (old_UM != new_UM) ||
         (old_GM != new_GM)) {
         hex_mmu_mode_change(env);
+    }
+
+    /* FIXME - Change these to GET_FIELD */
+    uint8_t old_asid = (old & SSR_ASID) >> 8;
+    uint8_t new_asid = (new & SSR_ASID) >> 8;
+    if (new_asid != old_asid) {
+        CPUState *cs = CPU(hexagon_env_get_cpu(env));
+        tlb_flush(cs);
+    }
+}
+
+void HELPER(checkforpriv)(CPUHexagonState *env)
+{
+    if (!sys_in_monitor_mode(env)) {
+        helper_raise_exception(env, HEX_EXCP_PRIV_USER_NO_SINSN);
     }
 }
 #endif

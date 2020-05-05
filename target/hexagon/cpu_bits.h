@@ -32,7 +32,7 @@
 #define HEX_EXCP_TLBMISSX_CAUSE_NEXTPAGE                        0x061
 #define HEX_EXCP_TLBMISSRW_CAUSE_READ                           0x070
 #define HEX_EXCP_TLBMISSRW_CAUSE_WRITE                          0x071
-#define HEX_EXCP_PREV_USER_NO_SINSN                             0x01b
+#define HEX_EXCP_PRIV_USER_NO_SINSN                             0x01b
 #define HEX_EXCP_VIC0                                           0x0c2
 #define HEX_EXCP_VIC1                                           0x0c3
 #define HEX_EXCP_VIC2                                           0x0c4

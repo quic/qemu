@@ -241,6 +241,7 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     }
     print_sreg(f, env, HEX_SREG_IPENDAD);
     print_sreg(f, env, HEX_SREG_IMASK);
+    print_sreg(f, env, HEX_SREG_ELR);
 #endif
     fprintf(f, "}\n");
 

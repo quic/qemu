@@ -230,6 +230,7 @@ static void mark_implicit_writes(DisasContext *ctx, insn_t *insn)
 
     mark_implicit_sreg_write(ctx, insn, A_IMPLICIT_WRITES_SGP0, HEX_SREG_SGP0);
     mark_implicit_sreg_write(ctx, insn, A_IMPLICIT_WRITES_SGP1, HEX_SREG_SGP1);
+    mark_implicit_sreg_write(ctx, insn, A_IMPLICIT_WRITES_SSR, HEX_SREG_SSR);
 
     mark_implicit_pred_write(ctx, insn, A_IMPLICIT_WRITES_P0, 0);
     mark_implicit_pred_write(ctx, insn, A_IMPLICIT_WRITES_P1, 1);
