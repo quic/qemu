@@ -114,6 +114,9 @@ extern TCGv hex_sreg[NUM_SREGS];
 extern TCGv hex_new_sreg_value[NUM_SREGS];
 extern TCGv hex_sreg_written[NUM_SREGS];
 extern TCGv hex_cache_tags[CACHE_TAGS_MAX];
+#ifndef CONFIG_USER_ONLY
+extern TCGv hex_imprecise_exception;
+#endif
 
 static inline void gen_slot_cancelled_check(TCGv check, int slot_num)
 {

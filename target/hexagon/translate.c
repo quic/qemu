@@ -60,6 +60,9 @@ TCGv hex_new_sreg_value[NUM_SREGS];
 TCGv hex_sreg_written[NUM_SREGS];
 #endif
 TCGv hex_cache_tags[CACHE_TAGS_MAX];
+#ifndef CONFIG_USER_ONLY
+TCGv hex_imprecise_exception;
+#endif
 
 static const char * const hexagon_prednames[] = {
   "p0", "p1", "p2", "p3"
@@ -692,6 +695,23 @@ static void gen_exec_counters(packet_t *pkt)
     }
 }
 
+#ifndef CONFIG_USER_ONLY
+static void check_imprecise_exception(packet_t *pkt)
+{
+    int i;
+    for (i = 0; i < pkt->num_insns; i++) {
+        insn_t *insn = &pkt->insn[i];
+        if (insn->opcode == Y2_tlbp) {
+            TCGLabel *label = gen_new_label();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, hex_imprecise_exception, 0, label);
+            gen_helper_raise_exception(cpu_env, hex_imprecise_exception);
+            gen_set_label(label);
+            return;
+        }
+    }
+}
+#endif
+
 static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
 {
     bool end_tb = false;
@@ -721,6 +741,9 @@ static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
         tcg_temp_free(has_st0);
         tcg_temp_free(has_st1);
     }
+#endif
+#ifndef CONFIG_USER_ONLY
+    check_imprecise_exception(pkt);
 #endif
 
     if (end_tb) {
@@ -963,6 +986,10 @@ void hexagon_translate_init(void)
             cpu_env, offsetof(CPUHexagonState, cache_tags[i]), "cache_tags");
     }
 
+#ifndef CONFIG_USER_ONLY
+    hex_imprecise_exception = tcg_global_mem_new(cpu_env,
+        offsetof(CPUHexagonState, imprecise_exception), "imprecise_exception");
+#endif
     for (i = 0; i < STORES_MAX; i++) {
         sprintf(store_addr_names[i], "store_addr_%d", i);
         hex_store_addr[i] = tcg_global_mem_new(cpu_env,

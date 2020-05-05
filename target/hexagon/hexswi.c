@@ -1014,6 +1014,21 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
           env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (2 << 2);
           break;
 
+      case HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH:
+          /*
+           * FIXME
+           * Imprecise exceptions are delivered to all HW threads in
+           * run or wait mode
+           */
+          /* After the exception handler, return to the next packet */
+          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC] + 4;
+          env->sreg[HEX_SREG_SSR] =
+              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
+          env->sreg[HEX_SREG_SSR] |= SSR_EX;
+          env->sreg[HEX_SREG_DIAG] = (0x4 << 4) | (env->sreg[HEX_SREG_HTID] & 0xf);
+          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (1 << 2);
+          break;
+
       default:
         printf("%s:%d: throw error\n", __FUNCTION__, __LINE__);
         cpu_abort(cs, "Hexagon Unsupported exception %d/0x%x\n",

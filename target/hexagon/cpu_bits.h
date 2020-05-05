@@ -28,6 +28,7 @@
 #define HEX_EXCP_PRIV_NO_WRITE                                  0x023
 #define HEX_EXCP_PRIV_NO_UREAD                                  0x024
 #define HEX_EXCP_PRIV_NO_UWRITE                                 0x025
+#define HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH                      0x044
 #define HEX_EXCP_TLBMISSX_CAUSE_NORMAL                          0x060
 #define HEX_EXCP_TLBMISSX_CAUSE_NEXTPAGE                        0x061
 #define HEX_EXCP_TLBMISSRW_CAUSE_READ                           0x070

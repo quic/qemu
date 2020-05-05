@@ -225,6 +225,7 @@ struct CPUHexagonState {
     const char *cmdline;
 #ifndef CONFIG_USER_ONLY
     CPUHexagonTLBContext *hex_tlb;
+    target_ulong imprecise_exception;
 #endif
 };
 

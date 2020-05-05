@@ -259,8 +259,9 @@ uint64_t tlbr(uint32_t i)
     return ret;
 }
 
-uint32_t tlbp(uint32_t x)
+uint32_t tlbp(uint32_t asid, uint32_t VA)
 {
+    uint32_t x = ((asid & 0x7f) << 20) | ((VA >> 12) & 0xfffff);
     uint32_t ret;
     asm volatile ("%0 = tlbp(%1)\n\t" : "=r"(ret) : "r"(x));
     return ret;
@@ -330,7 +331,6 @@ void set_ssr(uint32_t new_ssr)
 void set_asid(uint32_t asid)
 {
     uint32_t ssr = get_ssr();
-    uint32_t old_asid = (ssr >> 8) & 0x7f;
     SET_FIELD(ssr, SSR_ASID, asid);
     set_ssr(ssr);
 }
@@ -341,7 +341,7 @@ volatile int data = 0xdeadbeef;
 
 #define check(N, EXPECT) \
     if (N != EXPECT) { \
-        printf("ERROR at %d: 0x%08lux != 0x%08lux\n", __LINE__, \
+        printf("ERROR at %d: 0x%08lx != 0x%08lx\n", __LINE__, \
                (uint32_t)(N), (uint32_t)(EXPECT)); \
         err++; \
     }
@@ -431,10 +431,10 @@ void test_page_size(const char *name, uint32_t page_size_bits)
     printf("new_addr: 0x%lx\n", new_addr);
     printf("----> ");
     hex_dump_mmu_entry(entry);
-    printf("tlbp(0x%08lx) = 0x%lx\n", addr, tlbp(addr >> 12));
-    printf("tlbp(0x%08lx) = 0x%lx\n", new_addr, tlbp(new_addr >> 12));
+    printf("tlbp(0x%08lx) = 0x%lx\n", addr, tlbp(0, addr));
+    printf("tlbp(0x%08lx) = 0x%lx\n", new_addr, tlbp(0, new_addr));
 #endif
-    check(tlbp(new_addr >> 12), 1);
+    check(tlbp(0, new_addr), 1);
 
     /* Load through the new VA */
     check(*(volatile int *)new_addr, 0xdeadbeef);
@@ -447,7 +447,7 @@ void test_page_size(const char *name, uint32_t page_size_bits)
     do_add_trans(1, (void *)new_page, page, page_size_bits,
                  TLB_X | TLB_W | TLB_R | TLB_U,
                  0, 0, 0, 0x1);
-    check(tlbp(new_addr >> 12), TLB_NOT_FOUND);
+    check(tlbp(0, new_addr), TLB_NOT_FOUND);
 
     func_t f = foo;
     addr = (uint32_t)f;
@@ -463,9 +463,9 @@ void test_page_size(const char *name, uint32_t page_size_bits)
     printf("new_addr: 0x%lx\n", new_addr);
     printf("====> ");
     hex_dump_mmu_entry(entry);
-    printf("tlbp(0x%08lx) = 0x%lx\n", new_addr, tlbp(new_addr >> 12));
+    printf("tlbp(0x%08lx) = 0x%lx\n", new_addr, tlbp(0, new_addr));
 #endif
-    check(tlbp(new_addr >> 12), 2);
+    check(tlbp(0, new_addr), 2);
 
     volatile func_t new_f = (func_t)new_addr;
     check((new_f()), (int)new_addr);
@@ -474,7 +474,7 @@ void test_page_size(const char *name, uint32_t page_size_bits)
     do_add_trans(2, (void *)new_page, page, page_size_bits,
                  TLB_X | TLB_W | TLB_R | TLB_U,
                  0, 0, 0, 0x1);
-    check(tlbp(new_addr >> 12), TLB_NOT_FOUND);
+    check(tlbp(0, new_addr), TLB_NOT_FOUND);
 }
 
 #define HEX_EXCP_FETCH_NO_XPAGE                  0x011
@@ -483,6 +483,7 @@ void test_page_size(const char *name, uint32_t page_size_bits)
 #define HEX_EXCP_PRIV_NO_WRITE                   0x023
 #define HEX_EXCP_PRIV_NO_UREAD                   0x024
 #define HEX_EXCP_PRIV_NO_UWRITE                  0x025
+#define HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH       0x44
 
 #define READ_TLB                                 1
 #define READ_USER_TLB                            2
@@ -495,7 +496,11 @@ void my_event_handler_helper(uint32_t ssr)
     uint32_t cause = GET_FIELD(ssr, SSR_CAUSE);
     uint64_t entry;
 
-    my_exceptions |= 1LL << cause;
+    if (cause < 64) {
+        my_exceptions |= 1LL << cause;
+    } else {
+        my_exceptions = cause;
+    }
 
     switch (cause) {
     case HEX_EXCP_FETCH_NO_XPAGE:
@@ -527,6 +532,8 @@ void my_event_handler_helper(uint32_t ssr)
         entry = tlbr(WRITE_USER_TLB);
         SET_FIELD(entry, PTE_U, 1);
         tlbw(entry, WRITE_USER_TLB);
+        break;
+    case HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH:
         break;
     default:
         do_coredump();
@@ -616,7 +623,7 @@ void test_permissions(void)
     data_perm = TLB_X | TLB_W | TLB_U;
     do_add_trans(READ_TLB, (void *)new_data_page, data_page,
                  page_size_bits, data_perm, 0, 0, 0, 0x3);
-    check(tlbp(read_data_addr >> 12), READ_TLB);
+    check(tlbp(0, read_data_addr), READ_TLB);
 
     data_offset = READ_USER_TLB * ONE_MB;
     new_data_page = data_page + data_offset;
@@ -624,7 +631,7 @@ void test_permissions(void)
     data_perm = TLB_X | TLB_W | TLB_R;
     do_add_trans(READ_USER_TLB, (void *)new_data_page, data_page,
                  page_size_bits, data_perm, 0, 0, 0, 0x3);
-    check(tlbp(read_user_data_addr >> 12), READ_USER_TLB);
+    check(tlbp(0, read_user_data_addr), READ_USER_TLB);
 
     data_offset = WRITE_TLB * ONE_MB;
     new_data_page = data_page + data_offset;
@@ -632,7 +639,7 @@ void test_permissions(void)
     data_perm = TLB_X | TLB_R | TLB_U;
     do_add_trans(WRITE_TLB, (void *)new_data_page, data_page,
                  page_size_bits, data_perm, 0, 0, 0, 0x3);
-    check(tlbp(write_data_addr >> 12), WRITE_TLB);
+    check(tlbp(0, write_data_addr), WRITE_TLB);
 
     data_offset = WRITE_USER_TLB * ONE_MB;
     new_data_page = data_page + data_offset;
@@ -640,7 +647,7 @@ void test_permissions(void)
     data_perm = TLB_X | TLB_R | TLB_W;
     do_add_trans(WRITE_USER_TLB, (void *)new_data_page, data_page,
                  page_size_bits, data_perm, 0, 0, 0, 0x3);
-    check(tlbp(write_user_data_addr >> 12), WRITE_USER_TLB);
+    check(tlbp(0, write_user_data_addr), WRITE_USER_TLB);
 
 
     func_t f = foo;
@@ -653,7 +660,7 @@ void test_permissions(void)
     unsigned int func_perm = TLB_W | TLB_R;
     do_add_trans(EXEC_TLB, (void *)new_func_page, func_page,
                  page_size_bits, func_perm, 0, 0, 0, 0x3);
-    check(tlbp(exec_addr >> 12), EXEC_TLB);
+    check(tlbp(0, exec_addr), EXEC_TLB);
 
     enter_user_mode();
 
@@ -701,7 +708,7 @@ void test_tlboc_ctlbw(void)
     unsigned int data_perm = TLB_X | TLB_W | TLB_R | TLB_U;
     do_add_trans(1, (void *)new_page, page, page_size_bits,
                  data_perm, 0, 0, 0, 0x3);
-    check(tlbp(new_addr >> 12), 1);
+    check(tlbp(0, new_addr), 1);
 
     /* Check an entry that overlaps with the one we just created */
     uint64_t entry = 
@@ -719,11 +726,11 @@ void test_tlboc_ctlbw(void)
     do_add_trans(1, (void *)new_page, page, page_size_bits,
                  TLB_X | TLB_W | TLB_R | TLB_U,
                  0, 0, 0, 0x1);
-    check(tlbp(new_addr >> 12), TLB_NOT_FOUND);
+    check(tlbp(0, new_addr), TLB_NOT_FOUND);
     do_add_trans(2, (void *)(new_page + ONE_MB), page, page_size_bits,
                  TLB_X | TLB_W | TLB_R | TLB_U,
                  0, 0, 0, 0x1);
-    check(tlbp((new_addr + ONE_MB) >> 12), TLB_NOT_FOUND);
+    check(tlbp(0, (new_addr + ONE_MB)), TLB_NOT_FOUND);
 }
 
 void test_asids(void)
@@ -782,6 +789,36 @@ void test_asids(void)
     check_not(*(volatile int *)new_addr, 0xcafebabe);
 }
 
+void test_multi_tlb(void)
+{
+    uint32_t page_size_bits = 12;               /* 4KB page size */
+    uint32_t page_size = 1 << page_size_bits;
+    uint32_t page_align = ~(page_size - 1);
+
+    uint32_t addr = (uint32_t)&data;
+    uint32_t page = addr & page_align;
+    uint32_t offset = 7 * ONE_MB;
+    uint32_t new_addr = addr + offset;
+    uint32_t new_page = page + offset;
+
+    uint64_t entry = 
+        create_mmu_entry(0, 0, 0, 1, new_page, 1, 1, 1, 7, page, PGSIZE_4K);
+    /*
+     * Write the index at index 1 and 2
+     * The second tlbp should raise an exception
+     */
+    my_exceptions = 0;
+    set_asid(1);
+    tlbinvasid(1);
+    tlbw(entry, 1);
+    check(tlboc(entry), 1);
+    check(tlbp(1, new_addr), 1);
+    tlbw(entry, 2);
+    check(tlboc(entry), -1);
+    check(tlbp(1, new_addr), 1);
+    check64(my_exceptions, (uint64_t)HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH);
+}
+
 int main()
 {
     /*
@@ -789,6 +826,7 @@ int main()
      * The normal behavior is to coredump
      */
     memcpy((void*)0x1000, goto_my_event_handler, 12);
+    memcpy((void*)0x0ff4, goto_my_event_handler, 12);
 
     puts("Hexagon MMU test");
 
@@ -844,6 +882,7 @@ int main()
 
     test_tlboc_ctlbw();
     test_asids();
+    test_multi_tlb();
 
     /* This has to be last because it puts us in user mode */
     test_permissions();

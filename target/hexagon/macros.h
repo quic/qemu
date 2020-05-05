@@ -1588,7 +1588,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fTLBR(INDEX) \
     (env->hex_tlb->entries[fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX))])
 #define fTLBP(TLBHI) \
-    hex_tlb_lookup(env, ((TLBHI) >> 12), ((TLBHI) << 12), 1)
+    hex_tlb_lookup(env, ((TLBHI) >> 12), ((TLBHI) << 12))
 #endif
 
 /* FIXME - Update these when properly implementing stop instruction */

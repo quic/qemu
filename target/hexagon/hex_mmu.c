@@ -386,29 +386,39 @@ bool hex_tlb_find_match(CPUHexagonState *env, target_ulong VA,
 }
 
 static uint32_t hex_tlb_lookup_by_asid(CPUHexagonState *env, uint32_t asid,
-                                       uint32_t VA, int is_tlbp)
+                                       uint32_t VA)
 {
     uint32_t not_found = 0x80000000;
+    uint32_t idx = not_found;
     int i;
 
+    env->imprecise_exception = 0;
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         uint64_t entry = env->hex_tlb->entries[i];
         if (hex_tlb_entry_match_noperm(entry, asid, VA)) {
-            /* FIXME - Check for duplicate matches */
-            qemu_log_mask(CPU_LOG_MMU, "%s: 0x%x, 0x%08x, %d => %d\n",
-                          __func__, asid, VA, is_tlbp, i);
-            return i;
+            if (idx != not_found) {
+                env->imprecise_exception = HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH;
+                break;
+            }
+            idx = i;
         }
     }
-    qemu_log_mask(CPU_LOG_MMU, "%s: 0x%x, 0x%08x, %d => NOT FOUND\n",
-                  __func__, asid, VA, is_tlbp);
-    return not_found;
+
+    if (idx == not_found) {
+        qemu_log_mask(CPU_LOG_MMU, "%s: 0x%x, 0x%08x => NOT FOUND\n",
+                      __func__, asid, VA);
+    } else {
+        qemu_log_mask(CPU_LOG_MMU, "%s: 0x%x, 0x%08x => %d\n",
+                      __func__, asid, VA, i);
+    }
+
+    return idx;
 }
 
-uint32_t hex_tlb_lookup(CPUHexagonState *env, uint32_t ssr, uint32_t VA,
-                        int is_tlbp)
+/* Called from tlbp instruction */
+uint32_t hex_tlb_lookup(CPUHexagonState *env, uint32_t ssr, uint32_t VA)
 {
-    return hex_tlb_lookup_by_asid(env, (ssr & SSR_ASID) >> 8, VA, is_tlbp);
+    return hex_tlb_lookup_by_asid(env, (ssr & SSR_ASID) >> 8, VA);
 }
 
 static bool hex_tlb_is_match(CPUHexagonState *env,
@@ -467,5 +477,5 @@ int hex_tlb_check_overlap(CPUHexagonState *env, uint64_t entry)
     if (matches == 0) {
         return -2;
     }
-    return 1;
+    return -1;
 }
