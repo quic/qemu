@@ -13,6 +13,7 @@ VPATH 		+= $(HEXAGON_SYSTEM_SRC)
 TESTS += \
 	standalone_hw \
 	standalone_vec \
+	mmu_test \
 	$()
 
 CRT_OBJS=boot.o
@@ -30,6 +31,8 @@ hello: hello.o $(CRT_OBJS) $(MINILIB_OBJS)
 #	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
 standalone_%: standalone_%.o
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
+mmu_test: $(HEXAGON_SYSTEM_SRC)/mmu_test.c $(HEXAGON_SYSTEM_SRC)/dummy_mutex.S
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 
 # Specific Test Rules
 
