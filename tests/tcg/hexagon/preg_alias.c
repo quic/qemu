@@ -27,7 +27,7 @@ static inline int preg_alias(int v0, int v1, int v2, int v3)
                "%0 = C4\n"
                : "=r"(ret)
                : "r"(v0), "r"(v1), "r"(v2), "r"(v3)
-               : "p0", "p1", "p2", "p3" /*, "c4" */);
+               : "p0", "p1", "p2", "p3");
   return ret;
 }
 
@@ -38,7 +38,7 @@ typedef union {
       unsigned char p1;
       unsigned char p2;
       unsigned char p3;
-    }pregs;
+    } pregs;
 } PRegs;
 
 static inline void creg_alias(int cval, PRegs *pregs)

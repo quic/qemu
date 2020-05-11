@@ -92,7 +92,7 @@ static long long sub_carry(long long Rss, long long Rtt,
   return result;
 }
 
-int err = 0;
+int err;
 
 #define check_ll(val, expect) \
   if (val != expect) { \

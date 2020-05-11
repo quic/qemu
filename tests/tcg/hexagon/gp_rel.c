@@ -30,25 +30,25 @@ static inline void *getgp()
 {
   void *reg;
   asm volatile ("%0 = GP"
-                :"=r"(reg));
+                : "=r"(reg));
   return reg;
 }
 
 static inline void putgp(void *x)
 {
   asm volatile ("GP = %0"
-                ::"r"(x));
+                :: "r"(x));
 }
 
 static inline uint32_t loadgp()
 {
   uint32_t reg;
   asm volatile ("%0 = memw(##array)"
-                :"=r"(reg));
+                : "=r"(reg));
   return reg;
 }
 
-int err = 0;
+int err;
 uint32_t array[2] = { 0xdead, 0xbeef };
 
 #define check(N, EXPECT) \

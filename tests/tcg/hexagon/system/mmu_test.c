@@ -1,3 +1,19 @@
+/*
+ *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -232,8 +248,8 @@ static void hex_dump_mmu_entry(uint64_t entry)
 }
 
 uint64_t create_mmu_entry(uint8_t G, uint8_t A0, uint8_t A1, uint8_t ASID,
-                          uint32_t VA, uint8_t X, int8_t W, uint8_t R, uint8_t C,
-                          uint64_t PA, tlb_pgsize_t SZ)
+                          uint32_t VA, uint8_t X, int8_t W, uint8_t R,
+                          uint8_t C, uint64_t PA, tlb_pgsize_t SZ)
 {
     uint64_t entry = 0;
     SET_FIELD(entry, PTE_V, 1);
@@ -294,26 +310,17 @@ void tlbinvasid(uint32_t entry_hi)
 void enter_user_mode(void)
 {
     asm volatile ("r0 = ssr\n\t"
-                  "r0 = clrbit(r0, #17) // EX \n\t"
-                  "r0 = setbit(r0, #16) // UM \n\t"
-                  "r0 = clrbit(r0, #19) // GM \n\t"
-                  "ssr = r0\n\t" ::: "r0");
-}
-
-void enter_kernel_mode(void)
-{
-    asm volatile ("r0 = ssr\n\t"
-                  "r0 = setbit(r0, #17) // EX \n\t"
-                  "r0 = clrbit(r0, #16) // UM \n\t"
-                  "r0 = clrbit(r0, #19) // GM \n\t"
-                  "ssr = r0\n\t" ::: "r0");
+                  "r0 = clrbit(r0, #17) // EX\n\t"
+                  "r0 = setbit(r0, #16) // UM\n\t"
+                  "r0 = clrbit(r0, #19) // GM\n\t"
+                  "ssr = r0\n\t" : : : "r0");
 }
 
 void do_coredump(void)
 {
     asm volatile("r0 = #2\n\t"
                  "stid = r0\n\t"
-                 "jump __coredump\n\t" ::: "r0");
+                 "jump __coredump\n\t" : : : "r0");
 }
 
 uint32_t get_ssr(void)
@@ -335,9 +342,12 @@ void set_asid(uint32_t asid)
     set_ssr(ssr);
 }
 
-int err = 0;
-uint64_t my_exceptions = 0;
-volatile int data = 0xdeadbeef;
+int err;
+uint64_t my_exceptions;
+
+/* volatile because it is written through different MMU mappings */
+typedef volatile int mmu_variable;
+mmu_variable data = 0xdeadbeef;
 
 #define check(N, EXPECT) \
     if (N != EXPECT) { \
@@ -360,6 +370,8 @@ volatile int data = 0xdeadbeef;
     }
 
 typedef int (*func_t)(void);
+/* volatile because it will be invoked via different MMU mappings */
+typedef volatile func_t mmu_func_t;
 int foo(void)
 {
     int ret;
@@ -437,10 +449,10 @@ void test_page_size(const char *name, uint32_t page_size_bits)
     check(tlbp(0, new_addr), 1);
 
     /* Load through the new VA */
-    check(*(volatile int *)new_addr, 0xdeadbeef);
+    check(*(mmu_variable *)new_addr, 0xdeadbeef);
 
     /* Store through the new VA */
-    *(volatile int *)new_addr = 0xcafebabe;
+    *(mmu_variable *)new_addr = 0xcafebabe;
     check(data, 0xcafebabe);
 
     /* Clear out this entry */
@@ -449,7 +461,7 @@ void test_page_size(const char *name, uint32_t page_size_bits)
                  0, 0, 0, 0x1);
     check(tlbp(0, new_addr), TLB_NOT_FOUND);
 
-    func_t f = foo;
+    mmu_func_t f = foo;
     addr = (uint32_t)f;
     page = addr & page_align;
     offset = page_size <= ONE_MB ? 6 * ONE_MB : page_size;
@@ -467,7 +479,7 @@ void test_page_size(const char *name, uint32_t page_size_bits)
 #endif
     check(tlbp(0, new_addr), 2);
 
-    volatile func_t new_f = (func_t)new_addr;
+    mmu_func_t new_f = (mmu_func_t)new_addr;
     check((new_f()), (int)new_addr);
 
     /* Clear out this entry */
@@ -585,7 +597,7 @@ void goto_my_event_handler(void)
 {
     asm volatile("r0 = ##my_event_handler\n\t"
                  "jumpr r0\n\t"
-                 ::: "r0");
+                 : : : "r0");
 }
 
 void print_exceptions(uint64_t excp)
@@ -650,7 +662,7 @@ void test_permissions(void)
     check(tlbp(0, write_user_data_addr), WRITE_USER_TLB);
 
 
-    func_t f = foo;
+    mmu_func_t f = foo;
     uint32_t func_addr = (uint32_t)f;
     uint32_t func_page = func_addr & page_align;
     uint32_t func_offset = EXEC_TLB * ONE_MB;
@@ -665,16 +677,16 @@ void test_permissions(void)
     enter_user_mode();
 
     /* Load through the new VA */
-    check(*(volatile int *)read_data_addr, 0xdeadbeef);
-    check(*(volatile int *)read_user_data_addr, 0xdeadbeef);
+    check(*(mmu_variable *)read_data_addr, 0xdeadbeef);
+    check(*(mmu_variable *)read_user_data_addr, 0xdeadbeef);
 
     /* Store through the new VA */
-    *(volatile int *)write_data_addr = 0xcafebabe;
+    *(mmu_variable *)write_data_addr = 0xcafebabe;
     check(data, 0xcafebabe);
-    *(volatile int *)write_user_data_addr = 0xc0ffee;
+    *(mmu_variable *)write_user_data_addr = 0xc0ffee;
     check(data, 0xc0ffee);
 
-    volatile func_t new_f = (func_t)exec_addr;
+    mmu_func_t new_f = (mmu_func_t)exec_addr;
     check((new_f()), (int)exec_addr);
 
     uint64_t expected_exceptions = 0;
@@ -711,7 +723,7 @@ void test_tlboc_ctlbw(void)
     check(tlbp(0, new_addr), 1);
 
     /* Check an entry that overlaps with the one we just created */
-    uint64_t entry = 
+    uint64_t entry =
         create_mmu_entry(1, 0, 0, 0, new_page, 1, 1, 1, 7, page, PGSIZE_4K);
     check(tlboc(entry), 1);
     check(ctlbw(entry, 2), 0x1);
@@ -741,11 +753,11 @@ void test_asids(void)
 
     uint32_t addr = (uint32_t)&data;
     uint32_t page = addr & page_align;
-    uint32_t offset = page_size <= ONE_MB ? 5 * ONE_MB : page_size;
+    uint32_t offset = 5 * ONE_MB;
     uint32_t new_addr = addr + offset;
     uint32_t new_page = page + offset;
 
-    uint64_t entry = 
+    uint64_t entry =
         create_mmu_entry(0, 0, 0, 1, new_page, 1, 1, 1, 7, page, PGSIZE_4K);
     /*
      * Create a TLB entry for ASID=1
@@ -767,17 +779,19 @@ void test_asids(void)
     data = 0xdeadbeef;
     tlbw(entry, 1);
     set_asid(1);
-    check(*(volatile int *)new_addr, 0xdeadbeef);
-    *(volatile int *)new_addr = 0xcafebabe;
+    check(*(mmu_variable *)new_addr, 0xdeadbeef);
+    *(mmu_variable *)new_addr = 0xcafebabe;
     check(data, 0xcafebabe);
 
     /*
      * Make sure a load from ASID 2 gets a different value.
-     * It will be reading from uninitialized memory.
+     * The standalone runtime will create a VA==PA entry on
+     * a TLB miss, so the load will be reading from uninitialized
+     * memory.
      */
     set_asid(2);
     data = 0xdeadbeef;
-    check_not(*(volatile int *)new_addr, 0xdeadbeef);
+    check_not(*(mmu_variable *)new_addr, 0xdeadbeef);
 
     /*
      * Invalidate the ASID and make sure a loads from ASID 1
@@ -786,7 +800,7 @@ void test_asids(void)
     tlbinvasid(entry >> 32);
     set_asid(1);
     data = 0xcafebabe;
-    check_not(*(volatile int *)new_addr, 0xcafebabe);
+    check_not(*(mmu_variable *)new_addr, 0xcafebabe);
 }
 
 void test_multi_tlb(void)
@@ -801,7 +815,7 @@ void test_multi_tlb(void)
     uint32_t new_addr = addr + offset;
     uint32_t new_page = page + offset;
 
-    uint64_t entry = 
+    uint64_t entry =
         create_mmu_entry(0, 0, 0, 1, new_page, 1, 1, 1, 7, page, PGSIZE_4K);
     /*
      * Write the index at index 1 and 2
@@ -817,16 +831,24 @@ void test_multi_tlb(void)
     check(tlboc(entry), -1);
     check(tlbp(1, new_addr), 1);
     check64(my_exceptions, (uint64_t)HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH);
+
+    /* Clear the TLB entries */
+    SET_FIELD(entry, PTE_V, 0);
+    tlbw(entry, 1);
+    tlbw(entry, 2);
 }
 
 int main()
 {
     /*
-     * Install our own privelege exception handler
+     * Install our own privelege and nmi exception handlers
      * The normal behavior is to coredump
+     * NOTE: Using the hard-coded addresses is a brutal hack,
+     * but the symbol names aren't exported from the standalone
+     * runtime.
      */
-    memcpy((void*)0x1000, goto_my_event_handler, 12);
-    memcpy((void*)0x0ff4, goto_my_event_handler, 12);
+    memcpy((void *)0x1000, goto_my_event_handler, 12);
+    memcpy((void *)0x0ff4, goto_my_event_handler, 12);
 
     puts("Hexagon MMU test");
 

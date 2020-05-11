@@ -20,10 +20,11 @@ CFLAGS = -mv67 -O2 -mhvx -fvectorize
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
 VPATH += $(HEX_SRC)
 
-first: $(SRC_PATH)/tests/tcg/hexagon/first.S
-	$(CC) -mv67 -nostdlib $(SRC_PATH)/tests/tcg/hexagon/first.S -o first
+first: $(HEX_SRC)/first.S
+	$(CC) -mv67 -nostdlib $^ -o $@
 
 HEX_TESTS = first
+HEX_TESTS += exec_counters
 HEX_TESTS += misc
 HEX_TESTS += preg_alias
 HEX_TESTS += dual_stores
@@ -34,5 +35,7 @@ HEX_TESTS += mem_noshuf
 HEX_TESTS += gp_rel
 HEX_TESTS += circ
 HEX_TESTS += pthread_cancel
+HEX_TESTS += vector_add_int
+HEX_TESTS += scatter_gather
 
 TESTS += $(HEX_TESTS)

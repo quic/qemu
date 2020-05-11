@@ -15,29 +15,33 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-////////////////////////////////////////////////////////////////////////////////
-// This example shows how to perform circular addressing from C using
-// inline assembly.
-////////////////////////////////////////////////////////////////////////////////
+/*
+ * This example shows how to perform circular addressing from C using
+ * inline assembly.
+ */
 
 #include <stdio.h>
 
-#define NBYTES         (1<<8)
-#define NHALFS         (NBYTES/sizeof(short))
-#define NWORDS         (NBYTES/sizeof(int))
-#define NDOBLS         (NBYTES/sizeof(long long))
+#define DEBUG          0
 
-long long     dbuf[NDOBLS] __attribute__((aligned(1<<12))) = {0};
-int           wbuf[NWORDS] __attribute__((aligned(1<<12))) = {0};
-short         hbuf[NHALFS] __attribute__((aligned(1<<12))) = {0};
-unsigned char bbuf[NBYTES] __attribute__((aligned(1<<12))) = {0};
+#define NBYTES         (1 << 8)
+#define NHALFS         (NBYTES / sizeof(short))
+#define NWORDS         (NBYTES / sizeof(int))
+#define NDOBLS         (NBYTES / sizeof(long long))
 
-// Macros for performing circular load
-//     RES         result
-//     ADDR        address
-//     START       start address of buffer
-//     LEN         length of buffer (in bytes)
-//     INC         address increment (in bytes for IMM, elements for REG)
+long long     dbuf[NDOBLS] __attribute__((aligned(1 << 12))) = {0};
+int           wbuf[NWORDS] __attribute__((aligned(1 << 12))) = {0};
+short         hbuf[NHALFS] __attribute__((aligned(1 << 12))) = {0};
+unsigned char bbuf[NBYTES] __attribute__((aligned(1 << 12))) = {0};
+
+/*
+ * Macros for performing circular load
+ *     RES         result
+ *     ADDR        address
+ *     START       start address of buffer
+ *     LEN         length of buffer (in bytes)
+ *     INC         address increment (in bytes for IMM, elements for REG)
+ */
 #define CIRC_LOAD_W_IMM(RES, ADDR, START, LEN, INC) \
     __asm__( \
       "r4 = %4\n\t" \
@@ -54,7 +58,7 @@ unsigned char bbuf[NBYTES] __attribute__((aligned(1<<12))) = {0};
       "cs1 = %4\n\t" \
       "%0 = memw(%1++I:circ(M1))\n\t" \
       : "=r"(RES), "=r"(ADDR) \
-      : "1"(ADDR), "r"((((INC)&0x7f)<<17) | ((LEN)&0x1ffff)), "r"(START) \
+      : "1"(ADDR), "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), "r"(START) \
       : "r4", "m1", "cs1")
 #define CIRC_LOAD_UBH_REG(RES, ADDR, START, LEN, INC) \
     __asm__( \
@@ -63,7 +67,7 @@ unsigned char bbuf[NBYTES] __attribute__((aligned(1<<12))) = {0};
       "cs1 = %4\n\t" \
       "%0 = memubh(%1++I:circ(M1))\n\t" \
       : "=r"(RES), "=r"(ADDR) \
-      : "1"(ADDR), "r"((((INC)&0x7f)<<17) | ((LEN)&0x1ffff)), "r"(START) \
+      : "1"(ADDR), "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), "r"(START) \
       : "r4", "m1", "cs1")
 #define CIRC_LOAD_D_IMM(RES, ADDR, START, LEN, INC) \
     __asm__( \
@@ -75,12 +79,14 @@ unsigned char bbuf[NBYTES] __attribute__((aligned(1<<12))) = {0};
       : "1"(ADDR), "r"(START), "r"(LEN) \
       : "r4", "m0", "cs0")
 
-// Macros for performing circular store
-//     VAL         value to store
-//     ADDR        address
-//     START       start address of buffer
-//     LEN         length of buffer (in bytes)
-//     INC         address increment (in bytes for IMM, elements for REG)
+/*
+ * Macros for performing circular store
+ *     VAL         value to store
+ *     ADDR        address
+ *     START       start address of buffer
+ *     LEN         length of buffer (in bytes)
+ *     INC         address increment (in bytes for IMM, elements for REG)
+ */
 #define CIRC_STORE_B_IMM(VAL, ADDR, START, LEN, INC) \
     __asm__( \
       "r4 = %4\n\t" \
@@ -98,7 +104,7 @@ unsigned char bbuf[NBYTES] __attribute__((aligned(1<<12))) = {0};
       "memh(%0++I:circ(M1)) = %4\n\t" \
       : "=r"(ADDR) \
       : "0"(ADDR), \
-        "r"((((INC)&0x7f)<<17) | ((LEN)&0x1ffff)), \
+        "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
         "r"(START), \
         "r"(VAL) \
       : "r4", "m1", "cs1", "memory")
@@ -113,13 +119,13 @@ unsigned char bbuf[NBYTES] __attribute__((aligned(1<<12))) = {0};
       "}\n\t" \
       : "=r"(ADDR) \
       : "0"(ADDR), \
-        "r"((((INC)&0x7f)<<17) | ((LEN)&0x1ffff)), \
+        "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
         "r"(START), \
         "r"(VAL) \
       : "r4", "r5", "m1", "cs1", "memory")
 
 
-int err = 0;
+int err;
 
 void check_load(int i, long long result, int mod)
 {
@@ -136,8 +142,10 @@ void circ_test_load_d_imm(void)
   int i;
   for (i = 0; i < NDOBLS; i++) {
     long long element;
-    CIRC_LOAD_D_IMM(element, p, dbuf, size*sizeof(long long), 8);
-//    printf("i = %2d, p = 0x%p, element = %lld\n", i, p, element);
+    CIRC_LOAD_D_IMM(element, p, dbuf, size * sizeof(long long), 8);
+#if DEBUG
+    printf("i = %2d, p = 0x%p, element = %lld\n", i, p, element);
+#endif
     check_load(i, element, size);
   }
 
@@ -150,8 +158,10 @@ void circ_test_load_w_imm(void)
   int i;
   for (i = 0; i < NWORDS; i++) {
     int element;
-    CIRC_LOAD_W_IMM(element, p, wbuf, size*sizeof(int), 4);
-//    printf("i = %2d, p = 0x%p, element = %2d\n", i, p, element);
+    CIRC_LOAD_W_IMM(element, p, wbuf, size * sizeof(int), 4);
+#if DEBUG
+    printf("i = %2d, p = 0x%p, element = %2d\n", i, p, element);
+#endif
     check_load(i, element, size);
   }
 }
@@ -163,16 +173,18 @@ void circ_test_load_w_reg(void)
   int i;
   for (i = 0; i < NWORDS; i++) {
     int element;
-    CIRC_LOAD_W_REG(element, p, wbuf, size*sizeof(int), 1);
-//    printf("i = %2d, p = 0x%p, element = %2d\n", i, p, element);
+    CIRC_LOAD_W_REG(element, p, wbuf, size * sizeof(int), 1);
+#if DEBUG
+    printf("i = %2d, p = 0x%p, element = %2d\n", i, p, element);
+#endif
     check_load(i, element, size);
   }
 }
 
 static void check_ubh(int i, int result, int mod)
 {
-  int x = 2*i % mod;
-  int expect = ((x+1) << 16) | x;
+  int x = 2 * i % mod;
+  int expect = ((x + 1) << 16) | x;
   if (result != expect) {
     printf("ERROR(%d): %08x != %08x\n", i, result, expect);
     err++;
@@ -187,7 +199,9 @@ void circ_test_load_ubh_reg(void)
   for (i = 0; i < NBYTES; i++) {
     int element;
     CIRC_LOAD_UBH_REG(element, p, bbuf, size, 1);
-//    printf("i = %3d, p = 0x%p, element = 0x%08x\n", i, p, element);
+#if DEBUG
+    printf("i = %3d, p = 0x%p, element = 0x%08x\n", i, p, element);
+#endif
     check_ubh(i, element, size);
   }
 }
@@ -195,28 +209,31 @@ void circ_test_load_ubh_reg(void)
 unsigned char circ_val_b(int i, int size)
 {
   int mod = NBYTES % size;
-  if (i < mod)
-    return (i+NBYTES-mod) & 0xff;
-  else
-    return (i+NBYTES-size-mod) & 0xff;
+  if (i < mod) {
+    return (i + NBYTES - mod) & 0xff;
+  } else {
+    return (i + NBYTES - size - mod) & 0xff;
+  }
 }
 
 void check_store_b(int size)
 {
   int i;
   for (i = 0; i < size; i++) {
-//    printf("bbuf[%3d] = 0x%02x, guess = 0x%02x\n",
-//           i, bbuf[i], circ_val_b(i, size));
+#if DEBUG
+    printf("bbuf[%3d] = 0x%02x, guess = 0x%02x\n",
+           i, bbuf[i], circ_val_b(i, size));
+#endif
     if (bbuf[i] != circ_val_b(i, size)) {
-      printf("ERROR(%3d): 0x%02x != 0x%02x\n",
-             i, bbuf[i], circ_val_b(i, size));
-      err++;
+        printf("ERROR(%3d): 0x%02x != 0x%02x\n",
+               i, bbuf[i], circ_val_b(i, size));
+        err++;
     }
   }
   for (i = size; i < NBYTES; i++) {
     if (bbuf[i] != i) {
-      printf("ERROR(%3d): 0x%02x != 0x%02x\n", i, bbuf[i], i);
-      err++;
+        printf("ERROR(%3d): 0x%02x != 0x%02x\n", i, bbuf[i], i);
+        err++;
     }
   }
 }
@@ -237,28 +254,31 @@ void circ_test_store_b_imm(void)
 short circ_val_h(int i, int size)
 {
   int mod = NHALFS % size;
-  if (i < mod)
-    return (i+NHALFS-mod) & 0xffff;
-  else
-    return (i+NHALFS-size-mod) & 0xffff;
+  if (i < mod) {
+    return (i + NHALFS - mod) & 0xffff;
+  } else {
+    return (i + NHALFS - size - mod) & 0xffff;
+  }
 }
 
 void check_store_h(int size)
 {
   int i;
   for (i = 0; i < size; i++) {
-//    printf("hbuf[%3d] = 0x%02x, guess = 0x%02x\n",
-//           i, hbuf[i], circ_val_h(i, size));
+#if DEBUG
+    printf("hbuf[%3d] = 0x%02x, guess = 0x%02x\n",
+           i, hbuf[i], circ_val_h(i, size));
+#endif
     if (hbuf[i] != circ_val_h(i, size)) {
-      printf("ERROR(%3d): 0x%02x != 0x%02x\n",
-             i, hbuf[i], circ_val_h(i, size));
-      err++;
+        printf("ERROR(%3d): 0x%02x != 0x%02x\n",
+               i, hbuf[i], circ_val_h(i, size));
+        err++;
     }
   }
   for (i = size; i < NHALFS; i++) {
     if (hbuf[i] != i) {
-      printf("ERROR(%3d): 0x%02x != 0x%02x\n", i, hbuf[i], i);
-      err++;
+        printf("ERROR(%3d): 0x%02x != 0x%02x\n", i, hbuf[i], i);
+        err++;
     }
   }
 }
@@ -270,7 +290,7 @@ void circ_test_store_h_reg(void)
   unsigned int val = 0;
   int i;
   for (i = 0; i < NHALFS; i++) {
-    CIRC_STORE_H_REG(val & 0xffff, p, hbuf, size*sizeof(short), 1);
+    CIRC_STORE_H_REG(val & 0xffff, p, hbuf, size * sizeof(short), 1);
     val++;
   }
   check_store_h(size);
@@ -279,28 +299,31 @@ void circ_test_store_h_reg(void)
 int circ_val_w(int i, int size)
 {
   int mod = NWORDS % size;
-  if (i < mod)
-    return (i+NWORDS-mod);
-  else
-    return (i+NWORDS-size-mod);
+  if (i < mod) {
+    return i + NWORDS - mod;
+  } else {
+    return i + NWORDS - size - mod;
+  }
 }
 
 void check_store_w(int size)
 {
   int i;
   for (i = 0; i < size; i++) {
-//    printf("wbuf[%3d] = 0x%02x, guess = 0x%02x\n",
-//           i, wbuf[i], circ_val_w(i, size));
+#if DEBUG
+    printf("wbuf[%3d] = 0x%02x, guess = 0x%02x\n",
+           i, wbuf[i], circ_val_w(i, size));
+#endif
     if (wbuf[i] != circ_val_w(i, size)) {
-      printf("ERROR(%3d): 0x%02x != 0x%02x\n",
-             i, wbuf[i], circ_val_w(i, size));
-      err++;
+        printf("ERROR(%3d): 0x%02x != 0x%02x\n",
+               i, wbuf[i], circ_val_w(i, size));
+        err++;
     }
   }
   for (i = size; i < NWORDS; i++) {
     if (wbuf[i] != i) {
-      printf("ERROR(%3d): 0x%02x != 0x%02x\n", i, wbuf[i], i);
-      err++;
+        printf("ERROR(%3d): 0x%02x != 0x%02x\n", i, wbuf[i], i);
+        err++;
     }
   }
 }
@@ -312,7 +335,7 @@ void circ_test_store_wnew_reg(void)
   unsigned int val = 0;
   int i;
   for (i = 0; i < NWORDS; i++) {
-    CIRC_STORE_WNEW_REG(val, p, wbuf, size*sizeof(int), 1);
+    CIRC_STORE_WNEW_REG(val, p, wbuf, size * sizeof(int), 1);
     val++;
   }
   check_store_w(size);
@@ -335,11 +358,13 @@ int main()
     bbuf[i] = i;
   }
 
-//  printf("NBYTES = %d\n", NBYTES);
-//  printf("Address of dbuf = 0x%p\n", dbuf);
-//  printf("Address of wbuf = 0x%p\n", wbuf);
-//  printf("Address of hbuf = 0x%p\n", hbuf);
-//  printf("Address of bbuf = 0x%p\n", bbuf);
+#if DEBUG
+  printf("NBYTES = %d\n", NBYTES);
+  printf("Address of dbuf = 0x%p\n", dbuf);
+  printf("Address of wbuf = 0x%p\n", wbuf);
+  printf("Address of hbuf = 0x%p\n", hbuf);
+  printf("Address of bbuf = 0x%p\n", bbuf);
+#endif
   circ_test_load_w_imm();
   circ_test_load_d_imm();
   circ_test_load_w_reg();

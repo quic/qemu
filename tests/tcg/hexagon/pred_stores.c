@@ -54,7 +54,7 @@ long long array64[10];
 long long init64[] = { 0LL, 1LL, 2LL, 3LL, 4LL, 5LL, 6LL, 7LL, 8LL, 9LL };
 int value = 0x12;
 long long value64 = 0x12LL;
-int err = 0;
+int err;
 int *p;
 long long *p64;
 
@@ -364,7 +364,7 @@ static void test_rr(void)
         p = &array[INDEX]; \
         INSN(T, p, INC, VAL); \
         check(array[INDEX], EXPECT); \
-        checkp(p, &array[INDEX + INC/4]); \
+        checkp(p, &array[INDEX + INC / 4]); \
         memcpy(array, init, sizeof(init)); \
         p = &array[INDEX]; \
         INSN(F, p, INC, 0xffff); \
@@ -377,7 +377,7 @@ static void test_rr(void)
         p64 = &array64[INDEX]; \
         INSN(T, p64, INC, VAL); \
         check64(array64[INDEX], EXPECT); \
-        checkp(p64, &array64[INDEX + INC/8]); \
+        checkp(p64, &array64[INDEX + INC / 8]); \
         memcpy(array64, init64, sizeof(init64)); \
         p64 = &array64[INDEX]; \
         INSN(F, p64, INC, VAL); \
@@ -534,20 +534,20 @@ static void test_pi(void)
     do { \
         memcpy(array, init, sizeof(init)); \
         INSN(T, &array[INDEX], OFF, VAL); \
-        check(array[INDEX + OFF/4], EXPECT); \
+        check(array[INDEX + OFF / 4], EXPECT); \
         memcpy(array, init, sizeof(init)); \
         INSN(F, &array[INDEX], OFF, VAL); \
-        check(array[INDEX + OFF/4], init[INDEX + OFF/4]); \
+        check(array[INDEX + OFF / 4], init[INDEX + OFF / 4]); \
     } while (0)
 
 #define do_test64_io(INSN, T, F, INDEX, OFF, VAL, EXPECT) \
     do { \
         memcpy(array64, init64, sizeof(init64)); \
         INSN(T, &array64[INDEX], OFF, VAL); \
-        check64(array64[INDEX + OFF/8], EXPECT); \
+        check64(array64[INDEX + OFF / 8], EXPECT); \
         memcpy(array64, init64, sizeof(init64)); \
         INSN(F, &array64[INDEX], OFF, VAL); \
-        check64(array64[INDEX + OFF/8], init64[INDEX + OFF/8]); \
+        check64(array64[INDEX + OFF / 8], init64[INDEX + OFF / 8]); \
     } while (0)
 
 static void test_io(void)
@@ -606,7 +606,7 @@ static void test_io(void)
          : : "r"(ARG), "r"(VAL) \
          : "p0", "memory")
 #define pstore_new_X_old_abs(ARG, ADDR, VAL, PRED, SIZE) \
-    asm ( "p0 = cmp.eq(%0, #1)\n\t" \
+    asm ("p0 = cmp.eq(%0, #1)\n\t" \
          "{\n\t" \
          "    r5 = %1\n\t" \
          "    if (" #PRED ") mem" #SIZE "(##" #ADDR ") = r5.new\n\t" \

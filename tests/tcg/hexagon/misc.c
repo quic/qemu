@@ -181,7 +181,7 @@ static inline void S4_storeirifnew_io(void *p, int pred)
                : "p0", "memory");
 }
 
-int err = 0;
+int err;
 
 #define check(VAL, EXPECT) \
   if (VAL != EXPECT) { \

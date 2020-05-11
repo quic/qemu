@@ -25,7 +25,7 @@
  */
 
 #define MEM_NOSHUF32(NAME, ST_TYPE, LD_TYPE, ST_OP, LD_OP) \
-static inline unsigned int NAME(ST_TYPE *p, LD_TYPE *q, ST_TYPE x) \
+static inline unsigned int NAME(ST_TYPE * p, LD_TYPE * q, ST_TYPE x) \
 { \
     unsigned int ret; \
     asm volatile("{\n\t" \
@@ -39,7 +39,7 @@ static inline unsigned int NAME(ST_TYPE *p, LD_TYPE *q, ST_TYPE x) \
 }
 
 #define MEM_NOSHUF64(NAME, ST_TYPE, LD_TYPE, ST_OP, LD_OP) \
-static inline unsigned long long NAME(ST_TYPE *p, LD_TYPE *q, ST_TYPE x) \
+static inline unsigned long long NAME(ST_TYPE * p, LD_TYPE * q, ST_TYPE x) \
 { \
     unsigned long long ret; \
     asm volatile("{\n\t" \
@@ -124,7 +124,7 @@ typedef union {
     unsigned char ub[8];
 } Memory;
 
-int err = 0;
+int err;
 
 #define check32(N, EXPECT) \
   if (N != EXPECT) { \
@@ -137,7 +137,6 @@ int err = 0;
     printf("ERROR: 0x%08llx != 0x%08llx\n", N, EXPECT); \
     err++; \
 }
-
 
 int main()
 {

@@ -17,42 +17,46 @@
 
 #include <stdio.h>
 
-/*
- *  Make sure that two stores in the same packet honor proper
- *  semantics: slot 1 executes first, then slot 0.
- *  This is important when the addresses overlap.
- */
-static inline void dual_stores(int *p, char *q, int x, char y)
+int gA[401];
+int gB[401];
+int gC[401];
+
+void vector_add_int()
 {
-  asm volatile("{\n\t"
-               "    memw(%0) = %2\n\t"
-               "    memb(%1) = %3\n\t"
-               "}\n"
-               :: "r"(p), "r"(q), "r"(x), "r"(y)
-               : "memory");
-}
-
-typedef union {
-    int word;
-    char byte;
-} Dual;
-
-int err;
-
-#define check(D, EXPECT) \
-  if (D.word != EXPECT) { \
-    printf("ERROR: 0x%08x != 0x%08x\n", D.word, EXPECT); \
-    err++; \
+  int i;
+  for (i = 0; i < 400; i++) {
+    gA[i] = gB[i] + gC[i];
+  }
 }
 
 int main()
 {
-    Dual d;
-
-    d.word = ~0;
-    dual_stores(&d.word, &d.byte, 0x12345678, 0xff);
-    check(d, 0x123456ff);
-
-    puts(err ? "FAIL" : "PASS");
-    return err;
+  int error = 0;
+  int i;
+  for (i = 0; i < 400; i++) {
+    gB[i] = i * 2;
+    gC[i] = i * 3;
+  }
+  gA[400] = 17;
+  vector_add_int();
+  for (i = 0; i < 400; i++) {
+    if (gA[i] != i * 5) {
+        error++;
+        printf("ERROR: gB[%d] = %d\t", i, gB[i]);
+        printf("gC[%d] = %d\t", i, gC[i]);
+        printf("gA[%d] = %d\n", i, gA[i]);
+    }
+  }
+  if (gA[400] != 17) {
+    error++;
+    printf("ERROR: Overran the buffer\n");
+  }
+  if (!error) {
+    printf("PASS\n");
+    return 0;
+  } else {
+    printf("FAIL\n");
+    return 1;
+  }
 }
+

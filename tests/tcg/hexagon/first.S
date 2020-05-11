@@ -45,7 +45,11 @@ _start:
 .long 1f - 0f          /* name length */
 .long 3f - 2f          /* data length */
 .long  1               /* note type */
-0:     .asciz "GNU"    /* vendor name seems like this should be MUSL but lldb doesn't agree.*/
+
+/*
+ * vendor name seems like this should be MUSL but lldb doesn't agree.
+ */
+0:     .asciz "GNU"
 1:     .align 4
 2:     .long 0 /* linux */
        .long 3,0,0
