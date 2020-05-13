@@ -277,12 +277,12 @@ def gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i):
 ## Generate the DEF_HELPER prototype for an instruction
 ##     For A2_add: Rd32=add(Rs32,Rt32)
 ##     We produce:
-##         #ifndef fWRAP_A2_add
+##         #ifndef fGEN_TCG_A2_add
 ##         DEF_HELPER_3(A2_add, s32, env, s32, s32)
 ##         #endif
 ##
 def gen_helper_prototype(f, tag, regs, imms):
-    f.write('#ifndef fWRAP_%s\n' % tag)
+    f.write('#ifndef fGEN_TCG_%s\n' % tag)
     numresults = 0
     numscalarresults = 0
     numscalarreadwrite = 0
@@ -508,11 +508,11 @@ def genptr_dst_write_opn(f,regtype, regid, tag):
 ##       DECL_RREG_t(RtV, RtN, 2, 0);
 ##       READ_RREG_s(RsV, RsN);
 ##       READ_RREG_t(RtV, RtN);
-##       fWRAP_A2_add(
-##       do {
+##       #ifdef fGEN_TCG_A2_add
+##       fGEN_TCG_A2_add({ RdV=RsV+RtV;});
+##       #else
 ##       gen_helper_A2_add(RdV, cpu_env, RsV, RtV);
-##       while (0),
-##       { RdV=RsV+RtV;});
+##       #endif
 ##       WRITE_RREG_d(RdN, RdV);
 ##       FREE_RREG_d(RdV);
 ##       FREE_RREG_s(RsV);
@@ -544,8 +544,10 @@ def gen_tcg_func(f, tag, regs, imms):
         if (is_read(regid)):
             genptr_src_read_opn(f,regtype,regid)
 
+    f.write("#ifdef fGEN_TCG_%s\n" % tag)
+    f.write("fGEN_TCG_%s(%s);\n" % (tag, semdict[tag]))
+    f.write("#else\n")
     ## Generate the call to the helper
-    f.write("fWRAP_%s(\n" % tag)
     f.write("do {\n")
     for immlett,bits,immshift in imms:
         gen_helper_decl_imm(f,immlett)
@@ -586,8 +588,8 @@ def gen_tcg_func(f, tag, regs, imms):
     f.write(";\n")
     for immlett,bits,immshift in imms:
         gen_helper_free_imm(f,immlett)
-    f.write("} while (0)")
-    f.write(",\n%s);\n" % semdict[tag] )
+    f.write("} while (0);\n")
+    f.write("#endif\n")
 
     ## Write all the outputs
     for regtype,regid,toss,numregs in regs:
@@ -735,7 +737,7 @@ def gen_helper_return_opn(f, regtype, regid, i):
 ## Generate the TCG code to call the helper
 ##     For A2_add: Rd32=add(Rs32,Rt32), { RdV=RsV+RtV;}
 ##     We produce:
-##       #ifndef fWRAP_A2_add
+##       #ifndef fGEN_TCG_A2_add
 ##       int32_t HELPER(A2_add)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
 ##       {
 ##       uint32_t slot = 4; slot = slot;
@@ -747,7 +749,7 @@ def gen_helper_return_opn(f, regtype, regid, i):
 ##       #endif
 ##
 def gen_helper_definition(f, tag, regs, imms):
-    f.write('#ifndef fWRAP_%s\n' % tag)
+    f.write('#ifndef fGEN_TCG_%s\n' % tag)
     numresults = 0
     numscalarresults = 0
     numscalarreadwrite = 0
@@ -912,20 +914,6 @@ for tag in tags:
     gen_qemu(f, tag)
 
 realf = open('qemu_def_generated.h','w')
-realf.write(f.getvalue())
-realf.close()
-f.close()
-
-##
-## Generate the qemu_wrap_generated.h file
-##     Gives a default definition of fWRAP_<tag> for each instruction
-##
-f = StringIO()
-for tag in tags:
-    f.write( "#ifndef fWRAP_%s\n" % tag )
-    f.write( "#define fWRAP_%s(GENHLPR, SHORTCODE) GENHLPR\n" % tag )
-    f.write( "#endif\n\n" )
-realf = open('qemu_wrap_generated.h', 'wt')
 realf.write(f.getvalue())
 realf.close()
 f.close()

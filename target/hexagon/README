@@ -68,8 +68,9 @@ The generator uses the operand naming conventions (see large comment in
 do_qemu.py) to determine the signature of the helper function.  Here is the
 result for A2_add from qemu_def_generated.h
 
+
 DEF_QEMU(A2_add,{ RdV=RsV+RtV;},
-#ifndef fWRAP_A2_add
+#ifndef fGEN_TCG_A2_add
 DEF_HELPER_3(A2_add, s32, env, s32, s32)
 #endif
 ,
@@ -80,18 +81,20 @@ DECL_RREG_s(RsV, RsN, 1, 0);
 DECL_RREG_t(RtV, RtN, 2, 0);
 READ_RREG_s(RsV, RsN);
 READ_RREG_t(RtV, RtN);
-fWRAP_A2_add(
+#ifdef fGEN_TCG_A2_add
+fGEN_TCG_A2_add({ RdV=RsV+RtV;});
+#else
 do {
 gen_helper_A2_add(RdV, cpu_env, RsV, RtV);
-} while (0),
-{ RdV=RsV+RtV;});
+} while (0);
+#endif
 WRITE_RREG_d(RdN, RdV);
 FREE_RREG_d(RdV);
 FREE_RREG_s(RsV);
 FREE_RREG_t(RtV);
 /* A2_add */
 },
-#ifndef fWRAP_A2_add
+#ifndef fGEN_TCG_A2_add
 int32_t HELPER(A2_add)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
 {
 uint32_t slot = 4; slot = slot;
@@ -111,8 +114,8 @@ and READ will assign from the TCGv corresponding to the GPR, and FREE doesn't
 have to do anything.  Also, note that the WRITE macros update the disassembly
 context to be processed when the packet commits (see "Packet Semantics" below).
 
-Note the fWRAP_A2_add macro around the gen_helper call.  Each instruction has a fWRAP_<tag> macro that takes 2 arguments
-    gen_helper call
+Note the fGEN_TCG_A2_add macro.  This macro allows us to generate TCG code instead
+of a call to the helper.  If defined, the macro takes 1 argument.
     C semantics (aka short code)
 
 This allows the code generator to override the auto-generated code.  In some
@@ -120,20 +123,14 @@ cases this is necessary for correct execution.  We can also override for
 faster emulation.  For example, calling a helper for add is more expensive
 than generating a TCG add operation.
 
-The qemu_wrap_generated.h file contains a default fWRAP_<tag> for each
-instruction.  The default is to invoke the gen_helper code.
-    #ifndef fWRAP_A2_add
-    #define fWRAP_A2_add(GENHLPR, SHORTCODE) GENHLPR
-    #endif
-
 The helper_overrides.h file has any overrides. For example,
-    #define fWRAP_A2_add(GENHLPR, SHORTCODE) \
+    #define fGEN_TCG_A2_add(GENHLPR, SHORTCODE) \
         tcg_gen_add_tl(RdV, RsV, RtV)
 
 This file is included twice
 1) In genptr.c, it overrides the semantics of the desired instructions
 2) In helper.h, it prevents the generation of helpers for overridden
-   instructions.  Notice the #ifndef fWRAP_A2_add above.
+   instructions.  Notice the #ifndef fGEN_TCG_A2_add above.
 
 The instruction semantics C code heavily on macros.  In cases where the C
 semantics are specified only with macros, we can override the default with
@@ -145,10 +142,10 @@ a == address: zero out the data cache line at the given address):
     Instruction semantics  "{fEA_REG(RsV); fDCZEROA(EA);}"
 
 In helper_overrides.h, we use the shortcode
-#define fWRAP_Y2_dczeroa(GENHLPR, SHORTCODE) SHORTCODE
+#define fGEN_TCG_Y2_dczeroa(SHORTCODE) SHORTCODE
 
 In other cases, just a little bit of wrapper code needs to be written.
-    #define fWRAP_tmp(SHORTCODE) \
+    #define fGEN_TCG_tmp(SHORTCODE) \
     { \
         TCGv tmp = tcg_temp_new(); \
         SHORTCODE; \
@@ -163,7 +160,7 @@ pointer (r29)
     Instruction semantics  "{fEA_RI(fREAD_SP(),uiV); fLOAD(1,8,u,EA,RddV);}"
 
 In helper_overrides.h you'll see
-    #define fWRAP_SL2_loadrd_sp(GENHLPR, SHORTCODE)      fWRAP_tmp(SHORTCODE)
+    #define fGEN_TCG_SL2_loadrd_sp(SHORTCODE)      fGEN_TCG_tmp(SHORTCODE)
 
 There are also cases where we brute force the TCG code generation.  The
 allocframe and deallocframe instructions are examples.  Other examples are
@@ -206,12 +203,12 @@ important functions in this file are
 
 genptr.c
 genptr_helpers.h
-helper_overrides.h
+gen_tcg.h
 
-These file create a function for each instruction.  It is mostly composed of
-fWRAP_<tag> definitions followed by including qemu_def_generated.h.  The
+These files create a function for each instruction.  It is mostly composed of
+fGEN_TCG_<tag> definitions followed by including qemu_def_generated.h.  The
 genptr_helpers.h file contains helper functions that are invoked by the macros
-in helper_overrides.h and macros.h
+in gen_tcg.h and macros.h
 
 op_helper.c
 

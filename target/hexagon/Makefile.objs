@@ -72,7 +72,6 @@ $(SEMANTICS): $(GEN_SEMANTICS)
 # We use the do_qemu.py script to generate the following files
 #
 QEMU_DEF_H = $(BUILD_USER_DIR)/qemu_def_generated.h
-QEMU_WRAP_H = $(BUILD_USER_DIR)/qemu_wrap_generated.h
 OPCODES_DEF_H = $(BUILD_USER_DIR)/opcodes_def_generated.h
 OP_ATTRIBS_H = $(BUILD_USER_DIR)/op_attribs_generated.h
 OP_REGS_H = $(BUILD_USER_DIR)/op_regs_generated.h
@@ -80,7 +79,6 @@ PRINTINSN_H = $(BUILD_USER_DIR)/printinsn_generated.h
 
 GENERATED_HEXAGON_FILES = \
     $(QEMU_DEF_H) \
-    $(QEMU_WRAP_H) \
     $(OPCODES_DEF_H) \
     $(OP_ATTRIBS_H) \
     $(OP_REGS_H) \
