@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright (c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -73,202 +73,84 @@
 #define SYS_MKDIR           0x183
 #define SYS_RMDIR           0x184
 
-static size1u_t swi_mem_read1(CPUHexagonState *env, vaddr_t paddr)
-
-{
-    size1u_t data = 0;
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    data = cpu_ldub_mmuidx_ra(env, paddr, mmu_idx, GETPC());
-
-    return data;
-}
-
-static size2u_t swi_mem_read2(CPUHexagonState *env, vaddr_t paddr)
-
-{
-    size2u_t data = 0;
-    size1u_t tdata;
-    int i;
-
-    for (i = 0; i < 2; i++) {
-        tdata = swi_mem_read1(env, paddr + i);
-        data = ((size2u_t) tdata << (8 * i)) | data;
-    }
-
-    return data;
-}
-
-static target_ulong swi_mem_read4(CPUHexagonState *env, vaddr_t paddr)
-
-{
-    target_ulong data = 0;
-    size1u_t tdata;
-    int i;
-
-    for (i = 0; i < 4; i++) {
-        tdata = swi_mem_read1(env, paddr + i);
-        data = ((target_ulong) tdata << (8 * i)) | data;
-    }
-
-    return data;
-}
-
-
-static size8u_t swi_mem_read8(CPUHexagonState *env, vaddr_t paddr)
-
-{
-    size8u_t data = 0;
-    size1u_t tdata;
-    int i;
-
-    for (i = 0; i < 8; i++) {
-        tdata = swi_mem_read1(env, paddr + i);
-        data = ((size8u_t) tdata << (8 * i)) | data;
-    }
-
-    return data;
-}
-
-static void swi_mem_write1(CPUHexagonState *env, vaddr_t paddr, size1u_t value)
-
-{
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    cpu_stb_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
-}
-
-static void swi_mem_write2(CPUHexagonState *env, vaddr_t paddr, size2u_t value)
-
-{
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    cpu_stw_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
-}
-
-static void swi_mem_write4(CPUHexagonState *env, vaddr_t paddr,
-    target_ulong value)
-
-{
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    cpu_stl_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
-}
-
-static void swi_mem_write8(CPUHexagonState *env, vaddr_t paddr, size8u_t value)
-{
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    cpu_stq_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
-}
-
-static void tools_memory_read(CPUHexagonState *env, vaddr_t vaddr, int size,
-    void *retptr)
-
-{
-    vaddr_t paddr = vaddr;
-
-    switch (size) {
-    case 1:
-        (*(size1u_t *) retptr) = swi_mem_read1(env, paddr);
-        break;
-    case 2:
-        (*(size2u_t *) retptr) = swi_mem_read2(env, paddr);
-        break;
-    case 4:
-        (*(target_ulong *) retptr) = swi_mem_read4(env, paddr);
-        break;
-    case 8:
-        (*(size8u_t *) retptr) = swi_mem_read8(env, paddr);
-        break;
-    default:
-        printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
-    }
-}
-
-static void tools_memory_write(CPUHexagonState *env, vaddr_t vaddr, int size,
-    size8u_t data)
-{
-    paddr_t paddr = vaddr;
-
-    switch (size) {
-    case 1:
-        swi_mem_write1(env, paddr, (size1u_t) data);
-        log_store32(env, paddr, (size4u_t)data, 1, 0);
-        break;
-    case 2:
-        swi_mem_write2(env, paddr, (size2u_t) data);
-        log_store32(env, paddr, (size4u_t)data, 2, 0);
-        break;
-    case 4:
-        swi_mem_write4(env, paddr, (target_ulong) data);
-        log_store32(env, paddr, (size4u_t)data, 4, 0);
-        break;
-    case 8:
-        swi_mem_write8(env, paddr, (size8u_t) data);
-        log_store32(env, paddr, data, 8, 0);
-        break;
-    default:
-        printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
-    }
-}
-
-static int tools_memory_readLocked(CPUHexagonState *env, vaddr_t vaddr,
-    int size, void *retptr)
-
-{
-    vaddr_t paddr = vaddr;
-    int ret = 0;
-
-    switch (size) {
-    case 4:
-        (*(target_ulong *) retptr) = swi_mem_read4(env, paddr);
-        break;
-    case 8:
-        (*(size8u_t *) retptr) = swi_mem_read8(env, paddr);
-        break;
-    default:
-        printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
-        ret = 1;
-        break;
-     }
-
-    return ret;
-}
-
-static int tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
-    int size, size8u_t data)
-
-{
-    paddr_t paddr = vaddr;
-    int ret = 0;
-
-    switch (size) {
-    case 4:
-        swi_mem_write4(env, paddr, (target_ulong) data);
-        log_store32(env, vaddr, (size4u_t)data, 4, 0);
-        break;
-    case 8:
-        swi_mem_write8(env, paddr, (size8u_t) data);
-        log_store64(env, vaddr, data, 8, 0);
-        break;
-    default:
-        printf("%s:%d: ERROR: bad size = %d!\n", __FUNCTION__, __LINE__, size);
-        ret = 1;
-        break;
-    }
-
-    return ret;
-}
-
 #define arch_get_thread_reg(ENV,REG)     ((ENV)->gpr[(REG)])
 #define arch_set_thread_reg(ENV,REG,VAL) ((ENV)->gpr[(REG)] = (VAL))
-#define arch_set_global_reg(ENV,REG,VAL) ((ENV)->sreg[(REG)] = (VAL))
-#define arch_get_thread_sreg(ENV, REG)     ((ENV)->sreg[(REG)])
-#define DEBUGMEMORYREADg(ADDR,SIZE,PTR) \
-    tools_memory_read(env, ADDR, SIZE, PTR)
-#define DEBUGMEMORYWRITE(ADDR,SIZE,DATA) \
-    tools_memory_write(env,ADDR,SIZE,(size8u_t)DATA)
-#define DEBUGMEMORYREADgLocked(ADDR,SIZE,PTR) \
-    tools_memory_readLocked(env, ADDR, SIZE, PTR)
-#define DEBUGMEMORYWRITELOCKED(ADDR,SIZE,DATA) \
-    tools_memory_write_locked(env,ADDR,SIZE,(size8u_t)DATA)
 
+#define arch_get_system_reg(ENV,REG)     (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
+    (ENV)->t_sreg[(REG)] : (ENV)->g_sreg[(REG)])
+#define arch_set_system_reg(ENV,REG,VAL) (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
+    ((ENV)->t_sreg[(REG)] = (VAL)) : ((ENV)->g_sreg[(REG)] = (VAL)))
+
+#define DEBUGMEMORYREADENV(ENV,ADDR,SIZE,PTR) \
+    hexagon_tools_memory_read(ENV, ADDR, SIZE, PTR)
+#define DEBUGMEMORYREAD(ADDR,SIZE,PTR) \
+    hexagon_tools_memory_read(env, ADDR, SIZE, PTR)
+
+#define DEBUGMEMORYREAD(ADDR,SIZE,PTR) \
+    hexagon_tools_memory_read(env, ADDR, SIZE, PTR)
+#define DEBUGMEMORYWRITE(ADDR,SIZE,DATA) \
+    hexagon_tools_memory_write(env,ADDR,SIZE,(size8u_t)DATA)
+#define DEBUGMEMORYREADLocked(ADDR,SIZE,PTR) \
+    hexagon_tools_memory_readLocked(env, ADDR, SIZE, PTR)
+#define DEBUGMEMORYWRITELOCKED(ADDR,SIZE,DATA) \
+    hexagon_tools_memory_write_locked(env,ADDR,SIZE,(size8u_t)DATA)
+
+void hexagon_create_cpu(CPUHexagonState *current_env, uint32_t mask)
+
+{
+    MachineState *machine = MACHINE(qdev_get_machine());
+    HexagonCPU *new_cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
+    CPUHexagonState *new_env = &new_cpu->env;
+    int htid;
+
+    new_env->cmdline = machine->kernel_cmdline;
+    new_env->hex_tlb = current_env->hex_tlb;
+    new_env->g_sreg = current_env->g_sreg;
+    new_env->g_sreg_new_value = current_env->g_sreg_new_value;
+    new_env->g_sreg_written = current_env->g_sreg_written;
+    HEX_DEBUG_LOG("%s: mask 0x%x, cpu 0x%p, g_sreg at 0x%p\n", __FUNCTION__, mask, new_cpu, new_env->g_sreg);
+
+    arch_set_system_reg(new_env, HEX_SREG_SSR,
+        SSR_EX | (HEX_EVENT_RESET & (SSR_CAUSE)));
+    if (mask == 0x2)
+        htid = 1;
+    else if (mask == 0x4)
+        htid = 2;
+    else if (mask == 0x8)
+        htid = 3;
+    else {
+        CPUState *cs = env_cpu(new_env);
+        cpu_abort(cs, "Error: Hexagon: Illegal start thread mask 0x%x", mask);
+    }
+    new_env->threadId = htid;
+    arch_set_system_reg(new_env, HEX_SREG_HTID, htid);
+
+    target_ulong evb = arch_get_system_reg(new_env, HEX_SREG_EVB);
+    target_ulong reset_inst;
+    DEBUGMEMORYREADENV(current_env, evb, 4, &reset_inst);
+    HEX_DEBUG_LOG("\tEVB = 0x%x, reset = 0x%x, new PC = 0x%x\n",
+      evb, reset_inst, evb);
+
+    //fCHECK_PCALIGN(addr);
+    new_env->branch_taken = 1;
+    new_env->next_PC = evb;
+    arch_set_thread_reg(new_env, HEX_REG_PC, new_env->next_PC);
+    target_ulong modectl = arch_get_system_reg(new_env, HEX_SREG_MODECTL);
+    modectl |= mask;
+    arch_set_system_reg(new_env, HEX_SREG_MODECTL, modectl);
+    CPUState *new_cs = env_cpu(new_env);
+    new_cs->exception_index = HEX_EVENT_NONE;
+}
+
+void hexagon_destroy_cpu(CPUHexagonState *env, uint32_t mask)
+
+{
+    HEX_DEBUG_LOG("%s: mask = 0x%x, htid %d\n", __FUNCTION__, mask, arch_get_system_reg(env, HEX_SREG_HTID));
+    target_ulong modectl = arch_get_system_reg(env, HEX_SREG_MODECTL);
+    modectl &= ~(0x1 << env->threadId);
+    arch_set_system_reg(env, HEX_SREG_MODECTL, modectl);
+    cpu_stop_current();
+}
 
 static int MapError(int ERR)
 {
@@ -284,8 +166,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     int i = 0, c;
     int retval = 1;
 
-    HEX_DEBUG_LOG("%s:%d: what_swi 0x%x, swi_info 0x%x\n",
-                  __FUNCTION__, __LINE__, what_swi, swi_info);
+    HEX_DEBUG_LOG("%s:%d: tid %d, what_swi 0x%x, swi_info 0x%x\n",
+                  __FUNCTION__, __LINE__, env->threadId, what_swi, swi_info);
     switch (what_swi) {
     case SYS_HEAPINFO:
     {
@@ -293,7 +175,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 #if 0
         size4u_t bufptr;
 
-        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
+        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
          DEBUGMEMORYWRITE(bufptr+0, 4, 0);
         DEBUGMEMORYWRITE(bufptr+1, 4, 0);
         DEBUGMEMORYWRITE(bufptr+2, 4, 0);
@@ -308,8 +190,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         target_ulong bufptr;
         target_ulong bufsize;
 
-        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
-        DEBUGMEMORYREADg(swi_info + 4, 4, &bufsize);
+        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
+        DEBUGMEMORYREAD(swi_info + 4, 4, &bufsize);
 
         const target_ulong to_copy =
             (bufsize <= (unsigned int) strlen(env->cmdline))
@@ -331,9 +213,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         HEX_DEBUG_LOG("%s:%d: SYS_EXCEPTION\n\tProgram terminated successfully\n",
                        __FUNCTION__, __LINE__);
         target_ulong ret = -1;
-        DEBUGMEMORYREADg(swi_info, 4, &ret);
+        DEBUGMEMORYREAD(swi_info, 4, &ret);
 
-        arch_set_global_reg(env, HEX_SREG_MODECTL, 0);
+        arch_set_system_reg(env, HEX_SREG_MODECTL, 0);
 
         exit(ret);
     }
@@ -342,7 +224,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_WRITEC:
     {
         FILE *fp = stdout;
-        DEBUGMEMORYREADg(swi_info, 1, &c);
+        DEBUGMEMORYREAD(swi_info, 1, &c);
         fprintf(fp, "%c", c);
         fflush(fp);
     }
@@ -363,7 +245,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         FILE *fp = stdout;
         i = 0;
         do {
-            DEBUGMEMORYREADg(swi_info + i, 1, &c);
+            DEBUGMEMORYREAD(swi_info + i, 1, &c);
             fprintf(fp, "%c", c);
             i++;
         } while (c);
@@ -381,9 +263,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int count;
         int retval;
 
-        DEBUGMEMORYREADg(swi_info, 4, &fd);
-        DEBUGMEMORYREADg(swi_info + 4, 4, &bufaddr);
-        DEBUGMEMORYREADg(swi_info + 8, 4, &count);
+        DEBUGMEMORYREAD(swi_info, 4, &fd);
+        DEBUGMEMORYREAD(swi_info + 4, 4, &bufaddr);
+        DEBUGMEMORYREAD(swi_info + 8, 4, &count);
 
         if ((buf = (char *) g_malloc(count)) == NULL) {
             printf("%s:%d: ERROR: Couldn't allocate temporary buffer (%d bytes)",
@@ -391,7 +273,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         }
 
         for (i = 0; i < count; i++) {
-            DEBUGMEMORYREADg(bufaddr + i, 1, &buf[i]);
+            DEBUGMEMORYREAD(bufaddr + i, 1, &buf[i]);
         }
         retval = write(fd, buf, count);
         if (retval == count) {
@@ -414,9 +296,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int count;
         int retval;
 
-        DEBUGMEMORYREADg(swi_info, 4, &fd);
-        DEBUGMEMORYREADg(swi_info + 4, 4, &bufaddr);
-        DEBUGMEMORYREADg(swi_info + 8, 4, &count);
+        DEBUGMEMORYREAD(swi_info, 4, &fd);
+        DEBUGMEMORYREAD(swi_info + 4, 4, &bufaddr);
+        DEBUGMEMORYREAD(swi_info + 8, 4, &count);
 
         if ((buf = (char *) g_malloc(count)) == NULL) {
             CPUState *cs = env_cpu(env);
@@ -450,13 +332,13 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int rc;
         struct flock fl;
 
-        DEBUGMEMORYREADg(swi_info, 4, &fcntlFileDesc);
-        DEBUGMEMORYREADg(swi_info + 4, 4, &fcntlCmd);
-        DEBUGMEMORYREADg(swi_info + 8, 4, &fcntlPBA);
-        DEBUGMEMORYREADg(fcntlPBA, 4, &sysfcntl.l_type);
-        DEBUGMEMORYREADg(fcntlPBA + 0x4, 4, &sysfcntl.l_whence);
-        DEBUGMEMORYREADg(fcntlPBA + 0x8, 4, &sysfcntl.l_start);
-        DEBUGMEMORYREADg(fcntlPBA + 0xc, 4, &sysfcntl.l_len);
+        DEBUGMEMORYREAD(swi_info, 4, &fcntlFileDesc);
+        DEBUGMEMORYREAD(swi_info + 4, 4, &fcntlCmd);
+        DEBUGMEMORYREAD(swi_info + 8, 4, &fcntlPBA);
+        DEBUGMEMORYREAD(fcntlPBA, 4, &sysfcntl.l_type);
+        DEBUGMEMORYREAD(fcntlPBA + 0x4, 4, &sysfcntl.l_whence);
+        DEBUGMEMORYREAD(fcntlPBA + 0x8, 4, &sysfcntl.l_start);
+        DEBUGMEMORYREAD(fcntlPBA + 0xc, 4, &sysfcntl.l_len);
 
         if (sysfcntl.l_type == DK_F_GETLK)
             fl.l_type = F_GETLK;
@@ -512,9 +394,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         };
 
 
-        DEBUGMEMORYREADg(swi_info, 4, &physicalFilenameAddr);
-        DEBUGMEMORYREADg(swi_info + 4, 4, &filemode);
-        DEBUGMEMORYREADg(swi_info + 8, 4, &length);
+        DEBUGMEMORYREAD(swi_info, 4, &physicalFilenameAddr);
+        DEBUGMEMORYREAD(swi_info + 4, 4, &filemode);
+        DEBUGMEMORYREAD(swi_info + 8, 4, &length);
 
         if (length >= BUFSIZ) {
             printf("%s:%d: ERROR: filename too large\n",
@@ -523,7 +405,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 
         i = 0;
         do {
-            DEBUGMEMORYREADg(physicalFilenameAddr + i, 1, &filename[i]);
+            DEBUGMEMORYREAD(physicalFilenameAddr + i, 1, &filename[i]);
             i++;
         } while (filename[i - 1]);
         HEX_DEBUG_LOG("fname %s, fmode %d, len %d\n", filename, filemode, length);
@@ -552,7 +434,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         HEX_DEBUG_LOG("%s:%d: SYS_CLOSE\n", __FUNCTION__, __LINE__);
         int fd;
-        DEBUGMEMORYREADg(swi_info, 4, &fd);
+        DEBUGMEMORYREAD(swi_info, 4, &fd);
 
         if (fd == 0 || fd == 1 || fd == 2) {
             /* silently ignore request to close stdin/stdout */
@@ -577,7 +459,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_ISTTY:
     {
         int fd;
-        DEBUGMEMORYREADg(swi_info, 4, &fd);
+        DEBUGMEMORYREAD(swi_info, 4, &fd);
         arch_set_thread_reg(env, HEX_REG_R00,
                             isatty(fd));
     }
@@ -589,8 +471,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int pos;
         int retval;
 
-        DEBUGMEMORYREADg(swi_info, 4, &fd);
-        DEBUGMEMORYREADg(swi_info + 4, 4, &pos);
+        DEBUGMEMORYREAD(swi_info, 4, &fd);
+        DEBUGMEMORYREAD(swi_info + 4, 4, &pos);
 
         retval = lseek(fd, pos, SEEK_SET);
         if (retval == -1) {
@@ -608,7 +490,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         off_t len;
         int fd;
 
-        DEBUGMEMORYREADg(swi_info, 4, &fd);
+        DEBUGMEMORYREAD(swi_info, 4, &fd);
 
         oldpos = lseek(fd, 0, SEEK_CUR);
         if (oldpos == -1) {
@@ -634,7 +516,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
   case SYS_COREDUMP:
       printf("CRASH!\n");
       printf("I think the exception was: ");
-      switch (0x0ff & arch_get_thread_sreg(env, HEX_SREG_SSR)) {
+      switch (0x0ff & arch_get_system_reg(env, HEX_SREG_SSR)) {
       case 0x43:
           printf("0x43, NMI");
           break;
@@ -650,19 +532,19 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
       case 0x03:
           printf("0x03, Exception observed when EX = 1 (double exception)");
           break;
-      case HEX_EXCP_FETCH_NO_XPAGE:
+      case HEX_CAUSE_FETCH_NO_XPAGE:
           printf("0x%x, Privilege violation: User/Guest mode execute"
                  " to page with no execute permissions",
-                 HEX_EXCP_FETCH_NO_XPAGE);
+                 HEX_CAUSE_FETCH_NO_XPAGE);
           break;
-      case HEX_EXCP_FETCH_NO_UPAGE:
+      case HEX_CAUSE_FETCH_NO_UPAGE:
           printf("0x%x, Privilege violation: "
                  "User mode exececute to page with no user permissions",
-                 HEX_EXCP_FETCH_NO_UPAGE);
+                 HEX_CAUSE_FETCH_NO_UPAGE);
           break;
-      case HEX_EXCP_INVALID_PACKET:
+      case HEX_CAUSE_INVALID_PACKET:
           printf("0x%x, Invalid packet",
-                 HEX_EXCP_INVALID_PACKET);
+                 HEX_CAUSE_INVALID_PACKET);
           break;
       case 0x1a:
           printf("0x1a, Privelege violation: guest mode insn in user mode");
@@ -679,36 +561,36 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
           break;
       case 0x20:
           printf("0x20, Misaligned Load @ 0x%x",
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+                 arch_get_system_reg(env, HEX_SREG_BADVA));
           break;
       case 0x21:
           printf("0x21, Misaligned Store @ 0x%x",
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+                 arch_get_system_reg(env, HEX_SREG_BADVA));
           break;
-      case HEX_EXCP_PRIV_NO_READ:
+      case HEX_CAUSE_PRIV_NO_READ:
           printf("0x%x, Privilege violation: user/guest read permission @ 0x%x",
-                 HEX_EXCP_PRIV_NO_READ,
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+                 HEX_CAUSE_PRIV_NO_READ,
+                 arch_get_system_reg(env, HEX_SREG_BADVA));
           break;
-      case HEX_EXCP_PRIV_NO_WRITE:
+      case HEX_CAUSE_PRIV_NO_WRITE:
           printf("0x%x, Privilege violation: "
                  "user/guest write permission @ 0x%x",
-                 HEX_EXCP_PRIV_NO_WRITE,
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+                 HEX_CAUSE_PRIV_NO_WRITE,
+                 arch_get_system_reg(env, HEX_SREG_BADVA));
           break;
-      case HEX_EXCP_PRIV_NO_UREAD:
+      case HEX_CAUSE_PRIV_NO_UREAD:
           printf("0x%x, Privilege violation: user read permission @ 0x%x",
-                 HEX_EXCP_PRIV_NO_UREAD,
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+                 HEX_CAUSE_PRIV_NO_UREAD,
+                 arch_get_system_reg(env, HEX_SREG_BADVA));
           break;
-      case HEX_EXCP_PRIV_NO_UWRITE:
+      case HEX_CAUSE_PRIV_NO_UWRITE:
           printf("0x%x, Privilege violation: user write permission @ 0x%x",
-                 HEX_EXCP_PRIV_NO_UWRITE,
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+                 HEX_CAUSE_PRIV_NO_UWRITE,
+                 arch_get_system_reg(env, HEX_SREG_BADVA));
           break;
       case 0x26:
           printf("0x26, Coprocessor VMEM address error. @ 0x%x",
-                 arch_get_thread_sreg(env, HEX_SREG_BADVA));
+                 arch_get_system_reg(env, HEX_SREG_BADVA));
           break;
       default:
           printf("Don't know");
@@ -723,7 +605,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int fd;
         off_t current_pos;
 
-        DEBUGMEMORYREADg(swi_info, 4, &fd);
+        DEBUGMEMORYREAD(swi_info, 4, &fd);
 
         current_pos = lseek(fd, 0, SEEK_CUR);
         if (current_pos == -1) {
@@ -743,9 +625,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int ftry = 0;
         buf[39] = 0;
 
-        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
-        DEBUGMEMORYREADg(swi_info + 4, 4, &id);
-        DEBUGMEMORYREADg(swi_info + 8, 4, &buflen);
+        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
+        DEBUGMEMORYREAD(swi_info + 4, 4, &id);
+        DEBUGMEMORYREAD(swi_info + 8, 4, &buflen);
 
         if (buflen < 40) {
             CPUState *cs = env_cpu(env);
@@ -773,10 +655,10 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         size4u_t bufptr;
         int retval;
 
-        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
+        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
         i = 0;
         do {
-            DEBUGMEMORYREADg(bufptr + i, 1, &buf[i]);
+            DEBUGMEMORYREAD(bufptr + i, 1, &buf[i]);
             i++;
         } while (buf[i - 1]);
 
@@ -795,16 +677,16 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         size4u_t bufptr, bufptr2;
         int retval;
 
-        DEBUGMEMORYREADg(swi_info, 4, &bufptr);
-        DEBUGMEMORYREADg(swi_info + 8, 4, &bufptr2);
+        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
+        DEBUGMEMORYREAD(swi_info + 8, 4, &bufptr2);
         i = 0;
         do {
-            DEBUGMEMORYREADg(bufptr + i, 1, &buf[i]);
+            DEBUGMEMORYREAD(bufptr + i, 1, &buf[i]);
             i++;
         } while (buf[i - 1]);
         i = 0;
         do {
-            DEBUGMEMORYREADg(bufptr2 + i, 1, &buf2[i]);
+            DEBUGMEMORYREAD(bufptr2 + i, 1, &buf2[i]);
             i++;
         } while (buf2[i - 1]);
 
@@ -842,6 +724,21 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_ERRNO:
         arch_set_thread_reg(env, HEX_REG_R00, errno);
         break;
+
+    case SYS_READ_CYCLES:
+    case SYS_READ_TCYCLES:
+    {
+        arch_set_thread_reg(env, HEX_REG_R00, 0);
+        arch_set_thread_reg(env, HEX_REG_R01, 0);
+        break;
+    }
+
+    case SYS_READ_PCYCLES:
+    {
+        arch_set_thread_reg(env, HEX_REG_R00, 0);
+        arch_set_thread_reg(env, HEX_REG_R01, 0);
+        break;
+    }
 
     case SYS_PROF_ON:
     case SYS_PROF_OFF:
@@ -889,9 +786,9 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
 
     env->pred[reg] = 0;
     if (single) {
-        segv = DEBUGMEMORYREADgLocked(addr, 4, &val);
+        segv = DEBUGMEMORYREADLocked(addr, 4, &val);
     } else {
-        segv = DEBUGMEMORYREADgLocked(addr, 8, &val_i64);
+        segv = DEBUGMEMORYREADLocked(addr, 8, &val_i64);
     }
     if (!segv) {
         if (single) {
@@ -920,113 +817,122 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
     return segv;
 }
 
+
+static void ssr_set_cause(CPUHexagonState *env, int exception_index)
+
+{
+    target_ulong ssr = arch_get_system_reg(env, HEX_SREG_SSR);
+    ssr = (ssr & (~SSR_CAUSE)) | exception_index;
+    arch_set_system_reg(env, HEX_SREG_SSR, ssr | SSR_EX);
+}
+
 void hexagon_cpu_do_interrupt(CPUState *cs)
 
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
+    target_ulong evb;
 
     switch (cs->exception_index) {
-    case HEX_EXCP_VIC0:
-    case HEX_EXCP_VIC1:
-    case HEX_EXCP_VIC2:
-    case HEX_EXCP_VIC3:
+    case HEX_CAUSE_VIC0:
+    case HEX_CAUSE_VIC1:
+    case HEX_CAUSE_VIC2:
+    case HEX_CAUSE_VIC3:
         sim_handle_trap(env);
         HEX_DEBUG_LOG("\tVIC interrupt ignored\n");
         break;
 
-    case HEX_EXCP_TRAP0:
+    case HEX_EVENT_TRAP0:
         sim_handle_trap(env);
-        env->sreg[HEX_SREG_ELR] = env->next_PC;
-        env->sreg[HEX_SREG_SSR] |= SSR_EX;
-        env->sreg[HEX_SREG_SSR] &= ~(SSR_CAUSE);
-        env->sreg[HEX_SREG_SSR] |= cs->exception_index & (SSR_CAUSE);
+        arch_set_system_reg(env, HEX_SREG_ELR, env->next_PC);
+        ssr_set_cause(env, cs->exception_index);
 
-        target_ulong evb = env->sreg[HEX_SREG_EVB];
-        target_ulong trap0_inst;
-        DEBUGMEMORYREADg(evb+(8<<2), 4, &trap0_inst);
-        HEX_DEBUG_LOG("\tEVB = 0x%x, trap0 = 0x%x, new PC = 0x%x\n",
-                      evb, trap0_inst, evb + (8<<2));
-
-        fCHECK_PCALIGN(addr);
+        evb = arch_get_system_reg(env, HEX_SREG_EVB);
+        env->next_PC = evb + (8 << 2);
+        fCHECK_PCALIGN(env->next_PC);
         env->branch_taken = 1;
-        env->next_PC = evb + (8<<2);
-        env->gpr[HEX_REG_PC] = evb + (8<<2);
-        cs->exception_index = HEX_EXCP_NONE;
+        arch_set_thread_reg(env, HEX_REG_PC, env->next_PC);
+        cs->exception_index = HEX_EVENT_NONE;
+
+        target_ulong trap0_inst;
+        DEBUGMEMORYREAD(env->next_PC, 4, &trap0_inst);
+        HEX_DEBUG_LOG("\tEVB = 0x%x, trap0 = 0x%x, new PC = 0x%x\n",
+            evb, trap0_inst, env->next_PC);
         break;
 
-    case HEX_EXCP_SC4:
+    case HEX_EVENT_SC4:
         do_store_exclusive(env, true);
         break;
 
-      case HEX_EXCP_TLBMISSX_CAUSE_NORMAL:
-      case HEX_EXCP_TLBMISSX_CAUSE_NEXTPAGE:
+      case HEX_CAUSE_TLBMISSX_CAUSE_NORMAL:
+      case HEX_CAUSE_TLBMISSX_CAUSE_NEXTPAGE:
           qemu_log_mask(CPU_LOG_MMU,
                         "TLB miss EX exception (0x%x) caught: "
-                        "PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
-                        cs->exception_index, env->gpr[HEX_REG_PC],
-                        env->sreg[HEX_SREG_BADVA]);
-          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC];
-          env->sreg[HEX_SREG_SSR] =
-              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
-          env->sreg[HEX_SREG_SSR] |= SSR_EX;
-          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (4 << 2);
+                        "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
+                        cs->exception_index, env->threadId, arch_get_thread_reg(env, HEX_REG_PC),
+                        arch_get_system_reg(env, HEX_SREG_BADVA));
+          arch_set_system_reg(env, HEX_SREG_ELR,
+              arch_get_thread_reg(env, HEX_REG_PC));
+          ssr_set_cause(env, cs -> exception_index);
+          evb = arch_get_system_reg(env, HEX_SREG_EVB);
+          arch_set_thread_reg(env, HEX_REG_PC, evb | (4 << 2));
           break;
-      case HEX_EXCP_TLBMISSRW_CAUSE_READ:
-      case HEX_EXCP_TLBMISSRW_CAUSE_WRITE:
+      case HEX_CAUSE_TLBMISSRW_CAUSE_READ:
+      case HEX_CAUSE_TLBMISSRW_CAUSE_WRITE:
           qemu_log_mask(CPU_LOG_MMU,
                         "TLB miss RW exception (0x%x) caught: "
-                        "PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
-                        cs->exception_index, env->gpr[HEX_REG_PC],
-                        env->sreg[HEX_SREG_BADVA]);
-          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC];
+                        "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
+                        cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
+                        arch_get_system_reg(env, HEX_SREG_BADVA));
+          arch_set_system_reg(env, HEX_SREG_ELR,
+              arch_get_thread_reg(env, HEX_REG_PC));
           /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
-          env->sreg[HEX_SREG_SSR] =
-              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
-          env->sreg[HEX_SREG_SSR] |= SSR_EX;
-          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (6 << 2);
+          ssr_set_cause(env, cs -> exception_index);
+          evb = arch_get_system_reg(env, HEX_SREG_EVB);
+          arch_set_thread_reg(env, HEX_REG_PC, evb | (6 << 2));
           break;
 
-      case HEX_EXCP_FETCH_NO_XPAGE:
-      case HEX_EXCP_FETCH_NO_UPAGE:
-      case HEX_EXCP_PRIV_NO_READ:
-      case HEX_EXCP_PRIV_NO_UREAD:
-      case HEX_EXCP_PRIV_NO_WRITE:
-      case HEX_EXCP_PRIV_NO_UWRITE:
+      case HEX_CAUSE_FETCH_NO_XPAGE:
+      case HEX_CAUSE_FETCH_NO_UPAGE:
+      case HEX_CAUSE_PRIV_NO_READ:
+      case HEX_CAUSE_PRIV_NO_UREAD:
+      case HEX_CAUSE_PRIV_NO_WRITE:
+      case HEX_CAUSE_PRIV_NO_UWRITE:
           qemu_log_mask(CPU_LOG_MMU,
                         "MMU permission exception (0x%x) caught: "
-                        "PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
-                        cs->exception_index, env->gpr[HEX_REG_PC],
-                        env->sreg[HEX_SREG_BADVA]);
-          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC];
+                        "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
+                        cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
+                        arch_get_system_reg(env, HEX_SREG_BADVA));
+          arch_set_system_reg(env, HEX_SREG_ELR,
+              arch_get_thread_reg(env, HEX_REG_PC));
           /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
-          env->sreg[HEX_SREG_SSR] =
-              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
-          env->sreg[HEX_SREG_SSR] |= SSR_EX;
-          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (2 << 2);
+          ssr_set_cause(env, cs -> exception_index);
+          evb = arch_get_system_reg(env, HEX_SREG_EVB);
+          arch_set_thread_reg(env, HEX_REG_PC, evb | (2 << 2));
           break;
 
-      case HEX_EXCP_PRIV_USER_NO_SINSN:
-          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC];
-          env->sreg[HEX_SREG_SSR] =
-              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
-          env->sreg[HEX_SREG_SSR] |= SSR_EX;
-          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (2 << 2);
+      case HEX_CAUSE_PRIV_USER_NO_SINSN:
+          arch_set_system_reg(env, HEX_SREG_ELR,
+              arch_get_thread_reg(env, HEX_REG_PC));
+          ssr_set_cause(env, cs -> exception_index);
+          evb = arch_get_system_reg(env, HEX_SREG_EVB);
+          arch_set_thread_reg(env, HEX_REG_PC, evb | (2 << 2));
           break;
 
-      case HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH:
+      case HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH:
           /*
            * FIXME
            * Imprecise exceptions are delivered to all HW threads in
            * run or wait mode
            */
           /* After the exception handler, return to the next packet */
-          env->sreg[HEX_SREG_ELR] = env->gpr[HEX_REG_PC] + 4;
-          env->sreg[HEX_SREG_SSR] =
-              (env->sreg[HEX_SREG_SSR] & ~SSR_CAUSE) | cs->exception_index;
-          env->sreg[HEX_SREG_SSR] |= SSR_EX;
-          env->sreg[HEX_SREG_DIAG] = (0x4 << 4) | (env->sreg[HEX_SREG_HTID] & 0xf);
-          env->gpr[HEX_REG_PC] = env->sreg[HEX_SREG_EVB] | (1 << 2);
+          arch_set_system_reg(env, HEX_SREG_ELR,
+             arch_get_thread_reg(env, HEX_REG_PC) + 4);
+          ssr_set_cause(env, cs -> exception_index);
+          arch_set_system_reg(env, HEX_SREG_DIAG,
+              (0x4 << 4) | (arch_get_system_reg(env, HEX_SREG_HTID) & 0xF));
+          evb = arch_get_system_reg(env, HEX_SREG_EVB);
+          arch_set_thread_reg(env, HEX_REG_PC, evb | (1 << 2));
           break;
 
       default:
@@ -1041,11 +947,12 @@ void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
     int traptype, int imm)
 
 {
-    HEX_DEBUG_LOG("%s:\n\tpc = 0x%x, npc = 0x%lx, type %d, imm %d\n",
-        __FUNCTION__, env->gpr[HEX_REG_PC], next_pc, traptype, imm);
+    HEX_DEBUG_LOG("%s:\n\ttid = %d, pc = 0x%x, npc = 0x%lx, traptype %d, imm %d\n",
+        __FUNCTION__, env->threadId, arch_get_thread_reg(env, HEX_REG_PC),
+        next_pc, traptype, imm);
 
     CPUState *cs = env_cpu(env);
-    cs->exception_index = (traptype == 0) ? HEX_EXCP_TRAP0 : HEX_EXCP_TRAP1;
+    cs->exception_index = (traptype == 0) ? HEX_EVENT_TRAP0 : HEX_EVENT_TRAP1;
     cpu_loop_exit(cs);
 }
 

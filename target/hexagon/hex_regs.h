@@ -93,6 +93,7 @@ enum {
   HEX_SREG_HTID       = 8,
   HEX_SREG_BADVA      = 9,
   HEX_SREG_IMASK      = 10,
+  HEX_SREG_GLB_START  = 16,
   HEX_SREG_EVB        = 16,
   HEX_SREG_MODECTL    = 17,
   HEX_SREG_SYSCFG     = 18,

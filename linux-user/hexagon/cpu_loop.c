@@ -93,7 +93,7 @@ void cpu_loop(CPUHexagonState *env)
         case EXCP_INTERRUPT:
             /* just indicate that signals should be handled asap */
             break;
-        case HEX_EXCP_TRAP0:
+        case HEX_EVENT_TRAP0:
             syscallnum = env->gpr[6];
             env->gpr[HEX_REG_PC] += 4;
 #if COUNT_HEX_HELPERS
@@ -116,12 +116,12 @@ void cpu_loop(CPUHexagonState *env)
                 env->gpr[0] = ret;
             }
             break;
-        case HEX_EXCP_TRAP1:
+        case HEX_EVENT_TRAP1:
             EXCP_DUMP(env, "\nqemu: trap1 exception %#x - aborting\n",
                      trapnr);
             exit(EXIT_FAILURE);
             break;
-        case HEX_EXCP_SC4:
+        case HEX_EVENT_SC4:
             if (do_store_exclusive(env, true)) {
                 info.si_signo = TARGET_SIGSEGV;
                 info.si_errno = 0;
@@ -130,7 +130,7 @@ void cpu_loop(CPUHexagonState *env)
                 queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
             }
             break;
-        case HEX_EXCP_SC8:
+        case HEX_EVENT_SC8:
             if (do_store_exclusive(env, false)) {
                 info.si_signo = TARGET_SIGSEGV;
                 info.si_errno = 0;
@@ -139,9 +139,9 @@ void cpu_loop(CPUHexagonState *env)
                 queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
             }
             break;
-        case HEX_EXCP_FETCH_NO_UPAGE:
-        case HEX_EXCP_PRIV_NO_UREAD:
-        case HEX_EXCP_PRIV_NO_UWRITE:
+        case HEX_CAUSE_FETCH_NO_UPAGE:
+        case HEX_CAUSE_PRIV_NO_UREAD:
+        case HEX_CAUSE_PRIV_NO_UWRITE:
             signum = TARGET_SIGSEGV;
             sigcode = TARGET_SEGV_MAPERR;
             break;

@@ -104,7 +104,7 @@
     DECL_REG_READONLY(NAME, NUM, X, OFF)
 
 #define DECL_SREG_READONLY(NAME, NUM, X, OFF) \
-    TCGv NAME; \
+    TCGv NAME = tcg_temp_local_new(); \
     int NUM = REGNO(X) + OFF
 #define DECL_SREG_d(NAME, NUM, X, OFF) \
     DECL_SREG_WRITABLE(NAME, NUM, X, OFF)
@@ -183,10 +183,16 @@
         ctx_log_reg_write(ctx, (RNUM)); \
     } while (0)
 
-#define LOG_SREG_WRITE(SNUM, VAL)\
+#define LOG_SREG_WRITE(NUM, VAL)\
     do { \
-        gen_log_sreg_write(SNUM, VAL); \
-        ctx_log_sreg_write(ctx, (SNUM)); \
+        if ((NUM) < HEX_SREG_GLB_START) { \
+            gen_log_sreg_write(NUM, VAL); \
+        ctx_log_sreg_write(ctx, (NUM)); \
+        } else {\
+            TCGv_i32 helper_num = tcg_const_i32(NUM); \
+            gen_helper_sreg_write(cpu_env, helper_num, VAL); \
+            tcg_temp_free_i32(helper_num); \
+        } \
     } while (0)
 
 #define LOG_PRED_WRITE(PNUM, VAL) \
@@ -327,9 +333,26 @@
     READ_REG_READONLY(dest, NUM)
 
 #define READ_SREG(dest, NUM) \
-    gen_read_sreg(dest, NUM)
-#define READ_SREG_READONLY(dest, NUM) \
-    do { dest = hex_sreg[NUM]; } while (0)
+    if ((NUM) < HEX_SREG_GLB_START) { \
+        gen_read_sreg(dest, NUM) \
+    } else { \
+        TCGv_i32 helper_num = tcg_const_i32(NUM); \
+        gen_helper_sreg_read(dest, cpu_env, helper_num); \
+        tcg_temp_free_i32(helper_num); \
+    }
+#ifndef CONFIG_USER_ONLY
+#define READ_SREG_READONLY(dest, NUM) do { \
+        if ((NUM) < HEX_SREG_GLB_START) { \
+            dest = hex_t_sreg[NUM]; \
+        } else { \
+            TCGv_i32 helper_num = tcg_const_i32(NUM); \
+            gen_helper_sreg_read(dest, cpu_env, helper_num); \
+            tcg_temp_free_i32(helper_num); \
+        } \
+    } while(0)
+#else
+#define READ_SREG_READONLY(dest, NUM) g_assert_not_reached()
+#endif
 #define READ_SREG_s(dest, NUM) \
     READ_SREG_READONLY(dest, NUM)
 
@@ -350,10 +373,14 @@
 #else
 #define READ_REG(NUM) \
     (env->gpr[(NUM)])
-#define READ_SREG(NUM) (env->sreg[(NUM)])
-#define READ_SGP0() (env->sreg[HEX_SREG_SGP0])
-#define READ_SGP1() (env->sreg[HEX_SREG_SGP1])
-#define READ_SGP10() ((uint64_t)env->sreg[HEX_SREG_SGP0] | ((uint64_t)env->sreg[HEX_SREG_SGP1] << 32))
+
+#define READ_SREG(NUM) \
+    (((NUM) < HEX_SREG_GLB_START) ? \
+  (env->t_sreg[(NUM)]) : (env->g_sreg[(NUM)]))
+#define READ_SGP0()    (env->t_sreg[HEX_SREG_SGP0])
+#define READ_SGP1()    (env->t_sreg[HEX_SREG_SGP1])
+#define READ_SGP10() ((uint64_t)env->t_sreg[HEX_SREG_SGP0] | \
+    ((uint64_t)env->t_sreg[HEX_SREG_SGP1] << 32))
 #endif
 
 #ifdef QEMU_GENERATE
@@ -365,7 +392,13 @@
 #define READ_RREG_yy(tmp, NUM)          READ_REG_PAIR(tmp, NUM)
 
 #define READ_SREG_PAIR(tmp, NUM) \
-    tcg_gen_concat_i32_i64(tmp, hex_sreg[NUM], hex_sreg[(NUM) + 1])
+    if ((NUM) < HEX_SREG_GLB_START) { \
+        tcg_gen_concat_i32_i64(tmp, hex_t_sreg[NUM], hex_t_sreg[(NUM) + 1]); \
+    } else { \
+        TCGv_i32 helper_num = tcg_const_i32(NUM); \
+        gen_helper_sreg_read_pair(tmp, cpu_env, helper_num); \
+        tcg_temp_free_i32(helper_num); \
+    }
 #define READ_SREG_ss(tmp, NUM)          READ_SREG_PAIR(tmp, NUM)
 #define READ_SGP10() (READ_SREG_PAIR(tmp, HEX_SREG_SGP0), tmp)
 
@@ -437,10 +470,17 @@
 #define WRITE_RREG_yy(NUM, VAL)          WRITE_REG_PAIR(NUM, VAL)
 #define WRITE_SREG_PAIR(NUM, VAL) \
     do { \
-        gen_log_sreg_write_pair(NUM, VAL); \
+        if ((NUM) < HEX_SREG_GLB_START) { \
+            gen_log_sreg_write_pair(NUM, VAL); \
         ctx_log_sreg_write(ctx, (NUM)); \
         ctx_log_sreg_write(ctx, (NUM) + 1); \
+        } else {\
+            TCGv_i32 helper_num = tcg_const_i32(NUM); \
+            gen_helper_sreg_write_pair(cpu_env, helper_num, VAL); \
+            tcg_temp_free_i32(helper_num); \
+        } \
     } while (0)
+
 #define WRITE_SREG_dd(NUM, VAL)          WRITE_SREG_PAIR(NUM, VAL)
 #endif
 
@@ -1465,11 +1505,11 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fPAUSE(IMM)
 
 #ifdef CONFIG_USER_ONLY
-#define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EXCP_TRAP0)
-#define fCHECKFORPRIV() helper_raise_exception(env, HEX_EXCP_PRIV_USER_NO_SINSN)
+#define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EVENT_TRAP0)
+#define fCHECKFORPRIV() helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN)
 #else
 #define fTRAP(TRAPTYPE, IMM) { \
-  register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM /*HEX_EXCP_TRAP0*/); \
+  register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM); \
 }
 #ifdef QEMU_GENERATE
 #define fCHECKFORPRIV() gen_helper_checkforpriv(cpu_env)
@@ -1569,8 +1609,17 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     (((IMM) == 1) || ((IMM) == 3) || ((IMM) == 4) || ((IMM) == 6))
 #define fNOP_EXECUTED
 #define fPREDUSE_TIMING()
+#if 0
+#define fSET_TLB_LOCK() (qemu_mutex_lock_iothread());
+#define fCLEAR_TLB_LOCK() (qemu_mutex_unlock_iothread());
+#else
 #define fSET_TLB_LOCK()
 #define fCLEAR_TLB_LOCK()
+#endif
+
+#define fGET_TNUM()               thread->threadId
+#define fSTART(REG)               helper_fstart(env, REG)
+#define fCLEAR_RUN_MODE(x)        helper_clear_run_mode(env,(x))
 
 #ifndef CONFIG_USER_ONLY
 #define fTLB_IDXMASK(INDEX) \
@@ -1592,13 +1641,8 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #endif
 
 /* FIXME - Update these when properly implementing stop instruction */
-#define fGET_TNUM() \
-    0    /* FIXME */
 #define fIN_DEBUG_MODE_NO_ISDB(TNUM) \
     0    /* FIXME */
-#define fCLEAR_RUN_MODE(TNUM) \
-    qemu_system_reset_request(SHUTDOWN_CAUSE_HOST_SIGNAL)    /* FIXME */
-
 #ifdef QEMU_GENERATE
 
 #if 0

@@ -22,6 +22,7 @@
 #include "qemu/units.h"
 #include "qapi/error.h"
 #include "cpu.h"
+#include "sysemu/cpus.h"
 #include "net/net.h"
 #include "hw/boards.h"
 #include "hw/loader.h"
@@ -29,6 +30,8 @@
 #include "elf.h"
 #include "hw/hexagon/hexagon.h"
 #include "qemu/error-report.h"
+#include "qemu/log.h"
+#include "internal.h"
 
 static const struct MemmapEntry {
     hwaddr base;
@@ -88,6 +91,10 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
 
     HexagonCPU *cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
     CPUHexagonState *env = &cpu->env;
+
+    env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
+    env->g_sreg_new_value = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
+    env->g_sreg_written = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
 
     MemoryRegion *address_space = get_system_memory();
 
@@ -186,9 +193,10 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         env->gpr[HEX_REG_PC] = 0x0; /* 0 or 0x20;*/
     }
 
-    env->sreg[HEX_SREG_EVB] = 0x0;
-    env->sreg[HEX_SREG_CFGBASE] = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_CONFIG_TABLE].base);
-    env->sreg[HEX_SREG_REV] = 0x86d8;
+    env->g_sreg[HEX_SREG_EVB] = 0x0;
+    env->g_sreg[HEX_SREG_CFGBASE] = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_CONFIG_TABLE].base);
+    env->g_sreg[HEX_SREG_REV] = 0x86d8;
+    env->g_sreg[HEX_SREG_MODECTL] = 0x1;
 }
 
 static void hexagonboard_init(MachineState *machine)
@@ -206,7 +214,7 @@ static void hex_machine_init(MachineClass *mc)
     mc->init = hexagonboard_init;
     mc->is_default = 0;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->max_cpus = 32;
+    mc->max_cpus = 4;
 }
 
 DEFINE_MACHINE("hexagon_testboard", hex_machine_init)

@@ -34,7 +34,7 @@ static inline TCGv gen_read_reg(TCGv result, int num)
 
 static inline TCGv gen_read_sreg(TCGv result, int num)
 {
-    tcg_gen_mov_tl(result, hex_sreg[num]);
+    tcg_gen_mov_tl(result, hex_t_sreg[num]);
     return result;
 }
 
@@ -123,7 +123,7 @@ static inline void gen_log_reg_write_pair(int rnum, TCGv_i64 val, int slot,
 static inline void gen_log_sreg_write(int snum, TCGv val)
 
 {
-    tcg_gen_mov_tl(hex_new_sreg_value[snum], val);
+    tcg_gen_mov_tl(hex_t_sreg_new_value[snum], val);
 }
 
 static inline void gen_log_sreg_write_pair(int rnum, TCGv_i64 val)
@@ -133,10 +133,10 @@ static inline void gen_log_sreg_write_pair(int rnum, TCGv_i64 val)
 
     /* Low word */
     tcg_gen_extrl_i64_i32(val32, val);
-    tcg_gen_mov_tl(hex_new_sreg_value[rnum], val32);
+    tcg_gen_mov_tl(hex_t_sreg_new_value[rnum], val32);
     /* High word */
     tcg_gen_extrh_i64_i32(val32, val);
-    tcg_gen_mov_tl(hex_new_sreg_value[rnum + 1], val32);
+    tcg_gen_mov_tl(hex_t_sreg_new_value[rnum + 1], val32);
 
     tcg_temp_free(val32);
 }
@@ -360,7 +360,6 @@ static inline TCGv gen_set_bit(int i, TCGv result, TCGv src)
 
     return result;
 }
-
 static inline void gen_load_locked4u(TCGv dest, TCGv vaddr, int mem_index)
 {
     tcg_gen_qemu_ld32u(dest, vaddr, mem_index);
@@ -387,7 +386,7 @@ static inline void gen_store_conditional4(CPUHexagonState *env,
     tcg_gen_movi_tl(tmp, prednum);
     tcg_gen_st_tl(tmp, cpu_env, offsetof(CPUHexagonState, llsc_reg));
     tcg_gen_st_tl(src, cpu_env, offsetof(CPUHexagonState, llsc_newval));
-    gen_exception(HEX_EXCP_SC4);
+    gen_exception(HEX_EVENT_SC4);
 
     gen_set_label(fail);
     tcg_gen_movi_tl(pred, 0);
@@ -406,7 +405,7 @@ static inline void gen_store_conditional8(CPUHexagonState *env,
     tcg_gen_movi_tl(tmp, prednum);
     tcg_gen_st_tl(tmp, cpu_env, offsetof(CPUHexagonState, llsc_reg));
     tcg_gen_st_i64(src, cpu_env, offsetof(CPUHexagonState, llsc_newval_i64));
-    gen_exception(HEX_EXCP_SC8);
+    gen_exception(HEX_EVENT_SC8);
 
     gen_set_label(fail);
     tcg_gen_movi_tl(pred, 0);
@@ -564,14 +563,14 @@ static inline void gen_set_usr_fieldi(int field, int x)
 
 static inline void gen_get_sreg_field(int sreg, int field, TCGv dest)
 {
-    tcg_gen_extract_tl(dest, hex_sreg[sreg],
+    tcg_gen_extract_tl(dest, hex_t_sreg[sreg],
                        reg_field_info[field].offset,
                        reg_field_info[field].width);
 }
 
 static inline void gen_set_sreg_field(int sreg, int field, TCGv val)
 {
-    tcg_gen_deposit_tl(hex_sreg[sreg], hex_sreg[sreg], val,
+    tcg_gen_deposit_tl(hex_t_sreg[sreg], hex_t_sreg[sreg], val,
                        reg_field_info[field].offset,
                        reg_field_info[field].width);
 }
