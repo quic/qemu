@@ -40,6 +40,7 @@ DEF_HELPER_3(merge_inflight_store8u, s64, env, s32, s64)
 DEF_HELPER_3(modify_syscfg, void, env, i32, i32)
 DEF_HELPER_3(modify_ssr, void, env, i32, i32)
 DEF_HELPER_1(checkforpriv, void, env)
+DEF_HELPER_5(probe_pkt_stores, void, env, int, int, int, int)
 #endif
 #define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPER
 #include "qemu_def_generated.h"

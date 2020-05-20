@@ -716,6 +716,26 @@ static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
 {
     bool end_tb = false;
 
+#ifndef CONFIG_USER_ONLY
+    if (pkt->pkt_has_store_s0 ||
+        pkt->pkt_has_store_s1 ||
+        pkt->pkt_has_dczeroa ||
+        pkt_has_hvx_store(pkt)) {
+        TCGv has_st0 = tcg_const_tl(pkt->pkt_has_store_s0);
+        TCGv has_st1 = tcg_const_tl(pkt->pkt_has_store_s1);
+        TCGv has_dczeroa = tcg_const_tl(pkt->pkt_has_dczeroa);
+        TCGv has_hvx_stores = tcg_const_tl(pkt_has_hvx_store(pkt));
+
+        gen_helper_probe_pkt_stores(cpu_env, has_st0, has_st1,
+                                    has_dczeroa, has_hvx_stores);
+
+        tcg_temp_free(has_st0);
+        tcg_temp_free(has_st1);
+        tcg_temp_free(has_dczeroa);
+        tcg_temp_free(has_hvx_stores);
+    }
+#endif
+
     gen_reg_writes(ctx);
 #ifndef CONFIG_USER_ONLY
     gen_sreg_writes(ctx);
@@ -730,12 +750,12 @@ static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
     gen_exec_counters(pkt);
 #if HEX_DEBUG
     {
+        /* Handy place to set a breakpoint at the end of execution */
         TCGv has_st0 =
             tcg_const_tl(pkt->pkt_has_store_s0 && !pkt->pkt_has_dczeroa);
         TCGv has_st1 =
             tcg_const_tl(pkt->pkt_has_store_s1 && !pkt->pkt_has_dczeroa);
 
-        /* Handy place to set a breakpoint at the end of execution */
         gen_helper_debug_commit_end(cpu_env, has_st0, has_st1);
 
         tcg_temp_free(has_st0);

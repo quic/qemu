@@ -658,6 +658,81 @@ void HELPER(checkforpriv)(CPUHexagonState *env)
         helper_raise_exception(env, HEX_EXCP_PRIV_USER_NO_SINSN);
     }
 }
+
+static inline void probe_store(CPUHexagonState *env, int slot)
+{
+    if (!(env->slot_cancelled & (1 << slot))) {
+        size1u_t width = env->mem_log_stores[slot].width;
+        target_ulong va = env->mem_log_stores[slot].va;
+        int mmu_idx = cpu_mmu_index(env, false);
+        probe_write(env, va, width, mmu_idx, env->gpr[HEX_REG_PC]);
+    }
+}
+
+static inline void probe_hvx_stores(CPUHexagonState *env)
+{
+    int mmu_idx = cpu_mmu_index(env, false);
+    uintptr_t retaddr = env->gpr[HEX_REG_PC];
+    int i;
+
+    /* Normal (possibly masked) vector store */
+    for (i = 0; i < VSTORES_MAX; i++) {
+        if (env->vstore_pending[i]) {
+            target_ulong va = env->vstore[i].va;
+            int size = env->vstore[i].size;
+            for (int j = 0; j < size; j++) {
+                if (env->vstore[i].mask.ub[j]) {
+                    probe_write(env, va + j, 1, mmu_idx, retaddr);
+                }
+            }
+        }
+    }
+
+    /* Scatter store */
+    if (env->vtcm_pending) {
+        if (env->vtcm_log.op) {
+            /* Need to perform the scatter read/modify/write at commit time */
+            if (env->vtcm_log.op_size == 2) {
+                SCATTER_OP_PROBE_MEM(size2u_t, mmu_idx, retaddr);
+            } else if (env->vtcm_log.op_size == 4) {
+                /* Word Scatter += */
+                SCATTER_OP_PROBE_MEM(size4u_t, mmu_idx, retaddr);
+            } else {
+                g_assert_not_reached();
+            }
+        } else {
+            for (int i = 0; i < env->vtcm_log.size; i++) {
+                if (env->vtcm_log.mask.ub[i] != 0) {
+                    probe_write(env, env->vtcm_log.va[i], 1, mmu_idx, retaddr);
+                }
+
+            }
+        }
+    }
+}
+
+void HELPER(probe_pkt_stores)(CPUHexagonState *env, int has_st0, int has_st1,
+                              int has_dczeroa, int has_hvx_stores)
+{
+    if (has_st0 && !has_dczeroa) {
+        probe_store(env, 0);
+    }
+    if (has_st1 && !has_dczeroa) {
+        probe_store(env, 1);
+    }
+    if (has_dczeroa) {
+        /* Probe 32 bytes starting at (dczero_addr & ~0x1f) */
+        target_ulong va = env->dczero_addr & ~0x1f;
+        int mmu_idx = cpu_mmu_index(env, false);
+        probe_write(env, va +  0, 8, mmu_idx, env->gpr[HEX_REG_PC]);
+        probe_write(env, va +  8, 8, mmu_idx, env->gpr[HEX_REG_PC]);
+        probe_write(env, va + 16, 8, mmu_idx, env->gpr[HEX_REG_PC]);
+        probe_write(env, va + 24, 8, mmu_idx, env->gpr[HEX_REG_PC]);
+    }
+    if (has_hvx_stores) {
+        probe_hvx_stores(env);
+    }
+}
 #endif
 
 /* Helpful for printing intermediate values within instructions */

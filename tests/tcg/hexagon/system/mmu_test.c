@@ -681,8 +681,13 @@ void test_permissions(void)
     check(*(mmu_variable *)read_user_data_addr, 0xdeadbeef);
 
     /* Store through the new VA */
-    *(mmu_variable *)write_data_addr = 0xcafebabe;
-    check(data, 0xcafebabe);
+    /* Make sure the replay happens before anything else */
+    mmu_variable *p = (mmu_variable *)write_data_addr;
+    asm volatile("memw(%0++#4) = %1\n\t"
+                 : "+r"(p) : "r"(0xc0ffee) : "memory");
+    check(data, 0xc0ffee);
+    check((uint32_t)p, (uint32_t)write_data_addr + 4);
+
     *(mmu_variable *)write_user_data_addr = 0xc0ffee;
     check(data, 0xc0ffee);
 
