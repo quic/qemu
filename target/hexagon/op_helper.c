@@ -21,6 +21,9 @@
 #ifdef CONFIG_USER_ONLY
 #include "qemu.h"
 #include "exec/helper-proto.h"
+#else
+#include "hw/boards.h"
+#include "hw/hexagon/hexagon.h"
 #endif
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
@@ -131,13 +134,20 @@ static inline void log_sreg_write(CPUHexagonState *env, int rnum,
     if (env->slot_cancelled & (1 << slot)) {
         HEX_DEBUG_LOG(" CANCELLED");
     }
-    if (val == env->sreg[rnum]) {
+
+    target_ulong crnt_val = (rnum < HEX_SREG_GLB_START) ?
+        env->t_sreg[rnum] : env->g_sreg[rnum];
+    if (val == crnt_val) {
         HEX_DEBUG_LOG(" NO CHANGE");
     }
     HEX_DEBUG_LOG("\n");
     if (!(env->slot_cancelled & (1 << slot))) {
         HEX_DEBUG_LOG("\tsreg register set to 0x%x\n", val);
-        env->new_sreg_value[rnum] = val;
+        if (rnum < HEX_SREG_GLB_START) {
+            env->t_sreg_new_value[rnum] = val;
+        } else {
+            env->g_sreg_new_value[rnum] = val;
+        }
     }
     else
       HEX_DEBUG_LOG("\tsreg register not set\n");
@@ -210,15 +220,18 @@ static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
 {
-    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx "\n",
-                  env->gpr[HEX_REG_PC]);
+    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " r0=%d, tid=%d\n",
+                  env->gpr[HEX_REG_PC], env->gpr[HEX_REG_R00], env->threadId);
 
     int i;
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         env->reg_written[i] = 0;
     }
     for (i = 0; i < NUM_SREGS; i++) {
-        env->sreg_written[i] = 0;
+        if (i < HEX_SREG_GLB_START)
+            env->t_sreg_written[i] = 0;
+        else
+            env->g_sreg_written[i] = 0;
     }
 }
 
@@ -371,45 +384,59 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     bool pred_printed = false;
     int i;
 
-    HEX_DEBUG_LOG("Packet committed: pc = 0x" TARGET_FMT_lx "\n",
-                  env->this_PC);
-    HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
+    HEX_DEBUG_LOG("Packet committed: tid = %d, pc = 0x" TARGET_FMT_lx "\n",
+                  env->threadId, env->this_PC);
+    if (env->slot_cancelled)
+      HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
 
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         if (env->reg_written[i]) {
             if (!reg_printed) {
-                HEX_DEBUG_LOG("Regs written\n");
+                printf("Regs written\n");
                 reg_printed = true;
             }
-            HEX_DEBUG_LOG("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
+            printf("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
                           i, env->new_value[i], env->new_value[i]);
         }
     }
 
     for (i = 0; i < NUM_SREGS; i++) {
-        if (env->sreg_written[i]) {
-            if (!sreg_printed) {
-                HEX_DEBUG_LOG("SRegs written\n");
-                sreg_printed = true;
+        if (i < HEX_SREG_GLB_START) {
+            if (env->t_sreg_written[i]) {
+                if (!sreg_printed) {
+                    printf("SRegs written\n");
+                    sreg_printed = true;
+                }
+                printf("\tset s%d (%s) = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
+                    i, hexagon_sregnames[i], env->t_sreg_new_value[i],
+                    env->t_sreg_new_value[i]);
             }
-            HEX_DEBUG_LOG("\tset s%d (%s) = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
-                          i, hexagon_sregnames[i], env->new_sreg_value[i], env->new_sreg_value[i]);
+        } else {
+            if (env->g_sreg_written[i]) {
+                if (!sreg_printed) {
+                    printf("SRegs written\n");
+                    sreg_printed = true;
+            }
+            printf("\tset s%d (%s) = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
+                i, hexagon_sregnames[i], env->g_sreg_new_value[i],
+                env->g_sreg_new_value[i]);
+            }
         }
     }
 
     for (i = 0; i < NUM_PREGS; i++) {
         if (env->pred_written & (1 << i)) {
             if (!pred_printed) {
-                HEX_DEBUG_LOG("Predicates written\n");
+                printf("Predicates written\n");
                 pred_printed = true;
             }
-            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx "\n",
+            printf("\tp%d = 0x" TARGET_FMT_lx "\n",
                           i, env->new_pred_value[i]);
         }
     }
 
     if (has_st0 || has_st1) {
-        HEX_DEBUG_LOG("Stores\n");
+        printf("Stores\n");
         if (has_st0) {
             print_store(env, 0);
         }
@@ -655,7 +682,7 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 void HELPER(checkforpriv)(CPUHexagonState *env)
 {
     if (!sys_in_monitor_mode(env)) {
-        helper_raise_exception(env, HEX_EXCP_PRIV_USER_NO_SINSN);
+        helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN);
     }
 }
 
@@ -781,6 +808,64 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 }
 
 #ifndef CONFIG_USER_ONLY
+void HELPER(fstart)(CPUHexagonState *env, uint32_t mask)
+
+{
+    hexagon_create_cpu(env, mask);
+}
+
+void HELPER(clear_run_mode)(CPUHexagonState *env, uint32_t mask)
+
+{
+    hexagon_destroy_cpu(env, mask);
+}
+void HELPER(pause)(CPUHexagonState *env, uint32_t val)
+
+{
+    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+
+    /* Just let another CPU run.  */
+    cs->exception_index = EXCP_INTERRUPT;
+    cpu_loop_exit(cs);
+}
+
+uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
+
+{
+    return env->g_sreg[reg];
+}
+
+uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
+
+{
+    return (uint64_t)(env->g_sreg[reg]) | ((uint64_t)(env->g_sreg[reg+1]) << 32);
+}
+
+void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
+
+{
+    if (reg < HEX_SREG_GLB_START) {
+        env->t_sreg[reg] = val;
+    } else {
+        env->g_sreg[reg] = val;
+    }
+}
+
+void HELPER(sreg_write_pair)(CPUHexagonState *env, uint32_t reg, uint64_t val)
+
+{
+    if (reg < HEX_SREG_GLB_START) {
+        env->t_sreg[reg] = val & 0xFFFFFFFF;
+        env->t_sreg[reg+1] = val >> 32;
+    } else {
+        env->g_sreg[reg] = val & 0xFFFFFFFF;
+        env->g_sreg[reg+1] = val >> 32;
+    }
+}
+#endif
+
+#ifndef CONFIG_USER_ONLY
+#include "cpu_helper.c"
 #include "hexswi.c"
 #endif
 

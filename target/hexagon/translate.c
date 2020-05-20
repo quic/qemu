@@ -54,10 +54,11 @@ TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
 TCGv hex_VRegs_select;
 TCGv hex_QRegs_updated;
-TCGv hex_sreg[NUM_SREGS];
-TCGv hex_new_sreg_value[NUM_SREGS];
-#if HEX_DEBUG
-TCGv hex_sreg_written[NUM_SREGS];
+TCGv hex_t_sreg[NUM_SREGS];
+TCGv hex_t_sreg_new_value[NUM_SREGS];
+#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+TCGv hex_t_sreg_written[NUM_SREGS];
+TCGv hex_g_sreg_written[NUM_SREGS];
 #endif
 TCGv hex_cache_tags[CACHE_TAGS_MAX];
 #ifndef CONFIG_USER_ONLY
@@ -122,7 +123,7 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
     if (!found_end) {
         if (nwords == PACKET_WORDS_MAX) {
             /* Read too many words without finding the end */
-            gen_exception(HEX_EXCP_INVALID_PACKET);
+            gen_exception(HEX_CAUSE_INVALID_PACKET);
             ctx->base.is_jmp = DISAS_NORETURN;
             return 0;
         }
@@ -131,7 +132,7 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
         return 0;
     }
 
-    HEX_DEBUG_LOG("decode_packet: pc = 0x%x\n", ctx->base.pc_next);
+    HEX_DEBUG_LOG("decode_packet: tid=%d, pc = 0x%x\n", env->threadId, ctx->base.pc_next);
     HEX_DEBUG_LOG("    words = { ");
     for (i = 0; i < nwords; i++) {
         HEX_DEBUG_LOG("0x%x, ", words[i]);
@@ -255,7 +256,7 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
             tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         }
     } else {
-        gen_exception(HEX_EXCP_INVALID_OPCODE);
+        gen_exception(HEX_CAUSE_INVALID_OPCODE);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }
@@ -269,13 +270,12 @@ static void gen_reg_writes(DisasContext *ctx)
 
     for (i = 0; i < ctx->ctx_reg_log_idx; i++) {
         int reg_num = ctx->ctx_reg_log[i];
-
         tcg_gen_mov_tl(hex_gpr[reg_num], hex_new_value[reg_num]);
     }
 }
 
 #ifndef CONFIG_USER_ONLY
-static void gen_sreg_writes(DisasContext *ctx)
+static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
 {
     int i;
 
@@ -283,20 +283,34 @@ static void gen_sreg_writes(DisasContext *ctx)
         int reg_num = ctx->ctx_sreg_log[i];
 
         if (reg_num == HEX_SREG_SYSCFG) {
-            gen_helper_modify_syscfg(cpu_env, hex_new_sreg_value[reg_num],
-                                     hex_sreg[reg_num]);
+            TCGv g_new_sreg = tcg_const_tl(env->g_sreg_new_value[reg_num]);
+            TCGv g_sreg = tcg_const_tl(env->g_sreg[reg_num]);
+            gen_helper_modify_syscfg(cpu_env, g_new_sreg,
+                                     g_sreg);
         }
         if (reg_num == HEX_SREG_SSR) {
-            gen_helper_modify_ssr(cpu_env, hex_new_sreg_value[reg_num],
-                                  hex_sreg[reg_num]);
+            gen_helper_modify_ssr(cpu_env, hex_t_sreg_new_value[reg_num],
+                                  hex_t_sreg[reg_num]);
             /* This can change processor state, so end the TB */
             ctx->base.is_jmp = DISAS_TOO_MANY;
         }
-        tcg_gen_mov_tl(hex_sreg[reg_num], hex_new_sreg_value[reg_num]);
+        if (reg_num < HEX_SREG_GLB_START) {
+            tcg_gen_mov_tl(hex_t_sreg[reg_num], hex_t_sreg_new_value[reg_num]);
 #if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movi_tl(hex_sreg_written[reg_num], 1);
+            /* Do this so HELPER(debug_commit_end) will know */
+            tcg_gen_movi_tl(hex_t_sreg_written[reg_num], 1);
 #endif
+        } else {
+#if 0
+            TCGv g_new_sreg = tcg_const_tl(env->g_sreg_new_value[reg_num]);
+            TCGv g_sreg = tcg_const_tl(env->g_sreg[reg_num]);
+            tcg_gen_mov_tl(g_sreg, g_new_sreg);
+#if HEX_DEBUG
+            /* Do this so HELPER(debug_commit_end) will know */
+            tcg_gen_movi_tl(hex_g_sreg_written[reg_num], 1);
+#endif
+#endif
+        }
     }
 }
 #endif
@@ -712,7 +726,7 @@ static void check_imprecise_exception(packet_t *pkt)
 }
 #endif
 
-static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
+static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx, packet_t *pkt)
 {
     bool end_tb = false;
 
@@ -738,7 +752,7 @@ static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
 
     gen_reg_writes(ctx);
 #ifndef CONFIG_USER_ONLY
-    gen_sreg_writes(ctx);
+    gen_sreg_writes(env, ctx);
 #endif
     gen_pred_writes(ctx, pkt);
     process_store_log(ctx, pkt);
@@ -790,10 +804,10 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
         for (i = 0; i < pkt.num_insns; i++) {
             gen_insn(env, ctx, &pkt.insn[i], &pkt);
         }
-        gen_commit_packet(ctx, &pkt);
+        gen_commit_packet(env, ctx, &pkt);
         ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
     } else {
-        gen_exception(HEX_EXCP_INVALID_PACKET);
+        gen_exception(HEX_CAUSE_INVALID_PACKET);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }
@@ -950,14 +964,21 @@ void hexagon_translate_init(void)
 #endif
     }
     for (i = 0; i < NUM_SREGS; i++) {
-        hex_sreg[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPUHexagonState, sreg[i]), hexagon_sregnames[i]);
-        hex_new_sreg_value[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPUHexagonState, new_sreg_value[i]), "new_sreg_value");
-#if HEX_DEBUG
-        hex_sreg_written[i] = tcg_global_mem_new(cpu_env,
-            offsetof(CPUHexagonState, sreg_written[i]), "sreg_written");
+        if (i < HEX_SREG_GLB_START) {
+            hex_t_sreg[i] = tcg_global_mem_new(cpu_env,
+                offsetof(CPUHexagonState, t_sreg[i]), hexagon_sregnames[i]);
+            hex_t_sreg_new_value[i] = tcg_global_mem_new(cpu_env,
+                offsetof(CPUHexagonState, t_sreg_new_value[i]), "new_sreg_value");
+#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+            hex_t_sreg_written[i] = tcg_global_mem_new(cpu_env,
+                offsetof(CPUHexagonState, t_sreg_written[i]), "sreg_written");
 #endif
+        } else {
+#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+//            hex_g_sreg_written[i] = tcg_global_mem_new(cpu_env,
+//                offsetof(CPUHexagonState, g_sreg_written[i]), "sreg_written");
+#endif
+        }
     }
     for (i = 0; i < NUM_PREGS; i++) {
         hex_pred[i] = tcg_global_mem_new(cpu_env,

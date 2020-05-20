@@ -321,23 +321,23 @@ static inline void hex_tlb_entry_get_perm(uint64_t entry,
     switch (access_type) {
     case MMU_INST_FETCH:
         if (user_idx && !perm_u) {
-            *excp = HEX_EXCP_FETCH_NO_UPAGE;
+            *excp = HEX_CAUSE_FETCH_NO_UPAGE;
         } else if (!perm_x) {
-            *excp = HEX_EXCP_FETCH_NO_XPAGE;
+            *excp = HEX_CAUSE_FETCH_NO_XPAGE;
         }
         break;
     case MMU_DATA_LOAD:
         if (user_idx && !perm_u) {
-            *excp = HEX_EXCP_PRIV_NO_UREAD;
+            *excp = HEX_CAUSE_PRIV_NO_UREAD;
         } else if (!perm_r) {
-            *excp = HEX_EXCP_PRIV_NO_READ;
+            *excp = HEX_CAUSE_PRIV_NO_READ;
         }
         break;
     case MMU_DATA_STORE:
         if (user_idx && !perm_u) {
-            *excp = HEX_EXCP_PRIV_NO_UWRITE;
+            *excp = HEX_CAUSE_PRIV_NO_UWRITE;
         } else if (!perm_w) {
-            *excp = HEX_EXCP_PRIV_NO_WRITE;
+            *excp = HEX_CAUSE_PRIV_NO_WRITE;
         }
         break;
     }
@@ -373,7 +373,7 @@ bool hex_tlb_find_match(CPUHexagonState *env, target_ulong VA,
                         MMUAccessType access_type, hwaddr *PA, int *prot,
                         int *size, int32_t *excp, int mmu_idx)
 {
-    uint8_t asid = (env->sreg[HEX_SREG_SSR] & SSR_ASID) >> 8;
+    uint8_t asid = (env->t_sreg[HEX_SREG_SSR] & SSR_ASID) >> 8;
     int i;
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         uint64_t entry = env->hex_tlb->entries[i];
@@ -397,7 +397,7 @@ static uint32_t hex_tlb_lookup_by_asid(CPUHexagonState *env, uint32_t asid,
         uint64_t entry = env->hex_tlb->entries[i];
         if (hex_tlb_entry_match_noperm(entry, asid, VA)) {
             if (idx != not_found) {
-                env->imprecise_exception = HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH;
+                env->imprecise_exception = HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH;
                 break;
             }
             idx = i;

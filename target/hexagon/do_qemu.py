@@ -915,7 +915,7 @@ supported_privs = [
     'Y2_dcinvidx', 'Y2_dcfetchbo',
     'Y4_l2fetch', 'Y5_l2fetch', 'Y2_icinva',
     'Y2_dczeroa',
-    'Y2_stop',
+    'Y2_start', 'Y2_stop',
 ]
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 

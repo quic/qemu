@@ -489,13 +489,13 @@ void test_page_size(const char *name, uint32_t page_size_bits)
     check(tlbp(0, new_addr), TLB_NOT_FOUND);
 }
 
-#define HEX_EXCP_FETCH_NO_XPAGE                  0x011
-#define HEX_EXCP_FETCH_NO_UPAGE                  0x012
-#define HEX_EXCP_PRIV_NO_READ                    0x022
-#define HEX_EXCP_PRIV_NO_WRITE                   0x023
-#define HEX_EXCP_PRIV_NO_UREAD                   0x024
-#define HEX_EXCP_PRIV_NO_UWRITE                  0x025
-#define HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH       0x44
+#define HEX_CAUSE_FETCH_NO_XPAGE                  0x011
+#define HEX_CAUSE_FETCH_NO_UPAGE                  0x012
+#define HEX_CAUSE_PRIV_NO_READ                    0x022
+#define HEX_CAUSE_PRIV_NO_WRITE                   0x023
+#define HEX_CAUSE_PRIV_NO_UREAD                   0x024
+#define HEX_CAUSE_PRIV_NO_UWRITE                  0x025
+#define HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH       0x44
 
 #define READ_TLB                                 1
 #define READ_USER_TLB                            2
@@ -515,37 +515,37 @@ void my_event_handler_helper(uint32_t ssr)
     }
 
     switch (cause) {
-    case HEX_EXCP_FETCH_NO_XPAGE:
+    case HEX_CAUSE_FETCH_NO_XPAGE:
         entry = tlbr(EXEC_TLB);
         SET_FIELD(entry, PTE_X, 1);
         tlbw(entry, EXEC_TLB);
         break;
-    case HEX_EXCP_FETCH_NO_UPAGE:
+    case HEX_CAUSE_FETCH_NO_UPAGE:
         entry = tlbr(EXEC_TLB);
         SET_FIELD(entry, PTE_U, 1);
         tlbw(entry, EXEC_TLB);
         break;
-    case HEX_EXCP_PRIV_NO_READ:
+    case HEX_CAUSE_PRIV_NO_READ:
         entry = tlbr(READ_TLB);
         SET_FIELD(entry, PTE_R, 1);
         tlbw(entry, READ_TLB);
         break;
-    case HEX_EXCP_PRIV_NO_WRITE:
+    case HEX_CAUSE_PRIV_NO_WRITE:
         entry = tlbr(WRITE_TLB);
         SET_FIELD(entry, PTE_W, 1);
         tlbw(entry, WRITE_TLB);
         break;
-    case HEX_EXCP_PRIV_NO_UREAD:
+    case HEX_CAUSE_PRIV_NO_UREAD:
         entry = tlbr(READ_USER_TLB);
         SET_FIELD(entry, PTE_U, 1);
         tlbw(entry, READ_USER_TLB);
         break;
-    case HEX_EXCP_PRIV_NO_UWRITE:
+    case HEX_CAUSE_PRIV_NO_UWRITE:
         entry = tlbr(WRITE_USER_TLB);
         SET_FIELD(entry, PTE_U, 1);
         tlbw(entry, WRITE_USER_TLB);
         break;
-    case HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH:
+    case HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH:
         break;
     default:
         do_coredump();
@@ -695,12 +695,12 @@ void test_permissions(void)
     check((new_f()), (int)exec_addr);
 
     uint64_t expected_exceptions = 0;
-    expected_exceptions |= (1LL << HEX_EXCP_FETCH_NO_XPAGE);
-    expected_exceptions |= (1LL << HEX_EXCP_FETCH_NO_UPAGE);
-    expected_exceptions |= (1LL << HEX_EXCP_PRIV_NO_READ);
-    expected_exceptions |= (1LL << HEX_EXCP_PRIV_NO_WRITE);
-    expected_exceptions |= (1LL << HEX_EXCP_PRIV_NO_UREAD);
-    expected_exceptions |= (1LL << HEX_EXCP_PRIV_NO_UWRITE);
+    expected_exceptions |= (1LL << HEX_CAUSE_FETCH_NO_XPAGE);
+    expected_exceptions |= (1LL << HEX_CAUSE_FETCH_NO_UPAGE);
+    expected_exceptions |= (1LL << HEX_CAUSE_PRIV_NO_READ);
+    expected_exceptions |= (1LL << HEX_CAUSE_PRIV_NO_WRITE);
+    expected_exceptions |= (1LL << HEX_CAUSE_PRIV_NO_UREAD);
+    expected_exceptions |= (1LL << HEX_CAUSE_PRIV_NO_UWRITE);
 
 #if DEBUG
     print_exceptions(my_exceptions);
@@ -835,7 +835,7 @@ void test_multi_tlb(void)
     tlbw(entry, 2);
     check(tlboc(entry), -1);
     check(tlbp(1, new_addr), 1);
-    check64(my_exceptions, (uint64_t)HEX_EXCP_IMPRECISE_MULTI_TLB_MATCH);
+    check64(my_exceptions, (uint64_t)HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH);
 
     /* Clear the TLB entries */
     SET_FIELD(entry, PTE_V, 0);

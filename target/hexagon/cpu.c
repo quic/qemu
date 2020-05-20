@@ -143,17 +143,19 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 #ifndef CONFIG_USER_ONLY
 static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
 {
+    target_ulong val = (regnum < HEX_SREG_GLB_START) ?
+        env->t_sreg[regnum] : env->g_sreg[regnum];
     fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
-        hexagon_sregnames[regnum], env->sreg[regnum]);
+        hexagon_sregnames[regnum], val);
 }
 
 static target_ulong get_badva(CPUHexagonState *env)
 
 {
-  if (env->sreg[HEX_SREG_SSR] & SSR_BVS)
-    return env->sreg[HEX_SREG_BADVA1];
+  if (env->t_sreg[HEX_SREG_SSR] & SSR_BVS)
+    return env->t_sreg[HEX_SREG_BADVA1];
   else
-    return env->sreg[HEX_SREG_BADVA0];
+    return env->t_sreg[HEX_SREG_BADVA0];
 }
 #endif
 
@@ -203,7 +205,7 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
         return;
     }
     last_pc = env->gpr[HEX_REG_PC];
-    fprintf(f, "General Purpose Registers = {\n");
+    fprintf(f, "TID %d : General Purpose Registers = {\n", env->threadId);
     for (i = 0; i < 32; i++) {
         print_reg(f, env, i);
     }
@@ -228,7 +230,7 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     fprintf(f, "  cs0 = 0x00000000\n");
     fprintf(f, "  cs1 = 0x00000000\n");
 #else
-    print_val(f, "cause", env->sreg[HEX_SREG_SSR] & SSR_CAUSE);
+    print_val(f, "cause", env->t_sreg[HEX_SREG_SSR] & SSR_CAUSE);
     print_sreg(f, env, get_badva(env));
     print_reg(f, env, HEX_REG_CS0);
     print_reg(f, env, HEX_REG_CS1);
@@ -395,17 +397,17 @@ static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA,
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    env->sreg[HEX_SREG_BADVA] = VA;
+    env->t_sreg[HEX_SREG_BADVA] = VA;
 
     switch (access_type) {
     case MMU_INST_FETCH:
-        cs->exception_index = HEX_EXCP_TLBMISSX_CAUSE_NORMAL;
+        cs->exception_index = HEX_CAUSE_TLBMISSX_CAUSE_NORMAL;
         break;
     case MMU_DATA_LOAD:
-        cs->exception_index = HEX_EXCP_TLBMISSRW_CAUSE_READ;
+        cs->exception_index = HEX_CAUSE_TLBMISSRW_CAUSE_READ;
         break;
     case MMU_DATA_STORE:
-        cs->exception_index = HEX_EXCP_TLBMISSRW_CAUSE_WRITE;
+        cs->exception_index = HEX_CAUSE_TLBMISSRW_CAUSE_WRITE;
         break;
     }
 }
@@ -415,7 +417,7 @@ static void raise_perm_exception(CPUState *cs, target_ulong VA, int32_t excp)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    env->sreg[HEX_SREG_BADVA] = VA;
+    env->t_sreg[HEX_SREG_BADVA] = VA;
     cs->exception_index = excp;
 }
 
@@ -439,13 +441,13 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
 #ifdef CONFIG_USER_ONLY
     switch (access_type) {
     case MMU_INST_FETCH:
-        cs->exception_index = HEX_EXCP_FETCH_NO_UPAGE;
+        cs->exception_index = HEX_CAUSE_FETCH_NO_UPAGE;
         break;
     case MMU_DATA_LOAD:
-        cs->exception_index = HEX_EXCP_PRIV_NO_UREAD;
+        cs->exception_index = HEX_CAUSE_PRIV_NO_UREAD;
         break;
     case MMU_DATA_STORE:
-        cs->exception_index = HEX_EXCP_PRIV_NO_UWRITE;
+        cs->exception_index = HEX_CAUSE_PRIV_NO_UWRITE;
         break;
     }
     cpu_loop_exit_restore(cs, retaddr);
@@ -459,10 +461,10 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
     bool ret = 0;
 
     qemu_log_mask(CPU_LOG_MMU,
-                  "%s: pc = 0x%08" PRIx32
+                  "%s: tid = 0x%x, pc = 0x%08" PRIx32
                   ", vaddr = 0x%08" VADDR_PRIx
                   ", size = %d, %s,\tprobe = %d, %s\n",
-                  __func__, env->gpr[HEX_REG_PC], address, size,
+                  __func__, env->threadId, env->gpr[HEX_REG_PC], address, size,
                   access_type_names[access_type],
                   probe, mmu_idx_names[mmu_idx]);
     ret = get_physical_address(env, &phys, &prot, &page_size, &excp,

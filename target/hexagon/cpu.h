@@ -166,9 +166,13 @@ struct CPUHexagonState {
     uint8_t slot_cancelled;
     target_ulong new_value[TOTAL_PER_THREAD_REGS];
 
-    target_ulong sreg[NUM_SREGS];
-    target_ulong new_sreg_value[NUM_SREGS];
-    target_ulong sreg_written[NUM_SREGS];
+    target_ulong t_sreg[NUM_SREGS];
+    target_ulong t_sreg_new_value[NUM_SREGS];
+    target_ulong t_sreg_written[NUM_SREGS];
+
+    target_ulong *g_sreg;
+    target_ulong *g_sreg_new_value;
+    target_ulong *g_sreg_written;
 
     /*
      * Only used when HEX_DEBUG is on, but unconditionally included
@@ -221,7 +225,8 @@ struct CPUHexagonState {
     mmqreg_t temp_qregs[TEMP_VECTORS_MAX];
 
     target_ulong cache_tags[CACHE_TAGS_MAX];
-    int timing_on;
+    unsigned int timing_on;
+    unsigned int threadId;
     const char *cmdline;
 #ifndef CONFIG_USER_ONLY
     CPUHexagonTLBContext *hex_tlb;
@@ -275,7 +280,7 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
 #ifndef CONFIG_USER_ONLY
 
-#define GET_SSR_FIELD(BIT) (env->sreg[HEX_SREG_SSR] & (BIT))
+#define GET_SSR_FIELD(BIT) (env->t_sreg[HEX_SREG_SSR] & (BIT))
 static inline int sys_in_monitor_mode(CPUHexagonState *env)
 {
     return ((GET_SSR_FIELD(SSR_UM) == 0)
@@ -301,14 +306,6 @@ static inline int get_cpu_mode(CPUHexagonState *env)
 
 {
   // from table 4-2
-#if 0
-  printf("%s:%d: SSR 0x%x: EX %d, GM %d, UM %d\n",
-    __FUNCTION__, __LINE__,
-    env->sreg[HEX_SREG_SSR],
-    (env->sreg[HEX_SREG_SSR] & SSR_EX),
-    (env->sreg[HEX_SREG_SSR] & SSR_GM),
-    (env->sreg[HEX_SREG_SSR] & SSR_UM));
-#endif
 
   if (GET_SSR_FIELD(SSR_EX)) {
     return HEX_CPU_MODE_MONITOR;
@@ -322,7 +319,7 @@ static inline int get_cpu_mode(CPUHexagonState *env)
 
 static inline int cpu_mmu_index(CPUHexagonState *env, bool ifetch)
 {
-  if (!(env->sreg[HEX_SREG_SYSCFG] & SYSCFG_M)) {
+  if (!(env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_M)) {
     return MMU_KERNEL_IDX;
   }
 
@@ -343,6 +340,8 @@ typedef HexagonCPU ArchCPU;
 
 void hexagon_translate_init(void);
 
+extern void hexagon_create_cpu(CPUHexagonState *env, uint32_t mask);
+extern void hexagon_destroy_cpu(CPUHexagonState *env, uint32_t mask);
 extern void hexagon_cpu_do_interrupt(CPUState *cpu);
 extern void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc, int traptype, int imm);
 

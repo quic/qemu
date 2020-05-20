@@ -59,6 +59,11 @@ extern const char * const hexagon_sregnames[];
 
 extern void init_genptr(void);
 
+#if 1
 #define hexagon_cpu_mmu_enabled(env) \
-  GET_FIELD(SYSCFG_MMUEN, env->sreg[HEX_SREG_SYSCFG])
+  GET_FIELD(SYSCFG_MMUEN, env->g_sreg[HEX_SREG_SYSCFG])
+#else
+#define hexagon_cpu_mmu_enabled(env) 0
+#endif
+
 #endif
