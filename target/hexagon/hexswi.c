@@ -15,8 +15,39 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "sysemu/runstate.h"
+#include <math.h>
+#include "qemu/osdep.h"
+#include "cpu.h"
+#ifdef CONFIG_USER_ONLY
+#include "qemu.h"
+#include "exec/helper-proto.h"
+#else
+#include "hw/boards.h"
+#include "hw/hexagon/hexagon.h"
+#endif
+#include "exec/exec-all.h"
+#include "exec/cpu_ldst.h"
+#include "qemu/log.h"
+#include "tcg/tcg-op.h"
 #include "internal.h"
+#include "macros.h"
+#include "arch.h"
+#include "fma_emu.h"
+#include "conv_emu.h"
+#include "mmvec/mmvec.h"
+#include "mmvec/macros.h"
+#ifndef CONFIG_USER_ONLY
+#include "hex_mmu.h"
+#endif
+#include "op_helper.h"
+#include "cpu_helper.h"
+#include "sysemu/runstate.h"
+#ifndef CONFIG_USER_ONLY
+#include "hw/boards.h"
+#include "hw/hexagon/hexagon.h"
+#endif
+
+#ifndef CONFIG_USER_ONLY
 
 #define SYS_OPEN            0x01
 #define SYS_CLOSE           0x02
@@ -90,8 +121,8 @@
     hexagon_tools_memory_read(env, ADDR, SIZE, PTR)
 #define DEBUGMEMORYWRITE(ADDR,SIZE,DATA) \
     hexagon_tools_memory_write(env,ADDR,SIZE,(size8u_t)DATA)
-#define DEBUGMEMORYREADLocked(ADDR,SIZE,PTR) \
-    hexagon_tools_memory_readLocked(env, ADDR, SIZE, PTR)
+#define DEBUGMEMORYREADLOCKED(ADDR,SIZE,PTR) \
+    hexagon_tools_memory_read_locked(env, ADDR, SIZE, PTR)
 #define DEBUGMEMORYWRITELOCKED(ADDR,SIZE,DATA) \
     hexagon_tools_memory_write_locked(env,ADDR,SIZE,(size8u_t)DATA)
 
@@ -786,9 +817,9 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
 
     env->pred[reg] = 0;
     if (single) {
-        segv = DEBUGMEMORYREADLocked(addr, 4, &val);
+        segv = DEBUGMEMORYREADLOCKED(addr, 4, &val);
     } else {
-        segv = DEBUGMEMORYREADLocked(addr, 8, &val_i64);
+        segv = DEBUGMEMORYREADLOCKED(addr, 8, &val_i64);
     }
     if (!segv) {
         if (single) {
@@ -955,4 +986,5 @@ void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
     cs->exception_index = (traptype == 0) ? HEX_EVENT_TRAP0 : HEX_EVENT_TRAP1;
     cpu_loop_exit(cs);
 }
+#endif
 

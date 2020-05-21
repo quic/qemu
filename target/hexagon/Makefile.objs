@@ -17,6 +17,8 @@
 
 obj-y += \
     cpu.o \
+    cpu_helper.o \
+    hexswi.o \
     translate.o \
     op_helper.o \
     gdbstub.o \

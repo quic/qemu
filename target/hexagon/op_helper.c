@@ -39,6 +39,7 @@
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
 #endif
+#include "op_helper.h"
 
 #if COUNT_HEX_HELPERS
 #include "opcodes.h"
@@ -176,27 +177,6 @@ static inline void log_pred_write(CPUHexagonState *env, int pnum,
         env->new_pred_value[pnum] = val & 0xff;
         env->pred_written |= 1 << pnum;
     }
-}
-
-static inline void log_store32(CPUHexagonState *env, target_ulong addr,
-                               target_ulong val, int width, int slot)
-{
-    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx ", " TARGET_FMT_ld
-                  " [0x" TARGET_FMT_lx "])\n",
-                  width, addr, val, val);
-    env->mem_log_stores[slot].va = addr;
-    env->mem_log_stores[slot].width = width;
-    env->mem_log_stores[slot].data32 = val;
-}
-
-static inline void log_store64(CPUHexagonState *env, target_ulong addr,
-                               int64_t val, int width, int slot)
-{
-    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx ", %ld [0x%lx])\n",
-                   width, addr, val, val);
-    env->mem_log_stores[slot].va = addr;
-    env->mem_log_stores[slot].width = width;
-    env->mem_log_stores[slot].data64 = val;
 }
 
 static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
@@ -862,11 +842,6 @@ void HELPER(sreg_write_pair)(CPUHexagonState *env, uint32_t reg, uint64_t val)
         env->g_sreg[reg+1] = val >> 32;
     }
 }
-#endif
-
-#ifndef CONFIG_USER_ONLY
-#include "cpu_helper.c"
-#include "hexswi.c"
 #endif
 
 /* These macros can be referenced in the generated helper functions */

@@ -15,7 +15,26 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <math.h>
+#include "qemu/osdep.h"
+#include "cpu.h"
+#include "hw/hexagon/hexagon.h"
+#include "exec/exec-all.h"
+#include "exec/cpu_ldst.h"
+#include "qemu/log.h"
+#include "tcg/tcg-op.h"
+#include "internal.h"
+#include "macros.h"
+#include "arch.h"
+#include "fma_emu.h"
+#include "conv_emu.h"
+#include "mmvec/mmvec.h"
+#include "mmvec/macros.h"
+#include "hex_mmu.h"
+#include "op_helper.h"
+#include "cpu_helper.h"
 
+#ifndef CONFIG_USER_ONLY
 static size1u_t hexagon_swi_mem_read1(CPUHexagonState *env, vaddr_t paddr)
 
 {
@@ -71,14 +90,16 @@ static size8u_t hexagon_swi_mem_read8(CPUHexagonState *env, vaddr_t paddr)
     return data;
 }
 
-static void hexagon_swi_mem_write1(CPUHexagonState *env, vaddr_t paddr, size1u_t value)
+static void hexagon_swi_mem_write1(CPUHexagonState *env, vaddr_t paddr,
+    size1u_t value)
 
 {
     unsigned mmu_idx = cpu_mmu_index(env, false);
     cpu_stb_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void hexagon_swi_mem_write2(CPUHexagonState *env, vaddr_t paddr, size2u_t value)
+static void hexagon_swi_mem_write2(CPUHexagonState *env, vaddr_t paddr,
+    size2u_t value)
 
 {
     unsigned mmu_idx = cpu_mmu_index(env, false);
@@ -93,14 +114,15 @@ static void hexagon_swi_mem_write4(CPUHexagonState *env, vaddr_t paddr,
     cpu_stl_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void hexagon_swi_mem_write8(CPUHexagonState *env, vaddr_t paddr, size8u_t value)
+static void hexagon_swi_mem_write8(CPUHexagonState *env, vaddr_t paddr,
+    size8u_t value)
 {
     unsigned mmu_idx = cpu_mmu_index(env, false);
     cpu_stq_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr, int size,
-    void *retptr)
+void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr,
+    int size, void *retptr)
 
 {
     vaddr_t paddr = vaddr;
@@ -123,8 +145,9 @@ static void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr, int s
     }
 }
 
-static void hexagon_tools_memory_write(CPUHexagonState *env, vaddr_t vaddr, int size,
-    size8u_t data)
+void hexagon_tools_memory_write(CPUHexagonState *env, vaddr_t vaddr,
+    int size, size8u_t data)
+
 {
     paddr_t paddr = vaddr;
 
@@ -150,7 +173,7 @@ static void hexagon_tools_memory_write(CPUHexagonState *env, vaddr_t vaddr, int 
     }
 }
 
-static int hexagon_tools_memory_readLocked(CPUHexagonState *env, vaddr_t vaddr,
+int hexagon_tools_memory_read_locked(CPUHexagonState *env, vaddr_t vaddr,
     int size, void *retptr)
 
 {
@@ -173,7 +196,7 @@ static int hexagon_tools_memory_readLocked(CPUHexagonState *env, vaddr_t vaddr,
     return ret;
 }
 
-static int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
+int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
     int size, size8u_t data)
 
 {
@@ -198,3 +221,4 @@ static int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr
     return ret;
 }
 
+#endif

@@ -317,7 +317,7 @@ static inline int get_cpu_mode(CPUHexagonState *env)
   return HEX_CPU_MODE_MONITOR;
 }
 
-static inline int cpu_mmu_index(CPUHexagonState *env, bool ifetch)
+static inline unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
 {
   if (!(env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_M)) {
     return MMU_KERNEL_IDX;
