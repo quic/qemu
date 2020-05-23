@@ -1,0 +1,1552 @@
+{
+    "A_IMPLICIT_READS_IPENDAD_IAD": {
+        "wreg": null,
+        "rreg": "MREG.IPENDAD.IAD",
+        "descr": "May read"
+    },
+    "A_IMPLICIT_READS_GP": {
+        "wreg": null,
+        "rreg": "UREG.GP",
+        "descr": "Reads the GP register"
+    },
+    "A_CVI_SCATTER_ACC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI Scatter Accumulate"
+    },
+    "A_EXCEPTION_ACCESS": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Can generate Access Violation Exception"
+    },
+    "A_CVI_TMP_SRC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Transient reassign"
+    },
+    "A_RESTRICT_SLOT1_AOK": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Slot 1 insn must be empty or A-type"
+    },
+    "A_IMPLICIT_WRITES_LR": {
+        "wreg": "UREG.LR",
+        "rreg": null,
+        "descr": "Writes the link register"
+    },
+    "A_NO_INTRINSIC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Don't generate an intrisic"
+    },
+    "A_RESTRICT_NOSLOT1": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "No slot 1 instruction in parallel"
+    },
+    "A_CVI_REQUIRES_TMPLOAD": {
+        "wreg": null,
+        "rreg": null,
+        "descr": ".tmp load must be included in packet"
+    },
+    "A_IT_ALU": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU type"
+    },
+    "A_EXTENSION": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Extension instruction"
+    },
+    "A_NOTE_EXTENSION_AUDIO": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Hexagon audio extensions"
+    },
+    "A_RESTRICT_SINGLE_MEM_FIRST": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Single memory op must be last"
+    },
+    "A_SUBINSN": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "sub-instruction"
+    },
+    "A_CVI_VS": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Shift instruction executes on HVX"
+    },
+    "A_MEMSIZE_4B": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Memory width is 4 bytes"
+    },
+    "A_IMPLICIT_WRITES_GELR": {
+        "wreg": "GREG.GELR",
+        "rreg": null,
+        "descr": "May write GELR values"
+    },
+    "A_RESTRICT_BRANCHADDER_MAX1": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "One PC-plus-offset calculation"
+    },
+    "A_COMMUTES": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The operation is communitive"
+    },
+    "A_VFETCH": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "memory fetch op to L2 for a single vector"
+    },
+    "A_GUEST": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Not available in user mode"
+    },
+    "A_RESTRICT_NOCOF": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Cannot be grouped with any COF"
+    },
+    "A_MEMLIKE_PACKET_RULES": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "follows Memory-like packet rules"
+    },
+    "A_CVI_VV_LATE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "HVX insn that always require late Vv source"
+    },
+    "A_MUST_EXTEND": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Immediate must be extended"
+    },
+    "A_NOTE_ARCHV2": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Only available in the V2 architecture"
+    },
+    "A_PM_M": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Post Modify by M register"
+    },
+    "A_RESTRICT_NOSLOT0_LOAD": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Packet must not have a slot 1 load"
+    },
+    "A_USATURATE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Does unsigned saturation"
+    },
+    "A_IT_ALU_MINMAX": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU MIN or MAX type"
+    },
+    "A_PAIR_2OF2": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "For assembler"
+    },
+    "A_NOTE_LA_RESTRICT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Cannot be in the last pkt of a HW loop"
+    },
+    "A_BRANCHADDER": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Contains a PC-plus-immediate operation."
+    },
+    "A_IMPLICIT_READS_PC": {
+        "wreg": null,
+        "rreg": "UREG.PC",
+        "descr": "Reads the program counter"
+    },
+    "A_CVI_GATHER_RELEASE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI Store Release for gather"
+    },
+    "A_EXCEPTION_SWI": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Software Interrupt (trap) exception"
+    },
+    "A_IMPLICIT_WRITES_P3": {
+        "wreg": "UREG.P3",
+        "rreg": null,
+        "descr": "May write Predicate 3"
+    },
+    "A_IMPLICIT_WRITES_CCR": {
+        "wreg": "MREG.CCR",
+        "rreg": null,
+        "descr": "May write CCR values"
+    },
+    "A_CVI_VS_VX": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Permute/shift and multiply insn executes on HVX"
+    },
+    "A_RET_TYPE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "return type"
+    },
+    "A_PRED_BIT_12": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The branch uses bit 12 as the prediction bit"
+    },
+    "A_ICTAGOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ictag op type"
+    },
+    "A_CVI_GATHER_ADDR_4B": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI Scatter/Gather address is word"
+    },
+    "A_RESTRICT_NOSRMOVE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Do not write SR in the same packet"
+    },
+    "A_VECINSN": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Long Vector Instruction"
+    },
+    "A_CVI_PUMP_2X": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Goes through the pipeline twice"
+    },
+    "A_IMPLICIT_WRITES_FP": {
+        "wreg": "UREG.FP",
+        "rreg": null,
+        "descr": "Writes the frame pointer"
+    },
+    "A_AA_DUMMY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Dummy Zeroth Attribute"
+    },
+    "A_EXTENDABLE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Immediate may be extended"
+    },
+    "A_CONDEXEC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "May be cancelled by a predicate"
+    },
+    "A_DIRECT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses an PC-relative immediate field"
+    },
+    "A_JUMP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Jump-type instruction"
+    },
+    "A_RESTRICT_LATEPRED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Predicate can not be used as a .new."
+    },
+    "A_VDBG": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Vector debugging instruction"
+    },
+    "A_IMPLICIT_WRITES_SYSCFG_TLBLOCK": {
+        "wreg": "MREG.SYSCFG.TLBLOCK",
+        "rreg": null,
+        "descr": "May wr"
+    },
+    "A_NOTE_MPY_RESOURCE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses a HVX multiply resource."
+    },
+    "A_DCZEROA": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "dczeroa type"
+    },
+    "A_IMPLICIT_READS_GELR": {
+        "wreg": null,
+        "rreg": "GREG.GELR",
+        "descr": "May read GELR values"
+    },
+    "A_NOTE_AXOK": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "May only be grouped with ALU32 or non-FP XTYPE."
+    },
+    "A_EXCEPTION_TLB": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Can generate a TLB Miss Exception"
+    },
+    "A_PM_I": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Post Modify by Immediate"
+    },
+    "A_CVI_NEW": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "New value memory instruction executes on HVX"
+    },
+    "A_CVI_VM": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Memory instruction executes on HVX"
+    },
+    "A_INTRINSIC_RETURNS_UNSIGNED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Intrinsic returns an unsigned"
+    },
+    "A_CVI_VX": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Multiply instruction executes on HVX"
+    },
+    "A_RESTRICT_NEEDS_MEMLD": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Must be grouped with a load"
+    },
+    "A_CVI_VP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Permute instruction executes on HVX"
+    },
+    "A_EXT_UPPER_IMMED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Extend upper case immediate"
+    },
+    "A_PRED_BIT_1": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The branch uses bit 1 as the prediction bit"
+    },
+    "A_NOTE_CVFLAGS": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Sets the Carry and Overflow flags in USR."
+    },
+    "A_IMPLICIT_WRITES_SGP1": {
+        "wreg": "MREG.SGP1",
+        "rreg": null,
+        "descr": "Reads the SGP1 register"
+    },
+    "A_NOTE_LATEPRED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The predicate can not be used as a .new"
+    },
+    "A_EA_REG_ONLY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "EA = input register only"
+    },
+    "A_RESTRICT_COF_MAX1": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "One change-of-flow per packet"
+    },
+    "A_BREVADDR": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses bit reverse addressing mode"
+    },
+    "A_CVI_SCATTER": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI Scatter operation"
+    },
+    "A_RESTRICT_NOSLOT1_STORE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Packet must not have slot 1 store"
+    },
+    "A_NOTE_NOSLOT1": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Packet with this insn must have slot 1 empty"
+    },
+    "A_IMPLICIT_WRITES_PC": {
+        "wreg": "UREG.PC",
+        "rreg": null,
+        "descr": "Writes the program counter"
+    },
+    "A_RESTRICT_SLOT0ONLY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Must execute on slot0"
+    },
+    "A_IMPLICIT_WRITES_SSR": {
+        "wreg": "MREG.SSR",
+        "rreg": null,
+        "descr": "May write SSR values"
+    },
+    "A_IT_COF": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Change-of-flow type"
+    },
+    "A_CVI_PUMP_4X": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Goes through the pipeline four times"
+    },
+    "A_BIDIRSHIFTR": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses a bidirectional shift right"
+    },
+    "A_RELAX_COF_2ND": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "COF can be second in assembly order"
+    },
+    "A_IMPLICIT_READS_GOSP": {
+        "wreg": null,
+        "rreg": "GREG.GOSP",
+        "descr": "May read GOSP values"
+    },
+    "A_NOTE_PRIV": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Monitor-level feature"
+    },
+    "A_PAIR_1OF2": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "For assembler"
+    },
+    "A_EA_PAGECROSS": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "EA calculation can have a Page Cross Stall"
+    },
+    "A_VBUF": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Touches the VBUF"
+    },
+    "A_RESTRICT_LOOP_LA": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Cannot be in the last packet of a loop"
+    },
+    "A_IMPLICIT_WRITES_USR_PFA": {
+        "wreg": "UREG.SR.PFA",
+        "rreg": null,
+        "descr": "May write USR_PFA"
+    },
+    "A_L2TAGOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "l2tag op type"
+    },
+    "A_IMPLICIT_READS_FP": {
+        "wreg": null,
+        "rreg": "UREG.FP",
+        "descr": "Reads the frame pointer"
+    },
+    "A_RESTRICT_NOSLOT2_MPY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "A packet cannot have a slot 2 mpy"
+    },
+    "A_IMPLICIT_READS_CS": {
+        "wreg": null,
+        "rreg": "UREG.CS",
+        "descr": "Reads the CS/M register"
+    },
+    "A_MEMSIZE_1B": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Memory width is 1 byte"
+    },
+    "A_IMPLICIT_WRITES_P0": {
+        "wreg": "UREG.P0",
+        "rreg": null,
+        "descr": "Writes Predicate 0"
+    },
+    "A_IMPLICIT_READS_P1": {
+        "wreg": null,
+        "rreg": "UREG.P1",
+        "descr": "Reads Predicate 1"
+    },
+    "A_IMPLICIT_WRITES_GOSP": {
+        "wreg": "GREG.GOSP",
+        "rreg": null,
+        "descr": "May write GOSP values"
+    },
+    "A_CVI_TMP_DST": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI instruction that doesn't write a register"
+    },
+    "A_NOTE_CONDITIONAL": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "can be conditionally executed"
+    },
+    "A_IMPLICIT_WRITES_IPENDAD_IAD": {
+        "wreg": "MREG.IPENDAD.IAD",
+        "rreg": null,
+        "descr": "May write"
+    },
+    "A_RESTRICT_PREFERSLOT0": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Try to encode into slot 0"
+    },
+    "A_ICINVA": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "icinva"
+    },
+    "A_NOTE_SLOT1_AOK": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Packet must have slot 1 empty or ALU32"
+    },
+    "A_IMPLICIT_READS_ELR": {
+        "wreg": null,
+        "rreg": "MREG.ELR",
+        "descr": "Reads the ELR register"
+    },
+    "A_NO_XML": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Don't generate a XML docs for this instruction"
+    },
+    "A_IMPLICIT_WRITES_SP": {
+        "wreg": "UREG.SP",
+        "rreg": null,
+        "descr": "Writes the stack pointer"
+    },
+    "A_NOTE_NOPACKET": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "solo instruction"
+    },
+    "A_NOTE_RT8": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Input scalar register Rt is limited to R0-R7"
+    },
+    "A_CVI_VA": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU instruction executes on HVX"
+    },
+    "A_NOTE_NOCOF_RESTRICT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Cannot be grouped with any COF"
+    },
+    "A_PRED_BIT_7": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The branch uses bit 7 as the prediction bit"
+    },
+    "A_IMPLICIT_READS_LC1": {
+        "wreg": null,
+        "rreg": "UREG.LC1",
+        "descr": "Reads loop count for loop 1"
+    },
+    "A_IMPLICIT_WRITES_SA0": {
+        "wreg": "UREG.SA0",
+        "rreg": null,
+        "descr": "Writes start addr for loop 0"
+    },
+    "A_PRED_BIT_13": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The branch uses bit 13 as the prediction bit"
+    },
+    "A_CVI_EXTRACT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "HVX Extract Instruction that goes through L2"
+    },
+    "A_IMPLICIT_WRITES_SYSCFG_GCA": {
+        "wreg": "MREG.SYSCFG.GCA",
+        "rreg": null,
+        "descr": "May write"
+    },
+    "A_NOTE_PACKET_PC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The PC is the addr of the start of the pkt"
+    },
+    "A_DCTAGOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "dctag op type"
+    },
+    "A_IMPLICIT_WRITES_P1": {
+        "wreg": "UREG.P1",
+        "rreg": null,
+        "descr": "Writes Predicate 1"
+    },
+    "A_NOTE_NEEDS_MEMLD": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Must be grouped with a memory load"
+    },
+    "A_IMPLICIT_READS_P3": {
+        "wreg": null,
+        "rreg": "UREG.P3",
+        "descr": "Reads Predicate 3"
+    },
+    "A_IMPLICIT_READS_GEVB": {
+        "wreg": null,
+        "rreg": "MREG.GEVB",
+        "descr": "May read GEVB values"
+    },
+    "A_MAPPING": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Not real -- asm mapped"
+    },
+    "A_IMPLICIT_READS_FRAMEKEY": {
+        "wreg": null,
+        "rreg": "UREG.FRAMEKEY",
+        "descr": "Reads FRAMEKEY"
+    },
+    "A_MPY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Has a multiply"
+    },
+    "A_PERM": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Permute instruction"
+    },
+    "A_CVI_VP_VS": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Double vector permute/shft insn executes on HVX"
+    },
+    "A_IMPLICIT_WRITES_GP": {
+        "wreg": "UREG.GP",
+        "rreg": null,
+        "descr": "Writes the GP register"
+    },
+    "A_LOAD": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Loads from memory"
+    },
+    "A_NO_TIMING_LOG": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Does not get logged to the timing model"
+    },
+    "A_IMPLICIT_READS_SA0": {
+        "wreg": null,
+        "rreg": "UREG.SA0",
+        "descr": "Reads start address for loop 0"
+    },
+    "A_IMPLICIT_READS_R00": {
+        "wreg": null,
+        "rreg": "UREG.R00",
+        "descr": "Reads Register 0"
+    },
+    "A_PRED_BIT_4": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The branch uses bit 4 as the prediction bit"
+    },
+    "A_RESTRICT_PACKET_AXOK": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "May exist with A-type or X-type"
+    },
+    "A_ARCHV2": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "V2 architecture"
+    },
+    "A_IT_ALU_SHIFT_AND_OP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU shift and additional op type"
+    },
+    "A_CVI_SCATTER_RELEASE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI Store Release for scatter"
+    },
+    "A_PACKED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Packable instruction"
+    },
+    "A_STOREIMMED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Stores immed to memory"
+    },
+    "A_EA_BREV_REG": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "EA = bit-reversed input register"
+    },
+    "A_IMPLICIT_WRITES_R00": {
+        "wreg": "UREG.R00",
+        "rreg": null,
+        "descr": "Writes Register 0"
+    },
+    "A_ICOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Instruction cache op"
+    },
+    "A_RELAX_COF_1ST": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "COF can be fisrt in assembly order"
+    },
+    "A_IMPLICIT_READS_LR": {
+        "wreg": null,
+        "rreg": "UREG.LR",
+        "descr": "Reads the link register"
+    },
+    "A_DFMAKE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Single Float Make"
+    },
+    "A_NOTE_NOSLOT01": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Packet must have both slot 1 and 2 empty"
+    },
+    "A_MEMOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "memop"
+    },
+    "A_IMPLICIT_WRITES_LPCFG": {
+        "wreg": "UREG.SR.LPCFG",
+        "rreg": null,
+        "descr": "Writes the loop config"
+    },
+    "A_IT_HWLOOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Sets up hardware loop registers"
+    },
+    "A_IMPLICIT_WRITES_LC1": {
+        "wreg": "UREG.LC1",
+        "rreg": null,
+        "descr": "Writes loop count for loop 1"
+    },
+    "A_CVI_GATHER": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI Gather operation"
+    },
+    "A_NOTE_HVX_ONLY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Only available on a core with HVX."
+    },
+    "A_NOTE_VMEM": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Immediates are in multiples of vector length."
+    },
+    "A_NOTE_PACKET_NPC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Next PC is the address following pkt"
+    },
+    "A_NOTE_OOBVSHIFT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Possible shift overflow"
+    },
+    "A_NOTE_DEPRECATED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Will be deprecated in a future version."
+    },
+    "A_RESTRICT_SLOT2ONLY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Must execute on slot2"
+    },
+    "A_ROPS_2": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Compound instruction worth 2 wimpy RISC-ops"
+    },
+    "A_PREDUSE_BSB": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Instructions need back-skip-back scheduling"
+    },
+    "A_NOTE_BADTAG_UNDEF": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Undefined if a tag is non-present"
+    },
+    "A_NOTE_BRANCHADDER_MAX1": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "One PC-plus-offset calculation"
+    },
+    "A_INDIRECT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Absolute register jump"
+    },
+    "A_IMPLICIT_READS_SGP0": {
+        "wreg": null,
+        "rreg": "MREG.SGP0",
+        "descr": "Reads the SGP0 register"
+    },
+    "A_VTCM_ALLBANK_ACCESS": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Allocates in all VTCM schedulers"
+    },
+    "A_IMPLICIT_WRITES_FPFLAGS": {
+        "wreg": "UREG.SR.FPFLAGS",
+        "rreg": null,
+        "descr": "May write FP flags"
+    },
+    "A_IT_ALU_LOGICAL": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU logical operation type"
+    },
+    "A_IT_MISC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "misc instruction type"
+    },
+    "A_BIMODAL_BRANCH": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Updates the bimodal branch predictor"
+    },
+    "A_IMPLICIT_READS_FRAMELIMIT": {
+        "wreg": null,
+        "rreg": "UREG.FRAMELIMIT",
+        "descr": "Reads FRAMELIMIT"
+    },
+    "A_NOTE_RELATIVE_ADDRESS": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "A PC-relative address is formed"
+    },
+    "A_NVSTORE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "New-value store"
+    },
+    "A_IT_EXTENDER": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "constant extender instruction"
+    },
+    "A_PM_CIRI": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Post Modify with Circular Addressing by immediate"
+    },
+    "A_ARCHV4": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "V4 architecture"
+    },
+    "A_L2FLUSHOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "l2flush op type"
+    },
+    "A_IT_ALU_MOVE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU data movement type"
+    },
+    "A_BIDIRSHIFTL": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses a bidirectional shift left"
+    },
+    "A_SATURATE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Does signed saturation"
+    },
+    "A_IT_LOAD": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Loads from memory"
+    },
+    "A_HWLOOP0_SETUP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Sets up HW loop0"
+    },
+    "A_RESTRICT_NOSLOT01": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "No slot 0 or 1 instructions in parallel"
+    },
+    "A_IMPLICIT_READS_Q3": {
+        "wreg": null,
+        "rreg": "UREG.Q3",
+        "descr": "Reads Vector Predicate 3"
+    },
+    "A_FPSINGLE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Single-precision Floating Point Operation"
+    },
+    "A_HWLOOP0_END": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Ends HW loop0"
+    },
+    "A_IMPLICIT_READS_GSR": {
+        "wreg": null,
+        "rreg": "GREG.GSR",
+        "descr": "May read GSR values"
+    },
+    "A_CVI_EARLY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "HVX instructions that require early sources"
+    },
+    "A_NOTE_ANY_VS_VX_RESOURCE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Consumes two resources"
+    },
+    "A_NT_VMEM": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Non-temporal memory access"
+    },
+    "A_HWLOOP1_END": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Ends HW loop1"
+    },
+    "A_FPOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Floating Point Operation"
+    },
+    "A_DOTOLD": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses a predicate generated in a previous packet"
+    },
+    "A_L2FETCH": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Instruction is l2fetch type"
+    },
+    "A_MEMCPY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "memcpy or dma-type instruction"
+    },
+    "A_DCFLUSHOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "dcflush op type"
+    },
+    "A_EA_REG_PLUS_IMM": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "EA = register plus immediate"
+    },
+    "A_MEMSIZE_2B": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Memory width is 2 bytes"
+    },
+    "A_CJUMP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Conditional jump"
+    },
+    "A_PREFER_SLOT3": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Complex XU prefering slot3"
+    },
+    "A_EA_REG_PLUS_REGSCALED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "EA = register plus scaled register"
+    },
+    "A_IMPLICIT_READS_IPENDAD_IPEND": {
+        "wreg": null,
+        "rreg": "MREG.IPENDAD.IPEND",
+        "descr": "May read"
+    },
+    "A_EA_IMM_ONLY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "EA = immediate only"
+    },
+    "A_IMPLICIT_READS_SP": {
+        "wreg": null,
+        "rreg": "UREG.SP",
+        "descr": "Reads the stack pointer"
+    },
+    "A_ARCHV5": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "V5 architecture"
+    },
+    "A_VMEM": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "VMEM-type"
+    },
+    "A_NOTE_NT_VMEM": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Non-temporal hint to the micro-architecture"
+    },
+    "A_IMPLICIT_WRITES_IPENDAD_IPEND": {
+        "wreg": "MREG.IPENDAD.IPEND",
+        "rreg": null,
+        "descr": "May write"
+    },
+    "A_PM_ANY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Post Modify"
+    },
+    "A_NOTE_NOSLOT2_MPY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Packet cannot have a slot 2 multiply"
+    },
+    "A_ARCHV3": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "V3 architecture"
+    },
+    "A_IMPLICIT_READS_SYSCFG_GCA": {
+        "wreg": null,
+        "rreg": "MREG.SYSCFG.GCA",
+        "descr": "May read"
+    },
+    "A_RET": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Function return instruction"
+    },
+    "A_RESTRICT_NOPACKET": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Not allowed in a packet"
+    },
+    "A_RESTRICT_SLOT1ONLY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Must execute on slot1"
+    },
+    "A_CVI_TMP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Transient Memory Load not written to register"
+    },
+    "A_IMPLICIT_READS_SGP1": {
+        "wreg": null,
+        "rreg": "MREG.SGP1",
+        "descr": "Reads the SGP1 register"
+    },
+    "A_IMPLICIT_WRITES_STID_PRIO_ANYTHREAD": {
+        "wreg": "MREG.STID.PRIO",
+        "rreg": null,
+        "descr": "Reads"
+    },
+    "A_IMPLICIT_READS_SSR": {
+        "wreg": null,
+        "rreg": "MREG.SSR",
+        "descr": "May read SSR values"
+    },
+    "A_NOTE_COMPAT_ACCURACY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "In the future accuracy may increase"
+    },
+    "A_NOTE_NEWVAL_SLOT0": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "New-value oprnd must execute on slot 0"
+    },
+    "A_IT_ALU_CMP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU compare operation type"
+    },
+    "A_NOTE_ANY_RESOURCE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Can use any HVX resource."
+    },
+    "A_NOTE_CRSLOT23": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Execute on either slot2 or slot3 (CR)"
+    },
+    "A_COPBYADDRESS": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Cache operation by address"
+    },
+    "A_IMPLICIT_READS_LC0": {
+        "wreg": null,
+        "rreg": "UREG.LC0",
+        "descr": "Reads loop count for loop 0"
+    },
+    "A_IT_MPY_32": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "32-bit Multiply type"
+    },
+    "A_PRED_BIT_8": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The branch uses bit 8 as the prediction bit"
+    },
+    "A_EXT_LOWER_IMMED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Extend lower case immediate"
+    },
+    "A_DEALLOCFRAME": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "deallocframe"
+    },
+    "A_RESTRICT_PACKET_SOMEREGS_OK": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Relaxed grouping rules"
+    },
+    "A_NOTE_NONAPALIV1": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "may not work correctly in Napali V1."
+    },
+    "A_DCFETCH": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "dcfetch type"
+    },
+    "A_IMPLICIT_WRITES_SYSCFG_K0LOCK": {
+        "wreg": "MREG.SYSCFG.K0LOCK",
+        "rreg": null,
+        "descr": "May write"
+    },
+    "A_PM_CIRR": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Post Modify with Circular Addressing by I field"
+    },
+    "A_NOTE_SR_OVF_WHEN_SATURATING": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Might set OVF bit"
+    },
+    "A_IMPLICIT_WRITES_SRBIT": {
+        "wreg": "UREG.SR.OVF",
+        "rreg": null,
+        "descr": "Writes the OVF bit"
+    },
+    "A_CVI_SLOT23": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Can execute in slot 2 or slot 3 (HVX)"
+    },
+    "A_RELEASE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Releases a lock"
+    },
+    "A_IMPLICIT_WRITES_LC0": {
+        "wreg": "UREG.LC0",
+        "rreg": null,
+        "descr": "Writes loop count for loop 0"
+    },
+    "A_EA_IMM_PLUS_REGSCALED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "EA = immediate plus scaled register"
+    },
+    "A_NOTE_ALL_RESOURCE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses all HVX resources."
+    },
+    "A_NOTE_PERMUTE_RESOURCE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses the HVX permute resource."
+    },
+    "A_IT_ALU_SHIFT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU shift operation type"
+    },
+    "A_SFMAKE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Single Float Make"
+    },
+    "A_CVI_GATHER_ADDR_2B": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI Scatter/Gather address is halfword"
+    },
+    "A_FOUR_PHASE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Four Phase Instruction"
+    },
+    "A_MEMSIZE_32B": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Memory width is 32 bytes"
+    },
+    "A_NOTE_GUEST": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Guest-level feature"
+    },
+    "A_STORE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Stores to memory"
+    },
+    "A_CVI_4SLOT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Consumes all the vector execution resources"
+    },
+    "A_DEALLOCRET": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "dealloc_return"
+    },
+    "A_COF": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Change-of-flow instruction"
+    },
+    "A_DCCLEANINVA": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "dccleaninva"
+    },
+    "A_HINTJR": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "hintjr type"
+    },
+    "A_CIRCADDR": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses circular addressing mode"
+    },
+    "A_DOTNEW": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses a predicate generated in the same packet"
+    },
+    "A_VMEMU": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Unaligned memory access"
+    },
+    "A_MEMLIKE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Memory-like instruction"
+    },
+    "A_ZZ_LASTATTRIB": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Last attribute in the file"
+    },
+    "A_EA_GP_IMM": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "EA = GP plus immediate (unless extended)"
+    },
+    "A_IMPLICIT_WRITES_SA1": {
+        "wreg": "UREG.SA1",
+        "rreg": null,
+        "descr": "Writes start addr for loop 1"
+    },
+    "A_CVI_VA_DV": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Double vector alu instruction executes on HVX"
+    },
+    "A_ICFLUSHOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "icflush op type"
+    },
+    "A_INVPRED": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "The predicate is inverted for true/false sense"
+    },
+    "A_CONDMAPPING": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Not real -- mapped based on values"
+    },
+    "A_IMPLICIT_WRITES_GSR": {
+        "wreg": "GREG.GSR",
+        "rreg": null,
+        "descr": "May write GSR values"
+    },
+    "A_CALL": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Function call instruction"
+    },
+    "A_NOTE_MPYDV_RESOURCE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses both HVX multiply resources."
+    },
+    "A_DOTNEWVALUE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses a register value generated in this pkt"
+    },
+    "A_NOTE_BIDIRSHIFT": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Bidirectional shift"
+    },
+    "A_NOTE_NVSLOT0": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Can execute only in slot 0 (ST)"
+    },
+    "A_ACQUIRE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Acquires a lock"
+    },
+    "A_MEMSIZE_8B": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Memory width is 8 bytes"
+    },
+    "A_CVI": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Executes on the HVX extension"
+    },
+    "A_NEWCMPJUMP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Compound compare and jump"
+    },
+    "A_IMPLICIT_WRITES_IMASK_ANYTHREAD": {
+        "wreg": "MREG.IMASK",
+        "rreg": null,
+        "descr": "May write"
+    },
+    "A_RESTRICT_SLOT3ONLY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Must execute on slot3"
+    },
+    "A_IMPLICIT_READS_IMASK_ANYTHREAD": {
+        "wreg": null,
+        "rreg": "MREG.IMASK",
+        "descr": "May read"
+    },
+    "A_NOTE_SHIFT_RESOURCE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses the HVX shift resource."
+    },
+    "A_ROPS_3": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Compound instruction worth 3 wimpy RISC-ops"
+    },
+    "A_IMPLICIT_READS_P0": {
+        "wreg": null,
+        "rreg": "UREG.P0",
+        "descr": "Reads Predicate 0"
+    },
+    "A_HWLOOP1_SETUP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Sets up HW loop1"
+    },
+    "A_EXTENSION_AUDIO": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "audio extension"
+    },
+    "A_IMPLICIT_WRITES_CVBITS": {
+        "wreg": "UREG.SR.CV",
+        "rreg": null,
+        "descr": "Writes the CV flags"
+    },
+    "A_IT_STORE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Stores to memory"
+    },
+    "A_CACHEOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Cache operation"
+    },
+    "A_IT_ALU_ADDSUB": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "ALU add or subtract type"
+    },
+    "A_NOTE_ANY2_RESOURCE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Uses any pair of the HVX resources"
+    },
+    "A_IMPLICIT_READS_FPRND": {
+        "wreg": null,
+        "rreg": "UREG.SR.FPRND",
+        "descr": "May read FP rnd mode"
+    },
+    "A_CVI_LATE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "HVX insn that always require late sources"
+    },
+    "A_FPDOUBLE": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Double-precision Floating Point Operation"
+    },
+    "A_CRSLOT23": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Can execute in slot 2 or slot 3 (CR)"
+    },
+    "A_COPBYIDX": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Cache operation by index"
+    },
+    "A_CVI_SCATTER_WORD_ACC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "CVI Scatter Word Accum (second pass)"
+    },
+    "A_IMPLICIT_WRITES_SGP0": {
+        "wreg": "MREG.SGP0",
+        "rreg": null,
+        "descr": "Reads the SGP0 register"
+    },
+    "A_IMPLICIT_READS_CCR": {
+        "wreg": null,
+        "rreg": "MREG.CCR",
+        "descr": "May read CCR values"
+    },
+    "A_IT_MPY": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Multiply type"
+    },
+    "A_CVI_VX_DV": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Double vector multiply insn executes on HVX"
+    },
+    "A_IMPLICIT_WRITES_P2": {
+        "wreg": "UREG.P2",
+        "rreg": null,
+        "descr": "Writes Predicate 1"
+    },
+    "A_IT_NOP": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "nop instruction"
+    },
+    "A_IMPLICIT_READS_SYSCFG_TLBLOCK": {
+        "wreg": null,
+        "rreg": "MREG.SYSCFG.TLBLOCK",
+        "descr": "May read"
+    },
+    "A_SHARED_EXTENSION": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Shared extension instruction"
+    },
+    "A_ACC": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Has a multiply"
+    },
+    "A_FAKEINSN": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Not a real instruction"
+    },
+    "A_PRIV": {
+        "wreg": null,
+        "rreg": null,
+        "descr": "Not available in user or guest mode"
+    },
+    "A_IMPLICIT_READS_SA1": {
+        "wreg": null,
+        "rreg": "UREG.SA1",
+        "descr": "Reads start address for loop 1"
+    },
+    "A_IMPLICIT_READS_SYSCFG_K0LOCK": {
+        "wreg": null,
+        "rreg": "MREG.SYSCFG.K0LOCK",
+        "descr": "May read"
+    }
+}

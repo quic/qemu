@@ -61,6 +61,8 @@ DEF_FILES = \
 $(GEN_SEMANTICS): $(GEN_SEMANTICS_SRC) $(IDEF_FILES) $(DEF_FILES)
 	$(CC) $(CFLAGS) $(GEN_SEMANTICS_SRC) -o $(GEN_SEMANTICS)
 
+INSTS=$(SRC_PATH)/target/hexagon/imported/insts.json
+ATTRS=$(SRC_PATH)/target/hexagon/imported/attrs.json
 SEMANTICS=semantics_generated.pyinc
 $(SEMANTICS): $(GEN_SEMANTICS)
 	$(call quiet-command, \
@@ -86,12 +88,11 @@ GENERATED_HEXAGON_FILES = \
 
 $(GENERATED_HEXAGON_FILES): \
     $(SRC_PATH)/target/hexagon/do_qemu.py \
-    $(SEMANTICS) \
-    $(SRC_PATH)/target/hexagon/attribs_def.h
+    $(INSTS) \
+    $(ATTRS)
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/do_qemu.py \
-                $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(INSTS) $(ATTRS) \
 	    "GEN", "Hexagon generated files")
 
 #
