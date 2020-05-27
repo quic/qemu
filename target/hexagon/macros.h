@@ -1644,25 +1644,15 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     0    /* FIXME */
 #ifdef QEMU_GENERATE
 
-#if 0
-// FIXME: imask must be modeled as per-thread reg for this to work
-// properly
-#define DO_IASSIGNR(RS, RD) \
-    TCGv tmp = tcg_temp_new(); \
-    for (int thread_id = 0; thread_id < cpu->smp.threads; thread_id++) { \
-       tcg_gen_extract_tl(tmp, hex_sreg[HEX_SREG_IMASK], \
-                thread_id, 1); \
-       tcg_gen_or_tl(RD, RD, tmp); \
-    } \
+#define DO_IASSIGNR(RS, RD)                   \
+    do {                                      \
+        gen_helper_iassignr(RD, cpu_env, RS); \
+    } while (0)
+#define DO_IASSIGNW(RS)                   \
+    do {                                  \
+        gen_helper_iassignw(cpu_env, RS); \
+    } while (0)
 
-#define DO_IASSIGNW(RS) \
-    for (int thread_id = 0; thread_id < cpu->smp.threads; thread_id++) { \
-      tcg_gen_or_tl(RD, RD, tmp); \
-      tcg_gen_deposit_tl(RS, hex_sreg[HEX_SREG_IMASK], \
-                       thread_id, 1); \
-    } \
-
-#endif
 
 #define DO_SIAD(RS) \
     do { \
@@ -1694,10 +1684,14 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #else
 
-#if 0
-#define DO_IASSIGNR(RS, RD)
-#define DO_IASSIGNW(RS)
-#endif
+#define DO_IASSIGNR(RS, RD)            \
+    do {                               \
+        RD = helper_iassignr(env, RS); \
+    } while (0)
+#define DO_IASSIGNW(RS)           \
+    do {                          \
+        helper_iassignw(env, RS); \
+    } while (0)
 
 #define DO_SIAD(RS) \
     do { \

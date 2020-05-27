@@ -11,6 +11,12 @@ void inst_test()
                  "dccleaninvidx(r0)\n\t"
                  "trace(r0)\n\t"
                  "pause(#1)\n\t");
+
+    asm volatile("r0 = #0\n\t"
+                 "r1 = iassignr(r0)\n\t"
+                 // Set interrupt 0 to disabled on all threads:
+                 "r0 = #0\n\t"
+                 "iassignw(r0)\n\t");
     printf("Executed monitor mode instructions\n");
 }
 

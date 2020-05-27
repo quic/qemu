@@ -819,6 +819,47 @@ void HELPER(pause)(CPUHexagonState *env, uint32_t val)
     cpu_loop_exit(cs);
 }
 
+void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
+
+{
+    int thread_enabled_mask = env->g_sreg[HEX_SREG_MODECTL] & 0x0ff;
+    uint32_t int_number = 0x0f & (src >> 16);
+    uint32_t int_enabled_mask = 0x0ff & src;
+    CPUState *cpu = NULL;
+    CPU_FOREACH (cpu) {
+        CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
+        uint32_t thread_id_mask =
+            ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_HTID);
+        if (thread_enabled_mask & (thread_id_mask)) {
+            uint32_t imask = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK);
+            imask = (int_enabled_mask & thread_id_mask) ?
+                        imask | (1 << int_number) :
+                        imask & ~(1 << int_number);
+            ARCH_SET_SYSTEM_REG(thread_env, HEX_SREG_IMASK, imask);
+        }
+    }
+}
+
+uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
+
+{
+    int thread_enabled_mask = env->g_sreg[HEX_SREG_MODECTL] & 0x0ff;
+    uint32_t int_number = 0x0f & (src >> 16);
+    uint32_t dest_reg = 0;
+    CPUState *cpu = NULL;
+    CPU_FOREACH (cpu) {
+        CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
+        uint32_t thread_id_mask =
+            ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_HTID);
+
+        if (thread_enabled_mask & thread_id_mask) {
+            dest_reg |= ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK) &
+                        (1 << int_number);
+        }
+    }
+    return dest_reg;
+}
+
 uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 
 {
