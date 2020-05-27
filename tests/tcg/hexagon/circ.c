@@ -21,6 +21,7 @@
  */
 
 #include <stdio.h>
+#ifdef __HEXMSGABI_3_SUPPORTED__
 
 #define DEBUG          0
 
@@ -377,4 +378,6 @@ int main()
   puts(err ? "FAIL" : "PASS");
   return 0;
 }
-
+#else
+int main () {puts ("NOT RUN"); return 0;}
+#endif
