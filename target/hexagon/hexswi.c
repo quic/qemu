@@ -41,10 +41,6 @@
 #endif
 #include "op_helper.h"
 #include "sysemu/runstate.h"
-#ifndef CONFIG_USER_ONLY
-#include "hw/boards.h"
-#include "hw/hexagon/hexagon.h"
-#endif
 
 #ifndef CONFIG_USER_ONLY
 
@@ -103,77 +99,6 @@
 #define SYS_MKDIR           0x183
 #define SYS_RMDIR           0x184
 
-#define DEBUGMEMORYREADENV(ENV,ADDR,SIZE,PTR) \
-    hexagon_tools_memory_read(ENV, ADDR, SIZE, PTR)
-#define DEBUGMEMORYREAD(ADDR,SIZE,PTR) \
-    hexagon_tools_memory_read(env, ADDR, SIZE, PTR)
-
-#define DEBUGMEMORYREAD(ADDR,SIZE,PTR) \
-    hexagon_tools_memory_read(env, ADDR, SIZE, PTR)
-#define DEBUGMEMORYWRITE(ADDR,SIZE,DATA) \
-    hexagon_tools_memory_write(env,ADDR,SIZE,(size8u_t)DATA)
-#define DEBUGMEMORYREADLOCKED(ADDR,SIZE,PTR) \
-    hexagon_tools_memory_read_locked(env, ADDR, SIZE, PTR)
-#define DEBUGMEMORYWRITELOCKED(ADDR,SIZE,DATA) \
-    hexagon_tools_memory_write_locked(env,ADDR,SIZE,(size8u_t)DATA)
-
-void hexagon_create_cpu(CPUHexagonState *current_env, uint32_t mask)
-
-{
-    MachineState *machine = MACHINE(qdev_get_machine());
-    HexagonCPU *new_cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
-    CPUHexagonState *new_env = &new_cpu->env;
-    int htid;
-
-    new_env->cmdline = machine->kernel_cmdline;
-    new_env->hex_tlb = current_env->hex_tlb;
-    new_env->g_sreg = current_env->g_sreg;
-    new_env->g_sreg_new_value = current_env->g_sreg_new_value;
-    new_env->g_sreg_written = current_env->g_sreg_written;
-    HEX_DEBUG_LOG("%s: mask 0x%x, cpu 0x%p, g_sreg at 0x%p\n", __FUNCTION__, mask, new_cpu, new_env->g_sreg);
-
-    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_SSR,
-        SSR_EX | (HEX_EVENT_RESET & (SSR_CAUSE)));
-    if (mask == 0x2)
-        htid = 1;
-    else if (mask == 0x4)
-        htid = 2;
-    else if (mask == 0x8)
-        htid = 3;
-    else {
-        CPUState *cs = env_cpu(new_env);
-        cpu_abort(cs, "Error: Hexagon: Illegal start thread mask 0x%x", mask);
-    }
-    new_env->threadId = htid;
-    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_HTID, htid);
-
-    target_ulong evb = ARCH_GET_SYSTEM_REG(new_env, HEX_SREG_EVB);
-    target_ulong reset_inst;
-    DEBUGMEMORYREADENV(current_env, evb, 4, &reset_inst);
-    HEX_DEBUG_LOG("\tEVB = 0x%x, reset = 0x%x, new PC = 0x%x\n",
-      evb, reset_inst, evb);
-
-    //fCHECK_PCALIGN(addr);
-    new_env->branch_taken = 1;
-    new_env->next_PC = evb;
-    ARCH_SET_THREAD_REG(new_env, HEX_REG_PC, new_env->next_PC);
-    target_ulong modectl = ARCH_GET_SYSTEM_REG(new_env, HEX_SREG_MODECTL);
-    modectl |= mask;
-    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_MODECTL, modectl);
-    CPUState *new_cs = env_cpu(new_env);
-    new_cs->exception_index = HEX_EVENT_NONE;
-}
-
-void hexagon_destroy_cpu(CPUHexagonState *env, uint32_t mask)
-
-{
-    HEX_DEBUG_LOG("%s: mask = 0x%x, htid %d\n", __FUNCTION__, mask, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID));
-    target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-    modectl &= ~(0x1 << env->threadId);
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL, modectl);
-    cpu_stop_current();
-}
-
 static int MapError(int ERR)
 {
     errno = ERR;
@@ -197,11 +122,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 #if 0
         size4u_t bufptr;
 
-        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
-         DEBUGMEMORYWRITE(bufptr+0, 4, 0);
-        DEBUGMEMORYWRITE(bufptr+1, 4, 0);
-        DEBUGMEMORYWRITE(bufptr+2, 4, 0);
-         DEBUGMEMORYWRITE(bufptr+3, 4, 0);
+        DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
+         DEBUG_MEMORY_WRITE(bufptr+0, 4, 0);
+        DEBUG_MEMORY_WRITE(bufptr+1, 4, 0);
+        DEBUG_MEMORY_WRITE(bufptr+2, 4, 0);
+         DEBUG_MEMORY_WRITE(bufptr+3, 4, 0);
 #endif
     }
     break;
@@ -212,8 +137,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         target_ulong bufptr;
         target_ulong bufsize;
 
-        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
-        DEBUGMEMORYREAD(swi_info + 4, 4, &bufsize);
+        DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &bufsize);
 
         const target_ulong to_copy =
             (bufsize <= (unsigned int) strlen(env->cmdline))
@@ -223,9 +148,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         HEX_DEBUG_LOG("\tcmdline '%s' len to copy %d buf max %d\n",
             env->cmdline, to_copy, bufsize);
         for (i = 0; i < (int) to_copy; i++) {
-            DEBUGMEMORYWRITE(bufptr + i, 1, (size8u_t) env->cmdline[i]);
+            DEBUG_MEMORY_WRITE(bufptr + i, 1, (size8u_t) env->cmdline[i]);
         }
-      DEBUGMEMORYWRITE(bufptr + i, 1, (size8u_t) 0);
+      DEBUG_MEMORY_WRITE(bufptr + i, 1, (size8u_t) 0);
       ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
     }
     break;
@@ -235,7 +160,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         HEX_DEBUG_LOG("%s:%d: SYS_EXCEPTION\n\tProgram terminated successfully\n",
                        __FUNCTION__, __LINE__);
         target_ulong ret = -1;
-        DEBUGMEMORYREAD(swi_info, 4, &ret);
+        DEBUG_MEMORY_READ(swi_info, 4, &ret);
 
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL, 0);
 
@@ -246,7 +171,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_WRITEC:
     {
         FILE *fp = stdout;
-        DEBUGMEMORYREAD(swi_info, 1, &c);
+        DEBUG_MEMORY_READ(swi_info, 1, &c);
         fprintf(fp, "%c", c);
         fflush(fp);
     }
@@ -267,7 +192,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         FILE *fp = stdout;
         i = 0;
         do {
-            DEBUGMEMORYREAD(swi_info + i, 1, &c);
+            DEBUG_MEMORY_READ(swi_info + i, 1, &c);
             fprintf(fp, "%c", c);
             i++;
         } while (c);
@@ -285,9 +210,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int count;
         int retval;
 
-        DEBUGMEMORYREAD(swi_info, 4, &fd);
-        DEBUGMEMORYREAD(swi_info + 4, 4, &bufaddr);
-        DEBUGMEMORYREAD(swi_info + 8, 4, &count);
+        DEBUG_MEMORY_READ(swi_info, 4, &fd);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &bufaddr);
+        DEBUG_MEMORY_READ(swi_info + 8, 4, &count);
 
         if ((buf = (char *) g_malloc(count)) == NULL) {
             printf("%s:%d: ERROR: Couldn't allocate temporary buffer (%d bytes)",
@@ -295,7 +220,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         }
 
         for (i = 0; i < count; i++) {
-            DEBUGMEMORYREAD(bufaddr + i, 1, &buf[i]);
+            DEBUG_MEMORY_READ(bufaddr + i, 1, &buf[i]);
         }
         retval = write(fd, buf, count);
         if (retval == count) {
@@ -318,9 +243,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int count;
         int retval;
 
-        DEBUGMEMORYREAD(swi_info, 4, &fd);
-        DEBUGMEMORYREAD(swi_info + 4, 4, &bufaddr);
-        DEBUGMEMORYREAD(swi_info + 8, 4, &count);
+        DEBUG_MEMORY_READ(swi_info, 4, &fd);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &bufaddr);
+        DEBUG_MEMORY_READ(swi_info + 8, 4, &count);
 
         if ((buf = (char *) g_malloc(count)) == NULL) {
             CPUState *cs = env_cpu(env);
@@ -331,7 +256,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 
         retval = read(fd, buf, count);
         for (i = 0; i < retval; i++) {
-            DEBUGMEMORYWRITE(bufaddr + i, 1, buf[i]);
+            DEBUG_MEMORY_WRITE(bufaddr + i, 1, buf[i]);
         }
         if (retval == count) {
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
@@ -354,13 +279,13 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int rc;
         struct flock fl;
 
-        DEBUGMEMORYREAD(swi_info, 4, &fcntlFileDesc);
-        DEBUGMEMORYREAD(swi_info + 4, 4, &fcntlCmd);
-        DEBUGMEMORYREAD(swi_info + 8, 4, &fcntlPBA);
-        DEBUGMEMORYREAD(fcntlPBA, 4, &sysfcntl.l_type);
-        DEBUGMEMORYREAD(fcntlPBA + 0x4, 4, &sysfcntl.l_whence);
-        DEBUGMEMORYREAD(fcntlPBA + 0x8, 4, &sysfcntl.l_start);
-        DEBUGMEMORYREAD(fcntlPBA + 0xc, 4, &sysfcntl.l_len);
+        DEBUG_MEMORY_READ(swi_info, 4, &fcntlFileDesc);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &fcntlCmd);
+        DEBUG_MEMORY_READ(swi_info + 8, 4, &fcntlPBA);
+        DEBUG_MEMORY_READ(fcntlPBA, 4, &sysfcntl.l_type);
+        DEBUG_MEMORY_READ(fcntlPBA + 0x4, 4, &sysfcntl.l_whence);
+        DEBUG_MEMORY_READ(fcntlPBA + 0x8, 4, &sysfcntl.l_start);
+        DEBUG_MEMORY_READ(fcntlPBA + 0xc, 4, &sysfcntl.l_len);
 
         if (sysfcntl.l_type == DK_F_GETLK)
             fl.l_type = F_GETLK;
@@ -379,10 +304,10 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
  * back out to the simulator.
  */
         if ((rc != -1) && (fcntlCmd == DK_F_GETLK)) {
-            DEBUGMEMORYWRITE(fcntlPBA, 4, sysfcntl.l_type);
-            DEBUGMEMORYWRITE(fcntlPBA + 0x4, 4, sysfcntl.l_whence);
-            DEBUGMEMORYWRITE(fcntlPBA + 0x8, 4, sysfcntl.l_start);
-          DEBUGMEMORYWRITE(fcntlPBA + 0xc, 4, sysfcntl.l_len);
+            DEBUG_MEMORY_WRITE(fcntlPBA, 4, sysfcntl.l_type);
+            DEBUG_MEMORY_WRITE(fcntlPBA + 0x4, 4, sysfcntl.l_whence);
+            DEBUG_MEMORY_WRITE(fcntlPBA + 0x8, 4, sysfcntl.l_start);
+          DEBUG_MEMORY_WRITE(fcntlPBA + 0xc, 4, sysfcntl.l_len);
         }
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, rc);
         break;
@@ -416,9 +341,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         };
 
 
-        DEBUGMEMORYREAD(swi_info, 4, &physicalFilenameAddr);
-        DEBUGMEMORYREAD(swi_info + 4, 4, &filemode);
-        DEBUGMEMORYREAD(swi_info + 8, 4, &length);
+        DEBUG_MEMORY_READ(swi_info, 4, &physicalFilenameAddr);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &filemode);
+        DEBUG_MEMORY_READ(swi_info + 8, 4, &length);
 
         if (length >= BUFSIZ) {
             printf("%s:%d: ERROR: filename too large\n",
@@ -427,7 +352,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 
         i = 0;
         do {
-            DEBUGMEMORYREAD(physicalFilenameAddr + i, 1, &filename[i]);
+            DEBUG_MEMORY_READ(physicalFilenameAddr + i, 1, &filename[i]);
             i++;
         } while (filename[i - 1]);
         HEX_DEBUG_LOG("fname %s, fmode %d, len %d\n", filename, filemode, length);
@@ -456,7 +381,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         HEX_DEBUG_LOG("%s:%d: SYS_CLOSE\n", __FUNCTION__, __LINE__);
         int fd;
-        DEBUGMEMORYREAD(swi_info, 4, &fd);
+        DEBUG_MEMORY_READ(swi_info, 4, &fd);
 
         if (fd == 0 || fd == 1 || fd == 2) {
             /* silently ignore request to close stdin/stdout */
@@ -481,7 +406,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_ISTTY:
     {
         int fd;
-        DEBUGMEMORYREAD(swi_info, 4, &fd);
+        DEBUG_MEMORY_READ(swi_info, 4, &fd);
         ARCH_SET_THREAD_REG(env, HEX_REG_R00,
                             isatty(fd));
     }
@@ -493,8 +418,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int pos;
         int retval;
 
-        DEBUGMEMORYREAD(swi_info, 4, &fd);
-        DEBUGMEMORYREAD(swi_info + 4, 4, &pos);
+        DEBUG_MEMORY_READ(swi_info, 4, &fd);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &pos);
 
         retval = lseek(fd, pos, SEEK_SET);
         if (retval == -1) {
@@ -512,7 +437,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         off_t len;
         int fd;
 
-        DEBUGMEMORYREAD(swi_info, 4, &fd);
+        DEBUG_MEMORY_READ(swi_info, 4, &fd);
 
         oldpos = lseek(fd, 0, SEEK_CUR);
         if (oldpos == -1) {
@@ -627,7 +552,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int fd;
         off_t current_pos;
 
-        DEBUGMEMORYREAD(swi_info, 4, &fd);
+        DEBUG_MEMORY_READ(swi_info, 4, &fd);
 
         current_pos = lseek(fd, 0, SEEK_CUR);
         if (current_pos == -1) {
@@ -647,9 +572,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int ftry = 0;
         buf[39] = 0;
 
-        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
-        DEBUGMEMORYREAD(swi_info + 4, 4, &id);
-        DEBUGMEMORYREAD(swi_info + 8, 4, &buflen);
+        DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &id);
+        DEBUG_MEMORY_READ(swi_info + 8, 4, &buflen);
 
         if (buflen < 40) {
             CPUState *cs = env_cpu(env);
@@ -664,7 +589,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         } while ((rc = access(buf, F_OK)) == 0);
 
         for (i = 0; i <= (int) strlen(buf); i++) {
-            DEBUGMEMORYWRITE(bufptr + i, 1, buf[i]);
+            DEBUG_MEMORY_WRITE(bufptr + i, 1, buf[i]);
         }
 
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
@@ -677,10 +602,10 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         size4u_t bufptr;
         int retval;
 
-        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
+        DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
         i = 0;
         do {
-            DEBUGMEMORYREAD(bufptr + i, 1, &buf[i]);
+            DEBUG_MEMORY_READ(bufptr + i, 1, &buf[i]);
             i++;
         } while (buf[i - 1]);
 
@@ -699,16 +624,16 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         size4u_t bufptr, bufptr2;
         int retval;
 
-        DEBUGMEMORYREAD(swi_info, 4, &bufptr);
-        DEBUGMEMORYREAD(swi_info + 8, 4, &bufptr2);
+        DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
+        DEBUG_MEMORY_READ(swi_info + 8, 4, &bufptr2);
         i = 0;
         do {
-            DEBUGMEMORYREAD(bufptr + i, 1, &buf[i]);
+            DEBUG_MEMORY_READ(bufptr + i, 1, &buf[i]);
             i++;
         } while (buf[i - 1]);
         i = 0;
         do {
-            DEBUGMEMORYREAD(bufptr2 + i, 1, &buf2[i]);
+            DEBUG_MEMORY_READ(bufptr2 + i, 1, &buf2[i]);
             i++;
         } while (buf2[i - 1]);
 
@@ -808,14 +733,14 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
 
     env->pred[reg] = 0;
     if (single) {
-        segv = DEBUGMEMORYREADLOCKED(addr, 4, &val);
+        segv = DEBUG_MEMORY_READ_LOCKED(addr, 4, &val);
     } else {
-        segv = DEBUGMEMORYREADLOCKED(addr, 8, &val_i64);
+        segv = DEBUG_MEMORY_READ_LOCKED(addr, 8, &val_i64);
     }
     if (!segv) {
         if (single) {
             if (val == env->llsc_val) {
-                segv = DEBUGMEMORYWRITELOCKED(addr, 4,
+                segv = DEBUG_MEMORY_WRITE_LOCKED(addr, 4,
                                               (size8u_t)(env->llsc_newval));
                 if (!segv) {
                     env->pred[reg] = 0xff;
@@ -823,7 +748,7 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
             }
         } else {
             if (val_i64 == env->llsc_val_i64) {
-                segv = DEBUGMEMORYWRITELOCKED(addr, 8,
+                segv = DEBUG_MEMORY_WRITE_LOCKED(addr, 8,
                                               (size8u_t)(env->llsc_newval_i64));
                 if (!segv) {
                     env->pred[reg] = 0xff;
@@ -877,7 +802,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         cs->exception_index = HEX_EVENT_NONE;
 
         target_ulong trap0_inst;
-        DEBUGMEMORYREAD(env->next_PC, 4, &trap0_inst);
+        DEBUG_MEMORY_READ(env->next_PC, 4, &trap0_inst);
         HEX_DEBUG_LOG("\tEVB = 0x%x, trap0 = 0x%x, new PC = 0x%x\n",
             evb, trap0_inst, env->next_PC);
         break;

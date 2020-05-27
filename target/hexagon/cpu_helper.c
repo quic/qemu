@@ -15,10 +15,18 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+
+
 #include <math.h>
 #include "qemu/osdep.h"
 #include "cpu.h"
+#ifdef CONFIG_USER_ONLY
+#include "qemu.h"
+#include "exec/helper-proto.h"
+#else
+#include "hw/boards.h"
 #include "hw/hexagon/hexagon.h"
+#endif
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
 #include "qemu/log.h"
@@ -30,8 +38,12 @@
 #include "conv_emu.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/macros.h"
+#ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
+#endif
 #include "op_helper.h"
+#include "sysemu/runstate.h"
+
 
 #ifndef CONFIG_USER_ONLY
 static size1u_t hexagon_swi_mem_read1(CPUHexagonState *env, vaddr_t paddr)
@@ -218,6 +230,64 @@ int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
     }
 
     return ret;
+}
+
+void hexagon_create_cpu(CPUHexagonState *current_env, uint32_t mask)
+
+{
+    MachineState *machine = MACHINE(qdev_get_machine());
+    HexagonCPU *new_cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
+    CPUHexagonState *new_env = &new_cpu->env;
+    int htid;
+
+    if (mask == 0x2)
+        htid = 1;
+    else if (mask == 0x4)
+        htid = 2;
+    else if (mask == 0x8)
+        htid = 3;
+    else {
+        CPUState *cs = env_cpu(current_env);
+        cpu_abort(cs, "Error: Hexagon: Illegal start thread mask 0x%x", mask);
+    }
+
+    new_env->cmdline = machine->kernel_cmdline;
+    new_env->hex_tlb = current_env->hex_tlb;
+    new_env->g_sreg = current_env->g_sreg;
+    new_env->g_sreg_new_value = current_env->g_sreg_new_value;
+    new_env->g_sreg_written = current_env->g_sreg_written;
+    HEX_DEBUG_LOG("%s: mask 0x%x, cpu 0x%p, g_sreg at 0x%p\n", __FUNCTION__, mask, new_cpu, new_env->g_sreg);
+
+    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_SSR,
+        SSR_EX | (HEX_EVENT_RESET & (SSR_CAUSE)));
+    new_env->threadId = htid;
+    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_HTID, htid);
+
+    target_ulong evb = ARCH_GET_SYSTEM_REG(new_env, HEX_SREG_EVB);
+    target_ulong reset_inst;
+    DEBUG_MEMORY_READ_ENV(current_env, evb, 4, &reset_inst);
+    HEX_DEBUG_LOG("\tEVB = 0x%x, reset = 0x%x, new PC = 0x%x\n",
+      evb, reset_inst, evb);
+
+    //fCHECK_PCALIGN(addr);
+    new_env->branch_taken = 1;
+    new_env->next_PC = evb;
+    ARCH_SET_THREAD_REG(new_env, HEX_REG_PC, new_env->next_PC);
+    target_ulong modectl = ARCH_GET_SYSTEM_REG(new_env, HEX_SREG_MODECTL);
+    modectl |= mask;
+    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_MODECTL, modectl);
+    CPUState *new_cs = env_cpu(new_env);
+    new_cs->exception_index = HEX_EVENT_NONE;
+}
+
+void hexagon_destroy_cpu(CPUHexagonState *env, uint32_t mask)
+
+{
+    HEX_DEBUG_LOG("%s: mask = 0x%x, htid %d\n", __FUNCTION__, mask, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID));
+    target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    modectl &= ~(0x1 << env->threadId);
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL, modectl);
+    cpu_stop_current();
 }
 
 #endif

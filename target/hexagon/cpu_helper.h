@@ -25,6 +25,16 @@
     (ENV)->t_sreg[(REG)] : (ENV)->g_sreg[(REG)])
 #define ARCH_SET_SYSTEM_REG(ENV,REG,VAL) (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
     ((ENV)->t_sreg[(REG)] = (VAL)) : ((ENV)->g_sreg[(REG)] = (VAL)))
+#define DEBUG_MEMORY_READ_ENV(ENV,ADDR,SIZE,PTR) \
+    hexagon_tools_memory_read(ENV, ADDR, SIZE, PTR)
+#define DEBUG_MEMORY_READ(ADDR,SIZE,PTR) \
+    hexagon_tools_memory_read(env, ADDR, SIZE, PTR)
+#define DEBUG_MEMORY_READ_LOCKED(ADDR,SIZE,PTR) \
+    hexagon_tools_memory_read_locked(env, ADDR, SIZE, PTR)
+#define DEBUG_MEMORY_WRITE(ADDR,SIZE,DATA) \
+    hexagon_tools_memory_write(env,ADDR,SIZE,(size8u_t)DATA)
+#define DEBUG_MEMORY_WRITE_LOCKED(ADDR,SIZE,DATA) \
+    hexagon_tools_memory_write_locked(env,ADDR,SIZE,(size8u_t)DATA)
 
 extern void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr,
     int size, void *retptr);
