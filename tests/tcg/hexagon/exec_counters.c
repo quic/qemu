@@ -19,6 +19,7 @@
  *  Check the instruction counters in qemu
  */
 #include <stdio.h>
+#ifdef __HEXMSGABI_3_SUPPORTED__
 
 #define check(name, val, expect) \
   if (val != expect) { \
@@ -55,4 +56,6 @@ int main()
   puts(err ? "FAIL" : "PASS");
   return err;
 }
-
+#else
+int main () {puts ("NOT RUN"); return 0;}
+#endif
