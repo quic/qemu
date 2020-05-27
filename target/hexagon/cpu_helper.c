@@ -32,7 +32,6 @@
 #include "mmvec/macros.h"
 #include "hex_mmu.h"
 #include "op_helper.h"
-#include "cpu_helper.h"
 
 #ifndef CONFIG_USER_ONLY
 static size1u_t hexagon_swi_mem_read1(CPUHexagonState *env, vaddr_t paddr)

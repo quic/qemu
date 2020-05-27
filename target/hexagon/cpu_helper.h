@@ -19,6 +19,13 @@
 #ifndef HEXAGON_CPU_HELPER_H
 #define HEXAGON_CPU_HELPER_H
 
+#define ARCH_GET_THREAD_REG(ENV,REG)     ((ENV)->gpr[(REG)])
+#define ARCH_SET_THREAD_REG(ENV,REG,VAL) ((ENV)->gpr[(REG)] = (VAL))
+#define ARCH_GET_SYSTEM_REG(ENV,REG)     (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
+    (ENV)->t_sreg[(REG)] : (ENV)->g_sreg[(REG)])
+#define ARCH_SET_SYSTEM_REG(ENV,REG,VAL) (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
+    ((ENV)->t_sreg[(REG)] = (VAL)) : ((ENV)->g_sreg[(REG)] = (VAL)))
+
 extern void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr,
     int size, void *retptr);
 extern void hexagon_tools_memory_write(CPUHexagonState *env, vaddr_t vaddr,

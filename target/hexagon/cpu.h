@@ -39,6 +39,11 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #include "hex_regs.h"
 #include "mmvec/mmvec.h"
 
+#ifndef CONFIG_USER_ONLY
+#include "hex_arch_types.h"
+#include "cpu_helper.h"
+#endif
+
 #define NUM_PREGS 4
 #define NUM_SREGS 64
 #ifdef CONFIG_USER_ONLY
@@ -280,7 +285,7 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
 #ifndef CONFIG_USER_ONLY
 
-#define GET_SSR_FIELD(BIT) (env->t_sreg[HEX_SREG_SSR] & (BIT))
+#define GET_SSR_FIELD(BIT) (ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR) & (BIT))
 static inline int sys_in_monitor_mode(CPUHexagonState *env)
 {
     return ((GET_SSR_FIELD(SSR_UM) == 0)
@@ -319,7 +324,7 @@ static inline int get_cpu_mode(CPUHexagonState *env)
 
 static inline unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
 {
-  if (!(env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_M)) {
+  if (!(ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG) & SYSCFG_M)) {
     return MMU_KERNEL_IDX;
   }
 

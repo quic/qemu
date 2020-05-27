@@ -284,7 +284,7 @@ static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
 
         if (reg_num == HEX_SREG_SYSCFG) {
             TCGv g_new_sreg = tcg_const_tl(env->g_sreg_new_value[reg_num]);
-            TCGv g_sreg = tcg_const_tl(env->g_sreg[reg_num]);
+            TCGv g_sreg = tcg_const_tl(ARCH_GET_SYSTEM_REG(env, reg_num));
             gen_helper_modify_syscfg(cpu_env, g_new_sreg,
                                      g_sreg);
         }
@@ -301,15 +301,7 @@ static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
             tcg_gen_movi_tl(hex_t_sreg_written[reg_num], 1);
 #endif
         } else {
-#if 0
-            TCGv g_new_sreg = tcg_const_tl(env->g_sreg_new_value[reg_num]);
-            TCGv g_sreg = tcg_const_tl(env->g_sreg[reg_num]);
-            tcg_gen_mov_tl(g_sreg, g_new_sreg);
-#if HEX_DEBUG
-            /* Do this so HELPER(debug_commit_end) will know */
-            tcg_gen_movi_tl(hex_g_sreg_written[reg_num], 1);
-#endif
-#endif
+            g_assert_not_reached();
         }
     }
 }
@@ -726,7 +718,8 @@ static void check_imprecise_exception(packet_t *pkt)
 }
 #endif
 
-static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx, packet_t *pkt)
+static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
+    packet_t *pkt)
 {
     bool end_tb = false;
 

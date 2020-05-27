@@ -355,7 +355,8 @@ static inline void hex_tlb_entry_get_perm(uint64_t entry,
     }
 }
 
-static inline bool hex_tlb_entry_match(uint64_t entry, uint8_t asid, target_ulong VA,
+static inline bool hex_tlb_entry_match(uint64_t entry, uint8_t asid,
+                                       target_ulong VA,
                                        MMUAccessType access_type, hwaddr *PA,
                                        int *prot, int *size, int32_t *excp,
                                        int mmu_idx)
@@ -373,7 +374,7 @@ bool hex_tlb_find_match(CPUHexagonState *env, target_ulong VA,
                         MMUAccessType access_type, hwaddr *PA, int *prot,
                         int *size, int32_t *excp, int mmu_idx)
 {
-    uint8_t asid = (env->t_sreg[HEX_SREG_SSR] & SSR_ASID) >> 8;
+    uint8_t asid = (ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR) & SSR_ASID) >> 8;
     int i;
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         uint64_t entry = env->hex_tlb->entries[i];

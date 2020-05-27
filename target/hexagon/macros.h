@@ -374,13 +374,11 @@
 #define READ_REG(NUM) \
     (env->gpr[(NUM)])
 
-#define READ_SREG(NUM) \
-    (((NUM) < HEX_SREG_GLB_START) ? \
-  (env->t_sreg[(NUM)]) : (env->g_sreg[(NUM)]))
-#define READ_SGP0()    (env->t_sreg[HEX_SREG_SGP0])
-#define READ_SGP1()    (env->t_sreg[HEX_SREG_SGP1])
-#define READ_SGP10() ((uint64_t)env->t_sreg[HEX_SREG_SGP0] | \
-    ((uint64_t)env->t_sreg[HEX_SREG_SGP1] << 32))
+#define READ_SREG(NUM) ARCH_GET_SYSTEM_REG(env, NUM)
+#define READ_SGP0()    ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP0)
+#define READ_SGP1()    ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP1)
+#define READ_SGP10()   ((uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP0) | \
+    ((uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP1) << 32))
 #endif
 
 #ifdef QEMU_GENERATE
@@ -1506,7 +1504,8 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef CONFIG_USER_ONLY
 #define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EVENT_TRAP0)
-#define fCHECKFORPRIV() helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN)
+#define fCHECKFORPRIV() \
+    helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN)
 #else
 #define fTRAP(TRAPTYPE, IMM) { \
   register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM); \

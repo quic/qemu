@@ -60,12 +60,20 @@ const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
   "c24", "c25", "c26", "c27", "c28",  "c29", "c30", "c31",
 };
 
-/* per thread: sgp0, sgp1, ssr, ccr, imask, gevb, badva0, badva1, badva, elr, stid, htid */
 const char * const hexagon_sregnames[] = {
-  "sgp0",    "sgp1",     "stid",     "elr",      "badva0",    "badva1",     "ssr",        "ccr",       "htid",      "badva",      "imask",  "gevb",    "rsv12",   "rsv13",   "rsv14",    "rsv15",
-  "evb",     "modectl",  "syscfg",   "free19",   "ipendad",   "vid",        "vid1",       "bestwait",  "free24",    "schedcfg",   "free26", "cfgbase", "diag",    "rev",     "pcyclelo", "pcyclehi",
-  "isdbst",  "isdbcfg0", "isdbcfg1", "livelock", "brkptpc0",  "brkptccfg0", "brkptpc1",   "brkptcfg1", "isdbmbxin", "isdbmbxout", "isdben", "isdbgpr", "pmucnt4", "pmucnt5", "pmucnt6",  "pmucnt7",
-  "pmucnt0", "pmucnt1",  "pmucnt2",  "pmucnt3",  "pmuevtcfg", "pmustid0",   "pmuevtcfg1", "pmustid1",  "timerlo",   "timerhi",    "pmucfg", "rsv59",   "rsv60",   "rsv61",   "rsv62",    "rsv64"
+  "sgp0",       "sgp1",       "stid",       "elr",        "badva0",
+  "badva1",     "ssr",        "ccr",        "htid",       "badva",
+  "imask",      "gevb",       "rsv12",      "rsv13",      "rsv14",
+  "rsv15",      "evb",        "modectl",    "syscfg",     "free19",
+  "ipendad",    "vid",        "vid1",       "bestwait",   "free24",
+  "schedcfg",   "free26",     "cfgbase",    "diag",       "rev",
+  "pcyclelo",   "pcyclehi",   "isdbst",     "isdbcfg0",   "isdbcfg1",
+  "livelock",   "brkptpc0",   "brkptccfg0", "brkptpc1",   "brkptcfg1",
+  "isdbmbxin",  "isdbmbxout", "isdben",     "isdbgpr",    "pmucnt4",
+  "pmucnt5",    "pmucnt6",    "pmucnt7",    "pmucnt0",    "pmucnt1",
+  "pmucnt2",    "pmucnt3",    "pmuevtcfg",  "pmustid0",   "pmuevtcfg1",
+  "pmustid1",   "timerlo",    "timerhi",    "pmucfg",     "rsv59",
+  "rsv60",      "rsv61",      "rsv62",      "rsv64"
 };
 
 /*
@@ -143,8 +151,7 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 #ifndef CONFIG_USER_ONLY
 static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
 {
-    target_ulong val = (regnum < HEX_SREG_GLB_START) ?
-        env->t_sreg[regnum] : env->g_sreg[regnum];
+    target_ulong val = ARCH_GET_SYSTEM_REG(env, regnum);
     fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
         hexagon_sregnames[regnum], val);
 }
@@ -152,10 +159,12 @@ static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
 static target_ulong get_badva(CPUHexagonState *env)
 
 {
-  if (env->t_sreg[HEX_SREG_SSR] & SSR_BVS)
-    return env->t_sreg[HEX_SREG_BADVA1];
-  else
-    return env->t_sreg[HEX_SREG_BADVA0];
+  if (ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR) & SSR_BVS) {
+      return ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA1);
+  }
+  else {
+      return ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA0);
+  }
 }
 #endif
 
@@ -230,7 +239,7 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     fprintf(f, "  cs0 = 0x00000000\n");
     fprintf(f, "  cs1 = 0x00000000\n");
 #else
-    print_val(f, "cause", env->t_sreg[HEX_SREG_SSR] & SSR_CAUSE);
+    print_val(f, "cause", ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR) & SSR_CAUSE);
     print_sreg(f, env, get_badva(env));
     print_reg(f, env, HEX_REG_CS0);
     print_reg(f, env, HEX_REG_CS1);
@@ -397,7 +406,7 @@ static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA,
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    env->t_sreg[HEX_SREG_BADVA] = VA;
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA, VA);
 
     switch (access_type) {
     case MMU_INST_FETCH:
@@ -417,7 +426,7 @@ static void raise_perm_exception(CPUState *cs, target_ulong VA, int32_t excp)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    env->t_sreg[HEX_SREG_BADVA] = VA;
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA, VA);
     cs->exception_index = excp;
 }
 

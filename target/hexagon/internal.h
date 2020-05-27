@@ -47,8 +47,10 @@ extern int hexagon_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 extern void hexagon_debug_vreg(CPUHexagonState *env, int regnum);
 extern void hexagon_debug_qreg(CPUHexagonState *env, int regnum);
 extern void hexagon_debug(CPUHexagonState *env);
-extern void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte, target_ulong dst_vaddr);
-extern void hexagon_load_byte(CPUHexagonState *env, uint8_t *load_byte, target_ulong src_vaddr);
+extern void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte,
+    target_ulong dst_vaddr);
+extern void hexagon_load_byte(CPUHexagonState *env, uint8_t *load_byte,
+    target_ulong src_vaddr);
 
 #if COUNT_HEX_HELPERS
 extern void print_helper_counts(void);
@@ -59,11 +61,7 @@ extern const char * const hexagon_sregnames[];
 
 extern void init_genptr(void);
 
-#if 1
 #define hexagon_cpu_mmu_enabled(env) \
-  GET_FIELD(SYSCFG_MMUEN, env->g_sreg[HEX_SREG_SYSCFG])
-#else
-#define hexagon_cpu_mmu_enabled(env) 0
-#endif
+  GET_FIELD(SYSCFG_MMUEN, ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG))
 
 #endif

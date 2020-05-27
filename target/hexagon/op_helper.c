@@ -127,6 +127,7 @@ inline void log_reg_write_pair(CPUHexagonState *env, int rnum,
     log_reg_write(env, rnum + 1, (val >> 32) & 0xFFFFFFFF, slot);
 }
 
+#ifndef CONFIG_USER_ONLY
 static inline void log_sreg_write(CPUHexagonState *env, int rnum,
                                  target_ulong val, uint32_t slot)
 {
@@ -136,8 +137,7 @@ static inline void log_sreg_write(CPUHexagonState *env, int rnum,
         HEX_DEBUG_LOG(" CANCELLED");
     }
 
-    target_ulong crnt_val = (rnum < HEX_SREG_GLB_START) ?
-        env->t_sreg[rnum] : env->g_sreg[rnum];
+    target_ulong crnt_val = ARCH_GET_SYSTEM_REG(env, rnum);
     if (val == crnt_val) {
         HEX_DEBUG_LOG(" NO CHANGE");
     }
@@ -162,6 +162,7 @@ inline void log_sreg_write_pair(CPUHexagonState *env, int rnum,
     log_sreg_write(env, rnum, val & 0xFFFFFFFF, slot);
     log_sreg_write(env, rnum + 1, (val >> 32) & 0xFFFFFFFF, slot);
 }
+#endif
 
 static inline void log_pred_write(CPUHexagonState *env, int pnum,
                                   target_ulong val)
@@ -230,7 +231,8 @@ void HELPER(debug_check_store_width)(CPUHexagonState *env, int slot, int check)
     }
 }
 
-void hexagon_load_byte(CPUHexagonState *env, uint8_t *load_byte, target_ulong src_vaddr)
+void hexagon_load_byte(CPUHexagonState *env, uint8_t *load_byte,
+    target_ulong src_vaddr)
 
 {
 #ifdef CONFIG_USER_ONLY
@@ -257,7 +259,8 @@ void hexagon_load_byte(CPUHexagonState *env, uint8_t *load_byte, target_ulong sr
 #endif
 }
 
-void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte, target_ulong dst_vaddr)
+void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte,
+    target_ulong dst_vaddr)
 
 {
 #ifdef CONFIG_USER_ONLY
@@ -812,35 +815,27 @@ void HELPER(pause)(CPUHexagonState *env, uint32_t val)
 uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 
 {
-    return env->g_sreg[reg];
+    return ARCH_GET_SYSTEM_REG(env, reg);
 }
 
 uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 {
-    return (uint64_t)(env->g_sreg[reg]) | ((uint64_t)(env->g_sreg[reg+1]) << 32);
+    return  (uint64_t)ARCH_GET_SYSTEM_REG(env, reg) |
+           ((uint64_t)ARCH_GET_SYSTEM_REG(env, reg+1)) << 32;
 }
 
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
 
 {
-    if (reg < HEX_SREG_GLB_START) {
-        env->t_sreg[reg] = val;
-    } else {
-        env->g_sreg[reg] = val;
-    }
+    ARCH_SET_SYSTEM_REG(env, reg, val);
 }
 
 void HELPER(sreg_write_pair)(CPUHexagonState *env, uint32_t reg, uint64_t val)
 
 {
-    if (reg < HEX_SREG_GLB_START) {
-        env->t_sreg[reg] = val & 0xFFFFFFFF;
-        env->t_sreg[reg+1] = val >> 32;
-    } else {
-        env->g_sreg[reg] = val & 0xFFFFFFFF;
-        env->g_sreg[reg+1] = val >> 32;
-    }
+    ARCH_SET_SYSTEM_REG(env, reg, val & 0xFFFFFFFF);
+    ARCH_SET_SYSTEM_REG(env, reg+1, val >> 32);
 }
 #endif
 
