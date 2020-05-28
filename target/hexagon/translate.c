@@ -132,7 +132,8 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
         return 0;
     }
 
-    HEX_DEBUG_LOG("decode_packet: tid=%d, pc = 0x%x\n", env->threadId, ctx->base.pc_next);
+    HEX_DEBUG_LOG("decode_packet: tid=%d, pc = 0x%x\n",
+        env->threadId, ctx->base.pc_next);
     HEX_DEBUG_LOG("    words = { ");
     for (i = 0; i < nwords; i++) {
         HEX_DEBUG_LOG("0x%x, ", words[i]);
@@ -779,7 +780,8 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     }
 }
 
-static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
+static void decode_and_translate_packet(CPUHexagonState *env,
+    DisasContext *ctx)
 {
     uint32_t words[PACKET_WORDS_MAX];
     int nwords;
@@ -830,8 +832,8 @@ static void hexagon_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
     tcg_gen_insn_start(ctx->base.pc_next);
 }
 
-static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase, CPUState *cpu,
-                                        const CPUBreakpoint *bp)
+static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase,
+    CPUState *cpu, const CPUBreakpoint *bp)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
 
@@ -849,7 +851,8 @@ static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase, CPUState *cpu,
 }
 
 
-static void hexagon_tr_translate_packet(DisasContextBase *dcbase, CPUState *cpu)
+static void hexagon_tr_translate_packet(DisasContextBase *dcbase,
+    CPUState *cpu)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
     CPUHexagonState *env = cpu->env_ptr;
@@ -961,7 +964,8 @@ void hexagon_translate_init(void)
             hex_t_sreg[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, t_sreg[i]), hexagon_sregnames[i]);
             hex_t_sreg_new_value[i] = tcg_global_mem_new(cpu_env,
-                offsetof(CPUHexagonState, t_sreg_new_value[i]), "new_sreg_value");
+                offsetof(CPUHexagonState, t_sreg_new_value[i]),
+                "new_sreg_value");
 #if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
             hex_t_sreg_written[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, t_sreg_written[i]), "sreg_written");
@@ -969,7 +973,8 @@ void hexagon_translate_init(void)
         } else {
 #if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
 //            hex_g_sreg_written[i] = tcg_global_mem_new(cpu_env,
-//                offsetof(CPUHexagonState, g_sreg_written[i]), "sreg_written");
+//                offsetof(CPUHexagonState, g_sreg_written[i]),
+//                "sreg_written");
 #endif
         }
     }

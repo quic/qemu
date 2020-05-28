@@ -99,8 +99,8 @@ void HELPER(raise_exception)(CPUHexagonState *env, uint32_t exception)
 static inline void log_reg_write(CPUHexagonState *env, int rnum,
                                  target_ulong val, uint32_t slot)
 {
-    HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
-                  rnum, val, val);
+    HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld
+      " (0x" TARGET_FMT_lx ")", rnum, val, val);
     if (env->slot_cancelled & (1 << slot)) {
         HEX_DEBUG_LOG(" CANCELLED");
     }
@@ -131,8 +131,8 @@ inline void log_reg_write_pair(CPUHexagonState *env, int rnum,
 static inline void log_sreg_write(CPUHexagonState *env, int rnum,
                                  target_ulong val, uint32_t slot)
 {
-    HEX_DEBUG_LOG("log_sreg_write[%s/%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
-                  hexagon_sregnames[rnum], rnum, val, val);
+    HEX_DEBUG_LOG("log_sreg_write[%s/%d] = " TARGET_FMT_ld
+        " (0x" TARGET_FMT_lx ")", hexagon_sregnames[rnum], rnum, val, val);
     if (env->slot_cancelled & (1 << slot)) {
         HEX_DEBUG_LOG(" CANCELLED");
     }
@@ -208,12 +208,14 @@ void HELPER(debug_start_packet)(CPUHexagonState *env)
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         env->reg_written[i] = 0;
     }
+#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
     for (i = 0; i < NUM_SREGS; i++) {
         if (i < HEX_SREG_GLB_START)
             env->t_sreg_written[i] = 0;
         else
             env->g_sreg_written[i] = 0;
     }
+#endif
 }
 
 static inline int32_t new_pred_value(CPUHexagonState *env, int pnum)
@@ -320,7 +322,8 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
         } else {
             for (int i = 0; i < env->vtcm_log.size; i++) {
                 if (env->vtcm_log.mask.ub[i] != 0) {
-                    hexagon_store_byte(env, env->vtcm_log.data.ub[i], env->vtcm_log.va[i]);
+                    hexagon_store_byte(env, env->vtcm_log.data.ub[i],
+                        env->vtcm_log.va[i]);
                     env->vtcm_log.mask.ub[i] = 0;
                     env->vtcm_log.data.ub[i] = 0;
                     env->vtcm_log.offsets.ub[i] = 0;
@@ -363,7 +366,6 @@ static void print_store(CPUHexagonState *env, int slot)
 void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
 {
     bool reg_printed = false;
-    bool sreg_printed = false;
     bool pred_printed = false;
     int i;
 
@@ -383,6 +385,8 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
         }
     }
 
+#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+    bool sreg_printed = false;
     for (i = 0; i < NUM_SREGS; i++) {
         if (i < HEX_SREG_GLB_START) {
             if (env->t_sreg_written[i]) {
@@ -390,7 +394,8 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
                     printf("SRegs written\n");
                     sreg_printed = true;
                 }
-                printf("\tset s%d (%s) = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
+                printf("\tset s%d (%s) = " TARGET_FMT_ld
+                    " (0x" TARGET_FMT_lx " )\n",
                     i, hexagon_sregnames[i], env->t_sreg_new_value[i],
                     env->t_sreg_new_value[i]);
             }
@@ -400,12 +405,14 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
                     printf("SRegs written\n");
                     sreg_printed = true;
             }
-            printf("\tset s%d (%s) = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
+            printf("\tset s%d (%s) = " TARGET_FMT_ld
+                " (0x" TARGET_FMT_lx " )\n",
                 i, hexagon_sregnames[i], env->g_sreg_new_value[i],
                 env->g_sreg_new_value[i]);
             }
         }
     }
+#endif
 
     for (i = 0; i < NUM_PREGS; i++) {
         if (env->pred_written & (1 << i)) {

@@ -157,8 +157,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 
     case SYS_EXCEPTION:
     {
-        HEX_DEBUG_LOG("%s:%d: SYS_EXCEPTION\n\tProgram terminated successfully\n",
-                       __FUNCTION__, __LINE__);
+        HEX_DEBUG_LOG("%s:%d: SYS_EXCEPTION\n\t"
+            "Program terminated successfully\n",
+            __FUNCTION__, __LINE__);
         target_ulong ret = -1;
         DEBUG_MEMORY_READ(swi_info, 4, &ret);
 
@@ -215,8 +216,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         DEBUG_MEMORY_READ(swi_info + 8, 4, &count);
 
         if ((buf = (char *) g_malloc(count)) == NULL) {
-            printf("%s:%d: ERROR: Couldn't allocate temporary buffer (%d bytes)",
-                    __FUNCTION__, __LINE__, count);
+            printf("%s:%d: "
+                "ERROR: Couldn't allocate temporary buffer (%d bytes)",
+                __FUNCTION__, __LINE__, count);
         }
 
         for (i = 0; i < count; i++) {
@@ -250,8 +252,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         if ((buf = (char *) g_malloc(count)) == NULL) {
             CPUState *cs = env_cpu(env);
             cpu_abort(cs,
-                "Error: sim_handle_trap couldn't allocate temporybuffer (%d bytes)",
-                 count);
+                "Error: sim_handle_trap couldn't allocate "
+                "temporybuffer (%d bytes)",
+                count);
         }
 
         retval = read(fd, buf, count);
@@ -355,7 +358,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             DEBUG_MEMORY_READ(physicalFilenameAddr + i, 1, &filename[i]);
             i++;
         } while (filename[i - 1]);
-        HEX_DEBUG_LOG("fname %s, fmode %d, len %d\n", filename, filemode, length);
+        HEX_DEBUG_LOG("fname %s, fmode %d, len %d\n",
+            filename, filemode, length);
 
         /* convert ARM ANGEL filemode into host filemode */
         if (filemode < 14)
@@ -515,15 +519,16 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
                  ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           break;
       case HEX_CAUSE_PRIV_NO_READ:
-          printf("0x%x, Privilege violation: user/guest read permission @ 0x%x",
-                 HEX_CAUSE_PRIV_NO_READ,
-                 ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+          printf("0x%x, Privilege violation: "
+              "user/guest read permission @ 0x%x",
+              HEX_CAUSE_PRIV_NO_READ,
+              ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           break;
       case HEX_CAUSE_PRIV_NO_WRITE:
           printf("0x%x, Privilege violation: "
-                 "user/guest write permission @ 0x%x",
-                 HEX_CAUSE_PRIV_NO_WRITE,
-                 ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+              "user/guest write permission @ 0x%x",
+              HEX_CAUSE_PRIV_NO_WRITE,
+              ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           break;
       case HEX_CAUSE_PRIV_NO_UREAD:
           printf("0x%x, Privilege violation: user read permission @ 0x%x",
@@ -814,10 +819,12 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
       case HEX_CAUSE_TLBMISSX_CAUSE_NORMAL:
       case HEX_CAUSE_TLBMISSX_CAUSE_NEXTPAGE:
           qemu_log_mask(CPU_LOG_MMU,
-                        "TLB miss EX exception (0x%x) caught: "
-                        "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
-                        cs->exception_index, env->threadId, ARCH_GET_THREAD_REG(env, HEX_REG_PC),
-                        ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+              "TLB miss EX exception (0x%x) caught: "
+              "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
+              ", BADVA = 0x%" PRIx32 "\n",
+              cs->exception_index, env->threadId,
+              ARCH_GET_THREAD_REG(env, HEX_REG_PC),
+              ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
               ARCH_GET_THREAD_REG(env, HEX_REG_PC));
           ssr_set_cause(env, cs -> exception_index);
@@ -827,10 +834,11 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
       case HEX_CAUSE_TLBMISSRW_CAUSE_READ:
       case HEX_CAUSE_TLBMISSRW_CAUSE_WRITE:
           qemu_log_mask(CPU_LOG_MMU,
-                        "TLB miss RW exception (0x%x) caught: "
-                        "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
-                        cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
-                        ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+              "TLB miss RW exception (0x%x) caught: "
+              "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
+              ", BADVA = 0x%" PRIx32 "\n",
+              cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
+              ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
               ARCH_GET_THREAD_REG(env, HEX_REG_PC));
           /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
@@ -846,10 +854,11 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
       case HEX_CAUSE_PRIV_NO_WRITE:
       case HEX_CAUSE_PRIV_NO_UWRITE:
           qemu_log_mask(CPU_LOG_MMU,
-                        "MMU permission exception (0x%x) caught: "
-                        "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32 ", BADVA = 0x%" PRIx32 "\n",
-                        cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
-                        ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+              "MMU permission exception (0x%x) caught: "
+              "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
+              ", BADVA = 0x%" PRIx32 "\n",
+              cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
+              ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
               ARCH_GET_THREAD_REG(env, HEX_REG_PC));
           /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
@@ -894,7 +903,8 @@ void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
     int traptype, int imm)
 
 {
-    HEX_DEBUG_LOG("%s:\n\ttid = %d, pc = 0x%x, npc = 0x%lx, traptype %d, imm %d\n",
+    HEX_DEBUG_LOG("%s:\n\ttid = %d, pc = 0x%x, npc = 0x%lx, traptype %d, "
+        "imm %d\n",
         __FUNCTION__, env->threadId, ARCH_GET_THREAD_REG(env, HEX_REG_PC),
         next_pc, traptype, imm);
 

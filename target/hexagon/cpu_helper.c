@@ -256,7 +256,8 @@ void hexagon_create_cpu(CPUHexagonState *current_env, uint32_t mask)
     new_env->g_sreg = current_env->g_sreg;
     new_env->g_sreg_new_value = current_env->g_sreg_new_value;
     new_env->g_sreg_written = current_env->g_sreg_written;
-    HEX_DEBUG_LOG("%s: mask 0x%x, cpu 0x%p, g_sreg at 0x%p\n", __FUNCTION__, mask, new_cpu, new_env->g_sreg);
+    HEX_DEBUG_LOG("%s: mask 0x%x, cpu 0x%p, g_sreg at 0x%p\n",
+        __FUNCTION__, mask, new_cpu, new_env->g_sreg);
 
     ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_SSR,
         SSR_EX | (HEX_EVENT_RESET & (SSR_CAUSE)));
@@ -283,7 +284,8 @@ void hexagon_create_cpu(CPUHexagonState *current_env, uint32_t mask)
 void hexagon_destroy_cpu(CPUHexagonState *env, uint32_t mask)
 
 {
-    HEX_DEBUG_LOG("%s: mask = 0x%x, htid %d\n", __FUNCTION__, mask, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID));
+    HEX_DEBUG_LOG("%s: mask = 0x%x, htid %d\n",
+        __FUNCTION__, mask, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID));
     target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     modectl &= ~(0x1 << env->threadId);
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL, modectl);

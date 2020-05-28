@@ -145,7 +145,8 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
                             : env->gpr[regnum];
     }
 
-    fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_regnames[regnum], value);
+    fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
+        hexagon_regnames[regnum], value);
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -376,7 +377,8 @@ static inline void find_qemu_subpage(vaddr *addr, hwaddr *phys,
                                      int page_size)
 {
     vaddr page_start = *addr & ~((vaddr)(page_size - 1));
-    vaddr offset = ((*addr - page_start) / TARGET_PAGE_SIZE) * TARGET_PAGE_SIZE;
+    vaddr offset = ((*addr - page_start) / TARGET_PAGE_SIZE) *
+        TARGET_PAGE_SIZE;
     *addr = page_start + offset;
     *phys += offset;
 }
