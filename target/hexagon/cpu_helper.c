@@ -232,63 +232,89 @@ int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
     return ret;
 }
 
-void hexagon_create_cpu(CPUHexagonState *current_env, uint32_t mask)
+void hexagon_start_cpu(CPUHexagonState *current_env, uint32_t mask)
 
 {
-    MachineState *machine = MACHINE(qdev_get_machine());
-    HexagonCPU *new_cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
-    CPUHexagonState *new_env = &new_cpu->env;
+    CPUState *cs = env_cpu(current_env);
     int htid;
 
-    if (mask == 0x2)
+    if (mask == 0x2) {
         htid = 1;
-    else if (mask == 0x4)
+    } else if (mask == 0x4) {
         htid = 2;
-    else if (mask == 0x8)
+    } else if (mask == 0x8) {
         htid = 3;
-    else {
-        CPUState *cs = env_cpu(current_env);
+    } else {
         cpu_abort(cs, "Error: Hexagon: Illegal start thread mask 0x%x", mask);
     }
 
-    new_env->cmdline = machine->kernel_cmdline;
-    new_env->hex_tlb = current_env->hex_tlb;
-    new_env->g_sreg = current_env->g_sreg;
-    new_env->g_sreg_new_value = current_env->g_sreg_new_value;
-    new_env->g_sreg_written = current_env->g_sreg_written;
-    HEX_DEBUG_LOG("%s: mask 0x%x, cpu 0x%p, g_sreg at 0x%p\n",
-        __FUNCTION__, mask, new_cpu, new_env->g_sreg);
+    HexagonCPU *cpu;
+    CPUHexagonState *env;
+    bool found = false;
+    CPU_FOREACH(cs) {
+        cpu = HEXAGON_CPU(cs);
+        env = &cpu->env;
+        if (env->threadId == htid) {
+            found = true;
+            break;
+        }
+    }
 
-    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_SSR,
+    if (!found) {
+        MachineState *machine = MACHINE(qdev_get_machine());
+        cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
+        HEX_DEBUG_LOG("creating new cpu 0x%p/%d\n", cpu, htid);
+        env = &cpu->env;
+        env->cmdline = machine->kernel_cmdline;
+        env->hex_tlb = current_env->hex_tlb;
+        env->g_sreg = current_env->g_sreg;
+        env->g_sreg_new_value = current_env->g_sreg_new_value;
+        env->g_sreg_written = current_env->g_sreg_written;
+        env->threadId = htid;
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, htid);
+        HEX_DEBUG_LOG("%s: mask 0x%x, cpu 0x%p, g_sreg at 0x%p\n",
+            __FUNCTION__, mask, cpu, env->g_sreg);
+    } else {
+        HEX_DEBUG_LOG("%s: cpu 0x%p/%d found\n",
+            __FUNCTION__, cpu, env->threadId);
+    }
+
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR,
         SSR_EX | (HEX_EVENT_RESET & (SSR_CAUSE)));
-    new_env->threadId = htid;
-    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_HTID, htid);
 
-    target_ulong evb = ARCH_GET_SYSTEM_REG(new_env, HEX_SREG_EVB);
+    target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
+    #if HEX_DEBUG
     target_ulong reset_inst;
-    DEBUG_MEMORY_READ_ENV(current_env, evb, 4, &reset_inst);
+    DEBUG_MEMORY_READ_ENV(env, evb, 4, &reset_inst);
     HEX_DEBUG_LOG("\tEVB = 0x%x, reset = 0x%x, new PC = 0x%x\n",
-      evb, reset_inst, evb);
+        evb, reset_inst, evb);
+    #endif
 
     //fCHECK_PCALIGN(addr);
-    new_env->branch_taken = 1;
-    new_env->next_PC = evb;
-    ARCH_SET_THREAD_REG(new_env, HEX_REG_PC, new_env->next_PC);
-    target_ulong modectl = ARCH_GET_SYSTEM_REG(new_env, HEX_SREG_MODECTL);
-    modectl |= mask;
-    ARCH_SET_SYSTEM_REG(new_env, HEX_SREG_MODECTL, modectl);
-    CPUState *new_cs = env_cpu(new_env);
-    new_cs->exception_index = HEX_EVENT_NONE;
+    env->branch_taken = 1;
+    env->next_PC = evb;
+    ARCH_SET_THREAD_REG(env, HEX_REG_PC, env->next_PC);
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL,
+        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL) | mask);
+
+    cs = env_cpu(env);
+    cs->exception_index = HEX_EVENT_NONE;
+    if (found) {
+        cpu_resume(cs);
+    }
 }
 
-void hexagon_destroy_cpu(CPUHexagonState *env, uint32_t mask)
+void hexagon_stop_cpu(CPUHexagonState *env, uint32_t mask)
 
 {
-    HEX_DEBUG_LOG("%s: mask = 0x%x, htid %d\n",
-        __FUNCTION__, mask, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID));
-    target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-    modectl &= ~(0x1 << env->threadId);
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL, modectl);
+    #if HEX_DEBUG
+    HexagonCPU *cpu = hexagon_env_get_cpu(env);
+    HEX_DEBUG_LOG("%s: mask = 0x%x, htid %d, cpu 0x%p\n",
+        __FUNCTION__, mask, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID), cpu);
+    #endif
+
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL,
+        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL) & ~(0x1 << env->threadId));
     cpu_stop_current();
 }
 

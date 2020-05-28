@@ -201,8 +201,8 @@ static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
 {
-    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " r0=%d, tid=%d\n",
-                  env->gpr[HEX_REG_PC], env->gpr[HEX_REG_R00], env->threadId);
+    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " tid=%d\n",
+                  env->gpr[HEX_REG_PC], env->threadId);
 
     int i;
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
@@ -801,13 +801,13 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 void HELPER(fstart)(CPUHexagonState *env, uint32_t mask)
 
 {
-    hexagon_create_cpu(env, mask);
+    hexagon_start_cpu(env, mask);
 }
 
 void HELPER(clear_run_mode)(CPUHexagonState *env, uint32_t mask)
 
 {
-    hexagon_destroy_cpu(env, mask);
+    hexagon_stop_cpu(env, mask);
 }
 void HELPER(pause)(CPUHexagonState *env, uint32_t val)
 
