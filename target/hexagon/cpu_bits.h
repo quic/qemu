@@ -55,6 +55,7 @@
 #define HEX_EVENT_INT3                      0x13
 #define HEX_EVENT_SC4                       0x100
 #define HEX_EVENT_SC8                       0x200
+#define HEX_EVENT_TLBLOCK_WAIT              0x300
 
 #define PACKET_WORDS_MAX                    4
 

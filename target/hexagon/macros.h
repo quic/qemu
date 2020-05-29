@@ -1608,13 +1608,8 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     (((IMM) == 1) || ((IMM) == 3) || ((IMM) == 4) || ((IMM) == 6))
 #define fNOP_EXECUTED
 #define fPREDUSE_TIMING()
-#if 0
-#define fSET_TLB_LOCK() (qemu_mutex_lock_iothread());
-#define fCLEAR_TLB_LOCK() (qemu_mutex_unlock_iothread());
-#else
-#define fSET_TLB_LOCK()
-#define fCLEAR_TLB_LOCK()
-#endif
+#define fSET_TLB_LOCK()       hex_tlb_lock(env);
+#define fCLEAR_TLB_LOCK()     hex_tlb_unlock(env);
 
 #define fGET_TNUM()               thread->threadId
 #define fSTART(REG)               helper_fstart(env, REG)

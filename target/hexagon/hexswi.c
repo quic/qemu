@@ -825,6 +825,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
               cs->exception_index, env->threadId,
               ARCH_GET_THREAD_REG(env, HEX_REG_PC),
               ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+          hex_tlb_lock(env);
           ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
               ARCH_GET_THREAD_REG(env, HEX_REG_PC));
           ssr_set_cause(env, cs -> exception_index);
@@ -839,6 +840,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
               ", BADVA = 0x%" PRIx32 "\n",
               cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
               ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+          hex_tlb_lock(env);
           ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
               ARCH_GET_THREAD_REG(env, HEX_REG_PC));
           /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
@@ -889,6 +891,11 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
               (0x4 << 4) | (ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID) & 0xF));
           evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
           ARCH_SET_THREAD_REG(env, HEX_REG_PC, evb | (1 << 2));
+          break;
+
+      case HEX_EVENT_TLBLOCK_WAIT:
+          env->gpr[HEX_REG_PC] += 4;
+          cpu_stop_current();
           break;
 
       default:

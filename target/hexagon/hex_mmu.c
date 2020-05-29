@@ -480,3 +480,94 @@ int hex_tlb_check_overlap(CPUHexagonState *env, uint64_t entry)
     }
     return -1;
 }
+
+static inline void print_thread(const char *str, CPUState *cs)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *thread = &cpu->env;
+    bool is_stopped = cpu_is_stopped(cs);
+    int exe_mode = get_exe_mode(thread);
+    hex_tlb_lock_state_t lock_state = thread->tlb_lock_state;
+    qemu_log_mask(CPU_LOG_MMU,
+           "%s: threadId = %d: %s, exe_mode = %s, tlb_lock_state = %s\n",
+           str,
+           thread->threadId,
+           is_stopped ? "stopped" : "running",
+           exe_mode == HEX_EXE_MODE_OFF ? "off" :
+           exe_mode == HEX_EXE_MODE_RUN ? "run" :
+           exe_mode == HEX_EXE_MODE_WAIT ? "wait" :
+           exe_mode == HEX_EXE_MODE_DEBUG ? "debug" :
+           "unknown",
+           lock_state == HEX_TLB_LOCK_UNLOCKED ? "unlocked" :
+           lock_state == HEX_TLB_LOCK_WAITING ? "waiting" :
+           lock_state == HEX_TLB_LOCK_OWNER ? "owner" :
+           "unknown");
+}
+
+static inline void print_thread_states(const char *str)
+{
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        print_thread(str, cs);
+    }
+}
+
+void hex_tlb_lock(CPUHexagonState *env)
+{
+    qemu_log_mask(CPU_LOG_MMU, "hex_tlb_lock: %d\n", env->threadId);
+
+    if (env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_TL) {
+        if (env->tlb_lock_state == HEX_TLB_LOCK_OWNER) {
+            qemu_log_mask(CPU_LOG_MMU, "Already the owner\n");
+            return;
+        }
+        qemu_log_mask(CPU_LOG_MMU, "\tWaiting\n");
+        env->tlb_lock_state = HEX_TLB_LOCK_WAITING;
+        do_raise_exception_err(env, HEX_EVENT_TLBLOCK_WAIT,
+                               env->gpr[HEX_REG_PC]);
+    } else {
+        qemu_log_mask(CPU_LOG_MMU, "\tAcquired\n");
+        env->tlb_lock_state = HEX_TLB_LOCK_OWNER;
+        env->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_TL;
+    }
+
+    if (qemu_loglevel_mask(CPU_LOG_MMU)) {
+        qemu_log_mask(CPU_LOG_MMU, "Threads after hex_tlb_lock:\n");
+        print_thread_states("\tThread");
+    }
+}
+
+void hex_tlb_unlock(CPUHexagonState *env)
+{
+    qemu_log_mask(CPU_LOG_MMU, "hex_tlb_unlock: %d\n", env->threadId);
+
+    /* Nothing to do if the TLB isn't locked */
+    if ((env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_TL) == 0) {
+        return;
+    }
+
+    env->tlb_lock_state = HEX_TLB_LOCK_UNLOCKED;
+    env->g_sreg[HEX_SREG_SYSCFG] &= ~SYSCFG_TL;
+
+    /* Look for a thread to unlock */
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *thread = &cpu->env;
+
+        /* FIXME - we have to do round-robin fairness */
+        if (thread->tlb_lock_state == HEX_TLB_LOCK_WAITING) {
+            print_thread("\tWaiting thread found", cs);
+            thread->tlb_lock_state = HEX_TLB_LOCK_OWNER;
+            env->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_TL;
+            cpu_resume(cs);
+            break;
+        }
+    }
+
+    if (qemu_loglevel_mask(CPU_LOG_MMU)) {
+        qemu_log_mask(CPU_LOG_MMU, "Threads after hex_tlb_unlock:\n");
+        print_thread_states("\tThread");
+    }
+}
+

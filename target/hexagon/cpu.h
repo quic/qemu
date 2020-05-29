@@ -88,9 +88,17 @@ typedef struct {
     uint8_t format;
 } mem_access_info_t;
 
+#ifndef CONFIG_USER_ONLY
 #define HEX_CPU_MODE_USER    1
 #define HEX_CPU_MODE_GUEST   2
 #define HEX_CPU_MODE_MONITOR 3
+
+#define HEX_EXE_MODE_OFF     1
+#define HEX_EXE_MODE_RUN     2
+#define HEX_EXE_MODE_WAIT    3
+#define HEX_EXE_MODE_DEBUG   4
+#endif
+
 #define MMU_USER_IDX         0
 #define MMU_GUEST_IDX        1
 #define MMU_KERNEL_IDX       2
@@ -157,6 +165,14 @@ enum {
   SSR_SS    = 1u << 30,
   SSR_XE    = 1u << 31,
 };
+
+#ifndef CONFIG_USER_ONLY
+typedef enum {
+    HEX_TLB_LOCK_UNLOCKED       = 0,
+    HEX_TLB_LOCK_WAITING        = 1,
+    HEX_TLB_LOCK_OWNER          = 2
+} hex_tlb_lock_state_t;
+#endif
 
 struct CPUHexagonState {
     target_ulong gpr[TOTAL_PER_THREAD_REGS];
@@ -236,6 +252,7 @@ struct CPUHexagonState {
 #ifndef CONFIG_USER_ONLY
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;
+    hex_tlb_lock_state_t tlb_lock_state;
 #endif
 };
 
@@ -320,6 +337,30 @@ static inline int get_cpu_mode(CPUHexagonState *env)
     return HEX_CPU_MODE_USER;
   }
   return HEX_CPU_MODE_MONITOR;
+}
+
+static inline int get_exe_mode(CPUHexagonState *env)
+{
+    target_ulong modectl = env->g_sreg[HEX_SREG_MODECTL];
+    bool E_bit = (modectl >> env->threadId) & 0x1;
+    bool w_bit = (modectl >> (env->threadId + 16)) & 0x1;
+    target_ulong isdbst = env->g_sreg[HEX_SREG_ISDBST];
+    bool D_bit = (isdbst >> (env->threadId + 8)) & 0x1;
+
+    /* Figure 4-2 */
+    if (!D_bit && !w_bit && !E_bit) {
+        return HEX_EXE_MODE_OFF;
+    }
+    if (!D_bit && !w_bit && E_bit) {
+        return HEX_EXE_MODE_RUN;
+    }
+    if (!D_bit && w_bit && E_bit) {
+        return HEX_EXE_MODE_WAIT;
+    }
+    if (D_bit && !w_bit && E_bit) {
+        return HEX_EXE_MODE_DEBUG;
+    }
+    g_assert_not_reached();
 }
 
 static inline unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
