@@ -20,6 +20,7 @@
  */
 
 #include <stdio.h>
+#ifdef __HEXMSGABI_3_SUPPORTED__
 #include <string.h>
 #include <stdlib.h>
 
@@ -1281,4 +1282,7 @@ int main()
     puts(err ? "FAIL" : "PASS");
     return err;
 }
+#else
+int main () {puts ("NOT RUN"); return 0;}
+#endif
 
