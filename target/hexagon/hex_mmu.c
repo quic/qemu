@@ -246,10 +246,8 @@ void hex_tlbw(CPUHexagonState *env, uint32_t index, uint64_t value)
     hex_log_tlbw(myidx, value);
 }
 
-void hex_mmu_init(CPUState *cs)
+void hex_mmu_init(CPUHexagonState *env)
 {
-    HexagonCPU *cpu = HEXAGON_CPU(cs);
-    CPUHexagonState *env = &cpu->env;
     env->hex_tlb = g_malloc0(sizeof(CPUHexagonTLBContext));
 }
 

@@ -342,9 +342,6 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     cpu_reset(cs);
 
     mcc->parent_realize(dev, errp);
-#ifndef CONFIG_USER_ONLY
-    hex_mmu_init(cs);
-#endif
 }
 
 static void hexagon_cpu_init(Object *obj)

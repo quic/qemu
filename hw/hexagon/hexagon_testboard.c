@@ -32,6 +32,7 @@
 #include "qemu/error-report.h"
 #include "qemu/log.h"
 #include "internal.h"
+#include "hex_mmu.h"
 
 static const struct MemmapEntry {
     hwaddr base;
@@ -95,6 +96,7 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     env->g_sreg_new_value = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     env->g_sreg_written = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
+    hex_mmu_init(env);
 
     MemoryRegion *address_space = get_system_memory();
 
