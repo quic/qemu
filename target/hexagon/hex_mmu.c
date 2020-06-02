@@ -539,8 +539,10 @@ void hex_tlb_unlock(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_unlock: %d\n", env->threadId);
 
-    /* Nothing to do if the TLB isn't locked */
-    if ((env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_TL) == 0) {
+    /* Nothing to do if the TLB isn't locked by this thread */
+    if ((env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_TL) == 0 ||
+         (env->tlb_lock_state != HEX_TLB_LOCK_OWNER)) {
+        qemu_log_mask(CPU_LOG_MMU, "\tNot owner\n");
         return;
     }
 
@@ -548,19 +550,50 @@ void hex_tlb_unlock(CPUHexagonState *env)
     env->g_sreg[HEX_SREG_SYSCFG] &= ~SYSCFG_TL;
 
     /* Look for a thread to unlock */
+    unsigned int this_threadId = env->threadId;
+    CPUHexagonState *unlock_thread = NULL;
     CPUState *cs;
     CPU_FOREACH(cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *thread = &cpu->env;
 
-        /* FIXME - we have to do round-robin fairness */
+        /*
+         * The hardware implements round-robin fairness, so we look for threads
+         * starting at env->threadId + 1 and incrementing modulo the number of
+         * threads.
+         *
+         * To implement this, we check if thread is a earlier in the modulo
+         * sequence than unlock_thread.
+         *     if unlock thread is higher than this thread
+         *         thread must be between this thread and unlock_thread
+         *     else
+         *         thread higher than this thread is ahead of unlock_thread
+         *         thread must be lower then unlock thread
+         */
         if (thread->tlb_lock_state == HEX_TLB_LOCK_WAITING) {
-            print_thread("\tWaiting thread found", cs);
-            thread->tlb_lock_state = HEX_TLB_LOCK_OWNER;
-            env->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_TL;
-            cpu_resume(cs);
-            break;
+            if (!unlock_thread) {
+                unlock_thread = thread;
+            } else if (unlock_thread->threadId > this_threadId) {
+                if (this_threadId < thread->threadId &&
+                    thread->threadId < unlock_thread->threadId) {
+                    unlock_thread = thread;
+                }
+            } else {
+                if (thread->threadId > this_threadId) {
+                    unlock_thread = thread;
+                }
+                if (thread->threadId < unlock_thread->threadId) {
+                    unlock_thread = thread;
+                }
+            }
         }
+    }
+    if (unlock_thread) {
+        cs = CPU(hexagon_env_get_cpu(unlock_thread));
+        print_thread("\tWaiting thread found", cs);
+        unlock_thread->tlb_lock_state = HEX_TLB_LOCK_OWNER;
+        unlock_thread->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_TL;
+        cpu_resume(cs);
     }
 
     if (qemu_loglevel_mask(CPU_LOG_MMU)) {
