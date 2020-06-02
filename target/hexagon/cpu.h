@@ -168,10 +168,10 @@ enum {
 
 #ifndef CONFIG_USER_ONLY
 typedef enum {
-    HEX_TLB_LOCK_UNLOCKED       = 0,
-    HEX_TLB_LOCK_WAITING        = 1,
-    HEX_TLB_LOCK_OWNER          = 2
-} hex_tlb_lock_state_t;
+    HEX_LOCK_UNLOCKED       = 0,
+    HEX_LOCK_WAITING        = 1,
+    HEX_LOCK_OWNER          = 2
+} hex_lock_state_t;
 #endif
 
 struct CPUHexagonState {
@@ -252,7 +252,8 @@ struct CPUHexagonState {
 #ifndef CONFIG_USER_ONLY
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;
-    hex_tlb_lock_state_t tlb_lock_state;
+    hex_lock_state_t tlb_lock_state;
+    hex_lock_state_t k0_lock_state;
 #endif
 };
 

@@ -917,6 +917,7 @@ supported_privs = [
     'Y2_dczeroa',
     'Y2_start', 'Y2_stop',
     'Y2_iassignw', 'Y2_iassignr',
+    'Y2_k0lock', 'Y2_k0unlock',
 ]
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 

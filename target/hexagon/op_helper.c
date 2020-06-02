@@ -750,6 +750,135 @@ void HELPER(probe_pkt_stores)(CPUHexagonState *env, int has_st0, int has_st1,
         probe_hvx_stores(env);
     }
 }
+
+#if HEX_DEBUG
+static inline void print_thread(const char *str, CPUState *cs)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *thread = &cpu->env;
+    bool is_stopped = cpu_is_stopped(cs);
+    int exe_mode = get_exe_mode(thread);
+    hex_lock_state_t lock_state = thread->k0_lock_state;
+    HEX_DEBUG_LOG("%s: threadId = %d: %s, exe_mode = %s, k0_lock_state = %s\n",
+           str,
+           thread->threadId,
+           is_stopped ? "stopped" : "running",
+           exe_mode == HEX_EXE_MODE_OFF ? "off" :
+           exe_mode == HEX_EXE_MODE_RUN ? "run" :
+           exe_mode == HEX_EXE_MODE_WAIT ? "wait" :
+           exe_mode == HEX_EXE_MODE_DEBUG ? "debug" :
+           "unknown",
+           lock_state == HEX_LOCK_UNLOCKED ? "unlocked" :
+           lock_state == HEX_LOCK_WAITING ? "waiting" :
+           lock_state == HEX_LOCK_OWNER ? "owner" :
+           "unknown");
+}
+
+static inline void print_thread_states(const char *str)
+{
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        print_thread(str, cs);
+    }
+}
+#else
+static inline void print_thread(const char *str, CPUState *cs)
+{
+}
+static inline void print_thread_states(const char *str)
+{
+}
+#endif
+
+static void hex_k0_lock(CPUHexagonState *env)
+{
+    HEX_DEBUG_LOG("Before hex_k0_lock: %d\n", env->threadId);
+    print_thread_states("\tThread");
+
+    if (env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_KL) {
+        if (env->k0_lock_state == HEX_LOCK_OWNER) {
+            HEX_DEBUG_LOG("Already the owner\n");
+            return;
+        }
+        HEX_DEBUG_LOG("\tWaiting\n");
+        env->k0_lock_state = HEX_LOCK_WAITING;
+        do_raise_exception_err(env, HEX_EVENT_K0LOCK_WAIT,
+                               env->gpr[HEX_REG_PC]);
+    } else {
+        HEX_DEBUG_LOG("\tAcquired\n");
+        env->k0_lock_state = HEX_LOCK_OWNER;
+        env->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_KL;
+    }
+
+    HEX_DEBUG_LOG("After hex_k0_lock: %d\n", env->threadId);
+    print_thread_states("\tThread");
+}
+
+static void hex_k0_unlock(CPUHexagonState *env)
+{
+    HEX_DEBUG_LOG("Before hex_k0_unlock: %d\n", env->threadId);
+    print_thread_states("\tThread");
+
+    /* Nothing to do if the k0 isn't locked by this thread */
+    if ((env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_KL) == 0 ||
+         (env->k0_lock_state != HEX_LOCK_OWNER)) {
+        HEX_DEBUG_LOG("\tNot owner\n");
+        return;
+    }
+
+    env->k0_lock_state = HEX_LOCK_UNLOCKED;
+    env->g_sreg[HEX_SREG_SYSCFG] &= ~SYSCFG_KL;
+
+    /* Look for a thread to unlock */
+    unsigned int this_threadId = env->threadId;
+    CPUHexagonState *unlock_thread = NULL;
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *thread = &cpu->env;
+
+        /*
+         * The hardware implements round-robin fairness, so we look for threads
+         * starting at env->threadId + 1 and incrementing modulo the number of
+         * threads.
+         *
+         * To implement this, we check if thread is a earlier in the modulo
+         * sequence than unlock_thread.
+         *     if unlock thread is higher than this thread
+         *         thread must be between this thread and unlock_thread
+         *     else
+         *         thread higher than this thread is ahead of unlock_thread
+         *         thread must be lower then unlock thread
+         */
+        if (thread->k0_lock_state == HEX_LOCK_WAITING) {
+            if (!unlock_thread) {
+                unlock_thread = thread;
+            } else if (unlock_thread->threadId > this_threadId) {
+                if (this_threadId < thread->threadId &&
+                    thread->threadId < unlock_thread->threadId) {
+                    unlock_thread = thread;
+                }
+            } else {
+                if (thread->threadId > this_threadId) {
+                    unlock_thread = thread;
+                }
+                if (thread->threadId < unlock_thread->threadId) {
+                    unlock_thread = thread;
+                }
+            }
+        }
+    }
+    if (unlock_thread) {
+        cs = CPU(hexagon_env_get_cpu(unlock_thread));
+        print_thread("\tWaiting thread found", cs);
+        unlock_thread->k0_lock_state = HEX_LOCK_OWNER;
+        unlock_thread->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_KL;
+        cpu_resume(cs);
+    }
+
+    HEX_DEBUG_LOG("After hex_k0_unlock: %d\n", env->threadId);
+    print_thread_states("\tThread");
+}
 #endif
 
 /* Helpful for printing intermediate values within instructions */

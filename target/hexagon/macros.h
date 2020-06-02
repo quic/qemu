@@ -1611,6 +1611,9 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fSET_TLB_LOCK()       hex_tlb_lock(env);
 #define fCLEAR_TLB_LOCK()     hex_tlb_unlock(env);
 
+#define fSET_K0_LOCK()        hex_k0_lock(env);
+#define fCLEAR_K0_LOCK()      hex_k0_unlock(env);
+
 #define fGET_TNUM()               thread->threadId
 #define fSTART(REG)               helper_fstart(env, REG)
 #define fCLEAR_RUN_MODE(x)        helper_clear_run_mode(env,(x))

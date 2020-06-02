@@ -56,6 +56,7 @@
 #define HEX_EVENT_SC4                       0x100
 #define HEX_EVENT_SC8                       0x200
 #define HEX_EVENT_TLBLOCK_WAIT              0x300
+#define HEX_EVENT_K0LOCK_WAIT               0x400
 
 #define PACKET_WORDS_MAX                    4
 

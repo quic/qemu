@@ -894,6 +894,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
           break;
 
       case HEX_EVENT_TLBLOCK_WAIT:
+      case HEX_EVENT_K0LOCK_WAIT:
           env->gpr[HEX_REG_PC] += 4;
           cpu_stop_current();
           break;
