@@ -50,30 +50,41 @@ static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
 }
 
 const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
-   "r0", "r1",  "r2",  "r3",  "r4",   "r5",  "r6",  "r7",
-   "r8", "r9",  "r10", "r11", "r12",  "r13", "r14", "r15",
-  "r16", "r17", "r18", "r19", "r20",  "r21", "r22", "r23",
-  "r24", "r25", "r26", "r27", "r28",  "r29", "r30", "r31",
-  "sa0", "lc0", "sa1", "lc1", "p3_0", "c5",  "m0",  "m1",
-  "usr", "pc",  "ugp", "gp",  "cs0",  "cs1", "c14", "c15",
-  "c16", "c17", "c18", "c19", "pkt_cnt",  "insn_cnt", "hvx_cnt", "c23",
-  "c24", "c25", "c26", "c27", "c28",  "c29", "c30", "c31",
+    "r0", "r1",  "r2",  "r3",  "r4",   "r5",  "r6",  "r7",
+    "r8", "r9",  "r10", "r11", "r12",  "r13", "r14", "r15",
+    "r16", "r17", "r18", "r19", "r20",  "r21", "r22", "r23",
+    "r24", "r25", "r26", "r27", "r28",  "r29", "r30", "r31",
+    "sa0", "lc0", "sa1", "lc1", "p3_0", "c5",  "m0",  "m1",
+    "usr", "pc",  "ugp", "gp",  "cs0",  "cs1", "c14", "c15",
+    "c16", "c17", "c18", "c19", "pkt_cnt",  "insn_cnt", "hvx_cnt", "c23",
+    "c24", "c25", "c26", "c27", "c28",  "c29", "c30", "c31",
 };
 
 const char * const hexagon_sregnames[] = {
-  "sgp0",       "sgp1",       "stid",       "elr",        "badva0",
-  "badva1",     "ssr",        "ccr",        "htid",       "badva",
-  "imask",      "gevb",       "rsv12",      "rsv13",      "rsv14",
-  "rsv15",      "evb",        "modectl",    "syscfg",     "free19",
-  "ipendad",    "vid",        "vid1",       "bestwait",   "free24",
-  "schedcfg",   "free26",     "cfgbase",    "diag",       "rev",
-  "pcyclelo",   "pcyclehi",   "isdbst",     "isdbcfg0",   "isdbcfg1",
-  "livelock",   "brkptpc0",   "brkptccfg0", "brkptpc1",   "brkptcfg1",
-  "isdbmbxin",  "isdbmbxout", "isdben",     "isdbgpr",    "pmucnt4",
-  "pmucnt5",    "pmucnt6",    "pmucnt7",    "pmucnt0",    "pmucnt1",
-  "pmucnt2",    "pmucnt3",    "pmuevtcfg",  "pmustid0",   "pmuevtcfg1",
-  "pmustid1",   "timerlo",    "timerhi",    "pmucfg",     "rsv59",
-  "rsv60",      "rsv61",      "rsv62",      "rsv64"
+    "sgp0",       "sgp1",       "stid",       "elr",        "badva0",
+    "badva1",     "ssr",        "ccr",        "htid",       "badva",
+    "imask",      "gevb",       "rsv12",      "rsv13",      "rsv14",
+    "rsv15",      "evb",        "modectl",    "syscfg",     "free19",
+    "ipendad",    "vid",        "vid1",       "bestwait",   "free24",
+    "schedcfg",   "free26",     "cfgbase",    "diag",       "rev",
+    "pcyclelo",   "pcyclehi",   "isdbst",     "isdbcfg0",   "isdbcfg1",
+    "livelock",   "brkptpc0",   "brkptccfg0", "brkptpc1",   "brkptcfg1",
+    "isdbmbxin",  "isdbmbxout", "isdben",     "isdbgpr",    "pmucnt4",
+    "pmucnt5",    "pmucnt6",    "pmucnt7",    "pmucnt0",    "pmucnt1",
+    "pmucnt2",    "pmucnt3",    "pmuevtcfg",  "pmustid0",   "pmuevtcfg1",
+    "pmustid1",   "timerlo",    "timerhi",    "pmucfg",     "rsv59",
+    "rsv60",      "rsv61",      "rsv62",      "rsv63"
+};
+
+const char * const hexagon_gregnames[] = {
+    "g0",         "g1",         "g2",       "g3",
+    "rsv4",       "rsv5",       "rsv6",     "rsv7",
+    "rsv8",       "rsv9",       "rsv10",    "rsv11",
+    "rsv12",      "rsv13",      "rsv14",    "rsv15,",
+    "isdbmbxin",  "isdbmbxout", "rsv18",    "rsv19",
+    "rsv20",      "rsv21",      "rsv22",    "rsv23",
+    "gpcyclelo",  "gpcyclehi",  "gpmucnt0", "gpmucnt1",
+    "gpmucnt2",   "gpmucnt3",   "rsv30",    "rsv31"
 };
 
 /*
@@ -150,6 +161,13 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 }
 
 #ifndef CONFIG_USER_ONLY
+static void print_greg(FILE *f, CPUHexagonState *env, int regnum)
+{
+    target_ulong val = env->greg[regnum];
+    fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
+        hexagon_gregnames[regnum], val);
+}
+
 static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
 {
     target_ulong val = ARCH_GET_SYSTEM_REG(env, regnum);
@@ -245,15 +263,21 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     print_reg(f, env, HEX_REG_CS0);
     print_reg(f, env, HEX_REG_CS1);
 
-    for (int j = 0; j < 4 ; ++j) { // mgl
+    for (int j = 0; j < NUM_PREGS ; ++j) {
       char buf[128];
       buf[0]= 0;
       sprintf(buf, "p%d", j);
       print_val(f, buf, env->pred[j]);
     }
+
     print_sreg(f, env, HEX_SREG_IPENDAD);
     print_sreg(f, env, HEX_SREG_IMASK);
     print_sreg(f, env, HEX_SREG_ELR);
+
+    print_greg(f, env, HEX_GREG_G0);
+    print_greg(f, env, HEX_GREG_G1);
+    print_greg(f, env, HEX_GREG_G2);
+    print_greg(f, env, HEX_GREG_G3);
 #endif
     fprintf(f, "}\n");
 
@@ -523,7 +547,7 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 #ifdef CONFIG_USER_ONLY
     cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS + NUM_VREGS + NUM_QREGS;
 #else
-    cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS + NUM_VREGS + NUM_QREGS + NUM_SREGS;
+    cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS + NUM_VREGS + NUM_QREGS + NUM_SREGS + NUM_GREGS;
 #endif
     cc->gdb_stop_before_watchpoint = true;
     cc->disas_set_info = hexagon_cpu_disas_set_info;

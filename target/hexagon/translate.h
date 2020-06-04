@@ -28,6 +28,8 @@ typedef struct DisasContext {
     uint32_t mem_idx;
     int ctx_reg_log[REG_WRITES_MAX];
     int ctx_reg_log_idx;
+    int ctx_greg_log[GREG_WRITES_MAX];
+    int ctx_greg_log_idx;
     int ctx_sreg_log[SREG_WRITES_MAX];
     int ctx_sreg_log_idx;
     int ctx_preg_log[PRED_WRITES_MAX];
@@ -58,9 +60,16 @@ static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
     ctx->ctx_reg_log_idx++;
 }
 
-static inline void ctx_log_sreg_write(DisasContext *ctx, int snum)
+static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
 {
-    ctx->ctx_sreg_log[ctx->ctx_sreg_log_idx] = snum;
+    ctx->ctx_greg_log[ctx->ctx_greg_log_idx] = rnum;
+    ctx->ctx_greg_log_idx++;
+}
+
+
+static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
+{
+    ctx->ctx_sreg_log[ctx->ctx_sreg_log_idx] = rnum;
     ctx->ctx_sreg_log_idx++;
 }
 
@@ -110,6 +119,9 @@ extern TCGv hex_VRegs_updated_tmp;
 extern TCGv hex_VRegs_updated;
 extern TCGv hex_VRegs_select;
 extern TCGv hex_QRegs_updated;
+extern TCGv hex_greg[NUM_GREGS];
+extern TCGv hex_greg_new_value[NUM_GREGS];
+extern TCGv hex_greg_written[NUM_GREGS];
 extern TCGv hex_t_sreg[NUM_SREGS];
 extern TCGv hex_t_sreg_new_value[NUM_SREGS];
 extern TCGv hex_t_sreg_written[NUM_SREGS];

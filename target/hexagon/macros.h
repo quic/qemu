@@ -39,6 +39,10 @@
 #define DECL_SREG_WRITABLE(NAME, NUM, X, OFF) \
     TCGv NAME = tcg_temp_local_new(); \
     int NUM = REGNO(X) + OFF;
+
+#define DECL_GREG_WRITABLE(NAME, NUM, X, OFF) \
+    TCGv NAME = tcg_temp_local_new(); \
+    int NUM = REGNO(X) + OFF;
 /*
  * For read-only temps, avoid allocating and freeing
  */
@@ -111,6 +115,14 @@
 #define DECL_SREG_s(NAME, NUM, X, OFF) \
     DECL_SREG_READONLY(NAME, NUM, X, OFF)
 
+#define DECL_GREG_READONLY(NAME, NUM, X, OFF) \
+    TCGv NAME = tcg_temp_local_new(); \
+    int NUM = REGNO(X) + OFF
+#define DECL_GREG_d(NAME, NUM, X, OFF) \
+    DECL_GREG_WRITABLE(NAME, NUM, X, OFF)
+#define DECL_GREG_s(NAME, NUM, X, OFF) \
+    DECL_GREG_READONLY(NAME, NUM, X, OFF)
+
 #define DECL_PAIR(NAME, NUM, X, OFF) \
     TCGv_i64 NAME = tcg_temp_local_new_i64(); \
     size1u_t NUM = REGNO(X) + OFF
@@ -136,11 +148,21 @@
 #define DECL_SREG_PAIR_WRITABLE(NAME, NUM, X, OFF) \
     TCGv_i64 NAME = tcg_temp_local_new_i64(); \
     size1u_t NUM = REGNO(X) + OFF;
-
 #define DECL_SREG_ss(NAME, NUM, X, OFF) \
     DECL_SREG_PAIR(NAME, NUM, X, OFF)
 #define DECL_SREG_dd(NAME, NUM, X, OFF) \
     DECL_SREG_PAIR_WRITABLE(NAME, NUM, X, OFF)
+
+#define DECL_GREG_PAIR(NAME, NUM, X, OFF) \
+    TCGv_i64 NAME = tcg_temp_local_new_i64(); \
+    size1u_t NUM = REGNO(X) + OFF
+#define DECL_GREG_PAIR_WRITABLE(NAME, NUM, X, OFF) \
+    TCGv_i64 NAME = tcg_temp_local_new_i64(); \
+    size1u_t NUM = REGNO(X) + OFF;
+#define DECL_GREG_ss(NAME, NUM, X, OFF) \
+    DECL_GREG_PAIR(NAME, NUM, X, OFF)
+#define DECL_GREG_dd(NAME, NUM, X, OFF) \
+    DECL_GREG_PAIR_WRITABLE(NAME, NUM, X, OFF)
 
 #define DECL_RREG_dd(NAME, NUM, X, OFF) \
     DECL_PAIR_WRITABLE(NAME, NUM, X, OFF)
@@ -179,7 +201,7 @@
 #define LOG_REG_WRITE(RNUM, VAL)\
     do { \
         int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
-        gen_log_reg_write(RNUM, VAL, insn->slot, is_predicated); \
+        GEN_LOG_REG_WRITE(RNUM, VAL, insn->slot, is_predicated); \
         ctx_log_reg_write(ctx, (RNUM)); \
     } while (0)
 
@@ -187,12 +209,21 @@
     do { \
         if ((NUM) < HEX_SREG_GLB_START) { \
             gen_log_sreg_write(NUM, VAL); \
-        ctx_log_sreg_write(ctx, (NUM)); \
+            ctx_log_sreg_write(ctx, (NUM)); \
         } else {\
-            TCGv_i32 helper_num = tcg_const_i32(NUM); \
-            gen_helper_sreg_write(cpu_env, helper_num, VAL); \
-            tcg_temp_free_i32(helper_num); \
+            TCGv_i32 num = tcg_const_i32(NUM); \
+            gen_helper_sreg_write(cpu_env, num, VAL); \
+            tcg_temp_free_i32(num); \
         } \
+    } while (0)
+#define LOG_GREG_WRITE(RNUM, VAL)\
+    do { \
+        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
+        if ((RNUM) > HEX_GREG_G3) { \
+            g_assert_not_reached(); \
+        } \
+        GEN_LOG_GREG_WRITE(RNUM, VAL, insn->slot, is_predicated); \
+        ctx_log_greg_write(ctx, (RNUM)); \
     } while (0)
 
 #define LOG_PRED_WRITE(PNUM, VAL) \
@@ -209,14 +240,21 @@
   LOG_SREG_WRITE(HEX_SREG_SGP0, (VAL) & 0xFFFFFFFF); \
   LOG_SREG_WRITE(HEX_SREG_SGP1, (VAL) >> 32); \
 }
+#define WRITE_GREG_d(NUM, VAL)           LOG_GREG_WRITE(NUM, VAL)
 
 #define FREE_REG(NAME) \
     tcg_temp_free(NAME)
 #define FREE_REG_READONLY(NAME) \
     /* Nothing */
+
 #define FREE_SREG(NAME) \
     tcg_temp_free(NAME)
 #define FREE_SREG_READONLY(NAME) \
+    /* Nothing */
+
+#define FREE_GREG(NAME) \
+    tcg_temp_free(NAME)
+#define FREE_GREG_READONLY(NAME) \
     /* Nothing */
 
 #define FREE_RREG_d(NAME)            FREE_REG(NAME)
@@ -253,11 +291,16 @@
 #define FREE_SREG_d(NAME)            FREE_SREG(NAME)
 #define FREE_SREG_s(NAME)            FREE_SREG_READONLY(NAME)
 
+#define FREE_GREG_d(NAME)            FREE_GREG(NAME)
+#define FREE_GREG_s(NAME)            FREE_GREG_READONLY(NAME)
+
 #define FREE_REG_PAIR(NAME) \
     tcg_temp_free_i64(NAME)
 #define FREE_SREG_PAIR(NAME) \
     tcg_temp_free_i64(NAME)
 
+#define FREE_GREG_PAIR(NAME) \
+    tcg_temp_free_i64(NAME)
 
 #define FREE_RREG_dd(NAME)           FREE_REG_PAIR(NAME)
 #define FREE_RREG_ss(NAME)           FREE_REG_PAIR(NAME)
@@ -270,6 +313,9 @@
 
 #define FREE_SREG_ss(NAME)           FREE_SREG_PAIR(NAME)
 #define FREE_SREG_dd(NAME)           FREE_SREG_PAIR(NAME)
+
+#define FREE_GREG_ss(NAME)           FREE_GREG_PAIR(NAME)
+#define FREE_GREG_dd(NAME)           FREE_GREG_PAIR(NAME)
 
 #define FREE_IMM(NAME)               /* nothing */
 #define FREE_TCG_IMM(NAME)           tcg_temp_free(NAME)
@@ -336,25 +382,35 @@
     if ((NUM) < HEX_SREG_GLB_START) { \
         gen_read_sreg(dest, NUM) \
     } else { \
-        TCGv_i32 helper_num = tcg_const_i32(NUM); \
-        gen_helper_sreg_read(dest, cpu_env, helper_num); \
-        tcg_temp_free_i32(helper_num); \
+        TCGv_i32 num = tcg_const_i32(NUM); \
+        gen_helper_sreg_read(dest, cpu_env, num); \
+        tcg_temp_free_i32(num); \
     }
 #ifndef CONFIG_USER_ONLY
 #define READ_SREG_READONLY(dest, NUM) do { \
         if ((NUM) < HEX_SREG_GLB_START) { \
             dest = hex_t_sreg[NUM]; \
         } else { \
-            TCGv_i32 helper_num = tcg_const_i32(NUM); \
-            gen_helper_sreg_read(dest, cpu_env, helper_num); \
-            tcg_temp_free_i32(helper_num); \
+            TCGv_i32 num = tcg_const_i32(NUM); \
+            gen_helper_sreg_read(dest, cpu_env, num); \
+            tcg_temp_free_i32(num); \
         } \
+    } while(0)
+
+#define READ_GREG_READONLY(dest, NUM) do { \
+        TCGv_i32 num = tcg_const_i32(NUM); \
+        gen_helper_greg_read(dest, cpu_env, num); \
+        tcg_temp_free_i32(num); \
     } while(0)
 #else
 #define READ_SREG_READONLY(dest, NUM) g_assert_not_reached()
+#define READ_GREG_READONLY(dest, NUM) g_assert_not_reached()
 #endif
 #define READ_SREG_s(dest, NUM) \
     READ_SREG_READONLY(dest, NUM)
+
+#define READ_GREG_s(dest, NUM) \
+    READ_GREG_READONLY(dest, NUM)
 
 #define READ_CREG_s(dest, NUM) \
     do { \
@@ -393,12 +449,18 @@
     if ((NUM) < HEX_SREG_GLB_START) { \
         tcg_gen_concat_i32_i64(tmp, hex_t_sreg[NUM], hex_t_sreg[(NUM) + 1]); \
     } else { \
-        TCGv_i32 helper_num = tcg_const_i32(NUM); \
-        gen_helper_sreg_read_pair(tmp, cpu_env, helper_num); \
-        tcg_temp_free_i32(helper_num); \
+        TCGv_i32 num = tcg_const_i32(NUM); \
+        gen_helper_sreg_read_pair(tmp, cpu_env, num); \
+        tcg_temp_free_i32(num); \
     }
 #define READ_SREG_ss(tmp, NUM)          READ_SREG_PAIR(tmp, NUM)
 #define READ_SGP10() (READ_SREG_PAIR(tmp, HEX_SREG_SGP0), tmp)
+
+#define READ_GREG_PAIR(tmp, NUM) \
+    TCGv_i32 num = tcg_const_i32(NUM); \
+    gen_helper_greg_read_pair(tmp, cpu_env, num); \
+    tcg_temp_free_i32(num);
+#define READ_GREG_ss(tmp, NUM)          READ_GREG_PAIR(tmp, NUM)
 
 #define READ_CREG_PAIR(tmp, i) \
     READ_REG_PAIR(tmp, ((i) + HEX_REG_SA0))
@@ -458,7 +520,7 @@
 #define WRITE_REG_PAIR(NUM, VAL) \
     do { \
         int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
-        gen_log_reg_write_pair(NUM, VAL, insn->slot, is_predicated); \
+        GEN_LOG_REG_WRITE_PAIR(NUM, VAL, insn->slot, is_predicated); \
         ctx_log_reg_write(ctx, (NUM)); \
         ctx_log_reg_write(ctx, (NUM) + 1); \
     } while (0)
@@ -470,16 +532,24 @@
     do { \
         if ((NUM) < HEX_SREG_GLB_START) { \
             gen_log_sreg_write_pair(NUM, VAL); \
-        ctx_log_sreg_write(ctx, (NUM)); \
-        ctx_log_sreg_write(ctx, (NUM) + 1); \
+            ctx_log_sreg_write(ctx, (NUM)); \
+            ctx_log_sreg_write(ctx, (NUM) + 1); \
         } else {\
-            TCGv_i32 helper_num = tcg_const_i32(NUM); \
-            gen_helper_sreg_write_pair(cpu_env, helper_num, VAL); \
-            tcg_temp_free_i32(helper_num); \
+            TCGv_i32 num = tcg_const_i32(NUM); \
+            gen_helper_sreg_write_pair(cpu_env, num, VAL); \
+            tcg_temp_free_i32(num); \
         } \
     } while (0)
-
 #define WRITE_SREG_dd(NUM, VAL)          WRITE_SREG_PAIR(NUM, VAL)
+
+#define WRITE_GREG_PAIR(NUM, VAL) \
+    do { \
+        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
+        GEN_LOG_GREG_WRITE_PAIR(NUM, VAL, insn->slot, is_predicated); \
+        ctx_log_greg_write(ctx, (NUM)); \
+        ctx_log_greg_write(ctx, (NUM) + 1); \
+    } while (0)
+#define WRITE_GREG_dd(NUM, VAL)          WRITE_GREG_PAIR(NUM, VAL)
 #endif
 
 #define PCALIGN 4
@@ -1506,12 +1576,15 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EVENT_TRAP0)
 #define fCHECKFORPRIV() \
     helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN)
+#define fCHECKFORGUEST() \
+    helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN)
 #else
 #define fTRAP(TRAPTYPE, IMM) { \
   register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM); \
 }
 #ifdef QEMU_GENERATE
 #define fCHECKFORPRIV() gen_helper_checkforpriv(cpu_env)
+#define fCHECKFORGUEST()
 #endif
 #endif
 

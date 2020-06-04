@@ -217,6 +217,9 @@ def is_scalar_reg(regtype):
 def is_sreg(regtype):
     return regtype in "S"
 
+def is_greg(regtype):
+    return regtype in "G"
+
 def is_hvx_reg(regtype):
     return regtype in "VQ"
 
@@ -256,6 +259,7 @@ def_helper_types = {
     'C' : 's32',
     'R' : 's32',
     'S' : 's32',
+    'G' : 's32',
     'V' : 'ptr',
     'Q' : 'ptr'
 }
@@ -290,6 +294,7 @@ def gen_helper_prototype(f, tag, regs, imms):
     numresults = 0
     numscalarresults = 0
     numsuperresults = 0
+    numguestresults = 0
     numscalarreadwrite = 0
     for regtype,regid,toss,numregs in regs:
         if (is_written(regid)):
@@ -298,6 +303,8 @@ def gen_helper_prototype(f, tag, regs, imms):
                 numscalarresults += 1
             if (is_sreg(regtype)):
                 numsuperresults += 1
+            if (is_greg(regtype)):
+                numguestresults += 1
         if (is_readwrite(regid)):
             if (is_scalar_reg(regtype)):
                 numscalarreadwrite += 1
@@ -307,7 +314,7 @@ def gen_helper_prototype(f, tag, regs, imms):
         f.write('DEF_HELPER_1(%s, void, env)\n' % tag)
     else:
         ## Figure out how many arguments the helper will take
-        if (numscalarresults == 0 and numsuperresults == 0):
+        if (numscalarresults == 0 and numsuperresults == 0 and numguestresults == 0):
             def_helper_size = len(regs)+len(imms)+numscalarreadwrite+1
             if need_part1(tag): def_helper_size += 1
             if need_slot(tag): def_helper_size += 1
@@ -758,6 +765,7 @@ def gen_helper_definition(f, tag, regs, imms):
     numresults = 0
     numscalarresults = 0
     numsuperresults = 0
+    numguestresults = 0
     numscalarreadwrite = 0
     for regtype,regid,toss,numregs in regs:
         if (is_written(regid)):
@@ -766,6 +774,8 @@ def gen_helper_definition(f, tag, regs, imms):
                 numscalarresults += 1
             if (is_sreg(regtype)):
                 numsuperresults += 1
+            if (is_greg(regtype)):
+                numguestresults += 1
         if (is_readwrite(regid)):
             if (is_scalar_reg(regtype)):
                 numscalarreadwrite += 1
@@ -794,7 +804,7 @@ def gen_helper_definition(f, tag, regs, imms):
                     print("Bad register parse: ",regtype,regid,toss,numregs)
             i += 1
 
-        if (numscalarresults == 0 and numsuperresults == 0):
+        if (numscalarresults == 0 and numsuperresults == 0 and numguestresults == 0):
             f.write("void")
         f.write(" HELPER(%s)(CPUHexagonState *env" % tag)
 
@@ -934,9 +944,10 @@ for tag in tags:
             continue
         if ( tag not in supported_privs ) :
             continue
-    ## Skip the guest instructions
+    ## guest instructions allowed in system mode
     if ( "A_GUEST" in attribdict[tag] ) :
-        continue
+        if not system_mode:
+            continue
     ## Skip the diag instructions
     if ( tag == "Y6_diag" ) :
         continue

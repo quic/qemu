@@ -11,7 +11,7 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  You should have received a copy of the GNU General Public License
+ *  You should have receiv1
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
@@ -58,6 +58,7 @@ extern void print_helper_counts(void);
 
 extern const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS];
 extern const char * const hexagon_sregnames[];
+extern const char * const hexagon_gregnames[];
 
 extern void init_genptr(void);
 

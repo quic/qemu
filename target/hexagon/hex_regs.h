@@ -82,6 +82,19 @@ enum {
 };
 
 enum {
+  HEX_GREG_G0         = 0,
+  HEX_GREG_G1         = 1,
+  HEX_GREG_G2         = 2,
+  HEX_GREG_G3         = 3,
+  HEX_GREG_GPCYCLELO  = 24,
+  HEX_GREG_GPCYCLEHI  = 25,
+  HEX_GREG_GPMUCNT0   = 26,
+  HEX_GREG_GPMUCNT1   = 27,
+  HEX_GREG_GPMUCNT2   = 28,
+  HEX_GREG_GPMUCNT3   = 29,
+};
+
+enum {
   HEX_SREG_SGP0       = 0,
   HEX_SREG_SGP1       = 1,
   HEX_SREG_STID       = 2,

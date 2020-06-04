@@ -162,6 +162,7 @@ inline void log_sreg_write_pair(CPUHexagonState *env, int rnum,
     log_sreg_write(env, rnum, val & 0xFFFFFFFF, slot);
     log_sreg_write(env, rnum + 1, (val >> 32) & 0xFFFFFFFF, slot);
 }
+
 #endif
 
 static inline void log_pred_write(CPUHexagonState *env, int pnum,
@@ -209,6 +210,10 @@ void HELPER(debug_start_packet)(CPUHexagonState *env)
         env->reg_written[i] = 0;
     }
 #if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+    for (i = 0; i < NUM_GREGS; i++) {
+        env->greg_written[i] = 0;
+    }
+
     for (i = 0; i < NUM_SREGS; i++) {
         if (i < HEX_SREG_GLB_START)
             env->t_sreg_written[i] = 0;
@@ -386,6 +391,20 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     }
 
 #if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+    bool greg_printed = false;
+    for (i = 0; i < NUM_GREGS; i++) {
+        if (env->greg_written[i]) {
+            if (!greg_printed) {
+                printf("GRegs written\n");
+                greg_printed = true;
+            }
+            printf("\tset g%d (%s) = " TARGET_FMT_ld
+                " (0x" TARGET_FMT_lx " )\n",
+                i, hexagon_gregnames[i], env->greg_new_value[i],
+                env->greg_new_value[i]);
+        }
+    }
+
     bool sreg_printed = false;
     for (i = 0; i < NUM_SREGS; i++) {
         if (i < HEX_SREG_GLB_START) {
@@ -998,8 +1017,8 @@ uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 {
-    return  (uint64_t)ARCH_GET_SYSTEM_REG(env, reg) |
-           ((uint64_t)ARCH_GET_SYSTEM_REG(env, reg+1)) << 32;
+    return   (uint64_t)ARCH_GET_SYSTEM_REG(env, reg) |
+           (((uint64_t)ARCH_GET_SYSTEM_REG(env, reg+1)) << 32);
 }
 
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
@@ -1014,6 +1033,58 @@ void HELPER(sreg_write_pair)(CPUHexagonState *env, uint32_t reg, uint64_t val)
     ARCH_SET_SYSTEM_REG(env, reg, val & 0xFFFFFFFF);
     ARCH_SET_SYSTEM_REG(env, reg+1, val >> 32);
 }
+
+uint32_t HELPER(greg_read)(CPUHexagonState *env, uint32_t reg)
+
+{
+    int off;
+
+    if (reg <= HEX_GREG_G3) {
+      return env->greg[reg];
+    }
+    switch (reg) {
+        case HEX_GREG_GPCYCLELO:
+            return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO);
+
+        case HEX_GREG_GPCYCLEHI:
+            return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI);
+
+        case HEX_GREG_GPMUCNT0:
+        case HEX_GREG_GPMUCNT1:
+        case HEX_GREG_GPMUCNT2:
+        case HEX_GREG_GPMUCNT3:
+            off = HEX_GREG_GPMUCNT3 - reg;
+            return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0 + off);
+        default:
+            return 0;
+    }
+}
+
+uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
+
+{
+    int off;
+
+    if (reg == HEX_GREG_G0 || reg == HEX_GREG_G2) {
+        return   (uint64_t)(env->greg[reg]) |
+               (((uint64_t)(env->greg[reg+1])) << 32);
+    }
+    switch (reg) {
+        case HEX_GREG_GPCYCLELO:
+            return (uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO) |
+                (uint64_t)(ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI)) << 32;
+
+        case HEX_GREG_GPMUCNT0:
+        case HEX_GREG_GPMUCNT2:
+            off = HEX_GREG_GPMUCNT3 - reg;
+            return (uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0+off) |
+                (uint64_t)(ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0+off+1))
+                           << 32;
+        default:
+            return 0;
+    }
+}
+
 #endif
 
 /* These macros can be referenced in the generated helper functions */

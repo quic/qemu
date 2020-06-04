@@ -56,7 +56,9 @@ static inline bool is_preloaded(DisasContext *ctx, int num)
 }
 
 static inline void gen_log_reg_write(int rnum, TCGv val, int slot,
-                                     int is_predicated)
+                                     int is_predicated,
+                                     TCGv *hex_new_value,
+                                     TCGv *hex_reg_written)
 {
     if (is_predicated) {
         TCGv one = tcg_const_tl(1);
@@ -84,8 +86,21 @@ static inline void gen_log_reg_write(int rnum, TCGv val, int slot,
     }
 }
 
+#if HEX_DEBUG
+#define GEN_LOG_REG_WRITE(r,v,s,i) \
+    gen_log_reg_write(r,v,s,i, hex_new_value, hex_reg_written)
+#define GEN_LOG_GREG_WRITE(r,v,s,i) \
+    gen_log_reg_write(r,v,s,i, hex_greg_new_value, hex_greg_written)
+#else
+#define GEN_LOG_REG_WRITE(r,v,s,i) \
+    gen_log_reg_write(r,v,s,i, hex_new_value, 0)
+#define GEN_LOG_GREG_WRITE(r,v,s,i) \
+    gen_log_reg_write(r,v,s,i, hex_greg_new_value, 0)
+#endif
+
 static inline void gen_log_reg_write_pair(int rnum, TCGv_i64 val, int slot,
-                                          int is_predicated)
+                                          int is_predicated,
+                                          TCGv *hex_new_value)
 {
     TCGv val32 = tcg_temp_new();
 
@@ -119,6 +134,11 @@ static inline void gen_log_reg_write_pair(int rnum, TCGv_i64 val, int slot,
 
     tcg_temp_free(val32);
 }
+
+#define GEN_LOG_REG_WRITE_PAIR(r,v,s,i)\
+    gen_log_reg_write_pair(r,v,s,i, hex_new_value)
+#define GEN_LOG_GREG_WRITE_PAIR(r,v,s,i)\
+    gen_log_reg_write_pair(r,v,s,i, hex_greg_new_value)
 
 static inline void gen_log_sreg_write(int snum, TCGv val)
 
@@ -589,8 +609,8 @@ static inline void gen_loop0r(TCGv RsV, int riV, insn_t *insn)
     fPCALIGN(riV);
     /* fWRITE_LOOP_REGS0( fREAD_PC()+riV, RsV); */
     tcg_gen_addi_tl(tmp, hex_gpr[HEX_REG_PC], riV);
-    gen_log_reg_write(HEX_REG_LC0, RsV, insn->slot, 0);
-    gen_log_reg_write(HEX_REG_SA0, tmp, insn->slot, 0);
+    GEN_LOG_REG_WRITE(HEX_REG_LC0, RsV, insn->slot, 0);
+    GEN_LOG_REG_WRITE(HEX_REG_SA0, tmp, insn->slot, 0);
     fSET_LPCFG(0);
     tcg_temp_free(tmp);
 }
@@ -602,8 +622,8 @@ static inline void gen_loop1r(TCGv RsV, int riV, insn_t *insn)
     fPCALIGN(riV);
     /* fWRITE_LOOP_REGS1( fREAD_PC()+riV, RsV); */
     tcg_gen_addi_tl(tmp, hex_gpr[HEX_REG_PC], riV);
-    gen_log_reg_write(HEX_REG_LC1, RsV, insn->slot, 0);
-    gen_log_reg_write(HEX_REG_SA1, tmp, insn->slot, 0);
+    GEN_LOG_REG_WRITE(HEX_REG_LC1, RsV, insn->slot, 0);
+    GEN_LOG_REG_WRITE(HEX_REG_SA1, tmp, insn->slot, 0);
     tcg_temp_free(tmp);
 }
 
@@ -725,13 +745,13 @@ static inline void gen_cond_jump(TCGv pred, int pc_off)
 
 static inline void gen_call(int pc_off)
 {
-    gen_log_reg_write(HEX_REG_LR, hex_next_PC, 4, false);
+    GEN_LOG_REG_WRITE(HEX_REG_LR, hex_next_PC, 4, false);
     gen_jump(pc_off);
 }
 
 static inline void gen_callr(TCGv new_pc)
 {
-    gen_log_reg_write(HEX_REG_LR, hex_next_PC, 4, false);
+    GEN_LOG_REG_WRITE(HEX_REG_LR, hex_next_PC, 4, false);
     gen_write_new_pc(new_pc);
 }
 
