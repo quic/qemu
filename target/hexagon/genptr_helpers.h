@@ -100,7 +100,8 @@ static inline void gen_log_reg_write(int rnum, TCGv val, int slot,
 
 static inline void gen_log_reg_write_pair(int rnum, TCGv_i64 val, int slot,
                                           int is_predicated,
-                                          TCGv *hex_new_value)
+                                          TCGv *hex_new_value,
+                                          TCGv *hex_reg_written)
 {
     TCGv val32 = tcg_temp_new();
 
@@ -119,6 +120,13 @@ static inline void gen_log_reg_write_pair(int rnum, TCGv_i64 val, int slot,
         tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum + 1],
                            slot_mask, zero,
                            val32, hex_new_value[rnum + 1]);
+#if HEX_DEBUG
+        /* Do this so HELPER(debug_commit_end) will know */
+        tcg_gen_movcond_tl(TCG_COND_EQ, hex_reg_written[rnum], slot_mask, zero,
+                           one, hex_reg_written[rnum]);
+        tcg_gen_movcond_tl(TCG_COND_EQ, hex_reg_written[rnum+1], slot_mask, zero,
+                           one, hex_reg_written[rnum+1]);
+#endif
 
         tcg_temp_free(one);
         tcg_temp_free(zero);
@@ -130,15 +138,28 @@ static inline void gen_log_reg_write_pair(int rnum, TCGv_i64 val, int slot,
         /* High word */
         tcg_gen_extrh_i64_i32(val32, val);
         tcg_gen_mov_tl(hex_new_value[rnum + 1], val32);
+#if HEX_DEBUG
+        /* Do this so HELPER(debug_commit_end) will know */
+        /* Do this so HELPER(debug_commit_end) will know */
+        tcg_gen_movi_tl(hex_reg_written[rnum], 1);
+        tcg_gen_movi_tl(hex_reg_written[rnum+1], 1);
+#endif
     }
 
     tcg_temp_free(val32);
 }
 
+#if HEX_DEBUG
 #define GEN_LOG_REG_WRITE_PAIR(r,v,s,i)\
-    gen_log_reg_write_pair(r,v,s,i, hex_new_value)
+    gen_log_reg_write_pair(r,v,s,i, hex_new_value, hex_reg_written)
 #define GEN_LOG_GREG_WRITE_PAIR(r,v,s,i)\
-    gen_log_reg_write_pair(r,v,s,i, hex_greg_new_value)
+    gen_log_reg_write_pair(r,v,s,i, hex_greg_new_value, hex_greg_written)
+#else
+#define GEN_LOG_REG_WRITE_PAIR(r,v,s,i)\
+    gen_log_reg_write_pair(r,v,s,i, hex_new_value, 0)
+#define GEN_LOG_GREG_WRITE_PAIR(r,v,s,i)\
+    gen_log_reg_write_pair(r,v,s,i, hex_greg_new_value, 0)
+#endif
 
 static inline void gen_log_sreg_write(int snum, TCGv val)
 

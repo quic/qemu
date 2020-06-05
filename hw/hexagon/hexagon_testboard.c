@@ -94,8 +94,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     CPUHexagonState *env = &cpu->env;
 
     env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
-//    env->g_sreg[HEX_SREG_PCYCLELO] = 0xAAAA;
-//    env->g_sreg[HEX_SREG_PCYCLEHI] = 0xBBBB;
+    //env->g_sreg[HEX_SREG_PCYCLELO] = 0xaaaa;
+    //env->g_sreg[HEX_SREG_PCYCLEHI] = 0xbbbb;
     env->g_sreg_new_value = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     env->g_sreg_written = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     hex_mmu_init(env);
