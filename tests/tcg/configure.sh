@@ -60,7 +60,7 @@ fi
 : ${cross_cc_cflags_s390x="-m64"}
 : ${cross_cc_cflags_sparc="-m32 -mv8plus -mcpu=ultrasparc"}
 : ${cross_cc_cflags_sparc64="-m64 -mcpu=ultrasparc"}
-: ${cross_cc_hexagon="hexagon-linux-clang"}
+: ${cross_cc_hexagon="hexagon-unknown-linux-musl-clang"}
 : ${cross_cc_cflags_hexagon="-mv67"}
 
 for target in $target_list; do
@@ -114,6 +114,10 @@ for target in $target_list; do
     cris-*)
       container_image=fedora-cris-cross
       container_cross_cc=cris-linux-gnu-gcc
+      ;;
+    hexagon-*)
+      container_image=debian-hexagon-cross
+      container_cross_cc=hexagon-unknown-linux-musl-clang
       ;;
     hppa-*)
       container_image=debian-hppa-cross
