@@ -925,7 +925,7 @@ supported_privs = [
     'Y2_dcinvidx', 'Y2_dcfetchbo',
     'Y4_l2fetch', 'Y5_l2fetch', 'Y2_icinva',
     'Y2_dczeroa',
-    'Y2_start', 'Y2_stop',
+    'Y2_start', 'Y2_stop', 'Y2_wait', 'Y2_resume',
     'Y2_iassignw', 'Y2_iassignr',
     'Y2_k0lock', 'Y2_k0unlock',
 ]

@@ -1689,6 +1689,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #define fGET_TNUM()               thread->threadId
 #define fSTART(REG)               helper_fstart(env, REG)
+#define fRESUME(REG)              helper_fresume(env, REG)
 #define fCLEAR_RUN_MODE(x)        helper_clear_run_mode(env,(x))
 
 #ifndef CONFIG_USER_ONLY
@@ -1711,8 +1712,15 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #endif
 
 /* FIXME - Update these when properly implementing stop instruction */
+
+#define fSET_WAIT_MODE(TNUM)      helper_fwait(env, TNUM)
+
+#define fIN_DEBUG_MODE(TNUM) \
+    0    /* FIXME */
 #define fIN_DEBUG_MODE_NO_ISDB(TNUM) \
     0    /* FIXME */
+#define fIN_DEBUG_MODE_WARN(TNUM)
+
 #ifdef QEMU_GENERATE
 
 #define DO_IASSIGNR(RS, RD)                   \

@@ -53,6 +53,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define TOTAL_PER_THREAD_REGS 64
 #endif
 
+#define THREADS_MAX 4
 #define SLOTS_MAX 4
 #define STORES_MAX 2
 #define REG_WRITES_MAX 32
@@ -348,7 +349,7 @@ static inline int get_cpu_mode(CPUHexagonState *env)
 
 static inline int get_exe_mode(CPUHexagonState *env)
 {
-    target_ulong modectl = env->g_sreg[HEX_SREG_MODECTL];
+    target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     bool E_bit = (modectl >> env->threadId) & 0x1;
     bool w_bit = (modectl >> (env->threadId + 16)) & 0x1;
     target_ulong isdbst = env->g_sreg[HEX_SREG_ISDBST];

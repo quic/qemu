@@ -946,17 +946,32 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 }
 
 #ifndef CONFIG_USER_ONLY
+void HELPER(fwait)(CPUHexagonState *env, uint32_t mask)
+
+{
+    /* mask is unsued */
+    hexagon_wait_thread(env);
+}
+
+void HELPER(fresume)(CPUHexagonState *env, uint32_t mask)
+
+{
+    hexagon_resume_threads(env, mask);
+}
+
 void HELPER(fstart)(CPUHexagonState *env, uint32_t mask)
 
 {
-    hexagon_start_cpu(env, mask);
+    hexagon_start_threads(env, mask);
 }
 
 void HELPER(clear_run_mode)(CPUHexagonState *env, uint32_t mask)
 
 {
-    hexagon_stop_cpu(env, mask);
+    /* mask is unused */
+    hexagon_stop_thread(env);
 }
+
 void HELPER(pause)(CPUHexagonState *env, uint32_t val)
 
 {
@@ -970,7 +985,8 @@ void HELPER(pause)(CPUHexagonState *env, uint32_t val)
 void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 
 {
-    int thread_enabled_mask = env->g_sreg[HEX_SREG_MODECTL] & 0x0ff;
+    int thread_enabled_mask =
+        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL) & 0x0ff;
     uint32_t int_number = 0x0f & (src >> 16);
     uint32_t int_enabled_mask = 0x0ff & src;
     CPUState *cpu = NULL;
@@ -991,7 +1007,8 @@ void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
 
 {
-    int thread_enabled_mask = env->g_sreg[HEX_SREG_MODECTL] & 0x0ff;
+    int thread_enabled_mask =
+        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL) & 0x0ff;
     uint32_t int_number = 0x0f & (src >> 16);
     uint32_t dest_reg = 0;
     CPUState *cpu = NULL;
