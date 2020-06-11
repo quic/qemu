@@ -15,6 +15,18 @@
 ##  along with this program; if not, see <http://www.gnu.org/licenses/>.
 ##
 
+# Hexagon doesn't support gdb, so skip the EXTRA_RUNS
+EXTRA_RUNS =
+
+# Hexagon has 64K pages, so increase the timeout to keep
+# test-mmap from timing out
+ifeq ($(CONFIG_DEBUG_TCG),y)
+TIMEOUT=90
+else
+TIMEOUT=40
+endif
+
+
 CFLAGS = -mv67 -O2 -mhvx -fvectorize
 
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon

@@ -714,60 +714,6 @@ static inline float special_fmaf(sf_t a, sf_t b, sf_t c)
     return special_fma(aa, bb, cc);
 }
 
-double internal_fmax(double a_in, double b_in, double c_in, int scale)
-{
-    df_t a, b, c;
-    xf_t prod;
-    xf_t acc;
-    xf_t result;
-    xf_init(&prod);
-    xf_init(&acc);
-    xf_init(&result);
-    a.f = a_in;
-    b.f = b_in;
-    c.f = c_in;
-
-    debug_fprintf(stdout,
-                  "internal_fmax: 0x%016llx * 0x%016llx + 0x%016llx sc: %d\n",
-                  fUNDOUBLE(a_in), fUNDOUBLE(b_in), fUNDOUBLE(c_in),
-                  scale);
-
-    if (isinf(a.f) || isinf(b.f) || isinf(c.f)) {
-        return special_fma(a, b, c);
-    }
-    if (isnan(a.f) || isnan(b.f) || isnan(c.f)) {
-        return special_fma(a, b, c);
-    }
-    if ((scale == 0) && (isz(a.f) || isz(b.f))) {
-        return a.f * b.f + c.f;
-    }
-
-    /* (a * 2**b) * (c * 2**d) == a*c * 2**(b+d) */
-    prod.mant = int128_mul_6464(df_getmant(a), df_getmant(b));
-
-    /*
-     * Note: extracting the mantissa into an int is multiplying by
-     * 2**52, so adjust here
-     */
-    prod.exp = df_getexp(a) + df_getexp(b) - DF_BIAS - 52;
-    prod.sign = a.x.sign ^ b.x.sign;
-    xf_debug("prod: ", prod);
-    if (!isz(c.f)) {
-        acc.mant = int128_mul_6464(df_getmant(c), 1);
-        acc.exp = df_getexp(c);
-        acc.sign = c.x.sign;
-        xf_debug("acc: ", acc);
-        result = xf_add(prod, acc);
-    } else {
-        result = prod;
-    }
-    xf_debug("sum: ", result);
-    debug_fprintf(stdout, "Scaling: %d\n", scale);
-    result.exp += scale;
-    xf_debug("post-scale: ", result);
-    return xf_round_df_t(result).f;
-}
-
 float internal_fmafx(float a_in, float b_in, float c_in, int scale)
 {
     sf_t a, b, c;
@@ -836,25 +782,12 @@ float internal_fmaf(float a_in, float b_in, float c_in)
     return internal_fmafx(a_in, b_in, c_in, 0);
 }
 
-double internal_fma(double a_in, double b_in, double c_in)
-{
-    return internal_fmax(a_in, b_in, c_in, 0);
-}
-
 float internal_mpyf(float a_in, float b_in)
 {
     if (isz(a_in) || isz(b_in)) {
         return a_in * b_in;
     }
     return internal_fmafx(a_in, b_in, 0.0, 0);
-}
-
-double internal_mpy(double a_in, double b_in)
-{
-    if (isz(a_in) || isz(b_in)) {
-        return a_in * b_in;
-    }
-    return internal_fmax(a_in, b_in, 0.0, 0);
 }
 
 static inline double internal_mpyhh_special(double a, double b)

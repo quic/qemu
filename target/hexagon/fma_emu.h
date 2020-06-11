@@ -20,10 +20,7 @@
 
 extern float internal_fmafx(float a_in, float b_in, float c_in, int scale);
 extern float internal_fmaf(float a_in, float b_in, float c_in);
-extern double internal_fma(double a_in, double b_in, double c_in);
-extern double internal_fmax(double a_in, double b_in, double c_in, int scale);
 extern float internal_mpyf(float a_in, float b_in);
-extern double internal_mpy(double a_in, double b_in);
 extern double internal_mpyhh(double a_in, double b_in,
                              unsigned long long int accumulated);
 

@@ -375,27 +375,11 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
     int i;
     int numinsns = pkt->num_insns;
     size2u_t opcode;
-    int loads = 0;
-    int stores = 0;
     int canjump;
-    int total_slots_valid = 0;
 
-    pkt->num_rops = 0;
     pkt->pkt_has_cof = 0;
-    pkt->pkt_has_call = 0;
-    pkt->pkt_has_jumpr = 0;
-    pkt->pkt_has_cjump = 0;
-    pkt->pkt_has_cjump_dotnew = 0;
-    pkt->pkt_has_cjump_dotold = 0;
-    pkt->pkt_has_cjump_newval = 0;
     pkt->pkt_has_endloop = 0;
-    pkt->pkt_has_endloop0 = 0;
-    pkt->pkt_has_endloop01 = 0;
-    pkt->pkt_has_endloop1 = 0;
-    pkt->pkt_has_cacheop = 0;
-    pkt->memop_or_nvstore = 0;
     pkt->pkt_has_dczeroa = 0;
-    pkt->pkt_has_dealloc_return = 0;
 
     for (i = 0; i < numinsns; i++) {
         opcode = pkt->insn[i].opcode;
@@ -403,166 +387,26 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
             continue;    /* Skip compare of cmp-jumps */
         }
 
-        if (GET_ATTRIB(opcode, A_ROPS_3)) {
-            pkt->num_rops += 3;
-        } else if (GET_ATTRIB(opcode, A_ROPS_2)) {
-            pkt->num_rops += 2;
-        } else {
-            pkt->num_rops++;
-        }
-        if (pkt->insn[i].extension_valid) {
-            pkt->num_rops += 2;
-        }
-
-        if (GET_ATTRIB(opcode, A_MEMOP) ||
-            GET_ATTRIB(opcode, A_NVSTORE)) {
-            pkt->memop_or_nvstore = 1;
-        }
-
-        if (GET_ATTRIB(opcode, A_CACHEOP)) {
-            pkt->pkt_has_cacheop = 1;
-            if (GET_ATTRIB(opcode, A_DCZEROA)) {
-                pkt->pkt_has_dczeroa = 1;
-            }
-            if (GET_ATTRIB(opcode, A_ICTAGOP)) {
-                pkt->pkt_has_ictagop = 1;
-            }
-            if (GET_ATTRIB(opcode, A_ICFLUSHOP)) {
-                pkt->pkt_has_icflushop = 1;
-            }
-            if (GET_ATTRIB(opcode, A_DCTAGOP)) {
-                pkt->pkt_has_dctagop = 1;
-            }
-            if (GET_ATTRIB(opcode, A_DCFLUSHOP)) {
-                pkt->pkt_has_dcflushop = 1;
-            }
-            if (GET_ATTRIB(opcode, A_L2TAGOP)) {
-                pkt->pkt_has_l2tagop = 1;
-            }
-            if (GET_ATTRIB(opcode, A_L2FLUSHOP)) {
-                pkt->pkt_has_l2flushop = 1;
-            }
-        }
-
-        if (GET_ATTRIB(opcode, A_DEALLOCRET)) {
-            pkt->pkt_has_dealloc_return = 1;
+        if (GET_ATTRIB(opcode, A_DCZEROA)) {
+            pkt->pkt_has_dczeroa = 1;
         }
 
         if (GET_ATTRIB(opcode, A_STORE)) {
-            pkt->insn[i].is_store = 1;
-            if (GET_ATTRIB(opcode, A_VMEM)) {
-                pkt->insn[i].is_vmem_st = 1;
-            }
-
             if (pkt->insn[i].slot == 0) {
                 pkt->pkt_has_store_s0 = 1;
             } else {
                 pkt->pkt_has_store_s1 = 1;
             }
         }
-        if (GET_ATTRIB(opcode, A_DCFETCH)) {
-            pkt->insn[i].is_dcfetch = 1;
-        }
-        if (GET_ATTRIB(opcode, A_LOAD)) {
-            pkt->insn[i].is_load = 1;
-            if (GET_ATTRIB(opcode, A_VMEM))  {
-                pkt->insn[i].is_vmem_ld = 1;
-            }
-
-            if (pkt->insn[i].slot == 0) {
-                pkt->pkt_has_load_s0 = 1;
-            } else {
-                pkt->pkt_has_load_s1 = 1;
-            }
-        }
-        if (GET_ATTRIB(opcode, A_CVI_GATHER) ||
-            GET_ATTRIB(opcode, A_CVI_SCATTER)) {
-            pkt->insn[i].is_scatgath = 1;
-        }
-        if (GET_ATTRIB(opcode, A_MEMOP)) {
-            pkt->insn[i].is_memop = 1;
-        }
-        if (GET_ATTRIB(opcode, A_DEALLOCRET) ||
-            GET_ATTRIB(opcode, A_DEALLOCFRAME)) {
-            pkt->insn[i].is_dealloc = 1;
-        }
-        if (GET_ATTRIB(opcode, A_DCFLUSHOP) ||
-            GET_ATTRIB(opcode, A_DCTAGOP)) {
-            pkt->insn[i].is_dcop = 1;
-        }
-
-        pkt->pkt_has_call |= GET_ATTRIB(opcode, A_CALL);
-        pkt->pkt_has_jumpr |= GET_ATTRIB(opcode, A_INDIRECT) &&
-                              !GET_ATTRIB(opcode, A_HINTJR);
-        pkt->pkt_has_cjump |= GET_ATTRIB(opcode, A_CJUMP);
-        pkt->pkt_has_cjump_dotnew |= GET_ATTRIB(opcode, A_DOTNEW) &&
-                                     GET_ATTRIB(opcode, A_CJUMP);
-        pkt->pkt_has_cjump_dotold |= GET_ATTRIB(opcode, A_DOTOLD) &&
-                                     GET_ATTRIB(opcode, A_CJUMP);
-        pkt->pkt_has_cjump_newval |= GET_ATTRIB(opcode, A_DOTNEWVALUE) &&
-                                     GET_ATTRIB(opcode, A_CJUMP);
 
         canjump = decode_opcode_can_jump(opcode);
-
-        if (pkt->pkt_has_cof) {
-            if (canjump) {
-                pkt->pkt_has_dual_jump = 1;
-                pkt->insn[i].is_2nd_jump = 1;
-            }
-        } else {
-            pkt->pkt_has_cof |= canjump;
-        }
+        pkt->pkt_has_cof |= canjump;
 
         pkt->insn[i].is_endloop = decode_opcode_ends_loop(opcode);
 
         pkt->pkt_has_endloop |= pkt->insn[i].is_endloop;
-        pkt->pkt_has_endloop0 |= GET_ATTRIB(opcode, A_HWLOOP0_END) &&
-                                 !GET_ATTRIB(opcode, A_HWLOOP1_END);
-        pkt->pkt_has_endloop01 |= GET_ATTRIB(opcode, A_HWLOOP0_END) &&
-                                  GET_ATTRIB(opcode, A_HWLOOP1_END);
-        pkt->pkt_has_endloop1 |= GET_ATTRIB(opcode, A_HWLOOP1_END) &&
-                                 !GET_ATTRIB(opcode, A_HWLOOP0_END);
 
         pkt->pkt_has_cof |= pkt->pkt_has_endloop;
-
-        /* Now create slot valids */
-        if (pkt->insn[i].is_endloop)    /* Don't count endloops */
-            continue;
-
-        switch (pkt->insn[i].slot) {
-        case 0:
-            pkt->slot0_valid = 1;
-            break;
-        case 1:
-            pkt->slot1_valid = 1;
-            break;
-        case 2:
-            pkt->slot2_valid = 1;
-            break;
-        case 3:
-            pkt->slot3_valid = 1;
-        break;
-        }
-        total_slots_valid++;
-
-        /* And track #loads/stores */
-        if (pkt->insn[i].is_store) {
-            stores++;
-        } else if (pkt->insn[i].is_load) {
-            loads++;
-        }
-    }
-
-    if (stores == 2) {
-        pkt->dual_store = 1;
-    } else if (loads == 2) {
-        pkt->dual_load = 1;
-    } else if ((loads == 1) && (stores == 1)) {
-        pkt->load_and_store = 1;
-    } else if (loads == 1) {
-        pkt->single_load = 1;
-    } else if (stores == 1) {
-        pkt->single_store = 1;
     }
 
     return 0;
@@ -653,7 +497,6 @@ static int decode_shuffle_for_execution(packet_t *packet)
                 }
             } else if (GET_ATTRIB(opcode, A_IMPLICIT_WRITES_P0) &&
                        !GET_ATTRIB(opcode, A_NEWCMPJUMP)) {
-                /* CABAC instruction */
                 if (flag) {
                     decode_send_insn_to(packet, i, 0);
                     changed = 1;
@@ -692,21 +535,6 @@ static int decode_shuffle_for_execution(packet_t *packet)
     return 0;
 }
 
-static void decode_assembler_count_fpops(packet_t *pkt)
-{
-    int i;
-    for (i = 0; i < pkt->num_insns; i++) {
-        if (GET_ATTRIB(pkt->insn[i].opcode, A_FPOP)) {
-            pkt->pkt_has_fp_op = 1;
-        }
-        if (GET_ATTRIB(pkt->insn[i].opcode, A_FPDOUBLE)) {
-            pkt->pkt_has_fpdp_op = 1;
-        } else if (GET_ATTRIB(pkt->insn[i].opcode, A_FPSINGLE)) {
-            pkt->pkt_has_fpsp_op = 1;
-        }
-    }
-}
-
 static int
 apply_extender(packet_t *pkt, int i, size4u_t extender)
 {
@@ -726,7 +554,6 @@ static int decode_apply_extenders(packet_t *packet)
     for (i = 0; i < packet->num_insns; i++) {
         if (GET_ATTRIB(packet->insn[i].opcode, A_IT_EXTENDER)) {
             packet->insn[i + 1].extension_valid = 1;
-            packet->pkt_has_payload = 1;
             apply_extender(packet, i + 1, packet->insn[i].immed[0]);
         }
     }

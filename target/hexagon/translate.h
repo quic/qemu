@@ -61,6 +61,17 @@ static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
     ctx->ctx_preg_log_idx++;
 }
 
+static inline bool is_preloaded(DisasContext *ctx, int num)
+{
+    int i;
+    for (i = 0; i < ctx->ctx_reg_log_idx; i++) {
+        if (ctx->ctx_reg_log[i] == num) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static inline void ctx_log_vreg_write(DisasContext *ctx,
                                       int rnum, int is_predicated)
 {

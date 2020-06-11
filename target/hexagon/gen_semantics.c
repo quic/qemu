@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
  *         { RdV=RsV+RtV;})
  *     HVX instructions have the following form
  *         EXTINSN(V6_vinsertwr, "Vx32.w=vinsert(Rt32)",
- *         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_LATE,A_NOTE_MPY_RESOURCE),
+ *         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX),
  *         "Insert Word Scalar into Vector",
  *         VxV.uw[0] = RtV;)
  */
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
  *             "P0.new[0]",
  *             "Least significant bit of new P0",
  *             predlog_read(thread,0),
- *             (A_DOTNEW,A_IMPLICIT_READS_P0)
+ *             ()
  *         )
  * The important part here is the attributes.  Whenever an instruction
  * invokes a macro, we add the macro's attributes to the instruction.

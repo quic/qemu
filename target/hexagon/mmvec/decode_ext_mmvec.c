@@ -605,26 +605,9 @@ decode_shuffle_for_execution_vops(packet_t *packet)
 
 /* Collect stats on HVX packet */
 static void
-decode_hvx_packet_contents(packet_t *pkt) {
-    pkt->pkt_hvx_va = 0;
-    pkt->pkt_hvx_vx = 0;
-    pkt->pkt_hvx_vp = 0;
-    pkt->pkt_hvx_vs = 0;
-    pkt->pkt_hvx_all = 0;
-    pkt->pkt_hvx_none = 0;
-    pkt->pkt_has_hvx = 0;
-
+decode_hvx_packet_contents(packet_t *pkt)
+{
     for (int i = 0; i < pkt->num_insns; i++) {
-        pkt->pkt_hvx_va += GET_ATTRIB(pkt->insn[i].opcode, A_CVI_VA);
-        pkt->pkt_hvx_vx += GET_ATTRIB(pkt->insn[i].opcode, A_CVI_VX);
-        pkt->pkt_hvx_vp += GET_ATTRIB(pkt->insn[i].opcode, A_CVI_VP);
-        pkt->pkt_hvx_vs += GET_ATTRIB(pkt->insn[i].opcode, A_CVI_VS);
-        pkt->pkt_hvx_none += GET_ATTRIB(pkt->insn[i].opcode, A_CVI_TMP);
-        pkt->pkt_hvx_all += GET_ATTRIB(pkt->insn[i].opcode, A_CVI_4SLOT);
-        pkt->pkt_hvx_va += 2 * GET_ATTRIB(pkt->insn[i].opcode, A_CVI_VA_DV);
-        pkt->pkt_hvx_vx += 2 * GET_ATTRIB(pkt->insn[i].opcode, A_CVI_VX_DV);
-        pkt->pkt_hvx_vp += GET_ATTRIB(pkt->insn[i].opcode, A_CVI_VP_VS);
-        pkt->pkt_hvx_vs += GET_ATTRIB(pkt->insn[i].opcode, A_CVI_VP_VS);
         pkt->pkt_has_hvx |= pkt->insn[i].hvx_resource ? 1 : 0;
     }
 }

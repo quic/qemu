@@ -27,9 +27,6 @@ DEF_CLASS32("---- ---- -------- PP------ --------",ALL_PP)
 DEF_FIELD32("---- ---- -------- !!------ --------",Parse,"Packet/Loop parse bits")
 DEF_FIELD32("!!!! ---- -------- PP------ --------",ICLASS,"Instruction Class")
 
-#define FRAME_EXPLICIT 1
-
-
 #define ICLASS_EXTENDER   "0000"
 #define ICLASS_CJ         "0001"
 #define ICLASS_NCJ        "0010"
@@ -482,11 +479,7 @@ STD_PST_ENC(rinew, "1 101","10ttt")
 /*                                                */
 /*                               x bus/cache     */
 /*                                    x store/cache     */
-#ifdef FRAME_EXPLICIT
 DEF_ENC32(S2_allocframe,   ICLASS_ST" 000 01 00xxxxx PP000iii iiiiiiii")
-#else
-DEF_ENC32(S2_allocframe,   ICLASS_ST" 000 01 0011101 PP000iii iiiiiiii")
-#endif
 DEF_ENC32(S2_storew_locked,ICLASS_ST" 000 01 01sssss PP-ttttt ------dd")
 DEF_ENC32(S4_stored_locked,ICLASS_ST" 000 01 11sssss PP0ttttt ------dd")
 DEF_ENC32(Y5_l2locka,      ICLASS_ST" 000 01 11sssss PP1----- ------dd")
@@ -1185,7 +1178,6 @@ MPY_ENC(F2_sfsub,            "1011","ddddd","0","0","0","0","01")
 MPY_ENC(F2_sfmax,            "1011","ddddd","0","0","0","1","00")
 MPY_ENC(F2_sfmin,            "1011","ddddd","0","0","0","1","01")
 MPY_ENC(F2_sfmpy,            "1011","ddddd","0","0","1","0","00")
-MPY_ENC(F2_sfdivcheat,       "1011","ddddd","0","0","1","0","11")
 MPY_ENC(F2_sffixupn,         "1011","ddddd","0","0","1","1","00")
 MPY_ENC(F2_sffixupd,         "1011","ddddd","0","0","1","1","01")
 MPY_ENC(F2_sfrecipa,         "1011","ddddd","1","1","1","1","ee")
@@ -1802,7 +1794,6 @@ SH2_RR_ENC(F2_conv_sf2w,          "1011","100","-","000","ddddd")
 SH2_RR_ENC(F2_conv_sf2uw_chop,    "1011","011","-","001","ddddd")
 SH2_RR_ENC(F2_conv_sf2w_chop,     "1011","100","-","001","ddddd")
 SH2_RR_ENC(F2_sffixupr,           "1011","101","-","000","ddddd")
-SH2_RR_ENC(F2_sfsqrtcheat,        "1011","110","-","111","ddddd")
 SH2_RR_ENC(F2_sfinvsqrta,         "1011","111","-","0ee","ddddd")
 
 
@@ -1910,7 +1901,6 @@ SH_RRR_ENC(S2_cabacdecbin,      "0001","11-","-","11-","ddddd") /* implicit P0 w
 DEF_FIELDROW_DESC32(ICLASS_S3op" 0010 -------- PP------ --------","[#2] Rdd=(Rss,Rtt,Pu)")
 SH_RRR_ENC(S2_valignrb,         "0010","0--","-","-uu","ddddd")
 SH_RRR_ENC(S2_vsplicerb,        "0010","100","-","-uu","ddddd")
-SH_RRR_ENC(S2_cabacencbin,      "0010","101","-","-uu","ddddd")
 SH_RRR_ENC(A4_addp_c,	    	"0010","110","-","-xx","ddddd")
 SH_RRR_ENC(A4_subp_c,		"0010","111","-","-xx","ddddd")
 
@@ -2022,7 +2012,6 @@ DEF_FIELDROW_DESC32(ICLASS_S3op" 1110 -------- PP------ --------","[#14] Reserve
 
 
 DEF_FIELDROW_DESC32(ICLASS_S3op" 1111 -------- PP------ --------","[#14] User Instruction")
-DEF_ENC32(S6_userinsn,ICLASS_S3op" 1111 iiisssss PPittttt iiixxxxx")
 
 
 
@@ -2277,7 +2266,3 @@ OP_OPI_RI(lsr,"1")
 DEF_FIELDROW_DESC32(ICLASS_ALU64" 1111 -------- PP------ --------","[#15] Rd=(Rs,Ru,#u6:2)")
 DEF_ENC32(M4_mpyri_addr_u2, ICLASS_ALU64" 1111   0ii sssss PPiddddd iiiuuuuu")
 DEF_ENC32(M4_mpyri_addr,    ICLASS_ALU64" 1111   1ii sssss PPiddddd iiiuuuuu")
-
-
-
-#undef FRAME_EXPLICIT

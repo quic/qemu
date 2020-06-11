@@ -240,7 +240,6 @@
         tcg_temp_free(part1); \
     } while (0)
 
-#define MARK_LATE_PRED_WRITE(RNUM) /* Not modelled in qemu */
 
 #define REGNO(NUM) (insn->regno[NUM])
 #define IMMNO(NUM) (insn->immed[NUM])
@@ -492,7 +491,6 @@ static inline void gen_cancel(TCGv slot)
 #define CANCEL cancel_slot(env, slot)
 #endif
 
-#define STORE_ZERO
 #define LOAD_CANCEL(EA) do { CANCEL; } while (0)
 
 #ifdef QEMU_GENERATE
@@ -520,7 +518,6 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 #define STORE_CANCEL(EA) { env->slot_cancelled |= (1 << slot); }
 #endif
 
-#define IS_CANCELLED(SLOT)
 #define fMAX(A, B) (((A) > (B)) ? (A) : (B))
 
 #ifdef QEMU_GENERATE
@@ -551,9 +548,13 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 
 #ifdef QEMU_GENERATE
 #define f8BITSOF(RES, VAL) gen_8bitsof(RES, VAL)
-#define fLSBOLD(VAL) tcg_gen_andi_tl(LSB, (VAL), 1)
 #else
 #define f8BITSOF(VAL) ((VAL) ? 0xff : 0x00)
+#endif
+
+#ifdef QEMU_GENERATE
+#define fLSBOLD(VAL) tcg_gen_andi_tl(LSB, (VAL), 1)
+#else
 #define fLSBOLD(VAL)  ((VAL) & 1)
 #endif
 
@@ -608,8 +609,6 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
 #define fNEWREG_ST(RNUM) (hex_new_value[NtX])
 #endif
 
-#define fMEMZNEW(RNUM) (RNUM == 0)
-#define fMEMNZNEW(RNUM) (RNUM != 0)
 #define fVSATUVALN(N, VAL) \
     ({ \
         (((int)(VAL)) < 0) ? 0 : ((1LL << (N)) - 1); \
@@ -674,8 +673,6 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
 
 #define fPCALIGN(IMM) IMM = (IMM & ~PCALIGN_MASK)
 
-#define fGET_EXTENSION (insn->extension)
-
 #ifdef QEMU_GENERATE
 static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 {
@@ -689,23 +686,19 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
     return tmp;
 }
 #define fREAD_IREG(VAL, SHIFT) gen_read_ireg(ireg, (VAL), (SHIFT))
-#define fREAD_R0() (READ_REG(tmp, 0))
 #define fREAD_LR() (READ_REG(tmp, HEX_REG_LR))
 #define fREAD_SSR() (READ_REG(tmp, HEX_REG_SSR))
 #else
 #define fREAD_IREG(VAL) \
     (fSXTN(11, 64, (((VAL) & 0xf0000000) >> 21) | ((VAL >> 17) & 0x7f)))
-#define fREAD_R0() (READ_REG(0))
 #define fREAD_LR() (READ_REG(HEX_REG_LR))
 #define fREAD_SSR() (READ_REG(HEX_REG_SSR))
 #endif
 
-#define fWRITE_R0(A) WRITE_RREG(0, A)
 #define fWRITE_LR(A) WRITE_RREG(HEX_REG_LR, A)
 #define fWRITE_FP(A) WRITE_RREG(HEX_REG_FP, A)
 #define fWRITE_SP(A) WRITE_RREG(HEX_REG_SP, A)
 #define fWRITE_GOSP(A) WRITE_RREG(HEX_REG_GOSP, A)
-#define fWRITE_GP(A) WRITE_RREG(HEX_REG_GP, A)
 
 #ifdef QEMU_GENERATE
 #define fREAD_SP() (READ_REG(tmp, HEX_REG_SP))
@@ -742,16 +735,12 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #ifdef QEMU_GENERATE
 #define fREAD_P0() (READ_PREG(tmp, 0))
 #define fREAD_P3() (READ_PREG(tmp, 3))
-#define fNOATTRIB_READ_P3() (READ_PREG(tmp, 3))
 #else
 #define fREAD_P0() (READ_PREG(0))
 #define fREAD_P3() (READ_PREG(3))
-#define fNOATTRIB_READ_P3() (READ_PREG(3))
 #endif
 
 #define fCHECK_PCALIGN(A)
-#define fCUREXT() GET_SSR_FIELD(SSR_XA)
-#define fCUREXT_WRAP(EXT_NO)
 
 #ifdef QEMU_GENERATE
 #define fWRITE_NPC(A) gen_write_new_pc(A)
@@ -759,16 +748,9 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fWRITE_NPC(A) write_new_pc(env, A)
 #endif
 
-#define fLOOPSTATS(A)
-#define fCOF_CALLBACK(LOC, TYPE)
-#define fBRANCH(LOC, TYPE) \
-    do { \
-        fWRITE_NPC(LOC); \
-        fCOF_CALLBACK(LOC, TYPE); \
-    } while (0)
+#define fBRANCH(LOC, TYPE)          fWRITE_NPC(LOC)
 #define fJUMPR(REGNO, TARGET, TYPE) fBRANCH(TARGET, COF_TYPE_JUMPR)
-#define fHINTJR(TARGET) { }
-#define fBP_RAS_CALL(A)
+#define fHINTJR(TARGET) { /* Not modelled in qemu */}
 #define fCALL(A) \
     do { \
         fWRITE_LR(fREAD_NPC()); \
@@ -798,16 +780,6 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fCARRY_FROM_ADD(A, B, C) carry_from_add64(A, B, C)
 #endif
 
-#define fSETCV_ADD(A, B, CARRY) \
-    do { \
-        SET_USR_FIELD(USR_C, gen_carry_add((A), (B), ((A) + (B)))); \
-        SET_USR_FIELD(USR_V, gen_overflow_add((A), (B), ((A) + (B)))); \
-    } while (0)
-#define fSETCV_SUB(A, B, CARRY) \
-    do { \
-        SET_USR_FIELD(USR_C, gen_carry_add((A), (B), ((A) - (B)))); \
-        SET_USR_FIELD(USR_V, gen_overflow_add((A), (B), ((A) - (B)))); \
-    } while (0)
 #define fSET_OVERFLOW() SET_USR_FIELD(USR_OVF, 1)
 #define fSET_LPCFG(VAL) SET_USR_FIELD(USR_LPCFG, (VAL))
 #define fGET_LPCFG (GET_USR_FIELD(USR_LPCFG))
@@ -815,7 +787,6 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fWRITE_P1(VAL) WRITE_PREG(1, VAL)
 #define fWRITE_P2(VAL) WRITE_PREG(2, VAL)
 #define fWRITE_P3(VAL) WRITE_PREG(3, VAL)
-#define fWRITE_P3_LATE(VAL) WRITE_PREG(3, VAL)
 #define fPART1(WORK) if (part1) { WORK; return; }
 #define fCAST4u(A) ((size4u_t)(A))
 #define fCAST4s(A) ((size4s_t)(A))
@@ -862,7 +833,6 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fCRND(A) ((((A) & 0x3) == 0x3) ? ((A) + 1) : ((A)))
 #define fRNDN(A, N) ((((N) == 0) ? (A) : (((fSE32_64(A)) + (1 << ((N) - 1))))))
 #define fCRNDN(A, N) (conv_round(A, N))
-#define fCRNDN64(A, N) (conv_round64(A, N))
 #define fADD128(A, B) (add128(A, B))
 #define fSUB128(A, B) (sub128(A, B))
 #define fSHIFTR128(A, B) (shiftr128(A, B))
@@ -870,7 +840,6 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fAND128(A, B) (and128(A, B))
 #define fCAST8S_16S(A) (cast8s_to_16s(A))
 #define fCAST16S_8S(A) (cast16s_to_8s(A))
-#define fCAST16S_4S(A) (cast16s_to_4s(A))
 
 #ifdef QEMU_GENERATE
 #define fEA_RI(REG, IMM) tcg_gen_addi_tl(EA, REG, IMM)
@@ -890,17 +859,14 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fEA_RI(REG, IMM) \
     do { \
         EA = REG + IMM; \
-        fDOCHKPAGECROSS(REG, EA); \
     } while (0)
 #define fEA_RRs(REG, REG2, SCALE) \
     do { \
         EA = REG + (REG2 << SCALE); \
-        fDOCHKPAGECROSS(REG, EA); \
     } while (0)
 #define fEA_IRs(IMM, REG, SCALE) \
     do { \
         EA = IMM + (REG << SCALE); \
-        fDOCHKPAGECROSS(IMM, EA); \
     } while (0)
 #endif
 
@@ -967,25 +933,12 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
 #define fPM_I(REG, IMM)     tcg_gen_addi_tl(REG, REG, IMM)
 #define fPM_M(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
 #else
-#define fEA_IMM(IMM) EA = IMM
-#define fEA_REG(REG) EA = REG
-#define fEA_GPI(IMM) \
-    do { \
-        EA = fREAD_GP() + IMM; \
-        fGP_DOCHKPAGECROSS(fREAD_GP(), EA); \
-    } while (0)
-#define fPM_I(REG, IMM) \
-    do { \
-        REG = REG + IMM; \
-    } while (0)
-#define fPM_M(REG, MVAL) \
-    do { \
-        REG = REG + MVAL; \
-    } while (0)
-#define fEA_BREVR(REG) \
-    do { \
-        EA = fbrev(REG); \
-    } while (0)
+#define fEA_IMM(IMM)        do { EA = (IMM); } while (0)
+#define fEA_REG(REG)        do { EA = (REG); } while (0)
+#define fEA_GPI(IMM)        do { EA = (fREAD_GP() + (IMM); } while (0)
+#define fPM_I(REG, IMM)     do { REG = REG + (IMM); } while (0)
+#define fPM_M(REG, MVAL)    do { REG = REG + (MVAL); } while (0)
+#define fEA_BREVR(REG)      do { EA = fbrev(REG); } while (0)
 #endif
 #define fPM_CIRI(REG, IMM, MVAL) \
     do { \
@@ -997,7 +950,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
     do { \
         fcirc_add(REG, VAL, MuV); \
     } while (0)
-#define fMODCIRCU(N, P) ((N) & ((1 << (P)) - 1))
 #define fSCALE(N, A) (((size8s_t)(A)) << N)
 #define fVSATW(A) fVSATN(32, ((long long)A))
 #define fSATW(A) fSATN(32, ((long long)A))
@@ -1103,45 +1055,13 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
      _fipun.f = (A); \
      isnan(_fipun.f) ? 0xFFFFFFFFFFFFFFFFULL : _fipun.i; })
 #define fDFNANVAL() 0xffffffffffffffffULL
-#define fDFINFVAL(A) (((A) & 0x8000000000000000ULL) | 0x7ff0000000000000ULL)
-#define fDFONEVAL(A) (((A) & 0x8000000000000000ULL) | fUNDOUBLE(1.0))
-#define fCHECKDFNAN(DST, A) \
-    do { \
-        if (isnan(fDOUBLE(A))) { \
-            if ((fGETBIT(51, A)) == 0) { \
-                fRAISEFLAGS(FE_INVALID); \
-            } \
-            DST = fDFNANVAL(); \
-        } \
-    } while (0)
-#define fCHECKDFNAN3(DST, A, B, C) \
-    do { \
-        fCHECKDFNAN(DST, A); \
-        fCHECKDFNAN(DST, B); \
-        fCHECKDFNAN(DST, C); \
-    } while (0)
-#define fDF_BIAS() 1023
 #define fDF_ISNORMAL(X) (fpclassify(fDOUBLE(X)) == FP_NORMAL)
 #define fDF_ISDENORM(X) (fpclassify(fDOUBLE(X)) == FP_SUBNORMAL)
 #define fDF_ISBIG(X) (fDF_GETEXP(X) >= 512)
 #define fDF_MANTBITS() 52
-#define fDF_RECIP_LOOKUP(IDX) (size8u_t)(arch_recip_lookup(IDX))
-#define fDF_INVSQRT_LOOKUP(IDX) (size8u_t)(arch_invsqrt_lookup(IDX))
-#define fDF_MUL_POW2(A, B) \
-    (fUNDOUBLE(fDOUBLE(A) * fDOUBLE((0ULL + fDF_BIAS() + (B)) << \
-     fDF_MANTBITS())))
 #define fDF_GETEXP(A) (((A) >> fDF_MANTBITS()) & 0x7ff)
-#define fDF_MAXEXP() (2046)
-#define fDF_RECIP_COMMON(N, D, O, A) arch_df_recip_common(&N, &D, &O, &A)
-#define fDF_INVSQRT_COMMON(N, O, A) arch_df_invsqrt_common(&N, &O, &A)
 #define fFMA(A, B, C) internal_fma(A, B, C)
-#define fDFMPY(A, B) internal_mpy(A, B)
 #define fDF_MPY_HH(A, B, ACC) internal_mpyhh(A, B, ACC)
-#define fFMAX(A, B, C, ADJ) internal_fmax(A, B, C, fSXTN(8, 64, ADJ) * 2)
-#define fMAKEDF(SIGN, EXP, MANT) \
-    ((((SIGN) & 1ULL) << 63) | \
-     (((EXP) & 0x7ffULL) << fDF_MANTBITS()) | \
-     ((MANT) & ((1ULL << fDF_MANTBITS()) - 1)))
 
 #ifdef QEMU_GENERATE
 /* These will be needed if we write any FP instructions with TCG */
@@ -1170,7 +1090,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
     (((A) == (B)) ? fFLOAT(fUNFLOAT(A) & fUNFLOAT(B)) : fmaxf(A, B))
 #define fSF_MIN(A, B) \
     (((A) == (B)) ? fFLOAT(fUNFLOAT(A) | fUNFLOAT(B)) : fminf(A, B))
-#define fMMU(ADDR) ADDR
 
 #ifdef QEMU_GENERATE
 #define fcirc_add(REG, INCR, MV) \
@@ -1241,12 +1160,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #ifdef QEMU_GENERATE
 #define fLOAD_LOCKED(NUM, SIZE, SIGN, EA, DST) \
     gen_load_locked##SIZE##SIGN(DST, EA, ctx->mem_idx);
-#else
-#define fLOAD_LOCKED(NUM, SIZE, SIGN, EA, DST) \
-    DST = (size##SIZE##SIGN##_t)mem_load_locked##SIZE(env, EA);
 #endif
-
-#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST)
 
 #ifdef QEMU_GENERATE
 #define fSTORE(NUM, SIZE, EA, SRC) MEM_STORE##SIZE(EA, SRC, insn->slot)
@@ -1257,14 +1171,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #ifdef QEMU_GENERATE
 #define fSTORE_LOCKED(NUM, SIZE, EA, SRC, PRED) \
     gen_store_conditional##SIZE(env, ctx, PdN, PRED, EA, SRC);
-#else
-#define fSTORE_LOCKED(NUM, SIZE, EA, SRC, PRED) \
-    PRED = (mem_store_conditional(env, EA, SRC, SIZE) ? 0xff : 0);
 #endif
-
-#define fVTCM_MEMCPY(DST, SRC, SIZE)
-#define fPERMUTEH(SRC0, SRC1, CTRL) fpermuteh((SRC0), (SRC1), CTRL)
-#define fPERMUTEB(SRC0, SRC1, CTRL) fpermuteb((SRC0), (SRC1), CTRL)
 
 #ifdef QEMU_GENERATE
 #define GETBYTE_FUNC(X) \
@@ -1323,8 +1230,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
         DST = (DST & ~(0x0ffffffffLL << ((N) * 32))) | \
               (((VAL) & 0x0ffffffffLL) << ((N) * 32)); \
     } while (0)
-#define fACC()
-#define fEXTENSION_AUDIO(A) A
 
 #ifdef QEMU_GENERATE
 #define fSETBIT(N, DST, VAL) gen_set_bit((N), (DST), (VAL));
@@ -1348,25 +1253,17 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fCOUNTONES_8(VAL) count_ones_8(VAL)
 #define fBREV_8(VAL) reverse_bits_8(VAL)
 #define fBREV_4(VAL) reverse_bits_4(VAL)
-#define fBREV_2(VAL) reverse_bits_2(VAL)
-#define fBREV_1(VAL) reverse_bits_1(VAL)
 #define fCL1_8(VAL) count_leading_ones_8(VAL)
 #define fCL1_4(VAL) count_leading_ones_4(VAL)
 #define fCL1_2(VAL) count_leading_ones_2(VAL)
-#define fCL1_1(VAL) count_leading_ones_1(VAL)
 #define fINTERLEAVE(ODD, EVEN) interleave(ODD, EVEN)
 #define fDEINTERLEAVE(MIXED) deinterleave(MIXED)
-#define fNORM16(VAL) \
-    ((VAL == 0) ? (31) : (fMAX(fCL1_2(VAL), fCL1_2(~VAL)) - 1))
 #define fHIDE(A) A
 #define fCONSTLL(A) A##LL
-#define fCONSTULL(A) A##ULL
 #define fECHO(A) (A)
 
 #define fDO_TRACE(SREG)
 #define fBREAK()
-#define fGP_DOCHKPAGECROSS(BASE, SUM)
-#define fDOCHKPAGECROSS(BASE, SUM)
 #define fPAUSE(IMM)
 #define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EXCP_TRAP0)
 
@@ -1397,40 +1294,19 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fISYNC()
 #define fICFETCH(REG)
 #define fDCFETCH(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
-#define fICINVIDX(REG)
 #define fICINVA(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
-#define fICKILL()
-#define fDCKILL()
-#define fL2KILL()
-#define fL2UNLOCK()
-#define fL2CLEAN()
-#define fL2CLEANINV()
-#define fL2CLEANPA(REG)
-#define fL2CLEANINVPA(REG)
-#define fL2CLEANINVIDX(REG)
-#define fL2CLEANIDX(REG)
-#define fL2INVIDX(REG)
 #define fL2FETCH(ADDR, HEIGHT, WIDTH, STRIDE, FLAGS)
-#define fL2TAGR(INDEX, DST, DSTREG)
-#define fL2LOCKA(VA, DST, PREGDST)
-#define fL2UNLOCKA(VA)
-#define fL2TAGW(INDEX, PART2)
-#define fDCCLEANIDX(REG)
 #define fDCCLEANA(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
-#define fDCCLEANINVIDX(REG)
 #define fDCCLEANINVA(REG) \
     do { REG = REG; } while (0) /* Nothing to do in qemu */
 
 #ifdef QEMU_GENERATE
 #define fDCZEROA(REG) tcg_gen_mov_tl(hex_dczero_addr, (REG))
 #else
-#define fDCZEROA(REG) do { REG = REG; g_assert_not_reached(); } while (0)
+#define fDCZEROA(REG) do { env->dczero_addr = (REG); } while (0)
 #endif
 
-#define fDCINVIDX(REG)
 #define fDCINVA(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
-#define fBRANCH_SPECULATED_RIGHT(JC, SD, DOTNEWVAL) \
-    (((JC) ^ (SD) ^ (DOTNEWVAL & 1)) & 0x1)
 #define fBRANCH_SPECULATE_STALL(DOTNEWVAL, JUMP_COND, SPEC_DIR, HINTBITNUM, \
                                 STRBITNUM) /* Nothing */
 
@@ -1441,7 +1317,5 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fVIRTINSN_RTE(IMM, REG)
 #define fTRAP1_VIRTINSN(IMM) \
     (((IMM) == 1) || ((IMM) == 3) || ((IMM) == 4) || ((IMM) == 6))
-#define fNOP_EXECUTED
-#define fPREDUSE_TIMING()
 
 #endif

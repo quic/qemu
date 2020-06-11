@@ -589,23 +589,6 @@ DEF_ENC(V6_vlutvwh_oracci,    ICLASS_CJ" 1 100 111 vvvvv PP 1 uuuuu iii xxxxx") 
 
 
 
-/************** Not Real Instructions for Debug Only  ************************/
-DEF_FIELDROW_DESC32(            ICLASS_CJ" 1 101 111 11111 PP 1 ----- ----- ---","DEBUG")
-DEF_ENC(V6_ppred,               ICLASS_CJ" 1 101 111 11111 PP 1----0 000 ---ss")
-DEF_ENC(V6_pv32 ,               ICLASS_CJ" 1 101 111 11111 PP 1----0 001 uuuuu")
-DEF_ENC(V6_pv32d,               ICLASS_CJ" 1 101 111 11111 PP 1----0 010 uuuuu")
-DEF_ENC(V6_pv16 ,               ICLASS_CJ" 1 101 111 11111 PP 1----0 011 uuuuu")
-DEF_ENC(V6_pv16d,               ICLASS_CJ" 1 101 111 11111 PP 1----0 100 uuuuu")
-DEF_ENC(V6_pv8d,                ICLASS_CJ" 1 101 111 11111 PP 1----0 101 uuuuu")
-DEF_ENC(V6_pv64d,               ICLASS_CJ" 1 101 111 11111 PP 1----0 111 uuuuu")
-DEF_ENC(V6_preg,                ICLASS_CJ" 1 101 111 11111 PP 1----1 000 uuuuu")
-DEF_ENC(V6_pregd,               ICLASS_CJ" 1 101 111 11111 PP 1----1 001 uuuuu")
-DEF_ENC(V6_pv32du,              ICLASS_CJ" 1 101 111 11111 PP 1----1 010 uuuuu")
-DEF_ENC(V6_pv8,                 ICLASS_CJ" 1 101 111 11111 PP 1----1 011 uuuuu")
-DEF_ENC(V6_pregf,                 ICLASS_CJ" 1 101 111 11111 PP 1----1 110 uuuuu")
-DEF_ENC(V6_pz,                     ICLASS_CJ" 1 101 111 11111 PP 1----1 111 --00u")
-
-
 /***************************************************************
 *
 *  Group #6, No Q6 regs

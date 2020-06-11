@@ -58,10 +58,10 @@ decode_op(insn_t *insn, opcode_t tag, size4u_t encoding)
 {
     insn->immed[0] = 0;
     insn->immed[1] = 0;
+    insn->opcode = tag;
     if (insn->extension_valid) {
         insn->which_extended = opcode_which_immediate_is_extended(tag);
     }
-    insn->opcode = tag;
 
     switch (tag) {
 #include "dectree_generated.h"
@@ -260,7 +260,6 @@ decode_set_slot_number(packet_t *pkt)
 
         /* First subinsn always goes to slot 0 */
         if (GET_ATTRIB(pkt->insn[i].opcode, A_SUBINSN) && !hit_duplex) {
-            pkt->pkt_has_duplex = 1;
             hit_duplex = 1;
             pkt->insn[i].slot = 0;
             continue;
@@ -320,7 +319,6 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
     int words_read = 0;
     int end_of_packet = 0;
     int new_insns = 0;
-    int num_mems = 0;
     int errors = 0;
     int i;
     size4u_t encoding32;
@@ -338,7 +336,6 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
          */
         if (pkt->insn[num_insns].opcode == A4_ext) {
             pkt->insn[num_insns + 1].extension_valid = 1;
-            pkt->pkt_has_payload = 1;
         }
         num_insns += new_insns;
         words_read++;
@@ -350,32 +347,11 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
         return 0;
     }
     pkt->encod_pkt_size_in_bytes = words_read * 4;
-    /* Check packet / aux info */
-    for (i = 0; i < num_insns; i++) {
-        if (GET_ATTRIB(pkt->insn[i].opcode, A_MEMCPY)) {
-            num_mems += 2;
-        } else if (GET_ATTRIB(pkt->insn[i].opcode, A_LOAD) ||
-                   GET_ATTRIB(pkt->insn[i].opcode, A_STORE)) {
-            num_mems++;
-        }
-        if (pkt->insn[i].opcode == A4_ext) {
-            pkt->insn[i + 1].extension_valid = 1;
-            pkt->pkt_has_payload = 1;
-        }
-    }
     pkt->pkt_has_extension = 0;
-    pkt->pkt_has_initloop = 0;
-    pkt->pkt_has_initloop0 = 0;
-    pkt->pkt_has_initloop1 = 0;
     for (i = 0; i < num_insns; i++) {
         pkt->pkt_has_extension |=
             GET_ATTRIB(pkt->insn[i].opcode, A_EXTENSION);
-        pkt->pkt_has_initloop0 |=
-            GET_ATTRIB(pkt->insn[i].opcode, A_HWLOOP0_SETUP);
-        pkt->pkt_has_initloop1 |=
-            GET_ATTRIB(pkt->insn[i].opcode, A_HWLOOP1_SETUP);
     }
-    pkt->pkt_has_initloop |= pkt->pkt_has_initloop0 | pkt->pkt_has_initloop1;
 
     /* Shuffle / split / reorder for execution */
     if ((words_read == 2) && (decode_parsebits_is_loopend(words[0]))) {
@@ -393,8 +369,6 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
             decode_add_endloop_insn(&pkt->insn[pkt->num_insns++], 0);
         }
     }
-
-    decode_assembler_count_fpops(pkt);
 
     errors += decode_apply_extenders(pkt);
     errors += decode_remove_extenders(pkt);

@@ -185,15 +185,6 @@ size4u_t count_leading_ones_2(size2u_t src)
     return ret;
 }
 
-size4u_t count_leading_ones_1(size1u_t src)
-{
-    int ret;
-    for (ret = 0; src & 0x80; src <<= 1) {
-        ret++;
-    }
-    return ret;
-}
-
 #define BITS_MASK_8 0x5555555555555555ULL
 #define PAIR_MASK_8 0x3333333333333333ULL
 #define NYBL_MASK_8 0x0f0f0f0f0f0f0f0fULL
@@ -227,60 +218,6 @@ size4u_t reverse_bits_4(size4u_t src)
     src = ((src >> 8) & BYTE_MASK_4) | ((src & BYTE_MASK_4) << 8);
     src = ((src >> 16) & HALF_MASK_4) | ((src & HALF_MASK_4) << 16);
     return src;
-}
-
-#define BITS_MASK_2 0x5555ULL
-#define PAIR_MASK_2 0x3333ULL
-#define NYBL_MASK_2 0x0f0fULL
-#define BYTE_MASK_2 0x00ffULL
-#define HALF_MASK_2 0x0000ULL
-
-size4u_t reverse_bits_2(size2u_t src)
-{
-    src = ((src >> 1) & BITS_MASK_2) | ((src & BITS_MASK_2) << 1);
-    src = ((src >> 2) & PAIR_MASK_2) | ((src & PAIR_MASK_2) << 2);
-    src = ((src >> 4) & NYBL_MASK_2) | ((src & NYBL_MASK_2) << 4);
-    src = ((src >> 8) & BYTE_MASK_2) | ((src & BYTE_MASK_2) << 8);
-    return src;
-}
-
-#define BITS_MASK_1 0x55ULL
-#define PAIR_MASK_1 0x33ULL
-#define NYBL_MASK_1 0x0fULL
-#define BYTE_MASK_1 0x00ULL
-#define HALF_MASK_1 0x00ULL
-
-size4u_t reverse_bits_1(size1u_t src)
-{
-    src = ((src >> 1) & BITS_MASK_1) | ((src & BITS_MASK_1) << 1);
-    src = ((src >> 2) & PAIR_MASK_1) | ((src & PAIR_MASK_1) << 2);
-    src = ((src >> 4) & NYBL_MASK_1) | ((src & NYBL_MASK_1) << 4);
-    return src;
-}
-
-size8u_t exchange(size8u_t bits, size4u_t cntrl)
-{
-    int i;
-    size4u_t mask = 1 << 31;
-    size8u_t mask0 = 0x1LL << 62;
-    size8u_t mask1 = 0x2LL << 62;
-    size8u_t outbits = 0;
-    size8u_t b0, b1;
-
-    for (i = 0; i < 32; i++) {
-        b0 = (bits & mask0) >> (2 * i);
-        b1 = (bits & mask1) >> (2 * i);
-        if (cntrl & mask) {
-            outbits |= (b1 >> 1) | (b0 << 1);
-        } else {
-            outbits |= (b1 | b0);
-        }
-        outbits <<= 2;
-        mask >>= 1;
-        mask0 >>= 2;
-        mask1 >>= 2;
-    }
-    return outbits;
 }
 
 size8u_t interleave(size4u_t odd, size4u_t even)
@@ -368,11 +305,6 @@ size16s_t cast8s_to_16s(size8s_t a)
 size8s_t cast16s_to_8s(size16s_t a)
 {
     return a.lo;
-}
-
-size4s_t cast16s_to_4s(size16s_t a)
-{
-    return (size4s_t)a.lo;
 }
 
 size16s_t add128(size16s_t a, size16s_t b)

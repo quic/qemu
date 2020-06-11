@@ -52,32 +52,6 @@ DEF_REG_FIELD(USR_LPCFG,
     "Hardware Loop Configuration: "
     "Number of loop iterations (0-3) remaining before pipeline predicate "
     "should be set.")
-DEF_REG_FIELD(USR_PKTCNT_U,
-    "pktcnt_u", 10, 1,
-    "Enable packet counting in User mode.")
-DEF_REG_FIELD(USR_PKTCNT_G,
-    "pktcnt_g", 11, 1,
-    "Enable packet counting in Guest mode.")
-DEF_REG_FIELD(USR_PKTCNT_M,
-    "pktcnt_m", 12, 1,
-    "Enable packet counting in Monitor mode.")
-DEF_REG_FIELD(USR_HFD,
-    "hfd", 13, 2,
-    "Two bits that let the user control the amount of L1 hardware data cache "
-    "prefetching (up to 4 cache lines): "
-    "00: No prefetching, "
-    "01: Prefetch Loads with post-updating address mode when execution is "
-        "within a hardware loop, "
-    "10: Prefetch any hardware-detected striding Load when execution is within "
-        "a hardware loop, "
-    "11: Prefetch any hardware-detected striding Load.")
-DEF_REG_FIELD(USR_HFI,
-    "hfi", 15, 2,
-    "Two bits that let the user control the amount of L1 instruction cache "
-    "prefetching. "
-    "00: No prefetching, "
-    "01: Allow prefetching of at most 1 additional cache line, "
-    "10: Allow prefetching of at most 2 additional cache lines.")
 
 DEF_REG_FIELD(USR_FPRND,
     "fprnd", 22, 2,

@@ -88,16 +88,6 @@ def calculate_attribs():
             if not macname: continue
             macro = get_macro(macname,extdict[tag])
             attribdict[tag] |= set(macro.attribs)
-        m = immextre.search(semdict[tag])
-        if m:
-            if m.group(2).isupper():
-                attrib = 'A_EXT_UPPER_IMMED'
-            elif m.group(2).islower():
-                attrib = 'A_EXT_LOWER_IMMED'
-            else:
-                raise "Not a letter: %s (%s)" % (m.group(1),tag)
-            if not attrib in attribdict[tag]:
-                attribdict[tag].add(attrib)
 
 def SEMANTICS(tag, beh, sem):
     #print tag,beh,sem
@@ -891,12 +881,6 @@ f.write("#endif\n\n")
 
 
 for tag in tags:
-    ## Skip assembler mapped instructions
-    if "A_MAPPING" in attribdict[tag]:
-        continue
-    ## Skip the fake instructions
-    if ( "A_FAKEINSN" in attribdict[tag] ) :
-        continue
     ## Skip the priv instructions
     if ( "A_PRIV" in attribdict[tag] ) :
         continue
@@ -958,7 +942,6 @@ def calculate_regid_reg(tag):
     for reg in ordered_implregs:
         reg_rd = 0
         reg_wr = 0
-        if ('A_IMPLICIT_READS_'+reg) in attribdict[tag]: reg_rd = 1
         if ('A_IMPLICIT_WRITES_'+reg) in attribdict[tag]: reg_wr = 1
         if reg_rd and reg_wr:
             retstr += srcdst_lett

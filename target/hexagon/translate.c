@@ -189,6 +189,11 @@ static void mark_implicit_reg_write(DisasContext *ctx, insn_t *insn,
                                     int attrib, int rnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
+        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC);
+        if (is_predicated && !is_preloaded(ctx, rnum)) {
+            tcg_gen_mov_tl(hex_new_value[rnum], hex_gpr[rnum]);
+        }
+
         ctx->ctx_reg_log[ctx->ctx_reg_log_idx] = rnum;
         ctx->ctx_reg_log_idx++;
     }
@@ -205,6 +210,8 @@ static void mark_implicit_pred_write(DisasContext *ctx, insn_t *insn,
 
 static void mark_implicit_writes(DisasContext *ctx, insn_t *insn)
 {
+    mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_FP,  HEX_REG_FP);
+    mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_SP,  HEX_REG_SP);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_LR,  HEX_REG_LR);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_LC0, HEX_REG_LC0);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_SA0, HEX_REG_SA0);
@@ -225,8 +232,8 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
         if (is_gather_store) {
             tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
         }
-        insn->generate(env, ctx, insn, pkt);
         mark_implicit_writes(ctx, insn);
+        insn->generate(env, ctx, insn, pkt);
         if (is_gather_store) {
             tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         }

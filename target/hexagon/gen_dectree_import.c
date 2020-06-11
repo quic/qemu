@@ -44,7 +44,7 @@ char *opcode_syntax[XX_LAST_OPCODE];
  *         { RdV=RsV+RtV;})
  *     HVX instructions have the following form
  *         EXTINSN(V6_vinsertwr, "Vx32.w=vinsert(Rt32)",
- *         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_LATE,A_NOTE_MPY_RESOURCE),
+ *         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_LATE),
  *         "Insert Word Scalar into Vector",
  *         VxV.uw[0] = RtV;)
  */

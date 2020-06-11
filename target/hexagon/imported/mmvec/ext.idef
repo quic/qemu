@@ -40,111 +40,96 @@
 
 
 #define ITERATOR_INSN_ANY_SLOT(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 
 
 #define ITERATOR_INSN2_ANY_SLOT(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_ANY_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_ANY_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA_DV,A_NOTE_ANY2_RESOURCE),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA_DV),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 
 #define ITERATOR_INSN2_ANY_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 
 #define ITERATOR_INSN_SHIFT_SLOT(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_SHIFT_RESOURCE),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 
 
 #define ITERATOR_INSN_SHIFT_SLOT_VV_LATE(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_VV_LATE,A_NOTE_SHIFT_RESOURCE),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_SHIFT_SLOT(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_SHIFT_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_SHIFT_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define ITERATOR_INSN_PERMUTE_SLOT(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_PERMUTE_SLOT(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_PERMUTE_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_PERMUTE_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define ITERATOR_INSN_PERMUTE_SLOT_DEP(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_NOTE_DEPRECATED,A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),
 
 
 #define ITERATOR_INSN2_PERMUTE_SLOT_DEP(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_PERMUTE_SLOT_DEP(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_PERMUTE_SLOT_DEP(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOURCE),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC_DEP(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_NOTE_DEPRECATED,A_EXTENSION,A_CVI,A_CVI_VP_VS,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOURCE),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_PERMUTE_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define ITERATOR_INSN_MPY_SLOT(WIDTH,TAG, SYNTAX,DESCR,CODE) \
 EXTINSN(V6_##TAG, SYNTAX, \
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_NOTE_MPY_RESOURCE),  \
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_MPY_SLOT_LATE(WIDTH,TAG, SYNTAX,DESCR,CODE) \
 EXTINSN(V6_##TAG, SYNTAX, \
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_NOTE_MPY_RESOURCE,A_CVI_LATE),  \
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_MPY_SLOT(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_MPY_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_MPY_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define ITERATOR_INSN2_MPY_SLOT_LATE(WIDTH,TAG, SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_MPY_SLOT_LATE(WIDTH,TAG, SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_MPY_SLOT_LATE(WIDTH,TAG, SYNTAX2,DESCR,CODE)
 
 
 #define ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RESOURCE),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_MPY_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 
 
 
 #define ITERATOR_INSN2_MPY_SLOT_DOUBLE_VEC2(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_CVI_VX_VSRC0_IS_DST,A_NOTE_MPYDV_RESOURCE), DESCR, DO_FOR_EACH_CODE(WIDTH, CODE)) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_CVI_VX_VSRC0_IS_DST), DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_SLOT2_DOUBLE_VEC(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_CVI_EARLY,A_RESTRICT_SLOT2ONLY,A_NOTE_MPYDV_RESOURCE), DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
-
-#define VEC_DEF_MAPPING2(TAG, SYNTAX1_mapped, SYNTAX1, SYNTAX2_mapped, SYNTAX2) \
-DEF_CVI_MAPPING(V6_##TAG, SYNTAX1_mapped, SYNTAX1) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX2_mapped, SYNTAX1_mapped)
-
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_RESTRICT_SLOT2ONLY), DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_VHISTLIKE(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_4SLOT,A_CVI_REQUIRES_TMPLOAD),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_4SLOT),  \
 DESCR, fHIDE(mmvector_t input;) input = fTMPVDATA(); DO_FOR_EACH_CODE(WIDTH, CODE))
 
 
@@ -160,71 +145,64 @@ DESCR, fHIDE(mmvector_t input;) input = fTMPVDATA(); DO_FOR_EACH_CODE(WIDTH, COD
 
 
 #define ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_NOV1(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RESOURCE,A_NOTE_NONAPALIV1),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_MPY_SLOT_DOUBLE_VEC_NOV1(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 
 
 #define ITERATOR_INSN_SHIFT_SLOT_NOV1(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_SHIFT_RESOURCE,A_NOTE_NONAPALIV1),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_SHIFT_SLOT_NOV1(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_SHIFT_SLOT_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_SHIFT_SLOT_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 
 #define ITERATOR_INSN_ANY_SLOT_NOV1(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE,A_NOTE_NONAPALIV1),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_ANY_SLOT_NOV1(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_ANY_SLOT_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_ANY_SLOT_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 
 #define ITERATOR_INSN_MPY_SLOT_NOV1(WIDTH,TAG, SYNTAX,DESCR,CODE) \
 EXTINSN(V6_##TAG, SYNTAX, \
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_NOTE_MPY_RESOURCE,A_NOTE_NONAPALIV1),  \
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_PERMUTE_SLOT_NOV1(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE,A_NOTE_NONAPALIV1),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_PERMUTE_SLOTT_NOV1(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_PERMUTE_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_PERMUTE_SLOT(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define ITERATOR_INSN_PERMUTE_SLOT_DEPT_NOV1(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_NOTE_DEPRECATED,A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE,A_NOTE_NONAPALIV1),
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),
 
 
 #define ITERATOR_INSN2_PERMUTE_SLOT_DEPT_NOV1(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_PERMUTE_SLOT_DEP_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_PERMUTE_SLOT_DEP_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC_NOV1(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOURCE,A_NOTE_NONAPALIV1),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC_DEPT_NOV1(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_NOTE_DEPRECATED,A_EXTENSION,A_CVI,A_CVI_VP_VS,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOURCE,A_NOTE_NONAPALIV1),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN2_PERMUTE_SLOT_DOUBLE_VEC_NOV1(WIDTH,TAG,SYNTAX,SYNTAX2,DESCR,CODE) \
-ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE) \
-DEF_CVI_MAPPING(V6_##TAG##_alt, SYNTAX, SYNTAX2)
+ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC_NOV1(WIDTH,TAG,SYNTAX2,DESCR,CODE)
 
 #define NARROWING_SHIFT_NOV1(ITERSIZE,TAG,DSTM,DSTTYPE,SRCTYPE,SYNOPTS,SATFUNC,RNDFUNC,SHAMTMASK) \
 ITERATOR_INSN_SHIFT_SLOT_NOV1(ITERSIZE,TAG, \
 "Vd32." #DSTTYPE "=vasr(Vu32." #SRCTYPE ",Vv32." #SRCTYPE ",Rt8)" #SYNOPTS, \
 "Vector shift right and shuffle", \
-	fHIDE(fRT8NOTE())\
     fHIDE(int )shamt = RtV & SHAMTMASK; \
     DSTM(0,VdV.SRCTYPE[i],SATFUNC(RNDFUNC(VvV.SRCTYPE[i],shamt) >> shamt)); \
     DSTM(1,VdV.SRCTYPE[i],SATFUNC(RNDFUNC(VuV.SRCTYPE[i],shamt) >> shamt)))
@@ -280,17 +258,12 @@ MMVEC_COND_EACH_EA_FALSE(TAG,DESCR,ATTRIB,NT,SYNTAXA,SYNTAXB,SYNTAXP,BEH)
 MMVEC_EACH_EA(TAG##_qpred,DESCR,ATTRIB,NT,"if (Qv4) vmem","=Vs32",fSTOREMMVQ(EA,VsV,QvV)) \
 MMVEC_EACH_EA(TAG##_nqpred,DESCR,ATTRIB,NT,"if (!Qv4) vmem","=Vs32",fSTOREMMVNQ(EA,VsV,QvV))
 
-DEF_CVI_MAPPING(V6_stup0,  "if (Pv4) vmemu(Rt32)=Vs32",  "if (Pv4) vmemu(Rt32+#0)=Vs32")
-DEF_CVI_MAPPING(V6_stunp0, "if (!Pv4) vmemu(Rt32)=Vs32",  "if (!Pv4) vmemu(Rt32+#0)=Vs32")
-
-
-
 /****************************************************************
 * MAPPING FOR VMEMs
 ****************************************************************/
 
-#define ATTR_VMEM A_EXTENSION,A_CVI,A_CVI_VM,A_NOTE_VMEM,A_NOTE_ANY_RESOURCE,A_VMEM
-#define ATTR_VMEMU A_EXTENSION,A_CVI,A_CVI_VM,A_NOTE_VMEM,A_NOTE_PERMUTE_RESOURCE,A_CVI_VP,A_VMEMU
+#define ATTR_VMEM A_EXTENSION,A_CVI,A_CVI_VM
+#define ATTR_VMEMU A_EXTENSION,A_CVI,A_CVI_VM,A_CVI_VP
 
 
 MMVEC_LD(vL32b,  "Aligned Vector Load",        ATTRIBS(ATTR_VMEM,A_LOAD,A_CVI_VA),)
@@ -313,41 +286,14 @@ MMVEC_EACH_EA(vS32Ub,"Unaligned Vector Store",ATTRIBS(ATTR_VMEMU,A_STORE,A_RESTR
 
 MMVEC_COND_EACH_EA(vS32Ub,"Unaligned Vector Store",ATTRIBS(ATTR_VMEMU,A_STORE,A_RESTRICT_NOSLOT1),,"vmemu","=Vs32",Pv,fSTOREMMVU(EA,VsV))
 
-MMVEC_EACH_EA(vS32b_new,"Aligned Vector Store New",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_NEW,A_RESTRICT_SINGLE_MEM_FIRST,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),,"vmem","=Os8.new",fSTOREMMV(EA,fNEWVREG(OsN)))
+MMVEC_EACH_EA(vS32b_new,"Aligned Vector Store New",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_NEW,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),,"vmem","=Os8.new",fSTOREMMV(EA,fNEWVREG(OsN)))
 
 // V65 store relase, zero byte store
 MMVEC_EACH_EA(vS32b_srls,"Aligned Vector Scatter Release",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_SCATTER_RELEASE,A_CVI_NEW,A_RESTRICT_SLOT0ONLY),,"vmem",":scatter_release",fSTORERELEASE(EA,0))
 
 
 
-MMVEC_COND_EACH_EA(vS32b_new,"Aligned Vector Store New",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_NEW,A_RESTRICT_SINGLE_MEM_FIRST,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),,"vmem","=Os8.new",Pv,fSTOREMMV(EA,fNEWVREG(OsN)))
-
-
-// Loads
-DEF_CVI_MAPPING(V6_ld0,   "Vd32=vmem(Rt32)",  "Vd32=vmem(Rt32+#0)")
-DEF_CVI_MAPPING(V6_ldu0,  "Vd32=vmemu(Rt32)", "Vd32=vmemu(Rt32+#0)")
-
-DEF_CVI_MAPPING(V6_ldp0,   "if (Pv4) Vd32=vmem(Rt32)",  "if (Pv4) Vd32=vmem(Rt32+#0)")
-DEF_CVI_MAPPING(V6_ldnp0,  "if (!Pv4) Vd32=vmem(Rt32)",  "if (!Pv4) Vd32=vmem(Rt32+#0)")
-DEF_CVI_MAPPING(V6_ldcp0,  "if (Pv4) Vd32.cur=vmem(Rt32)", "if (Pv4) Vd32.cur=vmem(Rt32+#0)")
-DEF_CVI_MAPPING(V6_ldtp0,  "if (Pv4) Vd32.tmp=vmem(Rt32)", "if (Pv4) Vd32.tmp=vmem(Rt32+#0)")
-DEF_CVI_MAPPING(V6_ldcnp0,  "if (!Pv4) Vd32.cur=vmem(Rt32)", "if (!Pv4) Vd32.cur=vmem(Rt32+#0)")
-DEF_CVI_MAPPING(V6_ldtnp0,  "if (!Pv4) Vd32.tmp=vmem(Rt32)", "if (!Pv4) Vd32.tmp=vmem(Rt32+#0)")
-
-
-
-
-// Stores
-DEF_CVI_MAPPING(V6_st0,    "vmem(Rt32)=Vs32",     "vmem(Rt32+#0)=Vs32")
-DEF_CVI_MAPPING(V6_stn0,   "vmem(Rt32)=Os8.new",  "vmem(Rt32+#0)=Os8.new")
-DEF_CVI_MAPPING(V6_stq0,   "if (Qv4) vmem(Rt32)=Vs32",     "if (Qv4) vmem(Rt32+#0)=Vs32")
-DEF_CVI_MAPPING(V6_stnq0,  "if (!Qv4) vmem(Rt32)=Vs32",     "if (!Qv4) vmem(Rt32+#0)=Vs32")
-DEF_CVI_MAPPING(V6_stp0,   "if (Pv4) vmem(Rt32)=Vs32",     "if (Pv4) vmem(Rt32+#0)=Vs32")
-DEF_CVI_MAPPING(V6_stnp0,  "if (!Pv4) vmem(Rt32)=Vs32",     "if (!Pv4) vmem(Rt32+#0)=Vs32")
-
-
-DEF_CVI_MAPPING(V6_stu0,   "vmemu(Rt32)=Vs32",  "vmemu(Rt32+#0)=Vs32")
-
+MMVEC_COND_EACH_EA(vS32b_new,"Aligned Vector Store New",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_NEW,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),,"vmem","=Os8.new",Pv,fSTOREMMV(EA,fNEWVREG(OsN)))
 
 
 /******************************************************************************************
@@ -356,13 +302,13 @@ DEF_CVI_MAPPING(V6_stu0,   "vmemu(Rt32)=Vs32",  "vmemu(Rt32+#0)=Vs32")
 *
 *******************************************************************************************/
 
-#define ATTR_VMEM_NT A_EXTENSION,A_CVI,A_CVI_VM,A_NOTE_VMEM,A_NT_VMEM,A_NOTE_NT_VMEM,A_NOTE_ANY_RESOURCE,A_VMEM
+#define ATTR_VMEM_NT A_EXTENSION,A_CVI,A_CVI_VM
 
 MMVEC_EACH_EA(vS32b_nt,"Aligned Vector Store - Non temporal",ATTRIBS(ATTR_VMEM_NT,A_STORE,A_RESTRICT_SLOT0ONLY,A_CVI_VA),":nt","vmem","=Vs32",fSTOREMMV(EA,VsV))
 MMVEC_COND_EACH_EA(vS32b_nt,"Aligned Vector Store - Non temporal",ATTRIBS(ATTR_VMEM_NT,A_STORE,A_RESTRICT_SLOT0ONLY,A_CVI_VA),":nt","vmem","=Vs32",Pv,fSTOREMMV(EA,VsV))
 
-MMVEC_EACH_EA(vS32b_nt_new,"Aligned Vector Store New - Non temporal",ATTRIBS(ATTR_VMEM_NT,A_STORE,A_CVI_NEW,A_RESTRICT_SINGLE_MEM_FIRST,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),":nt","vmem","=Os8.new",fSTOREMMV(EA,fNEWVREG(OsN)))
-MMVEC_COND_EACH_EA(vS32b_nt_new,"Aligned Vector Store New - Non temporal",ATTRIBS(ATTR_VMEM_NT,A_STORE,A_CVI_NEW,A_RESTRICT_SINGLE_MEM_FIRST,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),":nt","vmem","=Os8.new",Pv,fSTOREMMV(EA,fNEWVREG(OsN)))
+MMVEC_EACH_EA(vS32b_nt_new,"Aligned Vector Store New - Non temporal",ATTRIBS(ATTR_VMEM_NT,A_STORE,A_CVI_NEW,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),":nt","vmem","=Os8.new",fSTOREMMV(EA,fNEWVREG(OsN)))
+MMVEC_COND_EACH_EA(vS32b_nt_new,"Aligned Vector Store New - Non temporal",ATTRIBS(ATTR_VMEM_NT,A_STORE,A_CVI_NEW,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),":nt","vmem","=Os8.new",Pv,fSTOREMMV(EA,fNEWVREG(OsN)))
 
 
 MMVEC_STQ(vS32b_nt,  "Aligned Vector Store - Non temporal",      ATTRIBS(ATTR_VMEM_NT,A_STORE,A_RESTRICT_SLOT0ONLY,A_CVI_VA),":nt")
@@ -374,26 +320,6 @@ MMVEC_LDT(vL32b_nt,  "Aligned Vector Load Tmp - Non temporal",	ATTRIBS(ATTR_VMEM
 MMVEC_COND_EACH_EA(vL32b_nt,"Conditional Aligned Vector Load",ATTRIBS(ATTR_VMEM_NT,A_CVI_VA),,"Vd32=vmem",":nt",Pv,fLOADMMV(EA,VdV);)
 MMVEC_COND_EACH_EA(vL32b_nt_cur,"Conditional Aligned Vector Load Cur",ATTRIBS(ATTR_VMEM_NT,A_CVI_VA,A_CVI_NEW),,"Vd32.cur=vmem",":nt",Pv,fLOADMMV(EA,VdV);)
 MMVEC_COND_EACH_EA(vL32b_nt_tmp,"Conditional Aligned Vector Load Tmp",ATTRIBS(ATTR_VMEM_NT,A_CVI_TMP),,"Vd32.tmp=vmem",":nt",Pv,fLOADMMV(EA,VdV);)
-
-
-// Loads
-DEF_CVI_MAPPING(V6_ldnt0,   "Vd32=vmem(Rt32):nt",  "Vd32=vmem(Rt32+#0):nt")
-DEF_CVI_MAPPING(V6_ldpnt0,   "if (Pv4) Vd32=vmem(Rt32):nt",  "if (Pv4) Vd32=vmem(Rt32+#0):nt")
-DEF_CVI_MAPPING(V6_ldnpnt0,   "if (!Pv4) Vd32=vmem(Rt32):nt",  "if (!Pv4) Vd32=vmem(Rt32+#0):nt")
-DEF_CVI_MAPPING(V6_ldcpnt0,  "if (Pv4) Vd32.cur=vmem(Rt32):nt", "if (Pv4) Vd32.cur=vmem(Rt32+#0):nt")
-DEF_CVI_MAPPING(V6_ldtpnt0,  "if (Pv4) Vd32.tmp=vmem(Rt32):nt", "if (Pv4) Vd32.tmp=vmem(Rt32+#0):nt")
-DEF_CVI_MAPPING(V6_ldcnpnt0,  "if (!Pv4) Vd32.cur=vmem(Rt32):nt", "if (!Pv4) Vd32.cur=vmem(Rt32+#0):nt")
-DEF_CVI_MAPPING(V6_ldtnpnt0,  "if (!Pv4) Vd32.tmp=vmem(Rt32):nt", "if (!Pv4) Vd32.tmp=vmem(Rt32+#0):nt")
-
-
-// Stores
-DEF_CVI_MAPPING(V6_stnt0,    "vmem(Rt32):nt=Vs32",     "vmem(Rt32+#0):nt=Vs32")
-DEF_CVI_MAPPING(V6_stnnt0,   "vmem(Rt32):nt=Os8.new",  "vmem(Rt32+#0):nt=Os8.new")
-DEF_CVI_MAPPING(V6_stqnt0,   "if (Qv4) vmem(Rt32):nt=Vs32",     "if (Qv4) vmem(Rt32+#0):nt=Vs32")
-DEF_CVI_MAPPING(V6_stnqnt0,  "if (!Qv4) vmem(Rt32):nt=Vs32",     "if (!Qv4) vmem(Rt32+#0):nt=Vs32")
-DEF_CVI_MAPPING(V6_stpnt0,   "if (Pv4) vmem(Rt32):nt=Vs32",     "if (Pv4) vmem(Rt32+#0):nt=Vs32")
-DEF_CVI_MAPPING(V6_stnpnt0,  "if (!Pv4) vmem(Rt32):nt=Vs32",     "if (!Pv4) vmem(Rt32+#0):nt=Vs32")
-
 
 
 #undef VEC_SCALE
@@ -409,27 +335,27 @@ DEF_CVI_MAPPING(V6_stnpnt0,  "if (!Pv4) vmem(Rt32):nt=Vs32",     "if (!Pv4) vmem
         VdV.ub[i] = (i+SHIFT>=fVBYTES()) ? VuV.ub[i+SHIFT-fVBYTES()] : VvV.ub[i+SHIFT];\
 	}
 
-EXTINSN(V6_valignb,  "Vd32=valign(Vu32,Vv32,Rt8)",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE,A_NOTE_RT8),"Align Two vectors by Rt8 as control",
+EXTINSN(V6_valignb,  "Vd32=valign(Vu32,Vv32,Rt8)",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),"Align Two vectors by Rt8 as control",
 {
 	unsigned shift = RtV & (fVBYTES()-1);
 	VALIGNB(shift)
 })
-EXTINSN(V6_vlalignb, "Vd32=vlalign(Vu32,Vv32,Rt8)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE,A_NOTE_RT8),"Align Two vectors by Rt8 as control",
+EXTINSN(V6_vlalignb, "Vd32=vlalign(Vu32,Vv32,Rt8)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),"Align Two vectors by Rt8 as control",
 {
 	unsigned shift = fVBYTES() - (RtV & (fVBYTES()-1));
 	VALIGNB(shift)
 })
-EXTINSN(V6_valignbi, "Vd32=valign(Vu32,Vv32,#u3)", 	ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),"Align Two vectors by #u3 as control",
+EXTINSN(V6_valignbi, "Vd32=valign(Vu32,Vv32,#u3)", 	ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),"Align Two vectors by #u3 as control",
 {
 	VALIGNB(uiV)
 })
-EXTINSN(V6_vlalignbi,"Vd32=vlalign(Vu32,Vv32,#u3)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),"Align Two vectors by #u3 as control",
+EXTINSN(V6_vlalignbi,"Vd32=vlalign(Vu32,Vv32,#u3)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),"Align Two vectors by #u3 as control",
 {
 	unsigned shift = fVBYTES() - uiV;
 	VALIGNB(shift)
 })
 
-EXTINSN(V6_vror, "Vd32=vror(Vu32,Rt32)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),
+EXTINSN(V6_vror, "Vd32=vror(Vu32,Rt32)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),
 "Align Two vectors by Rt32 as control",
 {
 	fHIDE(int k;)
@@ -1027,7 +953,6 @@ ITERATOR_INSN2_PERMUTE_SLOT_DOUBLE_VEC(32,vasr_into,"Vxx32=vasrinto(Vu32,Vv32)",
 ITERATOR_INSN_SHIFT_SLOT(ITERSIZE,TAG, \
 "Vd32." #DSTTYPE "=vasr(Vu32." #SRCTYPE ",Vv32." #SRCTYPE ",Rt8)" #SYNOPTS, \
 "Vector shift right and shuffle", \
-	fHIDE(fRT8NOTE())\
     fHIDE(int )shamt = RtV & SHAMTMASK; \
     DSTM(0,VdV.SRCTYPE[i],SATFUNC(RNDFUNC(VvV.SRCTYPE[i],shamt) >> shamt)); \
     DSTM(1,VdV.SRCTYPE[i],SATFUNC(RNDFUNC(VuV.SRCTYPE[i],shamt) >> shamt)))
@@ -1057,40 +982,34 @@ NARROWING_SHIFT_NOV1(16,vasruhubrndsat,fSETBYTE,ub,uh,:rnd:sat,fVSATUB,fVROUND,0
 #else
 ITERATOR_INSN2_SHIFT_SLOT(32,vasrwh,"Vd32=vasrwh(Vu32,Vv32,Rt8)","Vd32.h=vasr(Vu32.w,Vv32.w,Rt8)",
 "Vector arithmetic shift right words, shuffle even halfwords",
-	fHIDE(fRT8NOTE())\
     fSETHALF(0,VdV.w[i], (VvV.w[i] >> (RtV & 0xF)));
     fSETHALF(1,VdV.w[i], (VuV.w[i] >> (RtV & 0xF))))
 
 
 ITERATOR_INSN2_SHIFT_SLOT(32,vasrwhsat,"Vd32=vasrwh(Vu32,Vv32,Rt8):sat","Vd32.h=vasr(Vu32.w,Vv32.w,Rt8):sat",
 "Vector arithmetic shift right words, shuffle even halfwords",
-	fHIDE(fRT8NOTE())\
     fSETHALF(0,VdV.w[i], fVSATH(VvV.w[i] >> (RtV & 0xF)));
     fSETHALF(1,VdV.w[i], fVSATH(VuV.w[i] >> (RtV & 0xF))))
 
 ITERATOR_INSN2_SHIFT_SLOT(32,vasrwhrndsat,"Vd32=vasrwh(Vu32,Vv32,Rt8):rnd:sat","Vd32.h=vasr(Vu32.w,Vv32.w,Rt8):rnd:sat",
 "Vector arithmetic shift right words, shuffle even halfwords",
-	fHIDE(fRT8NOTE())\
     fHIDE(int ) shamt = RtV & 0xF;
     fSETHALF(0,VdV.w[i], fVSATH(  (VvV.w[i] + fBIDIR_ASHIFTL(1,(shamt-1),4_8) ) >> shamt));
     fSETHALF(1,VdV.w[i], fVSATH(  (VuV.w[i] + fBIDIR_ASHIFTL(1,(shamt-1),4_8) ) >> shamt)))
 
 ITERATOR_INSN2_SHIFT_SLOT(32,vasrwuhrndsat,"Vd32=vasrwuh(Vu32,Vv32,Rt8):rnd:sat","Vd32.uh=vasr(Vu32.w,Vv32.w,Rt8):rnd:sat",
 "Vector arithmetic shift right words, shuffle even halfwords",
-	fHIDE(fRT8NOTE())\
     fHIDE(int ) shamt = RtV & 0xF;
     fSETHALF(0,VdV.w[i], fVSATUH(  (VvV.w[i] + fBIDIR_ASHIFTL(1,(shamt-1),4_8) ) >> shamt));
     fSETHALF(1,VdV.w[i], fVSATUH(  (VuV.w[i] + fBIDIR_ASHIFTL(1,(shamt-1),4_8) ) >> shamt)))
 
 ITERATOR_INSN2_SHIFT_SLOT(32,vasrwuhsat,"Vd32=vasrwuh(Vu32,Vv32,Rt8):sat","Vd32.uh=vasr(Vu32.w,Vv32.w,Rt8):sat",
 "Vector arithmetic shift right words, shuffle even halfwords",
-	fHIDE(fRT8NOTE())\
     fSETHALF(0, VdV.uw[i], fVSATUH(VvV.w[i] >> (RtV & 0xF)));
     fSETHALF(1, VdV.uw[i], fVSATUH(VuV.w[i] >> (RtV & 0xF))))
 
 ITERATOR_INSN2_SHIFT_SLOT(32,vasruwuhrndsat,"Vd32=vasruwuh(Vu32,Vv32,Rt8):rnd:sat","Vd32.uh=vasr(Vu32.uw,Vv32.uw,Rt8):rnd:sat",
 "Vector arithmetic shift right words, shuffle even halfwords",
-	fHIDE(fRT8NOTE())\
     fHIDE(int ) shamt = RtV & 0xF;
     fSETHALF(0,VdV.w[i], fVSATUH(  (VvV.uw[i] + fBIDIR_ASHIFTL(1,(shamt-1),4_8) ) >> shamt));
     fSETHALF(1,VdV.w[i], fVSATUH(  (VuV.uw[i] + fBIDIR_ASHIFTL(1,(shamt-1),4_8) ) >> shamt)))
@@ -1323,10 +1242,6 @@ ITERATOR_INSN2_MPY_SLOT_DOUBLE_VEC(16,vaddubh_acc,"Vxx32+=vaddub(Vu32,Vv32)","Vx
     VxxV.v[1].h[i] += fGETUBYTE(1, VuV.h[i]) + fGETUBYTE(1, VvV.h[i]))
 
 
-DEF_CVI_MAPPING(V6_vd0,  "Vd32=#0",  "Vd32=vxor(V31,V31)")
-DEF_CVI_MAPPING(V6_vdd0,  "Vdd32=#0",  "Vdd32.w=vsub(V31:30.w,V31:30.w)")
-
-
 /****************************
 *   Conditional
 ****************************/
@@ -1353,13 +1268,6 @@ ITERATOR_INSN2_ANY_SLOT(16,vabsh,        "Vd32=vabsh(Vu32)",     "Vd32.h=vabs(Vu
 ITERATOR_INSN2_ANY_SLOT(16,vabsh_sat,    "Vd32=vabsh(Vu32):sat", "Vd32.h=vabs(Vu32.h):sat", "Vector absolute value of halfwords",    VdV.h[i]  =  fVSATH(fABS(fSE16_32(VuV.h[i]))))
 ITERATOR_INSN2_ANY_SLOT(32,vabsw,        "Vd32=vabsw(Vu32)",     "Vd32.w=vabs(Vu32.w)",     "Vector absolute value of words",        VdV.w[i]  =  fABS(VuV.w[i]))
 ITERATOR_INSN2_ANY_SLOT(32,vabsw_sat,    "Vd32=vabsw(Vu32):sat", "Vd32.w=vabs(Vu32.w):sat", "Vector absolute value of words",        VdV.w[i]  =  fVSATW(fABS(fSE32_64(VuV.w[i]))))
-
-
-DEF_CVI_MAPPING(V6_vabsub_alt,  "Vd32.ub=vabs(Vu32.b)",  "Vd32.b=vabs(Vu32.b)")
-DEF_CVI_MAPPING(V6_vabsuh_alt,  "Vd32.uh=vabs(Vu32.h)",  "Vd32.h=vabs(Vu32.h)")
-DEF_CVI_MAPPING(V6_vabsuw_alt,  "Vd32.uw=vabs(Vu32.w)",  "Vd32.w=vabs(Vu32.w)")
-
-
 
 
 /**************************************************************************
@@ -1781,31 +1689,26 @@ VdV.b[i] = !fGETQBIT(QvV,i) ? VuV.b[i] : 0)
     } \
        }
 
-#define MMVEC_CMPEQMAP(T,T2,T3) \
-DEF_CVI_MAPPING(V6_MAP_eq##T,      "Qd4=vcmp.eq(Vu32." T2 ",Vv32." T2 ")", "Qd4=vcmp.eq(Vu32." T3 ",Vv32." T3 ")") \
-DEF_CVI_MAPPING(V6_MAP_eq##T##_and,"Qx4&=vcmp.eq(Vu32." T2 ",Vv32." T2 ")", "Qx4&=vcmp.eq(Vu32." T3 ",Vv32." T3 ")") \
-DEF_CVI_MAPPING(V6_MAP_eq##T##_ior,"Qx4|=vcmp.eq(Vu32." T2 ",Vv32." T2 ")", "Qx4|=vcmp.eq(Vu32." T3 ",Vv32." T3 ")") \
-DEF_CVI_MAPPING(V6_MAP_eq##T##_xor,"Qx4^=vcmp.eq(Vu32." T2 ",Vv32." T2 ")", "Qx4^=vcmp.eq(Vu32." T3 ",Vv32." T3 ")")
 
 #define MMVEC_CMPGT(TYPE,TYPE2,TYPE3,DESCR,N,MASK,WIDTH,SRC) \
-EXTINSN(V6_vgt##TYPE,       "Qd4=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE), DESCR" greater than", \
+EXTINSN(V6_vgt##TYPE,       "Qd4=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA), DESCR" greater than", \
 	VCMP(QdV, , , >, N, SRC, MASK, WIDTH)) \
-EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-and", \
+EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA), DESCR" greater than with predicate-and", \
 	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), &, >, N, SRC, MASK, WIDTH)) \
-EXTINSN(V6_vgt##TYPE##_or,  "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-or", \
+EXTINSN(V6_vgt##TYPE##_or,  "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA), DESCR" greater than with predicate-or", \
 	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, >, N, SRC, MASK, WIDTH)) \
-EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-xor", \
+EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA), DESCR" greater than with predicate-xor", \
 	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, >, N, SRC, MASK, WIDTH))
 
 #define MMVEC_CMP(TYPE,TYPE2,TYPE3,DESCR,N,MASK, WIDTH, SRC)\
 MMVEC_CMPGT(TYPE,TYPE2,TYPE3,DESCR,N,MASK,WIDTH,SRC) \
-EXTINSN(V6_veq##TYPE,       "Qd4=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE), DESCR" equal to", \
+EXTINSN(V6_veq##TYPE,       "Qd4=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA), DESCR" equal to", \
 	VCMP(QdV, , , ==, N, SRC, MASK, WIDTH)) \
-EXTINSN(V6_veq##TYPE##_and, "Qx4&=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE), DESCR" equalto with predicate-and", \
+EXTINSN(V6_veq##TYPE##_and, "Qx4&=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA), DESCR" equalto with predicate-and", \
 	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), &, ==, N, SRC, MASK, WIDTH)) \
-EXTINSN(V6_veq##TYPE##_or,  "Qx4|=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE), DESCR" equalto with predicate-or", \
+EXTINSN(V6_veq##TYPE##_or,  "Qx4|=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA), DESCR" equalto with predicate-or", \
 	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ==, N, SRC, MASK, WIDTH)) \
-EXTINSN(V6_veq##TYPE##_xor, "Qx4^=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE), DESCR" equalto with predicate-xor", \
+EXTINSN(V6_veq##TYPE##_xor, "Qx4^=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA), DESCR" equalto with predicate-xor", \
 	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, ==, N, SRC, MASK, WIDTH))
 
 
@@ -1816,23 +1719,17 @@ MMVEC_CMPGT(uw,"uw","","Vector Unsigned Half Compare ", fVELEM(32), 0xF, 4,uw)
 MMVEC_CMPGT(uh,"uh","","Vector Unsigned Half Compare ", fVELEM(16), 0x3, 2,uh)
 MMVEC_CMPGT(ub,"ub","","Vector Unsigned Byte Compare ", fVELEM(8),  0x1, 1,ub)
 
-MMVEC_CMPEQMAP(uw,"uw","w")
-MMVEC_CMPEQMAP(uh,"uh","h")
-MMVEC_CMPEQMAP(ub,"ub","b")
-
-
-
 /***************************************************
 * Predicate Operations
 ***************************************************/
 
-EXTINSN(V6_pred_scalar2, "Qd4=vsetq(Rt32)",         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),   "Set Vector Predicate ",
+EXTINSN(V6_pred_scalar2, "Qd4=vsetq(Rt32)",         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),   "Set Vector Predicate ",
 {
     fHIDE(int i;)
     for(i = 0; i < fVBYTES(); i++) fSETQBIT(QdV,i,(i < (RtV & (fVBYTES()-1))) ? 1 : 0);
 })
 
-EXTINSN(V6_pred_scalar2v2, "Qd4=vsetq2(Rt32)",         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),   "Set Vector Predicate ",
+EXTINSN(V6_pred_scalar2v2, "Qd4=vsetq2(Rt32)",         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),   "Set Vector Predicate ",
 {
     fHIDE(int i;)
     for(i = 0; i < fVBYTES(); i++) fSETQBIT(QdV,i,(i <= ((RtV-1) & (fVBYTES()-1))) ? 1 : 0);
@@ -1850,7 +1747,7 @@ ITERATOR_INSN_ANY_SLOT(8, pred_not, "Qd4=not(Qs4)","Vector Predicate Not", fSETQ
 
 
 
-EXTINSN(V6_vcmov,  "if (Ps4) Vd32=Vu32",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE),   "Conditional Mov",
+EXTINSN(V6_vcmov,  "if (Ps4) Vd32=Vu32",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA),   "Conditional Mov",
 {
 if (fLSBOLD(PsV))	{
 	fHIDE(int i;)
@@ -1860,7 +1757,7 @@ if (fLSBOLD(PsV))	{
 	} else {CANCEL;}
 })
 
-EXTINSN(V6_vncmov,  "if (!Ps4) Vd32=Vu32",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_NOTE_ANY_RESOURCE),   "Conditional Mov",
+EXTINSN(V6_vncmov,  "if (!Ps4) Vd32=Vu32",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA),   "Conditional Mov",
 {
 if (fLSBOLDNOT(PsV))	{
 	fHIDE(int i;)
@@ -1870,7 +1767,7 @@ if (fLSBOLDNOT(PsV))	{
 	} else {CANCEL;}
 })
 
-EXTINSN(V6_vccombine,  "if (Ps4) Vdd32=vcombine(Vu32,Vv32)",	ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA_DV,A_NOTE_ANY2_RESOURCE),   "Conditional Combine",
+EXTINSN(V6_vccombine,  "if (Ps4) Vdd32=vcombine(Vu32,Vv32)",	ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA_DV),   "Conditional Combine",
 {
 if (fLSBOLD(PsV))	{
 	fHIDE(int i;)
@@ -1881,7 +1778,7 @@ if (fLSBOLD(PsV))	{
 	} else {CANCEL;}
 })
 
-EXTINSN(V6_vnccombine,  "if (!Ps4) Vdd32=vcombine(Vu32,Vv32)",	ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA_DV,A_NOTE_ANY2_RESOURCE),   "Conditional Combine",
+EXTINSN(V6_vnccombine,  "if (!Ps4) Vdd32=vcombine(Vu32,Vv32)",	ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA_DV),   "Conditional Combine",
 {
 if (fLSBOLDNOT(PsV))	{
 	fHIDE(int i;)
@@ -1974,11 +1871,8 @@ ITERATOR_INSN2_ANY_SLOT(32,vshufoh,"Vd32=vshuffoh(Vu32,Vv32)","Vd32.h=vshuffo(Vu
 * Double Vector Shuffles
 **************************************************************************/
 
-DEF_CVI_MAPPING(V6_vtran2x2_map, "vtrans2x2(Vy32,Vx32,Rt32)","vshuff(Vy32,Vx32,Rt32)")
-
-
 EXTINSN(V6_vshuff, "vshuff(Vy32,Vx32,Rt32)",
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_CVI_EARLY,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOURCE),
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS),
 "2x2->2x2 transpose, for multiple data sizes, inplace",
 {
 	fHIDE(int offset;)
@@ -1995,7 +1889,7 @@ ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_CVI_EARLY,A_NOTE_PERMUTE_RESOURCE,A_NOTE
 	})
 
 EXTINSN(V6_vshuffvdd, "Vdd32=vshuff(Vu32,Vv32,Rt8)",
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOURCE,A_NOTE_RT8),
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS),
 "2x2->2x2 transpose for multiple data sizes",
 {
 	fHIDE(int offset;)
@@ -2014,7 +1908,7 @@ ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOU
 	})
 
 EXTINSN(V6_vdeal, "vdeal(Vy32,Vx32,Rt32)",
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_CVI_EARLY,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOURCE),
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS),
 " vector - vector deal - or deinterleave, for multiple data sizes, inplace",
 {
 	fHIDE(int offset;)
@@ -2031,7 +1925,7 @@ ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_CVI_EARLY,A_NOTE_PERMUTE_RESOURCE,A_NOTE
 	})
 
 EXTINSN(V6_vdealvdd, "Vdd32=vdeal(Vu32,Vv32,Rt8)",
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS,A_NOTE_PERMUTE_RESOURCE,A_NOTE_SHIFT_RESOURCE,A_NOTE_RT8),
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP_VS),
 " vector - vector deal - or deinterleave, for multiple data sizes",
 {
 	fHIDE(int offset;)
@@ -2111,16 +2005,14 @@ ITERATOR_INSN2_PERMUTE_SLOT(16, vshuffb, "Vd32=vshuffb(Vu32)", "Vd32.b=vshuff(Vu
 * INSERT AND EXTRACT
 *********************************************************/
 EXTINSN(V6_extractw, "Rd32=vextract(Vu32,Rs32)",
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_RESTRICT_NOPACKET,A_CVI_EXTRACT,A_NOTE_NOPACKET,A_MEMLIKE,A_RESTRICT_SLOT0ONLY),
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_MEMLIKE,A_RESTRICT_SLOT0ONLY),
 "Extract an element from a vector to scalar",
 fHIDE(warn("RdN=%d VuN=%d RsN=%d RsV=0x%08x widx=%d",RdN,VuN,RsN,RsV,((RsV & (fVBYTES()-1)) >> 2));)
 RdV = VuV.uw[ (RsV & (fVBYTES()-1)) >> 2];
 fHIDE(warn("RdV=0x%08x",RdV);))
 
-DEF_CVI_MAPPING(V6_extractw_alt,"Rd32.w=vextract(Vu32,Rs32)","Rd32=vextract(Vu32,Rs32)")
-
 EXTINSN(V6_vinsertwr, "Vx32.w=vinsert(Rt32)",
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_LATE,A_NOTE_MPY_RESOURCE),
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX),
 "Insert Word Scalar into Vector",
 VxV.uw[0] = RtV;)
 
@@ -2133,8 +2025,6 @@ ITERATOR_INSN_MPY_SLOT_LATE(16,lvsplath, "Vd32.h=vsplat(Rt32)", "Replicates scal
 
 ITERATOR_INSN_MPY_SLOT_LATE(8,lvsplatb, "Vd32.b=vsplat(Rt32)", "Replicates scalar accross bytes in vector", VdV.ub[i] = RtV)
 
-
-DEF_CVI_MAPPING(V6_vassignp,"Vdd32=Vuu32","Vdd32=vcombine(Vuu.H32,Vuu.L32)")
 
 ITERATOR_INSN_ANY_SLOT(32,vassign,"Vd32=Vu32","Copy a vector",VdV.w[i]=VuV.w[i])
 
@@ -2154,7 +2044,7 @@ ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8,vcombine,"Vdd32=vcombine(Vu32,Vv32)",
 *********************************************************/
 
 
-EXTINSN(V6_vdelta, "Vd32=vdelta(Vu32,Vv32)",    ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),
+EXTINSN(V6_vdelta, "Vd32=vdelta(Vu32,Vv32)",    ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),
 "Reverse Benes Butterfly network ",
 {
     fHIDE(int offset;)
@@ -2170,7 +2060,7 @@ EXTINSN(V6_vdelta, "Vd32=vdelta(Vu32,Vv32)",    ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
 })
 
 
-EXTINSN(V6_vrdelta, "Vd32=vrdelta(Vu32,Vv32)",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),
+EXTINSN(V6_vrdelta, "Vd32=vrdelta(Vu32,Vv32)",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP),
 "Forward Benes Butterfly network ",
 {
 	fHIDE(int offset;)
@@ -2241,8 +2131,8 @@ ITERATOR_INSN2_SHIFT_SLOT(16,vpopcounth,"Vd32=vpopcounth(Vu32)","Vd32.h=vpopcoun
 
 
 
-EXTINSN(V6_vhist, "vhist",ATTRIBS(A_EXTENSION,A_CVI,A_CVI_4SLOT,A_CVI_REQUIRES_TMPLOAD), "vhist instruction",{ fHIDE(mmvector_t inputVec;) inputVec=fTMPVDATA(); fHIST(inputVec); })
-EXTINSN(V6_vhistq, "vhist(Qv4)",ATTRIBS(A_EXTENSION,A_CVI,A_CVI_4SLOT,A_CVI_REQUIRES_TMPLOAD), "vhist instruction",{ fHIDE(mmvector_t inputVec;) inputVec=fTMPVDATA(); fHISTQ(inputVec,QvV); })
+EXTINSN(V6_vhist, "vhist",ATTRIBS(A_EXTENSION,A_CVI,A_CVI_4SLOT), "vhist instruction",{ fHIDE(mmvector_t inputVec;) inputVec=fTMPVDATA(); fHIST(inputVec); })
+EXTINSN(V6_vhistq, "vhist(Qv4)",ATTRIBS(A_EXTENSION,A_CVI,A_CVI_4SLOT), "vhist instruction",{ fHIDE(mmvector_t inputVec;) inputVec=fTMPVDATA(); fHISTQ(inputVec,QvV); })
 
 #undef fHIST
 #undef fHISTQ
@@ -2282,7 +2172,6 @@ ITERATOR_INSN_VHISTLIKE(16,vwhist128qm,"vwhist128(Qv4,#u1)","vector weighted his
 /* Use low bits from idx to choose next-bigger elements from vector, then use LSB from idx to choose odd or even element */
 
 ITERATOR_INSN_PERMUTE_SLOT(8,vlutvvb,"Vd32.b=vlut32(Vu32.b,Vv32.b,Rt8)","vector-vector table lookup",
-fHIDE(fRT8NOTE())
 fHIDE(unsigned int idx;) fHIDE(int matchval;) fHIDE(int oddhalf;)
 matchval = RtV & 0x7;
 oddhalf = (RtV >> (fVECLOGSIZE()-6)) & 0x1;
@@ -2291,7 +2180,6 @@ VdV.b[i] = ((idx & 0xE0) == (matchval << 5)) ? fGETBYTE(oddhalf,VvV.h[idx % fVEL
 
 
 ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(8,vlutvvb_oracc,"Vx32.b|=vlut32(Vu32.b,Vv32.b,Rt8)","vector-vector table lookup",
-fHIDE(fRT8NOTE())
 fHIDE(unsigned int idx;) fHIDE(int matchval;) fHIDE(int oddhalf;)
 matchval = RtV & 0x7;
 oddhalf = (RtV >> (fVECLOGSIZE()-6)) & 0x1;
@@ -2299,7 +2187,6 @@ idx = VuV.ub[i];
 VxV.b[i] |= ((idx & 0xE0) == (matchval << 5)) ? fGETBYTE(oddhalf,VvV.h[idx % fVELEM(16)]) : 0)
 
 ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(16,vlutvwh,"Vdd32.h=vlut16(Vu32.b,Vv32.h,Rt8)","vector-vector table lookup",
-fHIDE(fRT8NOTE())
 fHIDE(unsigned int idx;) fHIDE(int matchval;) fHIDE(int oddhalf;)
 matchval = RtV & 0xF;
 oddhalf = (RtV >> (fVECLOGSIZE()-6)) & 0x1;
@@ -2309,7 +2196,6 @@ idx = fGETUBYTE(1,VuV.uh[i]);
 VddV.v[1].h[i] = ((idx & 0xF0) == (matchval << 4)) ? fGETHALF(oddhalf,VvV.w[idx % fVELEM(32)]) : 0)
 
 ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(16,vlutvwh_oracc,"Vxx32.h|=vlut16(Vu32.b,Vv32.h,Rt8)","vector-vector table lookup",
-fHIDE(fRT8NOTE())
 fHIDE(unsigned int idx;) fHIDE(int matchval;) fHIDE(int oddhalf;)
 matchval = fGETUBYTE(0,RtV) & 0xF;
 oddhalf = (RtV >> (fVECLOGSIZE()-6)) & 0x1;
@@ -2352,7 +2238,6 @@ idx = fGETUBYTE(1,VuV.uh[i]);
 VxxV.v[1].h[i] |= ((idx & 0xF0) == (matchval << 4)) ? fGETHALF(oddhalf,VvV.w[idx % fVELEM(32)]) : 0)
 
 ITERATOR_INSN_PERMUTE_SLOT(8,vlutvvb_nm,"Vd32.b=vlut32(Vu32.b,Vv32.b,Rt8):nomatch","vector-vector table lookup",
-fHIDE(fRT8NOTE())
 fHIDE(unsigned int idx;) fHIDE(int oddhalf;) fHIDE(int matchval;)
     matchval = RtV & 0x7;
     oddhalf = (RtV >> (fVECLOGSIZE()-6)) & 0x1;
@@ -2361,7 +2246,6 @@ fHIDE(unsigned int idx;) fHIDE(int oddhalf;) fHIDE(int matchval;)
     VdV.b[i] = fGETBYTE(oddhalf,VvV.h[idx % fVELEM(16)]))
 
 ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(16,vlutvwh_nm,"Vdd32.h=vlut16(Vu32.b,Vv32.h,Rt8):nomatch","vector-vector table lookup",
-fHIDE(fRT8NOTE())
 fHIDE(unsigned int idx;) fHIDE(int oddhalf;) fHIDE(int matchval;)
     matchval = RtV & 0xF;
     oddhalf = (RtV >> (fVECLOGSIZE()-6)) & 0x1;
@@ -2411,16 +2295,7 @@ ITERATOR_INSN_MPY_SLOT_NOV1(32,vmpyuhe_acc,"Vx32.uw+=vmpye(Vu32.uh,Rt32.uh)",
 
 
 
-/******************************************************************************
- Vecror HI/LOW accessors
- ******************************************************************************/
-DEF_CVI_MAPPING(V6_hi, "Vd32=hi(Vss32)","Vd32=Vss.H32")
-DEF_CVI_MAPPING(V6_lo, "Vd32=lo(Vss32)","Vd32=Vss.L32")
-
-
-
-
-EXTINSN(V6_vgathermw,  "vtmp.w=vgather(Rt32,Mu2,Vv32.w).w", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA,A_CVI_VM,A_CVI_TMP_DST,A_EA_PAGECROSS,A_MEMSIZE_4B,A_MEMLIKE,A_CVI_GATHER_ADDR_4B,A_NOTE_ANY_RESOURCE), "Gather Words",
+EXTINSN(V6_vgathermw,  "vtmp.w=vgather(Rt32,Mu2,Vv32.w).w", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA,A_CVI_VM,A_CVI_TMP_DST,A_MEMLIKE), "Gather Words",
 {
     fHIDE(int i;)
 	fHIDE(int element_size = 4;)
@@ -2433,7 +2308,7 @@ EXTINSN(V6_vgathermw,  "vtmp.w=vgather(Rt32,Mu2,Vv32.w).w", ATTRIBS(A_EXTENSION,
     }
     fGATHER_FINISH()
 })
-EXTINSN(V6_vgathermh,  "vtmp.h=vgather(Rt32,Mu2,Vv32.h).h", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA,A_CVI_VM,A_CVI_TMP_DST,A_EA_PAGECROSS,A_MEMSIZE_2B,A_MEMLIKE,A_CVI_GATHER_ADDR_2B,A_NOTE_ANY_RESOURCE), "Gather halfwords",
+EXTINSN(V6_vgathermh,  "vtmp.h=vgather(Rt32,Mu2,Vv32.h).h", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA,A_CVI_VM,A_CVI_TMP_DST,A_MEMLIKE), "Gather halfwords",
 {
     fHIDE(int i;)
 	fHIDE(int element_size = 2;)
@@ -2449,7 +2324,7 @@ EXTINSN(V6_vgathermh,  "vtmp.h=vgather(Rt32,Mu2,Vv32.h).h", ATTRIBS(A_EXTENSION,
 
 
 
-EXTINSN(V6_vgathermhw,  "vtmp.h=vgather(Rt32,Mu2,Vvv32.w).h", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA_DV,A_CVI_VM,A_CVI_TMP_DST,A_EA_PAGECROSS,A_MEMSIZE_2B,A_MEMLIKE,A_CVI_GATHER_ADDR_4B,A_NOTE_ANY_RESOURCE), "Gather halfwords",
+EXTINSN(V6_vgathermhw,  "vtmp.h=vgather(Rt32,Mu2,Vvv32.w).h", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA_DV,A_CVI_VM,A_CVI_TMP_DST,A_MEMLIKE), "Gather halfwords",
 {
     fHIDE(int i;)
     fHIDE(int j;)
@@ -2467,7 +2342,7 @@ EXTINSN(V6_vgathermhw,  "vtmp.h=vgather(Rt32,Mu2,Vvv32.w).h", ATTRIBS(A_EXTENSIO
 })
 
 
-EXTINSN(V6_vgathermwq,  "if (Qs4) vtmp.w=vgather(Rt32,Mu2,Vv32.w).w", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA,A_CVI_VM,A_CVI_TMP_DST,A_EA_PAGECROSS,A_MEMSIZE_4B,A_MEMLIKE,A_CVI_GATHER_ADDR_4B,A_NOTE_ANY_RESOURCE), "Gather Words",
+EXTINSN(V6_vgathermwq,  "if (Qs4) vtmp.w=vgather(Rt32,Mu2,Vv32.w).w", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA,A_CVI_VM,A_CVI_TMP_DST,A_MEMLIKE), "Gather Words",
 {
     fHIDE(int i;)
 	fHIDE(int element_size = 4;)
@@ -2480,7 +2355,7 @@ EXTINSN(V6_vgathermwq,  "if (Qs4) vtmp.w=vgather(Rt32,Mu2,Vv32.w).w", ATTRIBS(A_
     }
     fGATHER_FINISH()
 })
-EXTINSN(V6_vgathermhq,  "if (Qs4) vtmp.h=vgather(Rt32,Mu2,Vv32.h).h", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA,A_CVI_VM,A_CVI_TMP_DST,A_EA_PAGECROSS,A_MEMSIZE_2B,A_MEMLIKE,A_CVI_GATHER_ADDR_2B,A_NOTE_ANY_RESOURCE), "Gather halfwords",
+EXTINSN(V6_vgathermhq,  "if (Qs4) vtmp.h=vgather(Rt32,Mu2,Vv32.h).h", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA,A_CVI_VM,A_CVI_TMP_DST,A_MEMLIKE), "Gather halfwords",
 {
     fHIDE(int i;)
 	fHIDE(int element_size = 2;)
@@ -2496,7 +2371,7 @@ EXTINSN(V6_vgathermhq,  "if (Qs4) vtmp.h=vgather(Rt32,Mu2,Vv32.h).h", ATTRIBS(A_
 
 
 
-EXTINSN(V6_vgathermhwq,  "if (Qs4) vtmp.h=vgather(Rt32,Mu2,Vvv32.w).h", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA_DV,A_CVI_VM,A_CVI_TMP_DST,A_EA_PAGECROSS,A_MEMSIZE_2B,A_MEMLIKE,A_CVI_GATHER_ADDR_4B,A_NOTE_ANY_RESOURCE), "Gather halfwords",
+EXTINSN(V6_vgathermhwq,  "if (Qs4) vtmp.h=vgather(Rt32,Mu2,Vvv32.w).h", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_GATHER,A_CVI_VA_DV,A_CVI_VM,A_CVI_TMP_DST,A_MEMLIKE), "Gather halfwords",
 {
     fHIDE(int i;)
     fHIDE(int j;)
@@ -2515,7 +2390,7 @@ EXTINSN(V6_vgathermhwq,  "if (Qs4) vtmp.h=vgather(Rt32,Mu2,Vvv32.w).h", ATTRIBS(
 
 
 
-EXTINSN(V6_vscattermw , "vscatter(Rt32,Mu2,Vv32.w).w=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_4B,A_CVI_GATHER_ADDR_4B,A_MEMLIKE,A_NOTE_ANY_RESOURCE), "Scatter Words",
+EXTINSN(V6_vscattermw , "vscatter(Rt32,Mu2,Vv32.w).w=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_MEMLIKE), "Scatter Words",
 {
     fHIDE(int i;)
 	fHIDE(int element_size = 4;)
@@ -2531,7 +2406,7 @@ EXTINSN(V6_vscattermw , "vscatter(Rt32,Mu2,Vv32.w).w=Vw32", ATTRIBS(A_EXTENSION,
 
 
 
-EXTINSN(V6_vscattermh , "vscatter(Rt32,Mu2,Vv32.h).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_2B,A_CVI_GATHER_ADDR_2B,A_MEMLIKE,A_NOTE_ANY_RESOURCE), "Scatter halfWords",
+EXTINSN(V6_vscattermh , "vscatter(Rt32,Mu2,Vv32.h).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_MEMLIKE), "Scatter halfWords",
 {
     fHIDE(int i;)
 	fHIDE(int element_size = 2;)
@@ -2546,7 +2421,7 @@ EXTINSN(V6_vscattermh , "vscatter(Rt32,Mu2,Vv32.h).h=Vw32", ATTRIBS(A_EXTENSION,
 })
 
 
-EXTINSN(V6_vscattermw_add,  "vscatter(Rt32,Mu2,Vv32.w).w+=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_4B,A_CVI_GATHER_ADDR_4B,A_MEMLIKE,A_CVI_SCATTER_WORD_ACC,A_NOTE_ANY_RESOURCE), "Scatter Words-Add",
+EXTINSN(V6_vscattermw_add,  "vscatter(Rt32,Mu2,Vv32.w).w+=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_MEMLIKE), "Scatter Words-Add",
 {
     fHIDE(int i;)
     fHIDE(int ALIGNMENT=4;)
@@ -2562,7 +2437,7 @@ EXTINSN(V6_vscattermw_add,  "vscatter(Rt32,Mu2,Vv32.w).w+=Vw32", ATTRIBS(A_EXTEN
     fSCATTER_FINISH(1)
 })
 
-EXTINSN(V6_vscattermh_add,  "vscatter(Rt32,Mu2,Vv32.h).h+=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_2B,A_CVI_GATHER_ADDR_2B,A_CVI_SCATTER_ACC,A_MEMLIKE,A_NOTE_ANY_RESOURCE), "Scatter halfword-Add",
+EXTINSN(V6_vscattermh_add,  "vscatter(Rt32,Mu2,Vv32.h).h+=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_MEMLIKE), "Scatter halfword-Add",
 {
     fHIDE(int i;)
     fHIDE(int ALIGNMENT=2;)
@@ -2579,7 +2454,7 @@ EXTINSN(V6_vscattermh_add,  "vscatter(Rt32,Mu2,Vv32.h).h+=Vw32", ATTRIBS(A_EXTEN
 })
 
 
-EXTINSN(V6_vscattermwq,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.w).w=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_4B,A_CVI_GATHER_ADDR_4B,A_MEMLIKE,A_NOTE_ANY_RESOURCE), "Scatter Words conditional",
+EXTINSN(V6_vscattermwq,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.w).w=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_MEMLIKE), "Scatter Words conditional",
 {
     fHIDE(int i;)
 	fHIDE(int element_size = 4;)
@@ -2593,7 +2468,7 @@ EXTINSN(V6_vscattermwq,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.w).w=Vw32", ATTRIBS(A_
     fSCATTER_FINISH(0)
 })
 
-EXTINSN(V6_vscattermhq,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.h).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_2B,A_CVI_GATHER_ADDR_2B,A_MEMLIKE,A_NOTE_ANY_RESOURCE), "Scatter HalfWords conditional",
+EXTINSN(V6_vscattermhq,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.h).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA,A_CVI_VM,A_MEMLIKE), "Scatter HalfWords conditional",
 {
     fHIDE(int i;)
 	fHIDE(int element_size = 2;)
@@ -2610,7 +2485,7 @@ EXTINSN(V6_vscattermhq,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.h).h=Vw32", ATTRIBS(A_
 
 
 
-EXTINSN(V6_vscattermhw , "vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA_DV,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_2B,A_CVI_GATHER_ADDR_4B,A_MEMLIKE,A_NOTE_ANY2_RESOURCE), "Scatter Words",
+EXTINSN(V6_vscattermhw , "vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA_DV,A_CVI_VM,A_MEMLIKE), "Scatter Words",
 {
     fHIDE(int i;)
     fHIDE(int j;)
@@ -2629,7 +2504,7 @@ EXTINSN(V6_vscattermhw , "vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(A_EXTENSIO
 
 
 
-EXTINSN(V6_vscattermhwq,  "if (Qs4) vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA_DV,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_2B,A_CVI_GATHER_ADDR_4B,A_MEMLIKE,A_NOTE_ANY2_RESOURCE), "Scatter halfwords conditional",
+EXTINSN(V6_vscattermhwq,  "if (Qs4) vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA_DV,A_CVI_VM,A_MEMLIKE), "Scatter halfwords conditional",
 {
     fHIDE(int i;)
     fHIDE(int j;)
@@ -2646,7 +2521,7 @@ EXTINSN(V6_vscattermhwq,  "if (Qs4) vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(
     fSCATTER_FINISH(0)
 })
 
-EXTINSN(V6_vscattermhw_add,  "vscatter(Rt32,Mu2,Vvv32.w).h+=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA_DV,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_2B,A_CVI_GATHER_ADDR_4B,A_CVI_SCATTER_ACC,A_MEMLIKE,A_NOTE_ANY2_RESOURCE), "Scatter halfwords-add",
+EXTINSN(V6_vscattermhw_add,  "vscatter(Rt32,Mu2,Vvv32.w).h+=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA_DV,A_CVI_VM,A_MEMLIKE), "Scatter halfwords-add",
 {
     fHIDE(int i;)
     fHIDE(int j;)
@@ -2664,19 +2539,8 @@ EXTINSN(V6_vscattermhw_add,  "vscatter(Rt32,Mu2,Vvv32.w).h+=Vw32", ATTRIBS(A_EXT
     fHIDE(fLOG_SCATTER_OP(2);)
     fSCATTER_FINISH(1)
 })
-DEF_CVI_MAPPING(V6_vscattermw_alt,  "vscatter(Rt32,Mu2,Vv32.w)=Vw32.w",  "vscatter(Rt32,Mu2,Vv32.w).w=Vw32")
-DEF_CVI_MAPPING(V6_vscattermwh_alt,  "vscatter(Rt32,Mu2,Vvv32.w)=Vw32.h",  "vscatter(Rt32,Mu2,Vvv32.w).h=Vw32")
-DEF_CVI_MAPPING(V6_vscattermh_alt,  "vscatter(Rt32,Mu2,Vv32.h)=Vw32.h",  "vscatter(Rt32,Mu2,Vv32.h).h=Vw32")
 
-DEF_CVI_MAPPING(V6_vscattermw_add_alt,  "vscatter(Rt32,Mu2,Vv32.w)+=Vw32.w",  "vscatter(Rt32,Mu2,Vv32.w).w+=Vw32")
-DEF_CVI_MAPPING(V6_vscattermwh_add_alt,  "vscatter(Rt32,Mu2,Vvv32.w)+=Vw32.h",  "vscatter(Rt32,Mu2,Vvv32.w).h+=Vw32")
-DEF_CVI_MAPPING(V6_vscattermh_add_alt,  "vscatter(Rt32,Mu2,Vv32.h)+=Vw32.h",  "vscatter(Rt32,Mu2,Vv32.h).h+=Vw32")
-
-DEF_CVI_MAPPING(V6_vscattermwq_alt,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.w)=Vw32.w",  "if (Qs4) vscatter(Rt32,Mu2,Vv32.w).w=Vw32")
-DEF_CVI_MAPPING(V6_vscattermwhq_alt,  "if (Qs4) vscatter(Rt32,Mu2,Vvv32.w)=Vw32.h",  "if (Qs4) vscatter(Rt32,Mu2,Vvv32.w).h=Vw32")
-DEF_CVI_MAPPING(V6_vscattermhq_alt,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.h)=Vw32.h",  "if (Qs4) vscatter(Rt32,Mu2,Vv32.h).h=Vw32")
-
-EXTINSN(V6_vprefixqb,"Vd32.b=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE),  "parallel prefix sum of Q into byte",
+EXTINSN(V6_vprefixqb,"Vd32.b=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS),  "parallel prefix sum of Q into byte",
 {
     fHIDE(int i;)
     fHIDE(size1u_t acc = 0;)
@@ -2685,7 +2549,7 @@ EXTINSN(V6_vprefixqb,"Vd32.b=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
         VdV.ub[i] = acc;
     }
     } )
-EXTINSN(V6_vprefixqh,"Vd32.h=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE),  "parallel prefix sum of Q into halfwords",
+EXTINSN(V6_vprefixqh,"Vd32.h=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS),  "parallel prefix sum of Q into halfwords",
 {
     fHIDE(int i;)
     fHIDE(size2u_t acc = 0;)
@@ -2695,7 +2559,7 @@ EXTINSN(V6_vprefixqh,"Vd32.h=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
         VdV.uh[i] = acc;
     }
     } )
-EXTINSN(V6_vprefixqw,"Vd32.w=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE),  "parallel prefix sum of Q into words",
+EXTINSN(V6_vprefixqw,"Vd32.w=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS),  "parallel prefix sum of Q into words",
 {
     fHIDE(int i;)
     fHIDE(size4u_t acc = 0;)
@@ -2725,48 +2589,6 @@ EXTINSN(V6_vprefixqw,"Vd32.w=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
     };  \
     fprintf(stdout,"\\n");  \
 	fflush(stdout);\
-
-EXTINSN(V6_pv32,    "pv32(Vu32)",   ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a Vector",  {   PRINT_VU(uw, "%08x", 2);    })
-EXTINSN(V6_pv32d,   "pv32d(Vu32)",  ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a Vector",  {   PRINT_VU(w,  "%10d", 2);    })
-EXTINSN(V6_pv32du,  "pv32du(Vu32)", ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a Vector",  {   PRINT_VU(uw, "%10u", 2);    })
-EXTINSN(V6_pv64d,   "pv64d(Vu32)",  ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a Vector",  {   PRINT_VU(ud, "%lli", 4);    })
-EXTINSN(V6_pv16,    "pv16(Vu32)",   ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a Vector",  {   PRINT_VU(uh, "%04x", 1);   })
-EXTINSN(V6_pv16d,   "pv16d(Vu32)",  ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a Vector",  {   PRINT_VU(h,  "%5d",  1);   })
-EXTINSN(V6_pv8d,    "pv8d(Vu32)",   ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a Vector",  {   PRINT_VU(ub, "%3u",  0);   })
-EXTINSN(V6_pv8,     "pv8(Vu32)",    ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a Vector",  {   PRINT_VU(ub, "%02x", 0);   })
-EXTINSN(V6_preg,    "preg(Ru32)",   ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a scalar",  {   printf("R%02d=0x%08x\\n", RuN, RuV);})
-EXTINSN(V6_pregd,   "pregd(Ru32)",  ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a scalar",  {   printf("R%02d=%10d\\n", RuN, RuV); })
-EXTINSN(V6_pregf,   "pregf(Ru32)",  ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a scalar",  {   printf("R%02d=%f\\n", RuN, (float)RuV); })
-
-EXTINSN(V6_pz,   	"pz(Zu2)",  ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print a scalar",  {
-	fprintf(stdout,"Z%d:\\n", ZuN);
-	for(int m=0, l=0; l < fVBYTES()/4/8; l++)
-	{
-		fprintf(stdout,"\\t");
-		for(int k = 0; k < 8; k++,m++)
-			fprintf(stdout,"%x ", ZuV.w[m]);
-		fprintf(stdout,"\\n");
-	}
-	fprintf(stdout,"\\n");
-	fflush(stdout);
-})
-
-
-
-
-EXTINSN(V6_ppred,   "ppred(Qs4)",   ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN),"Print Predicates",
-    int j;
-    fprintf(stdout,"Q%d: [",QsN);
-    for (j = 0; j < fVBYTES()-1; j++){
-        fprintf(stdout,"%1x,", fGETQBIT(QsV,j));
-    }
-    fprintf(stdout,"%1x", fGETQBIT(QsV,j));
-    fprintf(stdout,"]\\n");
-	fflush(stdout);
-)
-
-
-
 
 #undef ATTR_VMEM
 #undef ATTR_VMEMU

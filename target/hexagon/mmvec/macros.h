@@ -276,7 +276,6 @@ static bool readonly_ok(insn_t *insn)
 
 #define fUSE_LOOKUP_ADDRESS_BY_REV(PROC) true
 #define fUSE_LOOKUP_ADDRESS() 1
-#define fRT8NOTE()
 #define fNOTQ(VAL) \
     ({ \
         mmqreg_t _ret;  \

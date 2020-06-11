@@ -38,17 +38,6 @@ static inline TCGv gen_read_preg(TCGv pred, uint8_t num)
     return pred;
 }
 
-static inline bool is_preloaded(DisasContext *ctx, int num)
-{
-    int i;
-    for (i = 0; i < ctx->ctx_reg_log_idx; i++) {
-        if (ctx->ctx_reg_log[i] == num) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static inline void gen_log_reg_write(int rnum, TCGv val, int slot,
                                      int is_predicated)
 {

@@ -116,14 +116,6 @@ Q6INSN(C2_cmpgtui,"Pd4=cmp.gtu(Rs32,#u9)",ATTRIBS(),
 "Compare for Greater Than Unsigned",
 {fIMMEXT(uiV); PdV=f8BITSOF(fCAST4u(RsV)>fCAST4u(uiV));})
 
-DEF_MAPPING(C2_cmpgei,"Pd4=cmp.ge(Rs32,#s8)","Pd4=cmp.gt(Rs32,#s8-1)")
-DEF_COND_MAPPING(C2_cmpgeui,"Pd4=cmp.geu(Rs32,#u8)","#u8==0","Pd4=cmp.eq(Rs32,Rs32)","Pd4=cmp.gtu(Rs32,#u8-1)")
-
-/* Just for fun */
-DEF_V2_MAPPING(C2_cmplt,"Pd4=cmp.lt(Rs32,Rt32)","Pd4=cmp.gt(Rt32,Rs32)")
-DEF_V2_MAPPING(C2_cmpltu,"Pd4=cmp.ltu(Rs32,Rt32)","Pd4=cmp.gtu(Rt32,Rs32)")
-
-
 Q6INSN(C2_bitsclri,"Pd4=bitsclr(Rs32,#u6)",ATTRIBS(A_ARCHV2),
 "Compare for selected bits clear",
 {PdV=f8BITSOF((RsV&uiV)==0);})
@@ -149,84 +141,78 @@ Q6INSN(C4_cmplteu,"Pd4=!cmp.gtu(Rs32,Rt32)",ATTRIBS(), "And-Compare for Greater 
 
 /* Predicate Logical Operations */
 
-Q6INSN(C2_and,"Pd4=and(Pt4,Ps4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C2_and,"Pd4=and(Pt4,Ps4)",ATTRIBS(A_CRSLOT23),
 "Predicate AND",
-{fPREDUSE_TIMING();PdV=PsV & PtV;})
+{PdV=PsV & PtV;})
 
-Q6INSN(C2_or,"Pd4=or(Pt4,Ps4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C2_or,"Pd4=or(Pt4,Ps4)",ATTRIBS(A_CRSLOT23),
 "Predicate OR",
-{fPREDUSE_TIMING();PdV=PsV | PtV;})
+{PdV=PsV | PtV;})
 
-Q6INSN(C2_xor,"Pd4=xor(Ps4,Pt4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C2_xor,"Pd4=xor(Ps4,Pt4)",ATTRIBS(A_CRSLOT23),
 "Predicate XOR",
-{fPREDUSE_TIMING();PdV=PsV ^ PtV;})
+{PdV=PsV ^ PtV;})
 
-Q6INSN(C2_andn,"Pd4=and(Pt4,!Ps4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C2_andn,"Pd4=and(Pt4,!Ps4)",ATTRIBS(A_CRSLOT23),
 "Predicate AND NOT",
-{fPREDUSE_TIMING();PdV=PtV & (~PsV);})
+{PdV=PtV & (~PsV);})
 
-Q6INSN(C2_not,"Pd4=not(Ps4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C2_not,"Pd4=not(Ps4)",ATTRIBS(A_CRSLOT23),
 "Logical NOT Predicate",
-{fPREDUSE_TIMING();PdV=~PsV;})
+{PdV=~PsV;})
 
-Q6INSN(C2_orn,"Pd4=or(Pt4,!Ps4)",ATTRIBS(A_ARCHV2,A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C2_orn,"Pd4=or(Pt4,!Ps4)",ATTRIBS(A_ARCHV2,A_CRSLOT23),
 "Predicate OR NOT",
-{fPREDUSE_TIMING();PdV=PtV | (~PsV);})
+{PdV=PtV | (~PsV);})
 
 
 
 
 
-Q6INSN(C4_and_and,"Pd4=and(Ps4,and(Pt4,Pu4))",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
-"Compound And-And", { fPREDUSE_TIMING();PdV = PsV & PtV & PuV; })
+Q6INSN(C4_and_and,"Pd4=and(Ps4,and(Pt4,Pu4))",ATTRIBS(A_CRSLOT23),
+"Compound And-And", { PdV = PsV & PtV & PuV; })
 
-Q6INSN(C4_and_or,"Pd4=and(Ps4,or(Pt4,Pu4))",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
-"Compound And-Or", { fPREDUSE_TIMING();PdV = PsV &  (PtV | PuV); })
+Q6INSN(C4_and_or,"Pd4=and(Ps4,or(Pt4,Pu4))",ATTRIBS(A_CRSLOT23),
+"Compound And-Or", { PdV = PsV &  (PtV | PuV); })
 
-Q6INSN(C4_or_and,"Pd4=or(Ps4,and(Pt4,Pu4))",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
-"Compound Or-And", { fPREDUSE_TIMING();PdV = PsV | (PtV & PuV); })
+Q6INSN(C4_or_and,"Pd4=or(Ps4,and(Pt4,Pu4))",ATTRIBS(A_CRSLOT23),
+"Compound Or-And", { PdV = PsV | (PtV & PuV); })
 
-Q6INSN(C4_or_or,"Pd4=or(Ps4,or(Pt4,Pu4))",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
-"Compound Or-Or", { fPREDUSE_TIMING();PdV = PsV | PtV | PuV; })
-
-
-
-Q6INSN(C4_and_andn,"Pd4=and(Ps4,and(Pt4,!Pu4))",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
-"Compound And-And", { fPREDUSE_TIMING();PdV = PsV & PtV & (~PuV); })
-
-Q6INSN(C4_and_orn,"Pd4=and(Ps4,or(Pt4,!Pu4))",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
-"Compound And-Or", { fPREDUSE_TIMING();PdV = PsV &  (PtV | (~PuV)); })
-
-Q6INSN(C4_or_andn,"Pd4=or(Ps4,and(Pt4,!Pu4))",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
-"Compound Or-And", { fPREDUSE_TIMING();PdV = PsV | (PtV & (~PuV)); })
-
-Q6INSN(C4_or_orn,"Pd4=or(Ps4,or(Pt4,!Pu4))",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
-"Compound Or-Or", { fPREDUSE_TIMING();PdV = PsV | PtV | (~PuV); })
+Q6INSN(C4_or_or,"Pd4=or(Ps4,or(Pt4,Pu4))",ATTRIBS(A_CRSLOT23),
+"Compound Or-Or", { PdV = PsV | PtV | PuV; })
 
 
 
+Q6INSN(C4_and_andn,"Pd4=and(Ps4,and(Pt4,!Pu4))",ATTRIBS(A_CRSLOT23),
+"Compound And-And", { PdV = PsV & PtV & (~PuV); })
+
+Q6INSN(C4_and_orn,"Pd4=and(Ps4,or(Pt4,!Pu4))",ATTRIBS(A_CRSLOT23),
+"Compound And-Or", { PdV = PsV &  (PtV | (~PuV)); })
+
+Q6INSN(C4_or_andn,"Pd4=or(Ps4,and(Pt4,!Pu4))",ATTRIBS(A_CRSLOT23),
+"Compound Or-And", { PdV = PsV | (PtV & (~PuV)); })
+
+Q6INSN(C4_or_orn,"Pd4=or(Ps4,or(Pt4,!Pu4))",ATTRIBS(A_CRSLOT23),
+"Compound Or-Or", { PdV = PsV | PtV | (~PuV); })
 
 
-DEF_V2_MAPPING(C2_pxfer_map,"Pd4=Ps4","Pd4=or(Ps4,Ps4)")
-
-
-Q6INSN(C2_any8,"Pd4=any8(Ps4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C2_any8,"Pd4=any8(Ps4)",ATTRIBS(A_CRSLOT23),
 "Logical ANY of low 8 predicate bits",
-{ fPREDUSE_TIMING();PsV ? (PdV=0xff) : (PdV=0x00); })
+{ PsV ? (PdV=0xff) : (PdV=0x00); })
 
-Q6INSN(C2_all8,"Pd4=all8(Ps4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C2_all8,"Pd4=all8(Ps4)",ATTRIBS(A_CRSLOT23),
 "Logical ALL of low 8 predicate bits",
-{ fPREDUSE_TIMING();(PsV==0xff) ? (PdV=0xff) : (PdV=0x00); })
+{ (PsV==0xff) ? (PdV=0xff) : (PdV=0x00); })
 
 Q6INSN(C2_vitpack,"Rd32=vitpack(Ps4,Pt4)",ATTRIBS(),
 "Pack the odd and even bits of two predicate registers",
-{ fPREDUSE_TIMING();RdV = (PsV&0x55) | (PtV&0xAA); })
+{ RdV = (PsV&0x55) | (PtV&0xAA); })
 
 /* Mux instructions */
 
 Q6INSN(C2_mux,"Rd32=mux(Pu4,Rs32,Rt32)",ATTRIBS(),
 "Scalar MUX",
-{ fPREDUSE_TIMING();(fLSBOLD(PuV)) ? (RdV=RsV):(RdV=RtV); })
+{ (fLSBOLD(PuV)) ? (RdV=RsV):(RdV=RtV); })
 
 
 Q6INSN(C2_cmovenewit,"if (Pu4.new) Rd32=#s12",ATTRIBS(A_ARCHV2),
@@ -247,7 +233,7 @@ Q6INSN(C2_cmoveif,"if (!Pu4) Rd32=#s12",ATTRIBS(A_ARCHV2),
 
 
 
-Q6INSN(C2_ccombinewnewt,"if (Pu4.new) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ROPS_2,A_ARCHV2),
+Q6INSN(C2_ccombinewnewt,"if (Pu4.new) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2),
 "Conditionally combine two words into a register pair",
 { if (fLSBNEW(PuN)) {
     fSETWORD(0,RddV,RtV);
@@ -255,7 +241,7 @@ Q6INSN(C2_ccombinewnewt,"if (Pu4.new) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ROPS_2
   } else {CANCEL;}
 })
 
-Q6INSN(C2_ccombinewnewf,"if (!Pu4.new) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2,A_ROPS_2),
+Q6INSN(C2_ccombinewnewf,"if (!Pu4.new) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2),
 "Conditionally combine two words into a register pair",
 { if (fLSBNEWNOT(PuN)) {
     fSETWORD(0,RddV,RtV);
@@ -263,7 +249,7 @@ Q6INSN(C2_ccombinewnewf,"if (!Pu4.new) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV
   } else {CANCEL;}
 })
 
-Q6INSN(C2_ccombinewt,"if (Pu4) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2,A_ROPS_2),
+Q6INSN(C2_ccombinewt,"if (Pu4) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2),
 "Conditionally combine two words into a register pair",
 { if (fLSBOLD(PuV)) {
     fSETWORD(0,RddV,RtV);
@@ -271,7 +257,7 @@ Q6INSN(C2_ccombinewt,"if (Pu4) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2,A_ROPS
   } else {CANCEL;}
 })
 
-Q6INSN(C2_ccombinewf,"if (!Pu4) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2,A_ROPS_2),
+Q6INSN(C2_ccombinewf,"if (!Pu4) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2),
 "Conditionally combine two words into a register pair",
 { if (fLSBOLDNOT(PuV)) {
     fSETWORD(0,RddV,RtV);
@@ -283,24 +269,24 @@ Q6INSN(C2_ccombinewf,"if (!Pu4) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2,A_ROP
 
 Q6INSN(C2_muxii,"Rd32=mux(Pu4,#s8,#S8)",ATTRIBS(A_ARCHV2),
 "Scalar MUX immediates",
-{ fPREDUSE_TIMING();fIMMEXT(siV); (fLSBOLD(PuV)) ? (RdV=siV):(RdV=SiV); })
+{ fIMMEXT(siV); (fLSBOLD(PuV)) ? (RdV=siV):(RdV=SiV); })
 
 
 
 Q6INSN(C2_muxir,"Rd32=mux(Pu4,Rs32,#s8)",ATTRIBS(A_ARCHV2),
 "Scalar MUX register immediate",
-{ fPREDUSE_TIMING();fIMMEXT(siV); (fLSBOLD(PuV)) ? (RdV=RsV):(RdV=siV); })
+{ fIMMEXT(siV); (fLSBOLD(PuV)) ? (RdV=RsV):(RdV=siV); })
 
 
 Q6INSN(C2_muxri,"Rd32=mux(Pu4,#s8,Rs32)",ATTRIBS(A_ARCHV2),
 "Scalar MUX register immediate",
-{ fPREDUSE_TIMING();fIMMEXT(siV); (fLSBOLD(PuV)) ? (RdV=siV):(RdV=RsV); })
+{ fIMMEXT(siV); (fLSBOLD(PuV)) ? (RdV=siV):(RdV=RsV); })
 
 
 
 Q6INSN(C2_vmux,"Rdd32=vmux(Pu4,Rss32,Rtt32)",ATTRIBS(),
 "Vector MUX",
-{   fPREDUSE_TIMING();
+{
 	fHIDE(int i;)
 	for (i = 0; i < 8; i++) {
 		fSETBYTE(i,RddV,(fGETBIT(i,PuV)?(fGETBYTE(i,RssV)):(fGETBYTE(i,RttV))));
@@ -309,7 +295,7 @@ Q6INSN(C2_vmux,"Rdd32=vmux(Pu4,Rss32,Rtt32)",ATTRIBS(),
 
 Q6INSN(C2_mask,"Rdd32=mask(Pt4)",ATTRIBS(),
 "Vector Mask Generation",
-{   fPREDUSE_TIMING();
+{
 	fHIDE(int i;)
 	for (i = 0; i < 8; i++) {
 		fSETBYTE(i,RddV,(fGETBIT(i,PtV)?(0xff):(0x00)));
@@ -590,9 +576,7 @@ Q6INSN(A4_boundscheck_lo,"Pd4=boundscheck(Rss32,Rtt32):raw:lo",ATTRIBS(),
 	PdV = f8BITSOF((fCAST4u(src) >= fGETUWORD(0,RttV)) && (fCAST4u(src) < fGETUWORD(1,RttV)));
 })
 
-DEF_V4_COND_MAPPING(A4_boundscheck,"Pd4=boundscheck(Rs32,Rtt32)","Rs32 & 1","Pd4=boundscheck(Rss32,Rtt32):raw:hi","Pd4=boundscheck(Rss32,Rtt32):raw:lo")
-
-Q6INSN(A4_tlbmatch,"Pd4=tlbmatch(Rss32,Rt32)",ATTRIBS(A_NOTE_LATEPRED,A_RESTRICT_LATEPRED),
+Q6INSN(A4_tlbmatch,"Pd4=tlbmatch(Rss32,Rt32)",ATTRIBS(),
 "Detect if a VA/ASID matches a TLB entry",
 {
 	fHIDE(size4u_t TLBHI; size4u_t TLBLO; size4u_t MASK; size4u_t SIZE;)
@@ -602,18 +586,17 @@ Q6INSN(A4_tlbmatch,"Pd4=tlbmatch(Rss32,Rt32)",ATTRIBS(A_NOTE_LATEPRED,A_RESTRICT
 	SIZE = fMIN(6,fCL1_4(~fBREV_4(TLBLO)));
 	MASK &= (0xffffffff << 2*SIZE);
 	PdV = f8BITSOF(fGETBIT(31,TLBHI) && ((TLBHI & MASK) == (RtV & MASK)));
-	fHIDE(MARK_LATE_PRED_WRITE(PdN))
 })
 
 Q6INSN(C2_tfrpr,"Rd32=Ps4",ATTRIBS(),
-"Transfer predicate to general register", { fPREDUSE_TIMING();RdV = fZXTN(8,32,PsV); })
+"Transfer predicate to general register", { RdV = fZXTN(8,32,PsV); })
 
 Q6INSN(C2_tfrrp,"Pd4=Rs32",ATTRIBS(),
 "Transfer general register to Predicate", { PdV = fGETUBYTE(0,RsV); })
 
-Q6INSN(C4_fastcorner9,"Pd4=fastcorner9(Ps4,Pt4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C4_fastcorner9,"Pd4=fastcorner9(Ps4,Pt4)",ATTRIBS(A_CRSLOT23),
 "Determine whether the predicate sources define a corner",
-{   fPREDUSE_TIMING();
+{
 	fHIDE(size4u_t tmp = 0; size4u_t i;)
 	fSETHALF(0,tmp,(PsV<<8)|PtV);
 	fSETHALF(1,tmp,(PsV<<8)|PtV);
@@ -623,10 +606,9 @@ Q6INSN(C4_fastcorner9,"Pd4=fastcorner9(Ps4,Pt4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLO
 	PdV = f8BITSOF(tmp != 0);
 })
 
-Q6INSN(C4_fastcorner9_not,"Pd4=!fastcorner9(Ps4,Pt4)",ATTRIBS(A_CRSLOT23,A_NOTE_CRSLOT23),
+Q6INSN(C4_fastcorner9_not,"Pd4=!fastcorner9(Ps4,Pt4)",ATTRIBS(A_CRSLOT23),
 "Determine whether the predicate sources define a corner",
 {
-    fPREDUSE_TIMING();
 	fHIDE(size4u_t tmp = 0; size4u_t i;)
 	fSETHALF(0,tmp,(PsV<<8)|PtV);
 	fSETHALF(1,tmp,(PsV<<8)|PtV);
