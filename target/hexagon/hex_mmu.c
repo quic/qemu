@@ -372,7 +372,8 @@ bool hex_tlb_find_match(CPUHexagonState *env, target_ulong VA,
                         MMUAccessType access_type, hwaddr *PA, int *prot,
                         int *size, int32_t *excp, int mmu_idx)
 {
-    uint8_t asid = (ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR) & SSR_ASID) >> 8;
+    uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    uint8_t asid = GET_SSR_FIELD(SSR_ASID, ssr);
     int i;
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         uint64_t entry = env->hex_tlb->entries[i];
@@ -417,7 +418,7 @@ static uint32_t hex_tlb_lookup_by_asid(CPUHexagonState *env, uint32_t asid,
 /* Called from tlbp instruction */
 uint32_t hex_tlb_lookup(CPUHexagonState *env, uint32_t ssr, uint32_t VA)
 {
-    return hex_tlb_lookup_by_asid(env, (ssr & SSR_ASID) >> 8, VA);
+    return hex_tlb_lookup_by_asid(env, GET_SSR_FIELD(SSR_ASID, ssr), VA);
 }
 
 static bool hex_tlb_is_match(CPUHexagonState *env,
@@ -514,7 +515,9 @@ void hex_tlb_lock(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_lock: %d\n", env->threadId);
 
-    if (env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_TL) {
+    uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    uint8_t tlb_lock = GET_SYSCFG_FIELD(SYSCFG_TLBLOCK, syscfg);
+    if (tlb_lock) {
         if (env->tlb_lock_state == HEX_LOCK_OWNER) {
             qemu_log_mask(CPU_LOG_MMU, "Already the owner\n");
             return;
@@ -526,7 +529,7 @@ void hex_tlb_lock(CPUHexagonState *env)
     } else {
         qemu_log_mask(CPU_LOG_MMU, "\tAcquired\n");
         env->tlb_lock_state = HEX_LOCK_OWNER;
-        env->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_TL;
+        SET_SYSCFG_FIELD(env, SYSCFG_TLBLOCK, 1);
     }
 
     if (qemu_loglevel_mask(CPU_LOG_MMU)) {
@@ -540,14 +543,16 @@ void hex_tlb_unlock(CPUHexagonState *env)
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_unlock: %d\n", env->threadId);
 
     /* Nothing to do if the TLB isn't locked by this thread */
-    if ((env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_TL) == 0 ||
-         (env->tlb_lock_state != HEX_LOCK_OWNER)) {
+    uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    uint8_t tlb_lock = GET_SYSCFG_FIELD(SYSCFG_TLBLOCK, syscfg);
+    if ((tlb_lock == 0) ||
+            (env->tlb_lock_state != HEX_LOCK_OWNER)) {
         qemu_log_mask(CPU_LOG_MMU, "\tNot owner\n");
         return;
     }
 
     env->tlb_lock_state = HEX_LOCK_UNLOCKED;
-    env->g_sreg[HEX_SREG_SYSCFG] &= ~SYSCFG_TL;
+    SET_SYSCFG_FIELD(env, SYSCFG_TLBLOCK, 0);
 
     /* Look for a thread to unlock */
     unsigned int this_threadId = env->threadId;
@@ -592,7 +597,7 @@ void hex_tlb_unlock(CPUHexagonState *env)
         cs = CPU(hexagon_env_get_cpu(unlock_thread));
         print_thread("\tWaiting thread found", cs);
         unlock_thread->tlb_lock_state = HEX_LOCK_OWNER;
-        unlock_thread->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_TL;
+        SET_SYSCFG_FIELD(unlock_thread, SYSCFG_TLBLOCK, 1);
         cpu_resume(cs);
     }
 

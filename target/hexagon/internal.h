@@ -63,6 +63,6 @@ extern const char * const hexagon_gregnames[];
 extern void init_genptr(void);
 
 #define hexagon_cpu_mmu_enabled(env) \
-    GET_FIELD(SYSCFG_MMUEN, ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG))
+    GET_SYSCFG_FIELD(SYSCFG_MMUEN, ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG))
 
 #endif

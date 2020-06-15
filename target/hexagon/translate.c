@@ -17,7 +17,6 @@
 
 #define QEMU_GENERATE
 #include "qemu/osdep.h"
-#include "cpu.h"
 #include "tcg/tcg-op.h"
 #include "exec/cpu_ldst.h"
 #include "exec/log.h"
@@ -27,6 +26,7 @@
 #include "decode.h"
 #include "translate.h"
 #include "printinsn.h"
+#include "cpu.h"
 
 TCGv hex_gpr[TOTAL_PER_THREAD_REGS];
 TCGv hex_pred[NUM_PREGS];

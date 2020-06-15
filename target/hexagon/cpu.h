@@ -21,6 +21,7 @@
 /* Forward declaration needed by some of the header files */
 typedef struct CPUHexagonState CPUHexagonState;
 #ifndef CONFIG_USER_ONLY
+#include "reg_fields.h"
 typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #endif
 
@@ -120,54 +121,6 @@ typedef struct {
 
 /* This needs to be large enough for all the reads and writes in a packet */
 #define TEMP_VECTORS_MAX        25
-
-enum {
-  SYSCFG_M       = 1u << 0,
-  SYSCFG_I       = 1u << 1,
-  SYSCFG_D       = 1u << 2,
-  SYSCFG_T       = 1u << 3,
-  SYSCFG_G       = 1u << 4,
-  SYSCFG_R       = 1u << 5,
-  SYSCFG_C       = 1u << 6,
-  SYSCFG_V2X     = 1u << 7,
-  SYSCFG_IDA     = 1u << 8,
-  SYSCFG_PM      = 1u << 9,
-  SYSCFG_TL      = 1u << 11,
-  SYSCFG_KL      = 1u << 12,
-  SYSCFG_BQ      = 1u << 13,
-  SYSCFG_PRIO    = 1u << 14,
-  SYSCFG_DMT     = 1u << 15,
-  SYSCFG_L2CFG   = 7u << 16,
-  SYSCFG_ITCM    = 1u << 19,
-  SYSCFG_CCE     = 1u << 20,
-  SYSCFG_L2NWA   = 1u << 21,
-  SYSCFG_L2NRA   = 1u << 22,
-  SYSCFG_L2WB    = 1u << 23,
-  SYSCFG_L2P     = 1u << 24,
-  SYSCFG_SLVCTL0 = 3u << 25,
-  SYSCFG_SLVCTL1 = 3u << 27,
-  SYSCFG_L2PART  = 3u << 29,
-  SYSCFG_L2GCA   = 1u << 31,
-};
-
-enum {
-  SSR_CAUSE = 0xFFu << 0,
-  SSR_ASID  = 0x7Fu << 8,
-  SSR_UM    = 1u << 16,
-  SSR_EX    = 1u << 17,
-  SSR_IE    = 1u << 18,
-  SSR_GM    = 1u << 19,
-  SSR_V0    = 1u << 20,
-  SSR_V1    = 1u << 21,
-  SSR_BVS   = 1u << 22,
-  SSR_CE    = 1u << 23,
-  SSR_PE    = 1u << 24,
-  SSR_BP    = 1u << 25,
-  SSR_XE2   = 1u << 26,
-  SSR_XA    = 7u << 27,
-  SSR_SS    = 1u << 30,
-  SSR_XE    = 1u << 31,
-};
 
 #ifndef CONFIG_USER_ONLY
 typedef enum {
@@ -310,83 +263,6 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
 #ifndef CONFIG_USER_ONLY
 
-#define GET_SSR_FIELD(BIT) (ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR) & (BIT))
-static inline int sys_in_monitor_mode(CPUHexagonState *env)
-{
-    return ((GET_SSR_FIELD(SSR_UM) == 0)
-         || (GET_SSR_FIELD(SSR_EX) != 0));
-}
-
-static inline int sys_in_guest_mode(CPUHexagonState *env)
-{
-  if (sys_in_monitor_mode(env)) return 0;
-
-  if (GET_SSR_FIELD(SSR_GM)) return 1;
-  else return 0;
-}
-
-static inline int sys_in_user_mode(CPUHexagonState *env)
-{
-  if (sys_in_monitor_mode(env)) return 0;
-  if (GET_SSR_FIELD(SSR_GM)) return 0;
-  else return 1;
-}
-
-static inline int get_cpu_mode(CPUHexagonState *env)
-
-{
-  // from table 4-2
-
-  if (GET_SSR_FIELD(SSR_EX)) {
-    return HEX_CPU_MODE_MONITOR;
-  } else if (GET_SSR_FIELD(SSR_GM) && GET_SSR_FIELD(SSR_UM)) {
-    return HEX_CPU_MODE_GUEST;
-  } else if (GET_SSR_FIELD(SSR_UM)) {
-    return HEX_CPU_MODE_USER;
-  }
-  return HEX_CPU_MODE_MONITOR;
-}
-
-static inline int get_exe_mode(CPUHexagonState *env)
-{
-    target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-    bool E_bit = (modectl >> env->threadId) & 0x1;
-    bool w_bit = (modectl >> (env->threadId + 16)) & 0x1;
-    target_ulong isdbst = env->g_sreg[HEX_SREG_ISDBST];
-    bool D_bit = (isdbst >> (env->threadId + 8)) & 0x1;
-
-    /* Figure 4-2 */
-    if (!D_bit && !w_bit && !E_bit) {
-        return HEX_EXE_MODE_OFF;
-    }
-    if (!D_bit && !w_bit && E_bit) {
-        return HEX_EXE_MODE_RUN;
-    }
-    if (!D_bit && w_bit && E_bit) {
-        return HEX_EXE_MODE_WAIT;
-    }
-    if (D_bit && !w_bit && E_bit) {
-        return HEX_EXE_MODE_DEBUG;
-    }
-    g_assert_not_reached();
-}
-
-static inline unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
-{
-  if (!(ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG) & SYSCFG_M)) {
-    return MMU_KERNEL_IDX;
-  }
-
-  int cpu_mode = get_cpu_mode(env);
-  if (cpu_mode == HEX_CPU_MODE_MONITOR) {
-    return MMU_KERNEL_IDX;
-  }
-  else if (cpu_mode == HEX_CPU_MODE_GUEST) {
-    return MMU_GUEST_IDX;
-  }
-
-  return MMU_USER_IDX;
-}
 #endif
 
 typedef struct CPUHexagonState CPUArchState;

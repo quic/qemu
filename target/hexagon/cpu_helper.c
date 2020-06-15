@@ -237,13 +237,9 @@ int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
 void hexagon_wait_thread(CPUHexagonState *env)
 
 {
-    HEX_DEBUG_LOG("%s: before modectl 0x%x\n", __FUNCTION__,
-        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL));
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL,
         ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL) |
             (0x1 << (env->threadId+16)));
-    HEX_DEBUG_LOG("%s: after modectl 0x%x\n", __FUNCTION__,
-        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL));
     cpu_stop_current();
 }
 
@@ -280,11 +276,8 @@ void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
             // this thread not currently in wait mode
             continue;
         }
-        HEX_DEBUG_LOG("%s: before modectl 0x%x\n", __FUNCTION__, modectl);
         modectl &= ~(0x1 << (env->threadId+16));
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL, modectl);
-        HEX_DEBUG_LOG("%s: after modectl 0x%x\n", __FUNCTION__,
-            ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL));
 
         cs = env_cpu(env);
         cs->exception_index = HEX_EVENT_NONE;
@@ -333,8 +326,8 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
                 __FUNCTION__, cpu, env->threadId);
         }
 
-        ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR,
-            SSR_EX | (HEX_EVENT_RESET & (SSR_CAUSE)));
+        SET_SSR_FIELD(env, SSR_EX, 1);
+        SET_SSR_FIELD(env, SSR_CAUSE, 0);
 
         target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
         #if HEX_DEBUG
@@ -378,4 +371,84 @@ void hexagon_stop_thread(CPUHexagonState *env)
     cpu_stop_current();
 }
 
+int sys_in_monitor_mode(CPUHexagonState *env)
+{
+    uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    return ((GET_SSR_FIELD(SSR_UM, ssr) == 0)
+         || (GET_SSR_FIELD(SSR_EX, ssr) != 0));
+}
+
+int sys_in_guest_mode(CPUHexagonState *env)
+{
+    if (sys_in_monitor_mode(env)) return 0;
+    uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    if (GET_SSR_FIELD(SSR_GM, ssr)) return 1;
+    else return 0;
+}
+
+int sys_in_user_mode(CPUHexagonState *env)
+{
+    if (sys_in_monitor_mode(env)) return 0;
+    uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    if (GET_SSR_FIELD(SSR_GM, ssr)) return 0;
+    else return 1;
+}
+
+int get_cpu_mode(CPUHexagonState *env)
+
+{
+  // from table 4-2
+  uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+  if (GET_SSR_FIELD(SSR_EX, ssr)) {
+    return HEX_CPU_MODE_MONITOR;
+  } else if (GET_SSR_FIELD(SSR_GM, ssr) && GET_SSR_FIELD(SSR_UM, ssr)) {
+    return HEX_CPU_MODE_GUEST;
+  } else if (GET_SSR_FIELD(SSR_UM, ssr)) {
+    return HEX_CPU_MODE_USER;
+  }
+  return HEX_CPU_MODE_MONITOR;
+}
+
+int get_exe_mode(CPUHexagonState *env)
+{
+    target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    bool E_bit = (modectl >> env->threadId) & 0x1;
+    bool w_bit = (modectl >> (env->threadId + 16)) & 0x1;
+    target_ulong isdbst = ARCH_GET_SYSTEM_REG(env, HEX_SREG_ISDBST);
+    bool D_bit = (isdbst >> (env->threadId + 8)) & 0x1;
+
+    /* Figure 4-2 */
+    if (!D_bit && !w_bit && !E_bit) {
+        return HEX_EXE_MODE_OFF;
+    }
+    if (!D_bit && !w_bit && E_bit) {
+        return HEX_EXE_MODE_RUN;
+    }
+    if (!D_bit && w_bit && E_bit) {
+        return HEX_EXE_MODE_WAIT;
+    }
+    if (D_bit && !w_bit && E_bit) {
+        return HEX_EXE_MODE_DEBUG;
+    }
+    g_assert_not_reached();
+}
+
+unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
+{
+    uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    uint8_t mmuen = GET_SYSCFG_FIELD(SYSCFG_MMUEN, syscfg);
+    if (!mmuen) {
+      return MMU_KERNEL_IDX;
+    }
+
+    int cpu_mode = get_cpu_mode(env);
+    if (cpu_mode == HEX_CPU_MODE_MONITOR) {
+      return MMU_KERNEL_IDX;
+    }
+    else if (cpu_mode == HEX_CPU_MODE_GUEST) {
+      return MMU_GUEST_IDX;
+    }
+
+    return MMU_USER_IDX;
+}
 #endif

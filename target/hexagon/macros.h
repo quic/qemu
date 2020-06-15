@@ -555,9 +555,23 @@
 #define PCALIGN 4
 #define PCALIGN_MASK (PCALIGN - 1)
 
-#define GET_FIELD(FIELD, REGIN) \
+#define GET_FIELD(FIELD,REGIN) \
     fEXTRACTU_BITS(REGIN, reg_field_info[FIELD].width, \
                    reg_field_info[FIELD].offset)
+#define GET_SSR_FIELD(FIELD,REGIN) \
+    (uint32_t)GET_FIELD(FIELD, REGIN)
+#define GET_SYSCFG_FIELD(FIELD,REGIN) \
+    (uint32_t)GET_FIELD(FIELD, REGIN)
+#define SET_SYSTEM_FIELD(ENV,REG,FIELD,VAL) do {\
+        uint32_t regval = ARCH_GET_SYSTEM_REG(ENV, REG); \
+        fINSERT_BITS(regval,reg_field_info[FIELD].width, \
+                     reg_field_info[FIELD].offset,(VAL)); \
+        ARCH_SET_SYSTEM_REG(ENV, REG, regval); \
+    } while (0)
+#define SET_SSR_FIELD(ENV,FIELD,VAL) \
+    SET_SYSTEM_FIELD(ENV,HEX_SREG_SSR,FIELD,VAL)
+#define SET_SYSCFG_FIELD(ENV,FIELD,VAL) \
+    SET_SYSTEM_FIELD(ENV,HEX_SREG_SYSCFG,FIELD,VAL)
 
 #ifdef QEMU_GENERATE
 #define GET_USR_FIELD(FIELD, DST) \
@@ -1648,19 +1662,13 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define fDCZEROA(REG) tcg_gen_mov_tl(hex_dczero_addr, (REG))
-#define fCLEAR_RTE_EX() \
-    do { \
-        TCGv tmp = tcg_temp_new(); \
-        fREAD_SSR(); \
-        tcg_gen_andi_tl(tmp, tmp, ~(SSR_EX)) \
-        fWRITE_SSR(tmp);  \
-    } while (0)
 #else
 #define fDCZEROA(REG) do { REG = REG; g_assert_not_reached(); } while (0)
 #define fCLEAR_RTE_EX() \
     do { \
-        uint32_t tmp = fREAD_SSR(); \
-        tmp &= ~(SSR_EX); \
+        SET_SSR_FIELD(env, SSR_EX, 0); \
+        uint32_t tmp = 0; \
+        tmp = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR); \
         fWRITE_SSR(tmp);  \
     } while (0)
 #endif

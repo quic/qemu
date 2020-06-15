@@ -654,8 +654,8 @@ MERGE_INFLIGHT(merge_inflight_store8u, int64_t, int64_t,  int64_t, 8)
 #ifndef CONFIG_USER_ONLY
 void HELPER(modify_syscfg)(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
-    target_ulong old_mmu_enable = GET_FIELD(SYSCFG_MMUEN, old);
-    target_ulong new_mmu_enable = GET_FIELD(SYSCFG_MMUEN, new);
+    target_ulong old_mmu_enable = GET_SYSCFG_FIELD(SYSCFG_MMUEN, old);
+    target_ulong new_mmu_enable = GET_SYSCFG_FIELD(SYSCFG_MMUEN, new);
     if (new_mmu_enable && !old_mmu_enable) {
         hex_mmu_on(env);
     } else if (!new_mmu_enable && old_mmu_enable) {
@@ -665,13 +665,12 @@ void HELPER(modify_syscfg)(CPUHexagonState *env, uint32_t new, uint32_t old)
 
 void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
-    /* FIXME - Change these to GET_FIELD */
-    target_ulong old_EX = old & SSR_EX;
-    target_ulong old_UM = old & SSR_UM;
-    target_ulong old_GM = old & SSR_GM;
-    target_ulong new_EX = new & SSR_EX;
-    target_ulong new_UM = new & SSR_UM;
-    target_ulong new_GM = new & SSR_GM;
+    target_ulong old_EX = GET_SSR_FIELD(SSR_EX, old);
+    target_ulong old_UM = GET_SSR_FIELD(SSR_UM, old);
+    target_ulong old_GM = GET_SSR_FIELD(SSR_GM, old);
+    target_ulong new_EX = GET_SSR_FIELD(SSR_EX, new);
+    target_ulong new_UM = GET_SSR_FIELD(SSR_UM, new);
+    target_ulong new_GM = GET_SSR_FIELD(SSR_GM, new);
 
     if ((old_EX != new_EX) ||
         (old_UM != new_UM) ||
@@ -680,8 +679,8 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
     }
 
     /* FIXME - Change these to GET_FIELD */
-    uint8_t old_asid = (old & SSR_ASID) >> 8;
-    uint8_t new_asid = (new & SSR_ASID) >> 8;
+    uint8_t old_asid = GET_SSR_FIELD(SSR_ASID, old);
+    uint8_t new_asid = GET_SSR_FIELD(SSR_ASID, new);
     if (new_asid != old_asid) {
         CPUState *cs = CPU(hexagon_env_get_cpu(env));
         tlb_flush(cs);
@@ -814,7 +813,8 @@ static void hex_k0_lock(CPUHexagonState *env)
     HEX_DEBUG_LOG("Before hex_k0_lock: %d\n", env->threadId);
     print_thread_states("\tThread");
 
-    if (env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_KL) {
+    uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    if (GET_SYSCFG_FIELD(SYSCFG_K0LOCK, syscfg)) {
         if (env->k0_lock_state == HEX_LOCK_OWNER) {
             HEX_DEBUG_LOG("Already the owner\n");
             return;
@@ -826,7 +826,7 @@ static void hex_k0_lock(CPUHexagonState *env)
     } else {
         HEX_DEBUG_LOG("\tAcquired\n");
         env->k0_lock_state = HEX_LOCK_OWNER;
-        env->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_KL;
+        SET_SYSCFG_FIELD(env, SYSCFG_K0LOCK, 1);
     }
 
     HEX_DEBUG_LOG("After hex_k0_lock: %d\n", env->threadId);
@@ -839,14 +839,15 @@ static void hex_k0_unlock(CPUHexagonState *env)
     print_thread_states("\tThread");
 
     /* Nothing to do if the k0 isn't locked by this thread */
-    if ((env->g_sreg[HEX_SREG_SYSCFG] & SYSCFG_KL) == 0 ||
+    uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    if ((GET_SYSCFG_FIELD(SYSCFG_K0LOCK, syscfg) == 0) ||
          (env->k0_lock_state != HEX_LOCK_OWNER)) {
         HEX_DEBUG_LOG("\tNot owner\n");
         return;
     }
 
     env->k0_lock_state = HEX_LOCK_UNLOCKED;
-    env->g_sreg[HEX_SREG_SYSCFG] &= ~SYSCFG_KL;
+    SET_SYSCFG_FIELD(env, SYSCFG_K0LOCK, 0);
 
     /* Look for a thread to unlock */
     unsigned int this_threadId = env->threadId;
@@ -891,7 +892,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
         cs = CPU(hexagon_env_get_cpu(unlock_thread));
         print_thread("\tWaiting thread found", cs);
         unlock_thread->k0_lock_state = HEX_LOCK_OWNER;
-        unlock_thread->g_sreg[HEX_SREG_SYSCFG] |= SYSCFG_KL;
+        SET_SYSCFG_FIELD(unlock_thread, SYSCFG_K0LOCK, 1);
         cpu_resume(cs);
     }
 

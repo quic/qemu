@@ -155,11 +155,11 @@ DEF_REG_FIELD(PTE_V,
     "V", 63, 1,
     "Valid bit. indicates whether this entry should be used for matching.")
 
+#if 1
 /* SYSCFG fields */
 DEF_REG_FIELD(SYSCFG_MMUEN,
     "MMUEN", 0, 1,
     "read-write bit that enables the MMU.")
-#ifdef FIXME  /* FIXME - convert all the SYSCFG references to use this */
 DEF_REG_FIELD(SYSCFG_ICEN,
     "ICEN", 1, 1,
     "read-write bit that enables the instruction cache.")
@@ -237,7 +237,6 @@ DEF_REG_FIELD(SYSCFG_L2GCA,
     "Indicates that an L2 Global Cacheop is active.")
 #endif
 
-#ifdef FIXME
 /* SSR fields */
 DEF_REG_FIELD(SSR_CAUSE,
     "cause", 0, 8,
@@ -284,4 +283,3 @@ DEF_REG_FIELD(SSR_SS,
 DEF_REG_FIELD(SSR_XE,
     "xe", 31, 1,
     "Coprocessor Enable, which enables use of an attached coprocessor.")
-#endif

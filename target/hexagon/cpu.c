@@ -178,7 +178,8 @@ static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
 static target_ulong get_badva(CPUHexagonState *env)
 
 {
-  if (ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR) & SSR_BVS) {
+  target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+  if (GET_SSR_FIELD(SSR_BVS, ssr)) {
       return ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA1);
   }
   else {
@@ -258,7 +259,8 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     fprintf(f, "  cs0 = 0x00000000\n");
     fprintf(f, "  cs1 = 0x00000000\n");
 #else
-    print_val(f, "cause", ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR) & SSR_CAUSE);
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    print_val(f, "cause", GET_SSR_FIELD(SSR_CAUSE, ssr));
     print_sreg(f, env, get_badva(env));
     print_reg(f, env, HEX_REG_CS0);
     print_reg(f, env, HEX_REG_CS1);

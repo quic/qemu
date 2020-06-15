@@ -49,4 +49,10 @@ extern void hexagon_resume_threads(CPUHexagonState *env, uint32_t mask);
 extern void hexagon_start_threads(CPUHexagonState *env, uint32_t mask);
 extern void hexagon_stop_thread(CPUHexagonState *env);
 
+extern int sys_in_monitor_mode(CPUHexagonState *env);
+extern int sys_in_guest_mode(CPUHexagonState *env);
+extern int sys_in_user_mode(CPUHexagonState *env);
+extern int get_cpu_mode(CPUHexagonState *env);
+extern int get_exe_mode(CPUHexagonState *env);
+extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #endif

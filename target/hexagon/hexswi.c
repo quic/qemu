@@ -108,6 +108,7 @@ static int MapError(int ERR)
 static int sim_handle_trap_functional(CPUHexagonState *env)
 
 {
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     target_ulong what_swi = ARCH_GET_THREAD_REG(env, HEX_REG_R00);
     target_ulong swi_info = ARCH_GET_THREAD_REG(env, HEX_REG_R01);
     int i = 0, c;
@@ -467,7 +468,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
   case SYS_COREDUMP:
       printf("CRASH!\n");
       printf("I think the exception was: ");
-      switch (0x0ff & ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR)) {
+      switch (GET_SSR_FIELD(SSR_CAUSE, ssr)) {
       case 0x43:
           printf("0x43, NMI");
           break;
@@ -773,9 +774,8 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
 static void ssr_set_cause(CPUHexagonState *env, int exception_index)
 
 {
-    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    ssr = (ssr & (~SSR_CAUSE)) | exception_index;
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR, ssr | SSR_EX);
+    SET_SSR_FIELD(env, SSR_EX, 1);
+    SET_SSR_FIELD(env, SSR_CAUSE, exception_index);
 }
 
 void hexagon_cpu_do_interrupt(CPUState *cs)
