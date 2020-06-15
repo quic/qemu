@@ -19,20 +19,21 @@
 
 
 #include "qemu/osdep.h"
-#include "qemu/units.h"
-#include "qapi/error.h"
-#include "cpu.h"
-#include "sysemu/cpus.h"
-#include "net/net.h"
-#include "hw/boards.h"
-#include "hw/loader.h"
 #include "exec/address-spaces.h"
-#include "elf.h"
+#include "hw/boards.h"
 #include "hw/hexagon/hexagon.h"
+#include "hw/loader.h"
+#include "hw/timer/qtimer.h"
+#include "net/net.h"
+#include "qapi/error.h"
 #include "qemu/error-report.h"
 #include "qemu/log.h"
-#include "internal.h"
+#include "qemu/units.h"
+#include "sysemu/cpus.h"
+#include "elf.h"
+#include "cpu.h"
 #include "hex_mmu.h"
+#include "internal.h"
 
 static const struct MemmapEntry {
     hwaddr base;
@@ -46,7 +47,7 @@ static const struct MemmapEntry {
         [HEXAGON_TCM] = { 0xd8400000, 0x100000 },
         [HEXAGON_CSR1] = { 0xfab00000, 0x0 },
         [HEXAGON_L2VIC] = { 0xfab10000, 0x0 },
-        [HEXAGON_QTMR] = { 0xfab20000, 0x0 },
+        [HEXAGON_QTMR] = { 0xfab20000, QTIMER_MEM_REGION_SIZE_BYTES },
         [HEXAGON_CSR2] = { 0xfab40000, 0x0 },
         [HEXAGON_QTMR2] = { 0xfab60000, 0x0 },
 };
@@ -72,13 +73,23 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     env->gpr[HEX_REG_PC] = pentry;
 }
 
-static void hexagonboard_qtimer_init(hwaddr base, qemu_irq irq,
-                                     uint32_t region_size)
+static void hexagonboard_qtimer_init(MachineState *machine, hwaddr base)
 {
     DeviceState *dev = qdev_create(NULL, "Qtimer");
 
     qdev_init_nofail(dev);
-    // TODO: implement this
+#if 0
+    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 0,
+                           qdev_get_gpio_in(machine, HEX_EVENT_INT0));
+    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 1,
+                           qdev_get_gpio_in(machine, HEX_EVENT_INT1));
+    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 2,
+                           qdev_get_gpio_in(machine, HEX_EVENT_INT2));
+    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 3,
+                           qdev_get_gpio_in(machine, HEX_EVENT_INT3));
+#endif
+
+    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, base);
 }
 
 
@@ -157,37 +168,10 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     rom_add_blob_fixed_as("config_table.rom", &config_table, sizeof(config_table),
         memmap[HEXAGON_CONFIG_TABLE].base, &address_space_memory);
 
-#if 0
-    hexagonboard_qtimer_init(memmap[HEXAGON_QTMR].base,
-            0, 0x0);
-#else
-    (void)hexagonboard_qtimer_init;
-#endif
+    hexagonboard_qtimer_init(machine, memmap[HEXAGON_QTMR].base);
 
     hexagon_binfo.ram_size = machine->ram_size;
     hexagon_binfo.kernel_filename = machine->kernel_filename;
-
-#if 0
-    printf("config_table.thread_enable_mask = 0x%x\n",
-        config_table.thread_enable_mask);
-    printf(
-        "config_table.coproc_present @0x%lx\n"
-        "config_table.ext_contexts @0x%lx\n"
-        "config_table.l2tcm_base @0x%lx\n"
-        "config_table.vtcm_base @0x%lx\n"
-        "config_table.v2x_mode @0x%lx\n"
-        "config_table.hvx_vec_log_length @0x%lx\n"
-        "config_table.axi3_lowaddr @0x%lx\n"
-            ,
-        offsetof(struct hexagon_config_table,coproc_present),
-        offsetof(struct hexagon_config_table,ext_contexts),
-        offsetof(struct hexagon_config_table,l2tcm_base),
-        offsetof(struct hexagon_config_table,vtcm_base),
-        offsetof(struct hexagon_config_table,v2x_mode),
-        offsetof(struct hexagon_config_table,hvx_vec_log_length),
-        offsetof(struct hexagon_config_table,axi3_lowaddr)
-        );
-#endif
 
     env->cmdline = machine->kernel_cmdline;
 
@@ -204,7 +188,6 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
 }
 
 static void hexagonboard_init(MachineState *machine)
-
 {
     printf("%s\n", __FUNCTION__);
     hexagon_testboard_init(machine, 845);

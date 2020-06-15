@@ -1,5 +1,5 @@
 /*
- * Qualcomm QCT QTimer
+ * Qualcomm QCT QTimer, L2VIC
  *
  *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
@@ -22,66 +22,56 @@
 #include "hw/irq.h"
 #include "hw/qdev-properties.h"
 #include "hw/sysbus.h"
+#include "hw/timer/qtimer.h"
 #include "migration/vmstate.h"
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/timer.h"
 #include "sysemu/runstate.h"
 
-#define TYPE_Q_TIMER "Qtimer"
-#define Q_TIMER(obj) OBJECT_CHECK(QTimerInfo, (obj), TYPE_Q_TIMER)
+
+/*
+ * QTimer provides an array of timers that have a common frequency
+ */
 
 #define QTIMER_DEFAULT_MAJOR_VER 1
 #define QTIMER_DEFAULT_MINOR_VER 0
+
+/* QTimer freq from reset
+ * TODO: HW docs say 0 but does that match sim?
+ */
+#define QTIMER_DEFAULT_FREQ_HZ 19200000ULL
+#define QTIMER_COUNT_MAX (0xffffffffffffffffULL)
+
 
 #define QTMR_AC_CNTACR (0x40)
 #define QTMR_TIMER_INDEX_MASK (0xf000)
 
 #define QTMR_CNTPCT_LO (0x000)
-#define QTMR_CNTPC1_HI (0x004)
+#define QTMR_CNTPCT_HI (0x004)
 #define QTMR_CNTP_CVAL_LO (0x020)
 #define QTMR_CNTP_CVAL_HI (0x024)
 #define QTMR_CNTP_TVAL (0x028)
 #define QTMR_CNTP_CTL (0x02c)
 
-#define MAX_TIMERS 4
-
-typedef struct QTimerInfo QTimerInfo;
-
-typedef struct {
-    qemu_irq irq;
-    QEMUTimer *timer;
-    uint32_t index;
-    QTimerInfo *info;
-} QTimer;
-
-
-struct QTimerInfo {
-    SysBusDevice parent_obj;
-
-    MemoryRegion iomem;
-
-    QTimer timers[MAX_TIMERS];
-    uint32_t irq_enabled_mask;
-    uint32_t major_ver;
-    uint32_t minor_ver;
-};
-
-static void qtimer_update(void *opaque, uint64_t now_qemu)
-{
-}
+#define HIGH_32(val) (0x0ffffffffULL & (val >> 32))
+#define LOW_32(val) (0x0ffffffffULL & val)
 
 static uint64_t Q_timer_read(void *opaque, hwaddr offset, unsigned size)
 {
     QTimerInfo *s = (QTimerInfo *)opaque;
 
     const int32_t timer_index = QTMR_TIMER_INDEX_MASK & offset;
-    if (timer_index > MAX_TIMERS)
+    if (timer_index > s->timer_count)
         goto badreg;
+    ptimer_state *timer = s->timers[timer_index].timer;
     offset = ~(QTMR_TIMER_INDEX_MASK)&offset;
+
     switch (offset) {
     case QTMR_CNTPCT_LO:
-    case QTMR_CNTPC1_HI:
+        return LOW_32(ptimer_get_count(timer));
+    case QTMR_CNTPCT_HI:
+        return HIGH_32(ptimer_get_count(timer));
     case QTMR_CNTP_CVAL_LO:
     case QTMR_CNTP_CVAL_HI:
     case QTMR_CNTP_TVAL:
@@ -111,17 +101,33 @@ static void Q_timer_write(void *opaque, hwaddr offset, uint64_t value,
     QTimerInfo *s = (QTimerInfo *)opaque;
 
     const int32_t timer_index = QTMR_TIMER_INDEX_MASK & offset;
-    if (timer_index > MAX_TIMERS)
+    if (timer_index > s->timer_count)
         goto badreg;
 
+    ptimer_state *timer = s->timers[timer_index].timer;
     offset = ~(QTMR_TIMER_INDEX_MASK)&offset;
     switch (offset) {
     case QTMR_CNTPCT_LO:
-    case QTMR_CNTPC1_HI:
+    case QTMR_CNTPCT_HI:
+        qemu_log_mask(
+            LOG_GUEST_ERROR,
+            "%s: attempted write to read-only register 0x%02" HWADDR_PRIx " "
+            "(value 0x%08" PRIx64 ")\n",
+            __func__, offset, value);
+        break;
+
+    case QTMR_CNTP_CTL:
+        if ((value & 0x01) != 0) { /* Enable bit */
+            ptimer_transaction_begin(timer);
+            ptimer_set_count(timer, QTIMER_COUNT_MAX);
+            ptimer_run(timer, 0);
+            ptimer_transaction_commit(timer);
+        }
+        break;
+
     case QTMR_CNTP_CVAL_LO:
     case QTMR_CNTP_CVAL_HI:
     case QTMR_CNTP_TVAL:
-    case QTMR_CNTP_CTL:
     case QTMR_AC_CNTACR:
         (void)s;
         fprintf(stderr, "QTimer not yet implemented\n");
@@ -146,14 +152,14 @@ static const MemoryRegionOps Q_timer_ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
-static void qtimer_tick(void *opaque)
+static void qtimer_expired(void *opaque)
 {
-    const QTimer *t = (QTimer *)opaque;
+    const QTimer *t = opaque;
     QTimerInfo *i = t->info;
 
     if (i->irq_enabled_mask & (1 << t->index)) {
         //      i->events |= 1 << t->index;
-        qemu_irq_raise(t->irq);
+        qemu_irq_pulse(t->irq);
     }
 }
 
@@ -170,8 +176,8 @@ static void Q_timer_init(Object *obj)
     s->major_ver = 0;
     s->minor_ver = 0;
     s->irq_enabled_mask = 0; // TODO: this is in L2VIC instead?
-    memory_region_init_io(&s->iomem, obj, &Q_timer_ops, s, "Q-timer",
-                          0x00001000);
+    memory_region_init_io(&s->iomem, OBJECT(s), &Q_timer_ops, s, "Q-timer",
+                          QTIMER_MEM_REGION_SIZE_BYTES);
     sysbus_init_mmio(dev, &s->iomem);
 }
 
@@ -181,14 +187,19 @@ static void Q_timer_realize(DeviceState *dev, Error **errp)
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
     int i;
 
-    for (i = 0; i < MAX_TIMERS; i++) {
-        sysbus_init_irq(sbd, &s->timers[i].irq);
+    s->timer_count = QTIMER_MAX_TIMERS;
+    for (i = 0; i < s->timer_count; i++) {
         s->timers[i].info = s;
         s->timers[i].index = i;
         s->timers[i].timer =
-            timer_new_ns(QEMU_CLOCK_VIRTUAL, qtimer_tick, &s->timers[i]);
+            ptimer_init(qtimer_expired, &(s->timers[i]), PTIMER_POLICY_DEFAULT);
+        ptimer_transaction_begin(s->timers[i].timer);
+        ptimer_set_freq(s->timers[i].timer, QTIMER_DEFAULT_FREQ_HZ);
+        ptimer_transaction_commit(s->timers[i].timer);
+
+        sysbus_init_irq(sbd, &(s->timers[i].irq));
+        qdev_init_gpio_out(dev, &(s->timers[i].irq), i);
     }
-    (void)qtimer_update;
 }
 
 static const VMStateDescription vmstate_Q_timer_regs = {
@@ -196,10 +207,7 @@ static const VMStateDescription vmstate_Q_timer_regs = {
     .version_id = 1,
     .minimum_version_id = 1,
     .post_load = qtimer_post_load,
-    .fields =
-        (VMStateField[]){
-            VMSTATE_END_OF_LIST(),
-        }
+    .fields = (VMStateField[]){ VMSTATE_END_OF_LIST() }
 };
 
 static Property qtimer_dev_properties[] = {
@@ -239,7 +247,7 @@ static const TypeInfo Q_timer_type_info = {
     .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(QTimerInfo),
     .instance_init = Q_timer_init,
-    .abstract = true,
+    .abstract = false,
     .class_init = Q_timer_class_init,
 };
 
