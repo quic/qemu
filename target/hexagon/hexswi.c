@@ -870,6 +870,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
           break;
 
       case HEX_CAUSE_PRIV_USER_NO_SINSN:
+      case HEX_CAUSE_INVALID_OPCODE:
           ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
               ARCH_GET_THREAD_REG(env, HEX_REG_PC));
           ssr_set_cause(env, cs -> exception_index);

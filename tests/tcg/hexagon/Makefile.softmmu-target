@@ -16,6 +16,7 @@ TESTS += \
 	mmu_test \
 	tlblock \
 	k0lock \
+        invalid_opcode \
 	$()
 
 CRT_OBJS=boot.o
@@ -38,6 +39,8 @@ mmu_test: $(HEXAGON_SYSTEM_SRC)/mmu_test.c $(HEXAGON_SYSTEM_SRC)/dummy_mutex.S
 tlblock: $(HEXAGON_SYSTEM_SRC)/tlblock.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 k0lock: $(HEXAGON_SYSTEM_SRC)/k0lock.c
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
+invalid_opcode: $(HEXAGON_SYSTEM_SRC)/invalid_opcode.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 
 # Specific Test Rules
