@@ -73,7 +73,7 @@ void inc_elr(uint32_t inc)
 
 void invalid_opcode(void)
 {
-    asm volatile (".word 0x55e0c000\n\t");
+    asm volatile (".word 0x6f66666c\n\t");
 }
 
 void do_coredump(void)
