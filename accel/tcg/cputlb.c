@@ -1423,6 +1423,19 @@ static void io_writex(CPUArchState *env, CPUIOTLBEntry *iotlbentry,
         qemu_mutex_lock_iothread();
         locked = true;
     }
+
+    /*
+     * Sometimes, a dmi region is installed between the moment qemu determines
+     * the access is an IO, and the moment it gets the corresponding MR.
+     * In such a case, we end up here with a ram mr that does not support IO,
+     * which causes a transaction fail (and a DATA_ABORT on the cpu).
+     * Prevent this by copying parent (cpu) ops to dmi region ops.
+     */
+    if (mr->ram && !mr->opaque && !strcmp(mr->name, "dmi")) {
+        mr->ops = mr->container->ops;
+        mr->opaque = mr->container->opaque;
+    }
+
     MemTxAttrs attrs = iotlbentry->attrs;
     attrs.exclusive = exclusive;
     r = memory_region_dispatch_write(mr, mr_offset, val, op, attrs);
