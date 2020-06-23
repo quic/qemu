@@ -315,10 +315,12 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
 #endif
 }
 
+#ifndef CONFIG_USER_ONLY
 static const VMStateDescription vmstate_hexagon_cpu = {
     .name = "cpu",
     .unmigratable = 1,
 };
+#endif
 
 static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 {
@@ -345,8 +347,11 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
     cc->tcg_initialize = hexagon_translate_init;
     cc->tlb_fill = hexagon_tlb_fill;
 #endif
+
+#ifndef CONFIG_USER_ONLY
     /* For now, mark unmigratable: */
     cc->vmsd = &vmstate_hexagon_cpu;
+#endif
 }
 
 #define DEFINE_CPU(type_name, initfn)      \
