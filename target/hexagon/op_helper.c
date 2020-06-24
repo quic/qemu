@@ -37,7 +37,7 @@ typedef struct {
 } helper_count_t;
 
 helper_count_t helper_counts[] = {
-#define OPCODE(TAG)    { 0, #TAG },
+#define OPCODE(TAG)    { 0, #TAG }
 #include "opcodes_def_generated.h"
 #undef OPCODE
     { 0, NULL }
