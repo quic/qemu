@@ -21,8 +21,7 @@
  * preprocessor to manipulate the files imported from the Hexagon
  * architecture library.
  */
-#include <stdio.h>
-#include <string.h>
+#include "qemu/osdep.h"
 #include "opcodes.h"
 
 #define STRINGIZE(X)    #X
@@ -34,7 +33,7 @@ const char *opcode_names[] = {
 #undef OPCODE
 };
 
-char *opcode_syntax[XX_LAST_OPCODE];
+const char *opcode_syntax[XX_LAST_OPCODE];
 
 /*
  * Process the instruction definitions
@@ -48,7 +47,7 @@ char *opcode_syntax[XX_LAST_OPCODE];
  *         "Insert Word Scalar into Vector",
  *         VxV.uw[0] = RtV;)
  */
-void opcode_init()
+void opcode_init(void)
 {
 #define Q6INSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
    opcode_syntax[TAG] = BEH;
@@ -115,7 +114,7 @@ static const char *get_opcode_enc_class(int opcode)
 {
     const char *tmp = opcode_encodings[opcode].encoding;
     if (tmp == NULL) {
-        char *test = "V6_";        /* HVX */
+        const char *test = "V6_";        /* HVX */
         char *name = (char *)opcode_names[opcode];
         if (strncmp(name, test, strlen(test)) == 0) {
             return "EXT_mmvec";
