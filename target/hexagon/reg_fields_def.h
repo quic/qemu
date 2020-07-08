@@ -155,7 +155,6 @@ DEF_REG_FIELD(PTE_V,
     "V", 63, 1,
     "Valid bit. indicates whether this entry should be used for matching.")
 
-#if 1
 /* SYSCFG fields */
 DEF_REG_FIELD(SYSCFG_MMUEN,
     "MMUEN", 0, 1,
@@ -235,7 +234,6 @@ DEF_REG_FIELD(SYSCFG_L2PARTSIZE,
 DEF_REG_FIELD(SYSCFG_L2GCA,
     "L2GCA", 31, 1,
     "Indicates that an L2 Global Cacheop is active.")
-#endif
 
 /* SSR fields */
 DEF_REG_FIELD(SSR_CAUSE,
@@ -283,3 +281,63 @@ DEF_REG_FIELD(SSR_SS,
 DEF_REG_FIELD(SSR_XE,
     "xe", 31, 1,
     "Coprocessor Enable, which enables use of an attached coprocessor.")
+
+/* misc registers */
+DEF_REG_FIELD(IMASK_MASK,
+    "mask",0,16,
+    "IMASK is an 8-bit read-write register "
+    "used to hold a per-thread interrupt mask.")
+
+/* MODECTL fields */
+DEF_REG_FIELD(MODECTL_E,
+    "Enabled",0,8,
+    "The MODECTL register reflects the current processing mode of all threads. "
+    "E bits when set mean that the corresponding thread is on.")
+DEF_REG_FIELD(MODECTL_W,
+    "Wait",16,8,
+    "W bit, when set means the thread, if on, is in wait mode.")
+
+/* ISDB ST fields */
+DEF_REG_FIELD(ISDBST_WAITRUN,
+    "WAITRUN",24,8,
+    "These bits indicate which threads are in wait vs. run mode."
+    " They reflect the W bit field of the core MODECTL register. Bit 24 is "
+    "used for TNUM0, bit 25 for TNUM1, etc.")
+DEF_REG_FIELD(ISDBST_ONOFF,
+    "ONOFF",16,8,
+    "These bits indicate which threads are in Off mode. "
+    "They reflect the E bit field of the core MODECTL register. Bit 16 is "
+    "used for TNUM0, bit 17 for TNUM1, etc. A thread that is off cannot be "
+    "debugged, e.g., if ISDB commands are sent to a thread that is off then "
+    "the results are undefined.")
+DEF_REG_FIELD(ISDBST_DEBUGMODE,
+    "DEBUGMODE",8,8,
+    "These bits indicate which threads are in Debug mode. "
+    "Bit 8 is used for thread0, bit 9 for thread1, etc. If these bits "
+    "indicate a thread is in Debug mode, then the wait/run mode bit (above) "
+    "indicates the mode before entering Debug mode.")
+DEF_REG_FIELD(ISDBST_STUFFSTATUS,
+    "STUFFSTATUS",5,1,
+    "0: Stuff instruction was successful, 1: "
+    "Stuff instruction caused an exception.")
+DEF_REG_FIELD(ISDBST_CMDSTATUS,
+    "CMDSTATUS",4,1,
+    "0: ISDB command status was successful, 1: ISDB command failed. "
+    "It could be from ISDB_TRUSTED settings or because the thread experienced "
+    "a TLB miss and could not proceed because another thread was holding "
+    "the TLB lock.")
+DEF_REG_FIELD(ISDBST_PROCMODE,
+    "PROCMODE",3,1,"")
+DEF_REG_FIELD(ISDBST_MBXINSTATUS,
+    "MBXINSTATUS",2,1,
+    "ISDB mailbox in (ISDB --> core) status. This bit is cleared (0) when "
+    "the core reads the mailbox in register meaning empty, and set (1) when "
+    "the written by APB, meaning full.")
+DEF_REG_FIELD(ISDBST_MBXOUTSTATUS,
+    "MBXOUTSTATUS",1,1,
+    "ISDB mailbox out (core --> ISDB) status. This bit is set (1) when "
+    "written by the core meaning full and cleared (0) when read by "
+    "APB, meaning empty.")
+DEF_REG_FIELD(ISDBST_READY,
+    "READY",0,1,
+    "0: ISDB is busy with a command, 1: ISDB ready to accept a new command.")

@@ -128,6 +128,10 @@ typedef enum {
     HEX_LOCK_WAITING        = 1,
     HEX_LOCK_OWNER          = 2
 } hex_lock_state_t;
+
+typedef struct {
+    target_ulong thread_system_mask;
+} Processor;
 #endif
 
 struct CPUHexagonState {
@@ -135,6 +139,7 @@ struct CPUHexagonState {
     target_ulong pred[NUM_PREGS];
     target_ulong branch_taken;
     target_ulong next_PC;
+    target_ulong cause_code;
 
     /* For comparing with LLDB on target - see hack_stack_ptrs function */
     target_ulong stack_start;
@@ -210,6 +215,7 @@ struct CPUHexagonState {
     unsigned int threadId;
     const char *cmdline;
 #ifndef CONFIG_USER_ONLY
+    Processor *processor_ptr;
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;
     hex_lock_state_t tlb_lock_state;

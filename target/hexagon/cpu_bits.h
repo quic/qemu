@@ -20,6 +20,8 @@
 
 #define HEX_CAUSE_NONE                      -1
 #define HEX_CAUSE_RESET                     0x000
+#define HEX_CAUSE_TRAP0                     0x008
+#define HEX_CAUSE_TRAP1                     0x009
 #define HEX_CAUSE_FETCH_NO_XPAGE            0x011
 #define HEX_CAUSE_FETCH_NO_UPAGE            0x012
 #define HEX_CAUSE_INVALID_PACKET            0x015
@@ -34,6 +36,14 @@
 #define HEX_CAUSE_TLBMISSRW_CAUSE_READ      0x070
 #define HEX_CAUSE_TLBMISSRW_CAUSE_WRITE     0x071
 #define HEX_CAUSE_PRIV_USER_NO_SINSN        0x01b
+#define HEX_CAUSE_INT0                      0x0c0
+#define HEX_CAUSE_INT1                      0x0c1
+#define HEX_CAUSE_INT2                      0x0c2
+#define HEX_CAUSE_INT3                      0x0c3
+#define HEX_CAUSE_INT4                      0x0c4
+#define HEX_CAUSE_INT5                      0x0c5
+#define HEX_CAUSE_INT6                      0x0c6
+#define HEX_CAUSE_INT7                      0x0c7
 #define HEX_CAUSE_VIC0                      0x0c2
 #define HEX_CAUSE_VIC1                      0x0c3
 #define HEX_CAUSE_VIC2                      0x0c4
@@ -53,6 +63,10 @@
 #define HEX_EVENT_INT1                      0x11
 #define HEX_EVENT_INT2                      0x12
 #define HEX_EVENT_INT3                      0x13
+#define HEX_EVENT_INT4                      0x14
+#define HEX_EVENT_INT5                      0x15
+#define HEX_EVENT_INT6                      0x16
+#define HEX_EVENT_INT7                      0x17
 #define HEX_EVENT_SC4                       0x100
 #define HEX_EVENT_SC8                       0x200
 #define HEX_EVENT_TLBLOCK_WAIT              0x300

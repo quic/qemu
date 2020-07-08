@@ -202,7 +202,7 @@ static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
 {
-    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " tid=%d\n",
+    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " tid = %d\n",
                   env->gpr[HEX_REG_PC], env->threadId);
 
     int i;
@@ -986,21 +986,26 @@ void HELPER(pause)(CPUHexagonState *env, uint32_t val)
 void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 
 {
-    int thread_enabled_mask =
-        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL) & 0x0ff;
-    uint32_t int_number = 0x0f & (src >> 16);
-    uint32_t int_enabled_mask = 0x0ff & src;
+    HEX_DEBUG_LOG("%s: tid %d, src 0x%x\n",
+        __FUNCTION__, env->threadId, src);
+    uint32_t modectl =
+        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
+    /* src fields are in same position as modectl, but mean different things */
+    uint32_t int_number = GET_FIELD(MODECTL_W, src);
+    uint32_t int_enabled_mask = GET_FIELD(MODECTL_E, src);
     CPUState *cpu = NULL;
     CPU_FOREACH (cpu) {
         CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
         uint32_t thread_id_mask =
-            ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_HTID);
-        if (thread_enabled_mask & (thread_id_mask)) {
+            0x1 << ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_HTID);
+        if (thread_enabled_mask & thread_id_mask) {
             uint32_t imask = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK);
+            uint32_t imask_mask = GET_FIELD(IMASK_MASK, imask);
             imask = (int_enabled_mask & thread_id_mask) ?
-                        imask | (1 << int_number) :
-                        imask & ~(1 << int_number);
-            ARCH_SET_SYSTEM_REG(thread_env, HEX_SREG_IMASK, imask);
+                        imask_mask | (1 << int_number) :
+                        imask_mask & ~(1 << int_number);
+            ARCH_SET_SYSTEM_REG(thread_env, HEX_SREG_IMASK, imask_mask);
         }
     }
 }
@@ -1008,19 +1013,22 @@ void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
 
 {
-    int thread_enabled_mask =
-        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL) & 0x0ff;
-    uint32_t int_number = 0x0f & (src >> 16);
+    uint32_t modectl =
+        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
+    /* src fields are in same position as modectl, but mean different things */
+    uint32_t int_number = GET_FIELD(MODECTL_W, src);
     uint32_t dest_reg = 0;
     CPUState *cpu = NULL;
     CPU_FOREACH (cpu) {
         CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
         uint32_t thread_id_mask =
-            ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_HTID);
+            0x1 << ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_HTID);
 
         if (thread_enabled_mask & thread_id_mask) {
-            dest_reg |= ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK) &
-                        (1 << int_number);
+            uint32_t imask = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK);
+            uint32_t imask_mask = GET_FIELD(IMASK_MASK, imask);
+            dest_reg |= imask_mask & (1 << int_number);
         }
     }
     return dest_reg;
@@ -1100,6 +1108,123 @@ uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
                            << 32;
         default:
             return 0;
+    }
+}
+
+uint32_t HELPER(getimask)(CPUHexagonState *env, uint32_t tid)
+
+{
+    HEX_DEBUG_LOG("%s: tid %u, env %p\n", __FUNCTION__, tid, env);
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *found_cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *found_env = &found_cpu->env;
+        if (found_env->threadId == tid) {
+            target_ulong imask = ARCH_GET_SYSTEM_REG(found_env, HEX_SREG_IMASK);
+            HEX_DEBUG_LOG("%s: found it 0x%x\n", __FUNCTION__, imask);
+            return GET_FIELD(IMASK_MASK, imask);
+        }
+    }
+    return 0;
+}
+
+void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
+
+{
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    target_ulong ipendad_ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
+    HEX_DEBUG_LOG("%s: tid %d, ipendad_ipend 0x%x, mask %x, new %x\n",
+        __FUNCTION__, env->threadId, ipendad_ipend, mask,
+        ipendad_ipend | mask);
+    ipendad_ipend |= mask;
+    SET_SYSTEM_FIELD(env,HEX_SREG_IPENDAD,IPENDAD_IPEND,ipendad_ipend);
+
+    /* make sure interrupts are globally enabled */
+    target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    target_ulong gbit = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
+    if (!gbit) {
+        HEX_DEBUG_LOG("%s: IE disabled (syscfg 0x%x), exiting\n",
+            __FUNCTION__, syscfg);
+        return;
+    }
+
+    /* find interrupts asserted but not auto disabled */
+    unsigned intnum;
+    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
+    HEX_DEBUG_LOG("%s: ipendad_iad 0x%x\n", __FUNCTION__, ipendad_iad);
+    for (intnum = 0 ; intnum < reg_field_info[IPENDAD_IPEND].width ; ++intnum) {
+        unsigned mask = 0x1 << intnum;
+        if ((ipendad_ipend & mask) && (!(ipendad_iad & mask))) {
+            /* find threads that can handle this */
+            struct thread_list_S {
+                CPUState *cs;
+                CPUHexagonState *env;
+            } thread_list[THREADS_MAX];
+            unsigned thread_list_idx = 0;
+            CPUState *cs;
+            CPU_FOREACH(cs) {
+                HexagonCPU *chk_cpu = HEXAGON_CPU(cs);
+                CPUHexagonState *chk_env = &chk_cpu->env;
+                target_ulong ssr = ARCH_GET_SYSTEM_REG(chk_env, HEX_SREG_SSR);
+                target_ulong ie = GET_SSR_FIELD(SSR_IE, ssr);
+                target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
+                HEX_DEBUG_LOG("%s: checking tid = %d, cpu %p, env %p "
+                    "ssr 0x%x ie %u, ex %u\n",
+                    __FUNCTION__, chk_env->threadId, chk_cpu, chk_env,
+                    syscfg, ie, ex);
+                if (!ie || ex) {
+                    HEX_DEBUG_LOG("%s: !ie %d || ex %d: tid %d: "
+                        "pc 0x%x: continue\n",
+                        __FUNCTION__, ie, ex, chk_env->threadId,
+                        ARCH_GET_THREAD_REG(chk_env, HEX_REG_PC));
+                    continue;
+                }
+                target_ulong imask =
+                    ARCH_GET_SYSTEM_REG(chk_env, HEX_SREG_IMASK);
+                target_ulong imask_mask = GET_FIELD(IMASK_MASK, imask);
+                HEX_DEBUG_LOG("%s: tid %d: imask 0x%x, "
+                    "imask_mask 0x%x, mask 0x%x\n",
+                    __FUNCTION__, chk_env->threadId,
+                    imask, imask_mask, mask);
+                if (imask_mask & mask) {
+                    HEX_DEBUG_LOG("%s: imask & mask: continue\n", __FUNCTION__);
+                    continue;
+                }
+                HEX_DEBUG_LOG("%s: adding tid %d to list\n",
+                    __FUNCTION__, chk_env->threadId);
+                thread_list[thread_list_idx].cs = env_cpu(chk_env);
+                thread_list[thread_list_idx++].env = chk_env;
+            }
+
+            /* if no thread can handle, move on */
+            if (thread_list_idx == 0) {
+                HEX_DEBUG_LOG("%s: int %d, mask 0x%x: no thread can handle\n",
+                    __FUNCTION__, intnum, mask);
+                continue;
+            }
+            /* randomly select cpu to process interrupt */
+            unsigned rndsel = rand() % thread_list_idx;
+            struct thread_list_S *sel_thread = &thread_list[rndsel];
+            sel_thread->cs->exception_index = HEX_EVENT_INT0 + intnum;
+            sel_thread->env->cause_code = HEX_CAUSE_INT0+intnum;
+            ipendad_iad |= mask;
+            SET_SYSTEM_FIELD(env,HEX_SREG_IPENDAD,IPENDAD_IAD,ipendad_iad);
+            if (get_exe_mode(sel_thread->env) == HEX_EXE_MODE_WAIT) {
+                clear_wait_mode(sel_thread->env);
+                cpu_resume(sel_thread->cs);
+            }
+            HEX_DEBUG_LOG("%s: tid %d handling interrupt %d, ipend_iad 0x%x\n",
+                __FUNCTION__, sel_thread->env->threadId,
+                intnum, ipendad_iad);
+        }
+    }
+
+    /* exit loop if current thread was selected to handle a swi int */
+    CPUState *current_cs = env_cpu(env);
+    if (current_cs->exception_index >= HEX_EVENT_INT0 &&
+        current_cs->exception_index <= HEX_EVENT_INT7) {
+        HEX_DEBUG_LOG("%s: current selected %p\n", __FUNCTION__, current_cs);
+        cpu_loop_exit(current_cs);
     }
 }
 

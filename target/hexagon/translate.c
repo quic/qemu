@@ -135,7 +135,7 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
         return 0;
     }
 
-    HEX_DEBUG_LOG("decode_packet: tid=%d, pc = 0x%x\n",
+    HEX_DEBUG_LOG("decode_packet: tid = %d, pc = 0x%x\n",
         env->threadId, ctx->base.pc_next);
     HEX_DEBUG_LOG("    words = { ");
     for (i = 0; i < nwords; i++) {

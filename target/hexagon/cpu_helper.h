@@ -54,5 +54,7 @@ extern int sys_in_guest_mode(CPUHexagonState *env);
 extern int sys_in_user_mode(CPUHexagonState *env);
 extern int get_cpu_mode(CPUHexagonState *env);
 extern int get_exe_mode(CPUHexagonState *env);
+extern void set_wait_mode(CPUHexagonState *env);
+extern void clear_wait_mode(CPUHexagonState *env);
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #endif

@@ -103,7 +103,11 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
 
     HexagonCPU *cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
     CPUHexagonState *env = &cpu->env;
+    HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
+        __FUNCTION__, cpu, env);
 
+    env->processor_ptr = g_malloc(sizeof(Processor));
+    env->processor_ptr->thread_system_mask = 0xf; //THREADS_MAX = 4
     env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     //env->g_sreg[HEX_SREG_PCYCLELO] = 0xaaaa;
     //env->g_sreg[HEX_SREG_PCYCLEHI] = 0xbbbb;

@@ -253,9 +253,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         if ((buf = (char *) g_malloc(count)) == NULL) {
             CPUState *cs = env_cpu(env);
             cpu_abort(cs,
-                "Error: sim_handle_trap couldn't allocate "
+                "Error: %s couldn't allocate "
                 "temporybuffer (%d bytes)",
-                count);
+                __FUNCTION__, count);
         }
 
         retval = read(fd, buf, count);
@@ -584,7 +584,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 
         if (buflen < 40) {
             CPUState *cs = env_cpu(env);
-            cpu_abort(cs, "Error: sim_handle_trap output buffer too small");
+            cpu_abort(cs, "Error: %s output buffer too small", __FUNCTION__);
         }
         /*
          * Loop until we find a file that doesn't alread exist.
@@ -771,11 +771,21 @@ static int do_store_exclusive(CPUHexagonState *env, bool single)
 }
 
 
-static void ssr_set_cause(CPUHexagonState *env, int exception_index)
+static void ssr_set_cause(CPUHexagonState *env, int cause_code)
 
 {
     SET_SSR_FIELD(env, SSR_EX, 1);
-    SET_SSR_FIELD(env, SSR_CAUSE, exception_index);
+    SET_SSR_FIELD(env, SSR_CAUSE, cause_code);
+}
+
+static void set_addresses(CPUHexagonState *env,
+    target_ulong pc_offset, target_ulong exception_index)
+
+{
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
+        ARCH_GET_THREAD_REG(env, HEX_REG_PC) + pc_offset);
+    ARCH_SET_THREAD_REG(env, HEX_REG_PC,
+        ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB) | (exception_index << 2));
 }
 
 void hexagon_cpu_do_interrupt(CPUState *cs)
@@ -783,126 +793,186 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
-    target_ulong evb;
+    target_ulong crnt_pc;
 
     switch (cs->exception_index) {
-    case HEX_CAUSE_VIC0:
-    case HEX_CAUSE_VIC1:
-    case HEX_CAUSE_VIC2:
-    case HEX_CAUSE_VIC3:
-        sim_handle_trap(env);
-        HEX_DEBUG_LOG("\tVIC interrupt ignored\n");
+    case HEX_EVENT_INT0:
+    case HEX_EVENT_INT1:
+    case HEX_EVENT_INT2:
+    case HEX_EVENT_INT3:
+    case HEX_EVENT_INT4:
+    case HEX_EVENT_INT5:
+    case HEX_EVENT_INT6:
+    case HEX_EVENT_INT7:
+        crnt_pc = ARCH_GET_THREAD_REG(env, HEX_REG_PC);
+        HEX_DEBUG_LOG("\tHEX_EVENT_INT%d: tid = %u, "
+            "PC old = 0x%x, new = 0x%x, next_PC = 0x%x\n",
+            cs->exception_index - HEX_EVENT_INT0,
+            env->threadId,
+            crnt_pc,
+            ARCH_GET_THREAD_REG(env, HEX_REG_PC),
+            env->next_PC);
+        ssr_set_cause(env, env->cause_code);
+        set_addresses(env, 0, cs->exception_index);
         break;
 
     case HEX_EVENT_TRAP0:
+        HEX_DEBUG_LOG("\ttid = %u, trap0 - start, pc = 0x%x, elr = 0x%x",
+            env->threadId,
+            ARCH_GET_THREAD_REG(env, HEX_REG_PC),
+            env->next_PC);
         sim_handle_trap(env);
-        ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR, env->next_PC);
-        ssr_set_cause(env, cs->exception_index);
 
+        ssr_set_cause(env, HEX_CAUSE_TRAP0);
+#if 1
+        set_addresses(env, 4, cs->exception_index);
+        env->branch_taken = 1;
+#else
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR, env->next_PC);
         evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-        env->next_PC = evb + (8 << 2);
+        env->next_PC = evb + (cs->exception_index << 2);
         fCHECK_PCALIGN(env->next_PC);
         env->branch_taken = 1;
         ARCH_SET_THREAD_REG(env, HEX_REG_PC, env->next_PC);
+#endif
         cs->exception_index = HEX_EVENT_NONE;
-
-        target_ulong trap0_inst;
-        DEBUG_MEMORY_READ(env->next_PC, 4, &trap0_inst);
-        HEX_DEBUG_LOG("\tEVB = 0x%x, trap0 = 0x%x, new PC = 0x%x\n",
-            evb, trap0_inst, env->next_PC);
         break;
 
     case HEX_EVENT_SC4:
         do_store_exclusive(env, true);
         break;
 
-      case HEX_CAUSE_TLBMISSX_CAUSE_NORMAL:
-      case HEX_CAUSE_TLBMISSX_CAUSE_NEXTPAGE:
-          qemu_log_mask(CPU_LOG_MMU,
-              "TLB miss EX exception (0x%x) caught: "
-              "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
-              ", BADVA = 0x%" PRIx32 "\n",
-              cs->exception_index, env->threadId,
-              ARCH_GET_THREAD_REG(env, HEX_REG_PC),
-              ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
-          hex_tlb_lock(env);
-          ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
-              ARCH_GET_THREAD_REG(env, HEX_REG_PC));
-          ssr_set_cause(env, cs -> exception_index);
-          evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-          ARCH_SET_THREAD_REG(env, HEX_REG_PC, evb | (4 << 2));
-          break;
-      case HEX_CAUSE_TLBMISSRW_CAUSE_READ:
-      case HEX_CAUSE_TLBMISSRW_CAUSE_WRITE:
-          qemu_log_mask(CPU_LOG_MMU,
-              "TLB miss RW exception (0x%x) caught: "
-              "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
-              ", BADVA = 0x%" PRIx32 "\n",
-              cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
-              ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
-          hex_tlb_lock(env);
-          ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
-              ARCH_GET_THREAD_REG(env, HEX_REG_PC));
-          /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
-          ssr_set_cause(env, cs -> exception_index);
-          evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-          ARCH_SET_THREAD_REG(env, HEX_REG_PC, evb | (6 << 2));
+    case HEX_EVENT_TLBLOCK_WAIT:
+    case HEX_EVENT_K0LOCK_WAIT:
+        ARCH_SET_THREAD_REG(env, HEX_REG_PC,
+            ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
+        cpu_stop_current();
+        break;
+
+    case HEX_EVENT_TLB_MISS_X:
+        switch (env->cause_code) {
+        case HEX_CAUSE_TLBMISSX_CAUSE_NORMAL:
+        case HEX_CAUSE_TLBMISSX_CAUSE_NEXTPAGE:
+            qemu_log_mask(CPU_LOG_MMU,
+                "TLB miss EX exception (0x%x) caught: "
+                "Cause code (0x%x) "
+                "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
+                ", BADVA = 0x%" PRIx32 "\n",
+                cs->exception_index, env->cause_code,
+                env->threadId,
+                ARCH_GET_THREAD_REG(env, HEX_REG_PC),
+                ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+            hex_tlb_lock(env);
+
+            ssr_set_cause(env, env->cause_code);
+            set_addresses(env, 0, cs->exception_index);
+            break;
+
+        default:
+            cpu_abort(cs, "1:Hexagon exception %d/0x%x: "
+                "Unknown cause code %d/0x%x\n",
+                cs->exception_index, cs->exception_index,
+                env->cause_code, env->cause_code);
+            break;
+        }
+        break;
+
+    case HEX_EVENT_TLB_MISS_RW:
+        switch(env->cause_code) {
+        case HEX_CAUSE_TLBMISSRW_CAUSE_READ:
+        case HEX_CAUSE_TLBMISSRW_CAUSE_WRITE:
+            qemu_log_mask(CPU_LOG_MMU,
+                "TLB miss RW exception (0x%x) caught: "
+                "Cause code (0x%x) "
+                "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
+                ", BADVA = 0x%" PRIx32 "\n",
+                cs->exception_index, env->cause_code,
+                env->threadId, env->gpr[HEX_REG_PC],
+                ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+            hex_tlb_lock(env);
+
+
+            ssr_set_cause(env, env->cause_code);
+            set_addresses(env, 0, cs->exception_index);
+            /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
+            break;
+
+        default:
+            cpu_abort(cs, "2:Hexagon exception %d/0x%x: "
+                "Unknown cause code %d/0x%x\n",
+                cs->exception_index, cs->exception_index,
+                env->cause_code, env->cause_code);
+            break;
+        }
+        break;
+
+    case HEX_EVENT_PRECISE:
+        switch(env->cause_code) {
+        case HEX_CAUSE_FETCH_NO_XPAGE:
+        case HEX_CAUSE_FETCH_NO_UPAGE:
+        case HEX_CAUSE_PRIV_NO_READ:
+        case HEX_CAUSE_PRIV_NO_UREAD:
+        case HEX_CAUSE_PRIV_NO_WRITE:
+        case HEX_CAUSE_PRIV_NO_UWRITE:
+            qemu_log_mask(CPU_LOG_MMU,
+                "MMU permission exception (0x%x) caught: "
+                "Cause code (0x%x) "
+                "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
+                ", BADVA = 0x%" PRIx32 "\n",
+                cs->exception_index, env->cause_code,
+                env->threadId, env->gpr[HEX_REG_PC],
+                ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
+
+
+            ssr_set_cause(env, env->cause_code);
+            set_addresses(env, 0, cs->exception_index);
+            /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
+            break;
+
+        case HEX_CAUSE_PRIV_USER_NO_SINSN:
+            ssr_set_cause(env, env->cause_code);
+            set_addresses(env, 0, cs->exception_index);
           break;
 
-      case HEX_CAUSE_FETCH_NO_XPAGE:
-      case HEX_CAUSE_FETCH_NO_UPAGE:
-      case HEX_CAUSE_PRIV_NO_READ:
-      case HEX_CAUSE_PRIV_NO_UREAD:
-      case HEX_CAUSE_PRIV_NO_WRITE:
-      case HEX_CAUSE_PRIV_NO_UWRITE:
-          qemu_log_mask(CPU_LOG_MMU,
-              "MMU permission exception (0x%x) caught: "
-              "TID = 0x%" PRIx32 ", PC = 0x%" PRIx32
-              ", BADVA = 0x%" PRIx32 "\n",
-              cs->exception_index, env->threadId, env->gpr[HEX_REG_PC],
-              ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
-          ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
-              ARCH_GET_THREAD_REG(env, HEX_REG_PC));
-          /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
-          ssr_set_cause(env, cs -> exception_index);
-          evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-          ARCH_SET_THREAD_REG(env, HEX_REG_PC, evb | (2 << 2));
-          break;
+        default:
+            cpu_abort(cs, "3:Hexagon exception %d/0x%x: "
+                "Unknown cause code %d/0x%x\n",
+                cs->exception_index, cs->exception_index,
+                env->cause_code, env->cause_code);
+            break;
+        }
+        break;
 
-      case HEX_CAUSE_PRIV_USER_NO_SINSN:
-          ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
-              ARCH_GET_THREAD_REG(env, HEX_REG_PC));
-          ssr_set_cause(env, cs -> exception_index);
-          evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-          ARCH_SET_THREAD_REG(env, HEX_REG_PC, evb | (2 << 2));
-          break;
+    case HEX_EVENT_IMPRECISE:
+        switch(env->cause_code) {
+        case HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH:
+            /*
+             * FIXME
+             * Imprecise exceptions are delivered to all HW threads in
+             * run or wait mode
+            */
+            /* After the exception handler, return to the next packet */
 
-      case HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH:
-          /*
-           * FIXME
-           * Imprecise exceptions are delivered to all HW threads in
-           * run or wait mode
-           */
-          /* After the exception handler, return to the next packet */
-          ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
-             ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
-          ssr_set_cause(env, cs -> exception_index);
-          ARCH_SET_SYSTEM_REG(env, HEX_SREG_DIAG,
-              (0x4 << 4) | (ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID) & 0xF));
-          evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-          ARCH_SET_THREAD_REG(env, HEX_REG_PC, evb | (1 << 2));
-          break;
 
-      case HEX_EVENT_TLBLOCK_WAIT:
-      case HEX_EVENT_K0LOCK_WAIT:
-          env->gpr[HEX_REG_PC] += 4;
-          cpu_stop_current();
-          break;
+            ssr_set_cause(env, env->cause_code);
+            set_addresses(env, 4, cs->exception_index);
+            ARCH_SET_SYSTEM_REG(env, HEX_SREG_DIAG,
+                (0x4 << 4) | (ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID) & 0xF));
+            break;
 
-      default:
+        default:
+            cpu_abort(cs, "4:Hexagon exception %d/0x%x: "
+                "Unknown cause code %d/0x%x\n",
+                cs->exception_index, cs->exception_index,
+                env->cause_code, env->cause_code);
+            break;
+        }
+        break;
+
+    default:
         printf("%s:%d: throw error\n", __FUNCTION__, __LINE__);
-        cpu_abort(cs, "Hexagon Unsupported exception %d/0x%x\n",
-                  cs->exception_index, cs->exception_index);
+        cpu_abort(cs, "Hexagon Unsupported exception 0x%x/0x%x\n",
+                  cs->exception_index, env->cause_code);
         break;
     }
 }

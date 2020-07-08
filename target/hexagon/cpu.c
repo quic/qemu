@@ -435,13 +435,16 @@ static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA,
 
     switch (access_type) {
     case MMU_INST_FETCH:
-        cs->exception_index = HEX_CAUSE_TLBMISSX_CAUSE_NORMAL;
+        cs->exception_index = HEX_EVENT_TLB_MISS_X;
+        env->cause_code = HEX_CAUSE_TLBMISSX_CAUSE_NORMAL;
         break;
     case MMU_DATA_LOAD:
-        cs->exception_index = HEX_CAUSE_TLBMISSRW_CAUSE_READ;
+        cs->exception_index = HEX_EVENT_TLB_MISS_RW;
+        env->cause_code = HEX_CAUSE_TLBMISSRW_CAUSE_READ;
         break;
     case MMU_DATA_STORE:
-        cs->exception_index = HEX_CAUSE_TLBMISSRW_CAUSE_WRITE;
+        cs->exception_index = HEX_EVENT_TLB_MISS_RW;
+        env->cause_code = HEX_CAUSE_TLBMISSRW_CAUSE_WRITE;
         break;
     }
 }
@@ -472,22 +475,25 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
                              MMUAccessType access_type, int mmu_idx,
                              bool probe, uintptr_t retaddr)
 {
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
 #ifdef CONFIG_USER_ONLY
     switch (access_type) {
     case MMU_INST_FETCH:
-        cs->exception_index = HEX_CAUSE_FETCH_NO_UPAGE;
+        cs->exception_index = HEX_EVENT_PRECISE;
+        env->cause_code = HEX_CAUSE_FETCH_NO_UPAGE;
         break;
     case MMU_DATA_LOAD:
-        cs->exception_index = HEX_CAUSE_PRIV_NO_UREAD;
+        cs->exception_index = HEX_EVENT_PRECISE;
+        env->cause_code = HEX_CAUSE_PRIV_NO_UREAD;
         break;
     case MMU_DATA_STORE:
-        cs->exception_index = HEX_CAUSE_PRIV_NO_UWRITE;
+        cs->exception_index = HEX_EVENT_PRECISE;
+        env->cause_code = HEX_CAUSE_PRIV_NO_UWRITE;
         break;
     }
     cpu_loop_exit_restore(cs, retaddr);
 #else
-    HexagonCPU *cpu = HEXAGON_CPU(cs);
-    CPUHexagonState *env = &cpu->env;
     hwaddr phys;
     int prot = 0;
     int page_size = 0;

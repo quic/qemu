@@ -1699,6 +1699,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fSTART(REG)               helper_fstart(env, REG)
 #define fRESUME(REG)              helper_fresume(env, REG)
 #define fCLEAR_RUN_MODE(x)        helper_clear_run_mode(env,(x))
+#define READ_IMASK(TID)           helper_getimask(env, TID)
 
 #ifndef CONFIG_USER_ONLY
 #define fTLB_IDXMASK(INDEX) \
@@ -1800,6 +1801,8 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
         WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
     } while (0)
 #endif
+
+#define DO_SWI(RS)  helper_swi(env, RS)
 
 #endif
 

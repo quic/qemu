@@ -139,15 +139,25 @@ void cpu_loop(CPUHexagonState *env)
                 queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
             }
             break;
-        case HEX_CAUSE_FETCH_NO_UPAGE:
-        case HEX_CAUSE_PRIV_NO_UREAD:
-        case HEX_CAUSE_PRIV_NO_UWRITE:
-            signum = TARGET_SIGSEGV;
-            sigcode = TARGET_SEGV_MAPERR;
+        case HEX_EVENT_PRECISE:
+            switch(env->cause_code) {
+            case HEX_CAUSE_FETCH_NO_UPAGE:
+            case HEX_CAUSE_PRIV_NO_UREAD:
+            case HEX_CAUSE_PRIV_NO_UWRITE:
+                signum = TARGET_SIGSEGV;
+                sigcode = TARGET_SEGV_MAPERR;
+               break;
+            default:
+                EXCP_DUMP(env, "\nqemu: unhandled CPU precise exception "
+                    "%#x/%#x - aborting\n",
+                    trapnr, env->cause_code);
+                exit(EXIT_FAILURE);
+            }
             break;
         default:
-            EXCP_DUMP(env, "\nqemu: unhandled CPU exception %#x - aborting\n",
-                     trapnr);
+            EXCP_DUMP(env, "\nqemu: unhandled CPU exception "
+                "%#x/%#x - aborting\n",
+                trapnr, env->cause_code);
             exit(EXIT_FAILURE);
         }
 

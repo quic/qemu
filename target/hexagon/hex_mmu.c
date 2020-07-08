@@ -299,7 +299,7 @@ static inline bool hex_tlb_entry_match_noperm(uint64_t entry, uint32_t asid,
     return false;
 }
 
-static inline void hex_tlb_entry_get_perm(uint64_t entry,
+static inline void hex_tlb_entry_get_perm(CPUHexagonState *env, uint64_t entry,
                                           MMUAccessType access_type,
                                           int mmu_idx, int *prot,
                                           int32_t *excp)
@@ -319,23 +319,29 @@ static inline void hex_tlb_entry_get_perm(uint64_t entry,
     switch (access_type) {
     case MMU_INST_FETCH:
         if (user_idx && !perm_u) {
-            *excp = HEX_CAUSE_FETCH_NO_UPAGE;
+            *excp = HEX_EVENT_PRECISE;
+            env->cause_code = HEX_CAUSE_FETCH_NO_UPAGE;
         } else if (!perm_x) {
-            *excp = HEX_CAUSE_FETCH_NO_XPAGE;
+            *excp = HEX_EVENT_PRECISE;
+            env->cause_code = HEX_CAUSE_FETCH_NO_XPAGE;
         }
         break;
     case MMU_DATA_LOAD:
         if (user_idx && !perm_u) {
-            *excp = HEX_CAUSE_PRIV_NO_UREAD;
+            *excp = HEX_EVENT_PRECISE;
+            env->cause_code = HEX_CAUSE_PRIV_NO_UREAD;
         } else if (!perm_r) {
-            *excp = HEX_CAUSE_PRIV_NO_READ;
+            *excp = HEX_EVENT_PRECISE;
+            env->cause_code = HEX_CAUSE_PRIV_NO_READ;
         }
         break;
     case MMU_DATA_STORE:
         if (user_idx && !perm_u) {
-            *excp = HEX_CAUSE_PRIV_NO_UWRITE;
+            *excp = HEX_EVENT_PRECISE;
+            env->cause_code = HEX_CAUSE_PRIV_NO_UWRITE;
         } else if (!perm_w) {
-            *excp = HEX_CAUSE_PRIV_NO_WRITE;
+            *excp = HEX_EVENT_PRECISE;
+            env->cause_code = HEX_CAUSE_PRIV_NO_WRITE;
         }
         break;
     }
@@ -353,14 +359,14 @@ static inline void hex_tlb_entry_get_perm(uint64_t entry,
     }
 }
 
-static inline bool hex_tlb_entry_match(uint64_t entry, uint8_t asid,
-                                       target_ulong VA,
+static inline bool hex_tlb_entry_match(CPUHexagonState *env, uint64_t entry,
+                                       uint8_t asid, target_ulong VA,
                                        MMUAccessType access_type, hwaddr *PA,
                                        int *prot, int *size, int32_t *excp,
                                        int mmu_idx)
 {
     if (hex_tlb_entry_match_noperm(entry, asid, VA)) {
-        hex_tlb_entry_get_perm(entry, access_type, mmu_idx, prot, excp);
+        hex_tlb_entry_get_perm(env, entry, access_type, mmu_idx, prot, excp);
         *PA = hex_tlb_phys_addr(entry);
         *size = hex_tlb_page_size(entry);
         return true;
@@ -377,7 +383,7 @@ bool hex_tlb_find_match(CPUHexagonState *env, target_ulong VA,
     int i;
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         uint64_t entry = env->hex_tlb->entries[i];
-        if (hex_tlb_entry_match(entry, asid, VA, access_type, PA, prot, size,
+        if (hex_tlb_entry_match(env, entry, asid, VA, access_type, PA, prot, size,
                                 excp, mmu_idx)) {
             return true;
         }
@@ -397,7 +403,8 @@ static uint32_t hex_tlb_lookup_by_asid(CPUHexagonState *env, uint32_t asid,
         uint64_t entry = env->hex_tlb->entries[i];
         if (hex_tlb_entry_match_noperm(entry, asid, VA)) {
             if (idx != not_found) {
-                env->imprecise_exception = HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH;
+                env->imprecise_exception = HEX_EVENT_IMPRECISE;
+                env->cause_code = HEX_CAUSE_IMPRECISE_MULTI_TLB_MATCH;
                 break;
             }
             idx = i;

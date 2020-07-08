@@ -916,7 +916,7 @@ supported_privs = [
     'Y2_dckill', 'Y2_ickill', 'Y2_l2kill',
     'L4_loadw_phys',
     'J2_rte',
-    'Y2_cswi', 'Y2_ciad', 'Y4_siad',
+    'Y2_swi', 'Y2_cswi', 'Y2_ciad', 'Y4_siad',
 
     'J2_pause', 'Y4_trace',
     # Caching, prefetching:
@@ -928,6 +928,7 @@ supported_privs = [
     'Y2_start', 'Y2_stop', 'Y2_wait', 'Y2_resume',
     'Y2_iassignw', 'Y2_iassignr',
     'Y2_k0lock', 'Y2_k0unlock',
+    'Y2_getimask',
 ]
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 
