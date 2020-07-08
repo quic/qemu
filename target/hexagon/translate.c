@@ -126,7 +126,8 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
     if (!found_end) {
         if (nwords == PACKET_WORDS_MAX) {
             /* Read too many words without finding the end */
-            gen_exception(HEX_CAUSE_INVALID_PACKET);
+            env->cause_code = HEX_CAUSE_INVALID_PACKET;
+            gen_exception(HEX_EVENT_PRECISE);
             ctx->base.is_jmp = DISAS_NORETURN;
             return 0;
         }
@@ -260,7 +261,8 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
             tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         }
     } else {
-        gen_exception(HEX_CAUSE_INVALID_OPCODE);
+        env->cause_code = HEX_CAUSE_INVALID_OPCODE;
+        gen_exception(HEX_EVENT_PRECISE);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }
@@ -816,7 +818,8 @@ static void decode_and_translate_packet(CPUHexagonState *env,
         gen_commit_packet(env, ctx, &pkt);
         ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
     } else {
-        gen_exception(HEX_CAUSE_INVALID_PACKET);
+        env->cause_code = HEX_CAUSE_INVALID_PACKET;
+        gen_exception(HEX_EVENT_PRECISE);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }
