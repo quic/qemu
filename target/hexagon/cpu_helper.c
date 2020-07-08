@@ -312,8 +312,6 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
             env->hex_tlb = current_env->hex_tlb;
             env->processor_ptr = current_env->processor_ptr;
             env->g_sreg = current_env->g_sreg;
-            env->g_sreg_new_value = current_env->g_sreg_new_value;
-            env->g_sreg_written = current_env->g_sreg_written;
             env->threadId = htid;
             ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, htid);
             HEX_DEBUG_LOG("%s: mask 0x%x, cpu %p, g_sreg at %p\n",

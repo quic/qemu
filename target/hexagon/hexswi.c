@@ -726,51 +726,6 @@ static int sim_handle_trap(CPUHexagonState *env)
     return retval;
 }
 
-static int do_store_exclusive(CPUHexagonState *env, bool single)
-{
-    target_ulong addr;
-    target_ulong val;
-    uint64_t val_i64;
-    int segv = 0;
-    int reg;
-
-    addr = env->llsc_addr;
-    reg = env->llsc_reg;
-
-    env->pred[reg] = 0;
-    if (single) {
-        segv = DEBUG_MEMORY_READ_LOCKED(addr, 4, &val);
-    } else {
-        segv = DEBUG_MEMORY_READ_LOCKED(addr, 8, &val_i64);
-    }
-    if (!segv) {
-        if (single) {
-            if (val == env->llsc_val) {
-                segv = DEBUG_MEMORY_WRITE_LOCKED(addr, 4,
-                                              (size8u_t)(env->llsc_newval));
-                if (!segv) {
-                    env->pred[reg] = 0xff;
-                }
-            }
-        } else {
-            if (val_i64 == env->llsc_val_i64) {
-                segv = DEBUG_MEMORY_WRITE_LOCKED(addr, 8,
-                                              (size8u_t)(env->llsc_newval_i64));
-                if (!segv) {
-                    env->pred[reg] = 0xff;
-                }
-            }
-        }
-    }
-    env->llsc_addr = ~0;
-    if (!segv) {
-        env->next_PC += 4;
-    }
-
-    return segv;
-}
-
-
 static void ssr_set_cause(CPUHexagonState *env, int cause_code)
 
 {
@@ -836,10 +791,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         ARCH_SET_THREAD_REG(env, HEX_REG_PC, env->next_PC);
 #endif
         cs->exception_index = HEX_EVENT_NONE;
-        break;
-
-    case HEX_EVENT_SC4:
-        do_store_exclusive(env, true);
         break;
 
     case HEX_EVENT_TLBLOCK_WAIT:

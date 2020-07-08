@@ -67,8 +67,6 @@
 #define HEX_EVENT_INT5                      0x15
 #define HEX_EVENT_INT6                      0x16
 #define HEX_EVENT_INT7                      0x17
-#define HEX_EVENT_SC4                       0x100
-#define HEX_EVENT_SC8                       0x200
 #define HEX_EVENT_TLBLOCK_WAIT              0x300
 #define HEX_EVENT_K0LOCK_WAIT               0x400
 

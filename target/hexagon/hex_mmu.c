@@ -206,12 +206,14 @@ static void hex_dump_mmu(CPUHexagonState *env, FILE *f)
 {
     bool valid_found = false;
     int i;
+    rcu_read_lock();
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         valid_found |= hex_dump_mmu_entry(f, env->hex_tlb->entries[i]);
     }
     if (!valid_found) {
         fprintf(f, "TLB is empty :(\n");
     }
+    rcu_read_unlock();
 }
 #endif
 
@@ -228,8 +230,8 @@ static inline void hex_log_tlbw(uint32_t index, uint64_t entry)
                     fprintf(logfile->fd, "invalid\n");
                 }
             }
+            rcu_read_unlock();
         }
-        rcu_read_unlock();
     }
 }
 

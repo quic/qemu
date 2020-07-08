@@ -153,8 +153,6 @@ struct CPUHexagonState {
     target_ulong t_sreg_new_value[NUM_SREGS];
     target_ulong t_sreg_written[NUM_SREGS];
     target_ulong *g_sreg;
-    target_ulong *g_sreg_new_value;
-    target_ulong *g_sreg_written;
 
     target_ulong greg[NUM_GREGS];
     target_ulong greg_new_value[NUM_GREGS];
@@ -179,9 +177,6 @@ struct CPUHexagonState {
     target_ulong llsc_addr;
     target_ulong llsc_val;
     uint64_t     llsc_val_i64;
-    target_ulong llsc_newval;
-    uint64_t     llsc_newval_i64;
-    target_ulong llsc_reg;
 
     target_ulong is_gather_store_insn;
     target_ulong gather_issued;

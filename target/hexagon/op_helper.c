@@ -147,20 +147,11 @@ static inline void log_sreg_write(CPUHexagonState *env, int rnum,
         if (rnum < HEX_SREG_GLB_START) {
             env->t_sreg_new_value[rnum] = val;
         } else {
-            env->g_sreg_new_value[rnum] = val;
+            env->g_sreg[rnum] = val;
         }
     }
     else
       HEX_DEBUG_LOG("\tsreg register not set\n");
-}
-
-static __attribute__((unused))
-inline void log_sreg_write_pair(CPUHexagonState *env, int rnum,
-                                      int64_t val, uint32_t slot)
-{
-    HEX_DEBUG_LOG("log_sreg_write_pair[%d:%d] = %ld\n", rnum + 1, rnum, val);
-    log_sreg_write(env, rnum, val & 0xFFFFFFFF, slot);
-    log_sreg_write(env, rnum + 1, (val >> 32) & 0xFFFFFFFF, slot);
 }
 
 #endif
@@ -217,8 +208,6 @@ void HELPER(debug_start_packet)(CPUHexagonState *env)
     for (i = 0; i < NUM_SREGS; i++) {
         if (i < HEX_SREG_GLB_START)
             env->t_sreg_written[i] = 0;
-        else
-            env->g_sreg_written[i] = 0;
     }
 #endif
 }
@@ -382,10 +371,10 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         if (env->reg_written[i]) {
             if (!reg_printed) {
-                printf("Regs written\n");
+                HEX_DEBUG_LOG("Regs written\n");
                 reg_printed = true;
             }
-            printf("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
+            HEX_DEBUG_LOG("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
                           i, env->new_value[i], env->new_value[i]);
         }
     }
@@ -395,10 +384,10 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     for (i = 0; i < NUM_GREGS; i++) {
         if (env->greg_written[i]) {
             if (!greg_printed) {
-                printf("GRegs written\n");
+                HEX_DEBUG_LOG("GRegs written\n");
                 greg_printed = true;
             }
-            printf("\tset g%d (%s) = " TARGET_FMT_ld
+            HEX_DEBUG_LOG("\tset g%d (%s) = " TARGET_FMT_ld
                 " (0x" TARGET_FMT_lx " )\n",
                 i, hexagon_gregnames[i], env->greg_new_value[i],
                 env->greg_new_value[i]);
@@ -410,24 +399,13 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
         if (i < HEX_SREG_GLB_START) {
             if (env->t_sreg_written[i]) {
                 if (!sreg_printed) {
-                    printf("SRegs written\n");
+                    HEX_DEBUG_LOG("SRegs written\n");
                     sreg_printed = true;
                 }
-                printf("\tset s%d (%s) = " TARGET_FMT_ld
+                HEX_DEBUG_LOG("\tset s%d (%s) = " TARGET_FMT_ld
                     " (0x" TARGET_FMT_lx " )\n",
                     i, hexagon_sregnames[i], env->t_sreg_new_value[i],
                     env->t_sreg_new_value[i]);
-            }
-        } else {
-            if (env->g_sreg_written[i]) {
-                if (!sreg_printed) {
-                    printf("SRegs written\n");
-                    sreg_printed = true;
-            }
-            printf("\tset s%d (%s) = " TARGET_FMT_ld
-                " (0x" TARGET_FMT_lx " )\n",
-                i, hexagon_sregnames[i], env->g_sreg_new_value[i],
-                env->g_sreg_new_value[i]);
             }
         }
     }
@@ -436,16 +414,16 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     for (i = 0; i < NUM_PREGS; i++) {
         if (env->pred_written & (1 << i)) {
             if (!pred_printed) {
-                printf("Predicates written\n");
+                HEX_DEBUG_LOG("Predicates written\n");
                 pred_printed = true;
             }
-            printf("\tp%d = 0x" TARGET_FMT_lx "\n",
+            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx "\n",
                           i, env->new_pred_value[i]);
         }
     }
 
     if (has_st0 || has_st1) {
-        printf("Stores\n");
+        HEX_DEBUG_LOG("Stores\n");
         if (has_st0) {
             print_store(env, 0);
         }
@@ -652,17 +630,6 @@ MERGE_INFLIGHT(merge_inflight_store4u, int32_t, int32_t, uint32_t, 4)
 MERGE_INFLIGHT(merge_inflight_store8u, int64_t, int64_t,  int64_t, 8)
 
 #ifndef CONFIG_USER_ONLY
-void HELPER(modify_syscfg)(CPUHexagonState *env, uint32_t new, uint32_t old)
-{
-    target_ulong old_mmu_enable = GET_SYSCFG_FIELD(SYSCFG_MMUEN, old);
-    target_ulong new_mmu_enable = GET_SYSCFG_FIELD(SYSCFG_MMUEN, new);
-    if (new_mmu_enable && !old_mmu_enable) {
-        hex_mmu_on(env);
-    } else if (!new_mmu_enable && old_mmu_enable) {
-        hex_mmu_off(env);
-    }
-}
-
 void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
     target_ulong old_EX = GET_SSR_FIELD(SSR_EX, old);
@@ -1050,6 +1017,17 @@ uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
 
 {
+    if (reg == HEX_SREG_SYSCFG) {
+        target_ulong old_mmu_enable =
+            GET_SYSCFG_FIELD(SYSCFG_MMUEN, env->g_sreg[HEX_SREG_SYSCFG]);
+        target_ulong new_mmu_enable =
+            GET_SYSCFG_FIELD(SYSCFG_MMUEN, val);
+        if (new_mmu_enable && !old_mmu_enable) {
+            hex_mmu_on(env);
+        } else if (!new_mmu_enable && old_mmu_enable) {
+            hex_mmu_off(env);
+        }
+    }
     ARCH_SET_SYSTEM_REG(env, reg, val);
 }
 
