@@ -930,6 +930,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             break;
 
         case HEX_CAUSE_PRIV_USER_NO_SINSN:
+        case HEX_CAUSE_INVALID_OPCODE:
             ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
           break;
