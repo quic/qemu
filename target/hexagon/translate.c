@@ -45,9 +45,9 @@ TCGv hex_store_width[STORES_MAX];
 TCGv hex_store_val32[STORES_MAX];
 TCGv_i64 hex_store_val64[STORES_MAX];
 TCGv hex_dczero_addr;
-TCGv llsc_addr;
-TCGv llsc_val;
-TCGv_i64 llsc_val_i64;
+TCGv hex_llsc_addr;
+TCGv hex_llsc_val;
+TCGv_i64 hex_llsc_val_i64;
 TCGv hex_is_gather_store_insn;
 TCGv hex_gather_issued;
 TCGv hex_VRegs_updated_tmp;
@@ -913,11 +913,11 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, branch_taken), "branch_taken");
     hex_dczero_addr = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, dczero_addr), "dczero_addr");
-    llsc_addr = tcg_global_mem_new(cpu_env,
+    hex_llsc_addr = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, llsc_addr), "llsc_addr");
-    llsc_val = tcg_global_mem_new(cpu_env,
+    hex_llsc_val = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, llsc_val), "llsc_val");
-    llsc_val_i64 = tcg_global_mem_new_i64(cpu_env,
+    hex_llsc_val_i64 = tcg_global_mem_new_i64(cpu_env,
         offsetof(CPUHexagonState, llsc_val_i64), "llsc_val_i64");
     hex_is_gather_store_insn = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, is_gather_store_insn),

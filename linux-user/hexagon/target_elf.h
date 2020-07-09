@@ -29,7 +29,9 @@ static inline const char *cpu_get_model(uint32_t eflags)
         eflags == 0x62 ||    /* v62 */
         eflags == 0x65 ||    /* v65 */
         eflags == 0x66 ||    /* v66 */
-        eflags == 0x67) {    /* v67 */
+        eflags == 0x67 ||    /* v67 */
+        eflags == 0x8067     /* v67t */
+       ) {
         return "v67";
     }
     return "unknown";

@@ -122,9 +122,6 @@ struct CPUHexagonState {
     target_ulong llsc_addr;
     target_ulong llsc_val;
     uint64_t     llsc_val_i64;
-    target_ulong llsc_newval;
-    uint64_t     llsc_newval_i64;
-    target_ulong llsc_reg;
 
     target_ulong is_gather_store_insn;
     target_ulong gather_issued;

@@ -26,8 +26,6 @@
 
 #define HEX_EXCP_TRAP0           0x172
 #define HEX_EXCP_TRAP1           0x173
-#define HEX_EXCP_SC4             0x100
-#define HEX_EXCP_SC8             0x200
 
 #define PACKET_WORDS_MAX         4
 

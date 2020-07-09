@@ -348,53 +348,72 @@ static inline TCGv gen_set_bit(int i, TCGv result, TCGv src)
 static inline void gen_load_locked4u(TCGv dest, TCGv vaddr, int mem_index)
 {
     tcg_gen_qemu_ld32u(dest, vaddr, mem_index);
-    tcg_gen_mov_tl(llsc_addr, vaddr);
-    tcg_gen_mov_tl(llsc_val, dest);
+    tcg_gen_mov_tl(hex_llsc_addr, vaddr);
+    tcg_gen_mov_tl(hex_llsc_val, dest);
 }
 
 static inline void gen_load_locked8u(TCGv_i64 dest, TCGv vaddr, int mem_index)
 {
     tcg_gen_qemu_ld64(dest, vaddr, mem_index);
-    tcg_gen_mov_tl(llsc_addr, vaddr);
-    tcg_gen_mov_i64(llsc_val_i64, dest);
+    tcg_gen_mov_tl(hex_llsc_addr, vaddr);
+    tcg_gen_mov_i64(hex_llsc_val_i64, dest);
 }
 
 static inline void gen_store_conditional4(CPUHexagonState *env,
                                           DisasContext *ctx, int prednum,
                                           TCGv pred, TCGv vaddr, TCGv src)
 {
-    TCGv tmp = tcg_temp_new();
     TCGLabel *fail = gen_new_label();
+    TCGLabel *done = gen_new_label();
 
-    tcg_gen_ld_tl(tmp, cpu_env, offsetof(CPUHexagonState, llsc_addr));
-    tcg_gen_brcond_tl(TCG_COND_NE, vaddr, tmp, fail);
-    tcg_gen_movi_tl(tmp, prednum);
-    tcg_gen_st_tl(tmp, cpu_env, offsetof(CPUHexagonState, llsc_reg));
-    tcg_gen_st_tl(src, cpu_env, offsetof(CPUHexagonState, llsc_newval));
-    gen_exception(HEX_EXCP_SC4);
+    tcg_gen_brcond_tl(TCG_COND_NE, vaddr, hex_llsc_addr, fail);
+
+    TCGv one = tcg_const_tl(0xff);
+    TCGv zero = tcg_const_tl(0);
+    TCGv tmp = tcg_temp_new();
+    tcg_gen_atomic_cmpxchg_tl(tmp, hex_llsc_addr, hex_llsc_val, src,
+                              ctx->mem_idx, MO_32);
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_pred[prednum], tmp, hex_llsc_val,
+                       one, zero);
+    tcg_temp_free(one);
+    tcg_temp_free(zero);
+    tcg_temp_free(tmp);
+    tcg_gen_br(done);
 
     gen_set_label(fail);
     tcg_gen_movi_tl(pred, 0);
-    tcg_temp_free(tmp);
+
+    gen_set_label(done);
+    tcg_gen_movi_tl(hex_llsc_addr, ~0);
 }
 
 static inline void gen_store_conditional8(CPUHexagonState *env,
                                           DisasContext *ctx, int prednum,
                                           TCGv pred, TCGv vaddr, TCGv_i64 src)
 {
-    TCGv tmp = tcg_temp_new();
     TCGLabel *fail = gen_new_label();
+    TCGLabel *done = gen_new_label();
 
-    tcg_gen_ld_tl(tmp, cpu_env, offsetof(CPUHexagonState, llsc_addr));
-    tcg_gen_brcond_tl(TCG_COND_NE, vaddr, tmp, fail);
-    tcg_gen_movi_tl(tmp, prednum);
-    tcg_gen_st_tl(tmp, cpu_env, offsetof(CPUHexagonState, llsc_reg));
-    tcg_gen_st_i64(src, cpu_env, offsetof(CPUHexagonState, llsc_newval_i64));
-    gen_exception(HEX_EXCP_SC8);
+    tcg_gen_brcond_tl(TCG_COND_NE, vaddr, hex_llsc_addr, fail);
+
+    TCGv_i64 one = tcg_const_i64(0xff);
+    TCGv_i64 zero = tcg_const_i64(0);
+    TCGv_i64 tmp = tcg_temp_new_i64();
+    tcg_gen_atomic_cmpxchg_i64(tmp, hex_llsc_addr, hex_llsc_val_i64, src,
+                               ctx->mem_idx, MO_64);
+    tcg_gen_movcond_i64(TCG_COND_EQ, tmp, tmp, hex_llsc_val_i64,
+                        one, zero);
+    tcg_gen_extrl_i64_i32(hex_pred[prednum], tmp);
+    tcg_temp_free_i64(one);
+    tcg_temp_free_i64(zero);
+    tcg_temp_free_i64(tmp);
+    tcg_gen_br(done);
 
     gen_set_label(fail);
     tcg_gen_movi_tl(pred, 0);
-    tcg_temp_free(tmp);
+
+    gen_set_label(done);
+    tcg_gen_movi_tl(hex_llsc_addr, ~0);
 }
 
 static inline void gen_store32(TCGv vaddr, TCGv src, int width, int slot)
