@@ -1700,6 +1700,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fRESUME(REG)              helper_fresume(env, REG)
 #define fCLEAR_RUN_MODE(x)        helper_clear_run_mode(env,(x))
 #define READ_IMASK(TID)           helper_getimask(env, TID)
+#define WRITE_IMASK(PRED,MASK)    helper_setimask(env, PRED, MASK)
 
 #ifndef CONFIG_USER_ONLY
 #define fTLB_IDXMASK(INDEX) \

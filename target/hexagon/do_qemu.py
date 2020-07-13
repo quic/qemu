@@ -923,12 +923,13 @@ supported_privs = [
     'Y2_dctagr', 'Y2_dctagw',
     'Y2_dccleana', 'Y2_dccleaninva', 'Y2_dccleanidx', 'Y2_dccleaninvidx',
     'Y2_dcinvidx', 'Y2_dcfetchbo',
+    'Y5_l2gcleaninv',
     'Y4_l2fetch', 'Y5_l2fetch', 'Y2_icinva',
     'Y2_dczeroa',
     'Y2_start', 'Y2_stop', 'Y2_wait', 'Y2_resume',
     'Y2_iassignw', 'Y2_iassignr',
     'Y2_k0lock', 'Y2_k0unlock',
-    'Y2_getimask',
+    'Y2_getimask', 'Y2_setimask',
 ]
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 

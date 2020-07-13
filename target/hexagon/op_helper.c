@@ -958,21 +958,23 @@ void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
     uint32_t modectl =
         ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
-    /* src fields are in same position as modectl, but mean different things */
-    uint32_t int_number = GET_FIELD(MODECTL_W, src);
-    uint32_t int_enabled_mask = GET_FIELD(MODECTL_E, src);
     CPUState *cpu = NULL;
     CPU_FOREACH (cpu) {
         CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
-        uint32_t thread_id_mask =
-            0x1 << ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_HTID);
+        uint32_t thread_id_mask = 0x1 << thread_env->threadId;
         if (thread_enabled_mask & thread_id_mask) {
             uint32_t imask = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK);
-            uint32_t imask_mask = GET_FIELD(IMASK_MASK, imask);
-            imask = (int_enabled_mask & thread_id_mask) ?
-                        imask_mask | (1 << int_number) :
-                        imask_mask & ~(1 << int_number);
-            ARCH_SET_SYSTEM_REG(thread_env, HEX_SREG_IMASK, imask_mask);
+            //uint32_t imask_mask = GET_FIELD(IMASK_MASK, imask);
+            uint32_t intbitpos = (src >> 16) & 0xF;
+            fINSERT_BITS(imask, 1, intbitpos,
+                (src >> thread_env->threadId) & 0x1);
+            ARCH_SET_SYSTEM_REG(thread_env, HEX_SREG_IMASK, imask);
+            HEX_DEBUG_LOG("%s: tid %d, read imask 0x%x, intbitpos %u, "
+              "set bitval %u, new imask 0x%x\n",
+              __FUNCTION__,
+              thread_env->threadId, imask, intbitpos,
+              (src >> thread_env->threadId) & 0x1,
+              ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK));
         }
     }
 }
@@ -984,18 +986,15 @@ uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
         ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
     /* src fields are in same position as modectl, but mean different things */
-    uint32_t int_number = GET_FIELD(MODECTL_W, src);
+    uint32_t intbitpos = GET_FIELD(MODECTL_W, src);
     uint32_t dest_reg = 0;
     CPUState *cpu = NULL;
     CPU_FOREACH (cpu) {
         CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
-        uint32_t thread_id_mask =
-            0x1 << ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_HTID);
-
+        uint32_t thread_id_mask = 0x1 << thread_env->threadId;
         if (thread_enabled_mask & thread_id_mask) {
             uint32_t imask = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK);
-            uint32_t imask_mask = GET_FIELD(IMASK_MASK, imask);
-            dest_reg |= imask_mask & (1 << int_number);
+            dest_reg |= ((imask >> intbitpos) & 0x1) << thread_env->threadId;
         }
     }
     return dest_reg;
@@ -1092,18 +1091,39 @@ uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
 uint32_t HELPER(getimask)(CPUHexagonState *env, uint32_t tid)
 
 {
-    HEX_DEBUG_LOG("%s: tid %u, env %p\n", __FUNCTION__, tid, env);
+    HEX_DEBUG_LOG("%s: tid %u, for tid %u\n",
+        __FUNCTION__, env->threadId, tid);
     CPUState *cs;
     CPU_FOREACH(cs) {
         HexagonCPU *found_cpu = HEXAGON_CPU(cs);
         CPUHexagonState *found_env = &found_cpu->env;
         if (found_env->threadId == tid) {
-            target_ulong imask = ARCH_GET_SYSTEM_REG(found_env, HEX_SREG_IMASK);
-            HEX_DEBUG_LOG("%s: found it 0x%x\n", __FUNCTION__, imask);
+            target_ulong imask = ARCH_GET_SYSTEM_REG(found_env,HEX_SREG_IMASK);
+            HEX_DEBUG_LOG("%s: tid %d, found it, imask = 0x%x\n",
+                __FUNCTION__, env->threadId,
+                (unsigned)GET_FIELD(IMASK_MASK, imask));
             return GET_FIELD(IMASK_MASK, imask);
         }
     }
     return 0;
+}
+
+void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
+
+{
+    HEX_DEBUG_LOG("%s: tid %u, pred 0x%x, imask 0x%x\n",
+      __FUNCTION__, env->threadId, pred, imask);
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *found_cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *found_env = &found_cpu->env;
+        if (pred & (0x1 << found_env->threadId)) {
+            SET_SYSTEM_FIELD(found_env, HEX_SREG_IMASK, IMASK_MASK, imask);
+            HEX_DEBUG_LOG("%s: tid %d, found it, imask 0x%x\n",
+                __FUNCTION__, found_env->threadId, imask);
+            return;
+        }
+    }
 }
 
 void HELPER(swi)(CPUHexagonState *env, uint32_t mask)

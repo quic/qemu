@@ -130,6 +130,7 @@ typedef enum {
 } hex_lock_state_t;
 
 typedef struct {
+    target_ulong runnable_threads_max;
     target_ulong thread_system_mask;
 } Processor;
 #endif

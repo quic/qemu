@@ -107,7 +107,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         __FUNCTION__, cpu, env);
 
     env->processor_ptr = g_malloc(sizeof(Processor));
-    env->processor_ptr->thread_system_mask = 0xf; //THREADS_MAX = 4
+    env->processor_ptr->runnable_threads_max = 4;
+    env->processor_ptr->thread_system_mask = 0xf;
     env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     //env->g_sreg[HEX_SREG_PCYCLELO] = 0xaaaa;
     //env->g_sreg[HEX_SREG_PCYCLEHI] = 0xbbbb;
