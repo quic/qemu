@@ -74,7 +74,7 @@ const char *opcode_short_semantics[] = {
 
 
 size4u_t
-    opcode_attribs[XX_LAST_OPCODE][(A_ZZ_LASTATTRIB / ATTRIB_WIDTH) + 1] = {0};
+    opcode_attribs[XX_LAST_OPCODE][(A_ZZ_LASTATTRIB / ATTRIB_WIDTH) + 1];
 
 static void init_attribs(int tag, ...)
 {

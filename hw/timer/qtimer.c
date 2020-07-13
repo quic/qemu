@@ -226,12 +226,14 @@ static void qtimer_dev_class_init(ObjectClass *klass, void *data)
     device_class_set_props(dc, qtimer_dev_properties);
 }
 
+#ifndef __clang__
 static const TypeInfo q_timer_dev_info = {
     .name = "qtimer",
     .parent = TYPE_Q_TIMER,
     .instance_size = sizeof(QTimerInfo),
     .class_init = qtimer_dev_class_init,
 };
+#endif
 
 
 static void Q_timer_class_init(ObjectClass *oc, void *data)

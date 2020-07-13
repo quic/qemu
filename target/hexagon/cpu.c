@@ -234,7 +234,11 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
         return;
     }
     last_pc = env->gpr[HEX_REG_PC];
+#ifdef CONFIG_USER_ONLY
+    fprintf(f, "General Purpose Registers = {\n");
+#else
     fprintf(f, "TID %d : General Purpose Registers = {\n", env->threadId);
+#endif
     for (i = 0; i < 32; i++) {
         print_reg(f, env, i);
     }

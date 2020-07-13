@@ -34,7 +34,7 @@ const char *opcode_names[] = {
 #undef OPCODE
 };
 
-char *opcode_syntax[XX_LAST_OPCODE];
+const char *opcode_syntax[XX_LAST_OPCODE];
 
 /*
  * Process the instruction definitions
@@ -115,7 +115,7 @@ static const char *get_opcode_enc_class(int opcode)
 {
     const char *tmp = opcode_encodings[opcode].encoding;
     if (tmp == NULL) {
-        char *test = "V6_";        /* HVX */
+        const char *test = "V6_";        /* HVX */
         char *name = (char *)opcode_names[opcode];
         if (strncmp(name, test, strlen(test)) == 0) {
             return "EXT_mmvec";

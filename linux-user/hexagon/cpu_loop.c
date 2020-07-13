@@ -88,6 +88,9 @@ void cpu_loop(CPUHexagonState *env)
                 exit(EXIT_FAILURE);
             }
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             EXCP_DUMP(env, "\nqemu: unhandled CPU exception "
                 "%#x/%#x - aborting\n",
