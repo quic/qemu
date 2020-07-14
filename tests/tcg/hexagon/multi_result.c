@@ -94,23 +94,29 @@ static long long sub_carry(long long Rss, long long Rtt,
 
 int err;
 
-#define check_ll(val, expect) \
-  if (val != expect) { \
-    printf("ERROR: 0x%016llx != 0x%016llx\n", val, expect); \
-    err++; \
-  }
+static void check_ll(long long val, long long expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%016llx != 0x%016llx\n", val, expect);
+        err++;
+    }
+}
 
-#define check(val, expect) \
-  if (val != expect) { \
-    printf("ERROR: 0x%08x != 0x%08x\n", val, expect); \
-    err++; \
-  }
+static void check(int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%08x != 0x%08x\n", val, expect);
+        err++;
+    }
+}
 
-#define check_p(val, expect) \
-  if (val != expect) { \
-    printf("ERROR: 0x%02x != 0x%02x\n", val, expect); \
-    err++; \
-  }
+static void check_p(int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%02x != 0x%02x\n", val, expect);
+        err++;
+    }
+}
 
 static void test_sfrecipa()
 {

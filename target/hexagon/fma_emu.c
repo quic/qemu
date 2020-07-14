@@ -34,8 +34,6 @@
 
 #define isz(X) (fpclassify(X) == FP_ZERO)
 
-#define debug_fprintf(...)    /* nothing */
-
 typedef union {
     double f;
     size8u_t i;
@@ -81,13 +79,6 @@ typedef struct {
     size1u_t round;
     size1u_t sticky;
 } xf_t;
-
-static inline void xf_debug(const char *msg, xf_t a)
-{
-    debug_fprintf(stdout, "%s %c0x%016llx_%016llx /%d/%d/%d p%d\n", msg,
-                  a.sign ? '-' : '+', a.mant.high, a.mant.low, a.guard,
-                  a.round, a.sticky, a.exp);
-}
 
 static inline void xf_init(xf_t *p)
 {
@@ -162,8 +153,6 @@ static inline int128_t int128_mul_6464(size8u_t ai, size8u_t bi)
     int128_t a, b;
     size8u_t pp0, pp1a, pp1b, pp1s, pp2;
 
-    debug_fprintf(stdout, "ai/bi: 0x%016llx/0x%016llx\n", ai, bi);
-
     a.high = b.high = 0;
     a.low = ai;
     b.low = bi;
@@ -171,10 +160,6 @@ static inline int128_t int128_mul_6464(size8u_t ai, size8u_t bi)
     pp1a = (size8u_t)a.w1 * (size8u_t)b.w0;
     pp1b = (size8u_t)b.w1 * (size8u_t)a.w0;
     pp2 = (size8u_t)a.w1 * (size8u_t)b.w1;
-
-    debug_fprintf(stdout,
-                  "pp2/1b/1a/0: 0x%016llx/0x%016llx/0x%016llx/0x%016llx\n",
-                  pp2, pp1b, pp1a, pp0);
 
     pp1s = pp1a + pp1b;
     if ((pp1s < pp1a) || (pp1s < pp1b)) {
@@ -185,10 +170,6 @@ static inline int128_t int128_mul_6464(size8u_t ai, size8u_t bi)
         pp2 += 1;
     }
     ret.high = pp2 + (pp1s >> 32);
-
-    debug_fprintf(stdout,
-                  "pp1s/rethi/retlo: 0x%016llx/0x%016llx/0x%016llx\n",
-                  pp1s, ret.high, ret.low);
 
     return ret;
 }
@@ -328,9 +309,6 @@ static inline xf_t xf_sub(xf_t a, xf_t b, int negate)
     xf_init(&ret);
     int borrow;
 
-    xf_debug("-->Sub/a: ", a);
-    xf_debug("-->Sub/b: ", b);
-
     if (a.sign != b.sign) {
         b.sign = !b.sign;
         return xf_add(a, b);
@@ -344,9 +322,6 @@ static inline xf_t xf_sub(xf_t a, xf_t b, int negate)
         return xf_sub(b, a, !negate);
     }
 
-    xf_debug("OK: Sub/a: ", a);
-    xf_debug("OK: Sub/b: ", b);
-
     while (a.exp > b.exp) {
         /* Try to normalize exponents: shrink a exponent and grow mantissa */
         if (a.mant.high & (1ULL << 62)) {
@@ -357,21 +332,13 @@ static inline xf_t xf_sub(xf_t a, xf_t b, int negate)
         }
     }
 
-    xf_debug("norm_l: Sub/a: ", a);
-    xf_debug("norm_l: Sub/b: ", b);
-
     while (a.exp > b.exp) {
         /* Try to normalize exponents: grow b exponent and shrink mantissa */
         /* Keep around shifted out bits... we might need those later */
         b = xf_norm_right(b, a.exp - b.exp);
     }
 
-    xf_debug("norm_r: Sub/a: ", a);
-    xf_debug("norm_r: Sub/b: ", b);
-
     if ((int128_gt(b.mant, a.mant))) {
-        xf_debug("retry: Sub/a: ", a);
-        xf_debug("retry: Sub/b: ", b);
         return xf_sub(b, a, !negate);
     }
 
@@ -395,8 +362,6 @@ static xf_t xf_add(xf_t a, xf_t b)
 {
     xf_t ret;
     xf_init(&ret);
-    xf_debug("-->Add/a: ", a);
-    xf_debug("-->Add/b: ", b);
     if (a.sign != b.sign) {
         b.sign = !b.sign;
         return xf_sub(a, b, 0);
@@ -410,9 +375,6 @@ static xf_t xf_add(xf_t a, xf_t b)
         return xf_add(b, a);
     }
 
-    xf_debug("OK? Add/a: ", a);
-    xf_debug("OK? Add/b: ", b);
-
     while (a.exp > b.exp) {
         /* Try to normalize exponents: shrink a exponent and grow mantissa */
         if (a.mant.high & (1ULL << 62)) {
@@ -423,22 +385,14 @@ static xf_t xf_add(xf_t a, xf_t b)
         }
     }
 
-    xf_debug("norm_l: Add/a: ", a);
-    xf_debug("norm_l: Add/b: ", b);
-
     while (a.exp > b.exp) {
         /* Try to normalize exponents: grow b exponent and shrink mantissa */
         /* Keep around shifted out bits... we might need those later */
         b = xf_norm_right(b, a.exp - b.exp);
     }
 
-    xf_debug("norm_r: Add/a: ", a);
-    xf_debug("norm_r: Add/b: ", b);
-
     /* OK, now things should be normalized! */
     if (int128_gt(b.mant, a.mant)) {
-        xf_debug("retry: Add/a: ", a);
-        xf_debug("retry: Add/b: ", b);
         return xf_add(b, a);
     };
     ret.sign = a.sign;
@@ -526,11 +480,9 @@ static inline TYPE xf_round_##TYPE(xf_t a) \
     /* That means that we want MANTBITS+1 bits, or 0x000000000000FF_FFFF */ \
     /* So we need to normalize right while the high word is non-zero and \
     * while the low word is nonzero when masked with 0xffe0_0000_0000_0000 */ \
-    xf_debug("input: ", a); \
     while ((a.mant.high != 0) || ((a.mant.low >> (MANTBITS + 1)) != 0)) { \
         a = xf_norm_right(a, 1); \
     } \
-    xf_debug("norm_right: ", a); \
     /* \
      * OK, now normalize left \
      * We want to normalize left until we have a leading one in bit 24 \
@@ -541,7 +493,6 @@ static inline TYPE xf_round_##TYPE(xf_t a) \
     while ((a.mant.low & (1ULL << MANTBITS)) == 0) { \
         a = xf_norm_left(a); \
     } \
-    xf_debug("norm_left: ", a); \
     /* \
      * OK, now we might need to denormalize because of potential underflow. \
      * We need to do this before rounding, and rounding might make us normal \
@@ -558,7 +509,6 @@ static inline TYPE xf_round_##TYPE(xf_t a) \
             feraiseexcept(FE_UNDERFLOW); \
         } \
     } \
-    xf_debug("norm_denorm: ", a); \
     /* OK, we're relatively canonical... now we need to round */ \
     if (a.guard || a.round || a.sticky) { \
         feraiseexcept(FE_INEXACT); \
@@ -587,7 +537,6 @@ static inline TYPE xf_round_##TYPE(xf_t a) \
             break; \
         } \
     } \
-    xf_debug("post_round: ", a); \
     /* \
      * OK, now we might have carried all the way up. \
      * So we might need to shr once \
@@ -597,11 +546,9 @@ static inline TYPE xf_round_##TYPE(xf_t a) \
     if ((a.mant.low >> (MANTBITS + 1)) != 0) { \
         a = xf_norm_right(a, 1); \
     } \
-    xf_debug("once_norm_right: ", a); \
     /* Overflow? */ \
     if (a.exp >= INF_EXP) { \
         /* Yep, inf result */ \
-        xf_debug("inf: ", a); \
         feraiseexcept(FE_OVERFLOW); \
         feraiseexcept(FE_INEXACT); \
         switch (fegetround()) { \
@@ -626,12 +573,10 @@ static inline TYPE xf_round_##TYPE(xf_t a) \
     /* Underflow? */ \
     if (a.mant.low & (1ULL << MANTBITS)) { \
         /* Leading one means: No, we're normal. So, we should be done... */ \
-        xf_debug("norm: ", a); \
         ret.x.exp = a.exp; \
         ret.x.mant = a.mant.low; \
         return ret; \
     } \
-    xf_debug("denorm: ", a); \
     if (a.exp != 1) { \
         printf("a.exp == %d\n", a.exp); \
     } \
@@ -727,9 +672,6 @@ float internal_fmafx(float a_in, float b_in, float c_in, int scale)
     b.f = b_in;
     c.f = c_in;
 
-    debug_fprintf(stdout,
-                  "internal_fmax: 0x%016x * 0x%016x + 0x%016x sc: %d\n",
-                  fUNFLOAT(a_in), fUNFLOAT(b_in), fUNFLOAT(c_in), scale);
     if (isinf(a.f) || isinf(b.f) || isinf(c.f)) {
         return special_fmaf(a, b, c);
     }
@@ -752,27 +694,21 @@ float internal_fmafx(float a_in, float b_in, float c_in, int scale)
     if (isz(a.f) || isz(b.f)) {
         prod.exp = -2 * WAY_BIG_EXP;
     }
-    xf_debug("prod: ", prod);
     if ((scale > 0) && (fpclassify(c.f) == FP_SUBNORMAL)) {
         acc.mant = int128_mul_6464(0, 0);
         acc.exp = -WAY_BIG_EXP;
         acc.sign = c.x.sign;
         acc.sticky = 1;
-        xf_debug("special denorm acc: ", acc);
         result = xf_add(prod, acc);
     } else if (!isz(c.f)) {
         acc.mant = int128_mul_6464(sf_getmant(c), 1);
         acc.exp = sf_getexp(c);
         acc.sign = c.x.sign;
-        xf_debug("acc: ", acc);
         result = xf_add(prod, acc);
     } else {
         result = prod;
     }
-    xf_debug("sum: ", result);
-    debug_fprintf(stdout, "Scaling: %d\n", scale);
     result.exp += scale;
-    xf_debug("post-scale: ", result);
     return xf_round_sf_t(result).f;
 }
 
@@ -819,15 +755,12 @@ double internal_mpyhh(double a_in, double b_in,
     prod = fGETUWORD(1, df_getmant(a)) * fGETUWORD(1, df_getmant(b));
     x.mant = int128_add(x.mant, int128_mul_6464(prod, 0x100000000ULL));
     x.exp = df_getexp(a) + df_getexp(b) - DF_BIAS - 20;
-    xf_debug("formed: ", x);
     if (!isnormal(a_in) || !isnormal(b_in)) {
         /* crush to inexact zero */
         x.sticky = 1;
         x.exp = -4096;
-        xf_debug("crushing: ", x);
     }
     x.sign = a.x.sign ^ b.x.sign;
-    xf_debug("with sign: ", x);
     return xf_round_df_t(x).f;
 }
 
@@ -843,7 +776,6 @@ float conv_df_to_sf(double in_f)
     x.mant = int128_mul_6464(df_getmant(in), 1);
     x.exp = df_getexp(in) - DF_BIAS + SF_BIAS - 52 + 23;
     x.sign = in.x.sign;
-    xf_debug("conv to sf: x: ", x);
     return xf_round_sf_t(x).f;
 }
 

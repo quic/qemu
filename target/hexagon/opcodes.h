@@ -52,7 +52,6 @@ typedef struct {
     size4u_t vals;
     size4u_t dep_vals;
     const enc_class_t enc_class;
-    size1u_t is_ee:1;
 } opcode_encoding_t;
 
 extern opcode_encoding_t opcode_encodings[XX_LAST_OPCODE];

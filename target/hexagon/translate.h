@@ -26,46 +26,46 @@
 typedef struct DisasContext {
     DisasContextBase base;
     uint32_t mem_idx;
-    int ctx_reg_log[REG_WRITES_MAX];
-    int ctx_reg_log_idx;
-    int ctx_preg_log[PRED_WRITES_MAX];
-    int ctx_preg_log_idx;
-    uint8_t ctx_store_width[STORES_MAX];
-    int ctx_temp_vregs_idx;
-    int ctx_temp_qregs_idx;
-    int ctx_vreg_log[NUM_VREGS];
-    int ctx_vreg_is_predicated[NUM_VREGS];
-    int ctx_vreg_log_idx;
-    int ctx_qreg_log[NUM_QREGS];
-    int ctx_qreg_is_predicated[NUM_QREGS];
-    int ctx_qreg_log_idx;
+    int reg_log[REG_WRITES_MAX];
+    int reg_log_idx;
+    int preg_log[PRED_WRITES_MAX];
+    int preg_log_idx;
+    uint8_t store_width[STORES_MAX];
+    int temp_vregs_idx;
+    int temp_qregs_idx;
+    int vreg_log[NUM_VREGS];
+    int vreg_is_predicated[NUM_VREGS];
+    int vreg_log_idx;
+    int qreg_log[NUM_QREGS];
+    int qreg_is_predicated[NUM_QREGS];
+    int qreg_log_idx;
 } DisasContext;
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
 {
 #if HEX_DEBUG
     int i;
-    for (i = 0; i < ctx->ctx_reg_log_idx; i++) {
-        if (ctx->ctx_reg_log[i] == rnum) {
+    for (i = 0; i < ctx->reg_log_idx; i++) {
+        if (ctx->reg_log[i] == rnum) {
             HEX_DEBUG_LOG("WARNING: Multiple writes to r%d\n", rnum);
         }
     }
 #endif
-    ctx->ctx_reg_log[ctx->ctx_reg_log_idx] = rnum;
-    ctx->ctx_reg_log_idx++;
+    ctx->reg_log[ctx->reg_log_idx] = rnum;
+    ctx->reg_log_idx++;
 }
 
 static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
 {
-    ctx->ctx_preg_log[ctx->ctx_preg_log_idx] = pnum;
-    ctx->ctx_preg_log_idx++;
+    ctx->preg_log[ctx->preg_log_idx] = pnum;
+    ctx->preg_log_idx++;
 }
 
 static inline bool is_preloaded(DisasContext *ctx, int num)
 {
     int i;
-    for (i = 0; i < ctx->ctx_reg_log_idx; i++) {
-        if (ctx->ctx_reg_log[i] == num) {
+    for (i = 0; i < ctx->reg_log_idx; i++) {
+        if (ctx->reg_log[i] == num) {
             return true;
         }
     }
@@ -75,17 +75,17 @@ static inline bool is_preloaded(DisasContext *ctx, int num)
 static inline void ctx_log_vreg_write(DisasContext *ctx,
                                       int rnum, int is_predicated)
 {
-    ctx->ctx_vreg_log[ctx->ctx_vreg_log_idx] = rnum;
-    ctx->ctx_vreg_is_predicated[ctx->ctx_vreg_log_idx] = is_predicated;
-    ctx->ctx_vreg_log_idx++;
+    ctx->vreg_log[ctx->vreg_log_idx] = rnum;
+    ctx->vreg_is_predicated[ctx->vreg_log_idx] = is_predicated;
+    ctx->vreg_log_idx++;
 }
 
 static inline void ctx_log_qreg_write(DisasContext *ctx,
                                       int rnum, int is_predicated)
 {
-    ctx->ctx_qreg_log[ctx->ctx_qreg_log_idx] = rnum;
-    ctx->ctx_qreg_is_predicated[ctx->ctx_qreg_log_idx] = is_predicated;
-    ctx->ctx_qreg_log_idx++;
+    ctx->qreg_log[ctx->qreg_log_idx] = rnum;
+    ctx->qreg_is_predicated[ctx->qreg_log_idx] = is_predicated;
+    ctx->qreg_log_idx++;
 }
 
 extern TCGv hex_gpr[TOTAL_PER_THREAD_REGS];

@@ -58,30 +58,30 @@ int err;
 int *p;
 long long *p64;
 
-#define check(val, expect) \
-    do { \
-        if (val != expect) { \
-            printf("ERROR: %d != %d\n", val, expect); \
-            err++; \
-        } \
-    } while (0)
+static void check(int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: %d != %d\n", val, expect);
+        err++;
+    }
+}
 
-#define check64(val, expect) \
-    do { \
-        if (val != expect) { \
-            printf("ERROR (64): %lld != %lld\n", val, expect); \
-            err++; \
-        } \
-    } while (0)
+static void check64(long long val, long long expect)
+{
+    if (val != expect) {
+        printf("ERROR (64): %lld != %lld\n", val, expect);
+        err++;
+    }
+}
 
-#define checkp(val, expect) \
-    do { \
-        if (val != expect) { \
-            printf("ERROR (p): 0x%x != 0x%x\n", \
-                   (unsigned int)(val), (unsigned int)(expect)); \
-            err++; \
-        } \
-    } while (0)
+static void checkp(void *val, void *expect)
+{
+    if (val != expect) {
+        printf("ERROR (p): 0x%x != 0x%x\n",
+               (unsigned int)(val), (unsigned int)(expect));
+        err++;
+    }
+}
 
 /*
  ****************************************************************************

@@ -138,14 +138,14 @@ static void gen_start_packet(DisasContext *ctx, packet_t *pkt)
     int i;
 
     /* Clear out the disassembly context */
-    ctx->ctx_reg_log_idx = 0;
-    ctx->ctx_preg_log_idx = 0;
-    ctx->ctx_temp_vregs_idx = 0;
-    ctx->ctx_temp_qregs_idx = 0;
-    ctx->ctx_vreg_log_idx = 0;
-    ctx->ctx_qreg_log_idx = 0;
+    ctx->reg_log_idx = 0;
+    ctx->preg_log_idx = 0;
+    ctx->temp_vregs_idx = 0;
+    ctx->temp_qregs_idx = 0;
+    ctx->vreg_log_idx = 0;
+    ctx->qreg_log_idx = 0;
     for (i = 0; i < STORES_MAX; i++) {
-        ctx->ctx_store_width[i] = 0;
+        ctx->store_width[i] = 0;
     }
 
 #if HEX_DEBUG
@@ -194,8 +194,8 @@ static void mark_implicit_reg_write(DisasContext *ctx, insn_t *insn,
             tcg_gen_mov_tl(hex_new_value[rnum], hex_gpr[rnum]);
         }
 
-        ctx->ctx_reg_log[ctx->ctx_reg_log_idx] = rnum;
-        ctx->ctx_reg_log_idx++;
+        ctx->reg_log[ctx->reg_log_idx] = rnum;
+        ctx->reg_log_idx++;
     }
 }
 
@@ -203,8 +203,8 @@ static void mark_implicit_pred_write(DisasContext *ctx, insn_t *insn,
                                      int attrib, int pnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
-        ctx->ctx_preg_log[ctx->ctx_preg_log_idx] = pnum;
-        ctx->ctx_preg_log_idx++;
+        ctx->preg_log[ctx->preg_log_idx] = pnum;
+        ctx->preg_log_idx++;
     }
 }
 
@@ -250,8 +250,8 @@ static void gen_reg_writes(DisasContext *ctx)
 {
     int i;
 
-    for (i = 0; i < ctx->ctx_reg_log_idx; i++) {
-        int reg_num = ctx->ctx_reg_log[i];
+    for (i = 0; i < ctx->reg_log_idx; i++) {
+        int reg_num = ctx->reg_log[i];
 
         tcg_gen_mov_tl(hex_gpr[reg_num], hex_new_value[reg_num]);
     }
@@ -260,7 +260,7 @@ static void gen_reg_writes(DisasContext *ctx)
 static void gen_pred_writes(DisasContext *ctx, packet_t *pkt)
 {
     /* Early exit if the log is empty */
-    if (!ctx->ctx_preg_log_idx) {
+    if (!ctx->preg_log_idx) {
         return;
     }
 
@@ -277,8 +277,8 @@ static void gen_pred_writes(DisasContext *ctx, packet_t *pkt)
      */
     if (pkt->pkt_has_endloop) {
         TCGv pred_written = tcg_temp_new();
-        for (i = 0; i < ctx->ctx_preg_log_idx; i++) {
-            int pred_num = ctx->ctx_preg_log[i];
+        for (i = 0; i < ctx->preg_log_idx; i++) {
+            int pred_num = ctx->preg_log[i];
 
             tcg_gen_andi_tl(pred_written, hex_pred_written, 1 << pred_num);
             tcg_gen_movcond_tl(TCG_COND_NE, hex_pred[pred_num],
@@ -288,8 +288,8 @@ static void gen_pred_writes(DisasContext *ctx, packet_t *pkt)
         }
         tcg_temp_free(pred_written);
     } else {
-        for (i = 0; i < ctx->ctx_preg_log_idx; i++) {
-            int pred_num = ctx->ctx_preg_log[i];
+        for (i = 0; i < ctx->preg_log_idx; i++) {
+            int pred_num = ctx->preg_log[i];
             tcg_gen_mov_tl(hex_pred[pred_num], hex_new_pred_value[pred_num]);
 #if HEX_DEBUG
             /* Do this so HELPER(debug_commit_end) will know */
@@ -307,7 +307,7 @@ static void gen_pred_writes(DisasContext *ctx, packet_t *pkt)
 static inline void gen_check_store_width(DisasContext *ctx, int slot_num)
 {
     TCGv slot = tcg_const_tl(slot_num);
-    TCGv check = tcg_const_tl(ctx->ctx_store_width[slot_num]);
+    TCGv check = tcg_const_tl(ctx->store_width[slot_num]);
     gen_helper_debug_check_store_width(cpu_env, slot, check);
     tcg_temp_free(slot);
     tcg_temp_free(check);
@@ -327,7 +327,7 @@ static void process_store(DisasContext *ctx, int slot_num)
     gen_slot_cancelled_check(cancelled, slot_num);
     tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
     {
-        int ctx_width = ctx->ctx_store_width[slot_num];
+        int ctx_width = ctx->store_width[slot_num];
         TCGv address = tcg_temp_local_new();
         tcg_gen_mov_tl(address, hex_store_addr[slot_num]);
 
@@ -339,39 +339,49 @@ static void process_store(DisasContext *ctx, int slot_num)
          * generic helper will have this problem.  Instructions
          * that use fWRAP to generate proper TCG code will be OK.
          */
-        if (ctx_width == 1) {
+        TCGv value;
+        TCGv_i64 value_i64;
+        TCGLabel *label_w2;
+        TCGLabel *label_w4;
+        TCGLabel *label_w8;
+        switch (ctx_width) {
+        case 1:
             HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num);
-            TCGv value = tcg_temp_new();
+            value = tcg_temp_new();
             tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
             tcg_gen_qemu_st8(value, address, ctx->mem_idx);
             tcg_temp_free(value);
-        } else if (ctx_width == 2) {
+            break;
+        case 2:
             HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num);
-            TCGv value = tcg_temp_new();
+            value = tcg_temp_new();
             tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
             tcg_gen_qemu_st16(value, address, ctx->mem_idx);
             tcg_temp_free(value);
-        } else if (ctx_width == 4) {
+            break;
+        case 4:
             HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num);
-            TCGv value = tcg_temp_new();
+            value = tcg_temp_new();
             tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
             tcg_gen_qemu_st32(value, address, ctx->mem_idx);
             tcg_temp_free(value);
-        } else if (ctx_width == 8) {
+            break;
+        case 8:
             HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num);
-            TCGv_i64 value = tcg_temp_new_i64();
-            tcg_gen_mov_i64(value, hex_store_val64[slot_num]);
-            tcg_gen_qemu_st64(value, address, ctx->mem_idx);
-            tcg_temp_free_i64(value);
-        } else {
+            value_i64 = tcg_temp_new_i64();
+            tcg_gen_mov_i64(value_i64, hex_store_val64[slot_num]);
+            tcg_gen_qemu_st64(value_i64, address, ctx->mem_idx);
+            tcg_temp_free_i64(value_i64);
+            break;
+        default:
             /*
              * If we get to here, we don't know the width at
              * TCG generation time, we'll generate branching
              * based on the width at runtime.
              */
-            TCGLabel *label_w2 = gen_new_label();
-            TCGLabel *label_w4 = gen_new_label();
-            TCGLabel *label_w8 = gen_new_label();
+            label_w2 = gen_new_label();
+            label_w4 = gen_new_label();
+            label_w8 = gen_new_label();
             TCGv width = tcg_temp_local_new();
 
             tcg_gen_mov_tl(width, hex_store_width[slot_num]);
@@ -582,9 +592,9 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
     }
 
     /*
-     *    for (i = 0; i < ctx->ctx_vreg_log_idx; i++) {
-     *        int rnum = ctx->ctx_vreg_log[i];
-     *        if (ctx->ctx_vreg_is_predicated[i]) {
+     *    for (i = 0; i < ctx->vreg_log_idx; i++) {
+     *        int rnum = ctx->vreg_log[i];
+     *        if (ctx->vreg_is_predicated[i]) {
      *            if (env->VRegs_updated & (1 << rnum)) {
      *                env->VRegs[rnum] = env->future_VRegs[rnum];
      *            }
@@ -593,9 +603,9 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
      *        }
      *    }
      */
-    for (i = 0; i < ctx->ctx_vreg_log_idx; i++) {
-        int rnum = ctx->ctx_vreg_log[i];
-        int is_predicated = ctx->ctx_vreg_is_predicated[i];
+    for (i = 0; i < ctx->vreg_log_idx; i++) {
+        int rnum = ctx->vreg_log[i];
+        int is_predicated = ctx->vreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, VRegs[rnum]);
         intptr_t srcoff = offsetof(CPUHexagonState, future_VRegs[rnum]);
         size_t size = sizeof(mmvector_t);
@@ -617,9 +627,9 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
     }
 
     /*
-     *    for (i = 0; i < ctx-_ctx_qreg_log_idx; i++) {
-     *        int rnum = ctx->ctx_qreg_log[i];
-     *        if (ctx->ctx_qreg_is_predicated[i]) {
+     *    for (i = 0; i < ctx->qreg_log_idx; i++) {
+     *        int rnum = ctx->qreg_log[i];
+     *        if (ctx->qreg_is_predicated[i]) {
      *            if (env->QRegs_updated) & (1 << rnum)) {
      *                env->QRegs[rnum] = env->future_QRegs[rnum];
      *            }
@@ -628,9 +638,9 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
      *        }
      *    }
      */
-    for (i = 0; i < ctx->ctx_qreg_log_idx; i++) {
-        int rnum = ctx->ctx_qreg_log[i];
-        int is_predicated = ctx->ctx_qreg_is_predicated[i];
+    for (i = 0; i < ctx->qreg_log_idx; i++) {
+        int rnum = ctx->qreg_log[i];
+        int is_predicated = ctx->qreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, QRegs[rnum]);
         intptr_t srcoff = offsetof(CPUHexagonState, future_QRegs[rnum]);
         size_t size = sizeof(mmqreg_t);
@@ -879,13 +889,14 @@ void hexagon_translate_init(void)
             offsetof(CPUHexagonState, gpr[i]),
             hexagon_regnames[i]);
 
-        sprintf(new_value_names[i], "new_%s", hexagon_regnames[i]);
+        snprintf(new_value_names[i], NAME_LEN, "new_%s", hexagon_regnames[i]);
         hex_new_value[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, new_value[i]),
             new_value_names[i]);
 
 #if HEX_DEBUG
-        sprintf(reg_written_names[i], "reg_written_%s", hexagon_regnames[i]);
+        snprintf(reg_written_names[i], NAME_LEN, "reg_written_%s",
+                 hexagon_regnames[i]);
         hex_reg_written[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, reg_written[i]),
             reg_written_names[i]);
@@ -896,7 +907,8 @@ void hexagon_translate_init(void)
             offsetof(CPUHexagonState, pred[i]),
             hexagon_prednames[i]);
 
-        sprintf(new_pred_value_names[i], "new_pred_%s", hexagon_prednames[i]);
+        snprintf(new_pred_value_names[i], NAME_LEN, "new_pred_%s",
+                 hexagon_prednames[i]);
         hex_new_pred_value[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, new_pred_value[i]),
             new_pred_value_names[i]);
@@ -933,22 +945,22 @@ void hexagon_translate_init(void)
     hex_QRegs_updated = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, QRegs_updated), "QRegs_updated");
     for (i = 0; i < STORES_MAX; i++) {
-        sprintf(store_addr_names[i], "store_addr_%d", i);
+        snprintf(store_addr_names[i], NAME_LEN, "store_addr_%d", i);
         hex_store_addr[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, mem_log_stores[i].va),
             store_addr_names[i]);
 
-        sprintf(store_width_names[i], "store_width_%d", i);
+        snprintf(store_width_names[i], NAME_LEN, "store_width_%d", i);
         hex_store_width[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, mem_log_stores[i].width),
             store_width_names[i]);
 
-        sprintf(store_val32_names[i], "store_val32_%d", i);
+        snprintf(store_val32_names[i], NAME_LEN, "store_val32_%d", i);
         hex_store_val32[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, mem_log_stores[i].data32),
             store_val32_names[i]);
 
-        sprintf(store_val64_names[i], "store_val64_%d", i);
+        snprintf(store_val64_names[i], NAME_LEN, "store_val64_%d", i);
         hex_store_val64[i] = tcg_global_mem_new_i64(cpu_env,
             offsetof(CPUHexagonState, mem_log_stores[i].data64),
             store_val64_names[i]);

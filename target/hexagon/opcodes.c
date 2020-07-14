@@ -122,11 +122,6 @@ static size4u_t str2val(const char *str)
     return ret;
 }
 
-static size1u_t has_ee(const char *str)
-{
-    return (strchr(str, 'E') != NULL);
-}
-
 opcode_encoding_t opcode_encodings[] = {
 #define DEF_ENC32(OPCODE, ENCSTR) \
     [OPCODE] = { .encoding = ENCSTR },
@@ -149,8 +144,7 @@ void opcode_init(void)
     init_attribs(0, 0);
 
 #define DEF_ENC32(OPCODE, ENCSTR) \
-    opcode_encodings[OPCODE].vals = str2val(ENCSTR); \
-    opcode_encodings[OPCODE].is_ee = has_ee(ENCSTR);
+    opcode_encodings[OPCODE].vals = str2val(ENCSTR);
 
 #define DEF_ENC_SUBINSN(OPCODE, CLASS, ENCSTR) \
     opcode_encodings[OPCODE].vals = str2val(ENCSTR);

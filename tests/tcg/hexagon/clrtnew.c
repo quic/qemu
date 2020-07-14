@@ -32,15 +32,18 @@ static inline int test_clrtnew(int arg1, int old_val)
   return ret;
 }
 
-#define check(val, expect) \
-  if (val != expect) { \
-    printf("ERROR: 0x%d != 0x%d\n", val, expect); \
-    err++; \
+int err;
+
+static void check(int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%d != 0x%d\n", val, expect);
+        err++;
+    }
 }
 
 int main()
 {
-    int err = 0;
     int res;
 
     res = test_clrtnew(1, 7);

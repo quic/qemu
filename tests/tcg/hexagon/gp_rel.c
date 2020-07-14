@@ -51,10 +51,12 @@ static inline uint32_t loadgp()
 int err;
 uint32_t array[2] = { 0xdead, 0xbeef };
 
-#define check(N, EXPECT) \
-  if (N != EXPECT) { \
-    printf("ERROR: 0x%04x != 0x%04x\n", N, EXPECT); \
-    err++; \
+static void check(int n, int expect) \
+{
+    if (n != expect) {
+        printf("ERROR: 0x%04x != 0x%04x\n", n, expect);
+        err++;
+    }
 }
 
 int main()

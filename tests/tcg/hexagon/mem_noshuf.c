@@ -126,16 +126,20 @@ typedef union {
 
 int err;
 
-#define check32(N, EXPECT) \
-  if (N != EXPECT) { \
-    printf("ERROR: 0x%08x != 0x%08x\n", N, EXPECT); \
-    err++; \
+static void check32(int n, int expect)
+{
+    if (n != expect) {
+        printf("ERROR: 0x%08x != 0x%08x\n", n, expect);
+        err++;
+    }
 }
 
-#define check64(N, EXPECT) \
-  if (N != EXPECT) { \
-    printf("ERROR: 0x%08llx != 0x%08llx\n", N, EXPECT); \
-    err++; \
+static void check64(long long n, long long expect)
+{
+    if (n != expect) {
+        printf("ERROR: 0x%08llx != 0x%08llx\n", n, expect);
+        err++;
+    }
 }
 
 int main()

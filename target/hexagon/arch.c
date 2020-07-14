@@ -133,7 +133,7 @@ size4u_t fbrevaddr(size4u_t pointer)
 size4u_t count_ones_2(size2u_t src)
 {
     int ret;
-    for (ret = 0; src; ret++) {
+    for (ret = 0; src != 0; ret++) {
         src &= src - 1;    /* clear the least significant bit set */
     }
     return ret;
@@ -142,7 +142,7 @@ size4u_t count_ones_2(size2u_t src)
  size4u_t count_ones_4(size4u_t src)
 {
     int ret;
-    for (ret = 0; src; ret++) {
+    for (ret = 0; src != 0; ret++) {
         src &= src - 1;    /* clear the least significant bit set */
     }
     return ret;
@@ -151,7 +151,7 @@ size4u_t count_ones_2(size2u_t src)
 size4u_t count_ones_8(size8u_t src)
 {
     int ret;
-    for (ret = 0; src; ret++) {
+    for (ret = 0; src != 0; ret++) {
         src &= src - 1;    /* clear the least significant bit set */
     }
     return ret;

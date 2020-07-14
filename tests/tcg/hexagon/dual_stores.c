@@ -39,10 +39,12 @@ typedef union {
 
 int err;
 
-#define check(D, EXPECT) \
-  if (D.word != EXPECT) { \
-    printf("ERROR: 0x%08x != 0x%08x\n", D.word, EXPECT); \
-    err++; \
+static void check(Dual d, int expect)
+{
+    if (d.word != expect) {
+        printf("ERROR: 0x%08x != 0x%08x\n", d.word, expect);
+        err++;
+    }
 }
 
 int main()

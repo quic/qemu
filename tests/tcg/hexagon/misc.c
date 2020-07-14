@@ -183,11 +183,13 @@ static inline void S4_storeirifnew_io(void *p, int pred)
 
 int err;
 
-#define check(VAL, EXPECT) \
-  if (VAL != EXPECT) { \
-    printf("ERROR: 0x%04x != 0x%04x\n", VAL, EXPECT); \
-    err++; \
-  }
+static void check(int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%04x != 0x%04x\n", val, expect);
+        err++;
+    }
+}
 
 uint32_t init[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 uint32_t array[10];

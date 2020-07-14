@@ -429,7 +429,7 @@ static inline void gen_store1(TCGv_env cpu_env, TCGv vaddr, TCGv src,
     TCGv tmp = tcg_const_tl(slot);
     gen_store32(vaddr, src, 1, slot);
     tcg_temp_free(tmp);
-    ctx->ctx_store_width[slot] = 1;
+    ctx->store_width[slot] = 1;
 }
 
 static inline void gen_store1i(TCGv_env cpu_env, TCGv vaddr, int32_t src,
@@ -446,7 +446,7 @@ static inline void gen_store2(TCGv_env cpu_env, TCGv vaddr, TCGv src,
     TCGv tmp = tcg_const_tl(slot);
     gen_store32(vaddr, src, 2, slot);
     tcg_temp_free(tmp);
-    ctx->ctx_store_width[slot] = 2;
+    ctx->store_width[slot] = 2;
 }
 
 static inline void gen_store2i(TCGv_env cpu_env, TCGv vaddr, int32_t src,
@@ -463,7 +463,7 @@ static inline void gen_store4(TCGv_env cpu_env, TCGv vaddr, TCGv src,
     TCGv tmp = tcg_const_tl(slot);
     gen_store32(vaddr, src, 4, slot);
     tcg_temp_free(tmp);
-    ctx->ctx_store_width[slot] = 4;
+    ctx->store_width[slot] = 4;
 }
 
 static inline void gen_store4i(TCGv_env cpu_env, TCGv vaddr, int32_t src,
@@ -482,7 +482,7 @@ static inline void gen_store8(TCGv_env cpu_env, TCGv vaddr, TCGv_i64 src,
     tcg_gen_movi_tl(hex_store_width[slot], 8);
     tcg_gen_mov_i64(hex_store_val64[slot], src);
     tcg_temp_free(tmp);
-    ctx->ctx_store_width[slot] = 8;
+    ctx->store_width[slot] = 8;
 }
 
 static inline void gen_store8i(TCGv_env cpu_env, TCGv vaddr, int64_t src,
@@ -889,22 +889,22 @@ static inline void gen_lshiftr_4_4u(TCGv dst, TCGv src, int32_t shift_amt)
 static inline uint32_t new_temp_vreg_offset(DisasContext *ctx, int num)
 {
     uint32_t offset =
-        offsetof(CPUHexagonState, temp_vregs[ctx->ctx_temp_vregs_idx]);
+        offsetof(CPUHexagonState, temp_vregs[ctx->temp_vregs_idx]);
 
-    HEX_DEBUG_LOG("new_temp_vreg_offset: %d\n", ctx->ctx_temp_vregs_idx);
-    g_assert(ctx->ctx_temp_vregs_idx + num - 1 < TEMP_VECTORS_MAX);
-    ctx->ctx_temp_vregs_idx += num;
+    HEX_DEBUG_LOG("new_temp_vreg_offset: %d\n", ctx->temp_vregs_idx);
+    g_assert(ctx->temp_vregs_idx + num - 1 < TEMP_VECTORS_MAX);
+    ctx->temp_vregs_idx += num;
     return offset;
 }
 
 static inline uint32_t new_temp_qreg_offset(DisasContext *ctx)
 {
     uint32_t offset =
-        offsetof(CPUHexagonState, temp_qregs[ctx->ctx_temp_qregs_idx]);
+        offsetof(CPUHexagonState, temp_qregs[ctx->temp_qregs_idx]);
 
-    HEX_DEBUG_LOG("new_temp_qreg_offset: %d\n", ctx->ctx_temp_qregs_idx);
-    g_assert(ctx->ctx_temp_qregs_idx < TEMP_VECTORS_MAX);
-    ctx->ctx_temp_qregs_idx++;
+    HEX_DEBUG_LOG("new_temp_qreg_offset: %d\n", ctx->temp_qregs_idx);
+    g_assert(ctx->temp_qregs_idx < TEMP_VECTORS_MAX);
+    ctx->temp_qregs_idx++;
     return offset;
 }
 

@@ -21,7 +21,6 @@ import io
 import re
 
 import sys
-sys.path.insert(0, sys.argv[1])
 import iset
 
 encs = {tag : ''.join(reversed(iset.iset[tag]['enc'].replace(' ', '')))

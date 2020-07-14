@@ -21,15 +21,18 @@
 #include <stdio.h>
 #ifdef __HEXMSGABI_3_SUPPORTED__
 
-#define check(name, val, expect) \
-  if (val != expect) { \
-    printf("ERROR: " #name " %d != %d\n", val, expect); \
-    err++; \
+int err;
+
+static void check(const char *name, int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: %s %d != %d\n", name, val, expect);
+        err++;
+    }
 }
 
 int main()
 {
-  int err = 0;
   int pkt, insn, hvx;
 
   asm volatile("r2 = #0\n\t"
@@ -50,9 +53,9 @@ int main()
                : [pkt] "=r"(pkt), [insn] "=r"(insn), [hvx] "=r"(hvx)
                : : "r0", "r1", "r2", "sa0", "lc0", "v0", "p0");
 
-  check(Packet, pkt, 12);
-  check(Instruction, insn, 17);
-  check(HVX, hvx, 3);
+  check("Packet", pkt, 12);
+  check("Instruction", insn, 17);
+  check("HVX", hvx, 3);
   puts(err ? "FAIL" : "PASS");
   return err;
 }

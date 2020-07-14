@@ -56,15 +56,18 @@ static inline void creg_alias(int cval, PRegs *pregs)
   pregs->pregs.p3 = val;
 }
 
-#define check(val, expect) \
-  if (val != expect) { \
-    printf("ERROR: 0x%08x != 0x%08x\n", val, expect); \
-    err++; \
+int err;
+
+static void check(int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%08x != 0x%08x\n", val, expect);
+        err++;
+    }
 }
 
 int main()
 {
-    int err = 0;
     int c4;
     PRegs pregs;
 

@@ -118,8 +118,8 @@ $(DECTREE_IMPORT): $(GEN_DECTREE_IMPORT)
 DECTREE_HEADER=dectree_generated.h
 $(DECTREE_HEADER): $(SRC_PATH)/target/hexagon/dectree.py $(DECTREE_IMPORT)
 	$(call quiet-command, \
-	    $(SRC_PATH)/target/hexagon/dectree.py \
-                $(BUILD_USER_DIR), \
+	    PYTHONPATH=$(BUILD_USER_DIR) \
+	    $(PYTHON) $(SRC_PATH)/target/hexagon/dectree.py, \
 	    "GEN", "Hexagon decode tree")
 
 generated-files-y += $(GENERATED_HEXAGON_FILES) $(DECTREE_HEADER)
