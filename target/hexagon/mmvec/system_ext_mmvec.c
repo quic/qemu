@@ -86,7 +86,7 @@ enum ext_mem_access_types {
 
 static inline
 target_ulong mem_init_access(CPUHexagonState *env, int slot, size4u_t vaddr,
-                             int width, enum mem_access_types mtype,
+                             int width, enum ext_mem_access_types mtype,
                              int type_for_xlate)
 {
 #ifdef CONFIG_USER_ONLY

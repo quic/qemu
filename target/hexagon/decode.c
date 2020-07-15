@@ -527,7 +527,7 @@ static int decode_shuffle_for_execution(packet_t *packet)
      * user/supervisor mode.
      */
     for (i = 0; i < last_insn; i++) {
-        if ((packet->insn[i].opcode == J2_rte)) {
+        if (packet->insn[i].opcode == J2_rte) {
             decode_send_insn_to(packet, i, last_insn);
             break;
         }

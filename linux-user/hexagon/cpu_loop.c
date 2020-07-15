@@ -79,6 +79,9 @@ void cpu_loop(CPUHexagonState *env)
             signum = TARGET_SIGSEGV;
             sigcode = TARGET_SEGV_MAPERR;
             break;
+        case EXCP_ATOMIC:
+            cpu_exec_step_atomic(cs);
+            break;
         default:
             EXCP_DUMP(env, "\nqemu: unhandled CPU exception %#x - aborting\n",
                      trapnr);
