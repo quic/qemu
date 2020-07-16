@@ -69,7 +69,7 @@ $(SEMANTICS): $(GEN_SEMANTICS)
 
 #
 # Step 2
-# We use the do_qemu.py script to generate the following files
+# We use the gen_headers.py script to generate the following files
 #
 QEMU_DEF_H = $(BUILD_USER_DIR)/qemu_def_generated.h
 OPCODES_DEF_H = $(BUILD_USER_DIR)/opcodes_def_generated.h
@@ -84,15 +84,60 @@ GENERATED_HEXAGON_FILES = \
     $(OP_REGS_H) \
     $(PRINTINSN_H)
 
-$(GENERATED_HEXAGON_FILES): \
-    $(SRC_PATH)/target/hexagon/do_qemu.py \
+$(QEMU_DEF_H): \
+    $(SRC_PATH)/target/hexagon/hex_common.py \
+    $(SRC_PATH)/target/hexagon/gen_qemu_def.py \
     $(SEMANTICS) \
     $(SRC_PATH)/target/hexagon/attribs_def.h
 	$(call quiet-command, \
-	    $(SRC_PATH)/target/hexagon/do_qemu.py \
+	    $(SRC_PATH)/target/hexagon/gen_qemu_def.py \
                 $(SEMANTICS) \
                 $(SRC_PATH)/target/hexagon/attribs_def.h, \
-	    "GEN", "Hexagon generated files")
+	    "GEN", "Hexagon qemu_def_generated.h")
+
+$(PRINTINSN_H): \
+    $(SRC_PATH)/target/hexagon/hex_common.py \
+    $(SRC_PATH)/target/hexagon/gen_printinsn.py \
+    $(SEMANTICS) \
+    $(SRC_PATH)/target/hexagon/attribs_def.h
+	$(call quiet-command, \
+	    $(SRC_PATH)/target/hexagon/gen_printinsn.py \
+                $(SEMANTICS) \
+                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+	    "GEN", "Hexagon printinsn_generated.h")
+
+$(OP_REGS_H): \
+    $(SRC_PATH)/target/hexagon/hex_common.py \
+    $(SRC_PATH)/target/hexagon/gen_op_regs.py \
+    $(SEMANTICS) \
+    $(SRC_PATH)/target/hexagon/attribs_def.h
+	$(call quiet-command, \
+	    $(SRC_PATH)/target/hexagon/gen_op_regs.py \
+                $(SEMANTICS) \
+                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+	    "GEN", "Hexagon op_regs_generated.h")
+
+$(OP_ATTRIBS_H): \
+    $(SRC_PATH)/target/hexagon/hex_common.py \
+    $(SRC_PATH)/target/hexagon/gen_op_attribs.py \
+    $(SEMANTICS) \
+    $(SRC_PATH)/target/hexagon/attribs_def.h
+	$(call quiet-command, \
+	    $(SRC_PATH)/target/hexagon/gen_op_attribs.py \
+                $(SEMANTICS) \
+                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+	    "GEN", "Hexagon op_attribs_generated.h")
+
+$(OPCODES_DEF_H): \
+    $(SRC_PATH)/target/hexagon/hex_common.py \
+    $(SRC_PATH)/target/hexagon/gen_opcodes_def.py \
+    $(SEMANTICS) \
+    $(SRC_PATH)/target/hexagon/attribs_def.h
+	$(call quiet-command, \
+	    $(SRC_PATH)/target/hexagon/gen_opcodes_def.py \
+                $(SEMANTICS) \
+                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+	    "GEN", "Hexagon opcodes_def_generated.h")
 
 #
 # Step 3
