@@ -72,16 +72,14 @@ int main(int argc, char *argv[])
  * Process the macro definitions
  *     Macros definitions have the following form
  *         DEF_MACRO(
- *             fLSBNEW0,,
- *             "P0.new[0]",
- *             "Least significant bit of new P0",
+ *             fLSBNEW0,
  *             predlog_read(thread,0),
  *             ()
  *         )
  * The important part here is the attributes.  Whenever an instruction
  * invokes a macro, we add the macro's attributes to the instruction.
  */
-#define DEF_MACRO(MNAME, PARAMS, SDESC, LDESC, BEH, ATTRS) \
+#define DEF_MACRO(MNAME, BEH, ATTRS) \
     fprintf(outfile, "MACROATTRIB(\"%s\",\"\"\"%s\"\"\",\"%s\")\n", \
             #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS));
 #include "imported/macros.def"
@@ -90,7 +88,7 @@ int main(int argc, char *argv[])
 /*
  * Process the macros for HVX
  */
-#define DEF_MACRO(MNAME, PARAMS, SDESC, LDESC, BEH, ATTRS) \
+#define DEF_MACRO(MNAME, BEH, ATTRS) \
     fprintf(outfile, "MACROATTRIB(\"%s\",\"\"\"%s\"\"\",\"%s\",\"%s\")\n", \
             #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS), EXTSTR);
 #include "imported/allext_macros.def"
