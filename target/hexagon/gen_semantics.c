@@ -52,16 +52,30 @@ int main(int argc, char *argv[])
  */
 #define Q6INSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
     do { \
-        fprintf(outfile, "SEMANTICS(\"%s\",%s,\"\"\"%s\"\"\")\n", \
+        fprintf(outfile, "SEMANTICS( \\\n" \
+                         "    \"%s\", \\\n" \
+                         "    %s, \\\n" \
+                         "    \"\"\"%s\"\"\" \\\n" \
+                         ")\n", \
                 #TAG, STRINGIZE(BEH), STRINGIZE(SEM)); \
-        fprintf(outfile, "ATTRIBUTES(\"%s\",\"%s\")\n", \
+        fprintf(outfile, "ATTRIBUTES( \\\n" \
+                         "    \"%s\", \\\n" \
+                         "    \"%s\" \\\n" \
+                         ")\n", \
                 #TAG, STRINGIZE(ATTRIBS)); \
     } while (0);
 #define EXTINSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
     do { \
-        fprintf(outfile, "EXT_SEMANTICS(\"%s\",\"%s\",%s,\"\"\"%s\"\"\")\n", \
-                EXTSTR, #TAG, STRINGIZE(BEH), STRINGIZE(SEM)); \
-        fprintf(outfile, "ATTRIBUTES(\"%s\",\"%s\")\n", \
+        fprintf(outfile, "SEMANTICS( \\\n" \
+                         "    \"%s\", \\\n" \
+                         "    %s, \\\n" \
+                         "    \"\"\"%s\"\"\" \\\n" \
+                         ")\n", \
+                #TAG, STRINGIZE(BEH), STRINGIZE(SEM)); \
+        fprintf(outfile, "ATTRIBUTES( \\\n" \
+                         "    \"%s\", \\\n" \
+                         "    \"%s\" \\\n" \
+                         ")\n", \
                 #TAG, STRINGIZE(ATTRIBS)); \
     } while (0);
 #include "imported/allidefs.def"
@@ -80,7 +94,11 @@ int main(int argc, char *argv[])
  * invokes a macro, we add the macro's attributes to the instruction.
  */
 #define DEF_MACRO(MNAME, BEH, ATTRS) \
-    fprintf(outfile, "MACROATTRIB(\"%s\",\"\"\"%s\"\"\",\"%s\")\n", \
+    fprintf(outfile, "MACROATTRIB( \\\n" \
+                     "    \"%s\", \\\n" \
+                     "    \"\"\"%s\"\"\", \\\n" \
+                     "    \"%s\" \\\n" \
+                     ")\n", \
             #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS));
 #include "imported/macros.def"
 #undef DEF_MACRO
@@ -89,8 +107,12 @@ int main(int argc, char *argv[])
  * Process the macros for HVX
  */
 #define DEF_MACRO(MNAME, BEH, ATTRS) \
-    fprintf(outfile, "MACROATTRIB(\"%s\",\"\"\"%s\"\"\",\"%s\",\"%s\")\n", \
-            #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS), EXTSTR);
+    fprintf(outfile, "MACROATTRIB( \\\n" \
+                     "    \"%s\", \\\n" \
+                     "    \"\"\"%s\"\"\", \\\n" \
+                     "    \"%s\" \\\n" \
+                     ")\n", \
+            #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS));
 #include "imported/allext_macros.def"
 #undef DEF_MACRO
 

@@ -21,16 +21,8 @@ import sys
 import re
 import string
 from io import StringIO
-import operator
-from itertools import chain
 
 from hex_common import *
-
-read_semantics_file(sys.argv[1])
-read_attribs_file(sys.argv[2])
-calculate_attribs()
-tagregs = get_tagregs()
-tagimms = get_tagimms()
 
 def need_slot(tag):
     if ('A_CONDEXEC' in attribdict[tag] or
@@ -207,7 +199,7 @@ def genptr_free_new(f,regtype,regid,regno):
     macro = "FREE_NEW_%sREG_%s" % (regtype, regid)
     f.write("%s(%s%sN);\n" % (macro, regtype, regid))
 
-def genptr_free_opn(f,regtype,regid,i):
+def genptr_free_opn(f,regtype,regid,i,tag):
     if (is_pair(regid)):
         genptr_free(f,regtype,regid,i)
     elif (is_single(regid)):
@@ -233,7 +225,7 @@ def genptr_src_read_new(f,regtype,regid):
     f.write("%s(%s%sN, %s%sX);\n" % \
         (macro,regtype,regid,regtype,regid))
 
-def genptr_src_read_opn(f,regtype,regid):
+def genptr_src_read_opn(f,regtype,regid,tag):
     if (is_pair(regid)):
         genptr_src_read(f,regtype,regid)
     elif (is_single(regid)):
@@ -349,7 +341,7 @@ def gen_tcg_func(f, tag, regs, imms):
     ## Read all the inputs
     for regtype,regid,toss,numregs in regs:
         if (is_read(regid)):
-            genptr_src_read_opn(f,regtype,regid)
+            genptr_src_read_opn(f,regtype,regid,tag)
 
     f.write("#ifdef fGEN_TCG_%s\n" % tag)
     f.write("fGEN_TCG_%s(%s);\n" % (tag, semdict[tag]))
@@ -410,7 +402,7 @@ def gen_tcg_func(f, tag, regs, imms):
     ## Free all the operands (regs and immediates)
     if need_ea(tag): gen_free_ea_tcg(f)
     for regtype,regid,toss,numregs in regs:
-        genptr_free_opn(f,regtype,regid,i)
+        genptr_free_opn(f,regtype,regid,i,tag)
         i += 1
     for immlett,bits,immshift in imms:
         genptr_free_imm(f,immlett)
@@ -452,7 +444,7 @@ def gen_helper_arg_ext_pair(f,regtype,regid,regno):
     if regno > 0 : f.write(", ")
     f.write("void *%s%sV_void" % (regtype,regid))
 
-def gen_helper_arg_opn(f,regtype,regid,i):
+def gen_helper_arg_opn(f,regtype,regid,i,tag):
     if (is_pair(regid)):
         if (is_hvx_reg(regtype)):
             gen_helper_arg_ext_pair(f,regtype,regid,i)
@@ -621,7 +613,7 @@ def gen_helper_definition(f, tag, regs, imms):
             if (is_read(regid)):
                 if (is_hvx_reg(regtype) and is_readwrite(regid)):
                     continue
-                gen_helper_arg_opn(f,regtype,regid,i)
+                gen_helper_arg_opn(f,regtype,regid,i,tag)
                 i += 1
         for immlett,bits,immshift in imms:
             gen_helper_arg_imm(f,immlett)
@@ -675,7 +667,7 @@ def gen_helper_definition(f, tag, regs, imms):
 ##
 ## Bring it all together in the DEF_QEMU macro
 ##
-def gen_qemu(f, tag):
+def gen_qemu(f, tag, tagregs, tagimms):
     regs = tagregs[tag]
     imms = tagimms[tag]
 
@@ -687,34 +679,43 @@ def gen_qemu(f, tag):
     gen_helper_definition(f, tag, regs, imms)
     f.write(")\n")
 
-##
-## Generate the qemu_def_generated.h file
-##
-f = StringIO()
+def main():
+    read_semantics_file(sys.argv[1])
+    read_attribs_file(sys.argv[2])
+    calculate_attribs()
+    tagregs = get_tagregs()
+    tagimms = get_tagimms()
 
-f.write("#ifndef DEF_QEMU\n")
-f.write("#define DEF_QEMU(TAG,SHORTCODE,HELPER,GENFN,HELPFN)   /* Nothing */\n")
-f.write("#endif\n\n")
+    ##
+    ## Generate the qemu_def_generated.h file
+    ##
+    f = StringIO()
 
+    f.write("#ifndef DEF_QEMU\n")
+    f.write("#define DEF_QEMU(TAG,SHORT,HELPER,GENFN,HELPFN)  /* Nothing */\n")
+    f.write("#endif\n\n")
 
-for tag in tags:
-    ## Skip the priv instructions
-    if ( "A_PRIV" in attribdict[tag] ) :
-        continue
-    ## Skip the guest instructions
-    if ( "A_GUEST" in attribdict[tag] ) :
-        continue
-    ## Skip the diag instructions
-    if ( tag == "Y6_diag" ) :
-        continue
-    if ( tag == "Y6_diag0" ) :
-        continue
-    if ( tag == "Y6_diag1" ) :
-        continue
+    for tag in tags:
+        ## Skip the priv instructions
+        if ( "A_PRIV" in attribdict[tag] ) :
+            continue
+        ## Skip the guest instructions
+        if ( "A_GUEST" in attribdict[tag] ) :
+            continue
+        ## Skip the diag instructions
+        if ( tag == "Y6_diag" ) :
+            continue
+        if ( tag == "Y6_diag0" ) :
+            continue
+        if ( tag == "Y6_diag1" ) :
+            continue
 
-    gen_qemu(f, tag)
+        gen_qemu(f, tag, tagregs, tagimms)
 
-realf = open('qemu_def_generated.h','w')
-realf.write(f.getvalue())
-realf.close()
-f.close()
+    realf = open('qemu_def_generated.h','w')
+    realf.write(f.getvalue())
+    realf.close()
+    f.close()
+
+if __name__ == "__main__":
+    main()

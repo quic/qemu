@@ -22,15 +22,7 @@ import re
 import string
 from io import StringIO
 
-import operator
-from itertools import chain
-
 from hex_common import *
-
-read_semantics_file(sys.argv[1])
-read_attribs_file(sys.argv[2])
-tagregs = get_tagregs()
-tagimms = get_tagimms()
 
 ##
 ## Generate the op_regs_generated.h file
@@ -66,53 +58,62 @@ def calculate_regid_letters(tag):
     retstr,mapdict = calculate_regid_reg(tag)
     return retstr
 
-def strip_verif_info_in_regs(x):
+def strip_reg_prefix(x):
     y=x.replace('UREG.','')
     y=y.replace('MREG.','')
     return y.replace('GREG.','')
 
-f = StringIO()
+def main():
+    read_semantics_file(sys.argv[1])
+    read_attribs_file(sys.argv[2])
+    tagregs = get_tagregs()
+    tagimms = get_tagimms()
 
-for tag in tags:
-    regs = tagregs[tag]
-    rregs = []
-    wregs = []
-    regids = ""
-    for regtype,regid,toss,numregs in regs:
-        if is_read(regid):
-            if regid[0] not in regids: regids += regid[0]
-            rregs.append(regtype+regid+numregs)
-        if is_written(regid):
-            wregs.append(regtype+regid+numregs)
-            if regid[0] not in regids: regids += regid[0]
-    for attrib in attribdict[tag]:
-        if attribinfo[attrib]['rreg']:
-            rregs.append(strip_verif_info_in_regs(attribinfo[attrib]['rreg']))
-        if attribinfo[attrib]['wreg']:
-            wregs.append(strip_verif_info_in_regs(attribinfo[attrib]['wreg']))
-    regids += calculate_regid_letters(tag)
-    f.write('REGINFO(%s,"%s",\t/*RD:*/\t"%s",\t/*WR:*/\t"%s")\n' % \
-        (tag,regids,",".join(rregs),",".join(wregs)))
+    f = StringIO()
 
-for tag in tags:
-    imms = tagimms[tag]
-    f.write( 'IMMINFO(%s' % tag)
-    if not imms:
-        f.write(''','u',0,0,'U',0,0''')
-    for sign,size,shamt in imms:
-        if sign == 'r': sign = 's'
-        if not shamt:
-            shamt = "0"
-        f.write(''','%s',%s,%s''' % (sign,size,shamt))
-    if len(imms) == 1:
-        if sign.isupper():
-            myu = 'u'
-        else:
-            myu = 'U'
-        f.write(''','%s',0,0''' % myu)
-    f.write(')\n')
+    for tag in tags:
+        regs = tagregs[tag]
+        rregs = []
+        wregs = []
+        regids = ""
+        for regtype,regid,toss,numregs in regs:
+            if is_read(regid):
+                if regid[0] not in regids: regids += regid[0]
+                rregs.append(regtype+regid+numregs)
+            if is_written(regid):
+                wregs.append(regtype+regid+numregs)
+                if regid[0] not in regids: regids += regid[0]
+        for attrib in attribdict[tag]:
+            if attribinfo[attrib]['rreg']:
+                rregs.append(strip_reg_prefix(attribinfo[attrib]['rreg']))
+            if attribinfo[attrib]['wreg']:
+                wregs.append(strip_reg_prefix(attribinfo[attrib]['wreg']))
+        regids += calculate_regid_letters(tag)
+        f.write('REGINFO(%s,"%s",\t/*RD:*/\t"%s",\t/*WR:*/\t"%s")\n' % \
+            (tag,regids,",".join(rregs),",".join(wregs)))
 
-realf = open('op_regs_generated.h','w')
-realf.write(f.getvalue())
-realf.close()
-f.close()
+    for tag in tags:
+        imms = tagimms[tag]
+        f.write( 'IMMINFO(%s' % tag)
+        if not imms:
+            f.write(''','u',0,0,'U',0,0''')
+        for sign,size,shamt in imms:
+            if sign == 'r': sign = 's'
+            if not shamt:
+                shamt = "0"
+            f.write(''','%s',%s,%s''' % (sign,size,shamt))
+        if len(imms) == 1:
+            if sign.isupper():
+                myu = 'u'
+            else:
+                myu = 'U'
+            f.write(''','%s',0,0''' % myu)
+        f.write(')\n')
+
+    realf = open('op_regs_generated.h','w')
+    realf.write(f.getvalue())
+    realf.close()
+    f.close()
+
+if __name__ == "__main__":
+    main()

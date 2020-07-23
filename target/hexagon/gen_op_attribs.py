@@ -21,24 +21,26 @@ import sys
 import re
 import string
 from io import StringIO
-import operator
-from itertools import chain
 
 from hex_common import *
 
-read_semantics_file(sys.argv[1])
-read_attribs_file(sys.argv[2])
-calculate_attribs()
+def main():
+    read_semantics_file(sys.argv[1])
+    read_attribs_file(sys.argv[2])
+    calculate_attribs()
 
-##
-## Generate the op_attribs_generated.h file
-##     Lists all the attributes associated with each instruction
-##
-f = StringIO()
-for tag in tags:
-    f.write('OP_ATTRIB(%s,ATTRIBS(%s))\n' % \
-        (tag, ','.join(sorted(attribdict[tag]))))
-realf = open('op_attribs_generated.h', 'wt')
-realf.write(f.getvalue())
-realf.close()
-f.close()
+    ##
+    ## Generate the op_attribs_generated.h file
+    ##     Lists all the attributes associated with each instruction
+    ##
+    f = StringIO()
+    for tag in tags:
+        f.write('OP_ATTRIB(%s,ATTRIBS(%s))\n' % \
+            (tag, ','.join(sorted(attribdict[tag]))))
+    realf = open('op_attribs_generated.h', 'wt')
+    realf.write(f.getvalue())
+    realf.close()
+    f.close()
+
+if __name__ == "__main__":
+    main()

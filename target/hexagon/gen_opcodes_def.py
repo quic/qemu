@@ -21,23 +21,23 @@ import sys
 import re
 import string
 from io import StringIO
-import operator
-from itertools import chain
 
 from hex_common import *
 
-read_semantics_file(sys.argv[1])
-read_attribs_file(sys.argv[2])
-calculate_attribs()
+def main():
+    read_semantics_file(sys.argv[1])
 
-##
-## Generate the opcodes_def_generated.h file
-##     Gives a list of all the opcodes
-##
-f = StringIO()
-for tag in tags:
-    f.write ( "OPCODE(%s),\n" % (tag) )
-realf = open('opcodes_def_generated.h', 'wt')
-realf.write(f.getvalue())
-realf.close()
-f.close()
+    ##
+    ## Generate the opcodes_def_generated.h file
+    ##     Gives a list of all the opcodes
+    ##
+    f = StringIO()
+    for tag in tags:
+        f.write ( "OPCODE(%s),\n" % (tag) )
+    realf = open('opcodes_def_generated.h', 'wt')
+    realf.write(f.getvalue())
+    realf.close()
+    f.close()
+
+if __name__ == "__main__":
+    main()

@@ -22,23 +22,12 @@ import re
 import string
 from io import StringIO
 
-import operator
-from itertools import chain
-
 behdict = {}          # tag ->behavior
 semdict = {}          # tag -> semantics
-extdict = {}          # tag -> What extension an instruction belongs to (or "")
-extnames = {}         # ext name -> True
 attribdict = {}       # tag -> attributes
 macros = {}           # macro -> macro information...
 attribinfo = {}       # Register information and misc
 tags = []             # list of all tags
-
-def get_macro(macname,ext=""):
-    mackey = macname + ":" + ext
-    if ext and mackey not in macros:
-        return get_macro(macname,"")
-    return macros[mackey]
 
 # We should do this as a hash for performance,
 # but to keep order let's keep it as a list.
@@ -64,10 +53,10 @@ def expand_macro_attribs(macro,allmac_re):
         l = allmac_re.findall(macro.beh)
         for submacro in l:
             if not submacro: continue
-            if not get_macro(submacro,macro.ext):
+            if not macros[submacro]:
                 raise Exception("Couldn't find macro: <%s>" % l)
             macro.attribs |= expand_macro_attribs(
-                get_macro(submacro,macro.ext), allmac_re)
+                macros[submacro], allmac_re)
             finished_macros.add(macro.key)
     return macro.attribs
 
@@ -83,26 +72,15 @@ def calculate_attribs():
     for tag in tags:
         for macname in allmacros_re.findall(semdict[tag]):
             if not macname: continue
-            macro = get_macro(macname,extdict[tag])
+            macro = macros[macname]
             attribdict[tag] |= set(macro.attribs)
 
 def SEMANTICS(tag, beh, sem):
     #print tag,beh,sem
-    extdict[tag] = ""
     behdict[tag] = beh
     semdict[tag] = sem
     attribdict[tag] = set()
     tags.append(tag)        # dicts have no order, this is for order
-
-def EXT_SEMANTICS(ext, tag, beh, sem):
-    #print tag,beh,sem
-    extnames[ext] = True
-    extdict[tag] = ext
-    behdict[tag] = beh
-    semdict[tag] = sem
-    attribdict[tag] = set()
-    tags.append(tag)        # dicts have no order, this is for order
-
 
 def ATTRIBUTES(tag, attribstring):
     attribstring = \
@@ -114,23 +92,21 @@ def ATTRIBUTES(tag, attribstring):
         attribdict[tag].add(attrib.strip())
 
 class Macro(object):
-    __slots__ = ['key','name', 'beh', 'attribs', 're','ext']
-    def __init__(self,key, name, beh, attribs,ext):
-        self.key = key
+    __slots__ = ['key','name', 'beh', 'attribs', 're']
+    def __init__(self, name, beh, attribs):
+        self.key = name
         self.name = name
         self.beh = beh
         self.attribs = set(attribs)
-        self.ext = ext
         self.re = re.compile("\\b" + name + "\\b")
 
-def MACROATTRIB(macname,beh,attribstring,ext=""):
+def MACROATTRIB(macname,beh,attribstring):
     attribstring = attribstring.replace("(","").replace(")","")
-    mackey = macname + ":" + ext
     if attribstring:
         attribs = attribstring.split(",")
     else:
         attribs = []
-    macros[mackey] = Macro(mackey,macname,beh,attribs,ext)
+    macros[macname] = Macro(macname,beh,attribs)
 
 def compute_tag_regs(tag):
     return uniquify(regre.findall(behdict[tag]))
@@ -196,9 +172,15 @@ def is_new_val(regtype, regid, tag):
     return regtype+regid+'N' in semdict[tag]
 
 def read_semantics_file(name):
+    eval_line = ""
     for line in open(name, 'rt').readlines():
         if not line.startswith("#"):
-            eval(line.strip())
+            eval_line += line
+            if line.endswith("\\\n"):
+                eval_line.rstrip("\\\n")
+            else:
+                eval(eval_line.strip())
+                eval_line = ""
 
 def read_attribs_file(name):
     attribre = re.compile(r'DEF_ATTRIB\(([A-Za-z0-9_]+), ([^,]*), ' +
