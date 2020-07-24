@@ -171,6 +171,23 @@ def is_old_val(regtype, regid, tag):
 def is_new_val(regtype, regid, tag):
     return regtype+regid+'N' in semdict[tag]
 
+def need_slot(tag):
+    if ('A_CONDEXEC' in attribdict[tag] or
+        'A_STORE' in attribdict[tag] or
+        'A_CVI' in attribdict[tag]):
+        return 1
+    else:
+        return 0
+
+def need_part1(tag):
+    return re.compile(r"fPART1").search(semdict[tag])
+
+def need_ea(tag):
+    return re.compile(r"\bEA\b").search(semdict[tag])
+
+def imm_name(immlett):
+    return "%siV" % immlett
+
 def read_semantics_file(name):
     eval_line = ""
     for line in open(name, 'rt').readlines():

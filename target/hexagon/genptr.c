@@ -29,14 +29,14 @@
 #include "genptr_helpers.h"
 #include "gen_tcg.h"
 
-#define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) \
+#define DEF_TCG_FUNC(TAG, GENFN) \
 static void generate_##TAG(CPUHexagonState *env, DisasContext *ctx, \
                            insn_t *insn, packet_t *pkt) \
 { \
     GENFN \
 }
-#include "qemu_def_generated.h"
-#undef DEF_QEMU
+#include "tcg_funcs_generated.h"
+#undef DEF_TCG_FUNC
 
 
 /* Fill in the table with NULLs because not all the opcodes have DEF_QEMU */
@@ -50,10 +50,8 @@ semantic_insn_t opcode_genptr[] = {
 /* This function overwrites the NULL entries where we have a DEF_QEMU */
 void init_genptr(void)
 {
-#define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) \
+#define DEF_TCG_FUNC(TAG, GENFN) \
     opcode_genptr[TAG] = generate_##TAG;
-#include "qemu_def_generated.h"
-#undef DEF_QEMU
+#include "tcg_funcs_generated.h"
+#undef DEF_TCG_FUNC
 }
-
-

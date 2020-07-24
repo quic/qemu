@@ -69,31 +69,70 @@ $(SEMANTICS): $(GEN_SEMANTICS)
 
 #
 # Step 2
-# We use the gen_headers.py script to generate the following files
+# We use Python scripts to generate the following files
 #
-QEMU_DEF_H = $(BUILD_USER_DIR)/qemu_def_generated.h
+SHORTCODE_H = $(BUILD_USER_DIR)/shortcode_generated.h
+HELPER_PROTOS_H = $(BUILD_USER_DIR)/helper_protos_generated.h
+TCG_FUNCS_H = $(BUILD_USER_DIR)/tcg_funcs_generated.h
+HELPER_FUNCS_H = $(BUILD_USER_DIR)/helper_funcs_generated.h
 OPCODES_DEF_H = $(BUILD_USER_DIR)/opcodes_def_generated.h
 OP_ATTRIBS_H = $(BUILD_USER_DIR)/op_attribs_generated.h
 OP_REGS_H = $(BUILD_USER_DIR)/op_regs_generated.h
 PRINTINSN_H = $(BUILD_USER_DIR)/printinsn_generated.h
 
 GENERATED_HEXAGON_FILES = \
-    $(QEMU_DEF_H) \
+    $(SHORTCODE_H) \
+    $(HELPER_PROTOS_H) \
+    $(TCG_FUNCS_H) \
+    $(HELPER_FUNCS_H) \
     $(OPCODES_DEF_H) \
     $(OP_ATTRIBS_H) \
     $(OP_REGS_H) \
     $(PRINTINSN_H)
 
-$(QEMU_DEF_H): \
+$(SHORTCODE_H): \
     $(SRC_PATH)/target/hexagon/hex_common.py \
-    $(SRC_PATH)/target/hexagon/gen_qemu_def.py \
+    $(SRC_PATH)/target/hexagon/gen_shortcode.py \
     $(SEMANTICS) \
     $(SRC_PATH)/target/hexagon/attribs_def.h
 	$(call quiet-command, \
-	    $(SRC_PATH)/target/hexagon/gen_qemu_def.py \
+	    $(SRC_PATH)/target/hexagon/gen_shortcode.py \
                 $(SEMANTICS) \
                 $(SRC_PATH)/target/hexagon/attribs_def.h, \
-	    "GEN", "Hexagon qemu_def_generated.h")
+	    "GEN", "Hexagon shortcode_generated.h")
+
+$(HELPER_PROTOS_H): \
+    $(SRC_PATH)/target/hexagon/hex_common.py \
+    $(SRC_PATH)/target/hexagon/gen_helper_protos.py \
+    $(SEMANTICS) \
+    $(SRC_PATH)/target/hexagon/attribs_def.h
+	$(call quiet-command, \
+	    $(SRC_PATH)/target/hexagon/gen_helper_protos.py \
+                $(SEMANTICS) \
+                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+	    "GEN", "Hexagon helper_protos_generated.h")
+
+$(TCG_FUNCS_H): \
+    $(SRC_PATH)/target/hexagon/hex_common.py \
+    $(SRC_PATH)/target/hexagon/gen_tcg_funcs.py \
+    $(SEMANTICS) \
+    $(SRC_PATH)/target/hexagon/attribs_def.h
+	$(call quiet-command, \
+	    $(SRC_PATH)/target/hexagon/gen_tcg_funcs.py \
+                $(SEMANTICS) \
+                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+	    "GEN", "Hexagon tcg_funcs_generated.h")
+
+$(HELPER_FUNCS_H): \
+    $(SRC_PATH)/target/hexagon/hex_common.py \
+    $(SRC_PATH)/target/hexagon/gen_helper_funcs.py \
+    $(SEMANTICS) \
+    $(SRC_PATH)/target/hexagon/attribs_def.h
+	$(call quiet-command, \
+	    $(SRC_PATH)/target/hexagon/gen_helper_funcs.py \
+                $(SEMANTICS) \
+                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+	    "GEN", "Hexagon helper_funcs_generated.h")
 
 $(PRINTINSN_H): \
     $(SRC_PATH)/target/hexagon/hex_common.py \
@@ -147,7 +186,7 @@ $(OPCODES_DEF_H): \
 GEN_DECTREE_IMPORT=gen_dectree_import
 GEN_DECTREE_IMPORT_SRC = $(SRC_PATH)/target/hexagon/gen_dectree_import.c
 
-$(GEN_DECTREE_IMPORT): $(GEN_DECTREE_IMPORT_SRC) $(GENERATED_HEXAGON_FILES) config-target.h
+$(GEN_DECTREE_IMPORT): $(GEN_DECTREE_IMPORT_SRC) $(OPCODES_DEF_H) config-target.h
 	$(CC) $(QEMU_CFLAGS) $(QEMU_INCLUDES) -I$(BUILD_DIR) $(GEN_DECTREE_IMPORT_SRC) -o $(GEN_DECTREE_IMPORT)
 
 DECTREE_IMPORT=iset.py

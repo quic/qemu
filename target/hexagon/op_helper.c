@@ -535,7 +535,5 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 #define BOGUS_HELPER(tag) \
     printf("ERROR: bogus helper: " #tag "\n")
 
-#define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPFN
-#include "qemu_def_generated.h"
-#undef DEF_QEMU
+#include "helper_funcs_generated.h"
 

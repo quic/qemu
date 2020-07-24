@@ -170,9 +170,9 @@ void opcode_init(void)
 
     decode_init();
 
-#define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) \
+#define DEF_SHORTCODE(TAG, SHORTCODE) \
     opcode_short_semantics[TAG] = #SHORTCODE;
-#include "qemu_def_generated.h"
+#include "shortcode_generated.h"
 #undef DEF_QEMU
 }
 
