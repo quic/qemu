@@ -173,7 +173,7 @@ void opcode_init(void)
 #define DEF_SHORTCODE(TAG, SHORTCODE) \
     opcode_short_semantics[TAG] = #SHORTCODE;
 #include "shortcode_generated.h"
-#undef DEF_QEMU
+#undef DEF_SHORTCODE
 }
 
 

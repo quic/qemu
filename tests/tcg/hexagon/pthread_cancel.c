@@ -41,4 +41,3 @@ int main()
     puts(err == 0 ? "PASS" : "FAIL");
     return err == 0 ? 0 : -1;
 }
-
