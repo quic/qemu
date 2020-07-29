@@ -48,7 +48,7 @@ const char *opcode_syntax[XX_LAST_OPCODE];
  *         "Insert Word Scalar into Vector",
  *         VxV.uw[0] = RtV;)
  */
-void opcode_init()
+void opcode_init(void)
 {
 #define Q6INSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
    opcode_syntax[TAG] = BEH;
