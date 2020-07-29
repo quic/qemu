@@ -60,7 +60,7 @@ fi
 : ${cross_cc_cflags_s390x="-m64"}
 : ${cross_cc_cflags_sparc="-m32 -mv8plus -mcpu=ultrasparc"}
 : ${cross_cc_cflags_sparc64="-m64 -mcpu=ultrasparc"}
-: ${cross_cc_hexagon="hexagon-unknown-linux-musl-clang"}
+: ${cross_cc_hexagon="hexagon-linux-clang"}
 : ${cross_cc_cflags_hexagon="-mv67"}
 
 for target in $target_list; do
