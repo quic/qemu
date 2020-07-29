@@ -748,8 +748,9 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
-    target_ulong crnt_pc;
 
+    HEX_DEBUG_LOG("%s: event 0x%x, cause 0x%x\n",
+      __FUNCTION__, cs->exception_index, env->cause_code);
     switch (cs->exception_index) {
     case HEX_EVENT_INT0:
     case HEX_EVENT_INT1:
@@ -759,37 +760,53 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     case HEX_EVENT_INT5:
     case HEX_EVENT_INT6:
     case HEX_EVENT_INT7:
-        crnt_pc = ARCH_GET_THREAD_REG(env, HEX_REG_PC);
         HEX_DEBUG_LOG("\tHEX_EVENT_INT%d: tid = %u, "
-            "PC old = 0x%x, new = 0x%x, next_PC = 0x%x\n",
+            "PC = 0x%x, next_PC = 0x%x\n",
             cs->exception_index - HEX_EVENT_INT0,
             env->threadId,
-            crnt_pc,
             ARCH_GET_THREAD_REG(env, HEX_REG_PC),
             env->next_PC);
+
         ssr_set_cause(env, env->cause_code);
         set_addresses(env, 0, cs->exception_index);
         break;
 
     case HEX_EVENT_TRAP0:
-        HEX_DEBUG_LOG("\ttid = %u, trap0 - start, pc = 0x%x, elr = 0x%x",
+        HEX_DEBUG_LOG("\ttid = %u, trap0, pc = 0x%x, elr = 0x%x, "
+            "index 0x%x, cause 0x%x\n",
             env->threadId,
             ARCH_GET_THREAD_REG(env, HEX_REG_PC),
-            env->next_PC);
-        sim_handle_trap(env);
+            env->next_PC,
+            cs->exception_index,
+            env->cause_code);
 
-        ssr_set_cause(env, HEX_CAUSE_TRAP0);
-#if 1
+        if (env->cause_code == 0) {
+            sim_handle_trap(env);
+        }
+
+        ssr_set_cause(env, env->cause_code);
         set_addresses(env, 4, cs->exception_index);
         env->branch_taken = 1;
-#else
-        ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR, env->next_PC);
-        evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-        env->next_PC = evb + (cs->exception_index << 2);
-        fCHECK_PCALIGN(env->next_PC);
+        cs->exception_index = HEX_EVENT_NONE;
+        break;
+
+    case HEX_EVENT_TRAP1:
+        HEX_DEBUG_LOG("\ttid = %u, trap1, pc = 0x%x, elr = 0x%x, "
+            "index 0x%x, cause 0x%x\n",
+            env->threadId,
+            ARCH_GET_THREAD_REG(env, HEX_REG_PC),
+            env->next_PC,
+            cs->exception_index,
+            env->cause_code);
+        HEX_DEBUG_LOG("\tEVB 0x%x, shifted index %d/0x%x, final 0x%x\n",
+            ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB),
+            cs->exception_index << 2,
+            cs->exception_index << 2,
+            ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB)|(cs->exception_index << 2));
+
+        ssr_set_cause(env, env->cause_code);
+        set_addresses(env, 4, cs->exception_index);
         env->branch_taken = 1;
-        ARCH_SET_THREAD_REG(env, HEX_REG_PC, env->next_PC);
-#endif
         cs->exception_index = HEX_EVENT_NONE;
         break;
 
@@ -940,6 +957,7 @@ void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
 
     CPUState *cs = env_cpu(env);
     cs->exception_index = (traptype == 0) ? HEX_EVENT_TRAP0 : HEX_EVENT_TRAP1;
+    env->cause_code = imm;
     cpu_loop_exit(cs);
 }
 #endif

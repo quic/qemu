@@ -39,17 +39,17 @@ static const struct MemmapEntry {
     hwaddr base;
     hwaddr size;
 } hexagon_board_memmap[] = {
-        [HEXAGON_LPDDR] = { 0x00000000, 0x0 },
-        [HEXAGON_IOMEM] = { 0x1f000000, 0x10000 },
+        [HEXAGON_LPDDR] =  { 0x00000000, 0x0 },
+        [HEXAGON_IOMEM] =  { 0x1f000000, 0x10000 },
         [HEXAGON_CONFIG_TABLE] = { 0xde000000, 0x400 },
-        [HEXAGON_VTCM] = { 0xd8000000, 0x400000 },
-        [HEXAGON_L2CFG] = { 0xd81a0000, 0x0 },
-        [HEXAGON_TCM] = { 0xd8400000, 0x100000 },
-        [HEXAGON_CSR1] = { 0xfab00000, 0x0 },
-        [HEXAGON_L2VIC] = { 0xfab10000, 0x0 },
-        [HEXAGON_QTMR] = { 0xfab20000, QTIMER_MEM_REGION_SIZE_BYTES },
-        [HEXAGON_CSR2] = { 0xfab40000, 0x0 },
-        [HEXAGON_QTMR2] = { 0xfab60000, 0x0 },
+        [HEXAGON_VTCM]   = { 0xd8000000, 0x400000 },
+        [HEXAGON_L2CFG] =  { 0xd81a0000, 0x0 },
+        [HEXAGON_TCM] =    { 0xd8400000, 0x100000 },
+        [HEXAGON_CSR1] =   { 0xfab00000, 0x0 },
+//        [HEXAGON_L2VIC] =  { 0xffc10000, 0x1000 }, /* { 0xfab10000, 0x0 }, */
+        [HEXAGON_QTMR] =   { 0xfab20000, QTIMER_MEM_REGION_SIZE_BYTES },
+        [HEXAGON_CSR2] =   { 0xfab40000, 0x0 },
+        [HEXAGON_QTMR2] =  { 0xfab60000, 0x0 },
 };
 
 /* Board init.  */
@@ -131,17 +131,15 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         &error_fatal);
     memory_region_add_subregion(address_space, memmap[HEXAGON_VTCM].base, vtcm);
 
-
     MemoryRegion *tcm = g_new(MemoryRegion, 1);
     memory_region_init_ram(tcm, NULL, "tcm.ram", memmap[HEXAGON_TCM].size,
         &error_fatal);
     memory_region_add_subregion(address_space, memmap[HEXAGON_TCM].base, tcm);
 
-
-//    MemoryRegion *iomem = g_new(MemoryRegion, 1);
-//    memory_region_init_io(iomem, NULL, &hexagon_qemu_ops,
-//                          NULL, "hexagon-qemu", 0x10000);
-//    memory_region_add_subregion(address_space, 0x1f000000, iomem);
+//    MemoryRegion *l2vic = g_new(MemoryRegion, 1);
+//    memory_region_init_ram(l2vic, NULL, "l2vic.ram", memmap[HEXAGON_L2VIC].size,
+//        &error_fatal);
+//    memory_region_add_subregion(address_space, memmap[HEXAGON_L2VIC].base, l2vic);
 
     struct hexagon_config_table config_table;
     memset(&config_table, 0x0, sizeof(config_table));
@@ -149,27 +147,31 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     assert(machine->smp.cores == 1);
     config_table.core_id = 0;
     config_table.core_count = machine->smp.cores;
-    config_table.thread_enable_mask =  ((uint64_t) 1 << machine->smp.threads) - 1;
+    config_table.thread_enable_mask =
+        ((uint64_t) 1 << machine->smp.threads) - 1;
     config_table.coproc_present = HEXAGON_COPROC_HVX;
     config_table.ext_contexts = HEXAGON_DEFAULT_HVX_CONTEXTS;
     config_table.l2tcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_TCM].base);
     config_table.vtcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_VTCM].base);
-    config_table.vtcm_size_kb = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_VTCM].size / 1024);
+    config_table.vtcm_size_kb = HEXAGON_CFG_ADDR_BASE(
+        memmap[HEXAGON_VTCM].size / 1024);
     config_table.l2cfg_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2CFG].base);
     config_table.l2tag_size = HEXAGON_DEFAULT_L2_TAG_SIZE;
     config_table.jtlb_size_entries = HEXAGON_DEFAULT_TLB_ENTRIES;
-    config_table.v2x_mode = HEXAGON_HVX_VEC_LEN_V2X_1 | HEXAGON_HVX_VEC_LEN_V2X_2;
+    config_table.v2x_mode =
+        HEXAGON_HVX_VEC_LEN_V2X_1 | HEXAGON_HVX_VEC_LEN_V2X_2;
     config_table.hvx_vec_log_length = HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES;
-    config_table.fastl2vic_base =
-        HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2VIC].base);
+//    config_table.fastl2vic_base =
+//        HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2VIC].base);
     config_table.l1d_size_kb = HEXAGON_DEFAULT_L1D_SIZE_KB;
     config_table.l1i_size_kb = HEXAGON_DEFAULT_L1I_SIZE_KB;
     config_table.l1d_write_policy = HEXAGON_DEFAULT_L1D_WRITE_POLICY;
     config_table.tiny_core = 0; // Or '1' to signal support for audio ext?
     config_table.l2line_size = HEXAGON_V67_L2_LINE_SIZE_BYTES;
 
-    rom_add_blob_fixed_as("config_table.rom", &config_table, sizeof(config_table),
-        memmap[HEXAGON_CONFIG_TABLE].base, &address_space_memory);
+    rom_add_blob_fixed_as("config_table.rom", &config_table,
+        sizeof(config_table), memmap[HEXAGON_CONFIG_TABLE].base,
+        &address_space_memory);
 
     hexagonboard_qtimer_init(machine, memmap[HEXAGON_QTMR].base);
 
@@ -185,8 +187,9 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     }
 
     env->g_sreg[HEX_SREG_EVB] = 0x0;
-    env->g_sreg[HEX_SREG_CFGBASE] = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_CONFIG_TABLE].base);
-    env->g_sreg[HEX_SREG_REV] = 0x86d8;
+    env->g_sreg[HEX_SREG_CFGBASE] =
+        HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_CONFIG_TABLE].base);
+    env->g_sreg[HEX_SREG_REV] = 0x8d68; //0x86d8;
     env->g_sreg[HEX_SREG_MODECTL] = 0x1;
 }
 

@@ -291,7 +291,7 @@ static inline bool hex_tlb_entry_match_noperm(uint64_t entry, uint32_t asid,
             }
         }
 
-        uint32_t page_start = hex_tlb_virt_addr(entry);
+        uint64_t page_start = hex_tlb_virt_addr(entry);
         uint32_t page_size = hex_tlb_page_size(entry);
         if (page_start <= VA && VA < page_start + page_size) {
             /* FIXME - Anything else we need to check? */
