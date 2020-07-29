@@ -18,6 +18,8 @@
 #ifndef HEXAGON_MACROS_H
 #define HEXAGON_MACROS_H
 
+#include "qemu/osdep.h"
+#include "qemu/host-utils.h"
 #include "cpu.h"
 #include "hex_regs.h"
 #include "reg_fields.h"
@@ -1248,13 +1250,13 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
             fSETBIT(j, DST, VAL); \
         } \
     } while (0)
-#define fCOUNTONES_2(VAL) count_ones_2(VAL)
-#define fCOUNTONES_4(VAL) count_ones_4(VAL)
-#define fCOUNTONES_8(VAL) count_ones_8(VAL)
-#define fBREV_8(VAL) reverse_bits_8(VAL)
-#define fBREV_4(VAL) reverse_bits_4(VAL)
-#define fCL1_8(VAL) count_leading_ones_8(VAL)
-#define fCL1_4(VAL) count_leading_ones_4(VAL)
+#define fCOUNTONES_2(VAL) ctpop16(VAL)
+#define fCOUNTONES_4(VAL) ctpop32(VAL)
+#define fCOUNTONES_8(VAL) ctpop64(VAL)
+#define fBREV_8(VAL) revbit64(VAL)
+#define fBREV_4(VAL) revbit32(VAL)
+#define fCL1_8(VAL) clo64(VAL)
+#define fCL1_4(VAL) clo32(VAL)
 #define fCL1_2(VAL) count_leading_ones_2(VAL)
 #define fINTERLEAVE(ODD, EVEN) interleave(ODD, EVEN)
 #define fDEINTERLEAVE(MIXED) deinterleave(MIXED)

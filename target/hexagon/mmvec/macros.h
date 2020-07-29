@@ -18,6 +18,8 @@
 #ifndef HEXAGON_MMVEC_MACROS_H
 #define HEXAGON_MMVEC_MACROS_H
 
+#include "qemu/osdep.h"
+#include "qemu/host-utils.h"
 #include "arch.h"
 #include "mmvec/system_ext_mmvec.h"
 
@@ -655,7 +657,7 @@ static inline mmvector_t mmvec_vtmp_data(CPUHexagonState *env)
 {
     VRegMask vsel = env->VRegs_updated_tmp;
     mmvector_t ret;
-    int idx = count_leading_ones_4(~reverse_bits_4(vsel));
+    int idx = clo32(~revbit32(vsel));
     if (vsel == 0) {
         printf("[UNDEFINED] no .tmp load when implicitly required...");
     }

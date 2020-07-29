@@ -26,14 +26,7 @@ extern size1u_t AC_next_state_MPS_64[64];
 extern size1u_t AC_next_state_LPS_64[64];
 
 extern size4u_t fbrevaddr(size4u_t pointer);
-extern size4u_t count_ones_2(size2u_t src);
-extern size4u_t count_ones_4(size4u_t src);
-extern size4u_t count_ones_8(size8u_t src);
-extern size4u_t count_leading_ones_8(size8u_t src);
-extern size4u_t count_leading_ones_4(size4u_t src);
 extern size4u_t count_leading_ones_2(size2u_t src);
-extern size8u_t reverse_bits_8(size8u_t src);
-extern size4u_t reverse_bits_4(size4u_t src);
 extern size8u_t interleave(size4u_t odd, size4u_t even);
 extern size8u_t deinterleave(size8u_t src);
 extern size4u_t carry_from_add64(size8u_t a, size8u_t b, size4u_t c);

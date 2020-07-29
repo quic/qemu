@@ -238,7 +238,7 @@ void decode_send_insn_to(packet_t *packet, int start, int newloc)
 static int
 decode_fill_newvalue_regno(packet_t *packet)
 {
-    int i, def_regnum, use_regidx, def_idx;
+    int i, use_regidx, def_idx;
     size2u_t def_opcode, use_opcode;
     char *dststr;
 
@@ -296,12 +296,11 @@ decode_fill_newvalue_regno(packet_t *packet)
                 }
             }
             g_assert(dststr != NULL);
-            def_regnum =
-                packet->insn[def_idx].regno[dststr -
-                    opcode_reginfo[def_opcode]];
 
             /* Now patch up the consumer with the register number */
-            packet->insn[i].regno[use_regidx] = def_regnum;
+            packet->insn[i].regno[use_regidx] =
+                packet->insn[def_idx].regno[dststr -
+                    opcode_reginfo[def_opcode]];
             /*
              * We need to remember who produces this value to later
              * check if it was dynamically cancelled

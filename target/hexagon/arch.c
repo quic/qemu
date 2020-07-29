@@ -115,65 +115,7 @@ size1u_t AC_next_state_LPS_64[64] = {
 size4u_t fbrevaddr(size4u_t pointer)
 {
     size4u_t offset = pointer & 0xffff;
-    size4u_t brevoffset = 0;
-    int i;
-
-    for (i = 0; i < 16; i++) {
-        fSETBIT(i, brevoffset, (fGETBIT((15 - i), offset)));
-    }
-    return (pointer & 0xffff0000) | brevoffset;
-}
-
-/*
- * Counting bits set, Brian Kernighan's way
- * Brian Kernighan's method goes through as many iterations as there are
- * set bits. So if we have a 32-bit word with only the high bit set,
- * then it will only go once through the loop.
- */
-size4u_t count_ones_2(size2u_t src)
-{
-    int ret;
-    for (ret = 0; src != 0; ret++) {
-        src &= src - 1;    /* clear the least significant bit set */
-    }
-    return ret;
-}
-
- size4u_t count_ones_4(size4u_t src)
-{
-    int ret;
-    for (ret = 0; src != 0; ret++) {
-        src &= src - 1;    /* clear the least significant bit set */
-    }
-    return ret;
-}
-
-size4u_t count_ones_8(size8u_t src)
-{
-    int ret;
-    for (ret = 0; src != 0; ret++) {
-        src &= src - 1;    /* clear the least significant bit set */
-    }
-    return ret;
-}
-
-size4u_t count_leading_ones_8(size8u_t src)
-{
-    int ret;
-    for (ret = 0; src & 0x8000000000000000LL; src <<= 1) {
-        ret++;
-    }
-    return ret;
-}
-
-
-size4u_t count_leading_ones_4(size4u_t src)
-{
-    int ret;
-    for (ret = 0; src & 0x80000000; src <<= 1) {
-        ret++;
-    }
-    return ret;
+    return (pointer & 0xffff0000) | revbit16(offset);
 }
 
 size4u_t count_leading_ones_2(size2u_t src)
@@ -191,34 +133,6 @@ size4u_t count_leading_ones_2(size2u_t src)
 #define BYTE_MASK_8 0x00ff00ff00ff00ffULL
 #define HALF_MASK_8 0x0000ffff0000ffffULL
 #define WORD_MASK_8 0x00000000ffffffffULL
-
-size8u_t reverse_bits_8(size8u_t src)
-{
-    src = ((src >> 1) & BITS_MASK_8) | ((src & BITS_MASK_8) << 1);
-    src = ((src >> 2) & PAIR_MASK_8) | ((src & PAIR_MASK_8) << 2);
-    src = ((src >> 4) & NYBL_MASK_8) | ((src & NYBL_MASK_8) << 4);
-    src = ((src >> 8) & BYTE_MASK_8) | ((src & BYTE_MASK_8) << 8);
-    src = ((src >> 16) & HALF_MASK_8) | ((src & HALF_MASK_8) << 16);
-    src = ((src >> 32) & WORD_MASK_8) | ((src & WORD_MASK_8) << 32);
-    return src;
-}
-
-
-#define BITS_MASK_4 0x55555555ULL
-#define PAIR_MASK_4 0x33333333ULL
-#define NYBL_MASK_4 0x0f0f0f0fULL
-#define BYTE_MASK_4 0x00ff00ffULL
-#define HALF_MASK_4 0x0000ffffULL
-
-size4u_t reverse_bits_4(size4u_t src)
-{
-    src = ((src >> 1) & BITS_MASK_4) | ((src & BITS_MASK_4) << 1);
-    src = ((src >> 2) & PAIR_MASK_4) | ((src & PAIR_MASK_4) << 2);
-    src = ((src >> 4) & NYBL_MASK_4) | ((src & NYBL_MASK_4) << 4);
-    src = ((src >> 8) & BYTE_MASK_4) | ((src & BYTE_MASK_4) << 8);
-    src = ((src >> 16) & HALF_MASK_4) | ((src & HALF_MASK_4) << 16);
-    return src;
-}
 
 size8u_t interleave(size4u_t odd, size4u_t even)
 {
