@@ -23,17 +23,15 @@
 #include "hw/boards.h"
 #include "hw/hexagon/hexagon.h"
 #include "hw/loader.h"
-#include "hw/timer/qtimer.h"
-#include "net/net.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
 #include "qemu/log.h"
-#include "qemu/units.h"
-#include "sysemu/cpus.h"
 #include "elf.h"
 #include "cpu.h"
 #include "hex_mmu.h"
 #include "internal.h"
+#include "include/sysemu/sysemu.h"
+#include "include/migration/cpu.h"
 
 static const struct MemmapEntry {
     hwaddr base;
@@ -43,13 +41,14 @@ static const struct MemmapEntry {
         [HEXAGON_IOMEM] =  { 0x1f000000, 0x10000 },
         [HEXAGON_CONFIG_TABLE] = { 0xde000000, 0x400 },
         [HEXAGON_VTCM]   = { 0xd8000000, 0x400000 },
-        [HEXAGON_L2CFG] =  { 0xd81a0000, 0x0 },
+        [HEXAGON_L2CFG] = { 0xd81a0000, 0x0 },
         [HEXAGON_TCM] =    { 0xd8400000, 0x100000 },
-        [HEXAGON_CSR1] =   { 0xfab00000, 0x0 },
-//        [HEXAGON_L2VIC] =  { 0xffc10000, 0x1000 }, /* { 0xfab10000, 0x0 }, */
-        [HEXAGON_QTMR] =   { 0xfab20000, QTIMER_MEM_REGION_SIZE_BYTES },
-        [HEXAGON_CSR2] =   { 0xfab40000, 0x0 },
-        [HEXAGON_QTMR2] =  { 0xfab60000, 0x0 },
+        [HEXAGON_CSR1] = { 0xfab00000, 0x0 },
+        [HEXAGON_L2VIC] = { 0xfab10000, 0x1000},
+        [HEXAGON_QTMR_RG0] = { 0xfab20000, 0x2000 },
+        [HEXAGON_QTMR_RG1] = { 0xfab22000, 0x1000 },
+        [HEXAGON_CSR2] = { 0xfab40000, 0x0 },
+        [HEXAGON_QTMR2] = { 0xfab60000, 0x0 },
 };
 
 /* Board init.  */
@@ -73,26 +72,6 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     env->gpr[HEX_REG_PC] = pentry;
 }
 
-static void hexagonboard_qtimer_init(MachineState *machine, hwaddr base)
-{
-    DeviceState *dev = qdev_create(NULL, "Qtimer");
-
-    qdev_init_nofail(dev);
-#if 0
-    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 0,
-                           qdev_get_gpio_in(machine, HEX_EVENT_INT0));
-    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 1,
-                           qdev_get_gpio_in(machine, HEX_EVENT_INT1));
-    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 2,
-                           qdev_get_gpio_in(machine, HEX_EVENT_INT2));
-    sysbus_connect_irq(SYS_BUS_DEVICE(dev), 3,
-                           qdev_get_gpio_in(machine, HEX_EVENT_INT3));
-#endif
-
-    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, base);
-}
-
-
 static void hexagon_testboard_init(MachineState *machine, int board_id)
 {
     const struct MemmapEntry *memmap = hexagon_board_memmap;
@@ -100,6 +79,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         machine->cpu_type,
         machine->kernel_filename,
         machine->ram_size, machine->ram_size);
+
+    DeviceState *dev;
 
     HexagonCPU *cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
     CPUHexagonState *env = &cpu->env;
@@ -110,8 +91,6 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     env->processor_ptr->runnable_threads_max = 4;
     env->processor_ptr->thread_system_mask = 0xf;
     env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
-    //env->g_sreg[HEX_SREG_PCYCLELO] = 0xaaaa;
-    //env->g_sreg[HEX_SREG_PCYCLEHI] = 0xbbbb;
     hex_mmu_init(env);
 
     MemoryRegion *address_space = get_system_memory();
@@ -136,10 +115,29 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         &error_fatal);
     memory_region_add_subregion(address_space, memmap[HEXAGON_TCM].base, tcm);
 
-//    MemoryRegion *l2vic = g_new(MemoryRegion, 1);
-//    memory_region_init_ram(l2vic, NULL, "l2vic.ram", memmap[HEXAGON_L2VIC].size,
-//        &error_fatal);
-//    memory_region_add_subregion(address_space, memmap[HEXAGON_L2VIC].base, l2vic);
+    dev = sysbus_create_varargs("l2vic", memmap[HEXAGON_L2VIC].base,
+                                             /* IRQ#, Evnt#,CauseCode */
+        qdev_get_gpio_in(DEVICE(cpu), 0), /* IRQ 0, 16, 0xc0 */
+        qdev_get_gpio_in(DEVICE(cpu), 1), /* IRQ 1, 17, 0xc1 */
+        qdev_get_gpio_in(DEVICE(cpu), 2), /* IRQ 2, 18, 0xc2  VIC0 interface */
+        qdev_get_gpio_in(DEVICE(cpu), 3), /* IRQ 3, 19, 0xc3  VIC1 interface */
+        qdev_get_gpio_in(DEVICE(cpu), 4), /* IRQ 4, 20, 0xc4  VIC2 interface */
+        qdev_get_gpio_in(DEVICE(cpu), 5), /* IRQ 5, 21, 0xc5  VIC3 interface */
+        qdev_get_gpio_in(DEVICE(cpu), 6), /* IRQ 6, 22, 0xc6 */
+        qdev_get_gpio_in(DEVICE(cpu), 7), /* IRQ 7, 23, 0xc7 */
+        NULL);
+
+    /* This is tightly with the IRQ selected must match the value below
+     * or the interrupts will not be seen
+     */
+    sysbus_create_varargs("qutimer", 0xfab20000,
+                          NULL);
+    sysbus_create_varargs("hextimer", 0xfab21000,
+                          qdev_get_gpio_in(dev, 67),
+                          NULL);
+    sysbus_create_varargs("hextimer", 0xfab22000,
+                          qdev_get_gpio_in(dev, 68),
+                          NULL);
 
     struct hexagon_config_table config_table;
     memset(&config_table, 0x0, sizeof(config_table));
@@ -166,14 +164,12 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     config_table.l1d_size_kb = HEXAGON_DEFAULT_L1D_SIZE_KB;
     config_table.l1i_size_kb = HEXAGON_DEFAULT_L1I_SIZE_KB;
     config_table.l1d_write_policy = HEXAGON_DEFAULT_L1D_WRITE_POLICY;
-    config_table.tiny_core = 0; // Or '1' to signal support for audio ext?
+    config_table.tiny_core = 0; /* Or '1' to signal support for audio ext? */
     config_table.l2line_size = HEXAGON_V67_L2_LINE_SIZE_BYTES;
 
     rom_add_blob_fixed_as("config_table.rom", &config_table,
         sizeof(config_table), memmap[HEXAGON_CONFIG_TABLE].base,
         &address_space_memory);
-
-    hexagonboard_qtimer_init(machine, memmap[HEXAGON_QTMR].base);
 
     hexagon_binfo.ram_size = machine->ram_size;
     hexagon_binfo.kernel_filename = machine->kernel_filename;
@@ -195,19 +191,30 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
 
 static void hexagonboard_init(MachineState *machine)
 {
-    printf("%s\n", __FUNCTION__);
     hexagon_testboard_init(machine, 845);
 }
 
-static void hex_machine_init(MachineClass *mc)
-
+static void hex_class_init(ObjectClass *oc, void *data)
 {
-    printf("%s\n", __FUNCTION__);
+    MachineClass *mc = MACHINE_CLASS(oc);
+
     mc->desc = "a minimal Hexagon board";
     mc->init = hexagonboard_init;
     mc->is_default = 0;
+    mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->max_cpus = 4;
 }
 
-DEFINE_MACHINE("hexagon_testboard", hex_machine_init)
+static const TypeInfo hexagon_testboard_type = {
+        .name = MACHINE_TYPE_NAME("hexagon_testboard"),
+        .parent = TYPE_MACHINE,
+        .class_init = hex_class_init,
+};
+
+static void hexagon_machine_init(void)
+{
+    type_register_static(&hexagon_testboard_type);
+}
+
+type_init(hexagon_machine_init)

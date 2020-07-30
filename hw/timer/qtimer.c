@@ -1,5 +1,5 @@
 /*
- * Qualcomm QCT QTimer, L2VIC
+ * Qualcomm QCT QTimer
  *
  *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
@@ -22,240 +22,450 @@
 #include "hw/irq.h"
 #include "hw/qdev-properties.h"
 #include "hw/sysbus.h"
-#include "hw/timer/qtimer.h"
+#include "hw/hexagon/qtimer.h"
 #include "migration/vmstate.h"
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/timer.h"
+#include "hw/ptimer.h"
 #include "sysemu/runstate.h"
 
+/* Common timer implementation.  */
 
-/*
- * QTimer provides an array of timers that have a common frequency
- */
-
-#define QTIMER_DEFAULT_MAJOR_VER 1
-#define QTIMER_DEFAULT_MINOR_VER 0
-
-/* QTimer freq from reset
- * TODO: HW docs say 0 but does that match sim?
- */
-#define QTIMER_DEFAULT_FREQ_HZ 19200000ULL
-#define QTIMER_COUNT_MAX (0xffffffffffffffffULL)
-
-
-#define QTMR_AC_CNTACR (0x40)
-#define QTMR_TIMER_INDEX_MASK (0xf000)
-
+//#define QTIMER_DEFAULT_FREQ_HZ 19200000ULL
+#define QTIMER_DEFAULT_FREQ_HZ   192000ULL
+#define QTMR_AC_CNTFRQ (0x000)
+#define QTMR_AC_CNTSR (0x004)
+#define QTMR_AC_CNTSR_NSN_1 (1<<0)
+#define QTMR_AC_CNTSR_NSN_2 (1<<1)
+#define QTMR_AC_CNTTID (0x08)
+#define QTMR_AC_CNTACR_0 (0x40)
+#define QTMR_AC_CNTACR_1 (0x44)
+#define QTMR_AC_CNTACR_RWPT (1<<5)    /* R/W of CNTP_* regs */
+#define QTMR_AC_CNTACR_RWVT (1<<4)    /* R/W of CNTV_* regs */
+#define QTMR_AC_CNTACR_RVOFF (1<<3)   /* R/W of CNTVOFF register */
+#define QTMR_AC_CNTACR_RFRQ (1<<2)    /* R/W of CNTFRQ register */
+#define QTMR_AC_CNTACR_RPVCT (1<<1)   /* R/W of CNTVCT register */
+#define QTMR_AC_CNTACR_RPCT (1<<0)    /* R/W of CNTPCT register */
+#define QTMR_VERSION (0x0fd0)
 #define QTMR_CNTPCT_LO (0x000)
 #define QTMR_CNTPCT_HI (0x004)
+#define QTMR_CNT_FREQ (0x010)
 #define QTMR_CNTP_CVAL_LO (0x020)
 #define QTMR_CNTP_CVAL_HI (0x024)
 #define QTMR_CNTP_TVAL (0x028)
 #define QTMR_CNTP_CTL (0x02c)
+#define QTMR_CNTP_CTL_ISTAT (1<<2)
+#define QTMR_CNTP_CTL_INTEN (1<<1)
+#define QTMR_CNTP_CTL_ENABLE (1<<0)
 
+#define QTMR_TIMER_INDEX_MASK (0xf000)
 #define HIGH_32(val) (0x0ffffffffULL & (val >> 32))
 #define LOW_32(val) (0x0ffffffffULL & val)
 
-static uint64_t Q_timer_read(void *opaque, hwaddr offset, unsigned size)
+typedef struct {
+    SysBusDevice parent_obj;
+    MemoryRegion iomem;
+    ptimer_state *timer;
+    uint64_t cntval;       /* Physical timer compare value interrupt when cntpct > cntval */
+    uint64_t cntpct;       /* Physical counter */
+    uint32_t control;
+    uint32_t cnt_ctrl;
+    uint64_t limit;
+    uint32_t freq;
+    uint32_t devid;
+    int int_level;
+    qemu_irq irq;
+} hex_timer_state;
+
+typedef struct QuTIMERState {
+    SysBusDevice parent_obj;
+
+    MemoryRegion iomem;
+    uint32_t secure;
+    hex_timer_state *timer[2];
+    uint32_t frame_id;
+    uint32_t freq;
+    int level[2];
+    qemu_irq irq;
+} QuTIMERState;
+
+
+#define TYPE_QuTIMER "qutimer"
+#define TYPE_HexTIMER "hextimer"
+#define QuTIMER(obj) OBJECT_CHECK(QuTIMERState, (obj), TYPE_QuTIMER)
+#define HexTIMER(obj) OBJECT_CHECK(hex_timer_state, (obj), TYPE_HexTIMER)
+
+/* Merge the IRQs from the two component devices.  */
+static void qutimer_set_irq(void *opaque, int irq, int level)
 {
-    QTimerInfo *s = (QTimerInfo *)opaque;
+    QuTIMERState *s = (QuTIMERState *)opaque;
 
-    const int32_t timer_index = QTMR_TIMER_INDEX_MASK & offset;
-    if (timer_index > s->timer_count)
-        goto badreg;
-    ptimer_state *timer = s->timers[timer_index].timer;
-    offset = ~(QTMR_TIMER_INDEX_MASK)&offset;
+    s->level[irq] = level;
+    s->timer[0]->int_level = level;
+    s->timer[1]->int_level = level;
+    qemu_set_irq(s->irq, s->level[0] || s->level[1]);
+}
 
-    switch (offset) {
-    case QTMR_CNTPCT_LO:
-        return LOW_32(ptimer_get_count(timer));
-    case QTMR_CNTPCT_HI:
-        return HIGH_32(ptimer_get_count(timer));
-    case QTMR_CNTP_CVAL_LO:
-    case QTMR_CNTP_CVAL_HI:
-    case QTMR_CNTP_TVAL:
-    case QTMR_CNTP_CTL:
-    case QTMR_AC_CNTACR:
-        (void)s;
-        fprintf(stderr, "QTimer not yet implemented\n");
-        abort();
-        break;
-    default:
-        qemu_log_mask(LOG_UNIMP, "%s: unknown register 0x%02" HWADDR_PRIx " "
-                                 ")\n",
-                      __func__, offset);
-        break;
-    badreg:
-        qemu_log_mask(LOG_GUEST_ERROR,
-                      "%s: incorrect register 0x%02" HWADDR_PRIx " "
-                      ")\n",
-                      __func__, offset);
+/* qutimer_read/write:
+ * if offset < 0x1000 read restricted registers:
+ * QTMR_AC_CNTFREQ/CNTSR/CNTTID/CNTACR/CNTOFF_(LO/HI)/QTMR_VERSION
+ * else if offset < 0x2000
+ *     - Reference timer 1
+ * else
+ *     - Reference timer 2
+ */
+static uint64_t qutimer_read(void *opaque, hwaddr offset,
+                           unsigned size)
+{
+    QuTIMERState *s = (QuTIMERState *)opaque;
+
+    if (offset < 0x1000) {
+        switch (offset) {
+        case QTMR_AC_CNTFRQ:
+           return s->freq;
+        case QTMR_AC_CNTSR:
+           return s->secure;
+        case QTMR_AC_CNTTID:
+           return 0x11; /* Only frame 0 and frame 1 are implemented. */
+        case QTMR_AC_CNTACR_0:
+            return s->timer[0]->cnt_ctrl;
+        case QTMR_AC_CNTACR_1:
+            return s->timer[1]->cnt_ctrl;
+        case QTMR_VERSION:
+            return 0x10000000;
+        default:
+                qemu_log_mask(LOG_GUEST_ERROR,
+                              "%s: QTMR_AC_CNT: Bad offset %x\n",
+                              __func__, (int) offset);
+            return 0x0;
+        }
     }
+
+    qemu_log_mask(LOG_GUEST_ERROR,
+                  "%s: Bad offset 0x%x\n", __func__, (int)offset);
     return 0;
 }
 
-static void Q_timer_write(void *opaque, hwaddr offset, uint64_t value,
-                          unsigned size)
+static void qutimer_write(void *opaque, hwaddr offset,
+                        uint64_t value, unsigned size)
 {
-    QTimerInfo *s = (QTimerInfo *)opaque;
+    QuTIMERState *s = (QuTIMERState *)opaque;
 
-    const int32_t timer_index = QTMR_TIMER_INDEX_MASK & offset;
-    if (timer_index > s->timer_count)
-        goto badreg;
-
-    ptimer_state *timer = s->timers[timer_index].timer;
-    offset = ~(QTMR_TIMER_INDEX_MASK)&offset;
-    switch (offset) {
-    case QTMR_CNTPCT_LO:
-    case QTMR_CNTPCT_HI:
-        qemu_log_mask(
-            LOG_GUEST_ERROR,
-            "%s: attempted write to read-only register 0x%02" HWADDR_PRIx " "
-            "(value 0x%08" PRIx64 ")\n",
-            __func__, offset, value);
-        break;
-
-    case QTMR_CNTP_CTL:
-        if ((value & 0x01) != 0) { /* Enable bit */
-            ptimer_transaction_begin(timer);
-            ptimer_set_count(timer, QTIMER_COUNT_MAX);
-            ptimer_run(timer, 0);
-            ptimer_transaction_commit(timer);
+    if (offset < 0x1000) {
+        switch (offset) {
+        case QTMR_AC_CNTFRQ:
+            s->freq = value;
+            return;
+        case QTMR_AC_CNTSR:
+            if (value > 3)
+                qemu_log_mask(LOG_GUEST_ERROR, "%s: QTMR_AC_CNTSR: Bad value %x\n",
+                              __func__, (int) value);
+            else
+                s->secure = value;
+            return;
+        case QTMR_AC_CNTACR_0:
+            s->timer[0]->cnt_ctrl = value;
+            return;
+        case QTMR_AC_CNTACR_1:
+            s->timer[1]->cnt_ctrl = value;
+            return;
+        default:
+            qemu_log_mask(LOG_GUEST_ERROR, "%s: QTMR_AC_CNT: Bad offset %x\n",
+                          __func__, (int) offset);
+            return;
         }
-        break;
-
-    case QTMR_CNTP_CVAL_LO:
-    case QTMR_CNTP_CVAL_HI:
-    case QTMR_CNTP_TVAL:
-    case QTMR_AC_CNTACR:
-        (void)s;
-        fprintf(stderr, "QTimer not yet implemented\n");
-        abort();
-        break;
-    default:
-        qemu_log_mask(LOG_UNIMP, "%s: unknown register 0x%02" HWADDR_PRIx " "
-                                 "(value 0x%08" PRIx64 ")\n",
-                      __func__, offset, value);
-        break;
-    badreg:
-        qemu_log_mask(LOG_GUEST_ERROR,
-                      "%s: incorrect register 0x%02" HWADDR_PRIx " "
-                      "(value 0x%08" PRIx64 ")\n",
-                      __func__, offset, value);
     }
+    else
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: Bad offset %x\n", __func__, (int)offset);
 }
 
-static const MemoryRegionOps Q_timer_ops = {
-    .read = Q_timer_read,
-    .write = Q_timer_write,
+static const MemoryRegionOps qutimer_ops = {
+    .read = qutimer_read,
+    .write = qutimer_write,
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
-static void qtimer_expired(void *opaque)
-{
-    const QTimer *t = opaque;
-    QTimerInfo *i = t->info;
-
-    if (i->irq_enabled_mask & (1 << t->index)) {
-        //      i->events |= 1 << t->index;
-        qemu_irq_pulse(t->irq);
-    }
-}
-
-static int qtimer_post_load(void *opaque, int version_id)
-{
-    return 0;
-}
-
-static void Q_timer_init(Object *obj)
-{
-    QTimerInfo *s = Q_TIMER(obj);
-    SysBusDevice *dev = SYS_BUS_DEVICE(obj);
-
-    s->major_ver = 0;
-    s->minor_ver = 0;
-    s->irq_enabled_mask = 0; // TODO: this is in L2VIC instead?
-    memory_region_init_io(&s->iomem, OBJECT(s), &Q_timer_ops, s, "Q-timer",
-                          QTIMER_MEM_REGION_SIZE_BYTES);
-    sysbus_init_mmio(dev, &s->iomem);
-}
-
-static void Q_timer_realize(DeviceState *dev, Error **errp)
-{
-    QTimerInfo *s = Q_TIMER(dev);
-    SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
-    int i;
-
-    s->timer_count = QTIMER_MAX_TIMERS;
-    for (i = 0; i < s->timer_count; i++) {
-        s->timers[i].info = s;
-        s->timers[i].index = i;
-        s->timers[i].timer =
-            ptimer_init(qtimer_expired, &(s->timers[i]), PTIMER_POLICY_DEFAULT);
-        ptimer_transaction_begin(s->timers[i].timer);
-        ptimer_set_freq(s->timers[i].timer, QTIMER_DEFAULT_FREQ_HZ);
-        ptimer_transaction_commit(s->timers[i].timer);
-
-        sysbus_init_irq(sbd, &(s->timers[i].irq));
-        qdev_init_gpio_out(dev, &(s->timers[i].irq), i);
-    }
-}
-
-static const VMStateDescription vmstate_Q_timer_regs = {
-    .name = "Qtimer",
+static const VMStateDescription vmstate_qutimer = {
+    .name = "qutimer",
     .version_id = 1,
     .minimum_version_id = 1,
-    .post_load = qtimer_post_load,
-    .fields = (VMStateField[]){ VMSTATE_END_OF_LIST() }
+    .fields = (VMStateField[]) {
+        VMSTATE_INT32_ARRAY(level, QuTIMERState, 2),
+        VMSTATE_END_OF_LIST()
+    }
 };
 
-static Property qtimer_dev_properties[] = {
-    DEFINE_PROP_UINT32("major_ver", QTimerInfo, major_ver,
-                       QTIMER_DEFAULT_MAJOR_VER),
-    DEFINE_PROP_UINT32("minor_ver", QTimerInfo, minor_ver,
-                       QTIMER_DEFAULT_MINOR_VER),
+static QuTIMERState *QuTimerBase;
+static void qutimer_init(Object *obj)
+{
+    QuTIMERState *s = QuTIMER(obj);
+    QuTimerBase = s;
+    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+
+    memory_region_init_io(&s->iomem, obj, &qutimer_ops, s,
+                          "qutimer", QTIMER_MEM_SIZE_BYTES);
+    sysbus_init_mmio(sbd, &s->iomem);
+}
+
+static Property qutimer_properties[] = {
+    DEFINE_PROP_UINT32("secure", QuTIMERState, secure,
+                   (QTMR_AC_CNTSR_NSN_1 | QTMR_AC_CNTSR_NSN_2)),
+    DEFINE_PROP_UINT32("frame_id", QuTIMERState, frame_id, 0),
+    DEFINE_PROP_UINT32("freq", QuTIMERState, freq, QTIMER_DEFAULT_FREQ_HZ),
     DEFINE_PROP_END_OF_LIST(),
 };
 
-static void qtimer_dev_class_init(ObjectClass *klass, void *data)
+static void qutimer_class_init(ObjectClass *klass, void *data)
 {
-    DeviceClass *dc = DEVICE_CLASS(klass);
+    DeviceClass *k = DEVICE_CLASS(klass);
 
-    dc->desc = "Q timer";
-    device_class_set_props(dc, qtimer_dev_properties);
+    device_class_set_props(k, qutimer_properties);
+    k->vmsd = &vmstate_qutimer;
 }
 
-#ifndef __clang__
-static const TypeInfo q_timer_dev_info = {
-    .name = "qtimer",
-    .parent = TYPE_Q_TIMER,
-    .instance_size = sizeof(QTimerInfo),
-    .class_init = qtimer_dev_class_init,
-};
-#endif
 
-
-static void Q_timer_class_init(ObjectClass *oc, void *data)
-{
-    DeviceClass *dc = DEVICE_CLASS(oc);
-
-    dc->realize = Q_timer_realize;
-    dc->vmsd = &vmstate_Q_timer_regs;
-}
-
-static const TypeInfo Q_timer_type_info = {
-    .name = TYPE_Q_TIMER,
-    .parent = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(QTimerInfo),
-    .instance_init = Q_timer_init,
-    .abstract = false,
-    .class_init = Q_timer_class_init,
+static const TypeInfo qutimer_info = {
+    .name          = TYPE_QuTIMER,
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(QuTIMERState),
+    .instance_init = qutimer_init,
+    .class_init    = qutimer_class_init,
 };
 
-static void Q_timer_register_types(void)
+static void qutimer_timer_register_types(void)
 {
-    type_register_static(&Q_timer_type_info);
+    type_register_static(&qutimer_info);
 }
 
-type_init(Q_timer_register_types)
+type_init(qutimer_timer_register_types)
+
+
+static void hex_timer_update(hex_timer_state *s)
+{
+    /* Update interrupts.  */
+    if (s->int_level && (s->control & QTMR_CNTP_CTL_ENABLE)) {
+        qemu_irq_raise(s->irq);
+    } else {
+        qemu_irq_lower(s->irq);
+    }
+}
+
+static uint64_t hex_timer_read(void *opaque, hwaddr offset, unsigned size)
+{
+    hex_timer_state *s = (hex_timer_state *)opaque;
+
+    switch (offset) {
+        case (QTMR_CNT_FREQ): /* Ticks/Second */
+            return s->freq;
+        case (QTMR_CNTP_CVAL_LO): /* TimerLoad */
+            return LOW_32((s->cntval));
+        case (QTMR_CNTP_CVAL_HI): /* TimerLoad */
+            return HIGH_32((s->cntval));
+        case QTMR_CNTPCT_LO:
+            return LOW_32((s->cntpct + (s->limit - ptimer_get_count(s->timer))));
+        case QTMR_CNTPCT_HI:
+            return HIGH_32((s->cntpct + (s->limit - ptimer_get_count(s->timer))));
+        case (QTMR_CNTP_TVAL): /* CVAL - CNTP */
+            return (s->cntval -
+                    (HIGH_32((s->cntpct + (s->limit - ptimer_get_count(s->timer)))) +
+                     LOW_32((s->cntpct + (s->limit - ptimer_get_count(s->timer))))));
+
+        case (QTMR_CNTP_CTL): /* TimerMIS */
+            return s->int_level;
+        default:
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "%s: Bad offset %x\n", __func__, (int)offset);
+            return 0;
+    }
+}
+
+/*
+ * Reset the timer limit after settings have changed.
+ * May only be called from inside a ptimer transaction block.
+ */
+static void hex_timer_recalibrate(hex_timer_state *s, int reload)
+{
+    uint64_t limit;
+    /* Periodic.  */
+    limit = s->limit;
+    ptimer_set_limit(s->timer, limit, reload);
+}
+
+static void hex_timer_write(void *opaque, hwaddr offset,
+                            uint64_t value, unsigned size)
+{
+    hex_timer_state *s = (hex_timer_state *)opaque;
+    int freq;
+
+    switch (offset) {
+        case (QTMR_CNTP_CVAL_LO): /* TimerLoad */
+            /*HEX_TIMER_LOG ("A s->limit        = %d\n", s->limit);
+              HEX_TIMER_LOG ("B s->limit        = %d\n", s->limit);
+              HEX_TIMER_LOG ("value             = %d\n",value);
+              HEX_TIMER_LOG ("s->cntpct         = %d\n", s->cntpct);
+              HEX_TIMER_LOG ("s->cntcval        = %d\n", s->cntval);
+              HEX_TIMER_LOG ("value - cntcval   = %d\n", value - s->cntval);
+             */
+            //HEX_TIMER_LOG ("%d: value - cntcval   = %d\n", s->devid, value - s->cntval);
+            s->limit = value - s->cntval;
+            s->int_level = 0;
+            ptimer_transaction_begin(s->timer);
+            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+                /* Pause the timer if it is running.  This may cause some
+                   inaccuracy due to rounding, but avoids other issues. */
+                ptimer_stop(s->timer);
+            }
+            hex_timer_recalibrate(s, 1);
+            if (s->control & QTMR_CNTP_CTL_ENABLE)
+                ptimer_run(s->timer, 0);
+            ptimer_transaction_commit(s->timer);
+            break;
+        case (QTMR_CNTP_CVAL_HI):
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "%s: QTMR_CNTP_CVAL_HI is read-only\n", __func__);
+            break;
+        case (QTMR_CNTP_CTL): /* Timer control register */
+            ptimer_transaction_begin(s->timer);
+            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+                /* Pause the timer if it is running.  This may cause some
+                   inaccuracy due to rounding, but avoids other issues. */
+                ptimer_stop(s->timer);
+            }
+            s->control = value;
+            freq = s->freq;
+            hex_timer_recalibrate(s, s->control & QTMR_CNTP_CTL_ENABLE);
+            ptimer_set_freq(s->timer, freq);
+            if (s->control & QTMR_CNTP_CTL_ENABLE)
+                ptimer_run(s->timer, 0);
+            ptimer_transaction_commit(s->timer);
+            break;
+        case (QTMR_CNTP_TVAL): /* CVAL - CNTP */
+            ptimer_transaction_begin(s->timer);
+            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+                /* Pause the timer if it is running.  This may cause some
+                   inaccuracy due to rounding, but avoids other issues. */
+                ptimer_stop(s->timer);
+            }
+            s->limit = ((s->cntpct + (s->limit - ptimer_get_count(s->timer)))) + value;
+            s->cntval = s->limit;
+            if (s->control & QTMR_CNTP_CTL_ENABLE)
+                ptimer_run(s->timer, 0);
+            ptimer_transaction_commit(s->timer);
+            break;
+        default:
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "%s: Bad offset %x\n", __func__, (int)offset);
+            break;
+    }
+    hex_timer_update(s);
+}
+
+static void hex_timer_tick(void *opaque)
+{
+    hex_timer_state *s = (hex_timer_state *)opaque;
+    uint64_t count = ptimer_get_count(s->timer);
+    if (s->int_level == 1)
+        HEX_TIMER_LOG ("%d: --------------------------NEXT TICK before isr finished -----------------\n", s->devid);
+    else
+        HEX_TIMER_LOG ("%d: --------------------------NEXT TICK AFTER isr finished -----------------\n", s->devid);
+    s->cntval += count;
+    s->cntpct += count;
+    s->int_level = 1;
+    hex_timer_update(s);
+}
+
+static const MemoryRegionOps hex_timer_ops = {
+        .read = hex_timer_read,
+        .write = hex_timer_write,
+        .endianness = DEVICE_NATIVE_ENDIAN,
+};
+
+static const VMStateDescription vmstate_hex_timer = {
+    .name = "hex_timer",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT32(control, hex_timer_state),
+        VMSTATE_UINT32(cnt_ctrl, hex_timer_state),
+        VMSTATE_UINT64(cntpct, hex_timer_state),
+        VMSTATE_UINT64(cntval, hex_timer_state),
+        VMSTATE_UINT64(limit, hex_timer_state),
+        VMSTATE_INT32(int_level, hex_timer_state),
+        VMSTATE_PTIMER(timer, hex_timer_state),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
+static void hex_instance_init(Object *obj) {
+    hex_timer_state *s = HexTIMER(obj);
+    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+
+    sysbus_init_irq(sbd, &s->irq);
+    memory_region_init_io(&s->iomem, obj, &hex_timer_ops, s,
+                          "hextimer", QTIMER_MEM_REGION_SIZE_BYTES);
+    sysbus_init_mmio(sbd, &s->iomem);
+    if (QuTimerBase->timer[0] == NULL) {
+        QuTimerBase->timer[0] = s;
+        s->devid = 0;
+    }
+    else {
+        QuTimerBase->timer[1] = s;
+        s->devid = 1;
+    }
+}
+
+static hex_timer_state *hex_timer_init(hex_timer_state *s, uint32_t freq)
+{
+    s->freq = freq;
+    s->control = QTMR_CNTP_CTL_ENABLE;
+    s->cnt_ctrl = (QTMR_AC_CNTACR_RWPT | QTMR_AC_CNTACR_RWVT |
+                   QTMR_AC_CNTACR_RVOFF | QTMR_AC_CNTACR_RFRQ |
+                   QTMR_AC_CNTACR_RPVCT | QTMR_AC_CNTACR_RPCT);
+
+    s->timer = ptimer_init(hex_timer_tick, s, PTIMER_POLICY_DEFAULT);
+    vmstate_register(NULL, VMSTATE_INSTANCE_ID_ANY, &vmstate_hex_timer, s);
+    return s;
+}
+
+static void hex_timer_realize(DeviceState *dev, Error **errp)
+{
+    hex_timer_state *s = HexTIMER(dev);
+
+    s = hex_timer_init(s, QTIMER_DEFAULT_FREQ_HZ);
+    s->irq = qemu_allocate_irq(qutimer_set_irq, s, 0);
+}
+
+static Property hex_timer_properties[] = {
+    DEFINE_PROP_UINT32("control", hex_timer_state, control, 0),
+    DEFINE_PROP_UINT32("cnt_ctrl", hex_timer_state, cnt_ctrl, 0),
+    DEFINE_PROP_UINT64("cntpct", hex_timer_state, cntpct, 0),
+    DEFINE_PROP_UINT64("cntval", hex_timer_state, cntval, 0),
+    DEFINE_PROP_UINT64("limit", hex_timer_state, limit, 0),
+    DEFINE_PROP_INT32("int_level", hex_timer_state, int_level, 0),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
+static void hex_timer_class_init(ObjectClass *klass, void *data)
+{
+    DeviceClass *k = DEVICE_CLASS(klass);
+
+    k->realize = hex_timer_realize;
+    device_class_set_props(k, hex_timer_properties);
+    k->vmsd = &vmstate_hex_timer;
+}
+
+static const TypeInfo hex_timer_info = {
+        .name          = TYPE_HexTIMER,
+        .parent        = TYPE_SYS_BUS_DEVICE,
+        .instance_size = sizeof(hex_timer_state),
+        .instance_init = hex_instance_init,
+        .class_init    = hex_timer_class_init,
+};
+
+static void hex_timer_timer_register_types(void)
+{
+    type_register_static(&hex_timer_info);
+}
+
+type_init(hex_timer_timer_register_types)
