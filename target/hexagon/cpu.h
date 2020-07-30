@@ -122,6 +122,16 @@ typedef struct {
 /* This needs to be large enough for all the reads and writes in a packet */
 #define TEMP_VECTORS_MAX        25
 
+/* TODO: Update for Hexagon: Meanings of the ARMCPU object's four inbound GPIO lines */
+#define HEXAGON_CPU_IRQ_0 0
+#define HEXAGON_CPU_IRQ_1 1
+#define HEXAGON_CPU_IRQ_2 2
+#define HEXAGON_CPU_IRQ_3 3
+#define HEXAGON_CPU_IRQ_4 4
+#define HEXAGON_CPU_IRQ_5 5
+#define HEXAGON_CPU_IRQ_6 6
+#define HEXAGON_CPU_IRQ_7 7
+
 #ifndef CONFIG_USER_ONLY
 typedef enum {
     HEX_LOCK_UNLOCKED       = 0,

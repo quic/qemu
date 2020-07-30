@@ -238,10 +238,10 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     fprintf(f, "General Purpose Registers = {\n");
 #else
     fprintf(f, "TID %d : General Purpose Registers = {\n", env->threadId);
-#endif
     for (i = 0; i < 32; i++) {
         print_reg(f, env, i);
     }
+#endif
     print_reg(f, env, HEX_REG_SA0);
     print_reg(f, env, HEX_REG_LC0);
     print_reg(f, env, HEX_REG_SA1);
@@ -374,11 +374,76 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     mcc->parent_realize(dev, errp);
 }
 
+static target_ulong ssr_get_ex(CPUHexagonState *env)
+{
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    ssr = (ssr & 1<<17) >> 17;
+    return ssr;
+}
+
+static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
+{
+    HexagonCPU *cpu = opaque;
+    CPUHexagonState *env = &cpu->env;
+    CPUState *cs = CPU(cpu);
+
+
+ /* Event#  CauseCode    Description
+  * 16       0xC0        Interrupt 0  General interrupt. Maskable,
+  *                                   highest priority general interrupt
+  * 17       0xC1        Interrupt 1
+  * 18       0xC2        Interrupt 2  VIC0 Interface
+  * 19       0xC3        Interrupt 3  VIC1 Interface
+  * 20       0xC4        Interrupt 4  VIC2 Interface
+  * 21       0xC5        Interrupt 5  VIC3 Interface
+  * 22       0xC6        Interrupt 6
+  * 23       0xC7        Interrupt 7  Lowest priority interrupt
+  */
+    static const int mask[] = {
+            [HEXAGON_CPU_IRQ_0] = 0x0,
+            [HEXAGON_CPU_IRQ_1] = 0x1,
+            [HEXAGON_CPU_IRQ_2] = 0x2,
+            [HEXAGON_CPU_IRQ_3] = 0x3,
+            [HEXAGON_CPU_IRQ_4] = 0x4,
+            [HEXAGON_CPU_IRQ_5] = 0x5,
+            [HEXAGON_CPU_IRQ_6] = 0x6,
+            [HEXAGON_CPU_IRQ_7] = 0x7,
+    };
+
+    if (level && (irq == HEXAGON_CPU_IRQ_2)) {
+/*      printf("XXX: L2VIC: irq = %d, level = %d\n", irq, level); */
+        while (ssr_get_ex(env)) {rcu_read_lock(); printf ("x"); rcu_read_unlock();};
+        /* NOTE: when level is not zero it is equal to the external IRQ # */
+        env->g_sreg[HEX_SREG_VID] = level;
+        env->cause_code = HEX_CAUSE_INT2;
+    }
+
+    /*
+     * XXX_SM: The VID must match the IRQ number must match the one
+     *         in hexagon_testboard.c when setting up the "qutimer"
+     */
+
+    switch (irq) {
+    case HEXAGON_CPU_IRQ_0 ... HEXAGON_CPU_IRQ_7:
+      //  printf ("%s: IRQ irq:%d, level:%d\n", __func__, irq, level);
+        if (level) {
+            cpu_interrupt(cs, mask[irq]);
+        } else {
+            cpu_reset_interrupt(cs, mask[irq]);
+        }
+        break;
+    default:
+        g_assert_not_reached();
+    }
+}
+
 static void hexagon_cpu_init(Object *obj)
 {
     HexagonCPU *cpu = HEXAGON_CPU(obj);
 
     cpu_set_cpustate_pointers(cpu);
+    // At he the moment only qtimer XXX_SM
+    qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -535,6 +600,25 @@ static const VMStateDescription vmstate_hexagon_cpu = {
     .unmigratable = 1,
 };
 
+#if 0
+static void ssr_set_cause(CPUHexagonState *env, int exception_index)
+
+{
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    ssr = (ssr & (~SSR_CAUSE)) | exception_index;
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR, ssr | SSR_EX);
+}
+#endif
+
+/* XXX_SM: */
+static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
+{
+    CPUClass *cc = CPU_GET_CLASS(cs);
+    cs->exception_index = HEX_EVENT_INT2;
+    cs->interrupt_request &= ~interrupt_request;
+    cc->do_interrupt(cs);
+    return true;
+}
 static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 {
     HexagonCPUClass *mcc = HEXAGON_CPU_CLASS(c);
@@ -550,6 +634,7 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
     cc->has_work = hexagon_cpu_has_work;
 #ifndef CONFIG_USER_ONLY
     cc->do_interrupt = hexagon_cpu_do_interrupt;
+    cc->cpu_exec_interrupt = hexagon_cpu_exec_interrupt;
 #endif
     cc->dump_state = hexagon_dump_state;
     cc->set_pc = hexagon_cpu_set_pc;

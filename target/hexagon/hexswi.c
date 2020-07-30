@@ -173,9 +173,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_WRITEC:
     {
         FILE *fp = stdout;
+        rcu_read_lock();
         DEBUG_MEMORY_READ(swi_info, 1, &c);
         fprintf(fp, "%c", c);
         fflush(fp);
+        rcu_read_unlock();
     }
     break;
 
@@ -193,12 +195,14 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         FILE *fp = stdout;
         i = 0;
+        rcu_read_lock();
         do {
             DEBUG_MEMORY_READ(swi_info + i, 1, &c);
             fprintf(fp, "%c", c);
             i++;
         } while (c);
         fflush(fp);
+        rcu_read_unlock();
         break;
     }
 
@@ -222,6 +226,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
                 __FUNCTION__, __LINE__, count);
         }
 
+        rcu_read_lock();
         for (i = 0; i < count; i++) {
             DEBUG_MEMORY_READ(bufaddr + i, 1, &buf[i]);
         }
@@ -234,6 +239,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         } else {
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, count - retval);
         }
+        rcu_read_unlock();
         free(buf);
     }
     break;
@@ -766,7 +772,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             env->threadId,
             ARCH_GET_THREAD_REG(env, HEX_REG_PC),
             env->next_PC);
-
         ssr_set_cause(env, env->cause_code);
         set_addresses(env, 0, cs->exception_index);
         break;
