@@ -15,4 +15,5 @@ export PATH=/prj/dsp/qdsp6/release/internal/HEXAGON/branch-8.5/linux64/latest/To
 make build-tcg-tests-hexagon-linux-user CROSS_CC_GUEST=hexagon-linux-clang V=1 -j
 make build-tcg-tests-hexagon-softmmu CROSS_CC_GUEST=hexagon-clang V=1 -j
 make V=1 -j
+make check V=1
 make check-tcg CROSS_CC_GUEST=hexagon-linux-clang V=1

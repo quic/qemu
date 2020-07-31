@@ -31,6 +31,7 @@ static struct arch2cpu cpus_map[] = {
     { "i386", "qemu32,apic-id=0" },
     { "alpha", "ev67" },
     { "cris", "crisv32" },
+    { "hexagon", "v67" },
     { "lm32", "lm32-full" },
     { "m68k", "m5206" },
     /* FIXME: { "microblaze", "any" }, doesn't work with -M none -cpu any */
