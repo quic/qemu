@@ -405,13 +405,15 @@ static void hex_instance_init(Object *obj) {
     memory_region_init_io(&s->iomem, obj, &hex_timer_ops, s,
                           "hextimer", QTIMER_MEM_REGION_SIZE_BYTES);
     sysbus_init_mmio(sbd, &s->iomem);
-    if (QuTimerBase->timer[0] == NULL) {
-        QuTimerBase->timer[0] = s;
-        s->devid = 0;
-    }
-    else {
-        QuTimerBase->timer[1] = s;
-        s->devid = 1;
+    if (QuTimerBase) {
+        if (QuTimerBase->timer[0] == NULL) {
+            QuTimerBase->timer[0] = s;
+            s->devid = 0;
+        }
+        else {
+            QuTimerBase->timer[1] = s;
+            s->devid = 1;
+        }
     }
 }
 
