@@ -16,12 +16,13 @@
  */
 
 #include "qemu/osdep.h"
+#include "exec/exec-all.h"
+#include "migration/vmstate.h"
+#include "qapi/error.h"
 #include "qemu/log.h"
 #include "cpu.h"
+#include "cpu_helper.h"
 #include "internal.h"
-#include "exec/exec-all.h"
-#include "qapi/error.h"
-#include "migration/vmstate.h"
 #ifndef CONFIG_USER_ONLY
 #include "macros.h"
 #include "hex_mmu.h"
@@ -223,8 +224,10 @@ void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
 
 void hexagon_dump(CPUHexagonState *env, FILE *f)
 {
-    static target_ulong last_pc;
+#ifndef CONFIG_USER_ONLY
     int i;
+#endif
+    static target_ulong last_pc;
 
     /*
      * When comparing with LLDB, it doesn't step through single-cycle
@@ -610,6 +613,7 @@ static void ssr_set_cause(CPUHexagonState *env, int exception_index)
 }
 #endif
 
+#ifndef CONFIG_USER_ONLY
 /* XXX_SM: */
 static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 {
@@ -619,6 +623,8 @@ static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
     cc->do_interrupt(cs);
     return true;
 }
+#endif
+
 static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 {
     HexagonCPUClass *mcc = HEXAGON_CPU_CLASS(c);

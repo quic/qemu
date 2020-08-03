@@ -19,6 +19,8 @@
 #ifndef HEXAGON_CPU_HELPER_H
 #define HEXAGON_CPU_HELPER_H
 
+#include "hex_arch_types.h"
+
 #define ARCH_GET_THREAD_REG(ENV,REG)     ((ENV)->gpr[(REG)])
 #define ARCH_SET_THREAD_REG(ENV,REG,VAL) ((ENV)->gpr[(REG)] = (VAL))
 #define ARCH_GET_SYSTEM_REG(ENV,REG)     (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
