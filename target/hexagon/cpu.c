@@ -20,6 +20,7 @@
 #include "migration/vmstate.h"
 #include "qapi/error.h"
 #include "qemu/log.h"
+#include "qemu/qemu-print.h"
 #include "cpu.h"
 #include "cpu_helper.h"
 #include "internal.h"
@@ -142,7 +143,7 @@ static inline target_ulong read_p3_0(CPUHexagonState *env)
 #ifndef CONFIG_USER_ONLY
 static void print_val(FILE *f, const char *str, unsigned val)
 {
-    fprintf(f, "  %s = 0x%x\n", str, val);
+    qemu_fprintf(f, "  %s = 0x%x\n", str, val);
 }
 #endif
 
@@ -157,23 +158,23 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
                             : env->gpr[regnum];
     }
 
-    fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
-        hexagon_regnames[regnum], value);
+    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_regnames[regnum],
+                 value);
 }
 
 #ifndef CONFIG_USER_ONLY
 static void print_greg(FILE *f, CPUHexagonState *env, int regnum)
 {
     target_ulong val = env->greg[regnum];
-    fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
-        hexagon_gregnames[regnum], val);
+    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_gregnames[regnum],
+                 val);
 }
 
 static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
 {
     target_ulong val = ARCH_GET_SYSTEM_REG(env, regnum);
-    fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
-        hexagon_sregnames[regnum], val);
+    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_sregnames[regnum],
+                 val);
 }
 
 static target_ulong get_badva(CPUHexagonState *env)
@@ -192,12 +193,12 @@ static target_ulong get_badva(CPUHexagonState *env)
 static void print_vreg(FILE *f, CPUHexagonState *env, int regnum)
 {
     int i;
-    fprintf(f, "  v%d = (", regnum);
-    fprintf(f, "0x%02x", env->VRegs[regnum].ub[MAX_VEC_SIZE_BYTES - 1]);
+    qemu_fprintf(f, "  v%d = (", regnum);
+    qemu_fprintf(f, "0x%02x", env->VRegs[regnum].ub[MAX_VEC_SIZE_BYTES - 1]);
     for (i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
-        fprintf(f, ", 0x%02x", env->VRegs[regnum].ub[i]);
+        qemu_fprintf(f, ", 0x%02x", env->VRegs[regnum].ub[i]);
     }
-    fprintf(f, ")\n");
+    qemu_fprintf(f, ")\n");
 }
 
 void hexagon_debug_vreg(CPUHexagonState *env, int regnum)
@@ -208,13 +209,13 @@ void hexagon_debug_vreg(CPUHexagonState *env, int regnum)
 static void print_qreg(FILE *f, CPUHexagonState *env, int regnum)
 {
     int i;
-    fprintf(f, "  q%d = (", regnum);
-    fprintf(f, ", 0x%02x",
-                env->QRegs[regnum].ub[MAX_VEC_SIZE_BYTES / 8 - 1]);
+    qemu_fprintf(f, "  q%d = (", regnum);
+    qemu_fprintf(f, ", 0x%02x",
+                 env->QRegs[regnum].ub[MAX_VEC_SIZE_BYTES / 8 - 1]);
     for (i = MAX_VEC_SIZE_BYTES / 8 - 2; i >= 0; i--) {
-        fprintf(f, ", 0x%02x", env->QRegs[regnum].ub[i]);
+        qemu_fprintf(f, ", 0x%02x", env->QRegs[regnum].ub[i]);
     }
-    fprintf(f, ")\n");
+    qemu_fprintf(f, ")\n");
 }
 
 void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
@@ -235,9 +236,9 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     }
     last_pc = env->gpr[HEX_REG_PC];
 #ifdef CONFIG_USER_ONLY
-    fprintf(f, "General Purpose Registers = {\n");
+    qemu_fprintf(f, "General Purpose Registers = {\n");
 #else
-    fprintf(f, "TID %d : General Purpose Registers = {\n", env->threadId);
+    qemu_fprintf(f, "TID %d : General Purpose Registers = {\n", env->threadId);
 #endif
     for (int i = 0; i < 32; i++) {
         print_reg(f, env, i);
@@ -258,10 +259,10 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
      * Not modelled in user mode, print junk to minimize the diff's
      * with LLDB output
      */
-    fprintf(f, "  cause = 0x000000db\n");
-    fprintf(f, "  badva = 0x00000000\n");
-    fprintf(f, "  cs0 = 0x00000000\n");
-    fprintf(f, "  cs1 = 0x00000000\n");
+    qemu_fprintf(f, "  cause = 0x000000db\n");
+    qemu_fprintf(f, "  badva = 0x00000000\n");
+    qemu_fprintf(f, "  cs0 = 0x00000000\n");
+    qemu_fprintf(f, "  cs1 = 0x00000000\n");
 #else
     target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     print_val(f, "cause", GET_SSR_FIELD(SSR_CAUSE, ssr));
@@ -285,7 +286,7 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     print_greg(f, env, HEX_GREG_G2);
     print_greg(f, env, HEX_GREG_G3);
 #endif
-    fprintf(f, "}\n");
+    qemu_fprintf(f, "}\n");
 
 /*
  * The HVX register dump takes up a ton of space in the log
@@ -293,14 +294,14 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
  */
 #define DUMP_HVX 0
 #if DUMP_HVX
-    fprintf(f, "Vector Registers = {\n");
+    qemu_fprintf(f, "Vector Registers = {\n");
     for (int i = 0; i < NUM_VREGS; i++) {
         print_vreg(f, env, i);
     }
     for (int i = 0; i < NUM_QREGS; i++) {
         print_qreg(f, env, i);
     }
-    fprintf(f, "}\n");
+    qemu_fprintf(f, "}\n");
 #endif
 }
 

@@ -142,9 +142,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         DEBUG_MEMORY_READ(swi_info + 4, 4, &bufsize);
 
         const target_ulong to_copy =
-            (bufsize <= (unsigned int) strlen(env->cmdline))
-                ? (bufsize - 1)
-                : strlen(env->cmdline);
+            (env->cmdline != NULL) ?
+                ((bufsize <= (unsigned int)strlen(env->cmdline)) ?
+                     (bufsize - 1) :
+                     strlen(env->cmdline)) :
+                0;
 
         HEX_DEBUG_LOG("\tcmdline '%s' len to copy %d buf max %d\n",
             env->cmdline, to_copy, bufsize);
