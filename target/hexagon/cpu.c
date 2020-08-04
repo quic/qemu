@@ -224,9 +224,6 @@ void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
 
 void hexagon_dump(CPUHexagonState *env, FILE *f)
 {
-#ifndef CONFIG_USER_ONLY
-    int i;
-#endif
     static target_ulong last_pc;
 
     /*
@@ -241,10 +238,10 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     fprintf(f, "General Purpose Registers = {\n");
 #else
     fprintf(f, "TID %d : General Purpose Registers = {\n", env->threadId);
-    for (i = 0; i < 32; i++) {
+#endif
+    for (int i = 0; i < 32; i++) {
         print_reg(f, env, i);
     }
-#endif
     print_reg(f, env, HEX_REG_SA0);
     print_reg(f, env, HEX_REG_LC0);
     print_reg(f, env, HEX_REG_SA1);
@@ -297,10 +294,10 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
 #define DUMP_HVX 0
 #if DUMP_HVX
     fprintf(f, "Vector Registers = {\n");
-    for (i = 0; i < NUM_VREGS; i++) {
+    for (int i = 0; i < NUM_VREGS; i++) {
         print_vreg(f, env, i);
     }
-    for (i = 0; i < NUM_QREGS; i++) {
+    for (int i = 0; i < NUM_QREGS; i++) {
         print_qreg(f, env, i);
     }
     fprintf(f, "}\n");
