@@ -178,8 +178,6 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
 
     if (machine->kernel_filename) {
         hexagon_load_kernel(env);
-    } else {
-        env->gpr[HEX_REG_PC] = 0x0; /* 0 or 0x20;*/
     }
 
     env->g_sreg[HEX_SREG_EVB] = 0x0;
