@@ -159,8 +159,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     config_table.v2x_mode =
         HEXAGON_HVX_VEC_LEN_V2X_1 | HEXAGON_HVX_VEC_LEN_V2X_2;
     config_table.hvx_vec_log_length = HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES;
-//    config_table.fastl2vic_base =
-//        HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2VIC].base);
+    config_table.fastl2vic_base =
+        HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2VIC].base);
     config_table.l1d_size_kb = HEXAGON_DEFAULT_L1D_SIZE_KB;
     config_table.l1i_size_kb = HEXAGON_DEFAULT_L1I_SIZE_KB;
     config_table.l1d_write_policy = HEXAGON_DEFAULT_L1D_WRITE_POLICY;
