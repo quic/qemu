@@ -394,6 +394,8 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
         }
     }
 
+    g_assert(pkt->num_insns > 0);
+
     decode_assembler_count_fpops(pkt);
 
     errors += decode_apply_extenders(pkt);
