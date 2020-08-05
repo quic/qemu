@@ -852,8 +852,13 @@ int main()
      * but the symbol names aren't exported from the standalone
      * runtime.
      */
+#if (__clang_major__ == 10)
+    memcpy((void *)0x0ffc, goto_my_event_handler, 12);
+    memcpy((void *)0x0ff0, goto_my_event_handler, 12);
+#else
     memcpy((void *)0x1000, goto_my_event_handler, 12);
     memcpy((void *)0x0ff4, goto_my_event_handler, 12);
+#endif
 
     puts("Hexagon MMU test");
 
