@@ -1026,6 +1026,8 @@ void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
         } else if (!new_mmu_enable && old_mmu_enable) {
             hex_mmu_off(env);
         }
+    } else if (reg == HEX_SREG_IMASK) {
+        val = GET_FIELD(IMASK_MASK, val);
     }
     ARCH_SET_SYSTEM_REG(env, reg, val);
 }

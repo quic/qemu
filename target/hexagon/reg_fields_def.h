@@ -341,3 +341,60 @@ DEF_REG_FIELD(ISDBST_MBXOUTSTATUS,
 DEF_REG_FIELD(ISDBST_READY,
     "READY",0,1,
     "0: ISDB is busy with a command, 1: ISDB ready to accept a new command.")
+
+DEF_REG_FIELD(CCR_L1ICP,
+    "l1icp",0,2,
+    "")
+DEF_REG_FIELD(CCR_L1DCP,
+    "l1dcp",3,2,
+    "")
+DEF_REG_FIELD(CCR_L2CP,
+    "l2cp",6,2,
+    "")
+
+DEF_REG_FIELD(CCR_HFI,
+    "hfi",16,1,
+    "If set (1), honor the USR[HFI] settings, otherwise disable hardware "
+    "prefetching into I$.")
+DEF_REG_FIELD(CCR_HFD,
+    "hfd",17,1,
+    "If set (1), honor the USR[HFD] settings, otherwise disable hardware "
+    "prefetching into D$.")
+DEF_REG_FIELD(CCR_HFIL2,
+    "hfil2",18,1,
+    "This feature is deprecated. These bits are reserved and "
+    "should not be set.")
+DEF_REG_FIELD(CCR_HFDL2,
+    "hfdl2",19,1,
+    "This bit is reserved. For compatibility with earlier versions, it is a "
+    "read-write bit, but should always be written with zero to ensure "
+    "forward compatibility.")
+DEF_REG_FIELD(CCR_SFD,
+    "sfd",20,1,
+    "If clear (0), the dcfetch and l2fetch instructions are treated as a "
+    "NOPs. If set (1), dcfetch and l2fetch attempt to prefetch data based "
+    "on the cacheability (CCCC) and partition (L1DCP, L2CP, L1DP, L2PART) "
+    "settings")
+
+DEF_REG_FIELD(CCR_GIE,
+    "gie",24,1,
+    "When set, enables interrupts in guest mode.")
+DEF_REG_FIELD(CCR_GTE,
+    "gte",25,1,
+    "When set, enables trap0 in guest mode.")
+DEF_REG_FIELD(CCR_GEE,
+    "gee",26,1,
+    "When set, enables error (?) in guest mode.")
+DEF_REG_FIELD(CCR_GRE,
+    "gre",27,1,
+    "When set, enables return and get/set interrupt in guest mode.")
+DEF_REG_FIELD(CCR_VV1,
+    "vv1",29,1,
+    "Virtualize VIC 1")
+DEF_REG_FIELD(CCR_VV2,
+    "vv2",30,1,
+    "Virtualize VIC 2")
+DEF_REG_FIELD(CCR_VV3,
+    "vv3",31,1,
+    "Virtualize VIC 3")
+

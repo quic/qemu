@@ -207,14 +207,9 @@
 
 #define LOG_SREG_WRITE(NUM, VAL)\
     do { \
-        if ((NUM) < HEX_SREG_GLB_START) { \
-            gen_log_sreg_write(NUM, VAL); \
-            ctx_log_sreg_write(ctx, (NUM)); \
-        } else {\
-            TCGv_i32 num = tcg_const_i32(NUM); \
-            gen_helper_sreg_write(cpu_env, num, VAL); \
-            tcg_temp_free_i32(num); \
-        } \
+        TCGv_i32 num = tcg_const_i32(NUM); \
+        gen_helper_sreg_write(cpu_env, num, VAL); \
+        tcg_temp_free_i32(num); \
     } while (0)
 #define LOG_GREG_WRITE(RNUM, VAL)\
     do { \
@@ -530,15 +525,9 @@
 #define WRITE_RREG_yy(NUM, VAL)          WRITE_REG_PAIR(NUM, VAL)
 #define WRITE_SREG_PAIR(NUM, VAL) \
     do { \
-        if ((NUM) < HEX_SREG_GLB_START) { \
-            gen_log_sreg_write_pair(NUM, VAL); \
-            ctx_log_sreg_write(ctx, (NUM)); \
-            ctx_log_sreg_write(ctx, (NUM) + 1); \
-        } else {\
-            TCGv_i32 num = tcg_const_i32(NUM); \
-            gen_helper_sreg_write_pair(cpu_env, num, VAL); \
-            tcg_temp_free_i32(num); \
-        } \
+        TCGv_i32 num = tcg_const_i32(NUM); \
+        gen_helper_sreg_write_pair(cpu_env, num, VAL); \
+        tcg_temp_free_i32(num); \
     } while (0)
 #define WRITE_SREG_dd(NUM, VAL)          WRITE_SREG_PAIR(NUM, VAL)
 
@@ -1685,8 +1674,14 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fVIRTINSN_GETIE(IMM, REG) { REG = 0xdeafbeef; }
 #define fVIRTINSN_SETIE(IMM, REG)
 #define fVIRTINSN_RTE(IMM, REG)
+#ifdef CONFIG_USER_ONLY
 #define fTRAP1_VIRTINSN(IMM) \
     (((IMM) == 1) || ((IMM) == 3) || ((IMM) == 4) || ((IMM) == 6))
+#else
+#define fGRE_ENABLED() GET_FIELD(CCR_GRE, READ_SREG(HEX_SREG_CCR))
+#define fTRAP1_VIRTINSN(IMM) \
+    (fGRE_ENABLED() && (((IMM) == 1) || ((IMM) == 3) || ((IMM) == 4) || ((IMM) == 6)))
+#endif
 #define fNOP_EXECUTED
 #define fPREDUSE_TIMING()
 #define fSET_TLB_LOCK()       hex_tlb_lock(env);

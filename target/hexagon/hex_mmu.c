@@ -291,8 +291,9 @@ static inline bool hex_tlb_entry_match_noperm(uint64_t entry, uint32_t asid,
             }
         }
 
+        uint64_t page_size = hex_tlb_page_size(entry);
         uint64_t page_start = hex_tlb_virt_addr(entry);
-        uint32_t page_size = hex_tlb_page_size(entry);
+        page_start &= ~(page_size - 1);
         if (page_start <= VA && VA < page_start + page_size) {
             /* FIXME - Anything else we need to check? */
             return true;
@@ -436,10 +437,12 @@ static bool hex_tlb_is_match(CPUHexagonState *env,
 {
     bool valid1 = GET_TLB_FIELD(entry1, PTE_V);
     bool valid2 = GET_TLB_FIELD(entry2, PTE_V);
+    uint64_t size1 = hex_tlb_page_size(entry1);
     uint64_t vaddr1 = hex_tlb_virt_addr(entry1);
+    vaddr1 &= ~(size1 - 1);
+    uint64_t size2 = hex_tlb_page_size(entry2);
     uint64_t vaddr2 = hex_tlb_virt_addr(entry2);
-    int size1 = hex_tlb_page_size(entry1);
-    int size2 = hex_tlb_page_size(entry2);
+    vaddr2 &= ~(size2 - 1);
     int asid1 = GET_TLB_FIELD(entry1, PTE_ASID);
     int asid2 = GET_TLB_FIELD(entry2, PTE_ASID);
     bool gbit1 = GET_TLB_FIELD(entry1, PTE_G);

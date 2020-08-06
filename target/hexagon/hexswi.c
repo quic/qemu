@@ -222,7 +222,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         DEBUG_MEMORY_READ(swi_info + 4, 4, &bufaddr);
         DEBUG_MEMORY_READ(swi_info + 8, 4, &count);
 
-        if ((buf = (char *) g_malloc(count)) == NULL) {
+        int malloc_count = (count) ? count : 1;
+        if ((buf = (char *) g_malloc(malloc_count)) == NULL) {
             printf("%s:%d: "
                 "ERROR: Couldn't allocate temporary buffer (%d bytes)",
                 __FUNCTION__, __LINE__, count);
@@ -232,7 +233,10 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         for (i = 0; i < count; i++) {
             DEBUG_MEMORY_READ(bufaddr + i, 1, &buf[i]);
         }
-        retval = write(fd, buf, count);
+        retval = 0;
+        if (count) {
+          retval = write(fd, buf, count);
+        }
         if (retval == count) {
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
         } else if (retval == -1) {
@@ -258,7 +262,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         DEBUG_MEMORY_READ(swi_info + 4, 4, &bufaddr);
         DEBUG_MEMORY_READ(swi_info + 8, 4, &count);
 
-        if ((buf = (char *) g_malloc(count)) == NULL) {
+        int malloc_count = (count) ? count : 1;
+        if ((buf = (char *) g_malloc(malloc_count)) == NULL) {
             CPUState *cs = env_cpu(env);
             cpu_abort(cs,
                 "Error: %s couldn't allocate "
@@ -266,9 +271,12 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
                 __FUNCTION__, count);
         }
 
-        retval = read(fd, buf, count);
-        for (i = 0; i < retval; i++) {
-            DEBUG_MEMORY_WRITE(bufaddr + i, 1, buf[i]);
+        retval = 0;
+        if (count) {
+            retval = read(fd, buf, count);
+            for (i = 0; i < retval; i++) {
+                DEBUG_MEMORY_WRITE(bufaddr + i, 1, buf[i]);
+            }
         }
         if (retval == count) {
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
