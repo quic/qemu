@@ -957,7 +957,14 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fNOATTRIB_READ_P3() (READ_PREG(3))
 #endif
 
-#define fCHECK_PCALIGN(A)
+#define fCHECK_PCALIGN(A)                                   \
+    do {                                                    \
+        if (((A)&PCALIGN_MASK) != 0) {                      \
+            env->cause_code = HEX_CAUSE_PC_NOT_ALIGNED;     \
+            helper_raise_exception(env, HEX_EVENT_PRECISE); \
+        }                                                   \
+    } while (0);
+
 #define fCUREXT() GET_SSR_FIELD(SSR_XA)
 #define fCUREXT_WRAP(EXT_NO)
 
@@ -1588,10 +1595,16 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef CONFIG_USER_ONLY
 #define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EVENT_TRAP0)
-#define fCHECKFORPRIV() \
-    helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN)
-#define fCHECKFORGUEST() \
-    helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN)
+#define fCHECKFORPRIV()                                 \
+    do {                                                \
+        env->cause_code = HEX_CAUSE_PRIV_USER_NO_SINSN; \
+        helper_raise_exception(env, HEX_EVENT_PRECISE); \
+    } while (0);
+#define fCHECKFORGUEST()                                 \
+    do {                                                 \
+        env->cause_code = HEX_CAUSE_GUEST_USER_NO_GINSN; \
+        helper_raise_exception(env, HEX_EVENT_PRECISE);  \
+    } while (0);
 #else
 #define fTRAP(TRAPTYPE, IMM) { \
   register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM); \
@@ -1651,7 +1664,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fL2INVIDX(REG)
 #define fL2FETCH(ADDR, HEIGHT, WIDTH, STRIDE, FLAGS)
 #define fL2TAGR(INDEX, DST, DSTREG)
-#define fL2LOCKA(VA, DST, PREGDST)
 #define fL2UNLOCKA(VA)
 #define fL2TAGW(INDEX, PART2)
 #define fDCCLEANIDX(REG)
@@ -1661,8 +1673,12 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     do { REG = REG; } while (0) /* Nothing to do in qemu */
 
 #ifdef QEMU_GENERATE
+#define fL2LOCKA(VA, DST, PREGDST) tcg_gen_movi_tl((PREGDST), 0x0ff)
+
 #define fDCZEROA(REG) tcg_gen_mov_tl(hex_dczero_addr, (REG))
 #else
+/* Always succeed: */
+#define fL2LOCKA(VA, DST, PREGDST) do { PREGDST = 0x0ff; } while (0)
 #define fDCZEROA(REG) do { REG = REG; g_assert_not_reached(); } while (0)
 #define fCLEAR_RTE_EX() \
     do { \
@@ -1707,6 +1723,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fCLEAR_RUN_MODE(x)        helper_clear_run_mode(env,(x))
 #define READ_IMASK(TID)           helper_getimask(env, TID)
 #define WRITE_IMASK(PRED,MASK)    helper_setimask(env, PRED, MASK)
+#define WRITE_PRIO(TH,PRIO)       helper_setprio(env, TH, PRIO)
 
 #ifndef CONFIG_USER_ONLY
 #define fTLB_IDXMASK(INDEX) \

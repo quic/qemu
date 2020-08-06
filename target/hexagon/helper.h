@@ -55,6 +55,7 @@ DEF_HELPER_2(iassignr, i32, env, i32)
 DEF_HELPER_2(iassignw, void, env, i32)
 DEF_HELPER_2(getimask, i32, env, i32)
 DEF_HELPER_3(setimask, void, env, i32, i32)
+DEF_HELPER_3(setprio, void, env, i32, i32)
 DEF_HELPER_2(swi, void, env, i32)
 #endif
 #define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPER

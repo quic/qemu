@@ -8,55 +8,51 @@ HEXAGON_SYSTEM_SRC=$(SRC_PATH)/tests/tcg/hexagon/system
 # Set search path for all sources
 VPATH 		+= $(HEXAGON_SYSTEM_SRC)
 
-# FIXME: correct build config for multiarch system tests, & minilib etc
-#TESTS += $(MULTIARCH_TESTS)
 TESTS += \
 	standalone_hw \
 	standalone_vec \
 	mmu_test \
 	tlblock \
 	k0lock \
-        invalid_opcode \
-        sys_atomics \
+	invalid_opcode \
+	sys_atomics \
 	$()
+
+ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
+
+LDFLAGS+=$(ISDB_FLAGS)
+CFLAGS+=-G0 -O2
 
 CRT_OBJS=boot.o
 
 LDFLAGS+= -static
 
 # Build and link the tests
-%.o: $(HEXAGON_SYSTEM_SRC)/%.S
+%.o: %.S
 	$(CC) $(ASFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
 %.o: %.c
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
-hello: hello.o $(CRT_OBJS) $(MINILIB_OBJS)
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
-#memory: %.c $(CRT_OBJS) $(MINILIB_OBJS)
-#	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
-standalone_%: standalone_%.o
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $< -o $@ $(LDFLAGS)
-mmu_test: $(HEXAGON_SYSTEM_SRC)/mmu_test.c $(HEXAGON_SYSTEM_SRC)/dummy_mutex.S
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
-tlblock: $(HEXAGON_SYSTEM_SRC)/tlblock.c
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
-k0lock: $(HEXAGON_SYSTEM_SRC)/k0lock.c
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
-invalid_opcode: $(HEXAGON_SYSTEM_SRC)/invalid_opcode.c
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
-sys_atomics: $(HEXAGON_SYSTEM_SRC)/sys_atomics.c
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS) -O2 -G 0 -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
+
+standalone_hw: standalone_hw.o monitor_insts.o
+standalone_vec: standalone_vec.o
+mmu_test: mmu_test.o dummy_mutex.o
+tlblock: tlblock.o
+k0lock: k0lock.o
+invalid_opcode: invalid_opcode.o
+sys_atomics: sys_atomics.o
+
+$(TESTS):
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
+
 
 # Specific Test Rules
 
 memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
-hello: EXTRA_CFLAGS+=-I../../minilib
 
 # TODO: We should see if we can find a way to avoid this:
-standalone_%: LDFLAGS+= -lc -lstandalone -Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2 -mhvx -fvectorize
+standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
 
 standalone_vec.o: CFLAGS+= -mv67 -O2 -mhvx  -fvectorize
 
 QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67
-#QEMU_OPTS+=$(QEMU_BASE_MACHINE) -semihosting-config enable=on,target=native,chardev=output -kernel
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -no-reboot  -kernel
-

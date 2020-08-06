@@ -288,6 +288,15 @@ DEF_REG_FIELD(IMASK_MASK,
     "IMASK is an 8-bit read-write register "
     "used to hold a per-thread interrupt mask.")
 
+DEF_REG_FIELD(STID_PRIO,
+    "prio",16,8,
+    "PRIO is an 8-bit read-write register "
+    "used to hold a thread priority mask.")
+DEF_REG_FIELD(STID_STID,
+    "stid",0,8,
+    "STID is an 8-bit read-write register "
+    "used to hold a software thread-id.")
+
 /* MODECTL fields */
 DEF_REG_FIELD(MODECTL_E,
     "Enabled",0,8,

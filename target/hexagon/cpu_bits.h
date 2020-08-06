@@ -26,6 +26,10 @@
 #define HEX_CAUSE_FETCH_NO_UPAGE            0x012
 #define HEX_CAUSE_INVALID_PACKET            0x015
 #define HEX_CAUSE_INVALID_OPCODE            0x015
+#define HEX_CAUSE_PC_NOT_ALIGNED            0x01e
+#define HEX_CAUSE_MISALIGNED_LOAD           0x020
+#define HEX_CAUSE_MISALIGNED_STORE          0x021
+#define HEX_CAUSE_PRIV_NO_READ              0x022
 #define HEX_CAUSE_PRIV_NO_READ              0x022
 #define HEX_CAUSE_PRIV_NO_WRITE             0x023
 #define HEX_CAUSE_PRIV_NO_UREAD             0x024
@@ -35,6 +39,7 @@
 #define HEX_CAUSE_TLBMISSX_CAUSE_NEXTPAGE   0x061
 #define HEX_CAUSE_TLBMISSRW_CAUSE_READ      0x070
 #define HEX_CAUSE_TLBMISSRW_CAUSE_WRITE     0x071
+#define HEX_CAUSE_PRIV_USER_NO_GINSN        0x01a
 #define HEX_CAUSE_PRIV_USER_NO_SINSN        0x01b
 #define HEX_CAUSE_INT0                      0x0c0
 #define HEX_CAUSE_INT1                      0x0c1

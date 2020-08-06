@@ -916,14 +916,18 @@ supported_privs = [
     'Y2_dckill', 'Y2_ickill', 'Y2_l2kill',
     'L4_loadw_phys',
     'J2_rte',
-    'Y2_swi', 'Y2_cswi', 'Y2_ciad', 'Y4_siad',
+    'Y2_swi', 'Y2_cswi', 'Y2_ciad', 'Y4_siad', 'Y2_setprio',
 
     'J2_pause', 'Y4_trace',
     # Caching, prefetching:
     'Y2_dctagr', 'Y2_dctagw',
     'Y2_dccleana', 'Y2_dccleaninva', 'Y2_dccleanidx', 'Y2_dccleaninvidx',
     'Y2_dcinvidx', 'Y2_dcfetchbo',
-    'Y5_l2gcleaninv',
+    'Y5_l2gcleaninv', 'Y6_l2gcleaninvpa', 'Y6_l2gcleanpa', 'Y5_l2gclean',
+    'Y5_l2gunlock',
+#   FIXME: needs pred decl fix
+#   'Y5_l2locka', 'Y5_l2unlocka',
+
     'Y4_l2fetch', 'Y5_l2fetch', 'Y2_icinva',
     'Y2_dczeroa',
     'Y2_start', 'Y2_stop', 'Y2_wait', 'Y2_resume',
@@ -931,34 +935,39 @@ supported_privs = [
     'Y2_k0lock', 'Y2_k0unlock',
     'Y2_getimask', 'Y2_setimask',
 ]
+
+# Sanity check for typos:
+assert(all(priv_inst in tags for priv_inst in supported_privs))
+
 system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
 
+skipped = []
 for tag in tags:
     ## Skip assembler mapped instructions
     if "A_MAPPING" in attribdict[tag]:
         continue
     ## Skip the fake instructions
-    if ( "A_FAKEINSN" in attribdict[tag] ) :
+    if ("A_FAKEINSN" in attribdict[tag]):
         continue
     ## Skip the priv instructions
-    if ( "A_PRIV" in attribdict[tag] ):
+    if ("A_PRIV" in attribdict[tag]):
         if not system_mode:
             continue
-        if ( tag not in supported_privs ) :
+        if (tag not in supported_privs):
+            skipped.append(tag)
             continue
     ## guest instructions allowed in system mode
-    if ( "A_GUEST" in attribdict[tag] ) :
+    if ("A_GUEST" in attribdict[tag]):
         if not system_mode:
             continue
     ## Skip the diag instructions
-    if ( tag == "Y6_diag" ) :
-        continue
-    if ( tag == "Y6_diag0" ) :
-        continue
-    if ( tag == "Y6_diag1" ) :
+    if (tag in ('Y6_diag', 'Y6_diag0', 'Y6_diag1')) :
+        skipped.append(tag)
         continue
 
     gen_qemu(f, tag)
+
+#print('skipped: {}'.format(','.join(skipped)))
 
 realf = open('qemu_def_generated.h','w')
 realf.write(f.getvalue())

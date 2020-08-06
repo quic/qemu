@@ -1109,6 +1109,25 @@ uint32_t HELPER(getimask)(CPUHexagonState *env, uint32_t tid)
     }
     return 0;
 }
+void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
+
+{
+    thread = thread & (THREADS_MAX-1);
+    HEX_DEBUG_LOG("%s: tid %u, setting thread 0x%x, prio 0x%x\n",
+      __FUNCTION__, env->threadId, thread, prio);
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *found_cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *found_env = &found_cpu->env;
+        if (thread == found_env->threadId) {
+            SET_SYSTEM_FIELD(found_env, HEX_SREG_STID, STID_PRIO, prio);
+            HEX_DEBUG_LOG("%s: tid[%d].PRIO = 0x%x\n",
+                __FUNCTION__, found_env->threadId, prio);
+            return;
+        }
+    }
+    g_assert_not_reached();
+}
 
 void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
 
@@ -1126,6 +1145,7 @@ void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
             return;
         }
     }
+    g_assert_not_reached();
 }
 
 void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
