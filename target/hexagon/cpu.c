@@ -52,8 +52,13 @@ static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
 }
 
 const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
+#ifdef CONFIG_USER_ONLY
     "r0", "r1",  "r2",  "r3",  "r4",   "r5",  "r6",  "r7",
     "r8", "r9",  "r10", "r11", "r12",  "r13", "r14", "r15",
+#else
+    "r00", "r01",  "r02", "r03", "r04",  "r05", "r06", "r07",
+    "r08", "r09",  "r10", "r11", "r12",  "r13", "r14", "r15",
+#endif
     "r16", "r17", "r18", "r19", "r20",  "r21", "r22", "r23",
     "r24", "r25", "r26", "r27", "r28",  "r29", "r30", "r31",
     "sa0", "lc0", "sa1", "lc1", "p3_0", "c5",  "m0",  "m1",
@@ -102,7 +107,9 @@ static inline target_ulong hack_stack_ptrs(CPUHexagonState *env,
     if (first) {
         first = false;
         env->stack_start = env->gpr[HEX_REG_SP];
+#ifdef CONFIG_USER_ONLY
         env->gpr[HEX_REG_USR] = 0x56000;
+#endif
 
 #define ADJUST_STACK 0
 #if ADJUST_STACK
@@ -240,9 +247,12 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
 #else
     qemu_fprintf(f, "TID %d : General Purpose Registers = {\n", env->threadId);
 #endif
+
     for (int i = 0; i < 32; i++) {
         print_reg(f, env, i);
     }
+
+#ifdef CONFIG_USER_ONLY
     print_reg(f, env, HEX_REG_SA0);
     print_reg(f, env, HEX_REG_LC0);
     print_reg(f, env, HEX_REG_SA1);
@@ -254,7 +264,6 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     print_reg(f, env, HEX_REG_GP);
     print_reg(f, env, HEX_REG_UGP);
     print_reg(f, env, HEX_REG_PC);
-#ifdef CONFIG_USER_ONLY
     /*
      * Not modelled in user mode, print junk to minimize the diff's
      * with LLDB output
@@ -264,27 +273,53 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     qemu_fprintf(f, "  cs0 = 0x00000000\n");
     qemu_fprintf(f, "  cs1 = 0x00000000\n");
 #else
-    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    print_val(f, "cause", GET_SSR_FIELD(SSR_CAUSE, ssr));
-    print_sreg(f, env, get_badva(env));
+    print_reg(f, env, HEX_REG_SA0);
+    print_reg(f, env, HEX_REG_LC0);
+    print_reg(f, env, HEX_REG_SA1);
+    print_reg(f, env, HEX_REG_LC1);
+    print_reg(f, env, HEX_REG_P3_0);
+    print_reg(f, env, HEX_REG_M0);
+    print_reg(f, env, HEX_REG_M1);
+    print_reg(f, env, HEX_REG_USR);
+    print_reg(f, env, HEX_REG_PC);
+    print_reg(f, env, HEX_REG_UGP);
+    print_reg(f, env, HEX_REG_GP);
+
     print_reg(f, env, HEX_REG_CS0);
     print_reg(f, env, HEX_REG_CS1);
 
-    for (int j = 0; j < NUM_PREGS ; ++j) {
-      char buf[128];
-      buf[0]= 0;
-      sprintf(buf, "p%d", j);
-      print_val(f, buf, env->pred[j]);
-    }
-
-    print_sreg(f, env, HEX_SREG_IPENDAD);
-    print_sreg(f, env, HEX_SREG_IMASK);
+    fprintf(f, "  upcyclelo = 0x00000000\n");
+    fprintf(f, "  upcyclehi = 0x00000000\n");
+    fprintf(f, "  framelimit = 0x00000000\n");
+    fprintf(f, "  framekey = 0x00000000\n");
+    fprintf(f, "  pktcountlo = 0x00000000\n");
+    fprintf(f, "  pktcounthi = 0x00000000\n");
+    fprintf(f, "  utimerlo = 0x00000000\n");
+    fprintf(f, "  utimerhi = 0x00000000\n");
+    fprintf(f, "  sgp0 = 0x00000000\n");
+    fprintf(f, "  sgp1 = 0x00000000\n");
+    fprintf(f, "  stid = 0x00000000\n");
     print_sreg(f, env, HEX_SREG_ELR);
-
-    print_greg(f, env, HEX_GREG_G0);
-    print_greg(f, env, HEX_GREG_G1);
-    print_greg(f, env, HEX_GREG_G2);
-    print_greg(f, env, HEX_GREG_G3);
+    fprintf(f, "  badva0 = 0x00000000\n");
+    fprintf(f, "  badva1 = 0x00000000\n");
+    print_sreg(f, env, HEX_SREG_SSR);
+    fprintf(f, "  ccr = 0x00000000\n");
+    fprintf(f, "  htid = 0x00000000\n");
+    fprintf(f, "  badva = 0x00000000\n");
+    print_sreg(f, env, HEX_SREG_IMASK);
+    fprintf(f, "  gevb = 0x00000000\n");
+    fprintf(f, "  gelr = 0x00000000\n");
+    fprintf(f, "  gsr = 0x00000000\n");
+    fprintf(f, "  gosp = 0x00000000\n");
+    fprintf(f, "  gbadva = 0x00000000\n");
+    fprintf(f, "  dm0 = 0x00000000\n");
+    fprintf(f, "  dm1 = 0x00000000\n");
+    fprintf(f, "  dm2 = 0x000002a0\n");
+    fprintf(f, "  dm3 = 0x00000000\n");
+    fprintf(f, "  dm4 = 0x00000000\n");
+    fprintf(f, "  dm5 = 0x00000000\n");
+    fprintf(f, "  dm6 = 0x00000000\n");
+    fprintf(f, "  dm7 = 0x00000000\n");
 #endif
     qemu_fprintf(f, "}\n");
 
@@ -350,6 +385,11 @@ static void hexagon_cpu_reset(DeviceState *dev)
     HexagonCPUClass *mcc = HEXAGON_CPU_GET_CLASS(cpu);
 
     mcc->parent_reset(dev);
+
+#ifndef CONFIG_USER_ONLY
+    CPUHexagonState *env = &cpu->env;
+    SET_SSR_FIELD(env, SSR_EX, 1);
+#endif
 }
 
 static void hexagon_cpu_disas_set_info(CPUState *s, disassemble_info *info)
