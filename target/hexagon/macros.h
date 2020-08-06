@@ -205,11 +205,16 @@
         ctx_log_reg_write(ctx, (RNUM)); \
     } while (0)
 
-#define LOG_SREG_WRITE(NUM, VAL)\
-    do { \
-        TCGv_i32 num = tcg_const_i32(NUM); \
-        gen_helper_sreg_write(cpu_env, num, VAL); \
-        tcg_temp_free_i32(num); \
+#define LOG_SREG_WRITE(NUM, VAL)                      \
+    do {                                              \
+        if ((NUM) < HEX_SREG_GLB_START) {             \
+            gen_log_sreg_write(NUM, VAL);             \
+            ctx_log_sreg_write(ctx, (NUM));           \
+        } else {                                      \
+            TCGv_i32 num = tcg_const_i32(NUM);        \
+            gen_helper_sreg_write(cpu_env, num, VAL); \
+            tcg_temp_free_i32(num);                   \
+        }                                             \
     } while (0)
 #define LOG_GREG_WRITE(RNUM, VAL)\
     do { \
@@ -523,11 +528,17 @@
 #define WRITE_RREG_dd(NUM, VAL)          WRITE_REG_PAIR(NUM, VAL)
 #define WRITE_RREG_xx(NUM, VAL)          WRITE_REG_PAIR(NUM, VAL)
 #define WRITE_RREG_yy(NUM, VAL)          WRITE_REG_PAIR(NUM, VAL)
-#define WRITE_SREG_PAIR(NUM, VAL) \
-    do { \
-        TCGv_i32 num = tcg_const_i32(NUM); \
-        gen_helper_sreg_write_pair(cpu_env, num, VAL); \
-        tcg_temp_free_i32(num); \
+#define WRITE_SREG_PAIR(NUM, VAL)                          \
+    do {                                                   \
+        if ((NUM) < HEX_SREG_GLB_START) {                  \
+            gen_log_sreg_write_pair(NUM, VAL);             \
+            ctx_log_sreg_write(ctx, (NUM));                \
+            ctx_log_sreg_write(ctx, (NUM) + 1);            \
+        } else {                                           \
+            TCGv_i32 num = tcg_const_i32(NUM);             \
+            gen_helper_sreg_write_pair(cpu_env, num, VAL); \
+            tcg_temp_free_i32(num);                        \
+        }                                                  \
     } while (0)
 #define WRITE_SREG_dd(NUM, VAL)          WRITE_SREG_PAIR(NUM, VAL)
 
