@@ -1003,12 +1003,26 @@ uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
 uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 
 {
+    if ((reg == HEX_SREG_TIMERLO) || (reg == HEX_SREG_TIMERHI)) {
+        uint32_t low = 0;
+        uint32_t high = 0;
+        hexagon_read_timer(&low, &high);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERLO, low);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERHI, high);
+    }
     return ARCH_GET_SYSTEM_REG(env, reg);
 }
 
 uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 {
+    if (reg == HEX_SREG_TIMERLO) {
+        uint32_t low = 0;
+        uint32_t high = 0;
+        hexagon_read_timer(&low, &high);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERLO, low);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERHI, high);
+    }
     return   (uint64_t)ARCH_GET_SYSTEM_REG(env, reg) |
            (((uint64_t)ARCH_GET_SYSTEM_REG(env, reg+1)) << 32);
 }

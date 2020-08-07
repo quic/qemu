@@ -16,7 +16,11 @@ TESTS += \
 	k0lock \
 	invalid_opcode \
 	sys_atomics \
+	timer_reg \
 	$()
+
+# Disabled for now:
+#	qtimer_test \
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 
@@ -40,6 +44,8 @@ tlblock: tlblock.o
 k0lock: k0lock.o
 invalid_opcode: invalid_opcode.o
 sys_atomics: sys_atomics.o
+timer_reg: timer_reg.o
+qtimer_test: qtimer_test.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -53,6 +59,9 @@ memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
 standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
 
 standalone_vec.o: CFLAGS+= -mv67 -O2 -mhvx  -fvectorize
+
+qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfab00000 -DQTMR_FREQ=19200000 -DIRQ1=67 -DIRQ2=68
+qtimer_test: LDFLAGS+= -lhexagon
 
 QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -no-reboot  -kernel

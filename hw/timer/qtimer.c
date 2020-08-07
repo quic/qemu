@@ -34,31 +34,6 @@
 
 //#define QTIMER_DEFAULT_FREQ_HZ 19200000ULL
 #define QTIMER_DEFAULT_FREQ_HZ   192000ULL
-#define QTMR_AC_CNTFRQ (0x000)
-#define QTMR_AC_CNTSR (0x004)
-#define QTMR_AC_CNTSR_NSN_1 (1<<0)
-#define QTMR_AC_CNTSR_NSN_2 (1<<1)
-#define QTMR_AC_CNTTID (0x08)
-#define QTMR_AC_CNTACR_0 (0x40)
-#define QTMR_AC_CNTACR_1 (0x44)
-#define QTMR_AC_CNTACR_RWPT (1<<5)    /* R/W of CNTP_* regs */
-#define QTMR_AC_CNTACR_RWVT (1<<4)    /* R/W of CNTV_* regs */
-#define QTMR_AC_CNTACR_RVOFF (1<<3)   /* R/W of CNTVOFF register */
-#define QTMR_AC_CNTACR_RFRQ (1<<2)    /* R/W of CNTFRQ register */
-#define QTMR_AC_CNTACR_RPVCT (1<<1)   /* R/W of CNTVCT register */
-#define QTMR_AC_CNTACR_RPCT (1<<0)    /* R/W of CNTPCT register */
-#define QTMR_VERSION (0x0fd0)
-#define QTMR_CNTPCT_LO (0x000)
-#define QTMR_CNTPCT_HI (0x004)
-#define QTMR_CNT_FREQ (0x010)
-#define QTMR_CNTP_CVAL_LO (0x020)
-#define QTMR_CNTP_CVAL_HI (0x024)
-#define QTMR_CNTP_TVAL (0x028)
-#define QTMR_CNTP_CTL (0x02c)
-#define QTMR_CNTP_CTL_ISTAT (1<<2)
-#define QTMR_CNTP_CTL_INTEN (1<<1)
-#define QTMR_CNTP_CTL_ENABLE (1<<0)
-
 #define QTMR_TIMER_INDEX_MASK (0xf000)
 #define HIGH_32(val) (0x0ffffffffULL & (val >> 32))
 #define LOW_32(val) (0x0ffffffffULL & val)
@@ -297,6 +272,7 @@ static void hex_timer_write(void *opaque, hwaddr offset,
 {
     hex_timer_state *s = (hex_timer_state *)opaque;
     int freq;
+    HEX_TIMER_LOG("\ta timer write: %lu, %lu\n", offset, value);
 
     switch (offset) {
         case (QTMR_CNTP_CVAL_LO): /* TimerLoad */
@@ -326,6 +302,7 @@ static void hex_timer_write(void *opaque, hwaddr offset,
                           "%s: QTMR_CNTP_CVAL_HI is read-only\n", __func__);
             break;
         case (QTMR_CNTP_CTL): /* Timer control register */
+            HEX_TIMER_LOG("\tctl write: %lu\n", value);
             ptimer_transaction_begin(s->timer);
             if (s->control & QTMR_CNTP_CTL_ENABLE) {
                 /* Pause the timer if it is running.  This may cause some

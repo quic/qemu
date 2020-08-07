@@ -118,4 +118,6 @@ struct hexagon_config_table {
     uint32_t hmx_cvt_mpy_size; /* FIXME: undocumented Size of the fractional multiplier in the HMX Covert */
     uint32_t axi3_lowaddr; /* FIXME: undocumented */
 };
+void hexagon_read_timer(uint32_t *low, uint32_t *high);
+
 #endif

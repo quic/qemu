@@ -22,6 +22,7 @@
 #include "exec/address-spaces.h"
 #include "hw/boards.h"
 #include "hw/hexagon/hexagon.h"
+#include "hw/hexagon/qtimer.h"
 #include "hw/loader.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
@@ -29,23 +30,23 @@
 #include "elf.h"
 #include "cpu.h"
 #include "hex_mmu.h"
-#include "internal.h"
-#include "include/sysemu/sysemu.h"
 #include "include/migration/cpu.h"
+#include "include/sysemu/sysemu.h"
+#include "internal.h"
 
 static const struct MemmapEntry {
     hwaddr base;
     hwaddr size;
 } hexagon_board_memmap[] = {
-        [HEXAGON_LPDDR] =  { 0x00000000, 0x0 },
-        [HEXAGON_IOMEM] =  { 0x1f000000, 0x10000 },
+        [HEXAGON_LPDDR] = { 0x00000000, 0x0 },
+        [HEXAGON_IOMEM] = { 0x1f000000, 0x10000 },
         [HEXAGON_CONFIG_TABLE] = { 0xde000000, 0x400 },
-        [HEXAGON_VTCM]   = { 0xd8000000, 0x400000 },
+        [HEXAGON_VTCM] = { 0xd8000000, 0x400000 },
         [HEXAGON_L2CFG] = { 0xd81a0000, 0x0 },
-        [HEXAGON_TCM] =    { 0xd8400000, 0x100000 },
+        [HEXAGON_TCM] = { 0xd8400000, 0x100000 },
         [HEXAGON_CSR1] = { 0xfab00000, 0x0 },
-        [HEXAGON_L2VIC] = { 0xfab10000, 0x1000},
-        [HEXAGON_QTMR_RG0] = { 0xfab20000, 0x2000 },
+        [HEXAGON_L2VIC] = { 0xfab10000, 0x1000 },
+        [HEXAGON_QTMR_RG0] = { 0xfab21000, 0x1000 },
         [HEXAGON_QTMR_RG1] = { 0xfab22000, 0x1000 },
         [HEXAGON_CSR2] = { 0xfab40000, 0x0 },
         [HEXAGON_QTMR2] = { 0xfab60000, 0x0 },
@@ -132,12 +133,10 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
      */
     sysbus_create_varargs("qutimer", 0xfab20000,
                           NULL);
-    sysbus_create_varargs("hextimer", 0xfab21000,
-                          qdev_get_gpio_in(dev, 67),
-                          NULL);
-    sysbus_create_varargs("hextimer", 0xfab22000,
-                          qdev_get_gpio_in(dev, 68),
-                          NULL);
+    sysbus_create_varargs("hextimer", memmap[HEXAGON_QTMR_RG0].base,
+                          qdev_get_gpio_in(dev, 67), NULL);
+    sysbus_create_varargs("hextimer", memmap[HEXAGON_QTMR_RG1].base,
+                          qdev_get_gpio_in(dev, 68), NULL);
 
     struct hexagon_config_table config_table;
     memset(&config_table, 0x0, sizeof(config_table));
@@ -213,6 +212,16 @@ static const TypeInfo hexagon_testboard_type = {
 static void hexagon_machine_init(void)
 {
     type_register_static(&hexagon_testboard_type);
+}
+
+void hexagon_read_timer(uint32_t *low, uint32_t *high)
+{
+    const struct MemmapEntry *memmap = hexagon_board_memmap;
+    const hwaddr low_addr = memmap[HEXAGON_QTMR_RG0].base + QTMR_CNTPCT_LO;
+    const hwaddr high_addr = memmap[HEXAGON_QTMR_RG0].base + QTMR_CNTPCT_HI;
+
+    cpu_physical_memory_read(low_addr, low, sizeof(*low));
+    cpu_physical_memory_read(high_addr, high, sizeof(*high));
 }
 
 type_init(hexagon_machine_init)

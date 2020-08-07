@@ -68,32 +68,38 @@ typedef struct {
 } irq_t;
 
 static void setbit(void *addr, unsigned int n) {
-  irq_t *irq = addr;
-  if (n>128)
-      return;
-  if (n<64)
-    irq->lo |= (1ull<<n);
-  else
-    irq->hi |= (1ull<<(n-64));
-  return;
+    irq_t irq;
+    memcpy(&irq, addr, sizeof(irq));
+    if (n > 128)
+        return;
+    if (n < 64)
+        irq.lo |= (1ull << n);
+    else
+        irq.hi |= (1ull << (n - 64));
+    memcpy(addr, &irq, sizeof(irq));
+    return;
 }
 static void clearbit(void  *addr, unsigned int n) {
-  irq_t *irq = addr;
-  if (n>128)
-      return;
-  if (n<64)
-    irq->lo &= ~(1ull<<n);
-  else
-    irq->hi &= ~(1ull<<(n-64));
-  return;
+    irq_t irq;
+    memcpy(&irq, addr, sizeof(irq));
+    if (n > 128)
+        return;
+    if (n < 64)
+        irq.lo &= ~(1ull << n);
+    else
+        irq.hi &= ~(1ull << (n - 64));
+    memcpy(addr, &irq, sizeof(irq));
+    return;
 }
-static int isset(void *addr, unsigned int n) {
-    irq_t *irq = addr;
+static int isset(const void *addr, unsigned int n)
+{
+    irq_t irq;
+    memcpy(&irq, addr, sizeof(irq));
     if (n>128)
         return 0;
     if (n<64)
-        return ((irq->lo & (1ull<<n)) != 0);
-    return ((irq->hi & (1ull<<(n-64))) != 0);
+        return ((irq.lo & (1ull << n)) != 0);
+    return ((irq.hi & (1ull << (n - 64))) != 0);
 }
 
 static void l2vic_update(L2VICState *s, int level)
