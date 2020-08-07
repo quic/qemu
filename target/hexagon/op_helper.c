@@ -654,6 +654,13 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
     }
 }
 
+void HELPER(checkforguest)(CPUHexagonState *env)
+{
+    if (!(sys_in_guest_mode(env) || sys_in_monitor_mode(env))) {
+        helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_GINSN);
+    }
+}
+
 void HELPER(checkforpriv)(CPUHexagonState *env)
 {
     if (!sys_in_monitor_mode(env)) {
@@ -1259,6 +1266,59 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
         current_cs->exception_index <= HEX_EVENT_INT7) {
         HEX_DEBUG_LOG("%s: current selected %p\n", __FUNCTION__, current_cs);
         cpu_loop_exit(current_cs);
+    }
+}
+
+void HELPER(resched)(CPUHexagonState *env)
+{
+    const uint32_t schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
+    const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
+    if (schedcfg_en) {
+        CPUState *cpu = NULL;
+        uint32_t lowest_th_prio = 0; // 0 is highest prio
+        uint32_t count = 0;
+        uint32_t waiting_count = 0;
+        CPU_FOREACH (cpu) {
+            CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
+            uint32_t stid = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID);
+            const bool waiting =
+                cpu_is_stopped(cpu) ||
+                (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
+            if (waiting) {
+                const uint32_t th_prio = GET_FIELD(STID_PRIO, stid);
+                lowest_th_prio = MAX(th_prio, lowest_th_prio);
+                HEX_DEBUG_LOG("\tth %d waiting, prio %08x | lowest prio %08x\n",
+                              thread_env->threadId, th_prio, lowest_th_prio);
+                waiting_count++;
+            }
+#if 0
+            else {
+                HEX_DEBUG_LOG("\tth %d NOT waiting, prio %08x | best %08x\n", thread_env->threadId, th_prio, lowest_th_prio);
+            }
+#endif
+            count++;
+        }
+
+        uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
+        uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
+        if (waiting_count > 0) {
+            HEX_DEBUG_LOG("\tconsidered %d threads, %d waiting, lowest prio "
+                          "%03x | bestwait %03x\n",
+                          count, waiting_count, lowest_th_prio, best_prio);
+        }
+
+        /* If the lowest priority thread is lower priority than the
+         * value in the BESTWAIT register, we must raise the reschedule
+         * interrupt.
+         */
+        if (lowest_th_prio > best_prio) {
+            // do the resched int
+            g_assert_not_reached(); // debug
+            const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
+            HEX_DEBUG_LOG("raising resched int %d\n", int_number);
+            SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
+            helper_raise_exception(env, int_number);
+        }
     }
 }
 

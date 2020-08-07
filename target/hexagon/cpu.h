@@ -226,6 +226,7 @@ struct CPUHexagonState {
     target_ulong imprecise_exception;
     hex_lock_state_t tlb_lock_state;
     hex_lock_state_t k0_lock_state;
+    uint16_t nmi_threads;
 #endif
 };
 

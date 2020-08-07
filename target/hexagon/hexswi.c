@@ -913,6 +913,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             break;
 
         case HEX_CAUSE_PRIV_USER_NO_SINSN:
+        case HEX_CAUSE_PRIV_USER_NO_GINSN:
         case HEX_CAUSE_INVALID_OPCODE:
             ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
@@ -942,6 +943,15 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             set_addresses(env, 4, cs->exception_index);
             ARCH_SET_SYSTEM_REG(env, HEX_SREG_DIAG,
                 (0x4 << 4) | (ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID) & 0xF));
+            break;
+
+        case HEX_CAUSE_IMPRECISE_NMI:
+            ssr_set_cause(env, env->cause_code);
+            set_addresses(env, 4, cs->exception_index);
+            ARCH_SET_SYSTEM_REG(env, HEX_SREG_DIAG,
+                                (0x3 << 4) |
+                                    (ARCH_GET_SYSTEM_REG(env, HEX_SREG_DIAG)));
+            /* FIXME use thread mask */
             break;
 
         default:

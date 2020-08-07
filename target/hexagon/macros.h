@@ -83,6 +83,7 @@
     DECL_REG(NAME, NUM, X, OFF)
 #define DECL_PREG_y(NAME, NUM, X, OFF) \
     DECL_REG(NAME, NUM, X, OFF)
+#define DECL_PREG_n(NAME, NUM, X, OFF) DECL_REG(NAME, NUM, X, OFF)
 
 #define DECL_CREG_d(NAME, NUM, X, OFF) \
     DECL_REG(NAME, NUM, X, OFF)
@@ -1611,7 +1612,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 }
 #ifdef QEMU_GENERATE
 #define fCHECKFORPRIV() gen_helper_checkforpriv(cpu_env)
-#define fCHECKFORGUEST()
+#define fCHECKFORGUEST() gen_helper_checkforguest(cpu_env)
 #endif
 #endif
 
@@ -1673,12 +1674,16 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     do { REG = REG; } while (0) /* Nothing to do in qemu */
 
 #ifdef QEMU_GENERATE
-#define fL2LOCKA(VA, DST, PREGDST) tcg_gen_movi_tl((PREGDST), 0x0ff)
+#define fL2LOCKA(VA, DST, PREGDST) \
+    tcg_gen_movi_tl((PREGDST), 0x0ff) // FIXME untested
 
 #define fDCZEROA(REG) tcg_gen_mov_tl(hex_dczero_addr, (REG))
 #else
 /* Always succeed: */
-#define fL2LOCKA(VA, DST, PREGDST) do { PREGDST = 0x0ff; } while (0)
+#define fL2LOCKA(VA, DST, PREGDST)       \
+    do { /* FIXME this is the reg idx */ \
+        PREGDST = 0x0ff;                 \
+    } while (0)
 #define fDCZEROA(REG) do { REG = REG; g_assert_not_reached(); } while (0)
 #define fCLEAR_RTE_EX() \
     do { \
@@ -1831,16 +1836,20 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #endif
 
 
-#ifdef QEMU_GENERATE
-#define fDCTAGW(RS, RT)                         \
-    do {                                        \
-        tcg_gen_mov_tl(RT, hex_cache_tags[RS]); \
+#define fDO_NMI(RS)                                       \
+    do {                                                  \
+        env->cause_code = HEX_CAUSE_IMPRECISE_NMI;        \
+        env->nmi_threads = RS;                            \
+        helper_raise_exception(env, HEX_EVENT_IMPRECISE); \
     } while (0)
-#define fDCTAGR(INDEX, DST, DST_REG_NUM)                          \
-    do {                                                          \
-        tcg_gen_mov_tl(hex_cache_tags[RS], hex_gpr[DST_REG_NUM]); \
-    } while (0)
-#else
+
+
+// FIXME
+// valid bit, reserved bit
+#define fICTAGR(RS, RD, RD2) // what if we assign 0 to RD?
+#define fICTAGW(RS, RD) // NOP is ok here?
+#define fICDATAR(RS, RD) // FIXME
+#define fICDATAW(RS, RD) // FIXME
+
 #define fDCTAGW(RS, RT)
-#define fDCTAGR(INDEX, DST, DST_REG_NUM)
-#endif
+#define fDCTAGR(INDEX, DST, DST_REG_NUM) // what if we assign 0 to RD?

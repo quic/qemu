@@ -725,6 +725,7 @@ static void check_imprecise_exception(packet_t *pkt)
         }
     }
 }
+
 #endif
 
 static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
@@ -781,6 +782,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
 #endif
 #ifndef CONFIG_USER_ONLY
     check_imprecise_exception(pkt);
+    gen_helper_resched(cpu_env);
 #endif
 
     if (end_tb) {

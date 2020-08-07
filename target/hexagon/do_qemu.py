@@ -925,7 +925,11 @@ supported_privs = [
     'Y2_dcinvidx', 'Y2_dcfetchbo',
     'Y5_l2gcleaninv', 'Y6_l2gcleaninvpa', 'Y6_l2gcleanpa', 'Y5_l2gclean',
     'Y5_l2gunlock',
-#   FIXME: needs pred decl fix
+    'Y2_l2cleaninvidx', 'Y5_l2cleanidx', 'Y5_l2invidx', 'Y2_icinvidx',
+
+    'Y2_icdataw', 'Y2_icdatar', 'Y4_l2tagw', 'Y4_l2tagr',
+    'Y2_dctagr', 'Y2_ictagr', 'Y2_ictagw',
+#   FIXME: needs pred decl fix:
 #   'Y5_l2locka', 'Y5_l2unlocka',
 
     'Y4_l2fetch', 'Y5_l2fetch', 'Y2_icinva',
@@ -934,6 +938,7 @@ supported_privs = [
     'Y2_iassignw', 'Y2_iassignr',
     'Y2_k0lock', 'Y2_k0unlock',
     'Y2_getimask', 'Y2_setimask',
+    'Y4_nmi',
 ]
 
 # Sanity check for typos:
@@ -968,6 +973,7 @@ for tag in tags:
     gen_qemu(f, tag)
 
 #print('skipped: {}'.format(','.join(skipped)))
+#sys.exit(1)
 
 realf = open('qemu_def_generated.h','w')
 realf.write(f.getvalue())

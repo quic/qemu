@@ -114,6 +114,12 @@ DEF_REG_FIELD(IPENDAD_IPEND,
     "ipend", 0, 16,
     "Interrupt pending") /* read-only */
 
+DEF_REG_FIELD(SCHEDCFG_EN, "en", 8, 1, "re-schedule interrupt enable")
+DEF_REG_FIELD(SCHEDCFG_INTNO, "intno", 0, 4, "reschedule interrupt number")
+
+DEF_REG_FIELD(BESTWAIT_PRIO, "prio", 0, 10, "bestwait priority")
+
+
 /* PTE (aka TLB entry) fields */
 DEF_REG_FIELD(PTE_PPD,
     "PPD", 0, 24,
