@@ -17,10 +17,12 @@ TESTS += \
 	invalid_opcode \
 	sys_atomics \
 	timer_reg \
+	bestwait \
 	$()
 
 # Disabled for now:
 #	qtimer_test \
+#	wait \
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 
@@ -46,6 +48,8 @@ invalid_opcode: invalid_opcode.o
 sys_atomics: sys_atomics.o
 timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o
+bestwait: bestwait.o
+wait: wait.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)

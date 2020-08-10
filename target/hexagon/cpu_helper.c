@@ -237,8 +237,11 @@ int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
 void hexagon_wait_thread(CPUHexagonState *env)
 
 {
-    set_wait_mode(env);
-    cpu_stop_current();
+    if (get_exe_mode(env) != HEX_EXE_MODE_WAIT) {
+        set_wait_mode(env);
+    }
+    CPUState *cs = env_cpu(env);
+    cpu_loop_exit(cs);
 }
 
 void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
@@ -276,6 +279,8 @@ void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
 
         cs = env_cpu(env);
         cs->exception_index = HEX_EVENT_NONE;
+        ARCH_SET_THREAD_REG(env, HEX_REG_PC,
+                            ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
         cpu_resume(cs);
     }
 }

@@ -403,9 +403,15 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
     errors += decode_set_slot_number(pkt);
     errors += decode_fill_newvalue_regno(pkt);
 
+    if (errors) {
+        return -1;
+    }
+
     if (pkt->pkt_has_extension) {
         errors += mmvec_ext_decode_checks(pkt);
     }
+
+    g_assert(pkt->num_insns > 0);
 
     errors += decode_shuffle_for_execution(pkt);
     errors += decode_split_cmpjump(pkt);

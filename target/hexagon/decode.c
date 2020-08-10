@@ -746,7 +746,7 @@ static int decode_remove_extenders(packet_t *packet)
             packet->num_insns--;
         }
     }
-    return 0;
+    return (packet->num_insns > 0) ? 0 : 1;
 }
 
 static const char *

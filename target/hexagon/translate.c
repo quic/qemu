@@ -782,6 +782,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
 #endif
 #ifndef CONFIG_USER_ONLY
     check_imprecise_exception(pkt);
+    env->resched_pc = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
     gen_helper_resched(cpu_env);
 #endif
 

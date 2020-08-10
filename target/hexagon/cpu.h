@@ -227,6 +227,7 @@ struct CPUHexagonState {
     hex_lock_state_t tlb_lock_state;
     hex_lock_state_t k0_lock_state;
     uint16_t nmi_threads;
+    target_ulong resched_pc;
 #endif
 };
 
@@ -275,6 +276,29 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
 
 #ifndef CONFIG_USER_ONLY
+
+/* Fill @a ints with the interrupt numbers that are currently asserted.
+ * @param list_size will be written with the count of interrupts found.
+ */
+void hexagon_find_asserted_interrupts(CPUHexagonState *env, uint32_t *ints,
+                                      size_t list_capacity, size_t *list_size);
+void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
+                              HexagonCPU *threads[], size_t *list_size);
+HexagonCPU *hexagon_find_lowest_prio_any_thread(HexagonCPU *threads[],
+                                                size_t list_size);
+HexagonCPU *hexagon_find_lowest_prio_waiting_thread(HexagonCPU *threads[],
+                                                    size_t list_size);
+
+/* @return pointer to the lowest priority thread.
+ * @a only_waiters if true, only consider threads in the WAIT state.
+ */
+HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
+                                            size_t list_size,
+                                            bool only_waiters);
+void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
+                                    uint32_t int_num, uint32_t resume_pc);
+void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
+                             uint32_t int_num);
 
 #endif
 

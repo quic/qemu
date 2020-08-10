@@ -489,7 +489,159 @@ static void hexagon_cpu_init(Object *obj)
     qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
 }
 
+
 #ifndef CONFIG_USER_ONLY
+
+void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
+                             uint32_t int_num)
+{
+    hexagon_raise_interrupt_resume(env, thread, int_num, 0);
+}
+
+void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
+                                    uint32_t int_num, target_ulong resume_pc)
+{
+    // This logic is for interrupt numbers 0-15 only
+    assert(int_num <= 15);
+
+    const uint32_t int_mask = 1 << int_num;
+    CPUHexagonState *thread_env = &(HEXAGON_CPU(thread)->env);
+    CPUState *cs = CPU(thread);
+    cs->exception_index = HEX_EVENT_INT0 + int_num;
+    thread_env->cause_code = HEX_CAUSE_INT0 + int_num;
+
+    if (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT) {
+        clear_wait_mode(thread_env);
+        cpu_loop_exit_restore(cs, env->gpr[HEX_REG_PC]);
+    }
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad) | int_mask;
+    HEX_DEBUG_LOG("%s: tid %d handling interrupt %d, ipend_iad 0x%x\n",
+                  __FUNCTION__, thread_env->threadId, int_num, ipendad_iad);
+}
+
+void hexagon_find_asserted_interrupts(CPUHexagonState *env, uint32_t *ints,
+                                      size_t list_capacity, size_t *list_size)
+{
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    target_ulong ipendad_ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
+    /* find interrupts asserted but not auto disabled */
+    unsigned intnum;
+    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
+    HEX_DEBUG_LOG("%s: ipendad_iad 0x%x\n", __FUNCTION__, ipendad_iad);
+
+    assert(list_capacity >= reg_field_info[IPENDAD_IPEND].width);
+    *list_size = 0;
+    for (intnum = 0; intnum < reg_field_info[IPENDAD_IPEND].width &&
+                     *list_size <= list_capacity;
+         ++intnum) {
+        unsigned mask = 0x1 << intnum;
+        if ((ipendad_ipend & mask) && (!(ipendad_iad & mask))) {
+            ints[*list_size++] = intnum;
+        }
+    }
+}
+
+void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
+                              HexagonCPU *threads[], size_t *list_size)
+{
+    // This logic is for interrupt numbers 0-15 only
+    assert(int_num <= 15);
+    const uint32_t interrupt_mask = 1 << int_num;
+
+    *list_size = 0;
+
+    target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    target_ulong gbit = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
+    if (!gbit) {
+        HEX_DEBUG_LOG("%s: IE disabled (syscfg 0x%x), exiting\n", __FUNCTION__,
+                      syscfg);
+        return;
+    }
+
+    /* find threads that can handle this interrupt */
+    CPUState *cs = NULL;
+    CPU_FOREACH (cs) {
+        HexagonCPU *chk_cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *chk_env = &chk_cpu->env;
+        target_ulong ssr = ARCH_GET_SYSTEM_REG(chk_env, HEX_SREG_SSR);
+        target_ulong ie = GET_SSR_FIELD(SSR_IE, ssr);
+        target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
+        HEX_DEBUG_LOG("%s: checking tid = %d, cpu %p, env %p "
+                      "ssr 0x%x ie %u, ex %u\n",
+                      __FUNCTION__, chk_env->threadId, chk_cpu, chk_env, syscfg,
+                      ie, ex);
+        if (!ie || ex) {
+            HEX_DEBUG_LOG("%s: !ie %d || ex %d: tid %d: "
+                          "pc 0x%x: continue\n",
+                          __FUNCTION__, ie, ex, chk_env->threadId,
+                          ARCH_GET_THREAD_REG(chk_env, HEX_REG_PC));
+            continue;
+        }
+        target_ulong imask = ARCH_GET_SYSTEM_REG(chk_env, HEX_SREG_IMASK);
+        target_ulong imask_mask = GET_FIELD(IMASK_MASK, imask);
+        HEX_DEBUG_LOG("%s: tid %d: imask 0x%x, "
+                      "imask_mask 0x%x, mask 0x%x\n",
+                      __FUNCTION__, chk_env->threadId, imask, imask_mask,
+                      interrupt_mask);
+        if (imask_mask & interrupt_mask) {
+            HEX_DEBUG_LOG("%s: imask & mask: continue\n", __FUNCTION__);
+            continue;
+        }
+        HEX_DEBUG_LOG("%s: adding tid %d to list\n", __FUNCTION__,
+                      chk_env->threadId);
+        threads[*list_size++] = chk_cpu;
+    }
+}
+
+HexagonCPU *hexagon_find_lowest_prio_any_thread(HexagonCPU *threads[],
+                                                size_t list_size)
+{
+    return hexagon_find_lowest_prio_thread(threads, list_size, false);
+}
+
+HexagonCPU *hexagon_find_lowest_prio_waiting_thread(HexagonCPU *threads[],
+                                                    size_t list_size)
+{
+    return hexagon_find_lowest_prio_thread(threads, list_size, true);
+}
+
+HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
+                                            size_t list_size, bool only_waiters)
+{
+    assert(list_size >= 1);
+    uint32_t lowest_th_prio = 0;
+    size_t lowest_prio_index = 0;
+    for (size_t i = 0; i < list_size; i++) {
+        CPUHexagonState *thread_env = &(threads[i]->env);
+        uint32_t th_prio = GET_FIELD(
+            STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
+        const bool waiting = (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
+        const bool is_candidate = (only_waiters && waiting) || !only_waiters;
+        if (!is_candidate) {
+            continue;
+        }
+
+        /* 0 is the greatest priority for a thread, track the values
+         * that are lower priority (w/greater value).
+         */
+        if (lowest_th_prio < th_prio) {
+            HEX_DEBUG_LOG("\tlowest prio now tid %d, prio %03x\n",
+                          thread_env->threadId, th_prio);
+            lowest_prio_index = i;
+            lowest_th_prio = th_prio;
+        } else {
+            HEX_DEBUG_LOG("\tlowest prio still %03x, this one was %03x\n",
+                          lowest_th_prio, th_prio);
+        }
+    }
+
+    HEX_DEBUG_LOG("\tselected lowest prio tid %d, prio %03x (of %d)\n",
+                  (&(threads[lowest_prio_index]->env))->threadId,
+                  lowest_th_prio, (int)list_size);
+    return threads[lowest_prio_index];
+}
+
 static bool get_physical_address(CPUHexagonState *env, hwaddr *phys,
                                 int *prot, int *size, int32_t *excp,
                                 target_ulong address,

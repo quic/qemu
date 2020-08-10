@@ -81,7 +81,32 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
                                           uint32_t exception,
                                           uintptr_t pc)
 {
+#ifndef CONFIG_USER_ONLY
+    CPUHexagonState *lowest_prio_thread = env;
+    bool only_waiters = true;
+    uint32_t lowest_th_prio = GET_FIELD(
+        STID_PRIO, ARCH_GET_SYSTEM_REG(lowest_prio_thread, HEX_SREG_STID));
+    CPUState *cpu = NULL;
+    CPU_FOREACH (cpu) {
+        CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
+        uint32_t th_prio = GET_FIELD(
+            STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
+        const bool waiting = (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
+        const bool is_candidate = (only_waiters && waiting) || !only_waiters;
+
+        /* 0 is the greatest priority for a thread, track the values
+         * that are lower priority (w/greater value).
+         */
+        if (lowest_th_prio > th_prio && is_candidate) {
+            lowest_prio_thread = thread_env;
+            lowest_th_prio = th_prio;
+        }
+    }
+
+    CPUState *cs = CPU(hexagon_env_get_cpu(lowest_prio_thread));
+#else
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
+#endif
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
@@ -1159,6 +1184,7 @@ void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
     CPU_FOREACH(cs) {
         HexagonCPU *found_cpu = HEXAGON_CPU(cs);
         CPUHexagonState *found_env = &found_cpu->env;
+
         if (pred & (0x1 << found_env->threadId)) {
             SET_SYSTEM_FIELD(found_env, HEX_SREG_IMASK, IMASK_MASK, imask);
             HEX_DEBUG_LOG("%s: tid %d, found it, imask 0x%x\n",
@@ -1166,98 +1192,68 @@ void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
             return;
         }
     }
-    g_assert_not_reached();
+}
+
+typedef struct {
+    CPUState *cs;
+    CPUHexagonState *env;
+} thread_entry;
+static thread_entry
+select_lowest_prio_thread(thread_entry *threads,
+                          size_t list_size /*bool only_waiters*/)
+{
+#if 1
+    bool only_waiters = false;
+    // CPUHexagonState *lowest_prio_thread = env;
+    // CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    size_t lowest_th_prio = 0;
+    size_t lowest_prio_index = 0;
+    for (size_t i = 0; i < list_size; i++) {
+        CPUHexagonState *thread_env =
+            threads[i].env; //&(HEXAGON_CPU(cpu)->env);
+        uint32_t th_prio = GET_FIELD(
+            STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
+        const bool waiting = (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
+        const bool is_candidate = (only_waiters && waiting) || !only_waiters;
+
+        /* 0 is the greatest priority for a thread, track the values
+         * that are lower priority (w/greater value).
+         */
+        if (lowest_th_prio > th_prio && is_candidate) {
+            lowest_prio_index = i;
+            lowest_th_prio = th_prio;
+        }
+    }
+
+    return threads[lowest_prio_index];
+#else
+    return NULL;
+#endif
 }
 
 void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
-
 {
+    uint32_t ints_asserted[32];
+    size_t ints_asserted_count = 0;
+    HexagonCPU *threads[THREADS_MAX];
+    memset(threads, 0, sizeof(threads));
+
+    /* Assert all of the interrupts in the `mask` input: */
     target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
-    target_ulong ipendad_ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
-    HEX_DEBUG_LOG("%s: tid %d, ipendad_ipend 0x%x, mask %x, new %x\n",
-        __FUNCTION__, env->threadId, ipendad_ipend, mask,
-        ipendad_ipend | mask);
-    ipendad_ipend |= mask;
-    SET_SYSTEM_FIELD(env,HEX_SREG_IPENDAD,IPENDAD_IPEND,ipendad_ipend);
+    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad) | mask;
+    SET_SYSTEM_FIELD(env, HEX_SREG_IPENDAD, IPENDAD_IAD, ipendad_iad);
 
-    /* make sure interrupts are globally enabled */
-    target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
-    target_ulong gbit = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
-    if (!gbit) {
-        HEX_DEBUG_LOG("%s: IE disabled (syscfg 0x%x), exiting\n",
-            __FUNCTION__, syscfg);
-        return;
-    }
+    hexagon_find_asserted_interrupts(env, ints_asserted, sizeof(ints_asserted),
+                                     &ints_asserted_count);
 
-    /* find interrupts asserted but not auto disabled */
-    unsigned intnum;
-    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
-    HEX_DEBUG_LOG("%s: ipendad_iad 0x%x\n", __FUNCTION__, ipendad_iad);
-    for (intnum = 0 ; intnum < reg_field_info[IPENDAD_IPEND].width ; ++intnum) {
-        unsigned mask = 0x1 << intnum;
-        if ((ipendad_ipend & mask) && (!(ipendad_iad & mask))) {
-            /* find threads that can handle this */
-            struct thread_list_S {
-                CPUState *cs;
-                CPUHexagonState *env;
-            } thread_list[THREADS_MAX];
-            unsigned thread_list_idx = 0;
-            CPUState *cs;
-            CPU_FOREACH(cs) {
-                HexagonCPU *chk_cpu = HEXAGON_CPU(cs);
-                CPUHexagonState *chk_env = &chk_cpu->env;
-                target_ulong ssr = ARCH_GET_SYSTEM_REG(chk_env, HEX_SREG_SSR);
-                target_ulong ie = GET_SSR_FIELD(SSR_IE, ssr);
-                target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
-                HEX_DEBUG_LOG("%s: checking tid = %d, cpu %p, env %p "
-                    "ssr 0x%x ie %u, ex %u\n",
-                    __FUNCTION__, chk_env->threadId, chk_cpu, chk_env,
-                    syscfg, ie, ex);
-                if (!ie || ex) {
-                    HEX_DEBUG_LOG("%s: !ie %d || ex %d: tid %d: "
-                        "pc 0x%x: continue\n",
-                        __FUNCTION__, ie, ex, chk_env->threadId,
-                        ARCH_GET_THREAD_REG(chk_env, HEX_REG_PC));
-                    continue;
-                }
-                target_ulong imask =
-                    ARCH_GET_SYSTEM_REG(chk_env, HEX_SREG_IMASK);
-                target_ulong imask_mask = GET_FIELD(IMASK_MASK, imask);
-                HEX_DEBUG_LOG("%s: tid %d: imask 0x%x, "
-                    "imask_mask 0x%x, mask 0x%x\n",
-                    __FUNCTION__, chk_env->threadId,
-                    imask, imask_mask, mask);
-                if (imask_mask & mask) {
-                    HEX_DEBUG_LOG("%s: imask & mask: continue\n", __FUNCTION__);
-                    continue;
-                }
-                HEX_DEBUG_LOG("%s: adding tid %d to list\n",
-                    __FUNCTION__, chk_env->threadId);
-                thread_list[thread_list_idx].cs = env_cpu(chk_env);
-                thread_list[thread_list_idx++].env = chk_env;
-            }
+    for (size_t i = 0; i < ints_asserted_count; i++) {
+        const uint32_t int_num = ints_asserted[i];
+        size_t threads_count = 0;
+        hexagon_find_int_threads(env, int_num, threads, &threads_count);
 
-            /* if no thread can handle, move on */
-            if (thread_list_idx == 0) {
-                HEX_DEBUG_LOG("%s: int %d, mask 0x%x: no thread can handle\n",
-                    __FUNCTION__, intnum, mask);
-                continue;
-            }
-            /* randomly select cpu to process interrupt */
-            unsigned rndsel = rand() % thread_list_idx;
-            struct thread_list_S *sel_thread = &thread_list[rndsel];
-            sel_thread->cs->exception_index = HEX_EVENT_INT0 + intnum;
-            sel_thread->env->cause_code = HEX_CAUSE_INT0+intnum;
-            ipendad_iad |= mask;
-            SET_SYSTEM_FIELD(env,HEX_SREG_IPENDAD,IPENDAD_IAD,ipendad_iad);
-            if (get_exe_mode(sel_thread->env) == HEX_EXE_MODE_WAIT) {
-                clear_wait_mode(sel_thread->env);
-                cpu_resume(sel_thread->cs);
-            }
-            HEX_DEBUG_LOG("%s: tid %d handling interrupt %d, ipend_iad 0x%x\n",
-                __FUNCTION__, sel_thread->env->threadId,
-                intnum, ipendad_iad);
-        }
+        HexagonCPU *int_thread =
+            hexagon_find_lowest_prio_any_thread(threads, threads_count);
+        hexagon_raise_interrupt(env, int_thread, int_num);
     }
 
     /* exit loop if current thread was selected to handle a swi int */
@@ -1276,36 +1272,17 @@ void HELPER(resched)(CPUHexagonState *env)
     if (schedcfg_en) {
         CPUState *cpu = NULL;
         uint32_t lowest_th_prio = 0; // 0 is highest prio
-        uint32_t count = 0;
-        uint32_t waiting_count = 0;
         CPU_FOREACH (cpu) {
             CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
             uint32_t stid = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID);
-            const bool waiting =
-                cpu_is_stopped(cpu) ||
-                (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
-            if (waiting) {
                 const uint32_t th_prio = GET_FIELD(STID_PRIO, stid);
                 lowest_th_prio = MAX(th_prio, lowest_th_prio);
-                HEX_DEBUG_LOG("\tth %d waiting, prio %08x | lowest prio %08x\n",
+                HEX_DEBUG_LOG("\ttid %d , prio %08x | lowest prio %03x\n",
                               thread_env->threadId, th_prio, lowest_th_prio);
-                waiting_count++;
-            }
-#if 0
-            else {
-                HEX_DEBUG_LOG("\tth %d NOT waiting, prio %08x | best %08x\n", thread_env->threadId, th_prio, lowest_th_prio);
-            }
-#endif
-            count++;
         }
 
         uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
         uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
-        if (waiting_count > 0) {
-            HEX_DEBUG_LOG("\tconsidered %d threads, %d waiting, lowest prio "
-                          "%03x | bestwait %03x\n",
-                          count, waiting_count, lowest_th_prio, best_prio);
-        }
 
         /* If the lowest priority thread is lower priority than the
          * value in the BESTWAIT register, we must raise the reschedule
@@ -1313,12 +1290,39 @@ void HELPER(resched)(CPUHexagonState *env)
          */
         if (lowest_th_prio > best_prio) {
             // do the resched int
-            g_assert_not_reached(); // debug
             const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
-            HEX_DEBUG_LOG("raising resched int %d\n", int_number);
+            HEX_DEBUG_LOG(
+                "raising resched int %d, cur PC 0x%08x next PC 0x%08x\n",
+                int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC),
+                env->resched_pc);
             SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
-            helper_raise_exception(env, int_number);
+#if 0
+            env->cause_code = HEX_CAUSE_INT0 + int_number;
+            clear_wait_mode(env);
+            do_raise_exception_err(env, int_number, env->resched_pc);
+#else
+            HexagonCPU *threads[THREADS_MAX];
+            memset(threads, 0, sizeof(threads));
+            size_t i = 0;
+            CPUState *cs = NULL;
+            CPU_FOREACH (cs) {
+                threads[i++] = HEXAGON_CPU(cs);
+            }
+
+            HexagonCPU *int_thread =
+                hexagon_find_lowest_prio_any_thread(threads, i);
+            CPUHexagonState *int_thread_env = &(HEXAGON_CPU(int_thread)->env);
+            HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
+
+            // FIXME: if resched was detected on a packet that included
+            // change-of-flow, the resume PC may be wrong
+            hexagon_raise_interrupt(env, int_thread, int_number);
+#endif
+        } else {
+            env->resched_pc = 0;
         }
+    } else {
+        env->resched_pc = 0;
     }
 }
 

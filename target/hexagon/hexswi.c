@@ -767,6 +767,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 
     HEX_DEBUG_LOG("%s: event 0x%x, cause 0x%x\n",
       __FUNCTION__, cs->exception_index, env->cause_code);
+
     switch (cs->exception_index) {
     case HEX_EVENT_INT0:
     case HEX_EVENT_INT1:
@@ -782,8 +783,12 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             env->threadId,
             ARCH_GET_THREAD_REG(env, HEX_REG_PC),
             env->next_PC);
+        // FIXME: setting the PC offset to '4' only works
+        // for single-insn packets?
         ssr_set_cause(env, env->cause_code);
-        set_addresses(env, 0, cs->exception_index);
+        set_addresses(env, 4, cs->exception_index);
+        env->branch_taken = 1;
+        cs->exception_index = HEX_EVENT_NONE;
         break;
 
     case HEX_EVENT_TRAP0:
