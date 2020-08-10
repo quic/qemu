@@ -62,9 +62,9 @@ const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
     "r16", "r17", "r18", "r19", "r20",  "r21", "r22", "r23",
     "r24", "r25", "r26", "r27", "r28",  "r29", "r30", "r31",
     "sa0", "lc0", "sa1", "lc1", "p3_0", "c5",  "m0",  "m1",
-    "usr", "pc",  "ugp", "gp",  "cs0",  "cs1", "c14", "c15",
-    "c16", "c17", "c18", "c19", "pkt_cnt",  "insn_cnt", "hvx_cnt", "c23",
-    "c24", "c25", "c26", "c27", "c28",  "c29", "c30", "c31",
+    "usr", "pc",  "ugp", "gp",  "cs0",  "cs1", "upcyclelo", "upcyclehi",
+    "framelimit", "framekey", "pktcountlo", "pktcounthi", "pkt_cnt",  "insn_cnt", "hvx_cnt", "c23",
+    "c24", "c25", "c26", "c27", "c28",  "c29", "utimerlo", "utimerhi",
 };
 
 const char * const hexagon_sregnames[] = {
@@ -177,15 +177,7 @@ static void print_greg(FILE *f, CPUHexagonState *env, int regnum)
                  val);
 }
 
-static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
-{
-    target_ulong val = ARCH_GET_SYSTEM_REG(env, regnum);
-    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_sregnames[regnum],
-                 val);
-}
-
 static target_ulong get_badva(CPUHexagonState *env)
-
 {
   target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
   if (GET_SSR_FIELD(SSR_BVS, ssr)) {
@@ -194,6 +186,16 @@ static target_ulong get_badva(CPUHexagonState *env)
   else {
       return ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA0);
   }
+}
+
+static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
+{
+    target_ulong val = ARCH_GET_SYSTEM_REG(env, regnum);
+    if (regnum == HEX_SREG_BADVA) {
+        val = get_badva(env);
+    }
+    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_sregnames[regnum],
+                 val);
 }
 #endif
 
@@ -288,24 +290,24 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     print_reg(f, env, HEX_REG_CS0);
     print_reg(f, env, HEX_REG_CS1);
 
-    qemu_fprintf(f, "  upcyclelo = 0x00000000\n");
-    qemu_fprintf(f, "  upcyclehi = 0x00000000\n");
-    qemu_fprintf(f, "  framelimit = 0x00000000\n");
-    qemu_fprintf(f, "  framekey = 0x00000000\n");
-    qemu_fprintf(f, "  pktcountlo = 0x00000000\n");
-    qemu_fprintf(f, "  pktcounthi = 0x00000000\n");
-    qemu_fprintf(f, "  utimerlo = 0x00000000\n");
-    qemu_fprintf(f, "  utimerhi = 0x00000000\n");
-    qemu_fprintf(f, "  sgp0 = 0x00000000\n");
-    qemu_fprintf(f, "  sgp1 = 0x00000000\n");
-    qemu_fprintf(f, "  stid = 0x00000000\n");
+    print_reg(f, env, HEX_REG_UPCYCLELO);
+    print_reg(f, env, HEX_REG_UPCYCLEHI);
+    print_reg(f, env, HEX_REG_FRAMELIMIT);
+    print_reg(f, env, HEX_REG_FRAMEKEY);
+    print_reg(f, env, HEX_REG_PKTCNTLO);
+    print_reg(f, env, HEX_REG_PKTCNTHI);
+    print_reg(f, env, HEX_REG_UTIMERLO);
+    print_reg(f, env, HEX_REG_UTIMERHI);
+    print_sreg(f, env, HEX_SREG_SGP0);
+    print_sreg(f, env, HEX_SREG_SGP1);
+    print_sreg(f, env, HEX_SREG_STID);
     print_sreg(f, env, HEX_SREG_ELR);
-    qemu_fprintf(f, "  badva0 = 0x00000000\n");
-    qemu_fprintf(f, "  badva1 = 0x00000000\n");
+    print_sreg(f, env, HEX_SREG_BADVA0);
+    print_sreg(f, env, HEX_SREG_BADVA1);
     print_sreg(f, env, HEX_SREG_SSR);
-    qemu_fprintf(f, "  ccr = 0x00000000\n");
-    qemu_fprintf(f, "  htid = 0x00000000\n");
-    qemu_fprintf(f, "  badva = 0x00000000\n");
+    print_sreg(f, env, HEX_SREG_CCR);
+    print_sreg(f, env, HEX_SREG_HTID);
+    print_sreg(f, env, HEX_SREG_BADVA);
     print_sreg(f, env, HEX_SREG_IMASK);
     qemu_fprintf(f, "  gevb = 0x00000000\n");
     qemu_fprintf(f, "  gelr = 0x00000000\n");
