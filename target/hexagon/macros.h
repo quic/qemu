@@ -1836,12 +1836,11 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #endif
 
 
-#define fDO_NMI(RS)                                       \
-    do {                                                  \
-        env->cause_code = HEX_CAUSE_IMPRECISE_NMI;        \
-        env->nmi_threads = RS;                            \
-        helper_raise_exception(env, HEX_EVENT_IMPRECISE); \
-    } while (0)
+#ifdef CONFIG_USER_ONLY
+#define fDO_NMI(RS) /* FIXME make this abort */
+#else
+#define fDO_NMI(RS) helper_nmi(env, RS);
+#endif
 
 
 // FIXME

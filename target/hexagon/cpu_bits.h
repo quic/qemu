@@ -73,6 +73,14 @@
 #define HEX_EVENT_INT5                      0x15
 #define HEX_EVENT_INT6                      0x16
 #define HEX_EVENT_INT7                      0x17
+#define HEX_EVENT_INT8                      0x18
+#define HEX_EVENT_INT9                      0x19
+#define HEX_EVENT_INTA                      0x1a
+#define HEX_EVENT_INTB                      0x1b
+#define HEX_EVENT_INTC                      0x1c
+#define HEX_EVENT_INTD                      0x1e
+#define HEX_EVENT_INTE                      0x1d
+#define HEX_EVENT_INTF                      0x1f
 #define HEX_EVENT_TLBLOCK_WAIT              0x300
 #define HEX_EVENT_K0LOCK_WAIT               0x400
 

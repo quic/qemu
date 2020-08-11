@@ -1275,10 +1275,8 @@ void HELPER(resched)(CPUHexagonState *env)
         CPU_FOREACH (cpu) {
             CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
             uint32_t stid = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID);
-                const uint32_t th_prio = GET_FIELD(STID_PRIO, stid);
-                lowest_th_prio = MAX(th_prio, lowest_th_prio);
-                HEX_DEBUG_LOG("\ttid %d , prio %08x | lowest prio %03x\n",
-                              thread_env->threadId, th_prio, lowest_th_prio);
+            const uint32_t th_prio = GET_FIELD(STID_PRIO, stid);
+            lowest_th_prio = MAX(th_prio, lowest_th_prio);
         }
 
         uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
@@ -1286,7 +1284,7 @@ void HELPER(resched)(CPUHexagonState *env)
 
         /* If the lowest priority thread is lower priority than the
          * value in the BESTWAIT register, we must raise the reschedule
-         * interrupt.
+         * interrupt on the lowest priority thread.
          */
         if (lowest_th_prio > best_prio) {
             // do the resched int
@@ -1296,11 +1294,7 @@ void HELPER(resched)(CPUHexagonState *env)
                 int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC),
                 env->resched_pc);
             SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
-#if 0
-            env->cause_code = HEX_CAUSE_INT0 + int_number;
-            clear_wait_mode(env);
-            do_raise_exception_err(env, int_number, env->resched_pc);
-#else
+
             HexagonCPU *threads[THREADS_MAX];
             memset(threads, 0, sizeof(threads));
             size_t i = 0;
@@ -1317,12 +1311,27 @@ void HELPER(resched)(CPUHexagonState *env)
             // FIXME: if resched was detected on a packet that included
             // change-of-flow, the resume PC may be wrong
             hexagon_raise_interrupt(env, int_thread, int_number);
-#endif
         } else {
             env->resched_pc = 0;
         }
     } else {
         env->resched_pc = 0;
+    }
+}
+
+void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
+{
+    CPUState *cs = NULL;
+    CPU_FOREACH (cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *thread_env = &cpu->env;
+        uint32_t thread_id_mask = 0x1 << thread_env->threadId;
+        if ((thread_mask & thread_id_mask) != 0) {
+            /* FIXME also wake these threads? cpu_resume/loop_exit_restore?*/
+            cs->exception_index = HEX_EVENT_IMPRECISE;
+            thread_env->cause_code = HEX_CAUSE_IMPRECISE_NMI;
+            HEX_DEBUG_LOG("tid %d gets nmi\n", thread_env->threadId);
+        }
     }
 }
 

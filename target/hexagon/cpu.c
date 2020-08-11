@@ -795,15 +795,6 @@ static const VMStateDescription vmstate_hexagon_cpu = {
     .unmigratable = 1,
 };
 
-#if 0
-static void ssr_set_cause(CPUHexagonState *env, int exception_index)
-
-{
-    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    ssr = (ssr & (~SSR_CAUSE)) | exception_index;
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR, ssr | SSR_EX);
-}
-#endif
 
 #ifndef CONFIG_USER_ONLY
 /* XXX_SM: */

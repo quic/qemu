@@ -777,6 +777,14 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     case HEX_EVENT_INT5:
     case HEX_EVENT_INT6:
     case HEX_EVENT_INT7:
+    case HEX_EVENT_INT8:
+    case HEX_EVENT_INT9:
+    case HEX_EVENT_INTA:
+    case HEX_EVENT_INTB:
+    case HEX_EVENT_INTC:
+    case HEX_EVENT_INTD:
+    case HEX_EVENT_INTE:
+    case HEX_EVENT_INTF:
         HEX_DEBUG_LOG("\tHEX_EVENT_INT%d: tid = %u, "
             "PC = 0x%x, next_PC = 0x%x\n",
             cs->exception_index - HEX_EVENT_INT0,
