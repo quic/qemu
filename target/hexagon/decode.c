@@ -585,7 +585,8 @@ static int decode_shuffle_for_execution(packet_t *packet)
      * Skip end loops, somehow an end loop is getting in and messing
      * up the order
      */
-    if (decode_opcode_ends_loop(packet->insn[last_insn].opcode)) {
+    if (last_insn >= 0 &&
+        decode_opcode_ends_loop(packet->insn[last_insn].opcode)) {
         last_insn--;
     }
 
@@ -746,7 +747,7 @@ static int decode_remove_extenders(packet_t *packet)
             packet->num_insns--;
         }
     }
-    return (packet->num_insns > 0) ? 0 : 1;
+    return 0;
 }
 
 static const char *
