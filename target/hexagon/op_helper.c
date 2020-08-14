@@ -682,14 +682,16 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 void HELPER(checkforguest)(CPUHexagonState *env)
 {
     if (!(sys_in_guest_mode(env) || sys_in_monitor_mode(env))) {
-        helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_GINSN);
+        env->cause_code = HEX_CAUSE_PRIV_USER_NO_GINSN;
+        helper_raise_exception(env, HEX_EVENT_PRECISE);
     }
 }
 
 void HELPER(checkforpriv)(CPUHexagonState *env)
 {
     if (!sys_in_monitor_mode(env)) {
-        helper_raise_exception(env, HEX_CAUSE_PRIV_USER_NO_SINSN);
+        env->cause_code = HEX_CAUSE_PRIV_USER_NO_SINSN;
+        helper_raise_exception(env, HEX_EVENT_PRECISE);
     }
 }
 
