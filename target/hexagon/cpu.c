@@ -147,12 +147,6 @@ static inline target_ulong read_p3_0(CPUHexagonState *env)
     return control_reg;
 }
 
-#ifndef CONFIG_USER_ONLY
-static void print_val(FILE *f, const char *str, unsigned val)
-{
-    qemu_fprintf(f, "  %s = 0x%x\n", str, val);
-}
-#endif
 
 static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 {
@@ -170,13 +164,6 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 }
 
 #ifndef CONFIG_USER_ONLY
-static void print_greg(FILE *f, CPUHexagonState *env, int regnum)
-{
-    target_ulong val = env->greg[regnum];
-    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_gregnames[regnum],
-                 val);
-}
-
 static target_ulong get_badva(CPUHexagonState *env)
 {
   target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);

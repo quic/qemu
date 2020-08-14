@@ -1230,11 +1230,10 @@ typedef struct {
     CPUState *cs;
     CPUHexagonState *env;
 } thread_entry;
-static thread_entry
+static thread_entry __attribute__((unused))
 select_lowest_prio_thread(thread_entry *threads,
                           size_t list_size /*bool only_waiters*/)
 {
-#if 1
     bool only_waiters = false;
     // CPUHexagonState *lowest_prio_thread = env;
     // CPUState *cs = CPU(hexagon_env_get_cpu(env));
@@ -1258,9 +1257,6 @@ select_lowest_prio_thread(thread_entry *threads,
     }
 
     return threads[lowest_prio_index];
-#else
-    return NULL;
-#endif
 }
 
 void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
