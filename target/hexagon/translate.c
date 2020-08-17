@@ -64,6 +64,7 @@ TCGv hex_t_sreg_written[NUM_SREGS];
 #endif
 TCGv hex_cache_tags[CACHE_TAGS_MAX];
 #ifndef CONFIG_USER_ONLY
+TCGv hex_slot;
 TCGv hex_imprecise_exception;
 #endif
 
@@ -1052,6 +1053,8 @@ void hexagon_translate_init(void)
     }
 
 #ifndef CONFIG_USER_ONLY
+    hex_slot = tcg_global_mem_new(cpu_env,
+        offsetof(CPUHexagonState, slot), "slot");
     hex_imprecise_exception = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, imprecise_exception), "imprecise_exception");
 #endif

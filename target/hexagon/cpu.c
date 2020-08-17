@@ -689,13 +689,35 @@ static hwaddr hexagon_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
     return -1;
 }
 
-static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA,
+#define INVALID_BADVA                                      0xbadabada
+
+static void set_badva_regs(CPUHexagonState *env, target_ulong VA, int slot)
+{
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA, VA);
+
+    if (slot == 0) {
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA0, VA);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA1, INVALID_BADVA);
+        SET_SSR_FIELD(env, SSR_V0, 1);
+        SET_SSR_FIELD(env, SSR_V1, 0);
+        SET_SSR_FIELD(env, SSR_BVS, 0);
+    } else if (slot == 1) {
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA0, INVALID_BADVA);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA1, VA);
+        SET_SSR_FIELD(env, SSR_V0, 0);
+        SET_SSR_FIELD(env, SSR_V1, 1);
+        SET_SSR_FIELD(env, SSR_BVS, 1);
+    } else {
+        g_assert_not_reached();
+    }
+}
+static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA, int slot,
                                 MMUAccessType access_type)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA, VA);
+    set_badva_regs(env, VA, slot);
 
     switch (access_type) {
     case MMU_INST_FETCH:
@@ -713,12 +735,13 @@ static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA,
     }
 }
 
-static void raise_perm_exception(CPUState *cs, target_ulong VA, int32_t excp)
+static void raise_perm_exception(CPUState *cs, target_ulong VA, int slot,
+                                 int32_t excp)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA, VA);
+    set_badva_regs(env, VA, slot);
     cs->exception_index = excp;
 }
 
@@ -758,6 +781,7 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
     }
     cpu_loop_exit_restore(cs, retaddr);
 #else
+    int slot = env->slot;
     hwaddr phys;
     int prot = 0;
     int page_size = 0;
@@ -780,12 +804,12 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
                          mmu_idx, TARGET_PAGE_SIZE);
             return ret;
         } else {
-            raise_perm_exception(cs, address, excp);
+            raise_perm_exception(cs, address, slot, excp);
             do_raise_exception_err(env, cs->exception_index, retaddr);
         }
     }
 
-    raise_tlbmiss_exception(cs, address, access_type);
+    raise_tlbmiss_exception(cs, address, slot, access_type);
     do_raise_exception_err(env, cs->exception_index, retaddr);
 #endif
 }

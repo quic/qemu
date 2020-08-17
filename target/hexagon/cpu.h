@@ -181,6 +181,10 @@ struct CPUHexagonState {
 
     struct MemLog mem_log_stores[STORES_MAX];
 
+#ifndef CONFIG_USER_ONLY
+    int slot;                    /* Needed for exception generation */
+#endif
+
     target_ulong dczero_addr;
 
     fenv_t fenv;

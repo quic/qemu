@@ -340,9 +340,16 @@
   LOG_SREG_WRITE(HEX_SREG_SGP1, (VAL) >> 32); \
 }
 
+#ifdef CONFIG_USER_ONLY
+#define RECORD_SLOT          do { /* Nothing */ } while (0)
+#else
+#define RECORD_SLOT          tcg_gen_mov_tl(hex_slot, slot)
+#endif
+
 #define SLOT_WRAP(CODE) \
     do { \
         TCGv slot = tcg_const_tl(insn->slot); \
+        RECORD_SLOT; \
         CODE; \
         tcg_temp_free(slot); \
     } while (0)

@@ -127,6 +127,7 @@ extern TCGv hex_t_sreg_new_value[NUM_SREGS];
 extern TCGv hex_t_sreg_written[NUM_SREGS];
 extern TCGv hex_cache_tags[CACHE_TAGS_MAX];
 #ifndef CONFIG_USER_ONLY
+extern TCGv hex_slot;
 extern TCGv hex_imprecise_exception;
 #endif
 

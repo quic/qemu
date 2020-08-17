@@ -234,6 +234,7 @@ tagimms = dict(zip(tags, list(map(compute_tag_immediates, tags))))
 def need_slot(tag):
     if ('A_CONDEXEC' in attribdict[tag] or
         'A_STORE' in attribdict[tag] or
+        'A_LOAD' in attribdict[tag] or
         'A_CVI' in attribdict[tag]):
         return 1
     else:
@@ -601,7 +602,11 @@ def gen_tcg_func(f, tag, regs, imms):
     for immlett,bits,immshift in imms:
         gen_helper_free_imm(f,immlett)
     f.write("} while (0)")
-    f.write(",\n%s);\n" % semdict[tag] )
+    f.write(",\n")
+    if need_slot(tag): f.write("SLOT_WRAP(")
+    f.write("%s" % semdict[tag])
+    if need_slot(tag): f.write(")")
+    f.write(");\n")
 
     ## Write all the outputs
     for regtype,regid,toss,numregs in regs:
