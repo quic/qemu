@@ -12,6 +12,7 @@ TESTS += \
 	standalone_hw \
 	standalone_vec \
 	mmu_test \
+	badva \
 	tlblock \
 	k0lock \
 	invalid_opcode \
@@ -42,6 +43,7 @@ LDFLAGS+= -static
 standalone_hw: standalone_hw.o monitor_insts.o
 standalone_vec: standalone_vec.o
 mmu_test: mmu_test.o dummy_mutex.o
+badva: badva.o
 tlblock: tlblock.o
 k0lock: k0lock.o
 invalid_opcode: invalid_opcode.o
