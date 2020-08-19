@@ -426,6 +426,10 @@
     do { \
         if ((NUM) + HEX_REG_SA0 == HEX_REG_P3_0) { \
             gen_read_p3_0(dest); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UPCYCLEHI) { \
+            gen_read_upcycle_reg(dest, HEX_REG_UPCYCLEHI); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UPCYCLELO) { \
+            gen_read_upcycle_reg(dest, HEX_REG_UPCYCLELO); \
         } else { \
             READ_REG_READONLY(dest, ((NUM) + HEX_REG_SA0)); \
         } \

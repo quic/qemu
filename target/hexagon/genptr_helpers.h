@@ -217,6 +217,39 @@ static inline void gen_read_p3_0(TCGv control_reg)
     tcg_temp_free(pval);
 }
 
+/*
+ * The upcyclehi/upcyclelo (user pcycle) registers mirror
+ * the pcyclehi/pcyclelo global sregs.
+ * They are not modelled in user-only mode.
+ * In system mode, they can only be read when SSR[CE] is set.
+ */
+static inline void gen_read_upcycle_reg(TCGv dest, int regnum)
+{
+#ifdef CONFIG_USER_ONLY
+    tcg_gen_movi_tl(dest, 0);
+#else
+    TCGv ssr_ce = tcg_temp_new();
+    TCGv zero = tcg_const_tl(0);
+    TCGv counter = tcg_temp_new();
+
+    GET_SSR_FIELD(ssr_ce, SSR_CE);
+
+    if (regnum == HEX_REG_UPCYCLEHI) {
+        READ_SREG(counter, HEX_SREG_PCYCLEHI);
+    } else if (regnum == HEX_REG_UPCYCLELO) {
+        READ_SREG(counter, HEX_SREG_PCYCLELO);
+    } else {
+        g_assert_not_reached();
+    }
+
+    /* dest = (ssr_ce != 0 ? counter : 0) */
+    tcg_gen_movcond_tl(TCG_COND_NE, dest, ssr_ce, zero, counter, zero);
+
+    tcg_temp_free(ssr_ce);
+    tcg_temp_free(zero);
+    tcg_temp_free(counter);
+#endif
+}
 static inline void gen_write_p3_0(TCGv tmp)
 {
     TCGv control_reg = tcg_temp_new();

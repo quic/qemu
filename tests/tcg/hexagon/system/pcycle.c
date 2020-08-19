@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #define SYSCFG_PCYCLEEN_BIT             6
+#define SSR_CE_BIT                      23
 #define MAX_HW_THREADS                  6
 
 int err;
@@ -33,9 +34,18 @@ static inline void __check_range(uint32_t val, uint32_t min, uint32_t max, int l
 
 #define check_range(V, MIN, MAX) __check_range(V, MIN, MAX, __LINE__)
 
-int main()
+static inline void __check(uint32_t val, uint32_t expect, int line)
 {
-    puts("Check the pcyclehi/pcyclelo counters in qemu");
+    if (val != expect) {
+        printf("ERROR at line %d: %lu != %lu\n", line, val, expect);
+        err++;
+    }
+}
+
+#define check(V, E) __check(V, E, __LINE__)
+
+static void test_pcycle(void)
+{
     uint32_t pcyclelo, pcyclehi;
 
     asm volatile("r2 = syscfg\n\t"
@@ -55,13 +65,59 @@ int main()
                  : "i"(SYSCFG_PCYCLEEN_BIT)
                  : "r2", "r3");
 
-  /*
-   * QEMU executes threads one at a time, but hexagon-sim interleaves them.
-   * So, we check a range of pcycles to make the same test pass on both.
-   */
-  check_range(pcyclehi, 0, 0);
-  check_range(pcyclelo, 6, 6 * MAX_HW_THREADS);
+    /*
+     * QEMU executes threads one at a time, but hexagon-sim interleaves them.
+     * So, we check a range of pcycles to make the same test pass on both.
+     */
+    check(pcyclehi, 0);
+    check_range(pcyclelo, 6, 6 * MAX_HW_THREADS);
+}
 
-  puts(err ? "FAIL" : "PASS");
-  return err;
+#define read_pcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi) \
+    asm volatile("%0 = pcyclelo\n\t" \
+                 "%1 = pcyclehi\n\t" \
+                 "%2 = upcyclelo\n\t" \
+                 "%3 = upcyclehi\n\t" \
+                 : "=r"(pcyclelo), "=r"(pcyclehi), \
+                   "=r"(upcyclelo), "=r"(upcyclehi))
+
+static void set_ssr_ce(void)
+{
+    asm volatile("r2 = ssr\n\t"
+                 "r2 = setbit(r2, #%0)\n\t"
+                 "ssr = r2\n\t"
+                 : : "i"(SSR_CE_BIT));
+}
+
+static void test_upcycle(void)
+{
+    uint32_t pcyclelo, pcyclehi;
+    uint32_t upcyclelo, upcyclehi;
+
+    /*
+     * Before SSR[CE] is set, upcycle registers should be zero
+     */
+    read_pcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
+    check(upcyclelo, 0);
+    check(upcyclehi, 0);
+
+    /*
+     * After SSR[CE] is set, upcycle registers should match pcycle
+     */
+    set_ssr_ce();
+    read_pcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
+    check_range(upcyclelo, pcyclelo + 2, pcyclelo + 2 * MAX_HW_THREADS);
+    check(upcyclehi, pcyclehi);
+
+}
+
+int main()
+{
+    puts("Check the pcyclehi/pcyclelo counters in qemu");
+
+    test_pcycle();
+    test_upcycle();
+
+    puts(err ? "FAIL" : "PASS");
+    return err;
 }
