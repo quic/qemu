@@ -27,6 +27,8 @@
 #include "translate.h"
 #include "printinsn.h"
 #include "cpu.h"
+#include "macros.h"
+#include "genptr_helpers.h"
 
 TCGv hex_gpr[TOTAL_PER_THREAD_REGS];
 TCGv hex_pred[NUM_PREGS];
@@ -188,6 +190,43 @@ static void gen_start_packet(DisasContext *ctx, packet_t *pkt)
         tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         tcg_gen_movi_tl(hex_gather_issued, 0);
     }
+
+#ifndef CONFIG_USER_ONLY
+    /*
+     * Increment PCYCLEHI/PCYCLELO (global sreg)
+     * Only if SYSCFG[PCYCLEEN] is set
+     *
+     * The implication of counting pcycles at the start of a packet
+     * is that we'll count the number of times it is replayed.
+     */
+    TCGv syscfg_pcycleen = tcg_temp_new();
+    TCGLabel *skip = gen_new_label();
+
+    GET_SYSCFG_FIELD(syscfg_pcycleen, SYSCFG_PCYCLEEN);
+    tcg_gen_brcondi_tl(TCG_COND_EQ, syscfg_pcycleen, 0, skip);
+    {
+        TCGv pcyclelo = tcg_temp_new();
+        TCGv pcyclehi = tcg_temp_new();
+        TCGv_i64 val64 = tcg_temp_new_i64();
+        TCGv val32 = tcg_temp_new();
+
+        READ_SREG(pcyclelo, HEX_SREG_PCYCLELO);
+        READ_SREG(pcyclehi, HEX_SREG_PCYCLEHI);
+        tcg_gen_concat_i32_i64(val64, pcyclelo, pcyclehi);
+        tcg_gen_addi_i64(val64, val64, 1);
+        tcg_gen_extrl_i64_i32(val32, val64);
+        WRITE_SREG(HEX_SREG_PCYCLELO, val32);
+        tcg_gen_extrh_i64_i32(val32, val64);
+        WRITE_SREG(HEX_SREG_PCYCLEHI, val32);
+
+        tcg_temp_free(pcyclelo);
+        tcg_temp_free(pcyclehi);
+        tcg_temp_free_i64(val64);
+        tcg_temp_free(val32);
+    }
+    gen_set_label(skip);
+    tcg_temp_free(syscfg_pcycleen);
+#endif
 }
 
 static int is_gather_store_insn(insn_t *insn)

@@ -670,7 +670,6 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
         hex_mmu_mode_change(env);
     }
 
-    /* FIXME - Change these to GET_FIELD */
     uint8_t old_asid = GET_SSR_FIELD(SSR_ASID, old);
     uint8_t new_asid = GET_SSR_FIELD(SSR_ASID, new);
     if (new_asid != old_asid) {
@@ -1061,19 +1060,34 @@ uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
            (((uint64_t)ARCH_GET_SYSTEM_REG(env, reg+1)) << 32);
 }
 
+static inline void modify_syscfg(CPUHexagonState *env, uint32_t val)
+{
+    /* Check for change in MMU enable */
+    target_ulong old_mmu_enable =
+        GET_SYSCFG_FIELD(SYSCFG_MMUEN, env->g_sreg[HEX_SREG_SYSCFG]);
+    target_ulong new_mmu_enable =
+        GET_SYSCFG_FIELD(SYSCFG_MMUEN, val);
+    if (new_mmu_enable && !old_mmu_enable) {
+        hex_mmu_on(env);
+    } else if (!new_mmu_enable && old_mmu_enable) {
+        hex_mmu_off(env);
+    }
+
+    /* Changing pcycle enable from 0 to 1 resets the counters */
+    uint32_t old = env->g_sreg[HEX_SREG_SYSCFG];
+    uint8_t old_en = GET_SYSCFG_FIELD(SYSCFG_PCYCLEEN, old);
+    uint8_t new_en = GET_SYSCFG_FIELD(SYSCFG_PCYCLEEN, val);
+    if (old_en == 0 && new_en == 1) {
+        env->g_sreg[HEX_SREG_PCYCLELO] = 0;
+        env->g_sreg[HEX_SREG_PCYCLEHI] = 0;
+    }
+}
+
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
 
 {
     if (reg == HEX_SREG_SYSCFG) {
-        target_ulong old_mmu_enable =
-            GET_SYSCFG_FIELD(SYSCFG_MMUEN, env->g_sreg[HEX_SREG_SYSCFG]);
-        target_ulong new_mmu_enable =
-            GET_SYSCFG_FIELD(SYSCFG_MMUEN, val);
-        if (new_mmu_enable && !old_mmu_enable) {
-            hex_mmu_on(env);
-        } else if (!new_mmu_enable && old_mmu_enable) {
-            hex_mmu_off(env);
-        }
+        modify_syscfg(env, val);
     } else if (reg == HEX_SREG_IMASK) {
         val = GET_FIELD(IMASK_MASK, val);
     }

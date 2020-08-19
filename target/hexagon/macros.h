@@ -386,15 +386,17 @@
 #define READ_OREG_s(dest, NUM) \
     READ_REG_READONLY(dest, NUM)
 
-#define READ_SREG(dest, NUM) \
-    if ((NUM) < HEX_SREG_GLB_START) { \
-        gen_read_sreg(dest, NUM) \
-    } else { \
-        TCGv_i32 num = tcg_const_i32(NUM); \
-        gen_helper_sreg_read(dest, cpu_env, num); \
-        tcg_temp_free_i32(num); \
-    }
 #ifndef CONFIG_USER_ONLY
+#define READ_SREG(dest, NUM) \
+    do { \
+        if ((NUM) < HEX_SREG_GLB_START) { \
+            gen_read_sreg(dest, NUM); \
+        } else { \
+            TCGv_i32 num = tcg_const_i32(NUM); \
+            gen_helper_sreg_read(dest, cpu_env, num); \
+            tcg_temp_free_i32(num); \
+        } \
+    } while (0)
 #define READ_SREG_READONLY(dest, NUM) do { \
         if ((NUM) < HEX_SREG_GLB_START) { \
             dest = hex_t_sreg[NUM]; \
@@ -563,6 +565,20 @@
 #define PCALIGN 4
 #define PCALIGN_MASK (PCALIGN - 1)
 
+#ifdef QEMU_GENERATE
+#define GET_FIELD(RES, FIELD, REGIN) \
+    tcg_gen_extract_tl(RES, REGIN, reg_field_info[FIELD].offset, \
+                                   reg_field_info[FIELD].width)
+#define GET_SSR_FIELD(RES, FIELD) \
+    GET_FIELD(RES, FIELD, hex_t_sreg[HEX_SREG_SSR])
+#define GET_SYSCFG_FIELD(RES, FIELD) \
+    do { \
+        TCGv syscfg = tcg_temp_new(); \
+        READ_SREG(syscfg, HEX_SREG_SYSCFG); \
+        GET_FIELD(RES, FIELD, syscfg); \
+        tcg_temp_free(syscfg); \
+    } while (0)
+#else
 #define GET_FIELD(FIELD,REGIN) \
     fEXTRACTU_BITS(REGIN, reg_field_info[FIELD].width, \
                    reg_field_info[FIELD].offset)
@@ -570,6 +586,7 @@
     (uint32_t)GET_FIELD(FIELD, REGIN)
 #define GET_SYSCFG_FIELD(FIELD,REGIN) \
     (uint32_t)GET_FIELD(FIELD, REGIN)
+#endif
 #define SET_SYSTEM_FIELD(ENV,REG,FIELD,VAL) do {\
         uint32_t regval = ARCH_GET_SYSTEM_REG(ENV, REG); \
         fINSERT_BITS(regval,reg_field_info[FIELD].width, \

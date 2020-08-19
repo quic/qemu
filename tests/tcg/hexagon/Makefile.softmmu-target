@@ -19,6 +19,7 @@ TESTS += \
 	sys_atomics \
 	timer_reg \
 	bestwait \
+	pcycle \
 	$()
 
 # Disabled for now:
@@ -52,6 +53,7 @@ timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o
 bestwait: bestwait.o
 wait: wait.o
+pcycle: pcycle.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
