@@ -1104,6 +1104,8 @@ void HELPER(sreg_write_pair)(CPUHexagonState *env, uint32_t reg, uint64_t val)
 uint32_t HELPER(greg_read)(CPUHexagonState *env, uint32_t reg)
 
 {
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
     int off;
 
     if (reg <= HEX_GREG_G3) {
@@ -1111,10 +1113,10 @@ uint32_t HELPER(greg_read)(CPUHexagonState *env, uint32_t reg)
     }
     switch (reg) {
         case HEX_GREG_GPCYCLELO:
-            return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO);
+            return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO) : 0;
 
         case HEX_GREG_GPCYCLEHI:
-            return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI);
+            return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI) : 0;
 
         case HEX_GREG_GPMUCNT0:
         case HEX_GREG_GPMUCNT1:
@@ -1138,9 +1140,13 @@ uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
     }
     switch (reg) {
         case HEX_GREG_GPCYCLELO:
-            return (uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO) |
-                (uint64_t)(ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI)) << 32;
-
+        {
+            target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+            int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
+            target_ulong pcyclelo = ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO);
+            target_ulong pcyclehi = ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI);
+            return ssr_ce ? (uint64_t)pcyclelo | (uint64_t)pcyclehi << 32 : 0;
+        }
         case HEX_GREG_GPMUCNT0:
         case HEX_GREG_GPMUCNT2:
             off = HEX_GREG_GPMUCNT3 - reg;

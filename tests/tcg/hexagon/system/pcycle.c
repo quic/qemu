@@ -73,13 +73,29 @@ static void test_pcycle(void)
     check_range(pcyclelo, 6, 6 * MAX_HW_THREADS);
 }
 
-#define read_pcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi) \
+#define read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi) \
     asm volatile("%0 = pcyclelo\n\t" \
                  "%1 = pcyclehi\n\t" \
                  "%2 = upcyclelo\n\t" \
                  "%3 = upcyclehi\n\t" \
                  : "=r"(pcyclelo), "=r"(pcyclehi), \
                    "=r"(upcyclelo), "=r"(upcyclehi))
+
+#define read_gpcycle_regs(pcyclelo, pcyclehi, gpcyclelo, gpcyclehi) \
+    asm volatile("%0 = pcyclelo\n\t" \
+                 "%1 = pcyclehi\n\t" \
+                 "%2 = gpcyclelo\n\t" \
+                 "%3 = gpcyclehi\n\t" \
+                 : "=r"(pcyclelo), "=r"(pcyclehi), \
+                   "=r"(gpcyclelo), "=r"(gpcyclehi))
+
+static void clr_ssr_ce(void)
+{
+    asm volatile("r2 = ssr\n\t"
+                 "r2 = clrbit(r2, #%0)\n\t"
+                 "ssr = r2\n\t"
+                 : : "i"(SSR_CE_BIT));
+}
 
 static void set_ssr_ce(void)
 {
@@ -97,7 +113,8 @@ static void test_upcycle(void)
     /*
      * Before SSR[CE] is set, upcycle registers should be zero
      */
-    read_pcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
+    clr_ssr_ce();
+    read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
     check(upcyclelo, 0);
     check(upcyclehi, 0);
 
@@ -105,9 +122,31 @@ static void test_upcycle(void)
      * After SSR[CE] is set, upcycle registers should match pcycle
      */
     set_ssr_ce();
-    read_pcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
+    read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
     check_range(upcyclelo, pcyclelo + 2, pcyclelo + 2 * MAX_HW_THREADS);
     check(upcyclehi, pcyclehi);
+}
+
+static void test_gpcycle(void)
+{
+    uint32_t pcyclelo, pcyclehi;
+    uint32_t gpcyclelo, gpcyclehi;
+
+    /*
+     * Before SSR[CE] is set, gpcycle registers should be zero
+     */
+    clr_ssr_ce();
+    read_gpcycle_regs(pcyclelo, pcyclehi, gpcyclelo, gpcyclehi);
+    check(gpcyclelo, 0);
+    check(gpcyclehi, 0);
+
+    /*
+     * After SSR[CE] is set, gpcycle registers should match pcycle
+     */
+    set_ssr_ce();
+    read_gpcycle_regs(pcyclelo, pcyclehi, gpcyclelo, gpcyclehi);
+    check_range(gpcyclelo, pcyclelo + 2, pcyclelo + 2 * MAX_HW_THREADS);
+    check(gpcyclehi, pcyclehi);
 
 }
 
@@ -117,6 +156,7 @@ int main()
 
     test_pcycle();
     test_upcycle();
+    test_gpcycle();
 
     puts(err ? "FAIL" : "PASS");
     return err;
