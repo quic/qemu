@@ -1106,26 +1106,36 @@ uint32_t HELPER(greg_read)(CPUHexagonState *env, uint32_t reg)
 {
     target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
+    int ssr_pe = GET_SSR_FIELD(SSR_PE, ssr);
     int off;
 
     if (reg <= HEX_GREG_G3) {
       return env->greg[reg];
     }
     switch (reg) {
-        case HEX_GREG_GPCYCLELO:
-            return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO) : 0;
+    case HEX_GREG_GCYCLE_1T:
+    case HEX_GREG_GCYCLE_2T:
+    case HEX_GREG_GCYCLE_3T:
+    case HEX_GREG_GCYCLE_4T:
+    case HEX_GREG_GCYCLE_5T:
+    case HEX_GREG_GCYCLE_6T:
+        off = reg - HEX_GREG_GCYCLE_1T;
+        return ssr_pe ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_GCYCLE_1T + off) : 0;
 
-        case HEX_GREG_GPCYCLEHI:
-            return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI) : 0;
+    case HEX_GREG_GPCYCLELO:
+        return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO) : 0;
 
-        case HEX_GREG_GPMUCNT0:
-        case HEX_GREG_GPMUCNT1:
-        case HEX_GREG_GPMUCNT2:
-        case HEX_GREG_GPMUCNT3:
-            off = HEX_GREG_GPMUCNT3 - reg;
-            return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0 + off);
-        default:
-            return 0;
+    case HEX_GREG_GPCYCLEHI:
+        return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI) : 0;
+
+    case HEX_GREG_GPMUCNT0:
+    case HEX_GREG_GPMUCNT1:
+    case HEX_GREG_GPMUCNT2:
+    case HEX_GREG_GPMUCNT3:
+        off = HEX_GREG_GPMUCNT3 - reg;
+        return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0 + off);
+    default:
+        return 0;
     }
 }
 
@@ -1357,6 +1367,22 @@ void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
     }
 }
 
+/*
+ * Update the GCYCLE_XT register where X is the number of running threads
+ */
+void HELPER(inc_gcycle_xt)(CPUHexagonState *env)
+{
+    uint32_t num_threads = 0;
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        if (!cpu_is_stopped(cs)) {
+            num_threads++;
+        }
+    }
+    if (1 <= num_threads && num_threads <= 6) {
+        env->g_sreg[HEX_SREG_GCYCLE_1T + num_threads - 1]++;
+    }
+}
 #endif
 
 /* These macros can be referenced in the generated helper functions */

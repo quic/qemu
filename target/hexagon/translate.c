@@ -226,6 +226,8 @@ static void gen_start_packet(DisasContext *ctx, packet_t *pkt)
     }
     gen_set_label(skip);
     tcg_temp_free(syscfg_pcycleen);
+
+    gen_helper_inc_gcycle_xt(cpu_env);
 #endif
 }
 

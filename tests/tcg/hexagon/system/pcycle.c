@@ -20,6 +20,7 @@
 
 #define SYSCFG_PCYCLEEN_BIT             6
 #define SSR_CE_BIT                      23
+#define SSR_PE_BIT                      24
 #define MAX_HW_THREADS                  6
 
 int err;
@@ -150,10 +151,83 @@ static void test_gpcycle(void)
 
 }
 
+#define read_gcycle_xt_regs(gcycle_1t, gcycle_2t, gcycle_3t, \
+                            gcycle_4t, gcycle_5t, gcycle_6t) \
+    asm volatile("%0 = gpcycle1t\n\t" \
+                 "%1 = gpcycle2t\n\t" \
+                 "%2 = gpcycle3t\n\t" \
+                 "%3 = gpcycle4t\n\t" \
+                 "%4 = gpcycle5t\n\t" \
+                 "%5 = gpcycle6t\n\t" \
+                 : "=r"(gcycle_1t), "=r"(gcycle_2t), \
+                   "=r"(gcycle_3t), "=r"(gcycle_4t), \
+                   "=r"(gcycle_5t), "=r"(gcycle_6t))
+
+static void clr_ssr_pe(void)
+{
+    asm volatile("r2 = ssr\n\t"
+                 "r2 = clrbit(r2, #%0)\n\t"
+                 "ssr = r2\n\t"
+                 : : "i"(SSR_PE_BIT));
+}
+
+static void set_ssr_pe(void)
+{
+    asm volatile("r2 = ssr\n\t"
+                 "r2 = setbit(r2, #%0)\n\t"
+                 "ssr = r2\n\t"
+                 : : "i"(SSR_PE_BIT));
+}
+
+static inline uint32_t read_pcyclelo(void)
+{
+    uint32_t ret;
+    asm volatile("%0 = pcyclelo\n\t" : "=r"(ret));
+    return ret;
+}
+
+static void test_gcycle_xt(void)
+{
+    uint32_t gcycle_1t, gcycle_2t, gcycle_3t,
+             gcycle_4t, gcycle_5t, gcycle_6t;
+
+    /*
+     * Before SSR[PE] is set, gcycleXt registers should be zero
+     */
+    clr_ssr_pe();
+    read_gcycle_xt_regs(gcycle_1t, gcycle_2t, gcycle_3t,
+                        gcycle_4t, gcycle_5t, gcycle_6t);
+    check(gcycle_1t, 0);
+    check(gcycle_2t, 0);
+    check(gcycle_3t, 0);
+    check(gcycle_4t, 0);
+    check(gcycle_5t, 0);
+    check(gcycle_6t, 0);
+
+    /*
+     * After SSR[PE] is set, gcycleXt registers have real values
+     */
+    set_ssr_pe();
+    read_gcycle_xt_regs(gcycle_1t, gcycle_2t, gcycle_3t,
+                        gcycle_4t, gcycle_5t, gcycle_6t);
+    /*
+     * This is a single-threaded test, so only gcycle_1t should be non-zero
+     * The range of values we check lets the test pass on hexagon-sim and
+     * gives some ability for the underlying runtime code to change.
+     */
+    check_range(gcycle_1t, 1850, 7500);
+    check(gcycle_2t, 0);
+    check(gcycle_3t, 0);
+    check(gcycle_4t, 0);
+    check(gcycle_5t, 0);
+    check(gcycle_6t, 0);
+}
+
 int main()
 {
     puts("Check the pcyclehi/pcyclelo counters in qemu");
 
+    test_gcycle_xt();
     test_pcycle();
     test_upcycle();
     test_gpcycle();
