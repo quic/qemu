@@ -448,7 +448,7 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
             pkt->pkt_has_dealloc_return = 1;
         }
 
-        if (GET_ATTRIB(opcode, A_STORE)) {
+        if (GET_ATTRIB(opcode, A_STORE) && !GET_ATTRIB(opcode, A_LLSC)) {
             pkt->insn[i].is_store = 1;
             if (GET_ATTRIB(opcode, A_VMEM)) {
                 pkt->insn[i].is_vmem_st = 1;
