@@ -177,12 +177,12 @@ void intr_handler(int irq)
 
     } else if (vid == IRQ2) {
         pcycle_count = hexagon_sim_read_pcycles();
-        qtimer2_cnt++;
         printf("Qtimer 2 interrupt #%d, pcycle ctr = %llu  \n", qtimer2_cnt,
                pcycle_count);
 
         update_qtimer2();
         update_l2vic(vid);
+        qtimer2_cnt++;
     } else {
         printf("Other IRQ %lu\n", vid);
     }

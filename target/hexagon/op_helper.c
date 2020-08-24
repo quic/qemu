@@ -1230,6 +1230,7 @@ typedef struct {
     CPUState *cs;
     CPUHexagonState *env;
 } thread_entry;
+
 static thread_entry __attribute__((unused))
 select_lowest_prio_thread(thread_entry *threads,
                           size_t list_size /*bool only_waiters*/)

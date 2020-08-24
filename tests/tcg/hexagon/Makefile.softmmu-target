@@ -18,6 +18,7 @@ TESTS += \
 	invalid_opcode \
 	sys_atomics \
 	timer_reg \
+	qtimer_test \
 	bestwait \
 	pcycle \
 	$()

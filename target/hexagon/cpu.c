@@ -147,7 +147,6 @@ static inline target_ulong read_p3_0(CPUHexagonState *env)
     return control_reg;
 }
 
-
 static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 {
     target_ulong value;

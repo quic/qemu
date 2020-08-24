@@ -48,7 +48,7 @@ int main()
         /* Wait disabled, spin instead: qemu timer bug when
          *  all threads are waiting.
          */
-        // asm_wait();
+        asm_wait();
     }
     return 0;
 }

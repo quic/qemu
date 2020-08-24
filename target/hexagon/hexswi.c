@@ -163,11 +163,19 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         HEX_DEBUG_LOG("%s:%d: SYS_EXCEPTION\n\t"
             "Program terminated successfully\n",
             __FUNCTION__, __LINE__);
-        target_ulong ret = -1;
-        DEBUG_MEMORY_READ(swi_info, 4, &ret);
-
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL, 0);
 
+        /* sometimes qurt returns pointer to rval and sometimes the */
+        /* actual numeric value.  here we inspect value and make a  */
+        /* choice as to probable intent. */
+        target_ulong ret;
+        if ((swi_info <= 255) || (swi_info == 0xffffffff)) {
+            ret = swi_info;
+        } else {
+            DEBUG_MEMORY_READ(swi_info, 1, &ret);
+        }
+        HEX_DEBUG_LOG("%s: swi_info 0x%x, ret %d/0x%x\n",
+            __FUNCTION__, swi_info, ret, ret);
         exit(ret);
     }
     break;
