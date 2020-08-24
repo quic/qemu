@@ -1703,15 +1703,11 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define fL2LOCKA(VA, DST, PREGDST) \
-    tcg_gen_movi_tl((PREGDST), 0x0ff) // FIXME untested
-
+    tcg_gen_movi_tl((DST), 0x0ff) // FIXME untested
 #define fDCZEROA(REG) tcg_gen_mov_tl(hex_dczero_addr, (REG))
 #else
 /* Always succeed: */
-#define fL2LOCKA(VA, DST, PREGDST)       \
-    do { /* FIXME this is the reg idx */ \
-        PREGDST = 0x0ff;                 \
-    } while (0)
+#define fL2LOCKA(EA,PDV,PDN) (PDV = 0xFF)
 #define fDCZEROA(REG) do { REG = REG; g_assert_not_reached(); } while (0)
 #define fCLEAR_RTE_EX() \
     do { \

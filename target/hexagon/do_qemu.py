@@ -631,7 +631,10 @@ def gen_tcg_func(f, tag, regs, imms):
 ##
 ## Helpers for gen_helper_definition
 ##
-def gen_decl_ea(f):
+ea_excludes = [ 'Y5_l2locka', 'Y5_l2unlocka' ]
+def gen_decl_ea(tag,f):
+    if (tag in ea_excludes):
+        f.write("__attribute__((unused)) ")
     f.write("size4u_t EA;\n")
 
 def gen_helper_return_type(f,regtype,regid,regno):
@@ -851,7 +854,7 @@ def gen_helper_definition(f, tag, regs, imms):
             f.write("uint32_t part1")
         f.write(")\n{\n")
         if (not need_slot(tag)): f.write("uint32_t slot = 4; slot = slot;\n" )
-        if need_ea(tag): gen_decl_ea(f)
+        if need_ea(tag): gen_decl_ea(tag,f)
         ## Declare the return variable
         i=0
         for regtype,regid,toss,numregs in regs:
@@ -935,7 +938,7 @@ supported_privs = [
     'Y2_icdataw', 'Y2_icdatar', 'Y4_l2tagw', 'Y4_l2tagr',
     'Y2_dctagr', 'Y2_ictagr', 'Y2_ictagw',
 #   FIXME: needs pred decl fix:
-#   'Y5_l2locka', 'Y5_l2unlocka',
+   'Y5_l2locka', 'Y5_l2unlocka',
 
     'Y4_l2fetch', 'Y5_l2fetch', 'Y2_icinva',
     'Y2_dczeroa',
