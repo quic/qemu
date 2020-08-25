@@ -677,11 +677,12 @@ static hwaddr hexagon_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
 
 #define INVALID_BADVA                                      0xbadabada
 
-static void set_badva_regs(CPUHexagonState *env, target_ulong VA, int slot)
+static void set_badva_regs(CPUHexagonState *env, target_ulong VA, int slot,
+                           MMUAccessType access_type)
 {
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA, VA);
 
-    if (slot == 0) {
+    if (access_type == MMU_INST_FETCH || slot == 0) {
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA0, VA);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA1, INVALID_BADVA);
         SET_SSR_FIELD(env, SSR_V0, 1);
@@ -703,7 +704,7 @@ static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA, int slot,
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    set_badva_regs(env, VA, slot);
+    set_badva_regs(env, VA, slot, access_type);
 
     switch (access_type) {
     case MMU_INST_FETCH:
@@ -722,12 +723,12 @@ static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA, int slot,
 }
 
 static void raise_perm_exception(CPUState *cs, target_ulong VA, int slot,
-                                 int32_t excp)
+                                 MMUAccessType access_type, int32_t excp)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    set_badva_regs(env, VA, slot);
+    set_badva_regs(env, VA, slot, access_type);
     cs->exception_index = excp;
 }
 
@@ -790,7 +791,7 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
                          mmu_idx, TARGET_PAGE_SIZE);
             return ret;
         } else {
-            raise_perm_exception(cs, address, slot, excp);
+            raise_perm_exception(cs, address, slot, access_type, excp);
             do_raise_exception_err(env, cs->exception_index, retaddr);
         }
     }

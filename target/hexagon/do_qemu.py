@@ -560,12 +560,12 @@ def gen_tcg_func(f, tag, regs, imms):
             genptr_src_read_opn(f,regtype,regid)
 
     ## Generate the call to the helper
+    if need_slot(tag): f.write("SLOT_WRAP(")
     f.write("fWRAP_%s(\n" % tag)
     f.write("do {\n")
     for immlett,bits,immshift in imms:
         gen_helper_decl_imm(f,immlett)
     if need_part1(tag): f.write("PART1_WRAP(")
-    if need_slot(tag): f.write("SLOT_WRAP(")
     f.write("gen_helper_%s(" % (tag))
     i=0
     ## If there is a scalar result, it is the return type
@@ -596,14 +596,12 @@ def gen_tcg_func(f, tag, regs, imms):
     if need_slot(tag): f.write(", slot")
     if need_part1(tag): f.write(", part1" )
     f.write(")")
-    if need_slot(tag): f.write(")")
     if need_part1(tag): f.write(")")
     f.write(";\n")
     for immlett,bits,immshift in imms:
         gen_helper_free_imm(f,immlett)
     f.write("} while (0)")
     f.write(",\n")
-    if need_slot(tag): f.write("SLOT_WRAP(")
     f.write("%s" % semdict[tag])
     if need_slot(tag): f.write(")")
     f.write(");\n")
