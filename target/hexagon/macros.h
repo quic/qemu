@@ -1866,13 +1866,52 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fDO_NMI(RS) helper_nmi(env, RS);
 #endif
 
+#ifdef QEMU_GENERATE
 
-// FIXME
-// valid bit, reserved bit
-#define fICTAGR(RS, RD, RD2) // what if we assign 0 to RD?
-#define fICTAGW(RS, RD) // NOP is ok here?
-#define fICDATAR(RS, RD) // FIXME
-#define fICDATAW(RS, RD) // FIXME
+/* Read tags back as zero for now: */
+#define fICTAGR(RS, RD, RD2) \
+    do { \
+        /* tag value in RD[31:10] for 32k, RD[31:9] for 16k */ \
+        TCGv zero = tcg_const_tl(0); \
+        RD = zero; \
+        tcg_temp_free(zero); \
+    } while (0);
+#define fICTAGW(RS, RD)
+#define fICDATAR(RS, RD) \
+    do { \
+        TCGv zero = tcg_const_tl(0); \
+        RD = zero; \
+        tcg_temp_free(zero); \
+    } while (0);
+#define fICDATAW(RS, RD)
 
 #define fDCTAGW(RS, RT)
-#define fDCTAGR(INDEX, DST, DST_REG_NUM) // what if we assign 0 to RD?
+#define fDCTAGR(INDEX, DST, DST_REG_NUM) \
+    do { \
+        /* tag: RD[23:0], state: RD[30:29] */ \
+        TCGv zero = tcg_const_tl(0); \
+        DST = zero; \
+        tcg_temp_free(zero); \
+    } while (0);
+#else
+
+/* Read tags back as zero for now: */
+#define fICTAGR(RS, RD, RD2) \
+    do { \
+        /* tag value in RD[31:10] for 32k, RD[31:9] for 16k */ \
+        RD = 0x00; \
+    } while (0);
+#define fICTAGW(RS, RD)
+#define fICDATAR(RS, RD) \
+    do { \
+        RD = 0x00; \
+    } while (0);
+#define fICDATAW(RS, RD)
+
+#define fDCTAGW(RS, RT)
+#define fDCTAGR(INDEX, DST, DST_REG_NUM) \
+    do { \
+        /* tag: RD[23:0], state: RD[30:29] */ \
+        DST = HEX_DC_STATE_INVALID | 0x00; \
+    } while (0);
+#endif

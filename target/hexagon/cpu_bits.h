@@ -87,6 +87,14 @@ enum hex_event {
     HEX_EVENT_TLBLOCK_WAIT = 0x300,
     HEX_EVENT_K0LOCK_WAIT = 0x400,
 };
+
+enum data_cache_state {
+    HEX_DC_STATE_INVALID   = 0x0,
+    HEX_DC_STATE_VALID     = 0x1,
+    HEX_DC_STATE_RESERVED  = 0x2,
+    HEX_DC_STATE_UNUSED_WT = 0x3,
+};
+
 #define PACKET_WORDS_MAX                    4
 
 extern int disassemble_hexagon(uint32_t *words, int nwords,
