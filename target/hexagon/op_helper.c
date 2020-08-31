@@ -1033,8 +1033,39 @@ uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
     return dest_reg;
 }
 
-uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
+uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
+{
+    uint32_t low, high;
+    switch (reg) {
+    case HEX_REG_UTIMERLO:
+        hexagon_read_timer(&low, &high);
+        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
+        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
+        return low;
+    case HEX_REG_UTIMERHI:
+        hexagon_read_timer(&low, &high);
+        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
+        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
+        return high;
+    default:
+        g_assert_not_reached();
+    }
+    return 0;
+}
+uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
+{
+    if (reg == HEX_REG_UTIMERLO) {
+        uint32_t low, high;
+        hexagon_read_timer(&low, &high);
+        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
+        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
+        return low | (uint64_t)high << 32;
+    } else {
+        g_assert_not_reached();
+    }
+}
 
+uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 {
     if ((reg == HEX_SREG_TIMERLO) || (reg == HEX_SREG_TIMERHI)) {
         uint32_t low = 0;
@@ -1047,7 +1078,6 @@ uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 }
 
 uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
-
 {
     if (reg == HEX_SREG_TIMERLO) {
         uint32_t low = 0;
@@ -1380,6 +1410,8 @@ void HELPER(inc_gcycle_xt)(CPUHexagonState *env)
         env->g_sreg[HEX_SREG_GCYCLE_1T + num_threads - 1]++;
     }
 }
+
+
 #endif
 
 /* These macros can be referenced in the generated helper functions */

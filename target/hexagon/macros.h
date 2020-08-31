@@ -412,10 +412,10 @@
         gen_helper_greg_read(dest, cpu_env, num); \
         tcg_temp_free_i32(num); \
     } while(0)
-#else
+#else /* CONFIG_USER_ONLY */
 #define READ_SREG_READONLY(dest, NUM) g_assert_not_reached()
 #define READ_GREG_READONLY(dest, NUM) g_assert_not_reached()
-#endif
+#endif /* CONFIG_USER_ONLY */
 #define READ_SREG_s(dest, NUM) \
     READ_SREG_READONLY(dest, NUM)
 
@@ -430,17 +430,41 @@
             gen_read_upcycle_reg(dest, HEX_REG_UPCYCLEHI); \
         } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UPCYCLELO) { \
             gen_read_upcycle_reg(dest, HEX_REG_UPCYCLELO); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERLO) { \
+            TCGv num = tcg_const_tl(HEX_REG_UTIMERLO); \
+            gen_helper_creg_read(dest, cpu_env, num); \
+            tcg_temp_free(num); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERHI) { \
+            TCGv num = tcg_const_tl(HEX_REG_UTIMERHI); \
+            gen_helper_creg_read(dest, cpu_env, num); \
+            tcg_temp_free(num); \
         } else { \
             READ_REG_READONLY(dest, ((NUM) + HEX_REG_SA0)); \
         } \
     } while (0)
+
+#define READ_CREG_PAIR(tmp, NUM) \
+    do { \
+        if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERLO) { \
+            TCGv_i32 num = tcg_const_i32(HEX_REG_UTIMERLO); \
+            gen_helper_creg_read_pair(tmp, cpu_env, num); \
+            tcg_temp_free_i32(num); \
+        } else { \
+            tcg_gen_concat_i32_i64(tmp, hex_gpr[NUM + HEX_REG_SA0], \
+                                   hex_gpr[(NUM + HEX_REG_SA0) + 1]); \
+        } \
+    } while (0)
+
+#define READ_CREG_ss(dest, NUM) READ_CREG_PAIR(dest, NUM)
+
 
 #define READ_MREG_u(dest, NUM) \
     do { \
         READ_REG_READONLY(dest, ((NUM) + HEX_REG_M0)); \
         dest = dest; \
     } while (0)
-#else
+
+#else /* !QEMU_GENERATE */
 #define READ_REG(NUM) \
     (env->gpr[(NUM)])
 
@@ -449,11 +473,13 @@
 #define READ_SGP1()    ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP1)
 #define READ_SGP10()   ((uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP0) | \
     ((uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP1) << 32))
-#endif
+#define READ_CREG(NUM) g_assert_not_reached()
+#endif /* QEMU_GENERATE */
 
 #ifdef QEMU_GENERATE
 #define READ_REG_PAIR(tmp, NUM) \
     tcg_gen_concat_i32_i64(tmp, hex_gpr[NUM], hex_gpr[(NUM) + 1])
+
 #define READ_RREG_ss(tmp, NUM)          READ_REG_PAIR(tmp, NUM)
 #define READ_RREG_tt(tmp, NUM)          READ_REG_PAIR(tmp, NUM)
 #define READ_RREG_xx(tmp, NUM)          READ_REG_PAIR(tmp, NUM)
@@ -476,10 +502,8 @@
     tcg_temp_free_i32(num);
 #define READ_GREG_ss(tmp, NUM)          READ_GREG_PAIR(tmp, NUM)
 
-#define READ_CREG_PAIR(tmp, i) \
-    READ_REG_PAIR(tmp, ((i) + HEX_REG_SA0))
-#define READ_CREG_ss(tmp, i)            READ_CREG_PAIR(tmp, i)
-#endif
+#endif /* QEMU_GENERATE */
+
 
 #ifdef QEMU_GENERATE
 #define READ_PREG(dest, NUM)             gen_read_preg(dest, (NUM))
@@ -502,9 +526,9 @@
 #define READ_NEW_NREG_s(tmp, i)          READ_NEW_REG(tmp, i)
 #define READ_NEW_NREG_t(tmp, i)          READ_NEW_REG(tmp, i)
 #define READ_NEW_OREG_s(tmp, i)          READ_NEW_REG(tmp, i)
-#else
+#else /* !QEMU_GENERATE */
 #define READ_PREG(NUM)                (env->pred[NUM])
-#endif
+#endif /* QEMU_GENERATE */
 
 #define WRITE_RREG(NUM, VAL)             LOG_REG_WRITE(NUM, VAL)
 #define WRITE_RREG_d(NUM, VAL)           LOG_REG_WRITE(NUM, VAL)

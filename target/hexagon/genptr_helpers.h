@@ -241,7 +241,6 @@ static inline void gen_read_upcycle_reg(TCGv dest, int regnum)
     } else {
         g_assert_not_reached();
     }
-
     /* dest = (ssr_ce != 0 ? counter : 0) */
     tcg_gen_movcond_tl(TCG_COND_NE, dest, ssr_ce, zero, counter, zero);
 
