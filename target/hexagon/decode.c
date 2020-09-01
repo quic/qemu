@@ -35,10 +35,25 @@ enum {
     XX_LAST_EXT_IDX
 };
 
+/*
+ *  Certain operand types represent a non-contiguous set of values.
+ *  For example, the compound compare-and-jump instruction can only access
+ *  registers R0-R7 and R16-23.
+ *  This table represents the mapping from the encoding to the actual values.
+ */
+
 #define DEF_REGMAP(NAME, ELEMENTS, ...) \
     static const unsigned int DECODE_REGISTER_##NAME[ELEMENTS] = \
     { __VA_ARGS__ };
-#include "regmap.h"
+        /* Name   Num Table */
+DEF_REGMAP(R_16,  16, 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23)
+DEF_REGMAP(R__8,  8,  0, 2, 4, 6, 16, 18, 20, 22)
+DEF_REGMAP(R__4,  4,  0, 2, 4, 6)
+DEF_REGMAP(R_4,   4,  0, 1, 2, 3)
+DEF_REGMAP(R_8S,  8,  0, 1, 2, 3, 16, 17, 18, 19)
+DEF_REGMAP(R_8,   8,  0, 1, 2, 3, 4, 5, 6, 7)
+DEF_REGMAP(V__8,  8,  0, 4, 8, 12, 16, 20, 24, 28)
+DEF_REGMAP(V__16, 16, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30)
 
 #define DECODE_MAPPED_REG(REGNO, NAME) \
     insn->regno[REGNO] = DECODE_REGISTER_##NAME[insn->regno[REGNO]];
