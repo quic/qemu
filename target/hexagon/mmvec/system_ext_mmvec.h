@@ -20,10 +20,10 @@
 
 extern void mem_load_vector_oddva(CPUHexagonState *env, vaddr_t vaddr,
                            vaddr_t lookup_vaddr, int slot, int size,
-                           size1u_t *data, int use_full_va);
+                           uint8_t *data, int use_full_va);
 extern void mem_store_vector_oddva(CPUHexagonState *env, vaddr_t vaddr,
                             vaddr_t lookup_vaddr, int slot, int size,
-                            size1u_t *data, size1u_t* mask, unsigned invert,
+                            uint8_t *data, uint8_t *mask, unsigned invert,
                             int use_full_va);
 extern void mem_vector_scatter_init(CPUHexagonState *env, int slot,
                                     vaddr_t base_vaddr, int length,

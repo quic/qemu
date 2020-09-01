@@ -21,29 +21,29 @@
 #include "cpu.h"
 #include "hex_arch_types.h"
 
-extern size1u_t rLPS_table_64x4[64][4];
-extern size1u_t AC_next_state_MPS_64[64];
-extern size1u_t AC_next_state_LPS_64[64];
+extern uint8_t rLPS_table_64x4[64][4];
+extern uint8_t AC_next_state_MPS_64[64];
+extern uint8_t AC_next_state_LPS_64[64];
 
-extern size4u_t fbrevaddr(size4u_t pointer);
-extern size4u_t count_leading_ones_2(size2u_t src);
-extern size8u_t interleave(size4u_t odd, size4u_t even);
-extern size8u_t deinterleave(size8u_t src);
-extern size4u_t carry_from_add64(size8u_t a, size8u_t b, size4u_t c);
-extern size4s_t conv_round(size4s_t a, int n);
-extern size16s_t cast8s_to_16s(size8s_t a);
-extern size8s_t cast16s_to_8s(size16s_t a);
+extern uint32_t fbrevaddr(uint32_t pointer);
+extern uint32_t count_leading_ones_2(uint16_t src);
+extern uint64_t interleave(uint32_t odd, uint32_t even);
+extern uint64_t deinterleave(uint64_t src);
+extern uint32_t carry_from_add64(uint64_t a, uint64_t b, uint32_t c);
+extern int32_t conv_round(int32_t a, int n);
+extern size16s_t cast8s_to_16s(int64_t a);
+extern int64_t cast16s_to_8s(size16s_t a);
 extern size16s_t add128(size16s_t a, size16s_t b);
 extern size16s_t sub128(size16s_t a, size16s_t b);
-extern size16s_t shiftr128(size16s_t a, size4u_t n);
-extern size16s_t shiftl128(size16s_t a, size4u_t n);
+extern size16s_t shiftr128(size16s_t a, uint32_t n);
+extern size16s_t shiftl128(size16s_t a, uint32_t n);
 extern size16s_t and128(size16s_t a, size16s_t b);
 extern void arch_fpop_start(CPUHexagonState *env);
 extern void arch_fpop_end(CPUHexagonState *env);
 extern void arch_raise_fpflag(unsigned int flags);
-extern int arch_sf_recip_common(size4s_t *Rs, size4s_t *Rt, size4s_t *Rd,
+extern int arch_sf_recip_common(int32_t *Rs, int32_t *Rt, int32_t *Rd,
                                 int *adjust);
-extern int arch_sf_invsqrt_common(size4s_t *Rs, size4s_t *Rd, int *adjust);
+extern int arch_sf_invsqrt_common(int32_t *Rs, int32_t *Rd, int *adjust);
 extern int arch_recip_lookup(int index);
 extern int arch_invsqrt_lookup(int index);
 

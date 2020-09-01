@@ -35,9 +35,9 @@ typedef int64_t     size8s_t;
 typedef uint64_t    paddr_t;
 typedef uint32_t    vaddr_t;
 
-typedef struct size16s {
-    size8s_t hi;
-    size8u_t lo;
+typedef struct {
+    int64_t hi;
+    uint64_t lo;
 } size16s_t;
 
 #endif

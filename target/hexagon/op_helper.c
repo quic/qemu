@@ -194,10 +194,10 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
         if (env->vtcm_log.op) {
             /* Need to perform the scatter read/modify/write at commit time */
             if (env->vtcm_log.op_size == 2) {
-                SCATTER_OP_WRITE_TO_MEM(size2u_t);
+                SCATTER_OP_WRITE_TO_MEM(uint16_t);
             } else if (env->vtcm_log.op_size == 4) {
                 /* Word Scatter += */
-                SCATTER_OP_WRITE_TO_MEM(size4u_t);
+                SCATTER_OP_WRITE_TO_MEM(uint32_t);
             } else {
                 g_assert_not_reached();
             }
@@ -218,17 +218,17 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 static void print_store(CPUHexagonState *env, int slot)
 {
     if (!(env->slot_cancelled & (1 << slot))) {
-        size1u_t width = env->mem_log_stores[slot].width;
+        uint8_t width = env->mem_log_stores[slot].width;
         if (width == 1) {
-            size4u_t data = env->mem_log_stores[slot].data32 & 0xff;
+            uint32_t data = env->mem_log_stores[slot].data32 & 0xff;
             HEX_DEBUG_LOG("\tmemb[0x" TARGET_FMT_lx "] = %d (0x%02x)\n",
                           env->mem_log_stores[slot].va, data, data);
         } else if (width == 2) {
-            size4u_t data = env->mem_log_stores[slot].data32 & 0xffff;
+            uint32_t data = env->mem_log_stores[slot].data32 & 0xffff;
             HEX_DEBUG_LOG("\tmemh[0x" TARGET_FMT_lx "] = %d (0x%04x)\n",
                           env->mem_log_stores[slot].va, data, data);
         } else if (width == 4) {
-            size4u_t data = env->mem_log_stores[slot].data32;
+            uint32_t data = env->mem_log_stores[slot].data32;
             HEX_DEBUG_LOG("\tmemw[0x" TARGET_FMT_lx "] = %d (0x%08x)\n",
                           env->mem_log_stores[slot].va, data, data);
         } else if (width == 8) {

@@ -36,7 +36,7 @@
                           (VALSTART);
 
 #define DECODE_IMM_SXT(IMMNO, WIDTH) \
-    insn->immed[IMMNO] = ((((size4s_t)insn->immed[IMMNO]) << (32 - WIDTH)) >> \
+    insn->immed[IMMNO] = ((((int32_t)insn->immed[IMMNO]) << (32 - WIDTH)) >> \
                           (32 - WIDTH));
 
 #define DECODE_IMM_NEG(IMMNO, WIDTH) \
@@ -54,7 +54,7 @@
         break; \
 
 static void
-decode_op(insn_t *insn, opcode_t tag, size4u_t encoding)
+decode_op(insn_t *insn, opcode_t tag, uint32_t encoding)
 {
     insn->immed[0] = 0;
     insn->immed[1] = 0;
@@ -94,7 +94,7 @@ decode_op(insn_t *insn, opcode_t tag, size4u_t encoding)
 
 static unsigned int
 decode_subinsn_tablewalk(insn_t *insn, dectree_table_t *table,
-                         size4u_t encoding)
+                         uint32_t encoding)
 {
     unsigned int i;
     opcode_t opc;
@@ -118,18 +118,18 @@ decode_subinsn_tablewalk(insn_t *insn, dectree_table_t *table,
     }
 }
 
-static unsigned int get_insn_a(size4u_t encoding)
+static unsigned int get_insn_a(uint32_t encoding)
 {
     return encoding & 0x00001fff;
 }
 
-static unsigned int get_insn_b(size4u_t encoding)
+static unsigned int get_insn_b(uint32_t encoding)
 {
     return (encoding >> 16) & 0x00001fff;
 }
 
 static unsigned int
-decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, size4u_t encoding)
+decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, uint32_t encoding)
 {
     unsigned int i;
     unsigned int a, b;
@@ -162,7 +162,7 @@ decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, size4u_t encoding)
         decode_op(insn, opc, encoding);
         return 1;
     } else if (table->table[i].type == DECTREE_EXTSPACE) {
-        size4u_t active_ext;
+        uint32_t active_ext;
         /*
          * For now, HVX will be the only coproc
          */
@@ -174,7 +174,7 @@ decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, size4u_t encoding)
 }
 
 static unsigned int
-decode_insns(insn_t *insn, size4u_t encoding)
+decode_insns(insn_t *insn, uint32_t encoding)
 {
     dectree_table_t *table;
     if ((encoding & 0x0000c000) != 0) {
@@ -201,15 +201,15 @@ static void decode_add_endloop_insn(insn_t *insn, int loopnum)
     }
 }
 
-static inline int decode_parsebits_is_end(size4u_t encoding32)
+static inline int decode_parsebits_is_end(uint32_t encoding32)
 {
-    size4u_t bits = (encoding32 >> 14) & 0x3;
+    uint32_t bits = (encoding32 >> 14) & 0x3;
     return ((bits == 0x3) || (bits == 0x0));
 }
 
-static inline int decode_parsebits_is_loopend(size4u_t encoding32)
+static inline int decode_parsebits_is_loopend(uint32_t encoding32)
 {
-    size4u_t bits = (encoding32 >> 14) & 0x3;
+    uint32_t bits = (encoding32 >> 14) & 0x3;
     return ((bits == 0x2));
 }
 
@@ -313,7 +313,7 @@ decode_set_slot_number(packet_t *pkt)
  * and number of words used on success
  */
 
-static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
+static int do_decode_packet(int max_words, const uint32_t *words, packet_t *pkt)
 {
     int num_insns = 0;
     int words_read = 0;
@@ -321,7 +321,7 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
     int new_insns = 0;
     int errors = 0;
     int i;
-    size4u_t encoding32;
+    uint32_t encoding32;
 
     /* Initialize */
     memset(pkt, 0, sizeof(*pkt));
@@ -358,7 +358,7 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
         decode_add_endloop_insn(&pkt->insn[pkt->num_insns++], 0);
     }
     if (words_read >= 3) {
-        size4u_t has_loop0, has_loop1;
+        uint32_t has_loop0, has_loop1;
         has_loop0 = decode_parsebits_is_loopend(words[0]);
         has_loop1 = decode_parsebits_is_loopend(words[1]);
         if (has_loop0 && has_loop1) {

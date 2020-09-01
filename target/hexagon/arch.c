@@ -24,7 +24,7 @@
 /*
  * These three tables are used by the cabacdecbin instruction
  */
-size1u_t rLPS_table_64x4[64][4] = {
+uint8_t rLPS_table_64x4[64][4] = {
     {128, 176, 208, 240},
     {128, 167, 197, 227},
     {128, 158, 187, 216},
@@ -91,7 +91,7 @@ size1u_t rLPS_table_64x4[64][4] = {
     {2, 2, 2, 2}
 };
 
-size1u_t AC_next_state_MPS_64[64] = {
+uint8_t AC_next_state_MPS_64[64] = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
     21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
@@ -102,7 +102,7 @@ size1u_t AC_next_state_MPS_64[64] = {
 };
 
 
-size1u_t AC_next_state_LPS_64[64] = {
+uint8_t AC_next_state_LPS_64[64] = {
     0, 0, 1, 2, 2, 4, 4, 5, 6, 7,
     8, 9, 9, 11, 11, 12, 13, 13, 15, 15,
     16, 16, 18, 18, 19, 19, 21, 21, 22, 22,
@@ -112,13 +112,13 @@ size1u_t AC_next_state_LPS_64[64] = {
     37, 38, 38, 63
 };
 
-size4u_t fbrevaddr(size4u_t pointer)
+uint32_t fbrevaddr(uint32_t pointer)
 {
-    size4u_t offset = pointer & 0xffff;
+    uint32_t offset = pointer & 0xffff;
     return (pointer & 0xffff0000) | revbit16(offset);
 }
 
-size4u_t count_leading_ones_2(size2u_t src)
+uint32_t count_leading_ones_2(uint16_t src)
 {
     int ret;
     for (ret = 0; src & 0x8000; src <<= 1) {
@@ -134,11 +134,11 @@ size4u_t count_leading_ones_2(size2u_t src)
 #define HALF_MASK_8 0x0000ffff0000ffffULL
 #define WORD_MASK_8 0x00000000ffffffffULL
 
-size8u_t interleave(size4u_t odd, size4u_t even)
+uint64_t interleave(uint32_t odd, uint32_t even)
 {
     /* Convert to long long */
-    size8u_t myodd = odd;
-    size8u_t myeven = even;
+    uint64_t myodd = odd;
+    uint64_t myeven = even;
     /* First, spread bits out */
     myodd = (myodd | (myodd << 16)) & HALF_MASK_8;
     myeven = (myeven | (myeven << 16)) & HALF_MASK_8;
@@ -154,11 +154,11 @@ size8u_t interleave(size4u_t odd, size4u_t even)
     return myeven | (myodd << 1);
 }
 
-size8u_t deinterleave(size8u_t src)
+uint64_t deinterleave(uint64_t src)
 {
     /* Get odd and even bits */
-    size8u_t myodd = ((src >> 1) & BITS_MASK_8);
-    size8u_t myeven = (src & BITS_MASK_8);
+    uint64_t myodd = ((src >> 1) & BITS_MASK_8);
+    uint64_t myeven = (src & BITS_MASK_8);
 
     /* Unspread bits */
     myeven = (myeven | (myeven >> 1)) & PAIR_MASK_8;
@@ -176,9 +176,9 @@ size8u_t deinterleave(size8u_t src)
     return myeven | (myodd << 32);
 }
 
-size4u_t carry_from_add64(size8u_t a, size8u_t b, size4u_t c)
+uint32_t carry_from_add64(uint64_t a, uint64_t b, uint32_t c)
 {
-    size8u_t tmpa, tmpb, tmpc;
+    uint64_t tmpa, tmpb, tmpc;
     tmpa = fGETUWORD(0, a);
     tmpb = fGETUWORD(0, b);
     tmpc = tmpa + tmpb + c;
@@ -189,24 +189,24 @@ size4u_t carry_from_add64(size8u_t a, size8u_t b, size4u_t c)
     return tmpc;
 }
 
-size4s_t conv_round(size4s_t a, int n)
+int32_t conv_round(int32_t a, int n)
 {
-    size8s_t val;
+    int64_t val;
 
     if (n == 0) {
         val = a;
     } else if ((a & ((1 << (n - 1)) - 1)) == 0) {    /* N-1..0 all zero? */
         /* Add LSB from int part */
-        val = ((fSE32_64(a)) + (size8s_t) (((size4u_t) ((1 << n) & a)) >> 1));
+        val = ((fSE32_64(a)) + (int64_t) (((uint32_t) ((1 << n) & a)) >> 1));
     } else {
         val = ((fSE32_64(a)) + (1 << (n - 1)));
     }
 
     val = val >> n;
-    return (size4s_t)val;
+    return (int32_t)val;
 }
 
-size16s_t cast8s_to_16s(size8s_t a)
+size16s_t cast8s_to_16s(int64_t a)
 {
     size16s_t result = {.hi = 0, .lo = 0};
     result.lo = a;
@@ -216,7 +216,7 @@ size16s_t cast8s_to_16s(size8s_t a)
     return result;
 }
 
-size8s_t cast16s_to_8s(size16s_t a)
+int64_t cast16s_to_8s(size16s_t a)
 {
     return a.lo;
 }
@@ -246,7 +246,7 @@ size16s_t sub128(size16s_t a, size16s_t b)
     return result;
 }
 
-size16s_t shiftr128(size16s_t a, size4u_t n)
+size16s_t shiftr128(size16s_t a, uint32_t n)
 {
     size16s_t result;
     result.lo = (a.lo >> n) | (a.hi << (64 - n));
@@ -254,7 +254,7 @@ size16s_t shiftr128(size16s_t a, size4u_t n)
     return result;
 }
 
-size16s_t shiftl128(size16s_t a, size4u_t n)
+size16s_t shiftl128(size16s_t a, uint32_t n)
 {
     size16s_t result;
     result.lo = a.lo << n;
@@ -320,14 +320,14 @@ void arch_raise_fpflag(unsigned int flags)
     feraiseexcept(flags);
 }
 
-int arch_sf_recip_common(size4s_t *Rs, size4s_t *Rt, size4s_t *Rd, int *adjust)
+int arch_sf_recip_common(int32_t *Rs, int32_t *Rt, int32_t *Rd, int *adjust)
 {
     int n_class;
     int d_class;
     int n_exp;
     int d_exp;
     int ret = 0;
-    size4s_t RsV, RtV, RdV;
+    int32_t RsV, RtV, RdV;
     int PeV = 0;
     RsV = *Rs;
     RtV = *Rt;
@@ -415,10 +415,10 @@ int arch_sf_recip_common(size4s_t *Rs, size4s_t *Rt, size4s_t *Rd, int *adjust)
     return ret;
 }
 
-int arch_sf_invsqrt_common(size4s_t *Rs, size4s_t *Rd, int *adjust)
+int arch_sf_invsqrt_common(int32_t *Rs, int32_t *Rd, int *adjust)
 {
     int r_class;
-    size4s_t RsV, RdV;
+    int32_t RsV, RdV;
     int PeV = 0;
     int r_exp;
     int ret = 0;

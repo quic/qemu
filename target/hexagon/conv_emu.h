@@ -20,25 +20,25 @@
 
 #include "hex_arch_types.h"
 
-extern size8u_t conv_sf_to_8u(float in);
-extern size4u_t conv_sf_to_4u(float in);
-extern size8s_t conv_sf_to_8s(float in);
-extern size4s_t conv_sf_to_4s(float in);
+extern uint64_t conv_sf_to_8u(float in);
+extern uint32_t conv_sf_to_4u(float in);
+extern int64_t conv_sf_to_8s(float in);
+extern int32_t conv_sf_to_4s(float in);
 
-extern size8u_t conv_df_to_8u(double in);
-extern size4u_t conv_df_to_4u(double in);
-extern size8s_t conv_df_to_8s(double in);
-extern size4s_t conv_df_to_4s(double in);
+extern uint64_t conv_df_to_8u(double in);
+extern uint32_t conv_df_to_4u(double in);
+extern int64_t conv_df_to_8s(double in);
+extern int32_t conv_df_to_4s(double in);
 
-extern double conv_8u_to_df(size8u_t in);
-extern double conv_4u_to_df(size4u_t in);
-extern double conv_8s_to_df(size8s_t in);
-extern double conv_4s_to_df(size4s_t in);
+extern double conv_8u_to_df(uint64_t in);
+extern double conv_4u_to_df(uint32_t in);
+extern double conv_8s_to_df(int64_t in);
+extern double conv_4s_to_df(int32_t in);
 
-extern float conv_8u_to_sf(size8u_t in);
-extern float conv_4u_to_sf(size4u_t in);
-extern float conv_8s_to_sf(size8s_t in);
-extern float conv_4s_to_sf(size4s_t in);
+extern float conv_8u_to_sf(uint64_t in);
+extern float conv_4u_to_sf(uint32_t in);
+extern float conv_8s_to_sf(int64_t in);
+extern float conv_4s_to_sf(int32_t in);
 
 extern float conv_df_to_sf(double in);
 

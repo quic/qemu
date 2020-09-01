@@ -33,7 +33,7 @@ static inline int is_packet_end(uint32_t word)
 
 extern void decode_send_insn_to(packet_t *packet, int start, int newloc);
 
-extern packet_t *decode_this(int max_words, size4u_t *words,
+extern packet_t *decode_this(int max_words, uint32_t *words,
                              packet_t *decode_pkt);
 
 #endif

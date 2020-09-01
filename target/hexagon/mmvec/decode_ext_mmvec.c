@@ -447,12 +447,12 @@ check_new_value(packet_t *packet)
     const char *reginfo;
     const char *destletters;
     const char *dststr = NULL;
-    size2u_t def_opcode;
+    uint16_t def_opcode;
     char letter;
     int def_regnum;
 
     for (i = 1; i < packet->num_insns; i++) {
-        size2u_t use_opcode = packet->insn[i].opcode;
+        uint16_t use_opcode = packet->insn[i].opcode;
         if (GET_ATTRIB(use_opcode, A_DOTNEWVALUE) &&
             GET_ATTRIB(use_opcode, A_CVI) &&
             GET_ATTRIB(use_opcode, A_STORE)) {

@@ -104,11 +104,11 @@
 
 #define DECL_PAIR(NAME, NUM, X, OFF) \
     TCGv_i64 NAME = tcg_temp_local_new_i64(); \
-    size1u_t NUM = REGNO(X) + OFF
+    uint8_t NUM = REGNO(X) + OFF
 
 #define DECL_PAIR_WRITABLE(NAME, NUM, X, OFF) \
     TCGv_i64 NAME = tcg_temp_local_new_i64(); \
-    size1u_t NUM = REGNO(X) + OFF; \
+    uint8_t NUM = REGNO(X) + OFF; \
     do { \
         int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
         if (is_predicated) { \
@@ -638,11 +638,11 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
     ((fSXTN(N, 64, VAL) == (VAL)) ? (VAL) : fVSATVALN(N, VAL))
 #define fADDSAT64(DST, A, B) \
     do { \
-        size8u_t __a = fCAST8u(A); \
-        size8u_t __b = fCAST8u(B); \
-        size8u_t __sum = __a + __b; \
-        size8u_t __xor = __a ^ __b; \
-        const size8u_t __mask = 0x8000000000000000ULL; \
+        uint64_t __a = fCAST8u(A); \
+        uint64_t __b = fCAST8u(B); \
+        uint64_t __sum = __a + __b; \
+        uint64_t __xor = __a ^ __b; \
+        const uint64_t __mask = 0x8000000000000000ULL; \
         if (__xor & __mask) { \
             DST = __sum; \
         } \
@@ -790,28 +790,28 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fWRITE_P2(VAL) WRITE_PREG(2, VAL)
 #define fWRITE_P3(VAL) WRITE_PREG(3, VAL)
 #define fPART1(WORK) if (part1) { WORK; return; }
-#define fCAST4u(A) ((size4u_t)(A))
-#define fCAST4s(A) ((size4s_t)(A))
-#define fCAST8u(A) ((size8u_t)(A))
-#define fCAST8s(A) ((size8s_t)(A))
-#define fCAST2_2s(A) ((size2s_t)(A))
-#define fCAST2_2u(A) ((size2u_t)(A))
-#define fCAST4_4s(A) ((size4s_t)(A))
-#define fCAST4_4u(A) ((size4u_t)(A))
-#define fCAST4_8s(A) ((size8s_t)((size4s_t)(A)))
-#define fCAST4_8u(A) ((size8u_t)((size4u_t)(A)))
-#define fCAST8_8s(A) ((size8s_t)(A))
-#define fCAST8_8u(A) ((size8u_t)(A))
-#define fCAST2_8s(A) ((size8s_t)((size2s_t)(A)))
-#define fCAST2_8u(A) ((size8u_t)((size2u_t)(A)))
-#define fZE8_16(A) ((size2s_t)((size1u_t)(A)))
-#define fSE8_16(A) ((size2s_t)((size1s_t)(A)))
-#define fSE16_32(A) ((size4s_t)((size2s_t)(A)))
-#define fZE16_32(A) ((size4u_t)((size2u_t)(A)))
-#define fSE32_64(A) ((size8s_t)((size4s_t)(A)))
-#define fZE32_64(A) ((size8u_t)((size4u_t)(A)))
-#define fSE8_32(A) ((size4s_t)((size1s_t)(A)))
-#define fZE8_32(A) ((size4s_t)((size1u_t)(A)))
+#define fCAST4u(A) ((uint32_t)(A))
+#define fCAST4s(A) ((int32_t)(A))
+#define fCAST8u(A) ((uint64_t)(A))
+#define fCAST8s(A) ((int64_t)(A))
+#define fCAST2_2s(A) ((int16_t)(A))
+#define fCAST2_2u(A) ((uint16_t)(A))
+#define fCAST4_4s(A) ((int32_t)(A))
+#define fCAST4_4u(A) ((uint32_t)(A))
+#define fCAST4_8s(A) ((int64_t)((int32_t)(A)))
+#define fCAST4_8u(A) ((uint64_t)((uint32_t)(A)))
+#define fCAST8_8s(A) ((int64_t)(A))
+#define fCAST8_8u(A) ((uint64_t)(A))
+#define fCAST2_8s(A) ((int64_t)((int16_t)(A)))
+#define fCAST2_8u(A) ((uint64_t)((uint16_t)(A)))
+#define fZE8_16(A) ((int16_t)((uint8_t)(A)))
+#define fSE8_16(A) ((int16_t)((int8_t)(A)))
+#define fSE16_32(A) ((int32_t)((int16_t)(A)))
+#define fZE16_32(A) ((uint32_t)((uint16_t)(A)))
+#define fSE32_64(A) ((int64_t)((int32_t)(A)))
+#define fZE32_64(A) ((uint64_t)((uint32_t)(A)))
+#define fSE8_32(A) ((int32_t)((int8_t)(A)))
+#define fZE8_32(A) ((int32_t)((uint8_t)(A)))
 #define fMPY8UU(A, B) (int)(fZE8_16(A) * fZE8_16(B))
 #define fMPY8US(A, B) (int)(fZE8_16(A) * fSE8_16(B))
 #define fMPY8SU(A, B) (int)(fSE8_16(A) * fZE8_16(B))
@@ -828,8 +828,8 @@ static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
 #define fROUND(A) (A + 0x8000)
 #define fCLIP(DST, SRC, U) \
     do { \
-        size4s_t maxv = (1 << U) - 1; \
-        size4s_t minv = -(1 << U); \
+        int32_t maxv = (1 << U) - 1; \
+        int32_t minv = -(1 << U); \
         DST = fMIN(maxv, fMAX(SRC, minv)); \
     } while (0)
 #define fCRND(A) ((((A) & 0x3) == 0x3) ? ((A) + 1) : ((A)))
@@ -952,14 +952,14 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
     do { \
         fcirc_add(REG, VAL, MuV); \
     } while (0)
-#define fSCALE(N, A) (((size8s_t)(A)) << N)
+#define fSCALE(N, A) (((int64_t)(A)) << N)
 #define fVSATW(A) fVSATN(32, ((long long)A))
 #define fSATW(A) fSATN(32, ((long long)A))
 #define fVSAT(A) fVSATN(32, (A))
 #define fSAT(A) fSATN(32, (A))
 #define fSAT_ORIG_SHL(A, ORIG_REG) \
-    ((((size4s_t)((fSAT(A)) ^ ((size4s_t)(ORIG_REG)))) < 0) \
-        ? fSATVALN(32, ((size4s_t)(ORIG_REG))) \
+    ((((int32_t)((fSAT(A)) ^ ((int32_t)(ORIG_REG)))) < 0) \
+        ? fSATVALN(32, ((int32_t)(ORIG_REG))) \
         : ((((ORIG_REG) > 0) && ((A) == 0)) ? fSATVALN(32, (ORIG_REG)) \
                                             : fSAT(A)))
 #define fPASS(A) A
@@ -1011,9 +1011,9 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
     (((SHAMT) >= 64) ? 0 : (fCAST##REGSTYPE##s(SRC) << (SHAMT)))
 #endif
 #define fFLOAT(A) \
-    ({ union { float f; size4u_t i; } _fipun; _fipun.i = (A); _fipun.f; })
+    ({ union { float f; uint32_t i; } _fipun; _fipun.i = (A); _fipun.f; })
 #define fUNFLOAT(A) \
-    ({ union { float f; size4u_t i; } _fipun; \
+    ({ union { float f; uint32_t i; } _fipun; \
      _fipun.f = (A); isnan(_fipun.f) ? 0xFFFFFFFFU : _fipun.i; })
 #define fSFNANVAL() 0xffffffff
 #define fSFINFVAL(A) (((A) & 0x80000000) | 0x7f800000)
@@ -1051,9 +1051,9 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
      (((EXP) & 0xff) << fSF_MANTBITS()) | \
      ((MANT) & ((1 << fSF_MANTBITS()) - 1)))
 #define fDOUBLE(A) \
-    ({ union { double f; size8u_t i; } _fipun; _fipun.i = (A); _fipun.f; })
+    ({ union { double f; uint64_t i; } _fipun; _fipun.i = (A); _fipun.f; })
 #define fUNDOUBLE(A) \
-    ({ union { double f; size8u_t i; } _fipun; \
+    ({ union { double f; uint64_t i; } _fipun; \
      _fipun.f = (A); \
      isnan(_fipun.f) ? 0xFFFFFFFFFFFFFFFFULL : _fipun.i; })
 #define fDFNANVAL() 0xffffffffffffffffULL
@@ -1181,8 +1181,8 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fGETBYTE(N, SRC) GETBYTE_FUNC(SRC)(BYTE, N, SRC, true)
 #define fGETUBYTE(N, SRC) GETBYTE_FUNC(SRC)(BYTE, N, SRC, false)
 #else
-#define fGETBYTE(N, SRC) ((size1s_t)((SRC >> ((N) * 8)) & 0xff))
-#define fGETUBYTE(N, SRC) ((size1u_t)((SRC >> ((N) * 8)) & 0xff))
+#define fGETBYTE(N, SRC) ((int8_t)((SRC >> ((N) * 8)) & 0xff))
+#define fGETUBYTE(N, SRC) ((uint8_t)((SRC >> ((N) * 8)) & 0xff))
 #endif
 
 #ifdef QEMU_GENERATE
@@ -1202,14 +1202,14 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fSETBYTE(N, DST, VAL) \
     do { \
         DST = (DST & ~(0x0ffLL << ((N) * 8))) | \
-        (((size8u_t)((VAL) & 0x0ffLL)) << ((N) * 8)); \
+        (((uint64_t)((VAL) & 0x0ffLL)) << ((N) * 8)); \
     } while (0)
-#define fGETHALF(N, SRC) ((size2s_t)((SRC >> ((N) * 16)) & 0xffff))
-#define fGETUHALF(N, SRC) ((size2u_t)((SRC >> ((N) * 16)) & 0xffff))
+#define fGETHALF(N, SRC) ((int16_t)((SRC >> ((N) * 16)) & 0xffff))
+#define fGETUHALF(N, SRC) ((uint16_t)((SRC >> ((N) * 16)) & 0xffff))
 #define fSETHALF(N, DST, VAL) \
     do { \
         DST = (DST & ~(0x0ffffLL << ((N) * 16))) | \
-        (((size8u_t)((VAL) & 0x0ffff)) << ((N) * 16)); \
+        (((uint64_t)((VAL) & 0x0ffff)) << ((N) * 16)); \
     } while (0)
 #define fSETHALFw fSETHALF
 #define fSETHALFd fSETHALF
@@ -1222,9 +1222,9 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fGETUWORD(N, SRC) GETWORD_FUNC(WORD)(WORD, N, SRC, false)
 #else
 #define fGETWORD(N, SRC) \
-    ((size8s_t)((size4s_t)((SRC >> ((N) * 32)) & 0x0ffffffffLL)))
+    ((int64_t)((int32_t)((SRC >> ((N) * 32)) & 0x0ffffffffLL)))
 #define fGETUWORD(N, SRC) \
-    ((size8u_t)((size4u_t)((SRC >> ((N) * 32)) & 0x0ffffffffLL)))
+    ((uint64_t)((uint32_t)((SRC >> ((N) * 32)) & 0x0ffffffffLL)))
 #endif
 
 #define fSETWORD(N, DST, VAL) \
@@ -1238,7 +1238,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #else
 #define fSETBIT(N, DST, VAL) \
     do { \
-        DST = (DST & ~(1ULL << (N))) | (((size8u_t)(VAL)) << (N)); \
+        DST = (DST & ~(1ULL << (N))) | (((uint64_t)(VAL)) << (N)); \
     } while (0)
 #endif
 

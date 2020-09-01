@@ -28,7 +28,7 @@ from hex_common import *
 ## Helpers for gen_helper_function
 ##
 def gen_decl_ea(f):
-    f.write("size4u_t EA;\n")
+    f.write("uint32_t EA;\n")
 
 def gen_helper_return_type(f,regtype,regid,regno):
     if regno > 1 : f.write(", ")

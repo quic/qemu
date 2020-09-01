@@ -36,48 +36,47 @@
 
 typedef union {
     double f;
-    size8u_t i;
+    uint64_t i;
     struct {
-        size8u_t mant:52;
-        size8u_t exp:11;
-        size8u_t sign:1;
+        uint64_t mant:52;
+        uint64_t exp:11;
+        uint64_t sign:1;
     } x;
 } df_t;
 
 typedef union {
     float f;
-    size4u_t i;
+    uint32_t i;
     struct {
-        size4u_t mant:23;
-        size4u_t exp:8;
-        size4u_t sign:1;
+        uint32_t mant:23;
+        uint32_t exp:8;
+        uint32_t sign:1;
     } x;
 } sf_t;
 
 typedef struct {
     union {
-        size8u_t low;
+        uint64_t low;
         struct {
-            size4u_t w0;
-            size4u_t w1;
+            uint32_t w0;
+            uint32_t w1;
         };
     };
     union {
-        size8u_t high;
+        uint64_t high;
         struct {
-            size4u_t w3;
-            size4u_t w2;
+            uint32_t w3;
+            uint32_t w2;
         };
     };
 } int128_t;
-
 typedef struct {
     int128_t mant;
-    size4s_t exp;
-    size1u_t sign;
-    size1u_t guard;
-    size1u_t round;
-    size1u_t sticky;
+    int32_t exp;
+    uint8_t sign;
+    uint8_t guard;
+    uint8_t round;
+    uint8_t sticky;
 } xf_t;
 
 static inline void xf_init(xf_t *p)
@@ -91,7 +90,7 @@ static inline void xf_init(xf_t *p)
     p->sticky = 0;
 }
 
-static inline size8u_t df_getmant(df_t a)
+static inline uint64_t df_getmant(df_t a)
 {
     int class = fpclassify(a.f);
     switch (class) {
@@ -106,7 +105,7 @@ static inline size8u_t df_getmant(df_t a)
     };
 }
 
-static inline size4s_t df_getexp(df_t a)
+static inline int32_t df_getexp(df_t a)
 {
     int class = fpclassify(a.f);
     switch (class) {
@@ -119,7 +118,7 @@ static inline size4s_t df_getexp(df_t a)
     };
 }
 
-static inline size8u_t sf_getmant(sf_t a)
+static inline uint64_t sf_getmant(sf_t a)
 {
     int class = fpclassify(a.f);
     switch (class) {
@@ -134,7 +133,7 @@ static inline size8u_t sf_getmant(sf_t a)
     };
 }
 
-static inline size4s_t sf_getexp(sf_t a)
+static inline int32_t sf_getexp(sf_t a)
 {
     int class = fpclassify(a.f);
     switch (class) {
@@ -147,19 +146,19 @@ static inline size4s_t sf_getexp(sf_t a)
     };
 }
 
-static inline int128_t int128_mul_6464(size8u_t ai, size8u_t bi)
+static inline int128_t int128_mul_6464(uint64_t ai, uint64_t bi)
 {
     int128_t ret;
     int128_t a, b;
-    size8u_t pp0, pp1a, pp1b, pp1s, pp2;
+    uint64_t pp0, pp1a, pp1b, pp1s, pp2;
 
     a.high = b.high = 0;
     a.low = ai;
     b.low = bi;
-    pp0 = (size8u_t)a.w0 * (size8u_t)b.w0;
-    pp1a = (size8u_t)a.w1 * (size8u_t)b.w0;
-    pp1b = (size8u_t)b.w1 * (size8u_t)a.w0;
-    pp2 = (size8u_t)a.w1 * (size8u_t)b.w1;
+    pp0 = (uint64_t)a.w0 * (uint64_t)b.w0;
+    pp1a = (uint64_t)a.w1 * (uint64_t)b.w0;
+    pp1b = (uint64_t)b.w1 * (uint64_t)a.w0;
+    pp2 = (uint64_t)a.w1 * (uint64_t)b.w1;
 
     pp1s = pp1a + pp1b;
     if ((pp1s < pp1a) || (pp1s < pp1b)) {
@@ -174,7 +173,7 @@ static inline int128_t int128_mul_6464(size8u_t ai, size8u_t bi)
     return ret;
 }
 
-static inline int128_t int128_shl(int128_t a, size4u_t amt)
+static inline int128_t int128_shl(int128_t a, uint32_t amt)
 {
     int128_t ret;
     if (amt == 0) {
@@ -196,7 +195,7 @@ static inline int128_t int128_shl(int128_t a, size4u_t amt)
     return ret;
 }
 
-static inline int128_t int128_shr(int128_t a, size4u_t amt)
+static inline int128_t int128_shr(int128_t a, uint32_t amt)
 {
     int128_t ret;
     if (amt == 0) {

@@ -85,7 +85,7 @@ enum ext_mem_access_types {
 };
 
 static inline
-target_ulong mem_init_access(CPUHexagonState *env, int slot, size4u_t vaddr,
+target_ulong mem_init_access(CPUHexagonState *env, int slot, uint32_t vaddr,
                              int width, enum ext_mem_access_types mtype,
                              int type_for_xlate)
 {
@@ -113,7 +113,7 @@ static inline int check_gather_store(CPUHexagonState *env)
 
 void mem_store_vector_oddva(CPUHexagonState *env, vaddr_t vaddr,
                             vaddr_t lookup_vaddr, int slot, int size,
-                            size1u_t *data, size1u_t *mask, unsigned invert,
+                            uint8_t *data, uint8_t *mask, unsigned invert,
                             int use_full_va)
 {
     int i;
@@ -161,7 +161,7 @@ void mem_store_vector_oddva(CPUHexagonState *env, vaddr_t vaddr,
 
 void mem_load_vector_oddva(CPUHexagonState *env, vaddr_t vaddr,
                            vaddr_t lookup_vaddr, int slot, int size,
-                           size1u_t *data, int use_full_va)
+                           uint8_t *data, int use_full_va)
 {
     int i;
 

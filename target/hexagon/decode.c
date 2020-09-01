@@ -57,7 +57,7 @@ typedef struct {
 } dectree_entry_t;
 
 typedef struct _dectree_table_struct {
-    unsigned int (*lookup_function)(int startbit, int width, size4u_t opcode);
+    unsigned int (*lookup_function)(int startbit, int width, uint32_t opcode);
     unsigned int size;
     unsigned int startbit;
     unsigned int width;
@@ -156,8 +156,8 @@ static void decode_ext_init(void)
 }
 
 typedef struct {
-    size4u_t mask;
-    size4u_t match;
+    uint32_t mask;
+    uint32_t match;
 } decode_itable_entry_t;
 
 #define DECODE_NEW_TABLE(TAG, SIZE, WHATNOT)  /* NOTHING */
@@ -239,7 +239,7 @@ static int
 decode_fill_newvalue_regno(packet_t *packet)
 {
     int i, use_regidx, def_idx;
-    size2u_t def_opcode, use_opcode;
+    uint16_t def_opcode, use_opcode;
     char *dststr;
 
     for (i = 1; i < packet->num_insns; i++) {
@@ -373,7 +373,7 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
 {
     int i;
     int numinsns = pkt->num_insns;
-    size2u_t opcode;
+    uint16_t opcode;
     int canjump;
 
     pkt->pkt_has_cof = 0;
@@ -535,10 +535,10 @@ static int decode_shuffle_for_execution(packet_t *packet)
 }
 
 static int
-apply_extender(packet_t *pkt, int i, size4u_t extender)
+apply_extender(packet_t *pkt, int i, uint32_t extender)
 {
     int immed_num;
-    size4u_t base_immed;
+    uint32_t base_immed;
 
     immed_num = opcode_which_immediate_is_extended(pkt->insn[i].opcode);
     base_immed = pkt->insn[i].immed[immed_num];
@@ -588,7 +588,7 @@ get_valid_slot_str(const packet_t *pkt, unsigned int slot)
 
 #include "q6v_decode.c"
 
-packet_t *decode_this(int max_words, size4u_t *words, packet_t *decode_pkt)
+packet_t *decode_this(int max_words, uint32_t *words, packet_t *decode_pkt)
 {
     int ret;
     ret = do_decode_packet(max_words, words, decode_pkt);

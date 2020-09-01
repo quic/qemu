@@ -51,31 +51,31 @@ static int __builtin_clzll(unsigned long long int input)
 
 typedef union {
     double f;
-    size8u_t i;
+    uint64_t i;
     struct {
-        size8u_t mant:52;
-        size8u_t exp:11;
-        size8u_t sign:1;
+        uint64_t mant:52;
+        uint64_t exp:11;
+        uint64_t sign:1;
     } x;
 } df_t;
 
 
 typedef union {
     float f;
-    size4u_t i;
+    uint32_t i;
     struct {
-        size4u_t mant:23;
-        size4u_t exp:8;
-        size4u_t sign:1;
+        uint32_t mant:23;
+        uint32_t exp:8;
+        uint32_t sign:1;
     } x;
 } sf_t;
 
 
 #define MAKE_CONV_8U_TO_XF_N(FLOATID, BIGFLOATID, RETTYPE) \
-static RETTYPE conv_8u_to_##FLOATID##_n(size8u_t in, int negate) \
+static RETTYPE conv_8u_to_##FLOATID##_n(uint64_t in, int negate) \
 { \
     FLOATID##_t x; \
-    size8u_t tmp, truncbits, shamt; \
+    uint64_t tmp, truncbits, shamt; \
     int leading_zeros; \
     if (in == 0) { \
         return 0.0; \
@@ -123,12 +123,12 @@ static RETTYPE conv_8u_to_##FLOATID##_n(size8u_t in, int negate) \
 MAKE_CONV_8U_TO_XF_N(df, DF, double)
 MAKE_CONV_8U_TO_XF_N(sf, SF, float)
 
-double conv_8u_to_df(size8u_t in)
+double conv_8u_to_df(uint64_t in)
 {
     return conv_8u_to_df_n(in, 0);
 }
 
-double conv_8s_to_df(size8s_t in)
+double conv_8s_to_df(int64_t in)
 {
     if (in == 0x8000000000000000) {
         return -0x1p63;
@@ -140,22 +140,22 @@ double conv_8s_to_df(size8s_t in)
     }
 }
 
-double conv_4u_to_df(size4u_t in)
+double conv_4u_to_df(uint32_t in)
 {
-    return conv_8u_to_df((size8u_t) in);
+    return conv_8u_to_df((uint64_t) in);
 }
 
-double conv_4s_to_df(size4s_t in)
+double conv_4s_to_df(int32_t in)
 {
     return conv_8s_to_df(in);
 }
 
-float conv_8u_to_sf(size8u_t in)
+float conv_8u_to_sf(uint64_t in)
 {
     return conv_8u_to_sf_n(in, 0);
 }
 
-float conv_8s_to_sf(size8s_t in)
+float conv_8s_to_sf(int64_t in)
 {
     if (in == 0x8000000000000000) {
         return -0x1p63;
@@ -167,22 +167,22 @@ float conv_8s_to_sf(size8s_t in)
     }
 }
 
-float conv_4u_to_sf(size4u_t in)
+float conv_4u_to_sf(uint32_t in)
 {
     return conv_8u_to_sf(in);
 }
 
-float conv_4s_to_sf(size4s_t in)
+float conv_4s_to_sf(int32_t in)
 {
     return conv_8s_to_sf(in);
 }
 
 
-static size8u_t conv_df_to_8u_n(double in, int will_negate)
+static uint64_t conv_df_to_8u_n(double in, int will_negate)
 {
     df_t x;
     int fracshift, endshift;
-    size8u_t tmp, truncbits;
+    uint64_t tmp, truncbits;
     x.f = in;
     if (isinf(in)) {
         feraiseexcept(FE_INVALID);
@@ -273,31 +273,31 @@ static size8u_t conv_df_to_8u_n(double in, int will_negate)
     return tmp;
 }
 
-static size4u_t conv_df_to_4u_n(double in, int will_negate)
+static uint32_t conv_df_to_4u_n(double in, int will_negate)
 {
-    size8u_t tmp;
+    uint64_t tmp;
     tmp = conv_df_to_8u_n(in, will_negate);
     if (tmp > 0x00000000ffffffffULL) {
         feclearexcept(FE_INEXACT);
         feraiseexcept(FE_INVALID);
         return ~0U;
     }
-    return (size4u_t)tmp;
+    return (uint32_t)tmp;
 }
 
-size8u_t conv_df_to_8u(double in)
+uint64_t conv_df_to_8u(double in)
 {
     return conv_df_to_8u_n(in, 0);
 }
 
-size4u_t conv_df_to_4u(double in)
+uint32_t conv_df_to_4u(double in)
 {
     return conv_df_to_4u_n(in, 0);
 }
 
-size8s_t conv_df_to_8s(double in)
+int64_t conv_df_to_8s(double in)
 {
-    size8u_t tmp;
+    uint64_t tmp;
     df_t x;
     x.f = in;
     if (isnan(in)) {
@@ -321,9 +321,9 @@ size8s_t conv_df_to_8s(double in)
     }
 }
 
-size4s_t conv_df_to_4s(double in)
+int32_t conv_df_to_4s(double in)
 {
-    size8u_t tmp;
+    uint64_t tmp;
     df_t x;
     x.f = in;
     if (isnan(in)) {
@@ -347,22 +347,22 @@ size4s_t conv_df_to_4s(double in)
     }
 }
 
-size8u_t conv_sf_to_8u(float in)
+uint64_t conv_sf_to_8u(float in)
 {
     return conv_df_to_8u(in);
 }
 
-size4u_t conv_sf_to_4u(float in)
+uint32_t conv_sf_to_4u(float in)
 {
     return conv_df_to_4u(in);
 }
 
-size8s_t conv_sf_to_8s(float in)
+int64_t conv_sf_to_8s(float in)
 {
     return conv_df_to_8s(in);
 }
 
-size4s_t conv_sf_to_4s(float in)
+int32_t conv_sf_to_4s(float in)
 {
     return conv_df_to_4s(in);
 }

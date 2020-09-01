@@ -19,7 +19,6 @@
 #define HEXAGON_INSN_H
 
 #include "cpu.h"
-#include "hex_arch_types.h"
 
 #define INSTRUCTIONS_MAX 7    /* 2 pairs + loopend */
 #define REG_OPERANDS_MAX 5
@@ -36,40 +35,40 @@ typedef void (*semantic_insn_t)(CPUHexagonState *env,
 
 struct Instruction {
     semantic_insn_t generate;            /* pointer to genptr routine */
-    size1u_t regno[REG_OPERANDS_MAX];    /* reg operands including predicates */
-    size2u_t opcode;
+    uint8_t regno[REG_OPERANDS_MAX];    /* reg operands including predicates */
+    uint16_t opcode;
 
-    size4u_t iclass:6;
-    size4u_t slot:3;
-    size4u_t part1:1;        /*
+    uint32_t iclass:6;
+    uint32_t slot:3;
+    uint32_t part1:1;        /*
                               * cmp-jumps are split into two insns.
                               * set for the compare and clear for the jump
                               */
-    size4u_t extension_valid:1;   /* Has a constant extender attached */
-    size4u_t which_extended:1;    /* If has an extender, which immediate */
-    size4u_t is_endloop:1;   /* This is an end of loop */
-    size4u_t new_value_producer_slot:4;
-    size4u_t hvx_resource:8;
-    size4s_t immed[IMMEDS_MAX];    /* immediate field */
+    uint32_t extension_valid:1;   /* Has a constant extender attached */
+    uint32_t which_extended:1;    /* If has an extender, which immediate */
+    uint32_t is_endloop:1;   /* This is an end of loop */
+    uint32_t new_value_producer_slot:4;
+    uint32_t hvx_resource:8;
+    int32_t immed[IMMEDS_MAX];    /* immediate field */
 };
 
 typedef struct Instruction insn_t;
 
 struct Packet {
-    size2u_t num_insns;
-    size2u_t encod_pkt_size_in_bytes;
+    uint16_t num_insns;
+    uint16_t encod_pkt_size_in_bytes;
 
     /* Pre-decodes about COF */
-    size8u_t pkt_has_cof:1;          /* Has any change-of-flow */
-    size8u_t pkt_has_endloop:1;
+    uint32_t pkt_has_cof:1;          /* Has any change-of-flow */
+    uint32_t pkt_has_endloop:1;
 
-    size8u_t pkt_has_dczeroa:1;
+    uint32_t pkt_has_dczeroa:1;
 
-    size8u_t pkt_has_store_s0:1;
-    size8u_t pkt_has_store_s1:1;
+    uint32_t pkt_has_store_s0:1;
+    uint32_t pkt_has_store_s1:1;
 
-    size8u_t pkt_has_hvx:1;
-    size8u_t pkt_has_extension:1;
+    uint32_t pkt_has_hvx:1;
+    uint32_t pkt_has_extension:1;
 
     insn_t insn[INSTRUCTIONS_MAX];
 };

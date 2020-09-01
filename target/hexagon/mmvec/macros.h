@@ -50,7 +50,7 @@
 #ifdef QEMU_GENERATE
 #define DECL_VREG(VAR, NUM, X, OFF) \
     TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
-    size1u_t NUM = REGNO(X) + OFF; \
+    uint8_t NUM = REGNO(X) + OFF; \
     do { \
         uint32_t offset = new_temp_vreg_offset(ctx, 1); \
         tcg_gen_addi_ptr(VAR, cpu_env, offset); \
@@ -73,7 +73,7 @@ static bool readonly_ok(insn_t *insn)
 
 #define DECL_VREG_READONLY(VAR, NUM, X, OFF) \
     TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
-    size1u_t NUM = REGNO(X) + OFF; \
+    uint8_t NUM = REGNO(X) + OFF; \
     if (!readonly_ok(insn)) { \
         uint32_t offset = new_temp_vreg_offset(ctx, 1); \
         tcg_gen_addi_ptr(VAR, cpu_env, offset); \
@@ -96,7 +96,7 @@ static bool readonly_ok(insn_t *insn)
 
 #define DECL_VREG_PAIR(VAR, NUM, X, OFF) \
     TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
-    size1u_t NUM = REGNO(X) + OFF; \
+    uint8_t NUM = REGNO(X) + OFF; \
     do { \
         uint32_t offset = new_temp_vreg_offset(ctx, 2); \
         tcg_gen_addi_ptr(VAR, cpu_env, offset); \
@@ -113,7 +113,7 @@ static bool readonly_ok(insn_t *insn)
 
 #define DECL_QREG(VAR, NUM, X, OFF) \
     TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
-    size1u_t NUM = REGNO(X) + OFF; \
+    uint8_t NUM = REGNO(X) + OFF; \
     do { \
         uint32_t __offset = new_temp_qreg_offset(ctx); \
         tcg_gen_addi_ptr(VAR, cpu_env, __offset); \
@@ -315,7 +315,7 @@ static bool readonly_ok(insn_t *insn)
      (fGENMASKW(fNOTQ(QREG), IDX) & (NOVAL)))
 #define fSETQBITS(REG, WIDTH, MASK, BITNO, VAL) \
     do { \
-        size4u_t __TMP = (VAL); \
+        uint32_t __TMP = (VAL); \
         REG.w[(BITNO) >> 5] &= ~((MASK) << ((BITNO) & 0x1f)); \
         REG.w[(BITNO) >> 5] |= (((__TMP) & (MASK)) << ((BITNO) & 0x1f)); \
     } while (0)
@@ -326,7 +326,7 @@ static bool readonly_ok(insn_t *insn)
 #define fVELEM(WIDTH) ((fVECSIZE() * 8) / WIDTH)
 #define fVECLOGSIZE() (7)
 #define fVECSIZE() (1 << fVECLOGSIZE())
-#define fSWAPB(A, B) do { size1u_t tmp = A; A = B; B = tmp; } while (0)
+#define fSWAPB(A, B) do { uint8_t tmp = A; A = B; B = tmp; } while (0)
 static inline mmvector_t mmvec_zero_vector(void)
 {
     mmvector_t ret;
@@ -421,7 +421,7 @@ static inline mmvector_t mmvec_zero_vector(void)
         for (i0 = 0; i0 < ELEMENT_SIZE; i0++) { \
             log_byte = ((va + i0) <= va_high) && QVAL; \
             log_bank |= (log_byte << i0); \
-            size1u_t B; \
+            uint8_t B; \
             get_user_u8(B, EA + i0); \
             env->tmp_VRegs[0].ub[ELEMENT_SIZE * IDX + i0] = B; \
             LOG_VTCM_BYTE(va + i0, log_byte, B, ELEMENT_SIZE * IDX + i0); \
@@ -462,7 +462,7 @@ static inline mmvector_t mmvec_zero_vector(void)
                 TYPE dst = 0; \
                 TYPE inc = 0; \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
-                    size1u_t val; \
+                    uint8_t val; \
                     get_user_u8(val, env->vtcm_log.va[i + j]); \
                     dst |= val << (8 * j); \
                     inc |= env->vtcm_log.data.ub[j + i] << (8 * j); \
@@ -534,8 +534,8 @@ static inline mmvector_t mmvec_zero_vector(void)
 #define fLOADMMV(EA, DST) fLOADMMV_AL(EA, fVECSIZE(), fVECSIZE(), DST)
 #define fLOADMMVU_AL(EA, ALIGNMENT, LEN, DST) \
     do { \
-        size4u_t size2 = (EA) & (ALIGNMENT - 1); \
-        size4u_t size1 = LEN - size2; \
+        uint32_t size2 = (EA) & (ALIGNMENT - 1); \
+        uint32_t size1 = LEN - size2; \
         mem_load_vector_oddva(env, EA + size1, EA + fVECSIZE(), 1, size2, \
                               &DST.ub[size1], fUSE_LOOKUP_ADDRESS()); \
         mem_load_vector_oddva(env, EA, EA, 0, size1, &DST.ub[0], \
@@ -586,8 +586,8 @@ static inline mmvector_t mmvec_zero_vector(void)
     fSTOREMMVNQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
 #define fSTOREMMVU_AL(EA, ALIGNMENT, LEN, SRC) \
     do { \
-        size4u_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
-        size4u_t size2; \
+        uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
+        uint32_t size2; \
         if (size1 > LEN) { \
             size1 = LEN; \
         } \
@@ -608,8 +608,8 @@ static inline mmvector_t mmvec_zero_vector(void)
     } while (0)
 #define fSTOREMMVQU_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
-        size4u_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
-        size4u_t size2; \
+        uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
+        uint32_t size2; \
         mmvector_t maskvec; \
         int i; \
         for (i = 0; i < fVECSIZE(); i++) { \
@@ -627,8 +627,8 @@ static inline mmvector_t mmvec_zero_vector(void)
     } while (0)
 #define fSTOREMMVNQU_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
-        size4u_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
-        size4u_t size2; \
+        uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
+        uint32_t size2; \
         mmvector_t maskvec; \
         int i; \
         for (i = 0; i < fVECSIZE(); i++) { \

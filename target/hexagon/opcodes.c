@@ -73,7 +73,7 @@ const char * const opcode_short_semantics[] = {
 };
 
 
-size4u_t
+uint32_t
     opcode_attribs[XX_LAST_OPCODE][(A_ZZ_LASTATTRIB / ATTRIB_WIDTH) + 1];
 
 static void init_attribs(int tag, ...)
@@ -86,9 +86,9 @@ static void init_attribs(int tag, ...)
     }
 }
 
-static size4u_t str2val(const char *str)
+static uint32_t str2val(const char *str)
 {
-    size4u_t ret = 0;
+    uint32_t ret = 0;
     for ( ; *str; str++) {
         switch (*str) {
         case ' ':
