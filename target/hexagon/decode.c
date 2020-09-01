@@ -268,7 +268,6 @@ decode_fill_newvalue_regno(packet_t *packet)
              */
             if ((def_idx < 0) || (def_idx > (packet->num_insns - 1))) {
                 g_assert_not_reached();
-                return 1;
             }
 
             /* previous insn is the producer */
@@ -290,7 +289,6 @@ decode_fill_newvalue_regno(packet_t *packet)
                             dststr = strchr(opcode_reginfo[def_opcode], 'y');
                         } else {
                             g_assert_not_reached();
-                            return 1;
                         }
                     }
                 }

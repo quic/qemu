@@ -63,7 +63,6 @@ int hexagon_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
     }
 
     g_assert_not_reached();
-    return 0;
 }
 
 static int gdb_put_vreg(CPUHexagonState *env, uint8_t *mem_buf, int n)
@@ -107,5 +106,4 @@ int hexagon_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     }
 
     g_assert_not_reached();
-    return 0;
 }

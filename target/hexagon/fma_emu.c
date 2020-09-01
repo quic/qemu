@@ -644,9 +644,6 @@ static inline double special_fma(df_t a, df_t b, df_t c)
         return ret.f;
     }
     g_assert_not_reached();
-    ret.x.exp = 0x123;
-    ret.x.mant = 0xdead;
-    return ret.f;
 }
 
 static inline float special_fmaf(sf_t a, sf_t b, sf_t c)
