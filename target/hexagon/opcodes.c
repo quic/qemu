@@ -65,10 +65,10 @@ const char *opcode_wregs[] = {
 #undef IMMINFO
 };
 
-const char *opcode_short_semantics[] = {
-#define OPCODE(X)              NULL
-#include "opcodes_def_generated.h"
-#undef OPCODE
+const char * const opcode_short_semantics[] = {
+#define DEF_SHORTCODE(TAG, SHORTCODE)              [TAG] = #SHORTCODE,
+#include "shortcode_generated.h"
+#undef DEF_SHORTCODE
     NULL
 };
 
@@ -169,11 +169,6 @@ void opcode_init(void)
 #undef ATTRIBS
 
     decode_init();
-
-#define DEF_SHORTCODE(TAG, SHORTCODE) \
-    opcode_short_semantics[TAG] = #SHORTCODE;
-#include "shortcode_generated.h"
-#undef DEF_SHORTCODE
 }
 
 

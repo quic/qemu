@@ -18,11 +18,11 @@
 #include "qemu/osdep.h"
 #include "reg_fields.h"
 
-reg_field_t reg_field_info[] = {
-#define DEF_REG_FIELD(TAG, NAME, START, WIDTH, DESCRIPTION)    \
-      {NAME, START, WIDTH, DESCRIPTION},
+const reg_field_t reg_field_info[] = {
+#define DEF_REG_FIELD(TAG, START, WIDTH)    \
+      { START, WIDTH },
 #include "reg_fields_def.h"
-      {NULL, 0, 0}
+      { 0, 0 }
 #undef DEF_REG_FIELD
 };
 

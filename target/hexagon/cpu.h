@@ -23,21 +23,13 @@ typedef struct CPUHexagonState CPUHexagonState;
 
 #include <fenv.h>
 
-#define TARGET_PAGE_BITS 16     /* 64K pages */
-#define TARGET_LONG_BITS 32
-
-#include "qemu/compiler.h"
 #include "qemu-common.h"
 #include "exec/cpu-defs.h"
 #include "hex_regs.h"
 #include "mmvec/mmvec.h"
 
 #define NUM_PREGS 4
-#ifdef CONFIG_USER_ONLY
 #define TOTAL_PER_THREAD_REGS 64
-#else
-#error System mode not implemented
-#endif
 
 #define SLOTS_MAX 4
 #define STORES_MAX 2

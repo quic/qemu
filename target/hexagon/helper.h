@@ -37,6 +37,3 @@ DEF_HELPER_3(merge_inflight_store4u, s32, env, s32, s32)
 DEF_HELPER_3(merge_inflight_store8u, s64, env, s32, s64)
 
 #include "helper_protos_generated.h"
-
-DEF_HELPER_2(debug_value, void, env, s32)
-DEF_HELPER_2(debug_value_i64, void, env, s64)

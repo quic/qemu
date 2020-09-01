@@ -36,7 +36,7 @@ static const char *sreg2str(unsigned int reg)
 
 static const char *creg2str(unsigned int reg)
 {
-    return sreg2str(reg + NUM_GEN_REGS);
+    return sreg2str(reg + HEX_REG_SA0);
 }
 
 static void snprintinsn(char *buf, int n, insn_t * insn)

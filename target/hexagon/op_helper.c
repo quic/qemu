@@ -483,17 +483,6 @@ MERGE_INFLIGHT(merge_inflight_store4s, int32_t, int32_t,  int32_t, 4)
 MERGE_INFLIGHT(merge_inflight_store4u, int32_t, int32_t, uint32_t, 4)
 MERGE_INFLIGHT(merge_inflight_store8u, int64_t, int64_t,  int64_t, 8)
 
-/* Helpful for printing intermediate values within instructions */
-void HELPER(debug_value)(CPUHexagonState *env, int32_t value)
-{
-    HEX_DEBUG_LOG("value = 0x%x\n", value);
-}
-
-void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
-{
-    HEX_DEBUG_LOG("value_i64 = 0x%lx\n", value);
-}
-
 /* Log a write to HVX vector */
 static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
                                       int vnew, uint32_t slot)

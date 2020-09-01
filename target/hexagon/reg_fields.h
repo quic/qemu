@@ -18,19 +18,15 @@
 #ifndef HEXAGON_REG_FIELDS_H
 #define HEXAGON_REG_FIELDS_H
 
-#define NUM_GEN_REGS 32
-
 typedef struct {
-    const char *name;
     int offset;
     int width;
-    const char *description;
 } reg_field_t;
 
-extern reg_field_t reg_field_info[];
+extern const reg_field_t reg_field_info[];
 
-enum reg_fields_enum {
-#define DEF_REG_FIELD(TAG, NAME, START, WIDTH, DESCRIPTION) \
+enum {
+#define DEF_REG_FIELD(TAG, START, WIDTH) \
     TAG,
 #include "reg_fields_def.h"
     NUM_REG_FIELDS

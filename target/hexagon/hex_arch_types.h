@@ -18,7 +18,7 @@
 #ifndef HEXAGON_ARCH_TYPES_H
 #define HEXAGON_ARCH_TYPES_H
 
-#include <stdint.h>
+#include "qemu/osdep.h"
 
 /*
  * These types are used by the code generated from the Hexagon
