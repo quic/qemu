@@ -50,5 +50,6 @@ int main()
          */
         asm_wait();
     }
+    printf("PASS\n");
     return 0;
 }

@@ -47,6 +47,7 @@ extern int hexagon_tools_memory_read_locked(CPUHexagonState *env, vaddr_t vaddr,
 extern int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
     int size, size8u_t data);
 extern void hexagon_wait_thread(CPUHexagonState *env);
+extern void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei);
 extern void hexagon_resume_threads(CPUHexagonState *env, uint32_t mask);
 extern void hexagon_start_threads(CPUHexagonState *env, uint32_t mask);
 extern void hexagon_stop_thread(CPUHexagonState *env);

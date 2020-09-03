@@ -404,9 +404,11 @@ static hex_timer_state *hex_timer_init(hex_timer_state *s, uint32_t freq)
 
     s->timer = ptimer_init(hex_timer_tick, s, PTIMER_POLICY_DEFAULT);
     vmstate_register(NULL, VMSTATE_INSTANCE_ID_ANY, &vmstate_hex_timer, s);
+#if 0
     /* auto start qtimer */
     hex_timer_write(s, QTMR_CNTP_TVAL, 27428, 0);
     hex_timer_write(s, QTMR_CNTP_CTL, 1, 0);
+#endif
     return s;
 }
 

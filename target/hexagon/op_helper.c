@@ -81,32 +81,7 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
                                           uint32_t exception,
                                           uintptr_t pc)
 {
-#ifndef CONFIG_USER_ONLY
-    CPUHexagonState *lowest_prio_thread = env;
-    bool only_waiters = true;
-    uint32_t lowest_th_prio = GET_FIELD(
-        STID_PRIO, ARCH_GET_SYSTEM_REG(lowest_prio_thread, HEX_SREG_STID));
-    CPUState *cpu = NULL;
-    CPU_FOREACH (cpu) {
-        CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
-        uint32_t th_prio = GET_FIELD(
-            STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
-        const bool waiting = (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
-        const bool is_candidate = (only_waiters && waiting) || !only_waiters;
-
-        /* 0 is the greatest priority for a thread, track the values
-         * that are lower priority (w/greater value).
-         */
-        if (lowest_th_prio > th_prio && is_candidate) {
-            lowest_prio_thread = thread_env;
-            lowest_th_prio = th_prio;
-        }
-    }
-
-    CPUState *cs = CPU(hexagon_env_get_cpu(lowest_prio_thread));
-#else
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
-#endif
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
@@ -1305,8 +1280,9 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
 
     /* Assert all of the interrupts in the `mask` input: */
     target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
-    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad) | mask;
-    SET_SYSTEM_FIELD(env, HEX_SREG_IPENDAD, IPENDAD_IAD, ipendad_iad);
+    target_ulong ipendad_ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
+    ipendad_ipend |= mask;
+    SET_SYSTEM_FIELD(env, HEX_SREG_IPENDAD, IPENDAD_IPEND, ipendad_ipend);
 
     hexagon_find_asserted_interrupts(env, ints_asserted, sizeof(ints_asserted),
                                      &ints_asserted_count);
@@ -1370,8 +1346,10 @@ void HELPER(resched)(CPUHexagonState *env)
 
             HexagonCPU *int_thread =
                 hexagon_find_lowest_prio_any_thread(threads, i);
+#if HEX_DEBUG
             CPUHexagonState *int_thread_env = &(HEXAGON_CPU(int_thread)->env);
             HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
+#endif
 
             // FIXME: if resched was detected on a packet that included
             // change-of-flow, the resume PC may be wrong

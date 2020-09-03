@@ -20,12 +20,9 @@ TESTS += \
 	timer_reg \
 	qtimer_test \
 	bestwait \
+	swi \
 	pcycle \
 	$()
-
-# Disabled for now:
-#	qtimer_test \
-#	wait \
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 
@@ -53,6 +50,7 @@ sys_atomics: sys_atomics.o
 timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o
 bestwait: bestwait.o
+swi: swi.o
 wait: wait.o
 pcycle: pcycle.o
 

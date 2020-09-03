@@ -456,6 +456,9 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
     case HEXAGON_CPU_IRQ_0 ... HEXAGON_CPU_IRQ_7:
       //  printf ("%s: IRQ irq:%d, level:%d\n", __func__, irq, level);
         if (level) {
+            if (get_exe_mode(env) == HEX_EXE_MODE_WAIT) {
+                hexagon_resume_thread(env, HEX_EVENT_NONE);
+            }
             cpu_interrupt(cs, mask[irq]);
         } else {
             cpu_reset_interrupt(cs, mask[irq]);
@@ -497,10 +500,9 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
     thread_env->cause_code = HEX_CAUSE_INT0 + int_num;
 
     if (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT) {
-        clear_wait_mode(thread_env);
-        cpu_loop_exit_restore(cs, env->gpr[HEX_REG_PC]);
+        hexagon_resume_thread(thread_env, cs->exception_index);
     }
-    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IPENDAD);
     target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad) | int_mask;
     HEX_DEBUG_LOG("%s: tid %d handling interrupt %d, ipend_iad 0x%x\n",
                   __FUNCTION__, thread_env->threadId, int_num, ipendad_iad);
@@ -523,7 +525,7 @@ void hexagon_find_asserted_interrupts(CPUHexagonState *env, uint32_t *ints,
          ++intnum) {
         unsigned mask = 0x1 << intnum;
         if ((ipendad_ipend & mask) && (!(ipendad_iad & mask))) {
-            ints[*list_size++] = intnum;
+            ints[(*list_size)++] = intnum;
         }
     }
 }
@@ -576,7 +578,7 @@ void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
         }
         HEX_DEBUG_LOG("%s: adding tid %d to list\n", __FUNCTION__,
                       chk_env->threadId);
-        threads[*list_size++] = chk_cpu;
+        threads[(*list_size)++] = chk_cpu;
     }
 }
 

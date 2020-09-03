@@ -241,7 +241,20 @@ void hexagon_wait_thread(CPUHexagonState *env)
         set_wait_mode(env);
     }
     CPUState *cs = env_cpu(env);
-    cpu_loop_exit(cs);
+    cpu_stop_current();
+    cpu_loop_exit_noexc(cs);
+}
+
+void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
+
+{
+    CPUState *cs = env_cpu(env);
+    clear_wait_mode(env);
+    cs = env_cpu(env);
+    cs->exception_index = ei;
+    ARCH_SET_THREAD_REG(env, HEX_REG_PC,
+       ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
+    cpu_resume(cs);
 }
 
 void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
@@ -275,13 +288,7 @@ void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
             // this thread not currently in wait mode
             continue;
         }
-        clear_wait_mode(env);
-
-        cs = env_cpu(env);
-        cs->exception_index = HEX_EVENT_NONE;
-        ARCH_SET_THREAD_REG(env, HEX_REG_PC,
-                            ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
-        cpu_resume(cs);
+        hexagon_resume_thread(env, HEX_EVENT_NONE);
     }
 }
 
