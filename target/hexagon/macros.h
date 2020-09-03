@@ -397,9 +397,16 @@
             tcg_temp_free_i32(num); \
         } \
     } while (0)
-#define READ_SREG_READONLY(dest, NUM) do { \
+#define READ_SREG_READONLY(dest, NUM) \
+    do { \
         if ((NUM) < HEX_SREG_GLB_START) { \
-            dest = hex_t_sreg[NUM]; \
+            if ((NUM) == HEX_SREG_BADVA) { \
+                TCGv_i32 num = tcg_const_i32(NUM); \
+                gen_helper_sreg_read(dest, cpu_env, num); \
+                tcg_temp_free_i32(num); \
+            } else { \
+                dest = hex_t_sreg[NUM]; \
+            } \
         } else { \
             TCGv_i32 num = tcg_const_i32(NUM); \
             gen_helper_sreg_read(dest, cpu_env, num); \

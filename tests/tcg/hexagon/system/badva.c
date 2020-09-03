@@ -69,6 +69,20 @@ static uint32_t read_ssr(void)
     return ret;
 }
 
+static void write_badva0(uint32_t val)
+{
+    __asm__ __volatile__ ("badva0=%0;"
+        :: "r"(val));
+    return;
+}
+
+static void write_badva1(uint32_t val)
+{
+    __asm__ __volatile__ ("badva1=%0;"
+        :: "r"(val));
+    return;
+}
+
 #define SSR_V0_BIT           20
 #define SSR_V1_BIT           21
 #define SSR_BVS_BIT          21
@@ -338,6 +352,12 @@ static void test_load_store(void)
     check(val, 0x11223344);
     check(data1, 0x123);
 }
+static void test_badva_write(void)
+{
+    uint32_t va = 0x11223344;
+    write_badva0(va);
+    check(read_badva(), va);
+}
 
 int main()
 {
@@ -346,6 +366,7 @@ int main()
     test_dual_store();
     test_dual_load();
     test_load_store();
+    test_badva_write();
 
     puts(err ? "FAIL" : "PASS");
     return err;
