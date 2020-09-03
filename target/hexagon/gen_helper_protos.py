@@ -59,15 +59,12 @@ def gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i):
 ## Generate the DEF_HELPER prototype for an instruction
 ##     For A2_add: Rd32=add(Rs32,Rt32)
 ##     We produce:
-##         #ifndef fGEN_TCG_A2_add
 ##         DEF_HELPER_3(A2_add, s32, env, s32, s32)
-##         #endif
 ##
 def gen_helper_prototype(f, tag, tagregs, tagimms):
     regs = tagregs[tag]
     imms = tagimms[tag]
 
-    f.write('#ifndef fGEN_TCG_%s\n' % tag)
     numresults = 0
     numscalarresults = 0
     numscalarreadwrite = 0
@@ -134,11 +131,11 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
         if need_slot(tag): f.write(', i32' )
         if need_part1(tag): f.write(' , i32' )
         f.write(')\n')
-    f.write('#endif\n')
 
 def main():
     read_semantics_file(sys.argv[1])
     read_attribs_file(sys.argv[2])
+    read_overrides_file(sys.argv[3])
     calculate_attribs()
     tagregs = get_tagregs()
     tagimms = get_tagimms()
@@ -158,6 +155,9 @@ def main():
         if ( tag == "Y6_diag0" ) :
             continue
         if ( tag == "Y6_diag1" ) :
+            continue
+
+        if ( skip_qemu_helper(tag) ):
             continue
 
         gen_helper_prototype(f, tag, tagregs, tagimms)

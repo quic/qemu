@@ -28,6 +28,7 @@ attribdict = {}       # tag -> attributes
 macros = {}           # macro -> macro information...
 attribinfo = {}       # Register information and misc
 tags = []             # list of all tags
+overrides = {}        # tags with helper overrides
 
 # We should do this as a hash for performance,
 # but to keep order let's keep it as a list.
@@ -185,6 +186,9 @@ def need_part1(tag):
 def need_ea(tag):
     return re.compile(r"\bEA\b").search(semdict[tag])
 
+def skip_qemu_helper(tag):
+    return tag in overrides.keys()
+
 def imm_name(immlett):
     return "%siV" % immlett
 
@@ -202,9 +206,17 @@ def read_semantics_file(name):
 def read_attribs_file(name):
     attribre = re.compile(r'DEF_ATTRIB\(([A-Za-z0-9_]+), ([^,]*), ' +
             r'"([A-Za-z0-9_\.]*)", "([A-Za-z0-9_\.]*)"\)')
-    for line in open(sys.argv[2], 'rt').readlines():
+    for line in open(name, 'rt').readlines():
         if not attribre.match(line):
             continue
         (attrib_base,descr,rreg,wreg) = attribre.findall(line)[0]
         attrib_base = 'A_' + attrib_base
         attribinfo[attrib_base] = {'rreg':rreg, 'wreg':wreg, 'descr':descr}
+
+def read_overrides_file(name):
+    overridere = re.compile("#define fGEN_TCG_([A-Za-z0-9_]+)\(.*")
+    for line in open(name, 'rt').readlines():
+        if not overridere.match(line):
+            continue
+        tag = overridere.findall(line)[0]
+        overrides[tag] = True

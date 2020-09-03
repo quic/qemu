@@ -25,7 +25,7 @@
 #include "opcodes.h"
 #include "translate.h"
 #include "macros.h"
-#include "mmvec/macros.h"
+#include "gen_tcg.h"
 
 static inline TCGv gen_zero(TCGv result)
 {
@@ -45,89 +45,91 @@ static inline TCGv gen_read_preg(TCGv pred, uint8_t num)
     return pred;
 }
 
-static inline void gen_log_reg_write(int rnum, TCGv val, int slot,
-                                     int is_predicated)
+static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot)
 {
-    if (is_predicated) {
-        TCGv one = tcg_const_tl(1);
-        TCGv zero = tcg_const_tl(0);
-        TCGv slot_mask = tcg_temp_new();
+    TCGv one = tcg_const_tl(1);
+    TCGv zero = tcg_const_tl(0);
+    TCGv slot_mask = tcg_temp_new();
 
-        tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
-        tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, zero,
+    tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, zero,
                            val, hex_new_value[rnum]);
 #if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movcond_tl(TCG_COND_EQ, hex_reg_written[rnum], slot_mask, zero,
-                           one, hex_reg_written[rnum]);
+    /* Do this so HELPER(debug_commit_end) will know */
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_reg_written[rnum], slot_mask, zero,
+                       one, hex_reg_written[rnum]);
 #endif
 
-        tcg_temp_free(one);
-        tcg_temp_free(zero);
-        tcg_temp_free(slot_mask);
-    } else {
-        tcg_gen_mov_tl(hex_new_value[rnum], val);
-#if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movi_tl(hex_reg_written[rnum], 1);
-#endif
-    }
+    tcg_temp_free(one);
+    tcg_temp_free(zero);
+    tcg_temp_free(slot_mask);
 }
 
-static inline void gen_log_reg_write_pair(int rnum, TCGv_i64 val, int slot,
-                                          int is_predicated)
+static inline void gen_log_reg_write(int rnum, TCGv val)
+{
+    tcg_gen_mov_tl(hex_new_value[rnum], val);
+#if HEX_DEBUG
+    /* Do this so HELPER(debug_commit_end) will know */
+    tcg_gen_movi_tl(hex_reg_written[rnum], 1);
+#endif
+}
+
+static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot)
+{
+    TCGv val32 = tcg_temp_new();
+    TCGv one = tcg_const_tl(1);
+    TCGv zero = tcg_const_tl(0);
+    TCGv slot_mask = tcg_temp_new();
+
+    tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
+    /* Low word */
+    tcg_gen_extrl_i64_i32(val32, val);
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, zero,
+                       val32, hex_new_value[rnum]);
+#if HEX_DEBUG
+    /* Do this so HELPER(debug_commit_end) will know */
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_reg_written[rnum],
+                       slot_mask, zero,
+                       one, hex_reg_written[rnum]);
+#endif
+
+    /* High word */
+    tcg_gen_extrh_i64_i32(val32, val);
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum + 1],
+                       slot_mask, zero,
+                       val32, hex_new_value[rnum + 1]);
+#if HEX_DEBUG
+    /* Do this so HELPER(debug_commit_end) will know */
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_reg_written[rnum + 1],
+                       slot_mask, zero,
+                       one, hex_reg_written[rnum + 1]);
+#endif
+
+    tcg_temp_free(val32);
+    tcg_temp_free(one);
+    tcg_temp_free(zero);
+    tcg_temp_free(slot_mask);
+}
+
+static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
 {
     TCGv val32 = tcg_temp_new();
 
-    if (is_predicated) {
-        TCGv one = tcg_const_tl(1);
-        TCGv zero = tcg_const_tl(0);
-        TCGv slot_mask = tcg_temp_new();
-
-        tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
-        /* Low word */
-        tcg_gen_extrl_i64_i32(val32, val);
-        tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, zero,
-                           val32, hex_new_value[rnum]);
+    /* Low word */
+    tcg_gen_extrl_i64_i32(val32, val);
+    tcg_gen_mov_tl(hex_new_value[rnum], val32);
 #if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movcond_tl(TCG_COND_EQ, hex_reg_written[rnum],
-                           slot_mask, zero,
-                           one, hex_reg_written[rnum]);
+    /* Do this so HELPER(debug_commit_end) will know */
+    tcg_gen_movi_tl(hex_reg_written[rnum], 1);
 #endif
 
-        /* High word */
-        tcg_gen_extrh_i64_i32(val32, val);
-        tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum + 1],
-                           slot_mask, zero,
-                           val32, hex_new_value[rnum + 1]);
+    /* High word */
+    tcg_gen_extrh_i64_i32(val32, val);
+    tcg_gen_mov_tl(hex_new_value[rnum + 1], val32);
 #if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movcond_tl(TCG_COND_EQ, hex_reg_written[rnum + 1],
-                           slot_mask, zero,
-                           one, hex_reg_written[rnum + 1]);
+    /* Do this so HELPER(debug_commit_end) will know */
+    tcg_gen_movi_tl(hex_reg_written[rnum + 1], 1);
 #endif
-
-        tcg_temp_free(one);
-        tcg_temp_free(zero);
-        tcg_temp_free(slot_mask);
-    } else {
-        /* Low word */
-        tcg_gen_extrl_i64_i32(val32, val);
-        tcg_gen_mov_tl(hex_new_value[rnum], val32);
-#if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movi_tl(hex_reg_written[rnum], 1);
-#endif
-
-        /* High word */
-        tcg_gen_extrh_i64_i32(val32, val);
-        tcg_gen_mov_tl(hex_new_value[rnum + 1], val32);
-#if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movi_tl(hex_reg_written[rnum + 1], 1);
-#endif
-    }
 
     tcg_temp_free(val32);
 }
@@ -181,6 +183,21 @@ static inline void gen_write_p3_0(TCGv tmp)
     }
     tcg_temp_free(control_reg);
     tcg_temp_free(pred_val);
+}
+
+/*
+ * Certain instructions appear to have readonly operands, but
+ * in reality they do not.
+ *     vdelta instructions overwrite their VuV operand
+ */
+static bool readonly_ok(insn_t *insn)
+{
+    uint32_t opcode = insn->opcode;
+    if (opcode == V6_vdelta ||
+        opcode == V6_vrdelta) {
+        return false;
+    }
+    return true;
 }
 
 static inline TCGv gen_get_byte(TCGv result, int N, TCGv src, bool sign)
@@ -586,8 +603,8 @@ static inline void gen_loop0r(TCGv RsV, int riV, insn_t *insn)
     fPCALIGN(riV);
     /* fWRITE_LOOP_REGS0( fREAD_PC()+riV, RsV); */
     tcg_gen_addi_tl(tmp, hex_gpr[HEX_REG_PC], riV);
-    gen_log_reg_write(HEX_REG_LC0, RsV, insn->slot, 0);
-    gen_log_reg_write(HEX_REG_SA0, tmp, insn->slot, 0);
+    gen_log_reg_write(HEX_REG_LC0, RsV);
+    gen_log_reg_write(HEX_REG_SA0, tmp);
     fSET_LPCFG(0);
     tcg_temp_free(tmp);
 }
@@ -599,8 +616,8 @@ static inline void gen_loop1r(TCGv RsV, int riV, insn_t *insn)
     fPCALIGN(riV);
     /* fWRITE_LOOP_REGS1( fREAD_PC()+riV, RsV); */
     tcg_gen_addi_tl(tmp, hex_gpr[HEX_REG_PC], riV);
-    gen_log_reg_write(HEX_REG_LC1, RsV, insn->slot, 0);
-    gen_log_reg_write(HEX_REG_SA1, tmp, insn->slot, 0);
+    gen_log_reg_write(HEX_REG_LC1, RsV);
+    gen_log_reg_write(HEX_REG_SA1, tmp);
     tcg_temp_free(tmp);
 }
 
@@ -722,13 +739,13 @@ static inline void gen_cond_jump(TCGv pred, int pc_off)
 
 static inline void gen_call(int pc_off)
 {
-    gen_log_reg_write(HEX_REG_LR, hex_next_PC, 4, false);
+    gen_log_reg_write(HEX_REG_LR, hex_next_PC);
     gen_jump(pc_off);
 }
 
 static inline void gen_callr(TCGv new_pc)
 {
-    gen_log_reg_write(HEX_REG_LR, hex_next_PC, 4, false);
+    gen_log_reg_write(HEX_REG_LR, hex_next_PC);
     gen_write_new_pc(new_pc);
 }
 
@@ -1095,31 +1112,18 @@ static inline void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
     tcg_temp_free(cancelled);
 }
 
-#include "gen_tcg.h"
-
 #define DEF_TCG_FUNC(TAG, GENFN) \
-static void generate_##TAG(CPUHexagonState *env, DisasContext *ctx, \
-                           insn_t *insn, packet_t *pkt) \
-{ \
-    GENFN \
-}
+    GENFN
 #include "tcg_funcs_generated.h"
 #undef DEF_TCG_FUNC
 
-
-/* Fill in the table with NULLs because not all the opcodes have DEF_QEMU */
-semantic_insn_t opcode_genptr[] = {
-#define OPCODE(X)                              NULL
-#include "opcodes_def_generated.h"
-    NULL
-#undef OPCODE
+/*
+ * Not all opcodes have generate_<tag> functions, so initialize
+ * the table from the tcg_funcs_generated.h file.
+ */
+const semantic_insn_t opcode_genptr[XX_LAST_OPCODE] = {
+#define DEF_TCG_FUNC(TAG, GENFN) \
+    [TAG] = generate_##TAG,
+#include "tcg_funcs_generated.h"
+#undef DEF_TCG_FUND
 };
-
-/* This function overwrites the NULL entries where we have a DEF_QEMU */
-void init_genptr(void)
-{
-#define DEF_TCG_FUNC(TAG, GENFN) \
-    opcode_genptr[TAG] = generate_##TAG;
-#include "tcg_funcs_generated.h"
-#undef DEF_TCG_FUNC
-}

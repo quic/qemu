@@ -51,6 +51,4 @@ extern void print_helper_counts(void);
 
 extern const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS];
 
-extern void init_genptr(void);
-
 #endif

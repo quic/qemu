@@ -28,7 +28,7 @@ from hex_common import *
 ## Helpers for gen_helper_function
 ##
 def gen_decl_ea(f):
-    f.write("uint32_t EA;\n")
+    f.write("    uint32_t EA;\n")
 
 def gen_helper_return_type(f,regtype,regid,regno):
     if regno > 1 : f.write(", ")
@@ -81,19 +81,19 @@ def gen_helper_arg_imm(f,immlett):
     f.write(", int32_t %s" % (imm_name(immlett)))
 
 def gen_helper_dest_decl(f,regtype,regid,regno,subfield=""):
-    f.write("int32_t %s%sV%s = 0;\n" % \
+    f.write("    int32_t %s%sV%s = 0;\n" % \
         (regtype,regid,subfield))
 
 def gen_helper_dest_decl_pair(f,regtype,regid,regno,subfield=""):
-    f.write("int64_t %s%sV%s = 0;\n" % \
+    f.write("    int64_t %s%sV%s = 0;\n" % \
         (regtype,regid,subfield))
 
 def gen_helper_dest_decl_ext(f,regtype,regid):
-    f.write("/* %s%sV is *(mmvector_t*)(%s%sV_void) */\n" % \
+    f.write("    /* %s%sV is *(mmvector_t*)(%s%sV_void) */\n" % \
         (regtype,regid,regtype,regid))
 
 def gen_helper_dest_decl_ext_pair(f,regtype,regid,regno):
-    f.write("/* %s%sV is *(mmvector_pair_t*))%s%sV_void) */\n" % \
+    f.write("    /* %s%sV is *(mmvector_pair_t*))%s%sV_void) */\n" % \
         (regtype,regid,regtype, regid))
 
 def gen_helper_dest_decl_opn(f,regtype,regid,i):
@@ -111,25 +111,25 @@ def gen_helper_dest_decl_opn(f,regtype,regid,i):
         print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def gen_helper_src_var_ext(f,regtype,regid):
-    f.write("/* %s%sV is *(mmvector_t*)(%s%sV_void) */\n" % \
+    f.write("    /* %s%sV is *(mmvector_t*)(%s%sV_void) */\n" % \
         (regtype,regid,regtype,regid))
 
 def gen_helper_src_var_ext_pair(f,regtype,regid,regno):
-    f.write("/* %s%sV%s is *(mmvector_pair_t*)(%s%sV%s_void) */\n" % \
+    f.write("    /* %s%sV%s is *(mmvector_pair_t*)(%s%sV%s_void) */\n" % \
         (regtype,regid,regno,regtype,regid,regno))
 
 def gen_helper_return(f,regtype,regid,regno):
-    f.write("return %s%sV;\n" % (regtype,regid))
+    f.write("    return %s%sV;\n" % (regtype,regid))
 
 def gen_helper_return_pair(f,regtype,regid,regno):
-    f.write("return %s%sV;\n" % (regtype,regid))
+    f.write("    return %s%sV;\n" % (regtype,regid))
 
 def gen_helper_dst_write_ext(f,regtype,regid):
-    f.write("/* %s%sV is *(mmvector_t*)%s%sV_void */\n" % \
+    f.write("    /* %s%sV is *(mmvector_t*)%s%sV_void */\n" % \
         (regtype,regid,regtype,regid))
 
 def gen_helper_dst_write_ext_pair(f,regtype,regid):
-    f.write("/* %s%sV is *(mmvector_pair_t*)%s%sV_void */\n" % \
+    f.write("    /* %s%sV is *(mmvector_pair_t*)%s%sV_void */\n" % \
         (regtype,regid, regtype,regid))
 
 def gen_helper_return_opn(f, regtype, regid, i):
@@ -150,22 +150,19 @@ def gen_helper_return_opn(f, regtype, regid, i):
 ## Generate the TCG code to call the helper
 ##     For A2_add: Rd32=add(Rs32,Rt32), { RdV=RsV+RtV;}
 ##     We produce:
-##       #ifndef fGEN_TCG_A2_add
 ##       int32_t HELPER(A2_add)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
 ##       {
-##       uint32_t slot __attribute__(unused)) = 4;
-##       int32_t RdV = 0;
-##       { RdV=RsV+RtV;}
-##       COUNT_HELPER(A2_add);
-##       return RdV;
+##           uint32_t slot __attribute__(unused)) = 4;
+##           int32_t RdV = 0;
+##           { RdV=RsV+RtV;}
+##           COUNT_HELPER(A2_add);
+##           return RdV;
 ##       }
-##       #endif
 ##
 def gen_helper_function(f, tag, tagregs, tagimms):
     regs = tagregs[tag]
     imms = tagimms[tag]
 
-    f.write('#ifndef fGEN_TCG_%s\n' % tag)
     numresults = 0
     numscalarresults = 0
     numscalarreadwrite = 0
@@ -243,7 +240,8 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             if i > 0: f.write(", ")
             f.write("uint32_t part1")
         f.write(")\n{\n")
-        if (not need_slot(tag)): f.write("uint32_t slot __attribute__((unused)) = 4;\n" )
+        if (not need_slot(tag)):
+            f.write("    uint32_t slot __attribute__((unused)) = 4;\n" )
         if need_ea(tag): gen_decl_ea(f)
         ## Declare the return variable
         i=0
@@ -264,26 +262,25 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     print("Bad register parse: ",regtype,regid,toss,numregs)
 
         if 'A_FPOP' in attribdict[tag]:
-            f.write('fFPOP_START();\n');
+            f.write('    fFPOP_START();\n');
 
-        f.write(semdict[tag])
-        f.write("\n")
-        f.write("COUNT_HELPER(%s);\n" % tag )
+        f.write("    %s\n" % semdict[tag])
+        f.write("    COUNT_HELPER(%s);\n" % tag )
 
         if 'A_FPOP' in attribdict[tag]:
-            f.write('fFPOP_END();\n');
+            f.write('    fFPOP_END();\n');
 
         ## Save/return the return variable
         for regtype,regid,toss,numregs in regs:
             if (is_written(regid)):
                 gen_helper_return_opn(f, regtype, regid, i)
-        f.write("}\n")
+        f.write("}\n\n")
         ## End of the helper definition
-    f.write('#endif\n')
 
 def main():
     read_semantics_file(sys.argv[1])
     read_attribs_file(sys.argv[2])
+    read_overrides_file(sys.argv[3])
     calculate_attribs()
     tagregs = get_tagregs()
     tagimms = get_tagimms()
@@ -303,6 +300,8 @@ def main():
         if ( tag == "Y6_diag0" ) :
             continue
         if ( tag == "Y6_diag1" ) :
+            continue
+        if ( skip_qemu_helper(tag) ):
             continue
 
         gen_helper_function(f, tag, tagregs, tagimms)

@@ -965,6 +965,4 @@ void hexagon_translate_init(void)
             offsetof(CPUHexagonState, mem_log_stores[i].data64),
             store_val64_names[i]);
     }
-
-    init_genptr();
 }

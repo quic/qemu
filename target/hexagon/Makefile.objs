@@ -105,33 +105,39 @@ $(HELPER_PROTOS_H): \
     $(SRC_PATH)/target/hexagon/hex_common.py \
     $(SRC_PATH)/target/hexagon/gen_helper_protos.py \
     $(SEMANTICS) \
-    $(SRC_PATH)/target/hexagon/attribs_def.h
+    $(SRC_PATH)/target/hexagon/attribs_def.h \
+    $(SRC_PATH)/target/hexagon/gen_tcg.h
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/gen_helper_protos.py \
                 $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(SRC_PATH)/target/hexagon/attribs_def.h \
+                $(SRC_PATH)/target/hexagon/gen_tcg.h, \
 	    "GEN", "Hexagon helper_protos_generated.h")
 
 $(TCG_FUNCS_H): \
     $(SRC_PATH)/target/hexagon/hex_common.py \
     $(SRC_PATH)/target/hexagon/gen_tcg_funcs.py \
     $(SEMANTICS) \
-    $(SRC_PATH)/target/hexagon/attribs_def.h
+    $(SRC_PATH)/target/hexagon/attribs_def.h \
+    $(SRC_PATH)/target/hexagon/gen_tcg.h
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/gen_tcg_funcs.py \
                 $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(SRC_PATH)/target/hexagon/attribs_def.h \
+                $(SRC_PATH)/target/hexagon/gen_tcg.h, \
 	    "GEN", "Hexagon tcg_funcs_generated.h")
 
 $(HELPER_FUNCS_H): \
     $(SRC_PATH)/target/hexagon/hex_common.py \
     $(SRC_PATH)/target/hexagon/gen_helper_funcs.py \
     $(SEMANTICS) \
-    $(SRC_PATH)/target/hexagon/attribs_def.h
+    $(SRC_PATH)/target/hexagon/attribs_def.h \
+    $(SRC_PATH)/target/hexagon/gen_tcg.h
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/gen_helper_funcs.py \
                 $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(SRC_PATH)/target/hexagon/attribs_def.h \
+                $(SRC_PATH)/target/hexagon/gen_tcg.h, \
 	    "GEN", "Hexagon helper_funcs_generated.h")
 
 $(PRINTINSN_H): \

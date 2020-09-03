@@ -22,9 +22,6 @@
 #include "reg_fields.h"
 #include "internal.h"
 
-#define REGNO(NUM) (insn->regno[NUM])
-#define IMMNO(NUM) (insn->immed[NUM])
-
 static const char *sreg2str(unsigned int reg)
 {
     if (reg < TOTAL_PER_THREAD_REGS) {

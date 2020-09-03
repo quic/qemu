@@ -134,16 +134,19 @@ def main():
                 else:
                     regno = ri
                 if len(b) == 1:
-                    f.write(',REGNO(%d)' % regno)
+                    f.write(', insn->regno[%d]' % regno)
                     if 'S' in a:
-                        f.write(',sreg2str(REGNO(%d))' % regno)
+                        f.write(', sreg2str(insn->regno[%d])' % regno)
                     elif 'C' in a:
-                        f.write(',creg2str(REGNO(%d))' % regno)
+                        f.write(', creg2str(insn->regno[%d])' % regno)
                 elif len(b) == 2:
-                    f.write(',REGNO(%d)+1,REGNO(%d)' % (regno,regno))
+                    f.write(', insn->regno[%d] + 1, insn->regno[%d]' % \
+                        (regno,regno))
                 elif len(b) == 4:
-                    f.write(',REGNO(%d)^3,REGNO(%d)^2,REGNO(%d)^1,REGNO(%d)' % \
-                            (regno,regno,regno,regno))
+                    f.write(', insn->regno[%d] ^ 3, insn->regno[%d] ^ 2, ' % \
+                            (regno, regno))
+                    f.write('insn->regno[%d] ^ 1, insn->regno[%d]' % \
+                            (regno, regno))
                 else:
                     print("Put some stuff to handle quads here")
                 if b not in seenregs:
@@ -169,7 +172,7 @@ def main():
                     else:
                         f.write(',""')
                     ii = 0
-                f.write(',IMMNO(%d)' % ii)
+                f.write(', insn->immed[%d]' % ii)
         # append empty string so there is at least one more arg
         f.write(',"")\n')
 
