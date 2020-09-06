@@ -24,6 +24,7 @@
 #include "cpu.h"
 #include "cpu_helper.h"
 #include "internal.h"
+#include "gdb_qreginfo.h"
 #ifndef CONFIG_USER_ONLY
 #include "macros.h"
 #include "hex_mmu.h"
@@ -183,6 +184,13 @@ static void print_sreg(FILE *f, CPUHexagonState *env, int regnum)
     qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_sregnames[regnum],
                  val);
 }
+
+static void print_greg(FILE *f, CPUHexagonState *env, int regnum)
+{
+    target_ulong val = hexagon_greg_read(env, regnum);
+    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_gregnames[regnum],
+                 val);
+}
 #endif
 
 static void print_vreg(FILE *f, CPUHexagonState *env, int regnum)
@@ -295,11 +303,11 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     print_sreg(f, env, HEX_SREG_HTID);
     print_sreg(f, env, HEX_SREG_BADVA);
     print_sreg(f, env, HEX_SREG_IMASK);
-    qemu_fprintf(f, "  gevb = 0x00000000\n");
-    qemu_fprintf(f, "  gelr = 0x00000000\n");
-    qemu_fprintf(f, "  gsr = 0x00000000\n");
-    qemu_fprintf(f, "  gosp = 0x00000000\n");
-    qemu_fprintf(f, "  gbadva = 0x00000000\n");
+    print_sreg(f, env, HEX_SREG_GEVB);
+    print_greg(f, env, HEX_GREG_GELR);
+    print_greg(f, env, HEX_GREG_GSR);
+    print_greg(f, env, HEX_GREG_GOSP);
+    print_greg(f, env, HEX_GREG_GBADVA);
     qemu_fprintf(f, "  dm0 = 0x00000000\n");
     qemu_fprintf(f, "  dm1 = 0x00000000\n");
     qemu_fprintf(f, "  dm2 = 0x000002a0\n");
@@ -410,6 +418,7 @@ static target_ulong ssr_get_ex(CPUHexagonState *env)
     return ssr;
 }
 
+#ifndef CONFIG_USER_ONLY
 static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 {
     HexagonCPU *cpu = opaque;
@@ -468,14 +477,17 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
         g_assert_not_reached();
     }
 }
+#endif
 
 static void hexagon_cpu_init(Object *obj)
 {
     HexagonCPU *cpu = HEXAGON_CPU(obj);
 
     cpu_set_cpustate_pointers(cpu);
+#ifndef CONFIG_USER_ONLY
     // At he the moment only qtimer XXX_SM
     qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
+#endif
 }
 
 
@@ -843,6 +855,8 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
     cc->synchronize_from_tb = hexagon_cpu_synchronize_from_tb;
     cc->gdb_read_register = hexagon_gdb_read_register;
     cc->gdb_write_register = hexagon_gdb_write_register;
+    cc->gdb_qreg_info_lines = (const char **)hexagon_qreg_descs;
+    cc->gdb_qreg_info_line_count = ARRAY_SIZE(hexagon_qreg_descs);
 #ifdef CONFIG_USER_ONLY
     cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS + NUM_VREGS + NUM_QREGS;
 #else
@@ -860,6 +874,45 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
     /* For now, mark unmigratable: */
     cc->vmsd = &vmstate_hexagon_cpu;
 }
+
+#ifndef CONFIG_USER_ONLY
+uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg)
+{
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
+    int ssr_pe = GET_SSR_FIELD(SSR_PE, ssr);
+    int off;
+
+    if (reg <= HEX_GREG_G3) {
+      return env->greg[reg];
+    }
+    switch (reg) {
+    case HEX_GREG_GCYCLE_1T:
+    case HEX_GREG_GCYCLE_2T:
+    case HEX_GREG_GCYCLE_3T:
+    case HEX_GREG_GCYCLE_4T:
+    case HEX_GREG_GCYCLE_5T:
+    case HEX_GREG_GCYCLE_6T:
+        off = reg - HEX_GREG_GCYCLE_1T;
+        return ssr_pe ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_GCYCLE_1T + off) : 0;
+
+    case HEX_GREG_GPCYCLELO:
+        return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO) : 0;
+
+    case HEX_GREG_GPCYCLEHI:
+        return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI) : 0;
+
+    case HEX_GREG_GPMUCNT0:
+    case HEX_GREG_GPMUCNT1:
+    case HEX_GREG_GPMUCNT2:
+    case HEX_GREG_GPMUCNT3:
+        off = HEX_GREG_GPMUCNT3 - reg;
+        return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0 + off);
+    default:
+        return 0;
+    }
+}
+#endif
 
 #define DEFINE_CPU(type_name, initfn)      \
     {                                      \

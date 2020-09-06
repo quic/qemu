@@ -141,6 +141,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     struct hexagon_config_table config_table;
     memset(&config_table, 0x0, sizeof(config_table));
 
+    machine->smp.max_cpus = THREADS_MAX;
+
     assert(machine->smp.cores == 1);
     config_table.core_id = 0;
     config_table.core_count = machine->smp.cores;

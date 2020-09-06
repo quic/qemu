@@ -83,9 +83,13 @@ enum {
 
 enum {
   HEX_GREG_G0         = 0,
+  HEX_GREG_GELR       = 0,
   HEX_GREG_G1         = 1,
+  HEX_GREG_GSR        = 1,
   HEX_GREG_G2         = 2,
+  HEX_GREG_GOSP       = 2,
   HEX_GREG_G3         = 3,
+  HEX_GREG_GBADVA     = 3,
   HEX_GREG_GCYCLE_1T  = 10,
   HEX_GREG_GCYCLE_2T  = 11,
   HEX_GREG_GCYCLE_3T  = 12,
@@ -112,6 +116,7 @@ enum {
     HEX_SREG_HTID = 8,
     HEX_SREG_BADVA = 9,
     HEX_SREG_IMASK = 10,
+    HEX_SREG_GEVB  = 11,
     HEX_SREG_GLB_START = 16,
     HEX_SREG_EVB = 16,
     HEX_SREG_MODECTL = 17,

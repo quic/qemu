@@ -322,6 +322,7 @@ typedef struct GDBRegisterState {
     gdb_get_reg_cb get_reg;
     gdb_set_reg_cb set_reg;
     const char *xml;
+
     struct GDBRegisterState *next;
 } GDBRegisterState;
 
@@ -2018,6 +2019,27 @@ static void handle_query_curr_tid(GdbCmdContext *gdb_ctx, void *user_ctx)
     put_strbuf();
 }
 
+static void handle_query_regs(GdbCmdContext *gdb_ctx, void *user_ctx)
+{
+    if (!gdb_ctx->num_params) {
+        return;
+    }
+
+    CPUClass *cc = CPU_GET_CLASS(gdbserver_state.g_cpu);
+    if (!cc->gdb_qreg_info_lines) {
+        put_packet("");
+        return;
+    }
+
+    int reg_num = (int)gdb_ctx->params[0].val_ul;
+    if (reg_num >= cc->gdb_qreg_info_line_count) {
+        put_packet("");
+        return;
+    }
+
+    put_packet(cc->gdb_qreg_info_lines[reg_num]);
+}
+
 static void handle_query_threads(GdbCmdContext *gdb_ctx, void *user_ctx)
 {
     if (!gdbserver_state.query_cpu) {
@@ -2246,6 +2268,12 @@ static GdbCmdParseEntry gdb_gen_query_table[] = {
     {
         .handler = handle_query_curr_tid,
         .cmd = "C",
+    },
+    {
+        .handler = handle_query_regs,
+        .cmd = "RegisterInfo",
+        .cmd_startswith = 1,
+        .schema = "l0"
     },
     {
         .handler = handle_query_threads,

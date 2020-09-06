@@ -304,6 +304,7 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
 void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
                              uint32_t int_num);
 
+uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg);
 #endif
 
 typedef struct CPUHexagonState CPUArchState;

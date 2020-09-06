@@ -35,6 +35,8 @@ DEF_HELPER_3(merge_inflight_store2u, s32, env, s32, s32)
 DEF_HELPER_3(merge_inflight_store4s, s32, env, s32, s32)
 DEF_HELPER_3(merge_inflight_store4u, s32, env, s32, s32)
 DEF_HELPER_3(merge_inflight_store8u, s64, env, s32, s64)
+DEF_HELPER_2(creg_read, i32, env, i32)
+DEF_HELPER_2(creg_read_pair, i64, env, i32)
 
 #ifndef CONFIG_USER_ONLY
 DEF_HELPER_3(modify_ssr, void, env, i32, i32)
@@ -60,8 +62,6 @@ DEF_HELPER_3(setprio, void, env, i32, i32)
 DEF_HELPER_2(swi, void, env, i32)
 DEF_HELPER_1(resched, void, env)
 DEF_HELPER_2(nmi, void, env, i32)
-DEF_HELPER_2(creg_read, i32, env, i32)
-DEF_HELPER_2(creg_read_pair, i64, env, i32)
 DEF_HELPER_1(inc_gcycle_xt, void, env)
 #endif
 #define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPER

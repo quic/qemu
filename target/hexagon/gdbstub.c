@@ -25,9 +25,9 @@ static int gdb_get_vreg(CPUHexagonState *env, GByteArray *mem_buf, int n)
 {
     int total = 0;
     int i;
-    for (i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
+
+    for (i = 0; i < ARRAY_SIZE(env->VRegs[n].uw); i++) {
         total += gdb_get_regl(mem_buf, env->VRegs[n].uw[i]);
-        mem_buf += 4;
     }
     return total;
 }
@@ -38,7 +38,6 @@ static int gdb_get_qreg(CPUHexagonState *env, GByteArray *mem_buf, int n)
     int i;
     for (i = 0; i < MAX_VEC_SIZE_BYTES / 4 / 8; i++) {
         total += gdb_get_regl(mem_buf, env->QRegs[n].uw[i]);
-        mem_buf += 4;
     }
     return total;
 }
@@ -51,6 +50,7 @@ int hexagon_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
     if (n < TOTAL_PER_THREAD_REGS) {
         return gdb_get_regl(mem_buf, env->gpr[n]);
     }
+
     n -= TOTAL_PER_THREAD_REGS;
 
     if (n < NUM_VREGS) {
@@ -61,6 +61,19 @@ int hexagon_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
     if (n < NUM_QREGS) {
         return gdb_get_qreg(env, mem_buf, n);
     }
+    n -= NUM_QREGS;
+
+#ifndef CONFIG_USER_ONLY
+    if (n < NUM_SREGS) {
+        return gdb_get_regl(mem_buf, ARCH_GET_SYSTEM_REG(env, n));
+    }
+    n -= NUM_SREGS;
+
+    if (n < NUM_GREGS) {
+        return gdb_get_regl(mem_buf, hexagon_greg_read(env, n));
+    }
+    n -= NUM_GREGS;
+#endif
 
     g_assert_not_reached();
     return 0;
@@ -81,7 +94,6 @@ static int gdb_put_qreg(CPUHexagonState *env, uint8_t *mem_buf, int n)
     int i;
     for (i = 0; i < MAX_VEC_SIZE_BYTES / 4 / 8; i++) {
         env->QRegs[n].uw[i] = ldtul_p(mem_buf);
-        mem_buf += 4;
     }
     return MAX_VEC_SIZE_BYTES / 8;
 }
@@ -105,6 +117,19 @@ int hexagon_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     if (n < NUM_QREGS) {
         return gdb_put_qreg(env, mem_buf, n);
     }
+#ifndef CONFIG_USER_ONLY
+    if (n < NUM_SREGS) {
+        ARCH_SET_SYSTEM_REG(env, n, ldtul_p(mem_buf));
+        return sizeof(target_ulong);
+    }
+    n -= NUM_SREGS;
+
+    if (n < NUM_GREGS) {
+        return env->greg[n] = ldtul_p(mem_buf);
+    }
+    n -= NUM_GREGS;
+#endif
+
 
     g_assert_not_reached();
     return 0;
