@@ -1742,9 +1742,10 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fDCZEROA(REG) do { REG = REG; g_assert_not_reached(); } while (0)
 #define fCLEAR_RTE_EX() \
     do { \
-        SET_SSR_FIELD(env, SSR_EX, 0); \
         uint32_t tmp = 0; \
         tmp = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR); \
+        fINSERT_BITS(tmp,reg_field_info[SSR_EX].width, \
+                     reg_field_info[SSR_EX].offset,0); \
         fWRITE_SSR(tmp);  \
     } while (0)
 #endif
