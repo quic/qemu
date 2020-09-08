@@ -322,7 +322,6 @@ typedef struct GDBRegisterState {
     gdb_get_reg_cb get_reg;
     gdb_set_reg_cb set_reg;
     const char *xml;
-
     struct GDBRegisterState *next;
 } GDBRegisterState;
 

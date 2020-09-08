@@ -119,7 +119,7 @@ const char * const hexagon_qreg_descs[] = {
     "name:q1;alt-name:;bitsize:128;offset=4368;variable-size:1;encoding:vector;format:hex;set:HVX Vector Registers;dwarf:121;generic:;",
     "name:q2;alt-name:;bitsize:128;offset=4384;variable-size:1;encoding:vector;format:hex;set:HVX Vector Registers;dwarf:122;generic:;",
     "name:q3;alt-name:;bitsize:128;offset=4400;variable-size:1;encoding:vector;format:hex;set:HVX Vector Registers;dwarf:123;generic:;",
-#ifdef CONFIG_USER_ONLY
+#ifndef CONFIG_USER_ONLY
     "name:sgp0;alt-name:;bitsize:32;offset=4416;variable-size:0;encoding:uint;format:hex;set:System Registers;dwarf:135;generic:;",
     "name:sgp1;alt-name:;bitsize:32;offset=4420;variable-size:0;encoding:uint;format:hex;set:System Registers;dwarf:136;generic:;",
     "name:stid;alt-name:;bitsize:32;offset=4424;variable-size:0;encoding:uint;format:hex;set:System Registers;dwarf:137;generic:;",
@@ -216,7 +216,7 @@ const char * const hexagon_qreg_descs[] = {
     "name:gpmucnt3;alt-name:;bitsize:32;offset=4788;variable-size:0;encoding:uint;format:hex;set:Guest Registers;dwarf:208;generic:;",
     "name:rsv30;alt-name:;bitsize:32;offset=4792;variable-size:0;encoding:uint;format:hex;set:Guest Registers;dwarf:209;generic:;",
     "name:rsv31;alt-name:;bitsize:32;offset=4796;variable-size:0;encoding:uint;format:hex;set:Guest Registers;dwarf:210;generic:;",
-#endif /* CONFIG_USER_ONLY */
+#endif /* !CONFIG_USER_ONLY */
 };
 
 #endif /* HEXAGON_GDB_QREGINFO_H */
