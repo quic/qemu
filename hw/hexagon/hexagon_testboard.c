@@ -151,6 +151,7 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     config_table.coproc_present = HEXAGON_COPROC_HVX;
     config_table.ext_contexts = HEXAGON_DEFAULT_HVX_CONTEXTS;
     config_table.l2tcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_TCM].base);
+    config_table.subsystem_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_CSR1].base);
     config_table.vtcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_VTCM].base);
     config_table.vtcm_size_kb = HEXAGON_CFG_ADDR_BASE(
         memmap[HEXAGON_VTCM].size / 1024);
