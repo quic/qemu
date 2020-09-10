@@ -411,12 +411,14 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     mcc->parent_realize(dev, errp);
 }
 
+#ifndef CONFIG_USER_ONLY
 static target_ulong ssr_get_ex(CPUHexagonState *env)
 {
     target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     ssr = (ssr & 1<<17) >> 17;
     return ssr;
 }
+#endif
 
 #ifndef CONFIG_USER_ONLY
 static void hexagon_cpu_set_irq(void *opaque, int irq, int level)

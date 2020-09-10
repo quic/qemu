@@ -452,13 +452,19 @@
 
 #define READ_CREG_PAIR(tmp, NUM) \
     do { \
-        if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERLO) { \
+        if ((NUM) + HEX_REG_SA0 == HEX_REG_P3_0) { \
+            TCGv p3_0 = tcg_temp_new(); \
+            gen_read_p3_0(p3_0); \
+            tcg_gen_concat_i32_i64(tmp, p3_0, \
+                                        hex_gpr[(NUM) + HEX_REG_SA0 + 1]); \
+            tcg_temp_free(p3_0); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERLO) { \
             TCGv_i32 num = tcg_const_i32(HEX_REG_UTIMERLO); \
             gen_helper_creg_read_pair(tmp, cpu_env, num); \
             tcg_temp_free_i32(num); \
         } else { \
             tcg_gen_concat_i32_i64(tmp, hex_gpr[NUM + HEX_REG_SA0], \
-                                   hex_gpr[(NUM + HEX_REG_SA0) + 1]); \
+                                   hex_gpr[(NUM) + HEX_REG_SA0 + 1]); \
         } \
     } while (0)
 
@@ -559,7 +565,19 @@
     } while (0)
 #define WRITE_CREG_d(NUM, VAL)           WRITE_CREG(NUM, VAL)
 
-#define WRITE_CREG_PAIR(i, tmp)          WRITE_REG_PAIR((i) + HEX_REG_SA0, tmp)
+#define WRITE_CREG_PAIR(i, tmp) \
+    do { \
+        if ((i) + HEX_REG_SA0 == HEX_REG_P3_0) {  \
+            TCGv val32 = tcg_temp_new(); \
+            tcg_gen_extrl_i64_i32(val32, tmp); \
+            gen_write_p3_0(val32); \
+            tcg_gen_extrh_i64_i32(val32, tmp); \
+            WRITE_RREG((i) + HEX_REG_SA0 + 1, val32); \
+            tcg_temp_free(val32); \
+        } else { \
+            WRITE_REG_PAIR((i) + HEX_REG_SA0, tmp); \
+        } \
+    } while (0)
 #define WRITE_CREG_dd(NUM, VAL)          WRITE_CREG_PAIR(NUM, VAL)
 
 #define WRITE_REG_PAIR(NUM, VAL) \
