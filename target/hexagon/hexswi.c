@@ -750,13 +750,6 @@ static int sim_handle_trap(CPUHexagonState *env)
     return retval;
 }
 
-static void ssr_set_cause(CPUHexagonState *env, int cause_code)
-
-{
-    SET_SSR_FIELD(env, SSR_EX, 1);
-    SET_SSR_FIELD(env, SSR_CAUSE, cause_code);
-}
-
 static void set_addresses(CPUHexagonState *env,
     target_ulong pc_offset, target_ulong exception_index)
 
@@ -799,7 +792,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             env->threadId,
             ARCH_GET_THREAD_REG(env, HEX_REG_PC),
             env->next_PC);
-        ssr_set_cause(env, env->cause_code);
+        hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 0, cs->exception_index);
         env->branch_taken = 1;
         cs->exception_index = HEX_EVENT_NONE;
@@ -818,7 +811,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             sim_handle_trap(env);
         }
 
-        ssr_set_cause(env, env->cause_code);
+        hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 4, cs->exception_index);
         env->branch_taken = 1;
         cs->exception_index = HEX_EVENT_NONE;
@@ -838,7 +831,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             cs->exception_index << 2,
             ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB)|(cs->exception_index << 2));
 
-        ssr_set_cause(env, env->cause_code);
+        hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 4, cs->exception_index);
         env->branch_taken = 1;
         cs->exception_index = HEX_EVENT_NONE;
@@ -866,7 +859,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
                 ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
             hex_tlb_lock(env);
 
-            ssr_set_cause(env, env->cause_code);
+            hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
             break;
 
@@ -894,7 +887,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             hex_tlb_lock(env);
 
 
-            ssr_set_cause(env, env->cause_code);
+            hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
             /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
             break;
@@ -926,7 +919,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
                 ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
 
 
-            ssr_set_cause(env, env->cause_code);
+            hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
             /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
             break;
@@ -934,7 +927,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         case HEX_CAUSE_PRIV_USER_NO_SINSN:
         case HEX_CAUSE_PRIV_USER_NO_GINSN:
         case HEX_CAUSE_INVALID_OPCODE:
-            ssr_set_cause(env, env->cause_code);
+            hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
           break;
 
@@ -958,14 +951,14 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             /* After the exception handler, return to the next packet */
 
 
-            ssr_set_cause(env, env->cause_code);
+            hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 4, cs->exception_index);
             ARCH_SET_SYSTEM_REG(env, HEX_SREG_DIAG,
                 (0x4 << 4) | (ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID) & 0xF));
             break;
 
         case HEX_CAUSE_IMPRECISE_NMI:
-            ssr_set_cause(env, env->cause_code);
+            hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 4, cs->exception_index);
             ARCH_SET_SYSTEM_REG(env, HEX_SREG_DIAG,
                                 (0x3 << 4) |

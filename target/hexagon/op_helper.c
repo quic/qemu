@@ -632,25 +632,7 @@ MERGE_INFLIGHT(merge_inflight_store8u, int64_t, int64_t,  int64_t, 8)
 #ifndef CONFIG_USER_ONLY
 void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
-    target_ulong old_EX = GET_SSR_FIELD(SSR_EX, old);
-    target_ulong old_UM = GET_SSR_FIELD(SSR_UM, old);
-    target_ulong old_GM = GET_SSR_FIELD(SSR_GM, old);
-    target_ulong new_EX = GET_SSR_FIELD(SSR_EX, new);
-    target_ulong new_UM = GET_SSR_FIELD(SSR_UM, new);
-    target_ulong new_GM = GET_SSR_FIELD(SSR_GM, new);
-
-    if ((old_EX != new_EX) ||
-        (old_UM != new_UM) ||
-        (old_GM != new_GM)) {
-        hex_mmu_mode_change(env);
-    }
-
-    uint8_t old_asid = GET_SSR_FIELD(SSR_ASID, old);
-    uint8_t new_asid = GET_SSR_FIELD(SSR_ASID, new);
-    if (new_asid != old_asid) {
-        CPUState *cs = CPU(hexagon_env_get_cpu(env));
-        tlb_flush(cs);
-    }
+    hexagon_modify_ssr(env, new, old);
 }
 
 void HELPER(checkforguest)(CPUHexagonState *env)

@@ -51,6 +51,8 @@ extern void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei);
 extern void hexagon_resume_threads(CPUHexagonState *env, uint32_t mask);
 extern void hexagon_start_threads(CPUHexagonState *env, uint32_t mask);
 extern void hexagon_stop_thread(CPUHexagonState *env);
+extern void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old);
+extern void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause);
 
 extern int sys_in_monitor_mode(CPUHexagonState *env);
 extern int sys_in_guest_mode(CPUHexagonState *env);

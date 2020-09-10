@@ -333,8 +333,14 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
                 __FUNCTION__, cpu, env->threadId);
         }
 
-        SET_SSR_FIELD(env, SSR_EX, 1);
-        SET_SSR_FIELD(env, SSR_CAUSE, 0);
+        const uint32_t old = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR, 0);
+        SET_SYSTEM_FIELD(env, HEX_SREG_SSR, SSR_EX, 1);
+        SET_SYSTEM_FIELD(env, HEX_SREG_SSR, SSR_CAUSE, 0);
+        const uint32_t new = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+        if (found) {
+            hexagon_modify_ssr(env, new, old);
+        }
 
         target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
         #if HEX_DEBUG
@@ -485,4 +491,38 @@ unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
 
     return MMU_USER_IDX;
 }
+
+void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause)
+{
+    const uint32_t old = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    SET_SYSTEM_FIELD(env, HEX_SREG_SSR, SSR_EX, 1);
+    SET_SYSTEM_FIELD(env, HEX_SREG_SSR, SSR_CAUSE, cause);
+    const uint32_t new = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+
+    hexagon_modify_ssr(env, new, old);
+}
+
+void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
+{
+    target_ulong old_EX = GET_SSR_FIELD(SSR_EX, old);
+    target_ulong old_UM = GET_SSR_FIELD(SSR_UM, old);
+    target_ulong old_GM = GET_SSR_FIELD(SSR_GM, old);
+    target_ulong new_EX = GET_SSR_FIELD(SSR_EX, new);
+    target_ulong new_UM = GET_SSR_FIELD(SSR_UM, new);
+    target_ulong new_GM = GET_SSR_FIELD(SSR_GM, new);
+
+    if ((old_EX != new_EX) ||
+        (old_UM != new_UM) ||
+        (old_GM != new_GM)) {
+        hex_mmu_mode_change(env);
+    }
+
+    uint8_t old_asid = GET_SSR_FIELD(SSR_ASID, old);
+    uint8_t new_asid = GET_SSR_FIELD(SSR_ASID, new);
+    if (new_asid != old_asid) {
+        CPUState *cs = CPU(hexagon_env_get_cpu(env));
+        tlb_flush(cs);
+    }
+}
+
 #endif
