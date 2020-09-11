@@ -833,6 +833,37 @@ static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
     cc->do_interrupt(cs);
     return true;
 }
+
+static void hexagon_do_unaligned_access(CPUState *cs, vaddr addr,
+                                        MMUAccessType access_type,
+                                        int mmu_idx,
+                                        uintptr_t retaddr)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+
+    cs->exception_index = HEX_EVENT_PRECISE;
+    switch (access_type) {
+    case MMU_DATA_LOAD:
+        env->cause_code = HEX_CAUSE_MISALIGNED_LOAD;
+        break;
+    case MMU_DATA_STORE:
+        env->cause_code = HEX_CAUSE_MISALIGNED_STORE;
+        break;
+    case MMU_INST_FETCH:
+        env->cause_code = HEX_CAUSE_PC_NOT_ALIGNED;
+        break;
+    default:
+        g_assert_not_reached();
+    }
+
+    qemu_log_mask(CPU_LOG_MMU,
+        "unaligned access %08x from %08x\n", (int)addr, (int)retaddr);
+
+    set_badva_regs(env, addr, 0, access_type);
+    do_raise_exception_err(env, cs->exception_index, retaddr);
+}
+
 #endif
 
 static void hexagon_cpu_class_init(ObjectClass *c, void *data)
@@ -851,6 +882,7 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 #ifndef CONFIG_USER_ONLY
     cc->do_interrupt = hexagon_cpu_do_interrupt;
     cc->cpu_exec_interrupt = hexagon_cpu_exec_interrupt;
+    cc->do_unaligned_access = hexagon_do_unaligned_access;
 #endif
     cc->dump_state = hexagon_dump_state;
     cc->set_pc = hexagon_cpu_set_pc;

@@ -73,7 +73,10 @@ void inc_elr(uint32_t inc)
 
 void invalid_opcode(void)
 {
-    asm volatile (".word 0x6f66666c\n\t");
+    /* nops pads are a workaround for QTOOL-54399 */
+    asm volatile ("nop");
+    asm volatile (".word 0x6fffdffc\n\t");
+    asm volatile ("nop");
 }
 
 void do_coredump(void)

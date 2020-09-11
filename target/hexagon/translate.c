@@ -291,20 +291,14 @@ static void mark_implicit_writes(DisasContext *ctx, insn_t *insn)
 static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
                      insn_t *insn, packet_t *pkt)
 {
-    if (insn->generate) {
-        bool is_gather_store = is_gather_store_insn(insn);
-        if (is_gather_store) {
-            tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
-        }
-        insn->generate(env, ctx, insn, pkt);
-        mark_implicit_writes(ctx, insn);
-        if (is_gather_store) {
-            tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
-        }
-    } else {
-        env->cause_code = HEX_CAUSE_INVALID_OPCODE;
-        gen_exception(HEX_EVENT_PRECISE);
-        ctx->base.is_jmp = DISAS_NORETURN;
+    bool is_gather_store = is_gather_store_insn(insn);
+    if (is_gather_store) {
+        tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
+    }
+    insn->generate(env, ctx, insn, pkt);
+    mark_implicit_writes(ctx, insn);
+    if (is_gather_store) {
+        tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
     }
 }
 
@@ -847,7 +841,14 @@ static void decode_and_translate_packet(CPUHexagonState *env,
         return;
     }
 
-    if (decode_this(nwords, words, &pkt)) {
+    bool decode_success = decode_this(nwords, words, &pkt);
+    bool has_invalid_opcode = !decode_success;
+    for (i = 0; i < pkt.num_insns && !has_invalid_opcode; i++) {
+        if (!pkt.insn[i].generate) {
+            has_invalid_opcode = true;
+        }
+    }
+    if (!has_invalid_opcode) {
         HEX_DEBUG_PRINT_PKT(&pkt);
         gen_start_packet(ctx, &pkt);
         for (i = 0; i < pkt.num_insns; i++) {
@@ -856,6 +857,9 @@ static void decode_and_translate_packet(CPUHexagonState *env,
         gen_commit_packet(env, ctx, &pkt);
         ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
     } else {
+        if (decode_success) {
+            gen_start_packet(ctx, &pkt);
+        }
         env->cause_code = HEX_CAUSE_INVALID_PACKET;
         gen_exception(HEX_EVENT_PRECISE);
         ctx->base.is_jmp = DISAS_NORETURN;

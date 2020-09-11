@@ -523,10 +523,10 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
                  HEX_CAUSE_INVALID_PACKET);
           break;
       case 0x1a:
-          printf("0x1a, Privelege violation: guest mode insn in user mode");
+          printf("0x1a, Privilege violation: guest mode insn in user mode");
           break;
       case 0x1b:
-          printf("0x1b, Privelege violation: "
+          printf("0x1b, Privilege violation: "
                  "monitor mode insn ins user/guest mode");
           break;
       case 0x1d:
@@ -840,7 +840,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     case HEX_EVENT_TLBLOCK_WAIT:
     case HEX_EVENT_K0LOCK_WAIT:
         ARCH_SET_THREAD_REG(env, HEX_REG_PC,
-            ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
+                ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
         cpu_stop_current();
         break;
 
@@ -909,6 +909,9 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         case HEX_CAUSE_PRIV_NO_UREAD:
         case HEX_CAUSE_PRIV_NO_WRITE:
         case HEX_CAUSE_PRIV_NO_UWRITE:
+        case HEX_CAUSE_MISALIGNED_LOAD:
+        case HEX_CAUSE_MISALIGNED_STORE:
+        case HEX_CAUSE_PC_NOT_ALIGNED:
             qemu_log_mask(CPU_LOG_MMU,
                 "MMU permission exception (0x%x) caught: "
                 "Cause code (0x%x) "

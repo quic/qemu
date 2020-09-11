@@ -394,7 +394,10 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
         }
     }
 
-    g_assert(pkt->num_insns > 0);
+    if (pkt->num_insns == 0)
+    {
+        return -1;
+    }
 
     decode_assembler_count_fpops(pkt);
 
@@ -411,7 +414,9 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
         errors += mmvec_ext_decode_checks(pkt);
     }
 
-    g_assert(pkt->num_insns > 0);
+    if (pkt->num_insns == 0) {
+        return -1;
+    }
 
     errors += decode_shuffle_for_execution(pkt);
     errors += decode_split_cmpjump(pkt);
