@@ -25,9 +25,7 @@
 #define HEX_DEBUG_LOG(...) \
     do { \
         if (HEX_DEBUG) { \
-            rcu_read_lock(); \
-            fprintf(stderr, __VA_ARGS__); \
-            rcu_read_unlock(); \
+            qemu_log(__VA_ARGS__); \
         } \
     } while (0)
 
