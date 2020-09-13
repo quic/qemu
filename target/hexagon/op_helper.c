@@ -170,6 +170,30 @@ void HELPER(debug_check_store_width)(CPUHexagonState *env, int slot, int check)
     }
 }
 
+void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
+{
+    switch (env->mem_log_stores[slot_num].width) {
+    case 1:
+        put_user_u8(env->mem_log_stores[slot_num].data32,
+                    env->mem_log_stores[slot_num].va);
+        break;
+    case 2:
+        put_user_u16(env->mem_log_stores[slot_num].data32,
+                     env->mem_log_stores[slot_num].va);
+        break;
+    case 4:
+        put_user_u32(env->mem_log_stores[slot_num].data32,
+                     env->mem_log_stores[slot_num].va);
+        break;
+    case 8:
+        put_user_u64(env->mem_log_stores[slot_num].data64,
+                     env->mem_log_stores[slot_num].va);
+        break;
+    default:
+        g_assert_not_reached();
+    }
+}
+
 void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 {
     int i;

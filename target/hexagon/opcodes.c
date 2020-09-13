@@ -177,17 +177,13 @@ void opcode_init(void)
 int opcode_which_immediate_is_extended(opcode_t opcode)
 {
     const char *p;
-    if (opcode >= XX_LAST_OPCODE) {
-        g_assert_not_reached();
-    }
-    if (!GET_ATTRIB(opcode, A_EXTENDABLE)) {
-        g_assert_not_reached();
-    }
+
+    g_assert(opcode < XX_LAST_OPCODE);
+    g_assert(GET_ATTRIB(opcode, A_EXTENDABLE));
+
     p = opcode_short_semantics[opcode];
     p = strstr(p, NEEDLE);
-    if (p == NULL) {
-        g_assert_not_reached();
-    }
+    g_assert(p);
     p += strlen(NEEDLE);
     while (isspace(*p)) {
         p++;

@@ -306,14 +306,14 @@ static inline void gen_check_store_width(DisasContext *ctx, int slot_num)
 
 static void process_store(DisasContext *ctx, int slot_num)
 {
-    TCGv cancelled = tcg_temp_local_new();
+    TCGv cancelled = tcg_temp_new();
     TCGLabel *label_end = gen_new_label();
 
     /* Don't do anything if the slot was cancelled */
-    gen_slot_cancelled_check(cancelled, slot_num);
+    tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
     tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
+    tcg_temp_free(cancelled);
     {
-        int ctx_width = ctx->store_width[slot_num];
         TCGv address = tcg_temp_local_new();
         tcg_gen_mov_tl(address, hex_store_addr[slot_num]);
 
@@ -325,98 +325,46 @@ static void process_store(DisasContext *ctx, int slot_num)
          * generic helper will have this problem.  Instructions
          * that use fWRAP to generate proper TCG code will be OK.
          */
-        TCGv value;
-        TCGv_i64 value_i64;
-        TCGLabel *label_w2;
-        TCGLabel *label_w4;
-        TCGLabel *label_w8;
-        switch (ctx_width) {
+        switch (ctx->store_width[slot_num]) {
         case 1:
             HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num);
-            value = tcg_temp_new();
-            tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
-            tcg_gen_qemu_st8(value, address, ctx->mem_idx);
-            tcg_temp_free(value);
+            tcg_gen_qemu_st8(hex_store_val32[slot_num],
+                             hex_store_addr[slot_num],
+                             ctx->mem_idx);
             break;
         case 2:
             HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num);
-            value = tcg_temp_new();
-            tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
-            tcg_gen_qemu_st16(value, address, ctx->mem_idx);
-            tcg_temp_free(value);
+            tcg_gen_qemu_st16(hex_store_val32[slot_num],
+                              hex_store_addr[slot_num],
+                              ctx->mem_idx);
             break;
         case 4:
             HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num);
-            value = tcg_temp_new();
-            tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
-            tcg_gen_qemu_st32(value, address, ctx->mem_idx);
-            tcg_temp_free(value);
+            tcg_gen_qemu_st32(hex_store_val32[slot_num],
+                              hex_store_addr[slot_num],
+                              ctx->mem_idx);
             break;
         case 8:
             HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num);
-            value_i64 = tcg_temp_new_i64();
-            tcg_gen_mov_i64(value_i64, hex_store_val64[slot_num]);
-            tcg_gen_qemu_st64(value_i64, address, ctx->mem_idx);
-            tcg_temp_free_i64(value_i64);
+            tcg_gen_qemu_st64(hex_store_val64[slot_num],
+                              hex_store_addr[slot_num],
+                              ctx->mem_idx);
             break;
         default:
-            /*
-             * If we get to here, we don't know the width at
-             * TCG generation time, we'll generate branching
-             * based on the width at runtime.
-             */
-            label_w2 = gen_new_label();
-            label_w4 = gen_new_label();
-            label_w8 = gen_new_label();
-            TCGv width = tcg_temp_local_new();
-
-            tcg_gen_mov_tl(width, hex_store_width[slot_num]);
-            tcg_gen_brcondi_tl(TCG_COND_NE, width, 1, label_w2);
             {
-                /* Width is 1 byte */
-                TCGv value = tcg_temp_new();
-                tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
-                tcg_gen_qemu_st8(value, address, ctx->mem_idx);
-                tcg_gen_br(label_end);
-                tcg_temp_free(value);
+                /*
+                 * If we get to here, we don't know the width at
+                 * TCG generation time, we'll use a helper to
+                 * avoid branching based on the width at runtime.
+                 */
+                TCGv slot = tcg_const_tl(slot_num);
+                gen_helper_commit_store(cpu_env, slot);
+                tcg_temp_free(slot);
             }
-            gen_set_label(label_w2);
-            tcg_gen_brcondi_tl(TCG_COND_NE, width, 2, label_w4);
-            {
-                /* Width is 2 bytes */
-                TCGv value = tcg_temp_new();
-                tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
-                tcg_gen_qemu_st16(value, address, ctx->mem_idx);
-                tcg_gen_br(label_end);
-                tcg_temp_free(value);
-            }
-            gen_set_label(label_w4);
-            tcg_gen_brcondi_tl(TCG_COND_NE, width, 4, label_w8);
-            {
-                /* Width is 4 bytes */
-                TCGv value = tcg_temp_new();
-                tcg_gen_mov_tl(value, hex_store_val32[slot_num]);
-                tcg_gen_qemu_st32(value, address, ctx->mem_idx);
-                tcg_gen_br(label_end);
-                tcg_temp_free(value);
-            }
-            gen_set_label(label_w8);
-            {
-                /* Width is 8 bytes */
-                TCGv_i64 value = tcg_temp_new_i64();
-                tcg_gen_mov_i64(value, hex_store_val64[slot_num]);
-                tcg_gen_qemu_st64(value, address, ctx->mem_idx);
-                tcg_gen_br(label_end);
-                tcg_temp_free_i64(value);
-            }
-
-            tcg_temp_free(width);
         }
         tcg_temp_free(address);
     }
     gen_set_label(label_end);
-
-    tcg_temp_free(cancelled);
 }
 
 static void process_store_log(DisasContext *ctx, packet_t *pkt)
@@ -663,14 +611,10 @@ static void gen_exec_counters(packet_t *pkt)
 
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],
                     hex_gpr[HEX_REG_QEMU_PKT_CNT], 1);
-    if (num_real_insns) {
-        tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_INSN_CNT],
-                        hex_gpr[HEX_REG_QEMU_INSN_CNT], num_real_insns);
-    }
-    if (num_hvx_insns) {
-        tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HVX_CNT],
-                        hex_gpr[HEX_REG_QEMU_HVX_CNT], num_hvx_insns);
-    }
+    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_INSN_CNT],
+                    hex_gpr[HEX_REG_QEMU_INSN_CNT], num_real_insns);
+    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HVX_CNT],
+                    hex_gpr[HEX_REG_QEMU_HVX_CNT], num_hvx_insns);
 }
 
 static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
@@ -804,7 +748,8 @@ static void hexagon_tr_translate_packet(DisasContextBase *dcbase, CPUState *cpu)
          * The CPU log is used to compare against LLDB single stepping,
          * so end the TLB after every packet.
          */
-        if (qemu_loglevel_mask(CPU_LOG_TB_CPU)) {
+        HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
+        if (hex_cpu->lldb_compat && qemu_loglevel_mask(CPU_LOG_TB_CPU)) {
             ctx->base.is_jmp = DISAS_TOO_MANY;
         }
 #if HEX_DEBUG

@@ -203,23 +203,19 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 
 #define fABS(A) (((A) < 0) ? (-(A)) : (A))
 #define fINSERT_BITS(REG, WIDTH, OFFSET, INVAL) \
-    do { \
-        REG = ((REG) & ~(((fCONSTLL(1) << (WIDTH)) - 1) << (OFFSET))) | \
-           (((INVAL) & ((fCONSTLL(1) << (WIDTH)) - 1)) << (OFFSET)); \
-    } while (0)
+    REG = ((WIDTH) ? deposit64(REG, (OFFSET), (WIDTH), (INVAL)) : REG)
 #define fEXTRACTU_BITS(INREG, WIDTH, OFFSET) \
-    (fZXTN(WIDTH, 32, (INREG >> OFFSET)))
+    ((WIDTH) ? extract64((INREG), (OFFSET), (WIDTH)) : 0LL)
 #define fEXTRACTU_BIDIR(INREG, WIDTH, OFFSET) \
     (fZXTN(WIDTH, 32, fBIDIR_LSHIFTR((INREG), (OFFSET), 4_8)))
 #define fEXTRACTU_RANGE(INREG, HIBIT, LOWBIT) \
-    (fZXTN((HIBIT - LOWBIT + 1), 32, (INREG >> LOWBIT)))
+    (((HIBIT) - (LOWBIT) + 1) ? \
+        extract64((INREG), (LOWBIT), ((HIBIT) - (LOWBIT) + 1)) : \
+        0LL)
 #define fINSERT_RANGE(INREG, HIBIT, LOWBIT, INVAL) \
-    do { \
-        int offset = LOWBIT; \
-        int width = HIBIT - LOWBIT + 1; \
-        INREG &= ~(((fCONSTLL(1) << width) - 1) << offset); \
-        INREG |= ((INVAL & ((fCONSTLL(1) << width) - 1)) << offset); \
-    } while (0)
+    INREG = (((HIBIT) - (LOWBIT) - 1) ? \
+        deposit64((INREG), (LOWBIT), ((HIBIT) - (LOWBIT) + 1), (INVAL)) : \
+        INREG)
 
 #ifdef QEMU_GENERATE
 #define f8BITSOF(RES, VAL) gen_8bitsof(RES, VAL)
@@ -302,9 +298,8 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
     ({ \
         ((VAL) < 0) ? (-(1LL << ((N) - 1))) : ((1LL << ((N) - 1)) - 1); \
     })
-#define fZXTN(N, M, VAL) ((VAL) & ((1LL << (N)) - 1))
-#define fSXTN(N, M, VAL) \
-    ((fZXTN(N, M, VAL) ^ (1LL << ((N) - 1))) - (1LL << ((N) - 1)))
+#define fZXTN(N, M, VAL) ((N) ? extract64((VAL), 0, (N)) : 0LL)
+#define fSXTN(N, M, VAL) ((N) ? sextract64((VAL), 0, (N)) : 0LL)
 #define fSATN(N, VAL) \
     ((fSXTN(N, 64, VAL) == (VAL)) ? (VAL) : fSATVALN(N, VAL))
 #define fVSATN(N, VAL) \
@@ -636,7 +631,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
         : ((((ORIG_REG) > 0) && ((A) == 0)) ? fSATVALN(32, (ORIG_REG)) \
                                             : fSAT(A)))
 #define fPASS(A) A
-#define fRND(A) (((A) + 1) >> 1)
 #define fBIDIR_SHIFTL(SRC, SHAMT, REGSTYPE) \
     (((SHAMT) < 0) ? ((fCAST##REGSTYPE(SRC) >> ((-(SHAMT)) - 1)) >> 1) \
                    : (fCAST##REGSTYPE(SRC) << (SHAMT)))
@@ -968,12 +962,15 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fSYNCH()
 #define fISYNC()
 #define fICFETCH(REG)
-#define fDCFETCH(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
-#define fICINVA(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
+#define fDCFETCH(REG) \
+    do { (void)REG; } while (0) /* Nothing to do in qemu */
+#define fICINVA(REG) \
+    do { (void)REG; } while (0) /* Nothing to do in qemu */
 #define fL2FETCH(ADDR, HEIGHT, WIDTH, STRIDE, FLAGS)
-#define fDCCLEANA(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
+#define fDCCLEANA(REG) \
+    do { (void)REG; } while (0) /* Nothing to do in qemu */
 #define fDCCLEANINVA(REG) \
-    do { REG = REG; } while (0) /* Nothing to do in qemu */
+    do { (void)REG; } while (0) /* Nothing to do in qemu */
 
 #ifdef QEMU_GENERATE
 #define fDCZEROA(REG) tcg_gen_mov_tl(hex_dczero_addr, (REG))
@@ -981,7 +978,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fDCZEROA(REG) do { env->dczero_addr = (REG); } while (0)
 #endif
 
-#define fDCINVA(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
+#define fDCINVA(REG) do { (void)REG; } while (0) /* Nothing to do in qemu */
 #define fBRANCH_SPECULATE_STALL(DOTNEWVAL, JUMP_COND, SPEC_DIR, HINTBITNUM, \
                                 STRBITNUM) /* Nothing */
 

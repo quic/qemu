@@ -113,25 +113,19 @@ static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot)
 
 static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
 {
-    TCGv val32 = tcg_temp_new();
-
     /* Low word */
-    tcg_gen_extrl_i64_i32(val32, val);
-    tcg_gen_mov_tl(hex_new_value[rnum], val32);
+    tcg_gen_extrl_i64_i32(hex_new_value[rnum], val);
 #if HEX_DEBUG
     /* Do this so HELPER(debug_commit_end) will know */
     tcg_gen_movi_tl(hex_reg_written[rnum], 1);
 #endif
 
     /* High word */
-    tcg_gen_extrh_i64_i32(val32, val);
-    tcg_gen_mov_tl(hex_new_value[rnum + 1], val32);
+    tcg_gen_extrh_i64_i32(hex_new_value[rnum + 1], val);
 #if HEX_DEBUG
     /* Do this so HELPER(debug_commit_end) will know */
     tcg_gen_movi_tl(hex_reg_written[rnum + 1], 1);
 #endif
-
-    tcg_temp_free(val32);
 }
 
 static inline void gen_log_pred_write(int pnum, TCGv val)
@@ -158,31 +152,17 @@ static inline void gen_log_pred_write(int pnum, TCGv val)
 
 static inline void gen_read_p3_0(TCGv control_reg)
 {
-    TCGv pval = tcg_temp_new();
-    int i;
     tcg_gen_movi_tl(control_reg, 0);
-    for (i = NUM_PREGS - 1; i >= 0; i--) {
-        tcg_gen_shli_tl(control_reg, control_reg, 8);
-        tcg_gen_andi_tl(pval, hex_pred[i], 0xff);
-        tcg_gen_or_tl(control_reg, control_reg, pval);
+    for (int i = 0; i < NUM_PREGS; i++) {
+        tcg_gen_deposit_tl(control_reg, control_reg, hex_pred[i], i * 8, 8);
     }
-    tcg_temp_free(pval);
 }
 
-static inline void gen_write_p3_0(TCGv tmp)
+static inline void gen_write_p3_0(TCGv control_reg)
 {
-    TCGv control_reg = tcg_temp_new();
-    TCGv pred_val = tcg_temp_new();
-    int i;
-
-    tcg_gen_mov_tl(control_reg, tmp);
-    for (i = 0; i < NUM_PREGS; i++) {
-        tcg_gen_andi_tl(pred_val, control_reg, 0xff);
-        tcg_gen_mov_tl(hex_pred[i], pred_val);
-        tcg_gen_shri_tl(control_reg, control_reg, 8);
+    for (int i = 0; i < NUM_PREGS; i++) {
+        tcg_gen_extract_tl(hex_pred[i], control_reg, i * 8, 8);
     }
-    tcg_temp_free(control_reg);
-    tcg_temp_free(pred_val);
 }
 
 /*
@@ -1043,7 +1023,7 @@ static inline void gen_log_vreg_write(TCGv_ptr var, int num, int vnew,
     TCGLabel *label_end = gen_new_label();
 
     /* Don't do anything if the slot was cancelled */
-    gen_slot_cancelled_check(cancelled, slot_num);
+    tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
     tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
     {
         TCGv mask = tcg_const_tl(1 << num);
@@ -1097,7 +1077,7 @@ static inline void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
     TCGLabel *label_end = gen_new_label();
 
     /* Don't do anything if the slot was cancelled */
-    gen_slot_cancelled_check(cancelled, slot_num);
+    tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
     tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
     {
         TCGv_ptr dst = tcg_temp_new_ptr();

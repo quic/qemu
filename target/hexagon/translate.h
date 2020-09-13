@@ -113,20 +113,6 @@ extern TCGv hex_VRegs_updated;
 extern TCGv hex_VRegs_select;
 extern TCGv hex_QRegs_updated;
 
-static inline void gen_slot_cancelled_check(TCGv check, int slot_num)
-{
-    TCGv mask = tcg_const_tl(1 << slot_num);
-    TCGv one = tcg_const_tl(1);
-    TCGv zero = tcg_const_tl(0);
-
-    tcg_gen_and_tl(mask, hex_slot_cancelled, mask);
-    tcg_gen_movcond_tl(TCG_COND_NE, check, mask, zero, one, zero);
-
-    tcg_temp_free(one);
-    tcg_temp_free(zero);
-    tcg_temp_free(mask);
-}
-
 extern void gen_exception(int excp);
 extern void gen_exception_debug(void);
 

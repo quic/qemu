@@ -24,18 +24,10 @@ typedef struct {
 
 static const iclass_info_t iclass_info[] = {
 
-#define DEF_EE_ICLASS32(TYPE, SLOTS, UNITS)    /* nothing */
 #define DEF_PP_ICLASS32(TYPE, SLOTS, UNITS) \
     [ICLASS_FROM_TYPE(TYPE)] = { .slots = #SLOTS },
-
-#include "imported/iclass.def"
-#undef DEF_PP_ICLASS32
-#undef DEF_EE_ICLASS32
-
-#define DEF_PP_ICLASS32(TYPE, SLOTS, UNITS)    /* nothing */
 #define DEF_EE_ICLASS32(TYPE, SLOTS, UNITS) \
     [ICLASS_FROM_TYPE(TYPE)] = { .slots = #SLOTS },
-
 #include "imported/iclass.def"
 #undef DEF_PP_ICLASS32
 #undef DEF_EE_ICLASS32

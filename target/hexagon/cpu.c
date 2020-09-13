@@ -46,6 +46,8 @@ static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
     return oc;
 }
 
+static Property hexagon_lldb_compat_property =
+    DEFINE_PROP_BOOL("lldb-compat", HexagonCPU, lldb_compat, false);
 static Property hexagon_lldb_stack_adjust_property =
     DEFINE_PROP_UNSIGNED("lldb-stack-adjust", HexagonCPU, lldb_stack_adjust,
                          0, qdev_prop_uint32, target_ulong);
@@ -150,7 +152,7 @@ static void hexagon_dump(CPUHexagonState *env, FILE *f)
 {
     HexagonCPU *cpu = container_of(env, HexagonCPU, env);
 
-    if (cpu->lldb_stack_adjust) {
+    if (cpu->lldb_compat) {
         /*
          * When comparing with LLDB, it doesn't step through single-cycle
          * hardware loops the same way.  So, we just skip them here
@@ -285,6 +287,7 @@ static void hexagon_cpu_init(Object *obj)
     HexagonCPU *cpu = HEXAGON_CPU(obj);
 
     cpu_set_cpustate_pointers(cpu);
+    qdev_property_add_static(DEVICE(obj), &hexagon_lldb_compat_property);
     qdev_property_add_static(DEVICE(obj), &hexagon_lldb_stack_adjust_property);
 }
 

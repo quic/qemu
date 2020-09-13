@@ -165,6 +165,7 @@ typedef struct HexagonCPU {
     CPUNegativeOffsetState neg;
     CPUHexagonState env;
 
+    bool lldb_compat;
     target_ulong lldb_stack_adjust;
 } HexagonCPU;
 
