@@ -22,7 +22,7 @@
 #include "internal.h"
 #include "exec/exec-all.h"
 #include "qapi/error.h"
-#include "migration/vmstate.h"
+#include "hw/qdev-properties.h"
 
 static void hexagon_v67_cpu_init(Object *obj)
 {
@@ -46,6 +46,10 @@ static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
     return oc;
 }
 
+static Property hexagon_lldb_stack_adjust_property =
+    DEFINE_PROP_UNSIGNED("lldb-stack-adjust", HexagonCPU, lldb_stack_adjust,
+                         0, qdev_prop_uint32, target_ulong);
+
 const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
    "r0", "r1",  "r2",  "r3",  "r4",   "r5",  "r6",  "r7",
    "r8", "r9",  "r10", "r11", "r12",  "r13", "r14", "r15",
@@ -63,32 +67,18 @@ const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
  * stacks at different locations.  This is used to compensate so the diff is
  * cleaner.
  */
-static inline target_ulong hack_stack_ptrs(CPUHexagonState *env,
-                                           target_ulong addr)
+static inline target_ulong adjust_stack_ptrs(CPUHexagonState *env,
+                                             target_ulong addr)
 {
-    static bool first = true;
-    if (first) {
-        first = false;
-        env->stack_start = env->gpr[HEX_REG_SP];
-        env->gpr[HEX_REG_USR] = 0x56000;
+    HexagonCPU *cpu = container_of(env, HexagonCPU, env);
+    target_ulong stack_adjust = cpu->lldb_stack_adjust;
 
-#define ADJUST_STACK 0
-#if ADJUST_STACK
-        /*
-         * Change the two numbers below to
-         *     1    qemu stack location
-         *     2    hardware stack location
-         * Or set to zero for normal mode (no stack adjustment)
-         */
-        env->stack_adjust = 0xfffeeb80 - 0xbf89f980;
-#else
-        env->stack_adjust = 0;
-#endif
+    if (stack_adjust == 0) {
+        return addr;
     }
 
     target_ulong stack_start = env->stack_start;
     target_ulong stack_size = 0x10000;
-    target_ulong stack_adjust = env->stack_adjust;
 
     if (stack_start + 0x1000 >= addr && addr >= (stack_start - stack_size)) {
         return addr - stack_adjust;
@@ -115,7 +105,7 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
     if (regnum == HEX_REG_P3_0) {
         value = read_p3_0(env);
     } else {
-        value = regnum < 32 ? hack_stack_ptrs(env, env->gpr[regnum])
+        value = regnum < 32 ? adjust_stack_ptrs(env, env->gpr[regnum])
                             : env->gpr[regnum];
     }
 
@@ -158,19 +148,21 @@ void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
 
 static void hexagon_dump(CPUHexagonState *env, FILE *f)
 {
-    static target_ulong last_pc;
-    int i;
+    HexagonCPU *cpu = container_of(env, HexagonCPU, env);
 
-    /*
-     * When comparing with LLDB, it doesn't step through single-cycle
-     * hardware loops the same way.  So, we just skip them here
-     */
-    if (env->gpr[HEX_REG_PC] == last_pc) {
-        return;
+    if (cpu->lldb_stack_adjust) {
+        /*
+         * When comparing with LLDB, it doesn't step through single-cycle
+         * hardware loops the same way.  So, we just skip them here
+         */
+        if (env->gpr[HEX_REG_PC] == env->last_pc_dumped) {
+            return;
+        }
+        env->last_pc_dumped = env->gpr[HEX_REG_PC];
     }
-    last_pc = env->gpr[HEX_REG_PC];
+
     qemu_fprintf(f, "General Purpose Registers = {\n");
-    for (i = 0; i < 32; i++) {
+    for (int i = 0; i < 32; i++) {
         print_reg(f, env, i);
     }
     print_reg(f, env, HEX_REG_SA0);
@@ -208,10 +200,10 @@ static void hexagon_dump(CPUHexagonState *env, FILE *f)
 #define DUMP_HVX 0
 #if DUMP_HVX
     qemu_fprintf(f, "Vector Registers = {\n");
-    for (i = 0; i < NUM_VREGS; i++) {
+    for (int i = 0; i < NUM_VREGS; i++) {
         print_vreg(f, env, i);
     }
-    for (i = 0; i < NUM_QREGS; i++) {
+    for (int i = 0; i < NUM_QREGS; i++) {
         print_qreg(f, env, i);
     }
     qemu_fprintf(f, "}\n");
@@ -293,6 +285,7 @@ static void hexagon_cpu_init(Object *obj)
     HexagonCPU *cpu = HEXAGON_CPU(obj);
 
     cpu_set_cpustate_pointers(cpu);
+    qdev_property_add_static(DEVICE(obj), &hexagon_lldb_stack_adjust_property);
 }
 
 static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,

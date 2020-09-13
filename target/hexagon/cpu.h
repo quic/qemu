@@ -88,9 +88,9 @@ struct CPUHexagonState {
     target_ulong branch_taken;
     target_ulong next_PC;
 
-    /* For comparing with LLDB on target - see hack_stack_ptrs function */
+    /* For comparing with LLDB on target - see adjust_stack_ptrs function */
+    target_ulong last_pc_dumped;
     target_ulong stack_start;
-    target_ulong stack_adjust;
 
     uint8_t slot_cancelled;
     target_ulong new_value[TOTAL_PER_THREAD_REGS];
@@ -164,6 +164,8 @@ typedef struct HexagonCPU {
     /*< public >*/
     CPUNegativeOffsetState neg;
     CPUHexagonState env;
+
+    target_ulong lldb_stack_adjust;
 } HexagonCPU;
 
 static inline HexagonCPU *hexagon_env_get_cpu(CPUHexagonState *env)

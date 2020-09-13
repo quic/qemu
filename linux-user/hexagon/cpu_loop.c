@@ -106,4 +106,6 @@ void target_cpu_copy_regs(CPUArchState *env, struct target_pt_regs *regs)
 {
     env->gpr[HEX_REG_PC] = regs->sepc;
     env->gpr[HEX_REG_SP] = regs->sp;
+    env->stack_start = regs->sp;
+    env->gpr[HEX_REG_USR] = 0x56000;
 }
