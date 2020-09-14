@@ -16,6 +16,7 @@
  */
 
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -41,14 +42,11 @@ uint64_t utimer_read()
 uint64_t utimer_read_pair()
 {
     uint32_t timer_low, timer_high;
-#if 0
-    /* FIXME */
-    asm volatile("r1:0 = c63:62\n\t"
+    asm volatile("r1:0 = utimer\n\t"
                  "%0 = r0\n\t"
                  "%1 = r1\n\t"
                  : "=r" (timer_low),
                    "=r" (timer_high));
-#endif
     return ((uint64_t)timer_high << 32) | timer_low;
 }
 uint64_t timer_read()
@@ -73,15 +71,20 @@ int main()
 {
     timer_init();
 
-    /* FIXME make some test assertions... */
+    uint64_t start = timer_read();
     for (int i = 0; i < 30; i++) {
         uint64_t val = timer_read();
         printf("\treg:   %llu | %08llx\n", val, val);
         val = timer_read_pair();
+        assert(val != 0);
         printf("\tpair:  %llu | %08llx\n", val, val);
         val = utimer_read();
+        assert(val != 0);
         printf("\tureg:  %llu | %08llx\n", val, val);
         val = utimer_read_pair();
         printf("\tupair: %llu | %08llx\n", val, val);
+        assert(val != 0);
     }
+    assert(start != timer_read);
+    puts("PASS");
 }
