@@ -117,6 +117,8 @@ int hexagon_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     if (n < NUM_QREGS) {
         return gdb_put_qreg(env, mem_buf, n);
     }
+    n -= NUM_QREGS;
+
 #ifndef CONFIG_USER_ONLY
     if (n < NUM_SREGS) {
         ARCH_SET_SYSTEM_REG(env, n, ldtul_p(mem_buf));
@@ -129,7 +131,6 @@ int hexagon_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     }
     n -= NUM_GREGS;
 #endif
-
 
     g_assert_not_reached();
     return 0;
