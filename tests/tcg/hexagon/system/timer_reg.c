@@ -26,6 +26,12 @@
 #define QTMR_CNTP1_TVAL ((uint32_t *)((QTMR_BASE) + 0x1028))
 #define QTMR_FREQ 192000
 
+#if 0
+#define DEBUG printf
+#else
+#define DEBUG(...)
+#endif
+
 void timer_init()
 {
     *QTMR_CNTP1_TVAL = QTMR_FREQ / 1000;
@@ -74,17 +80,17 @@ int main()
     uint64_t start = timer_read();
     for (int i = 0; i < 30; i++) {
         uint64_t val = timer_read();
-        printf("\treg:   %llu | %08llx\n", val, val);
+        DEBUG("\treg:   %llu | %08llx\n", val, val);
         val = timer_read_pair();
         assert(val != 0);
-        printf("\tpair:  %llu | %08llx\n", val, val);
+        DEBUG("\tpair:  %llu | %08llx\n", val, val);
         val = utimer_read();
         assert(val != 0);
-        printf("\tureg:  %llu | %08llx\n", val, val);
+        DEBUG("\tureg:  %llu | %08llx\n", val, val);
         val = utimer_read_pair();
-        printf("\tupair: %llu | %08llx\n", val, val);
+        DEBUG("\tupair: %llu | %08llx\n", val, val);
         assert(val != 0);
     }
-    assert(start != timer_read);
+    assert(start != timer_read());
     puts("PASS");
 }
