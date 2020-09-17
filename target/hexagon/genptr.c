@@ -635,9 +635,15 @@ static inline void gen_compare_i64(TCGCond cond, TCGv res,
     tcg_temp_free_i64(temp);
 }
 
-static inline void gen_cmpnd_cmp_jmp(int pnum, TCGCond cond, bool sense,
-                                     TCGv arg1, TCGv arg2, int pc_off)
+static inline void gen_cmpnd_cmp_jmp(insn_t *insn, int pnum, TCGCond cond,
+                                     bool sense, TCGv arg1, TCGv arg2,
+                                     int pc_off)
 {
+    /* The decoder gives us two instances.  Just do everything on the first */
+    if (!insn->part1) {
+        return;
+    }
+
     TCGv new_pc = tcg_temp_new();
     TCGv pred = tcg_temp_new();
     TCGv zero = tcg_const_tl(0);
@@ -664,19 +670,20 @@ static inline void gen_cmpnd_cmp_jmp(int pnum, TCGCond cond, bool sense,
     tcg_temp_free(one);
 }
 
-static inline void gen_cmpnd_cmpi_jmp(int pnum, TCGCond cond, bool sense,
-                                      TCGv arg1, int arg2, int pc_off)
+static inline void gen_cmpnd_cmpi_jmp(insn_t *insn, int pnum, TCGCond cond,
+                                      bool sense, TCGv arg1, int arg2,
+                                      int pc_off)
 {
     TCGv tmp = tcg_const_tl(arg2);
-    gen_cmpnd_cmp_jmp(pnum, cond, sense, arg1, tmp, pc_off);
+    gen_cmpnd_cmp_jmp(insn, pnum, cond, sense, arg1, tmp, pc_off);
     tcg_temp_free(tmp);
 
 }
 
-static inline void gen_cmpnd_cmp_n1_jmp(int pnum, TCGCond cond, bool sense,
-                                        TCGv arg, int pc_off)
+static inline void gen_cmpnd_cmp_n1_jmp(insn_t *insn, int pnum, TCGCond cond,
+                                        bool sense, TCGv arg, int pc_off)
 {
-    gen_cmpnd_cmpi_jmp(pnum, cond, sense, arg, -1, pc_off);
+    gen_cmpnd_cmpi_jmp(insn, pnum, cond, sense, arg, -1, pc_off);
 }
 
 
