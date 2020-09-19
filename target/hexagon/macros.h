@@ -1887,20 +1887,23 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define DO_SIAD(RS) \
     do { \
         uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
-        tmp |= RS; \
+        uint32_t iad = fGET_FIELD(tmp, IPENDAD_IAD); \
+        fSET_FIELD(tmp, IPENDAD_IAD, iad | RS); \
         WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
     } while (0)
 
 #define DO_CIAD(RS) \
     do { \
         uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
-        tmp &= ~(RS); \
+        uint32_t iad = fGET_FIELD(tmp, IPENDAD_IAD); \
+        fSET_FIELD(tmp, IPENDAD_IAD, tmp & ~iad); \
         WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
     } while (0)
 #define DO_CSWI(RS) \
     do { \
         uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
-        tmp &= ~(RS); \
+        uint32_t ipend = fGET_FIELD(tmp, IPENDAD_IPEND); \
+        fSET_FIELD(tmp, IPENDAD_IPEND, tmp & ~ipend); \
         WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
     } while (0)
 #endif

@@ -20,6 +20,7 @@ TESTS += \
 	timer_reg \
 	qtimer_test \
 	bestwait \
+	ciad-siad \
 	swi \
 	pcycle \
 	$()
@@ -50,6 +51,7 @@ sys_atomics: sys_atomics.o
 timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o
 bestwait: bestwait.o
+ciad-siad: ciad-siad.o
 swi: swi.o
 wait: wait.o
 pcycle: pcycle.o

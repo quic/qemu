@@ -303,6 +303,7 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     print_sreg(f, env, HEX_SREG_HTID);
     print_sreg(f, env, HEX_SREG_BADVA);
     print_sreg(f, env, HEX_SREG_IMASK);
+    print_sreg(f, env, HEX_SREG_IPENDAD);
     print_sreg(f, env, HEX_SREG_GEVB);
     print_greg(f, env, HEX_GREG_GELR);
     print_greg(f, env, HEX_GREG_GSR);
@@ -450,11 +451,16 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
             [HEXAGON_CPU_IRQ_7] = 0x7,
     };
 
+    /* IRQ 2, event number: 18, Cause Code: 0xc2 (VIC0 interface) */
     if (level && (irq == HEXAGON_CPU_IRQ_2)) {
 /*      printf("XXX: L2VIC: irq = %d, level = %d\n", irq, level); */
         while (ssr_get_ex(env)) {rcu_read_lock(); printf ("x"); rcu_read_unlock();};
         /* NOTE: when level is not zero it is equal to the external IRQ # */
         env->g_sreg[HEX_SREG_VID] = level;
+        target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+        target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
+        fSET_FIELD(ipendad, IPENDAD_IAD, ipendad_iad | (1 << mask[HEXAGON_CPU_IRQ_2]));
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
         env->cause_code = HEX_CAUSE_INT2;
     }
 
