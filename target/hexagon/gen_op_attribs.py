@@ -37,7 +37,7 @@ def main():
     for tag in tags:
         f.write('OP_ATTRIB(%s,ATTRIBS(%s))\n' % \
             (tag, ','.join(sorted(attribdict[tag]))))
-    realf = open('op_attribs_generated.h', 'wt')
+    realf = open(sys.argv[3], 'wt')
     realf.write(f.getvalue())
     realf.close()
     f.close()

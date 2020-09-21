@@ -349,4 +349,4 @@ if __name__ == '__main__':
         print_tree(f, dectree_ext)
     print_match_info(f)
     print_op_info(f)
-    open('dectree_generated.h', 'w').write(f.getvalue())
+    open(sys.argv[1], 'w').write(f.getvalue())

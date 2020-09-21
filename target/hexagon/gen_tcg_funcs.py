@@ -697,7 +697,7 @@ def main():
 
         gen_def_tcg_func(f, tag, tagregs, tagimms)
 
-    realf = open('tcg_funcs_generated.h','w')
+    realf = open(sys.argv[4], 'w')
     realf.write(f.getvalue())
     realf.close()
     f.close()

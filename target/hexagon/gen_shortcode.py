@@ -62,7 +62,7 @@ def main():
 
     f.write("#undef DEF_SHORTCODE\n")
 
-    realf = open('shortcode_generated.h','w')
+    realf = open(sys.argv[3], 'w')
     realf.write(f.getvalue())
     realf.close()
     f.close()

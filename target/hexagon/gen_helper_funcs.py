@@ -307,7 +307,7 @@ def main():
         gen_helper_function(f, tag, tagregs, tagimms)
 
 
-    realf = open('helper_funcs_generated.h','w')
+    realf = open(sys.argv[4], 'w')
     realf.write(f.getvalue())
     realf.close()
     f.close()

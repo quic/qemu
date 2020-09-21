@@ -98,7 +98,8 @@ $(SHORTCODE_H): \
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/gen_shortcode.py \
                 $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(SRC_PATH)/target/hexagon/attribs_def.h \
+                $(SHORTCODE_H), \
 	    "GEN", "Hexagon shortcode_generated.h")
 
 $(HELPER_PROTOS_H): \
@@ -111,7 +112,8 @@ $(HELPER_PROTOS_H): \
 	    $(SRC_PATH)/target/hexagon/gen_helper_protos.py \
                 $(SEMANTICS) \
                 $(SRC_PATH)/target/hexagon/attribs_def.h \
-                $(SRC_PATH)/target/hexagon/gen_tcg.h, \
+                $(SRC_PATH)/target/hexagon/gen_tcg.h \
+                $(HELPER_PROTOS_H), \
 	    "GEN", "Hexagon helper_protos_generated.h")
 
 $(TCG_FUNCS_H): \
@@ -124,7 +126,8 @@ $(TCG_FUNCS_H): \
 	    $(SRC_PATH)/target/hexagon/gen_tcg_funcs.py \
                 $(SEMANTICS) \
                 $(SRC_PATH)/target/hexagon/attribs_def.h \
-                $(SRC_PATH)/target/hexagon/gen_tcg.h, \
+                $(SRC_PATH)/target/hexagon/gen_tcg.h \
+                $(TCG_FUNCS_H), \
 	    "GEN", "Hexagon tcg_funcs_generated.h")
 
 $(HELPER_FUNCS_H): \
@@ -137,7 +140,8 @@ $(HELPER_FUNCS_H): \
 	    $(SRC_PATH)/target/hexagon/gen_helper_funcs.py \
                 $(SEMANTICS) \
                 $(SRC_PATH)/target/hexagon/attribs_def.h \
-                $(SRC_PATH)/target/hexagon/gen_tcg.h, \
+                $(SRC_PATH)/target/hexagon/gen_tcg.h \
+                $(HELPER_FUNCS_H), \
 	    "GEN", "Hexagon helper_funcs_generated.h")
 
 $(PRINTINSN_H): \
@@ -148,7 +152,8 @@ $(PRINTINSN_H): \
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/gen_printinsn.py \
                 $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(SRC_PATH)/target/hexagon/attribs_def.h \
+                $(PRINTINSN_H), \
 	    "GEN", "Hexagon printinsn_generated.h")
 
 $(OP_REGS_H): \
@@ -159,7 +164,8 @@ $(OP_REGS_H): \
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/gen_op_regs.py \
                 $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(SRC_PATH)/target/hexagon/attribs_def.h \
+                $(OP_REGS_H), \
 	    "GEN", "Hexagon op_regs_generated.h")
 
 $(OP_ATTRIBS_H): \
@@ -170,7 +176,8 @@ $(OP_ATTRIBS_H): \
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/gen_op_attribs.py \
                 $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(SRC_PATH)/target/hexagon/attribs_def.h \
+                $(OP_ATTRIBS_H), \
 	    "GEN", "Hexagon op_attribs_generated.h")
 
 $(OPCODES_DEF_H): \
@@ -181,7 +188,8 @@ $(OPCODES_DEF_H): \
 	$(call quiet-command, \
 	    $(SRC_PATH)/target/hexagon/gen_opcodes_def.py \
                 $(SEMANTICS) \
-                $(SRC_PATH)/target/hexagon/attribs_def.h, \
+                $(SRC_PATH)/target/hexagon/attribs_def.h \
+                $(OPCODES_DEF_H), \
 	    "GEN", "Hexagon opcodes_def_generated.h")
 
 #
@@ -209,7 +217,7 @@ DECTREE_HEADER=dectree_generated.h
 $(DECTREE_HEADER): $(SRC_PATH)/target/hexagon/dectree.py $(DECTREE_IMPORT)
 	$(call quiet-command, \
 	    PYTHONPATH=$(BUILD_USER_DIR) \
-	    $(PYTHON) $(SRC_PATH)/target/hexagon/dectree.py, \
+	    $(PYTHON) $(SRC_PATH)/target/hexagon/dectree.py $(DECTREE_HEADER), \
 	    "GEN", "Hexagon decode tree")
 
 generated-files-y += $(GENERATED_HEXAGON_FILES) $(DECTREE_HEADER)

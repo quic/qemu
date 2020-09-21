@@ -110,7 +110,7 @@ def main():
             f.write(''','%s',0,0''' % myu)
         f.write(')\n')
 
-    realf = open('op_regs_generated.h','w')
+    realf = open(sys.argv[3], 'w')
     realf.write(f.getvalue())
     realf.close()
     f.close()

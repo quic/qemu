@@ -162,7 +162,7 @@ def main():
 
         gen_helper_prototype(f, tag, tagregs, tagimms)
 
-    realf = open('helper_protos_generated.h','w')
+    realf = open(sys.argv[4], 'w')
     realf.write(f.getvalue())
     realf.close()
     f.close()

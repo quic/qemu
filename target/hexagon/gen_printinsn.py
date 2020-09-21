@@ -176,7 +176,7 @@ def main():
         # append empty string so there is at least one more arg
         f.write(',"")\n')
 
-    realf = open('printinsn_generated.h','w')
+    realf = open(sys.argv[3], 'w')
     realf.write(f.getvalue())
     realf.close()
     f.close()
