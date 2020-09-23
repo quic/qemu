@@ -103,39 +103,28 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
                              uint32_t words[])
 {
     bool found_end = false;
-    int max_words;
     int nwords;
     int i;
 
-    /* Make sure we don't cross a page boundary */
-    max_words = -(ctx->base.pc_next | TARGET_PAGE_MASK) / sizeof(uint32_t);
-    if (max_words < PACKET_WORDS_MAX) {
-        /* Might cross a page boundary */
-        if (ctx->base.num_insns == 1) {
-            /* OK if it's the first packet in the TB */
-            max_words = PACKET_WORDS_MAX;
-        }
-    } else {
-        max_words = PACKET_WORDS_MAX;
-    }
-
     memset(words, 0, PACKET_WORDS_MAX * sizeof(uint32_t));
-    for (nwords = 0; !found_end && nwords < max_words; nwords++) {
+    for (nwords = 0; !found_end && nwords < PACKET_WORDS_MAX; nwords++) {
         words[nwords] = cpu_ldl_code(env,
                                 ctx->base.pc_next + nwords * sizeof(uint32_t));
         found_end = is_packet_end(words[nwords]);
     }
     if (!found_end) {
-        if (nwords == PACKET_WORDS_MAX) {
-            /* Read too many words without finding the end */
-            env->cause_code = HEX_CAUSE_INVALID_PACKET;
-            gen_exception(HEX_EVENT_PRECISE);
-            ctx->base.is_jmp = DISAS_NORETURN;
-            return 0;
-        }
-        /* Crosses page boundary - defer to next TB */
-        ctx->base.is_jmp = DISAS_TOO_MANY;
+        /* Read too many words without finding the end */
+        env->cause_code = HEX_CAUSE_INVALID_PACKET;
+        gen_exception(HEX_EVENT_PRECISE);
+        ctx->base.is_jmp = DISAS_NORETURN;
         return 0;
+    }
+
+    /* Check for page boundary crossing */
+    int max_words = -(ctx->base.pc_next | TARGET_PAGE_MASK) / sizeof(uint32_t);
+    if (nwords > max_words) {
+        /* We can only cross a page boundary at the beginning of a TB */
+        g_assert(ctx->base.num_insns == 1);
     }
 
     HEX_DEBUG_LOG("decode_packet: tid = %d, pc = 0x%x\n",
@@ -555,15 +544,6 @@ static void process_dczeroa(DisasContext *ctx, packet_t *pkt)
     }
 }
 
-static bool process_change_of_flow(DisasContext *ctx, packet_t *pkt)
-{
-    if (pkt->pkt_has_cof) {
-        tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
-        return true;
-    }
-    return false;
-}
-
 void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n)
 {
     TCGv_ptr d = tcg_temp_new_ptr();
@@ -767,8 +747,6 @@ static void check_imprecise_exception(packet_t *pkt)
 static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     packet_t *pkt)
 {
-    bool end_tb = false;
-
 #ifndef CONFIG_USER_ONLY
     if (pkt->pkt_has_store_s0 ||
         pkt->pkt_has_store_s1 ||
@@ -797,7 +775,6 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     gen_pred_writes(ctx, pkt);
     process_store_log(ctx, pkt);
     process_dczeroa(ctx, pkt);
-    end_tb |= process_change_of_flow(ctx, pkt);
     if (pkt->pkt_has_hvx) {
         gen_commit_hvx(ctx, pkt);
     }
@@ -822,8 +799,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     gen_helper_resched(cpu_env);
 #endif
 
-    if (end_tb) {
-        tcg_gen_exit_tb(NULL, 0);
+    if (pkt->pkt_has_cof) {
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }
@@ -909,6 +885,20 @@ static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase,
     return true;
 }
 
+static bool pkt_crosses_page(CPUHexagonState *env, DisasContext *ctx)
+{
+    target_ulong page_start = ctx->base.pc_first & TARGET_PAGE_MASK;
+    bool found_end = false;
+    int nwords;
+
+    for (nwords = 0; !found_end && nwords < PACKET_WORDS_MAX; nwords++) {
+        uint32_t word = cpu_ldl_code(env,
+                            ctx->base.pc_next + nwords * sizeof(uint32_t));
+        found_end = is_packet_end(word);
+    }
+    uint32_t next_ptr =  ctx->base.pc_next + nwords * sizeof(uint32_t);
+    return found_end && next_ptr - page_start >= TARGET_PAGE_SIZE;
+}
 
 static void hexagon_tr_translate_packet(DisasContextBase *dcbase,
     CPUState *cpu)
@@ -919,10 +909,12 @@ static void hexagon_tr_translate_packet(DisasContextBase *dcbase,
     decode_and_translate_packet(env, ctx);
 
     if (ctx->base.is_jmp == DISAS_NEXT) {
-        target_ulong page_start;
+        target_ulong page_start = ctx->base.pc_first & TARGET_PAGE_MASK;
+        target_ulong bytes_max = PACKET_WORDS_MAX * sizeof(target_ulong);
 
-        page_start = ctx->base.pc_first & TARGET_PAGE_MASK;
-        if (ctx->base.pc_next - page_start >= TARGET_PAGE_SIZE) {
+        if (ctx->base.pc_next - page_start >= TARGET_PAGE_SIZE ||
+            (ctx->base.pc_next - page_start >= TARGET_PAGE_SIZE - bytes_max &&
+             pkt_crosses_page(env, ctx))) {
             ctx->base.is_jmp = DISAS_TOO_MANY;
         }
 
@@ -947,6 +939,7 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     switch (ctx->base.is_jmp) {
     case DISAS_TOO_MANY:
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
+        /* Try moving gen_helper_resched here */
         if (ctx->base.singlestep_enabled) {
             gen_exception_debug();
         } else {
@@ -954,6 +947,13 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         }
         break;
     case DISAS_NORETURN:
+        tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+        /* Try moving gen_helper_resched here */
+        if (ctx->base.singlestep_enabled) {
+            gen_exception_debug();
+        } else {
+            tcg_gen_exit_tb(NULL, 0);
+        }
         break;
     default:
         g_assert_not_reached();
