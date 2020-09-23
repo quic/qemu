@@ -437,6 +437,14 @@
             gen_read_upcycle_reg(dest, HEX_REG_UPCYCLEHI); \
         } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UPCYCLELO) { \
             gen_read_upcycle_reg(dest, HEX_REG_UPCYCLELO); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_PKTCNTLO) { \
+            TCGv num = tcg_const_tl(HEX_REG_PKTCNTLO); \
+            gen_helper_creg_read(dest, cpu_env, num); \
+            tcg_temp_free(num); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_PKTCNTHI) { \
+            TCGv num = tcg_const_tl(HEX_REG_PKTCNTHI); \
+            gen_helper_creg_read(dest, cpu_env, num); \
+            tcg_temp_free(num); \
         } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERLO) { \
             TCGv num = tcg_const_tl(HEX_REG_UTIMERLO); \
             gen_helper_creg_read(dest, cpu_env, num); \
@@ -458,6 +466,10 @@
             tcg_gen_concat_i32_i64(tmp, p3_0, \
                                         hex_gpr[(NUM) + HEX_REG_SA0 + 1]); \
             tcg_temp_free(p3_0); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_PKTCNTLO) { \
+            TCGv_i32 num = tcg_const_i32(HEX_REG_PKTCNTLO); \
+            gen_helper_creg_read_pair(tmp, cpu_env, num); \
+            tcg_temp_free_i32(num); \
         } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERLO) { \
             TCGv_i32 num = tcg_const_i32(HEX_REG_UTIMERLO); \
             gen_helper_creg_read_pair(tmp, cpu_env, num); \
@@ -1536,7 +1548,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     gen_load_locked##SIZE##SIGN(DST, EA, ctx->mem_idx);
 #else
 #define fLOAD_LOCKED(NUM, SIZE, SIGN, EA, DST) \
-    DST = (size##SIZE##SIGN##_t)mem_load_locked##SIZE(env, EA);
+    g_assert_not_reached();
 #endif
 
 #ifdef CONFIG_USER_ONLY
@@ -1561,7 +1573,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     gen_store_conditional##SIZE(env, ctx, PdN, PRED, EA, SRC);
 #else
 #define fSTORE_LOCKED(NUM, SIZE, EA, SRC, PRED) \
-    PRED = (mem_store_conditional(env, EA, SRC, SIZE) ? 0xff : 0);
+    g_assert_not_reached();
 #endif
 
 #define fVTCM_MEMCPY(DST, SRC, SIZE)

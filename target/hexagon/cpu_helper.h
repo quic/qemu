@@ -54,11 +54,17 @@ extern void hexagon_stop_thread(CPUHexagonState *env);
 extern void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old);
 extern void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause);
 
+extern const char *get_sys_ssr_str(uint32_t ssr);
+extern const char *get_sys_str(CPUHexagonState *env);
+extern int sys_in_monitor_mode_reg(uint32_t ssr);
+extern int sys_in_guest_mode_reg(uint32_t ssr);
+extern int sys_in_user_mode_reg(uint32_t ssr);
 extern int sys_in_monitor_mode(CPUHexagonState *env);
 extern int sys_in_guest_mode(CPUHexagonState *env);
 extern int sys_in_user_mode(CPUHexagonState *env);
 extern int get_cpu_mode(CPUHexagonState *env);
 extern int get_exe_mode(CPUHexagonState *env);
+extern const char *get_exe_mode_str(CPUHexagonState *env);
 extern void set_wait_mode(CPUHexagonState *env);
 extern void clear_wait_mode(CPUHexagonState *env);
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);

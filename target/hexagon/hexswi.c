@@ -760,6 +760,8 @@ static void set_addresses(CPUHexagonState *env,
         ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB) | (exception_index << 2));
 }
 
+#define CHECK_EX 0
+
 void hexagon_cpu_do_interrupt(CPUState *cs)
 
 {
@@ -768,6 +770,17 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 
     HEX_DEBUG_LOG("%s: event 0x%x, cause 0x%x\n",
       __FUNCTION__, cs->exception_index, env->cause_code);
+
+#if CHECK_EX
+    const uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    target_ulong EX = GET_SSR_FIELD(SSR_EX, ssr);
+    if ((cs->exception_index != HEX_EVENT_TLBLOCK_WAIT) &&
+        (cs->exception_index != HEX_EVENT_K0LOCK_WAIT)) {
+        if (EX) {
+            cpu_abort(cs, "hexagon_cpu_do_interrupt: EX already set, exiting\n");
+        }
+    }
+#endif
 
     switch (cs->exception_index) {
     case HEX_EVENT_INT0:

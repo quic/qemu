@@ -240,9 +240,7 @@ void hexagon_wait_thread(CPUHexagonState *env)
     if (get_exe_mode(env) != HEX_EXE_MODE_WAIT) {
         set_wait_mode(env);
     }
-    CPUState *cs = env_cpu(env);
     cpu_stop_current();
-    cpu_loop_exit_noexc(cs);
 }
 
 void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
@@ -384,27 +382,51 @@ void hexagon_stop_thread(CPUHexagonState *env)
     cpu_stop_current();
 }
 
+int sys_in_monitor_mode_ssr(uint32_t ssr);
+int sys_in_monitor_mode_ssr(uint32_t ssr)
+{
+    if ((GET_SSR_FIELD(SSR_EX, ssr) != 0) ||
+       ((GET_SSR_FIELD(SSR_EX, ssr) == 0) && (GET_SSR_FIELD(SSR_UM, ssr) == 0)))
+        return 1;
+    return 0;
+}
+
 int sys_in_monitor_mode(CPUHexagonState *env)
 {
     uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    return ((GET_SSR_FIELD(SSR_UM, ssr) == 0)
-         || (GET_SSR_FIELD(SSR_EX, ssr) != 0));
+    return sys_in_monitor_mode_ssr(ssr);
+}
+
+int sys_in_guest_mode_ssr(uint32_t ssr);
+int sys_in_guest_mode_ssr(uint32_t ssr)
+{
+    if ((GET_SSR_FIELD(SSR_EX, ssr) == 0) &&
+        (GET_SSR_FIELD(SSR_UM, ssr) != 0) &&
+        (GET_SSR_FIELD(SSR_GM, ssr) != 0))
+        return 1;
+    return 0;
 }
 
 int sys_in_guest_mode(CPUHexagonState *env)
 {
-    if (sys_in_monitor_mode(env)) return 0;
     uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    if (GET_SSR_FIELD(SSR_GM, ssr)) return 1;
-    else return 0;
+    return sys_in_guest_mode_ssr(ssr);
+}
+
+int sys_in_user_mode_ssr(uint32_t ssr);
+int sys_in_user_mode_ssr(uint32_t ssr)
+{
+    if ((GET_SSR_FIELD(SSR_EX, ssr) == 0) &&
+        (GET_SSR_FIELD(SSR_UM, ssr) != 0) &&
+        (GET_SSR_FIELD(SSR_GM, ssr) == 0))
+        return 1;
+   return 0;
 }
 
 int sys_in_user_mode(CPUHexagonState *env)
 {
-    if (sys_in_monitor_mode(env)) return 0;
     uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    if (GET_SSR_FIELD(SSR_GM, ssr)) return 0;
-    else return 1;
+    return sys_in_user_mode_ssr(ssr);
 }
 
 int get_cpu_mode(CPUHexagonState *env)
@@ -412,14 +434,57 @@ int get_cpu_mode(CPUHexagonState *env)
 {
   // from table 4-2
   uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-  if (GET_SSR_FIELD(SSR_EX, ssr)) {
+
+  if (sys_in_monitor_mode_ssr(ssr)) {
     return HEX_CPU_MODE_MONITOR;
-  } else if (GET_SSR_FIELD(SSR_GM, ssr) && GET_SSR_FIELD(SSR_UM, ssr)) {
+  } else if (sys_in_guest_mode_ssr(ssr)) {
     return HEX_CPU_MODE_GUEST;
-  } else if (GET_SSR_FIELD(SSR_UM, ssr)) {
+  } else if (sys_in_user_mode_ssr(ssr)) {
     return HEX_CPU_MODE_USER;
   }
   return HEX_CPU_MODE_MONITOR;
+}
+
+const char *get_sys_ssr_str(uint32_t ssr)
+
+{
+  if (sys_in_monitor_mode_ssr(ssr)) {
+      return "monitor";
+  } else if (sys_in_guest_mode_ssr(ssr)) {
+      return "guest";
+  } else if (sys_in_user_mode_ssr(ssr)) {
+      return "user";
+  }
+  return "unknown";
+}
+
+const char *get_sys_str(CPUHexagonState *env)
+
+{
+  if (sys_in_monitor_mode(env)) {
+      return "monitor";
+  } else if (sys_in_guest_mode(env)) {
+      return "guest";
+  } else if (sys_in_user_mode(env)) {
+      return "user";
+  }
+  return "unknown";
+}
+
+const char *get_exe_mode_str(CPUHexagonState *env)
+
+{
+    int exe_mode = get_exe_mode(env);
+
+    if (exe_mode == HEX_EXE_MODE_OFF)
+        return "off";
+    else if (exe_mode == HEX_EXE_MODE_RUN)
+        return "run";
+    else if (exe_mode == HEX_EXE_MODE_WAIT)
+        return "wait";
+    else if (exe_mode == HEX_EXE_MODE_DEBUG)
+        return "debug";
+    return "unknown";
 }
 
 int get_exe_mode(CPUHexagonState *env)

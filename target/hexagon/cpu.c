@@ -622,10 +622,12 @@ HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
     size_t lowest_prio_index = 0;
     for (size_t i = 0; i < list_size; i++) {
         CPUHexagonState *thread_env = &(threads[i]->env);
+        target_ulong ssr = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_SSR);
+        target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
         uint32_t th_prio = GET_FIELD(
             STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
         const bool waiting = (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
-        const bool is_candidate = (only_waiters && waiting) || !only_waiters;
+        const bool is_candidate = (!ex) && ((only_waiters && waiting) || !only_waiters);
         if (!is_candidate) {
             continue;
         }
