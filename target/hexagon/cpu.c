@@ -366,7 +366,7 @@ static void hexagon_cpu_synchronize_from_tb(CPUState *cs, TranslationBlock *tb)
 
 static bool hexagon_cpu_has_work(CPUState *cs)
 {
-    return true;
+    return cs->interrupt_request & CPU_INTERRUPT_HARD;
 }
 
 void restore_state_to_opc(CPUHexagonState *env, TranslationBlock *tb,
@@ -441,22 +441,37 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
   * 23       0xC7        Interrupt 7  Lowest priority interrupt
   */
     static const int mask[] = {
-            [HEXAGON_CPU_IRQ_0] = 0x0,
-            [HEXAGON_CPU_IRQ_1] = 0x1,
-            [HEXAGON_CPU_IRQ_2] = 0x2,
-            [HEXAGON_CPU_IRQ_3] = 0x3,
-            [HEXAGON_CPU_IRQ_4] = 0x4,
-            [HEXAGON_CPU_IRQ_5] = 0x5,
-            [HEXAGON_CPU_IRQ_6] = 0x6,
-            [HEXAGON_CPU_IRQ_7] = 0x7,
+        [HEXAGON_CPU_IRQ_0] = CPU_INTERRUPT_HARD,
+        [HEXAGON_CPU_IRQ_1] = CPU_INTERRUPT_HARD,
+        [HEXAGON_CPU_IRQ_2] = CPU_INTERRUPT_HARD,
+        [HEXAGON_CPU_IRQ_3] = CPU_INTERRUPT_HARD,
+        [HEXAGON_CPU_IRQ_4] = CPU_INTERRUPT_HARD,
+        [HEXAGON_CPU_IRQ_5] = CPU_INTERRUPT_HARD,
+        [HEXAGON_CPU_IRQ_6] = CPU_INTERRUPT_HARD,
+        [HEXAGON_CPU_IRQ_7] = CPU_INTERRUPT_HARD,
     };
+
 
     /* IRQ 2, event number: 18, Cause Code: 0xc2 (VIC0 interface) */
     if (level && (irq == HEXAGON_CPU_IRQ_2)) {
+        HexagonCPU *threads[THREADS_MAX];
+        size_t threads_count = 0;
+        memset(threads, 0, sizeof(threads));
+        hexagon_find_int_threads(env, irq, threads, &threads_count);
+        if (threads_count < 1) {
+            /* FIXME masked? */
+            g_assert_not_reached();
+        }
+        HexagonCPU *int_thread =
+            hexagon_find_lowest_prio_any_thread(threads, threads_count);
+        env = &int_thread->env;
+        cs = CPU(int_thread);
+
 /*      printf("XXX: L2VIC: irq = %d, level = %d\n", irq, level); */
         while (ssr_get_ex(env)) {rcu_read_lock(); printf ("x"); rcu_read_unlock();};
         /* NOTE: when level is not zero it is equal to the external IRQ # */
         env->g_sreg[HEX_SREG_VID] = level;
+
         target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
         target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
         fSET_FIELD(ipendad, IPENDAD_IAD, ipendad_iad | (1 << mask[HEXAGON_CPU_IRQ_2]));
@@ -836,10 +851,16 @@ static const VMStateDescription vmstate_hexagon_cpu = {
 static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 {
     CPUClass *cc = CPU_GET_CLASS(cs);
-    cs->exception_index = HEX_EVENT_INT2;
-    cs->interrupt_request &= ~interrupt_request;
-    cc->do_interrupt(cs);
-    return true;
+    if (interrupt_request & CPU_INTERRUPT_HARD) {
+        qemu_log_mask(CPU_LOG_INT,
+                "got a hard int, full mask is %08x|%d\n",
+                (int)interrupt_request, (int)interrupt_request);
+        cs->exception_index = HEX_EVENT_INT2;
+        cc->do_interrupt(cs);
+        cs->interrupt_request &= ~CPU_INTERRUPT_HARD;
+        return true;
+    }
+    return false;
 }
 
 static void hexagon_do_unaligned_access(CPUState *cs, vaddr addr,
