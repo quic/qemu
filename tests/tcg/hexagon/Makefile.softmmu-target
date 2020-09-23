@@ -21,6 +21,7 @@ TESTS += \
 	qtimer_test \
 	bestwait \
 	ciad-siad \
+	fastl2vic \
 	swi \
 	pcycle \
 	$()
@@ -52,6 +53,7 @@ timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o
 bestwait: bestwait.o
 ciad-siad: ciad-siad.o
+fastl2vic: fastl2vic.o
 swi: swi.o
 wait: wait.o
 pcycle: pcycle.o

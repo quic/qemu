@@ -23,6 +23,7 @@
 #include "hw/boards.h"
 #include "hw/hexagon/hexagon.h"
 #include "hw/hexagon/qtimer.h"
+#include "hw/intc/l2vic.h"
 #include "hw/loader.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
@@ -43,6 +44,7 @@ static const struct MemmapEntry {
         [HEXAGON_CONFIG_TABLE] = { 0xde000000, 0x400 },
         [HEXAGON_VTCM] = { 0xd8000000, 0x400000 },
         [HEXAGON_L2CFG] = { 0xd81a0000, 0x0 },
+        [HEXAGON_FASTL2VIC] = { 0xd81e0000, 0x10000 },
         [HEXAGON_TCM] = { 0xd8400000, 0x100000 },
         [HEXAGON_CSR1] = { 0xfab00000, 0x0 },
         [HEXAGON_L2VIC] = { 0xfab10000, 0x1000 },
@@ -128,6 +130,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         qdev_get_gpio_in(DEVICE(cpu), 7), /* IRQ 7, 23, 0xc7 */
         NULL);
 
+    sysbus_create_varargs("fastl2vic", memmap[HEXAGON_FASTL2VIC].base, NULL);
+
     /* This is tightly with the IRQ selected must match the value below
      * or the interrupts will not be seen
      */
@@ -162,7 +166,7 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         HEXAGON_HVX_VEC_LEN_V2X_1 | HEXAGON_HVX_VEC_LEN_V2X_2;
     config_table.hvx_vec_log_length = HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES;
     config_table.fastl2vic_base =
-        HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2VIC].base);
+        HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_FASTL2VIC].base);
     config_table.l1d_size_kb = HEXAGON_DEFAULT_L1D_SIZE_KB;
     config_table.l1i_size_kb = HEXAGON_DEFAULT_L1I_SIZE_KB;
     config_table.l1d_write_policy = HEXAGON_DEFAULT_L1D_WRITE_POLICY;
@@ -228,3 +232,94 @@ void hexagon_read_timer(uint32_t *low, uint32_t *high)
 }
 
 type_init(hexagon_machine_init)
+
+
+#define TYPE_FASTL2VIC "fastl2vic"
+#define FASTL2VIC(obj) OBJECT_CHECK(FastL2VICState, (obj), TYPE_FASTL2VIC)
+
+typedef struct FastL2VICState {
+    SysBusDevice parent_obj;
+    MemoryRegion iomem;
+} FastL2VICState;
+
+#define L2VICA(s, n) \
+    (s[(n) >> 2])
+
+static void fastl2vic_write(void *opaque, hwaddr offset,
+                        uint64_t val, unsigned size) {
+
+    if (offset == 0) {
+        const struct MemmapEntry *memmap = hexagon_board_memmap;
+
+        uint32_t cmd = (val >> 16) & 0x3;
+        uint32_t irq = val & 0x3ff;
+        uint32_t slice = (irq / 8);
+        val = 1 << (irq % 32);
+
+        if (cmd == 0x0) {
+            const hwaddr addr = memmap[HEXAGON_L2VIC].base +
+                                L2VIC_INT_ENABLE_SETn;
+            cpu_physical_memory_write(addr + slice, &val, size);
+            return;
+        } else if (cmd == 0x1) {
+            const hwaddr addr = memmap[HEXAGON_L2VIC].base +
+                                L2VIC_INT_ENABLE_CLEARn;
+            return cpu_physical_memory_write(addr + slice, &val, size);
+        } else if (cmd == 2) {
+            g_assert(0);
+        }
+        /* RESERVED */
+        else if ((val & 0xff0000) == 0x110000) {
+            g_assert(0);
+        }
+    }
+    /* Address zero is the only legal spot to write */
+    g_assert(0);
+}
+
+static const MemoryRegionOps fastl2vic_ops = {
+    .write = fastl2vic_write,
+    .endianness = DEVICE_NATIVE_ENDIAN,
+    .valid.min_access_size = 4,
+    .valid.max_access_size = 4,
+    .valid.unaligned = false,
+};
+
+static void fastl2vic_init(Object *obj)
+{
+    FastL2VICState *s = FASTL2VIC(obj);
+    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+
+    memory_region_init_io(&s->iomem, obj, &fastl2vic_ops, s,
+                          "fastl2vic", 0x10000);
+    sysbus_init_mmio(sbd, &s->iomem);
+}
+
+
+static const VMStateDescription vmstate_fastl2vic = {
+    .name = "fastl2vic",
+    .version_id = 1,
+    .minimum_version_id = 1,
+};
+
+static void fastl2vic_class_init(ObjectClass *klass, void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(klass);
+
+    dc->vmsd = &vmstate_fastl2vic;
+}
+
+static const TypeInfo fastl2vic_info = {
+    .name          = "fastl2vic",
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(FastL2VICState),
+    .instance_init = fastl2vic_init,
+    .class_init    = fastl2vic_class_init,
+};
+
+static void fastl2vic_register_types(void)
+{
+    type_register_static(&fastl2vic_info);
+}
+
+type_init(fastl2vic_register_types)

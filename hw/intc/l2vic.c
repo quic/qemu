@@ -28,15 +28,7 @@
 #include "migration/vmstate.h"
 #include "qemu/log.h"
 #include "qemu/module.h"
-
-#define L2VIC_INT_ENABLEn       0x100   /* Read/Write */
-#define L2VIC_INT_ENABLE_CLEARn 0x180   /* Write */
-#define L2VIC_INT_ENABLE_SETn   0x200   /* Write */
-#define L2VIC_INT_TYPEn         0x280   /* Read/Write */
-#define L2VIC_INT_STATUSn       0x380   /* Read */
-#define L2VIC_INT_CLEARn        0x400   /* Write */
-#define L2VIC_SOFT_INTn         0x480   /* Write */
-#define L2VIC_INT_PENDINGn      0x500   /* Read */
+#include "l2vic.h"
 
 #define L2VICA(s, n) \
     (s[(n)>>2])
