@@ -68,6 +68,8 @@ TCGv hex_cache_tags[CACHE_TAGS_MAX];
 #ifndef CONFIG_USER_ONLY
 TCGv hex_slot;
 TCGv hex_imprecise_exception;
+TCGv_i32 hex_last_cpu;
+TCGv_i32 hex_thread_id;
 #endif
 
 static const char * const hexagon_prednames[] = {
@@ -326,6 +328,12 @@ static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
             gen_helper_modify_ssr(cpu_env, hex_t_sreg_new_value[reg_num],
                                   hex_t_sreg[reg_num]);
             /* This can change processor state, so end the TB */
+            ctx->base.is_jmp = DISAS_TOO_MANY;
+        } else if ((reg_num == HEX_SREG_BESTWAIT) ||
+                 (reg_num == HEX_SREG_STID) ||
+                 (reg_num == HEX_SREG_SCHEDCFG)) {
+
+            /* This can trigger resched interrupt, so end the TB */
             ctx->base.is_jmp = DISAS_TOO_MANY;
         }
         if (reg_num < HEX_SREG_GLB_START) {
@@ -696,6 +704,40 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
     }
 }
 
+#ifndef CONFIG_USER_ONLY
+static void gen_cpu_limit_init(void)
+{
+    TCGLabel *skip_reinit = gen_new_label();
+
+    tcg_gen_brcond_tl(TCG_COND_EQ, hex_last_cpu, hex_thread_id, skip_reinit);
+    tcg_gen_movi_tl(hex_gpr[HEX_REG_QEMU_CPU_TB_CNT], 0);
+    gen_set_label(skip_reinit);
+}
+
+static void gen_cpu_limit(void)
+{
+    TCGLabel *label_skip = gen_new_label();
+    TCGv_i32 running_count = tcg_temp_new_i32();
+    gen_helper_get_ready_count(running_count, cpu_env);
+
+    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_CPU_TB_CNT],
+                    hex_gpr[HEX_REG_QEMU_CPU_TB_CNT], 1);
+
+    tcg_gen_brcondi_tl(TCG_COND_LE, running_count, 1, label_skip);
+    tcg_gen_brcondi_tl(TCG_COND_LT, hex_gpr[HEX_REG_QEMU_CPU_TB_CNT],
+        HEXAGON_TB_EXEC_PER_CPU_MAX, label_skip);
+
+    gen_exception(EXCP_YIELD);
+    tcg_gen_movi_tl(hex_gpr[HEX_REG_QEMU_CPU_TB_CNT], 0);
+    tcg_gen_exit_tb(NULL, 0);
+
+    gen_set_label(label_skip);
+    tcg_gen_mov_tl(hex_last_cpu, hex_thread_id);
+
+    tcg_temp_free_i32(running_count);
+}
+#endif
+
 static void gen_exec_counters(packet_t *pkt)
 {
     int num_insns = pkt->num_insns;
@@ -795,8 +837,6 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
 #endif
 #ifndef CONFIG_USER_ONLY
     check_imprecise_exception(pkt);
-    env->resched_pc = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
-    gen_helper_resched(cpu_env);
 #endif
 
     if (pkt->pkt_has_cof) {
@@ -858,6 +898,9 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 {
+#ifndef CONFIG_USER_ONLY
+    gen_cpu_limit_init();
+#endif
 }
 
 static void hexagon_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
@@ -939,7 +982,12 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     switch (ctx->base.is_jmp) {
     case DISAS_TOO_MANY:
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
-        /* Try moving gen_helper_resched here */
+
+#ifndef CONFIG_USER_ONLY
+        gen_helper_resched(cpu_env);
+        gen_cpu_limit();
+#endif
+
         if (ctx->base.singlestep_enabled) {
             gen_exception_debug();
         } else {
@@ -948,7 +996,12 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         break;
     case DISAS_NORETURN:
         tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
-        /* Try moving gen_helper_resched here */
+
+#ifndef CONFIG_USER_ONLY
+        gen_helper_resched(cpu_env);
+        gen_cpu_limit();
+#endif
+
         if (ctx->base.singlestep_enabled) {
             gen_exception_debug();
         } else {
@@ -1102,6 +1155,10 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, slot), "slot");
     hex_imprecise_exception = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, imprecise_exception), "imprecise_exception");
+    hex_last_cpu = tcg_global_mem_new(cpu_env,
+        offsetof(CPUHexagonState, last_cpu), "last_cpu");
+    hex_thread_id = tcg_global_mem_new(cpu_env,
+        offsetof(CPUHexagonState, threadId), "threadId");
 #endif
     for (i = 0; i < STORES_MAX; i++) {
         sprintf(store_addr_names[i], "store_addr_%d", i);

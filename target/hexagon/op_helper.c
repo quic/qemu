@@ -82,7 +82,10 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
                                           uintptr_t pc)
 {
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
-    qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
+    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08lx\n", __func__, exception,
+            env->gpr[HEX_REG_PC],
+        pc);
+
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
 #ifndef CONFIG_USER_ONLY
@@ -1270,11 +1273,8 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
     }
 }
 
-#define MAX_PACKETS_PER_SLICE 2000
-#define ENABLE_SLICE_CONTROL 1
 void HELPER(resched)(CPUHexagonState *env)
 {
-    bool resched_made __attribute__((unused)) = false;
     const uint32_t schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
     const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
     if (schedcfg_en) {
@@ -1298,9 +1298,8 @@ void HELPER(resched)(CPUHexagonState *env)
             // do the resched int
             const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
             HEX_DEBUG_LOG(
-                "raising resched int %d, cur PC 0x%08x next PC 0x%08x\n",
-                int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC),
-                env->resched_pc);
+                "raising resched int %d, cur PC 0x%08x\n",
+                int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
             SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
 
             HexagonCPU *threads[THREADS_MAX];
@@ -1317,44 +1316,10 @@ void HELPER(resched)(CPUHexagonState *env)
             CPUHexagonState *int_thread_env = &(HEXAGON_CPU(int_thread)->env);
             HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
 #endif
-
-            // FIXME: if resched was detected on a packet that included
-            // change-of-flow, the resume PC may be wrong
-            resched_made = true;
             hexagon_raise_interrupt(env, int_thread, int_number);
-        } else {
-            env->resched_pc = 0;
-        }
-    } else {
-        env->resched_pc = 0;
-    }
-
-#if ENABLE_SLICE_CONTROL
-    unsigned avail_cpus = 0;
-    CPUState *cs = NULL;
-    CPU_FOREACH (cs) {
-        HexagonCPU *cpu = HEXAGON_CPU(cs);
-        CPUHexagonState *env = &cpu->env;
-        if (get_exe_mode(env) != HEX_EXE_MODE_WAIT) {
-            ++avail_cpus;
         }
     }
 
-    static int last_cpu = -1;
-    static unsigned pkt_cnt = 0;
-    if (last_cpu == env->threadId) {
-        if (++pkt_cnt >= MAX_PACKETS_PER_SLICE) {
-            pkt_cnt = 0;
-            if (avail_cpus > 1 && resched_made == false) {
-                CPUState *cs = env_cpu(env);
-                cpu_exit(cs);
-            }
-        }
-    } else {
-        last_cpu = env->threadId;
-        pkt_cnt = 0;
-    }
-#endif
 }
 
 void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
@@ -1390,6 +1355,23 @@ void HELPER(inc_gcycle_xt)(CPUHexagonState *env)
     }
 }
 
+/*
+ * Return the count of threads ready to run.
+ */
+uint32_t HELPER(get_ready_count)(CPUHexagonState *env)
+{
+    uint32_t ready_count = 0;
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *thread_env = &cpu->env;
+        const bool running = (get_exe_mode(thread_env) == HEX_EXE_MODE_RUN);
+        if (running) {
+            ready_count += 1;
+        }
+    }
+    return ready_count;
+}
 
 #endif
 

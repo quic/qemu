@@ -71,7 +71,12 @@ int main()
 
     // This should restart thread 1:
     // Trigger "handler" then thread 1 resumes
-    __asm__("r0 = #0x11; bestwait = r0; isync" ::: "r0");
+    __asm__("r0 = #0x11\n\t"
+            "{ bestwait = r0\n\t"
+            "  jump skipit }\n\t"
+            "stop(r0)\n\t"
+            "skipit:\n\t"
+            "isync" ::: "r0");
 
     thread_join(1 << 0x1);
 

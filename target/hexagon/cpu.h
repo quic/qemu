@@ -66,6 +66,13 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 
 #define TYPE_HEXAGON_CPU "hexagon-cpu"
 
+/*
+ * Represents the maximum number of consecutive
+ * translation blocks to execute on a CPU before rescheduling
+ * to another CPU.
+ */
+#define HEXAGON_TB_EXEC_PER_CPU_MAX 2000
+
 #define HEXAGON_CPU_TYPE_SUFFIX "-" TYPE_HEXAGON_CPU
 #define HEXAGON_CPU_TYPE_NAME(name) (name HEXAGON_CPU_TYPE_SUFFIX)
 #define CPU_RESOLVING_TYPE TYPE_HEXAGON_CPU
@@ -231,7 +238,7 @@ struct CPUHexagonState {
     hex_lock_state_t tlb_lock_state;
     hex_lock_state_t k0_lock_state;
     uint16_t nmi_threads;
-    target_ulong resched_pc;
+    uint32_t last_cpu;
 #endif
 };
 
