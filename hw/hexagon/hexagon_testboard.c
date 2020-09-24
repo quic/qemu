@@ -138,9 +138,9 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     sysbus_create_varargs("qutimer", 0xfab20000,
                           NULL);
     sysbus_create_varargs("hextimer", memmap[HEXAGON_QTMR_RG0].base,
-                          qdev_get_gpio_in(dev, 67), NULL);
+                          qdev_get_gpio_in(dev, 3), NULL);
     sysbus_create_varargs("hextimer", memmap[HEXAGON_QTMR_RG1].base,
-                          qdev_get_gpio_in(dev, 68), NULL);
+                          qdev_get_gpio_in(dev, 4), NULL);
 
     struct hexagon_config_table config_table;
     memset(&config_table, 0x0, sizeof(config_table));
