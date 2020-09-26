@@ -181,6 +181,31 @@ static inline void S4_storeirifnew_io(void *p, int pred)
                : "p0", "memory");
 }
 
+/*
+ * Test that compound-compare-jump is executed in 2 parts
+ * First we have to do all the compares in the packet and
+ * account for auto-anding.  Then, we can do the predicated
+ * jump.
+ */
+static inline int cmpnd_cmp_jump(void)
+{
+    int retval;
+    asm ("r5 = #7\n\t"
+         "r6 = #9\n\t"
+         "{\n\t"
+         "    p0 = cmp.eq(r5, #7)\n\t"
+         "    if (p0.new) jump:nt 1f\n\t"
+         "    p0 = cmp.eq(r6, #7)\n\t"
+         "}\n\t"
+         "%0 = #12\n\t"
+         "jump 2f\n\t"
+         "1:\n\t"
+         "%0 = #13\n\t"
+         "2:\n\t"
+         : "=r"(retval) :: "r5", "r6", "p0");
+    return retval;
+}
+
 int err;
 
 #define check(VAL, EXPECT) \
@@ -285,6 +310,9 @@ int main()
     check(array[8], 27);
     S4_storeirifnew_io(&array[8], 1);
     check(array[9], 9);
+
+    int x = cmpnd_cmp_jump();
+    check(x, 12);
 
     puts(err ? "FAIL" : "PASS");
     return err;
