@@ -639,35 +639,36 @@ static inline void gen_cmpnd_cmp_jmp(insn_t *insn, int pnum, TCGCond cond,
                                      bool sense, TCGv arg1, TCGv arg2,
                                      int pc_off)
 {
-    /* The decoder gives us two instances.  Just do everything on the first */
-    if (!insn->part1) {
-        return;
+    if (insn->part1) {
+        TCGv pred = tcg_temp_new();
+        gen_compare(cond, pred, arg1, arg2);
+        gen_log_pred_write(pnum, pred);
+        tcg_temp_free(pred);
+    } else {
+        TCGv new_pc = tcg_temp_new();
+        TCGv zero = tcg_const_tl(0);
+        TCGv one = tcg_const_tl(1);
+        TCGv pred = tcg_temp_new();
+
+        tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
+        tcg_gen_mov_tl(pred, hex_new_pred_value[pnum]);
+        if (!sense) {
+            tcg_gen_xori_tl(pred, pred, 0xff);
+        }
+
+        /* If there are multiple branches in a packet, ignore the second one */
+        tcg_gen_movcond_tl(TCG_COND_NE, pred, hex_branch_taken, zero, zero, pred);
+
+        tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, pred, zero,
+                           new_pc, hex_next_PC);
+        tcg_gen_movcond_tl(TCG_COND_NE, hex_branch_taken, pred, zero,
+                           one, hex_branch_taken);
+
+        tcg_temp_free(new_pc);
+        tcg_temp_free(zero);
+        tcg_temp_free(one);
+        tcg_temp_free(pred);
     }
-
-    TCGv new_pc = tcg_temp_new();
-    TCGv pred = tcg_temp_new();
-    TCGv zero = tcg_const_tl(0);
-    TCGv one = tcg_const_tl(1);
-
-    tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
-    gen_compare(cond, pred, arg1, arg2);
-    gen_log_pred_write(pnum, pred);
-    if (!sense) {
-        tcg_gen_xori_tl(pred, pred, 0xff);
-    }
-
-    /* If there are multiple branches in a packet, ignore the second one */
-    tcg_gen_movcond_tl(TCG_COND_NE, pred, hex_branch_taken, zero, zero, pred);
-
-    tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, pred, zero,
-                       new_pc, hex_next_PC);
-    tcg_gen_movcond_tl(TCG_COND_NE, hex_branch_taken, pred, zero,
-                       one, hex_branch_taken);
-
-    tcg_temp_free(new_pc);
-    tcg_temp_free(pred);
-    tcg_temp_free(zero);
-    tcg_temp_free(one);
 }
 
 static inline void gen_cmpnd_cmpi_jmp(insn_t *insn, int pnum, TCGCond cond,
