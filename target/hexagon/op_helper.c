@@ -99,6 +99,39 @@ void HELPER(raise_exception)(CPUHexagonState *env, uint32_t exception)
     do_raise_exception_err(env, exception, 0);
 }
 
+#ifndef CONFIG_USER_ONLY
+void HELPER(raise_stack_overflow)(CPUHexagonState *env, uint32_t slot,
+                                  target_ulong badva)
+{
+    /*
+     * Per section 7.3.1 of the V67 Programmer's Reference,
+     * stack limit exception isn't raised in monotor mode.
+     */
+    if (sys_in_monitor_mode(env)) {
+        return;
+    }
+
+    CPUState *cs = env_cpu(env);
+    cs->exception_index = HEX_EVENT_PRECISE;
+    env->cause_code = HEX_CAUSE_STACK_LIMIT;
+
+    if (slot == 0) {
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA0, badva);
+        SET_SSR_FIELD(env, SSR_V0, 1);
+        SET_SSR_FIELD(env, SSR_V1, 0);
+        SET_SSR_FIELD(env, SSR_BVS, 0);
+    } else if (slot == 1) {
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA1, badva);
+        SET_SSR_FIELD(env, SSR_V0, 0);
+        SET_SSR_FIELD(env, SSR_V1, 1);
+        SET_SSR_FIELD(env, SSR_BVS, 1);
+    } else {
+        g_assert_not_reached();
+    }
+    cpu_loop_exit_restore(cs, 0);
+}
+#endif
+
 static inline void log_reg_write(CPUHexagonState *env, int rnum,
                                  target_ulong val, uint32_t slot)
 {

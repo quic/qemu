@@ -569,6 +569,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
           printf("0x26, Coprocessor VMEM address error. @ 0x%x",
                  ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           break;
+      case HEX_CAUSE_STACK_LIMIT:
+          printf("0x%x, Stack limit check error", HEX_CAUSE_STACK_LIMIT);
+          break;
       default:
           printf("Don't know");
           break;
@@ -949,6 +952,11 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
           break;
+
+        case HEX_CAUSE_STACK_LIMIT:
+            hexagon_ssr_set_cause(env, env->cause_code);
+            set_addresses(env, 0, cs->exception_index);
+            break;
 
         default:
             cpu_abort(cs, "3:Hexagon exception %d/0x%x: "

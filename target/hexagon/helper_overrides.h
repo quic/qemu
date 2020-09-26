@@ -1459,33 +1459,33 @@
 /* We have to brute force allocframe because it has C math in the semantics */
 #define fWRAP_S2_allocframe(GENHLPR, SHORTCODE) \
     do { \
-        TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
-        TCGv tmp = tcg_temp_new(); \
+        TCGv tmp = tcg_temp_local_new(); \
         { fEA_RI(RxV, -8); \
+          TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
           fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
                                            fCAST4_4u(fREAD_FP()))); \
+          tcg_temp_free_i64(scramble_tmp); \
           fWRITE_FP(EA); \
           tcg_gen_subi_tl(tmp, EA, uiV); \
           fFRAMECHECK(tmp, EA); \
           tcg_gen_subi_tl(RxV, EA, uiV); \
         } \
-        tcg_temp_free_i64(scramble_tmp); \
         tcg_temp_free(tmp); \
     } while (0)
 
 #define fWRAP_SS2_allocframe(GENHLPR, SHORTCODE) \
     do { \
-        TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
-        TCGv tmp = tcg_temp_new(); \
+        TCGv tmp = tcg_temp_local_new(); \
         { fEA_RI(fREAD_SP(), -8); \
+          TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
           fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
                                            fCAST4_4u(fREAD_FP()))); \
+          tcg_temp_free_i64(scramble_tmp); \
           fWRITE_FP(EA); \
           tcg_gen_subi_tl(tmp, EA, uiV); \
           fFRAMECHECK(tmp, EA); \
           fWRITE_SP(tmp); \
         } \
-        tcg_temp_free_i64(scramble_tmp); \
         tcg_temp_free(tmp); \
     } while (0)
 

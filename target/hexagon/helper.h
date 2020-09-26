@@ -18,6 +18,9 @@
 #include "helper_overrides.h"
 
 DEF_HELPER_2(raise_exception, noreturn, env, i32)
+#ifndef CONFIG_USER_ONLY
+DEF_HELPER_3(raise_stack_overflow, void, env, i32, i32)
+#endif
 DEF_HELPER_1(debug_start_packet, void, env)
 DEF_HELPER_3(debug_check_store_width, void, env, int, int)
 DEF_HELPER_1(commit_hvx_stores, void, env)

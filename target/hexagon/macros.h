@@ -190,9 +190,10 @@
     TCGv TCG_NAME = tcg_const_tl(VAL)
 
 #define DECL_EA \
-    TCGv EA; \
-    do { \
-        if (GET_ATTRIB(insn->opcode, A_CONDEXEC)) { \
+       TCGv EA; \
+       do { \
+        if (GET_ATTRIB(insn->opcode, A_CONDEXEC) || \
+            GET_ATTRIB(insn->opcode, A_IMPLICIT_READS_FRAMELIMIT)) { \
             EA = tcg_temp_local_new(); \
         } else { \
             EA = tcg_temp_new(); \
@@ -348,7 +349,13 @@
 
 #define SLOT_WRAP(CODE) \
     do { \
-        TCGv slot = tcg_const_tl(insn->slot); \
+        TCGv slot; \
+        if (GET_ATTRIB(insn->opcode, A_IMPLICIT_READS_FRAMELIMIT)) { \
+            slot = tcg_temp_local_new(); \
+            tcg_gen_movi_tl(slot, insn->slot); \
+        } else { \
+            slot = tcg_const_tl(insn->slot); \
+        } \
         RECORD_SLOT; \
         CODE; \
         tcg_temp_free(slot); \
@@ -1540,7 +1547,16 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #ifdef CONFIG_USER_ONLY
 #define fFRAMECHECK(ADDR, EA) do { } while (0) /* Not modelled in linux-user */
 #else
-#define fFRAMECHECK(ADDR, EA) do { } while (0)
+#ifdef QEMU_GENERATE
+#define fFRAMECHECK(ADDR, EA) \
+    do { \
+        TCGLabel *ok = gen_new_label(); \
+        tcg_gen_brcond_tl(TCG_COND_GE, ADDR, hex_gpr[HEX_REG_FRAMELIMIT], \
+                          ok); \
+        gen_helper_raise_stack_overflow(cpu_env, slot, EA); \
+        gen_set_label(ok); \
+    } while (0)
+#endif
 #endif
 
 #ifdef QEMU_GENERATE
