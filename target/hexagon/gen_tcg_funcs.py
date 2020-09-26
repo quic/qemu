@@ -106,10 +106,10 @@ def genptr_decl(f, tag, regtype, regid, regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "M"):
         if (regid == "u"):
-            f.write("    TCGv %s%sV = hex_gpr[insn->regno[%d] + HEX_REG_M0];\n" % \
+            f.write("    const int %s%sN = insn->regno[%d];\n"% \
                 (regtype, regid, regno))
-            f.write("    const int %s%sN __attribute__((unused)) = insn->regno[%d];\n"% \
-                (regtype, regid, regno))
+            f.write("    TCGv %s%sV = hex_gpr[%s%sN + HEX_REG_M0];\n" % \
+                (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "V"):
@@ -205,7 +205,7 @@ def genptr_decl_imm(f,immlett):
         i = 1
     else:
         i = 0
-    f.write("    int %s __attribute__((unused)) = insn->immed[%d];\n" % \
+    f.write("    int %s = insn->immed[%d];\n" % \
         (imm_name(immlett), i))
 
 def genptr_free(f,regtype,regid,regno):
@@ -660,15 +660,13 @@ def gen_tcg_func(f, tag, regs, imms):
         genptr_free_opn(f,regtype,regid,i,tag)
         i += 1
 
-    f.write("}")
+    f.write("}\n\n")
 
 def gen_def_tcg_func(f, tag, tagregs, tagimms):
     regs = tagregs[tag]
     imms = tagimms[tag]
 
-    f.write('DEF_TCG_FUNC(%s,\n' % tag)
     gen_tcg_func(f, tag, regs, imms)
-    f.write(")\n\n" )
 
 def main():
     read_semantics_file(sys.argv[1])
@@ -679,6 +677,9 @@ def main():
     tagimms = get_tagimms()
 
     f = StringIO()
+
+    f.write("#ifndef HEXAGON_TCG_FUNCS_H\n")
+    f.write("#define HEXAGON_TCG_FUNCS_H\n\n")
 
     for tag in tags:
         ## Skip the priv instructions
@@ -696,6 +697,8 @@ def main():
             continue
 
         gen_def_tcg_func(f, tag, tagregs, tagimms)
+
+    f.write("#endif    /* HEXAGON_TCG_FUNCS_H */\n")
 
     realf = open(sys.argv[4], 'w')
     realf.write(f.getvalue())

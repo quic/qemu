@@ -1099,18 +1099,5 @@ static inline void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
     tcg_temp_free(cancelled);
 }
 
-#define DEF_TCG_FUNC(TAG, GENFN) \
-    GENFN
 #include "tcg_funcs_generated.h"
-#undef DEF_TCG_FUNC
-
-/*
- * Not all opcodes have generate_<tag> functions, so initialize
- * the table from the tcg_funcs_generated.h file.
- */
-const semantic_insn_t opcode_genptr[XX_LAST_OPCODE] = {
-#define DEF_TCG_FUNC(TAG, GENFN) \
-    [TAG] = generate_##TAG,
-#include "tcg_funcs_generated.h"
-#undef DEF_TCG_FUND
-};
+#include "tcg_func_table_generated.h"

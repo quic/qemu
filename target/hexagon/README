@@ -35,12 +35,17 @@ We start with scripts that generate a bunch of include files.  This
 is a two step process.  The first step is to use the C preprocessor to expand
 macros inside the architecture definition files.  This is done in
 target/hexagon/gen_semantics.c.  This step produces
-    <BUILD_DIR>/hexagon-linux-user/semantics_generated.pyinc.
+    <BUILD_DIR>/target/hexagon/semantics_generated.pyinc.
 That file is consumed by the following python scripts to produce the indicated
-header files in <BUILD_DIR>/hexagon-linux-user
-        gen_shortcode.py                -> shortcode_generated.h
+header files in <BUILD_DIR>/target/hexagon
+        gen_opcodes_def.py              -> opcodes_def_generated.h
+        gen_op_regs.py                  -> op_regs_generated.h
+        gen_printinsn.py                -> printinsn_generated.h
+        gen_op_attribs.py               -> op_attribs_generated.h
         gen_helper_protos.py            -> helper_protos_generated.h
+        gen_shortcode.py                -> shortcode_generated.h
         gen_tcg_funcs.py                -> tcg_funcs_generated.h
+        gen_tcg_func_table.py           -> tcg_func_table_generated.h
         gen_helper_funcs.py             -> helper_funcs_generated.h
 
 Qemu helper functions have 3 parts
@@ -62,54 +67,40 @@ hex_common.py) to determine the signature of the helper function.  Here are the
 results for A2_add
 
 helper_protos_generated.h
-    #ifndef fGEN_TCG_A2_add
     DEF_HELPER_3(A2_add, s32, env, s32, s32)
-    #endif
 
 tcg_funcs_generated.h
-    DEF_TCG_FUNC(A2_add, /* { RdV=RsV+RtV;} */
+    static void generate_A2_add(
+                    CPUHexagonState *env,
+                    DisasContext *ctx,
+                    insn_t *insn,
+                    packet_t *pkt)
     {
-    /* A2_add */
-    DECL_RREG_d(RdV, RdN, 0, 0);
-    DECL_RREG_s(RsV, RsN, 1, 0);
-    DECL_RREG_t(RtV, RtN, 2, 0);
-    READ_RREG_s(RsV, RsN);
-    READ_RREG_t(RtV, RtN);
-    #ifdef fGEN_TCG_A2_add
-    fGEN_TCG_A2_add({ RdV=RsV+RtV;});
-    #else
-    do {
-    gen_helper_A2_add(RdV, cpu_env, RsV, RtV);
-    } while (0);
-    #endif
-    WRITE_RREG_d(RdN, RdV);
-    FREE_RREG_d(RdV);
-    FREE_RREG_s(RsV);
-    FREE_RREG_t(RtV);
-    /* A2_add */
-    })
+        TCGv RdV = tcg_temp_local_new();
+        const int RdN = insn->regno[0];
+        TCGv RsV = hex_gpr[insn->regno[1]];
+        TCGv RtV = hex_gpr[insn->regno[2]];
+        gen_helper_A2_add(RdV, cpu_env, RsV, RtV);
+        gen_log_reg_write(RdN, RdV);
+        ctx_log_reg_write(ctx, RdN);
+        tcg_temp_free(RdV);
+    }
 
 helper_funcs_generated.h
-    #ifndef fGEN_TCG_A2_add
     int32_t HELPER(A2_add)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
     {
-    uint32_t slot __attribute__((unused)) = 4;
-    int32_t RdV = 0;
-    { RdV=RsV+RtV;}
-    return RdV;
+        uint32_t slot __attribute__((unused)) = 4;
+        int32_t RdV = 0;
+        { RdV=RsV+RtV;}
+        return RdV;
     }
-    #endif
 
-For each operand, there are macros for DECL, FREE, READ, WRITE.  These are
-defined in macros.h.  Note that we append the operand type to the macro name,
-which allows us to specialize the TCG code tenerated.  For read-only operands,
-DECL simply declares the TCGv variable (no need for tcg_temp_local_new()),
-and READ will assign from the TCGv corresponding to the GPR, and FREE doesn't
-have to do anything.  Also, note that the WRITE macros update the disassembly
-context to be processed when the packet commits (see "Packet Semantics" below).
+Note that generate_A2_add updates the disassembly context to be processed
+when the packet commits (see "Packet Semantics" below).
 
-Note the fGEN_TCG_A2_add macro.  This macro allows us to generate TCG code
-instead of a call to the helper.  If defined, the macro takes 1 argument.
+The generator checks for fGEN_TCG_<tag> macro.  This allows us to generate
+TCG code instead of a call to the helper.  If defined, the macro takes 1
+argument.
     C semantics (aka short code)
 
 This allows the code generator to override the auto-generated code.  In some
@@ -117,15 +108,9 @@ cases this is necessary for correct execution.  We can also override for
 faster emulation.  For example, calling a helper for add is more expensive
 than generating a TCG add operation.
 
-The gen_tcg.h file has any overrides. For example,
+The gen_tcg.h file has any overrides. For example, we could write
     #define fGEN_TCG_A2_add(GENHLPR, SHORTCODE) \
         tcg_gen_add_tl(RdV, RsV, RtV)
-
-The gen_tcg.h file is included twice
-1) In genptr.c, it overrides the semantics from tcg_funcs_generated.h
-2) In helper.h, it prevents the generation of helpers for overridden
-   instructions.  Notice the #ifndef fGEN_TCG_A2_add above in both
-   helper_protos_generated.h and helper_functions.h
 
 The instruction semantics C code relies heavily on macros.  In cases where the
 C semantics are specified only with macros, we can override the default with
@@ -165,9 +150,9 @@ because qemu helpers can only return a single value.
 In addition to instruction semantics, we use a generator to create the decode
 tree.  This generation is also a two step process.  The first step is to run
 target/hexagon/gen_dectree_import.c to produce
-    <BUILD_DIR>/hexagon-linux-user/iset.py
+    <BUILD_DIR>/target/hexagon/iset.py
 This file is imported by target/hexagon/dectree.py to produce
-    <BUILD_DIR>/hexagon-linux-user/dectree_generated.h
+    <BUILD_DIR>/target/hexagon/dectree_generated.h
 
 *** Key Files ***
 
@@ -197,19 +182,16 @@ important functions in this file are
     decode_packet - disassemble a packet and generate code
 
 genptr.c
-genptr_helpers.h
 gen_tcg.h
 
 These files create a function for each instruction.  It is mostly composed of
-fGEN_TCG_<tag> definitions followed by including qemu_def_generated.h.  The
-genptr_helpers.h file contains helper functions that are invoked by the macros
-in gen_tcg.h and macros.h
+fGEN_TCG_<tag> definitions followed by including tcg_funcs_generated.h.
 
 op_helper.c
 
 This file contains the implementations of all the helpers.  There are a few
 general purpose helpers, but most of them are generated by including
-qemu_def_generated.h.  There are also several helpers used for debugging.
+helper_funcs_generated.h.  There are also several helpers used for debugging.
 
 
 *** Packet Semantics ***
