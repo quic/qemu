@@ -24,6 +24,7 @@ TESTS += \
 	fastl2vic \
 	swi \
 	pcycle \
+        framelimit \
 	$()
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
@@ -57,6 +58,7 @@ fastl2vic: fastl2vic.o
 swi: swi.o
 wait: wait.o
 pcycle: pcycle.o
+framelimit: framelimit.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -76,3 +78,12 @@ qtimer_test: LDFLAGS+= -lhexagon
 
 QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67,count-gcycle-xt=on
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -no-reboot  -kernel
+
+# framelimit raises an exception and returns 255 to the shell
+run-framelimit: framelimit
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)"); \
+	if [ $$? -eq 255 ] ; then \
+		return 0; \
+	else \
+		return -1; \
+	fi
