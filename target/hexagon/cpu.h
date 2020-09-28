@@ -263,6 +263,10 @@ typedef struct HexagonCPU {
     /*< public >*/
     CPUNegativeOffsetState neg;
     CPUHexagonState env;
+
+#ifndef CONFIG_USER_ONLY
+    bool count_gcycle_xt;
+#endif
 } HexagonCPU;
 
 static inline HexagonCPU *hexagon_env_get_cpu(CPUHexagonState *env)

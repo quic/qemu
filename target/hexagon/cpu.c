@@ -28,6 +28,7 @@
 #ifndef CONFIG_USER_ONLY
 #include "macros.h"
 #include "hex_mmu.h"
+#include "hw/qdev-properties.h"
 #endif
 
 static void hexagon_v67_cpu_init(Object *obj)
@@ -51,6 +52,11 @@ static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
     }
     return oc;
 }
+
+#ifndef CONFIG_USER_ONLY
+static Property hexagon_count_gcycle_xt_property =
+    DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false);
+#endif
 
 const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
 #ifdef CONFIG_USER_ONLY
@@ -510,6 +516,7 @@ static void hexagon_cpu_init(Object *obj)
 #ifndef CONFIG_USER_ONLY
     // At he the moment only qtimer XXX_SM
     qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
+    qdev_property_add_static(DEVICE(obj), &hexagon_count_gcycle_xt_property);
 #endif
 }
 

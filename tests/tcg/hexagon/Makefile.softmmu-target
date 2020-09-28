@@ -74,5 +74,5 @@ standalone_vec.o: CFLAGS+= -mv67 -O2 -mhvx  -fvectorize
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfab00000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
 qtimer_test: LDFLAGS+= -lhexagon
 
-QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67
+QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67,count-gcycle-xt=on
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -no-reboot  -kernel

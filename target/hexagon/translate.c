@@ -140,7 +140,8 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
     return nwords;
 }
 
-static void gen_start_packet(DisasContext *ctx, packet_t *pkt)
+static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
+                             packet_t *pkt)
 {
     target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
     int i;
@@ -218,7 +219,10 @@ static void gen_start_packet(DisasContext *ctx, packet_t *pkt)
     gen_set_label(skip);
     tcg_temp_free(syscfg_pcycleen);
 
-    gen_helper_inc_gcycle_xt(cpu_env);
+    HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
+    if (hex_cpu->count_gcycle_xt) {
+        gen_helper_inc_gcycle_xt(cpu_env);
+    }
 #endif
 }
 
@@ -901,7 +905,7 @@ static void decode_and_translate_packet(CPUHexagonState *env,
     }
     if (!has_invalid_opcode) {
         HEX_DEBUG_PRINT_PKT(&pkt);
-        gen_start_packet(ctx, &pkt);
+        gen_start_packet(env, ctx, &pkt);
         for (i = 0; i < pkt.num_insns; i++) {
             gen_insn(env, ctx, &pkt.insn[i], &pkt);
         }
@@ -909,7 +913,7 @@ static void decode_and_translate_packet(CPUHexagonState *env,
         ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
     } else {
         if (decode_success) {
-            gen_start_packet(ctx, &pkt);
+            gen_start_packet(env, ctx, &pkt);
         }
         env->cause_code = HEX_CAUSE_INVALID_PACKET;
         gen_exception(HEX_EVENT_PRECISE);
