@@ -768,8 +768,8 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    HEX_DEBUG_LOG("%s: event 0x%x, cause 0x%x\n",
-      __FUNCTION__, cs->exception_index, env->cause_code);
+    HEX_DEBUG_LOG("%s: tid %d, event 0x%x, cause 0x%x\n",
+      __FUNCTION__, env->threadId, cs->exception_index, env->cause_code);
     qemu_log_mask(CPU_LOG_INT,
             "\t%s: event 0x%x, cause 0x%x\n", __func__,
             cs->exception_index, env->cause_code);

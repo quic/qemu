@@ -240,6 +240,8 @@ void hexagon_wait_thread(CPUHexagonState *env)
     if (get_exe_mode(env) != HEX_EXE_MODE_WAIT) {
         set_wait_mode(env);
     }
+    ARCH_SET_THREAD_REG(env, HEX_REG_PC,
+       ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
     cpu_stop_current();
 }
 
@@ -250,8 +252,6 @@ void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
     clear_wait_mode(env);
     cs = env_cpu(env);
     cs->exception_index = ei;
-    ARCH_SET_THREAD_REG(env, HEX_REG_PC,
-       ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
     cpu_resume(cs);
 }
 
