@@ -366,6 +366,23 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
     }
 }
 
+/*
+ * When we have all threads stopped, the return
+ * value to the shell is register 2 from thread 0.
+ */
+static target_ulong get_thread0_r2(void)
+{
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *thread = &cpu->env;
+        if (thread->threadId == 0) {
+            return thread->gpr[2];
+        }
+    }
+    g_assert_not_reached();
+}
+
 void hexagon_stop_thread(CPUHexagonState *env)
 
 {
@@ -380,6 +397,10 @@ void hexagon_stop_thread(CPUHexagonState *env)
     thread_enabled_mask &= ~(0x1 << env->threadId);
     SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_E,thread_enabled_mask);
     cpu_stop_current();
+    if (!thread_enabled_mask) {
+        /* All threads are stopped, exit */
+        exit(get_thread0_r2());
+    }
 }
 
 int sys_in_monitor_mode_ssr(uint32_t ssr);
