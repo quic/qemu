@@ -48,8 +48,15 @@
                        reg_field_info[FIELD].offset, \
                        reg_field_info[FIELD].width)
 
+#define TYPE_INT(X)          __builtin_types_compatible_p(typeof(X), int)
+#define TYPE_TCGV(X)         __builtin_types_compatible_p(typeof(X), TCGv)
+#define TYPE_TCGV_I64(X)     __builtin_types_compatible_p(typeof(X), TCGv_i64)
+
 #define SET_USR_FIELD_FUNC(X) \
-    _Generic((X), int : gen_set_usr_fieldi, TCGv : gen_set_usr_field)
+    __builtin_choose_expr(TYPE_INT(X), \
+        gen_set_usr_fieldi, \
+        __builtin_choose_expr(TYPE_TCGV(X), \
+            gen_set_usr_field, (void)0))
 #define SET_USR_FIELD(FIELD, VAL) \
     SET_USR_FIELD_FUNC(VAL)(FIELD, VAL)
 #else
@@ -130,22 +137,34 @@
     } while (0)
 
 #define MEM_STORE1_FUNC(X) \
-    _Generic((X), int : gen_store1i, TCGv_i32 : gen_store1)
+    __builtin_choose_expr(TYPE_INT(X), \
+        gen_store1i, \
+        __builtin_choose_expr(TYPE_TCGV(X), \
+            gen_store1, (void)0))
 #define MEM_STORE1(VA, DATA, SLOT) \
     MEM_STORE1_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
 
 #define MEM_STORE2_FUNC(X) \
-    _Generic((X), int : gen_store2i, TCGv_i32 : gen_store2)
+    __builtin_choose_expr(TYPE_INT(X), \
+        gen_store2i, \
+        __builtin_choose_expr(TYPE_TCGV(X), \
+            gen_store2, (void)0))
 #define MEM_STORE2(VA, DATA, SLOT) \
     MEM_STORE2_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
 
 #define MEM_STORE4_FUNC(X) \
-    _Generic((X), int : gen_store4i, TCGv_i32 : gen_store4)
+    __builtin_choose_expr(TYPE_INT(X), \
+        gen_store4i, \
+        __builtin_choose_expr(TYPE_TCGV(X), \
+            gen_store4, (void)0))
 #define MEM_STORE4(VA, DATA, SLOT) \
     MEM_STORE4_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
 
 #define MEM_STORE8_FUNC(X) \
-    _Generic((X), int64_t : gen_store8i, TCGv_i64 : gen_store8)
+    __builtin_choose_expr(TYPE_INT(X), \
+        gen_store8i, \
+        __builtin_choose_expr(TYPE_TCGV_I64(X), \
+            gen_store8, (void)0))
 #define MEM_STORE8(VA, DATA, SLOT) \
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
 #endif
@@ -298,8 +317,8 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
     ({ \
         ((VAL) < 0) ? (-(1LL << ((N) - 1))) : ((1LL << ((N) - 1)) - 1); \
     })
-#define fZXTN(N, M, VAL) ((N) ? extract64((VAL), 0, (N)) : 0LL)
-#define fSXTN(N, M, VAL) ((N) ? sextract64((VAL), 0, (N)) : 0LL)
+#define fZXTN(N, M, VAL) (((N) != 0) ? extract64((VAL), 0, (N)) : 0LL)
+#define fSXTN(N, M, VAL) (((N) != 0) ? sextract64((VAL), 0, (N)) : 0LL)
 #define fSATN(N, VAL) \
     ((fSXTN(N, 64, VAL) == (VAL)) ? (VAL) : fSATVALN(N, VAL))
 #define fVSATN(N, VAL) \
@@ -844,7 +863,10 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define GETBYTE_FUNC(X) \
-    _Generic((X), TCGv_i32 : gen_get_byte, TCGv_i64 : gen_get_byte_i64)
+    __builtin_choose_expr(TYPE_TCGV(X), \
+        gen_get_byte, \
+        __builtin_choose_expr(TYPE_TCGV_I64(X), \
+            gen_get_byte_i64, (void)0))
 #define fGETBYTE(N, SRC) GETBYTE_FUNC(SRC)(BYTE, N, SRC, true)
 #define fGETUBYTE(N, SRC) GETBYTE_FUNC(SRC)(BYTE, N, SRC, false)
 #else
@@ -854,14 +876,20 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define SETBYTE_FUNC(X) \
-    _Generic((X), TCGv_i32 : gen_set_byte, TCGv_i64 : gen_set_byte_i64)
+    __builtin_choose_expr(TYPE_TCGV(X), \
+        gen_set_byte, \
+        __builtin_choose_expr(TYPE_TCGV_I64(X), \
+            gen_set_byte_i64, (void)0))
 #define fSETBYTE(N, DST, VAL) SETBYTE_FUNC(DST)(N, DST, VAL)
 
 #define fGETHALF(N, SRC)  gen_get_half(HALF, N, SRC, true)
 #define fGETUHALF(N, SRC) gen_get_half(HALF, N, SRC, false)
 
 #define SETHALF_FUNC(X) \
-    _Generic((X), TCGv_i32 : gen_set_half, TCGv_i64 : gen_set_half_i64)
+    __builtin_choose_expr(TYPE_TCGV(X), \
+        gen_set_half, \
+        __builtin_choose_expr(TYPE_TCGV_I64(X), \
+            gen_set_half_i64, (void)0))
 #define fSETHALF(N, DST, VAL) SETHALF_FUNC(DST)(N, DST, VAL)
 #define fSETHALFw(N, DST, VAL) gen_set_half(N, DST, VAL)
 #define fSETHALFd(N, DST, VAL) gen_set_half_i64(N, DST, VAL)
@@ -884,7 +912,10 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define GETWORD_FUNC(X) \
-    _Generic((X), TCGv_i32 : gen_get_word, TCGv_i64 : gen_get_word_i64)
+    __builtin_choose_expr(TYPE_TCGV(X), \
+        gen_get_word, \
+        __builtin_choose_expr(TYPE_TCGV_I64(X), \
+            gen_get_word_i64, (void)0))
 #define fGETWORD(N, SRC)  GETWORD_FUNC(WORD)(WORD, N, SRC, true)
 #define fGETUWORD(N, SRC) GETWORD_FUNC(WORD)(WORD, N, SRC, false)
 #else

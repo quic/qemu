@@ -49,7 +49,10 @@
 #define TMP_WRITTEN(NUM) ((env->VRegs_updated_tmp >> (NUM)) & 1)
 
 #define LOG_VREG_WRITE_FUNC(X) \
-    _Generic((X), void * : log_vreg_write, mmvector_t : log_mmvector_write)
+    __builtin_choose_expr(__builtin_types_compatible_p(typeof(X), void *), \
+        log_vreg_write, \
+        __builtin_choose_expr(__builtin_types_compatible_p(typeof(X), mmvector_t), \
+            log_mmvector_write, (void)0))
 #define LOG_VREG_WRITE(NUM, VAR, VNEW) \
     LOG_VREG_WRITE_FUNC(VAR)(env, NUM, VAR, VNEW, slot)
 
