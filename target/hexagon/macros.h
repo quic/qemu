@@ -18,8 +18,6 @@
 #ifndef HEXAGON_MACROS_H
 #define HEXAGON_MACROS_H
 
-#include "qemu/osdep.h"
-#include "qemu/host-utils.h"
 #include "cpu.h"
 #include "hex_regs.h"
 #include "reg_fields.h"

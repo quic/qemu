@@ -26,7 +26,7 @@
 
 #define STRINGIZE(X)    #X
 
-const char *opcode_names[] = {
+const char * const opcode_names[] = {
 #define OPCODE(IID) STRINGIZE(IID)
 #include "opcodes_def_generated.h"
     NULL
@@ -58,7 +58,7 @@ void opcode_init(void)
 #undef EXTINSN
 }
 
-const char *opcode_rregs[] = {
+const char * const opcode_rregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
 #include "op_regs_generated.h"
@@ -67,7 +67,7 @@ const char *opcode_rregs[] = {
 #undef IMMINFO
 };
 
-const char *opcode_wregs[] = {
+const char * const opcode_wregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
 #include "op_regs_generated.h"
@@ -76,7 +76,7 @@ const char *opcode_wregs[] = {
 #undef IMMINFO
 };
 
-opcode_encoding_t opcode_encodings[] = {
+const opcode_encoding_t opcode_encodings[] = {
 #define DEF_ENC32(TAG, ENCSTR) \
     [TAG] = { .encoding = ENCSTR },
 #define DEF_ENC_SUBINSN(TAG, CLASS, ENCSTR) \
@@ -185,12 +185,12 @@ int main(int argc, char *argv[])
 
     if (argc != 2) {
         fprintf(stderr, "Usage: gen_dectree_import ouptputfile\n");
-        return -1;
+        return 1;
     }
     outfile = fopen(argv[1], "w");
     if (outfile == NULL) {
         fprintf(stderr, "Cannot open %s for writing\n", argv[1]);
-        return -1;
+        return 1;
     }
 
     opcode_init();

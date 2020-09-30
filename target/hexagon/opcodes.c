@@ -29,14 +29,14 @@
 #define VEC_DESCR(A, B, C) DESCR(A, B, C)
 #define DONAME(X) #X
 
-const char *opcode_names[] = {
+const char * const opcode_names[] = {
 #define OPCODE(IID) DONAME(IID)
 #include "opcodes_def_generated.h"
     NULL
 #undef OPCODE
 };
 
-const char *opcode_reginfo[] = {
+const char * const opcode_reginfo[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) REGINFO,
 #include "op_regs_generated.h"
@@ -46,7 +46,7 @@ const char *opcode_reginfo[] = {
 };
 
 
-const char *opcode_rregs[] = {
+const char * const opcode_rregs[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
 #include "op_regs_generated.h"
@@ -56,7 +56,7 @@ const char *opcode_rregs[] = {
 };
 
 
-const char *opcode_wregs[] = {
+const char * const opcode_wregs[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
 #include "op_regs_generated.h"
@@ -86,43 +86,7 @@ static void init_attribs(int tag, ...)
     }
 }
 
-static uint32_t str2val(const char *str)
-{
-    uint32_t ret = 0;
-    for ( ; *str; str++) {
-        switch (*str) {
-        case ' ':
-        case '\t':
-            break;
-        case 's':
-        case 't':
-        case 'u':
-        case 'v':
-        case 'w':
-        case 'd':
-        case 'e':
-        case 'x':
-        case 'y':
-        case 'i':
-        case 'I':
-        case 'P':
-        case 'E':
-        case 'o':
-        case '-':
-        case '0':
-            ret = (ret << 1) | 0;
-            break;
-        case '1':
-            ret = (ret << 1) | 1;
-            break;
-        default:
-            break;
-        }
-    }
-    return ret;
-}
-
-opcode_encoding_t opcode_encodings[] = {
+const opcode_encoding_t opcode_encodings[] = {
 #define DEF_ENC32(OPCODE, ENCSTR) \
     [OPCODE] = { .encoding = ENCSTR },
 
@@ -142,25 +106,6 @@ opcode_encoding_t opcode_encodings[] = {
 void opcode_init(void)
 {
     init_attribs(0, 0);
-
-#define DEF_ENC32(OPCODE, ENCSTR) \
-    opcode_encodings[OPCODE].vals = str2val(ENCSTR);
-
-#define DEF_ENC_SUBINSN(OPCODE, CLASS, ENCSTR) \
-    opcode_encodings[OPCODE].vals = str2val(ENCSTR);
-
-#define LEGACY_DEF_ENC32(OPCODE, ENCSTR) \
-    opcode_encodings[OPCODE].dep_vals = str2val(ENCSTR);
-
-#define DEF_EXT_ENC(OPCODE, CLASS, ENCSTR) \
-    opcode_encodings[OPCODE].vals = str2val(ENCSTR);
-
-#include "imported/encode.def"
-
-#undef LEGACY_DEF_ENC32
-#undef DEF_ENC32
-#undef DEF_ENC_SUBINSN
-#undef DEF_EXT_ENC
 
 #define ATTRIBS(...) , ## __VA_ARGS__, 0
 #define OP_ATTRIB(TAG, ARGS) init_attribs(TAG ARGS);

@@ -30,12 +30,12 @@ int main(int argc, char *argv[])
 
     if (argc != 2) {
         fprintf(stderr, "Usage: gen_semantics ouptputfile\n");
-        return -1;
+        return 1;
     }
     outfile = fopen(argv[1], "w");
     if (outfile == NULL) {
         fprintf(stderr, "Cannot open %s for writing\n", argv[1]);
-        return -1;
+        return 1;
     }
 
 /*
