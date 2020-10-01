@@ -24,9 +24,7 @@ enum {
 #undef DEF_ATTRIB
 };
 
-#define ATTRIB_WIDTH 32
 #define GET_ATTRIB(opcode, attrib) \
-    (((opcode_attribs[opcode][attrib / ATTRIB_WIDTH])\
-    >> (attrib % ATTRIB_WIDTH)) & 0x1)
+    test_bit(attrib, opcode_attribs[opcode])
 
 #endif /* ATTRIBS_H */

@@ -72,9 +72,7 @@ const char * const opcode_short_semantics[] = {
     NULL
 };
 
-
-uint32_t
-    opcode_attribs[XX_LAST_OPCODE][(A_ZZ_LASTATTRIB / ATTRIB_WIDTH) + 1];
+DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
 
 static void init_attribs(int tag, ...)
 {
@@ -82,7 +80,7 @@ static void init_attribs(int tag, ...)
     int attr;
     va_start(ap, tag);
     while ((attr = va_arg(ap, int)) != 0) {
-        opcode_attribs[tag][attr / ATTRIB_WIDTH] |= 1 << (attr % ATTRIB_WIDTH);
+        set_bit(attr, opcode_attribs[tag]);
     }
 }
 
