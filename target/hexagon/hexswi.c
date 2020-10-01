@@ -169,11 +169,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         /* actual numeric value.  here we inspect value and make a  */
         /* choice as to probable intent. */
         target_ulong ret;
-        if ((swi_info <= 255) || (swi_info == 0xffffffff)) {
-            ret = swi_info;
-        } else {
-            DEBUG_MEMORY_READ(swi_info, 1, &ret);
-        }
+        ret = ARCH_GET_THREAD_REG(env, HEX_REG_R02);
         HEX_DEBUG_LOG("%s: swi_info 0x%x, ret %d/0x%x\n",
             __FUNCTION__, swi_info, ret, ret);
         exit(ret);
