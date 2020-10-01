@@ -33,8 +33,6 @@ const char * const opcode_names[] = {
 #undef OPCODE
 };
 
-const char *opcode_syntax[XX_LAST_OPCODE];
-
 /*
  * Process the instruction definitions
  *     Scalar core instructions have the following form
@@ -47,16 +45,15 @@ const char *opcode_syntax[XX_LAST_OPCODE];
  *         "Insert Word Scalar into Vector",
  *         VxV.uw[0] = RtV;)
  */
-void opcode_init(void)
-{
+const char * const opcode_syntax[XX_LAST_OPCODE] = {
 #define Q6INSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
-   opcode_syntax[TAG] = BEH;
+   [TAG] = BEH,
 #define EXTINSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
-   opcode_syntax[TAG] = BEH;
+   [TAG] = BEH,
 #include "imported/allidefs.def"
 #undef Q6INSN
 #undef EXTINSN
-}
+};
 
 const char * const opcode_rregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
@@ -193,7 +190,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    opcode_init();
     gen_iset_table(outfile);
     gen_tags_list(outfile);
     gen_enc_ext_spaces_table(outfile);

@@ -41,16 +41,16 @@ Q6INSN(TAG##fnew,"if (!Pu4.new) "OPER,ATTRIBS(A_ARCHV2),DESCR,{if(fLSBNEWNOT(PuN
 COND_ALU(A2_padd,"Rd32=add(Rs32,Rt32)","Conditionally Add 32-bit registers",RdV=RsV+RtV)
 COND_ALU(A2_psub,"Rd32=sub(Rt32,Rs32)","Conditionally Subtract 32-bit registers",RdV=RtV-RsV)
 COND_ALU(A2_paddi,"Rd32=add(Rs32,#s8)","Conditionally Add Register and immediate",fIMMEXT(siV); RdV=RsV+siV)
-COND_ALU(A2_pxor,"Rd32=xor(Rs32,Rt32)","Conditionally XOR registers",RdV=RsV^RtV);
-COND_ALU(A2_pand,"Rd32=and(Rs32,Rt32)","Conditionally AND registers",RdV=RsV&RtV);
-COND_ALU(A2_por,"Rd32=or(Rs32,Rt32)","Conditionally OR registers",RdV=RsV|RtV);
+COND_ALU(A2_pxor,"Rd32=xor(Rs32,Rt32)","Conditionally XOR registers",RdV=RsV^RtV)
+COND_ALU(A2_pand,"Rd32=and(Rs32,Rt32)","Conditionally AND registers",RdV=RsV&RtV)
+COND_ALU(A2_por,"Rd32=or(Rs32,Rt32)","Conditionally OR registers",RdV=RsV|RtV)
 
-COND_ALU(A4_psxtb,"Rd32=sxtb(Rs32)","Conditionally sign-extend byte", RdV=fSXTN(8,32,RsV));
-COND_ALU(A4_pzxtb,"Rd32=zxtb(Rs32)","Conditionally zero-extend byte", RdV=fZXTN(8,32,RsV));
-COND_ALU(A4_psxth,"Rd32=sxth(Rs32)","Conditionally sign-extend halfword", RdV=fSXTN(16,32,RsV));
-COND_ALU(A4_pzxth,"Rd32=zxth(Rs32)","Conditionally zero-extend halfword", RdV=fZXTN(16,32,RsV));
-COND_ALU(A4_paslh,"Rd32=aslh(Rs32)","Conditionally zero-extend halfword", RdV=RsV<<16);
-COND_ALU(A4_pasrh,"Rd32=asrh(Rs32)","Conditionally zero-extend halfword", RdV=RsV>>16);
+COND_ALU(A4_psxtb,"Rd32=sxtb(Rs32)","Conditionally sign-extend byte", RdV=fSXTN(8,32,RsV))
+COND_ALU(A4_pzxtb,"Rd32=zxtb(Rs32)","Conditionally zero-extend byte", RdV=fZXTN(8,32,RsV))
+COND_ALU(A4_psxth,"Rd32=sxth(Rs32)","Conditionally sign-extend halfword", RdV=fSXTN(16,32,RsV))
+COND_ALU(A4_pzxth,"Rd32=zxth(Rs32)","Conditionally zero-extend halfword", RdV=fZXTN(16,32,RsV))
+COND_ALU(A4_paslh,"Rd32=aslh(Rs32)","Conditionally zero-extend halfword", RdV=RsV<<16)
+COND_ALU(A4_pasrh,"Rd32=asrh(Rs32)","Conditionally zero-extend halfword", RdV=RsV>>16)
 
 
 Q6INSN(A2_addsat,"Rd32=add(Rs32,Rt32):sat",ATTRIBS(),

@@ -175,22 +175,22 @@ COND_RETURN_NEW(L4_return,12,0,ATTRIBS(RETURN_ATTRIBS,A_JINDIRNEW))
 
 
 Q6INSN(L2_loadw_locked,"Rd32=memw_locked(Rs32)", ATTRIBS(A_LOAD,A_RESTRICT_SLOT0ONLY), "Load word with lock",
-{ fEA_REG(RsV); fLOAD_LOCKED(1,4,u,EA,RdV) });
+{ fEA_REG(RsV); fLOAD_LOCKED(1,4,u,EA,RdV) })
 
 
 Q6INSN(S2_storew_locked,"memw_locked(Rs32,Pd4)=Rt32", ATTRIBS(A_STORE,A_RESTRICT_SLOT0ONLY), "Store word with lock",
-{ fEA_REG(RsV); fSTORE_LOCKED(1,4,EA,RtV,PdV) });
+{ fEA_REG(RsV); fSTORE_LOCKED(1,4,EA,RtV,PdV) })
 
 
 Q6INSN(L4_loadd_locked,"Rdd32=memd_locked(Rs32)", ATTRIBS(A_LOAD,A_RESTRICT_SLOT0ONLY), "Load double with lock",
-{ fEA_REG(RsV); fLOAD_LOCKED(1,8,u,EA,RddV) });
+{ fEA_REG(RsV); fLOAD_LOCKED(1,8,u,EA,RddV) })
 
 Q6INSN(L4_loadw_phys,"Rd32=memw_phys(Rs32,Rt32)", ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_LOAD), "Load word from physical address",
-{ fLOAD_PHYS(1,4,u,RsV,RtV,RdV); });
+{ fLOAD_PHYS(1,4,u,RsV,RtV,RdV); })
 
 
 Q6INSN(S4_stored_locked,"memd_locked(Rs32,Pd4)=Rtt32", ATTRIBS(A_STORE,A_RESTRICT_SLOT0ONLY), "Store word with lock",
-{ fEA_REG(RsV); fSTORE_LOCKED(1,8,EA,RttV,PdV) });
+{ fEA_REG(RsV); fSTORE_LOCKED(1,8,EA,RttV,PdV) })
 
 
 

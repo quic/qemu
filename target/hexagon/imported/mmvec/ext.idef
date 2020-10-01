@@ -1124,33 +1124,33 @@ ITERATOR_INSN2_ANY_SLOT_DOUBLE_VEC(WIDTH, vsub##TYPE##_dv,  "Vdd32=vsub"TYPE2"(V
 
 
 /* Wrapping Adds */
-MMVEC_ADDWRAP(b,    "b",    "Byte",         8,   b, b);
-MMVEC_ADDWRAP(h,    "h",    "Halfword",     16,  h, h);
-MMVEC_ADDWRAP(w,    "w",    "Word",         32,   w,    w);
+MMVEC_ADDWRAP(b,    "b",    "Byte",         8,   b, b)
+MMVEC_ADDWRAP(h,    "h",    "Halfword",     16,  h, h)
+MMVEC_ADDWRAP(w,    "w",    "Word",         32,   w,    w)
 
 /* Saturating Adds */
-MMVEC_ADDU_SAT(ub, "ub",    "Unsigned Byte",        8,   ub,    ub);
-MMVEC_ADDU_SAT(uh, "uh",    "Unsigned Halfword",    16,  uh,    uh);
-MMVEC_ADDU_SAT(uw, "uw",    "Unsigned word",    32,  uw,    uw);
-MMVEC_ADDS_SAT(b,  "b",     "byte",             8,  b,     b);
-MMVEC_ADDS_SAT(h,  "h",     "Halfword",             16,  h,     h);
-MMVEC_ADDS_SAT(w,  "w",     "Word",                 32,  w,     w);
+MMVEC_ADDU_SAT(ub, "ub",    "Unsigned Byte",        8,   ub,    ub)
+MMVEC_ADDU_SAT(uh, "uh",    "Unsigned Halfword",    16,  uh,    uh)
+MMVEC_ADDU_SAT(uw, "uw",    "Unsigned word",    32,  uw,    uw)
+MMVEC_ADDS_SAT(b,  "b",     "byte",             8,  b,     b)
+MMVEC_ADDS_SAT(h,  "h",     "Halfword",             16,  h,     h)
+MMVEC_ADDS_SAT(w,  "w",     "Word",                 32,  w,     w)
 
 
 /* Averaging Instructions */
-MMVEC_AVGU(ub,"ub",     "Unsigned Byte",     8,   ub,   ub);
-MMVEC_AVGU(uh,"uh",     "Unsigned Halfword", 16,  uh,   uh);
-MMVEC_AVGU_NOV1(uw,"uw",     "Unsigned Word",     32,  uw,   uw);
-MMVEC_AVGS_NOV1(b,   "b",    "Byte",               8,   b,   b);
-MMVEC_AVGS(h,   "h",    "Halfword",          16,   h,   h);
-MMVEC_AVGS(w,   "w",    "Word",              32,   w,   w);
+MMVEC_AVGU(ub,"ub",     "Unsigned Byte",     8,   ub,   ub)
+MMVEC_AVGU(uh,"uh",     "Unsigned Halfword", 16,  uh,   uh)
+MMVEC_AVGU_NOV1(uw,"uw",     "Unsigned Word",     32,  uw,   uw)
+MMVEC_AVGS_NOV1(b,   "b",    "Byte",               8,   b,   b)
+MMVEC_AVGS(h,   "h",    "Halfword",          16,   h,   h)
+MMVEC_AVGS(w,   "w",    "Word",              32,   w,   w)
 
 
 /* Absolute Difference */
-MMVEC_ABSDIFF(ub,"ub",  "Unsigned Byte",        8,   ub,    ub);
-MMVEC_ABSDIFF(uh,"uh",  "Unsigned Halfword",    16,  uh,    uh);
-MMVEC_ABSDIFF(h,"h",        "Halfword",             16,  uh,    h);
-MMVEC_ABSDIFF(w,"w",        "Word",                 32,  uw,    w);
+MMVEC_ABSDIFF(ub,"ub",  "Unsigned Byte",        8,   ub,    ub)
+MMVEC_ABSDIFF(uh,"uh",  "Unsigned Halfword",    16,  uh,    uh)
+MMVEC_ABSDIFF(h,"h",        "Halfword",             16,  uh,    h)
+MMVEC_ABSDIFF(w,"w",        "Word",                 32,  uw,    w)
 
 ITERATOR_INSN2_ANY_SLOT(8,vnavgub, "Vd32=vnavgub(Vu32,Vv32)", "Vd32.b=vnavg(Vu32.ub,Vv32.ub)",
 "Vector Negative Average Unsigned Byte", VdV.b[i]   = fVNAVGU(8, VuV.ub[i], VvV.ub[i]))
@@ -1736,14 +1736,14 @@ EXTINSN(V6_pred_scalar2v2, "Qd4=vsetq2(Rt32)",         ATTRIBS(A_EXTENSION,A_CVI
 })
 
 
-ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, shuffeqw, "Qd4.h=vshuffe(Qs4.w,Qt4.w)","Shrink Predicate", fSETQBIT(QdV,i, (i & 2) ? fGETQBIT(QsV,i-2) : fGETQBIT(QtV,i) ) );
-ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, shuffeqh, "Qd4.b=vshuffe(Qs4.h,Qt4.h)","Shrink Predicate", fSETQBIT(QdV,i, (i & 1) ? fGETQBIT(QsV,i-1) : fGETQBIT(QtV,i) ) );
-ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_or, "Qd4=or(Qs4,Qt4)","Vector Predicate Or", fSETQBIT(QdV,i,fGETQBIT(QsV,i) || fGETQBIT(QtV,i) ) );
-ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_and, "Qd4=and(Qs4,Qt4)","Vector Predicate And", fSETQBIT(QdV,i,fGETQBIT(QsV,i) && fGETQBIT(QtV,i) ) );
-ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_xor, "Qd4=xor(Qs4,Qt4)","Vector Predicate Xor", fSETQBIT(QdV,i,fGETQBIT(QsV,i) ^ fGETQBIT(QtV,i) ) );
-ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_or_n, "Qd4=or(Qs4,!Qt4)","Vector Predicate Or with not", fSETQBIT(QdV,i,fGETQBIT(QsV,i) || !fGETQBIT(QtV,i) ) );
-ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_and_n, "Qd4=and(Qs4,!Qt4)","Vector Predicate And  with not", fSETQBIT(QdV,i,fGETQBIT(QsV,i) && !fGETQBIT(QtV,i) ) );
-ITERATOR_INSN_ANY_SLOT(8, pred_not, "Qd4=not(Qs4)","Vector Predicate Not", fSETQBIT(QdV,i,!fGETQBIT(QsV,i) ) );
+ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, shuffeqw, "Qd4.h=vshuffe(Qs4.w,Qt4.w)","Shrink Predicate", fSETQBIT(QdV,i, (i & 2) ? fGETQBIT(QsV,i-2) : fGETQBIT(QtV,i) ) )
+ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, shuffeqh, "Qd4.b=vshuffe(Qs4.h,Qt4.h)","Shrink Predicate", fSETQBIT(QdV,i, (i & 1) ? fGETQBIT(QsV,i-1) : fGETQBIT(QtV,i) ) )
+ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_or, "Qd4=or(Qs4,Qt4)","Vector Predicate Or", fSETQBIT(QdV,i,fGETQBIT(QsV,i) || fGETQBIT(QtV,i) ) )
+ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_and, "Qd4=and(Qs4,Qt4)","Vector Predicate And", fSETQBIT(QdV,i,fGETQBIT(QsV,i) && fGETQBIT(QtV,i) ) )
+ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_xor, "Qd4=xor(Qs4,Qt4)","Vector Predicate Xor", fSETQBIT(QdV,i,fGETQBIT(QsV,i) ^ fGETQBIT(QtV,i) ) )
+ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_or_n, "Qd4=or(Qs4,!Qt4)","Vector Predicate Or with not", fSETQBIT(QdV,i,fGETQBIT(QsV,i) || !fGETQBIT(QtV,i) ) )
+ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, pred_and_n, "Qd4=and(Qs4,!Qt4)","Vector Predicate And  with not", fSETQBIT(QdV,i,fGETQBIT(QsV,i) && !fGETQBIT(QtV,i) ) )
+ITERATOR_INSN_ANY_SLOT(8, pred_not, "Qd4=not(Qs4)","Vector Predicate Not", fSETQBIT(QdV,i,!fGETQBIT(QsV,i) ) )
 
 
 
@@ -1811,11 +1811,11 @@ ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8,vswap,"Vdd32=vswap(Qt4,Vu32,Vv32)",
 ITERATOR_INSN2_ANY_SLOT(ELEMENTSIZE,vmax##TYPE, "Vd32=vmax" TYPE2 "(Vu32,Vv32)", "Vd32."#SRC"=vmax(Vu32."#SRC",Vv32."#SRC")", "Vector " DESCR " max", VdV.SRC[i] = (VuV.SRC[i] > VvV.SRC[i]) ? VuV.SRC[i] :  VvV.SRC[i])  \
 ITERATOR_INSN2_ANY_SLOT(ELEMENTSIZE,vmin##TYPE, "Vd32=vmin" TYPE2 "(Vu32,Vv32)", "Vd32."#SRC"=vmin(Vu32."#SRC",Vv32."#SRC")", "Vector " DESCR " min", VdV.SRC[i] = (VuV.SRC[i] < VvV.SRC[i]) ? VuV.SRC[i] :  VvV.SRC[i])
 
-MMVEC_SORT(b,"b", "signed byte",    8,  b);
-MMVEC_SORT(ub,"ub", "unsigned byte",    8,  ub);
-MMVEC_SORT(uh,"uh", "unsigned halfword",16, uh);
-MMVEC_SORT(h,   "h",    "halfword",         16, h);
-MMVEC_SORT(w,   "w",    "word",             32, w);
+MMVEC_SORT(b,"b", "signed byte",    8,  b)
+MMVEC_SORT(ub,"ub", "unsigned byte",    8,  ub)
+MMVEC_SORT(uh,"uh", "unsigned halfword",16, uh)
+MMVEC_SORT(h,   "h",    "halfword",         16, h)
+MMVEC_SORT(w,   "w",    "word",             32, w)
 
 
 
