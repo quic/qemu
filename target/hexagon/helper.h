@@ -67,6 +67,7 @@ DEF_HELPER_1(resched, void, env)
 DEF_HELPER_2(nmi, void, env, i32)
 DEF_HELPER_1(inc_gcycle_xt, void, env)
 DEF_HELPER_1(get_ready_count, i32, env)
+DEF_HELPER_1(pending_interrupt, void, env)
 #endif
 #define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPER
 #include "qemu_def_generated.h"

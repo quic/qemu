@@ -778,6 +778,7 @@ static void gen_cpu_limit(void)
 
     tcg_temp_free_i32(running_count);
 }
+
 #endif
 
 static void gen_exec_counters(packet_t *pkt)
@@ -884,9 +885,11 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     if (pkt->pkt_has_cof) {
         ctx->base.is_jmp = DISAS_NORETURN;
     }
+#ifndef CONFIG_USER_ONLY
     else if (pkt->pkt_has_sys_visibility) {
         ctx->base.is_jmp = DISAS_TOO_MANY;
     }
+#endif
 }
 
 static void decode_and_translate_packet(CPUHexagonState *env,
@@ -945,6 +948,7 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 {
 #ifndef CONFIG_USER_ONLY
     gen_cpu_limit_init();
+    /* assert(cpu->exception_index == HEX_EVENT_NONE); */
 #endif
 }
 
@@ -1028,33 +1032,29 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     case DISAS_TOO_MANY:
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
 
+    /* Fall through */
+    case DISAS_NEXT:
 #ifndef CONFIG_USER_ONLY
+        gen_helper_pending_interrupt(cpu_env);
         gen_helper_resched(cpu_env);
-        gen_cpu_limit();
 #endif
 
-        if (ctx->base.singlestep_enabled) {
-            gen_exception_debug();
-        } else {
-            tcg_gen_exit_tb(NULL, 0);
-        }
         break;
     case DISAS_NORETURN:
         tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
 
-#ifndef CONFIG_USER_ONLY
-        gen_helper_resched(cpu_env);
-        gen_cpu_limit();
-#endif
-
-        if (ctx->base.singlestep_enabled) {
-            gen_exception_debug();
-        } else {
-            tcg_gen_exit_tb(NULL, 0);
-        }
         break;
     default:
         g_assert_not_reached();
+    }
+
+#ifndef CONFIG_USER_ONLY
+    gen_cpu_limit();
+#endif
+    if (ctx->base.singlestep_enabled) {
+        gen_exception_debug();
+    } else {
+        tcg_gen_exit_tb(NULL, 0);
     }
 }
 

@@ -494,11 +494,14 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
             pkt->insn[i].is_dcop = 1;
         }
 #ifndef CONFIG_USER_ONLY
+        uint32_t could_halt = 0;
+        uint32_t triggers_int = 0;
+        uint32_t is_solo = 0;
         if (opcode == Y2_stop ||
             opcode == Y2_wait ||
             opcode == Y2_k0lock ||
             opcode == Y2_tlblock) {
-            pkt->insn[i].could_halt = 1;
+            could_halt = 1;
         }
         if (opcode == J2_trap0 ||
             opcode == J2_trap1 ||
@@ -506,10 +509,10 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
             GET_ATTRIB(opcode, A_EXCEPTION_TLB) ||
             GET_ATTRIB(opcode, A_EXCEPTION_SWI) ||
             GET_ATTRIB(opcode, A_EXCEPTION_ACCESS)) {
-            pkt->insn[i].triggers_int = 1;
+            triggers_int = 1;
         }
         if (GET_ATTRIB(opcode, A_RESTRICT_NOPACKET)) {
-            pkt->insn[i].is_solo = 1;
+            is_solo = 1;
         }
 #endif
 
@@ -576,11 +579,11 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
 
 #ifndef CONFIG_USER_ONLY
         pkt->pkt_has_sys_visibility |=
-               (pkt->insn[i].is_solo && !(GET_ATTRIB(opcode, A_STORE) ||
-                                          GET_ATTRIB(opcode, A_LOAD) ||
-                                          GET_ATTRIB(opcode, A_CACHEOP)))
-             || pkt->insn[i].could_halt
-             || pkt->insn[i].triggers_int
+               (is_solo && !(GET_ATTRIB(opcode, A_STORE) ||
+                             GET_ATTRIB(opcode, A_LOAD) ||
+                             GET_ATTRIB(opcode, A_CACHEOP)))
+             || could_halt
+             || triggers_int
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IPEND)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IAD)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_K0LOCK)

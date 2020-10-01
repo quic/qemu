@@ -108,7 +108,6 @@ static int MapError(int ERR)
 static int sim_handle_trap_functional(CPUHexagonState *env)
 
 {
-    CPUState *cs = env_cpu(env);
     target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     target_ulong what_swi = ARCH_GET_THREAD_REG(env, HEX_REG_R00);
     target_ulong swi_info = ARCH_GET_THREAD_REG(env, HEX_REG_R01);
@@ -174,12 +173,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         HEX_DEBUG_LOG("%s: swi_info 0x%x, ret %d/0x%x\n",
             __FUNCTION__, swi_info, ret, ret);
 
-        if (cs->singlestep_enabled) {
-            cs->exception_index = EXCP_DEBUG;
-        }
-        else {
-            exit(ret);
-        }
+        exit(ret);
     }
     break;
 
@@ -817,7 +811,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 0, cs->exception_index);
         env->branch_taken = 1;
-        cs->exception_index = HEX_EVENT_NONE;
         break;
 
     case HEX_EVENT_TRAP0:
@@ -836,7 +829,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 4, cs->exception_index);
         env->branch_taken = 1;
-        cs->exception_index = HEX_EVENT_NONE;
         break;
 
     case HEX_EVENT_TRAP1:
@@ -856,7 +848,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 4, cs->exception_index);
         env->branch_taken = 1;
-        cs->exception_index = HEX_EVENT_NONE;
         break;
 
     case HEX_EVENT_TLBLOCK_WAIT:
@@ -907,7 +898,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
                 env->threadId, env->gpr[HEX_REG_PC],
                 ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
             hex_tlb_lock(env);
-
 
             hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
@@ -1011,6 +1001,8 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
                   cs->exception_index, env->cause_code);
         break;
     }
+
+    cs->exception_index = HEX_EVENT_NONE;
 }
 
 void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
@@ -1023,7 +1015,10 @@ void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
         next_pc, traptype, imm);
 
     CPUState *cs = env_cpu(env);
+    /* assert(cs->exception_index == HEX_EVENT_NONE); */
+
     cs->exception_index = (traptype == 0) ? HEX_EVENT_TRAP0 : HEX_EVENT_TRAP1;
+
     env->cause_code = imm;
     cpu_loop_exit(cs);
 }

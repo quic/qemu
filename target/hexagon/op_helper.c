@@ -1242,34 +1242,6 @@ typedef struct {
     CPUHexagonState *env;
 } thread_entry;
 
-static thread_entry __attribute__((unused))
-select_lowest_prio_thread(thread_entry *threads,
-                          size_t list_size /*bool only_waiters*/)
-{
-    bool only_waiters = false;
-    // CPUHexagonState *lowest_prio_thread = env;
-    // CPUState *cs = CPU(hexagon_env_get_cpu(env));
-    size_t lowest_th_prio = 0;
-    size_t lowest_prio_index = 0;
-    for (size_t i = 0; i < list_size; i++) {
-        CPUHexagonState *thread_env =
-            threads[i].env; //&(HEXAGON_CPU(cpu)->env);
-        uint32_t th_prio = GET_FIELD(
-            STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
-        const bool waiting = (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
-        const bool is_candidate = (only_waiters && waiting) || !only_waiters;
-
-        /* 0 is the greatest priority for a thread, track the values
-         * that are lower priority (w/greater value).
-         */
-        if (lowest_th_prio > th_prio && is_candidate) {
-            lowest_prio_index = i;
-            lowest_th_prio = th_prio;
-        }
-    }
-
-    return threads[lowest_prio_index];
-}
 
 void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
 {
@@ -1291,16 +1263,21 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
         const uint32_t int_num = ints_asserted[i];
         size_t threads_count = 0;
         hexagon_find_int_threads(env, int_num, threads, &threads_count);
+        if (threads_count < 1) {
+            /* FIXME? pend this somehow? */
+           *(env->g_pending_interrupt_mask) |= 1 << int_num;
+            continue;
+        }
 
         HexagonCPU *int_thread =
-            hexagon_find_lowest_prio_any_thread(threads, threads_count);
+            hexagon_find_lowest_prio_any_thread(threads, threads_count, NULL);
         hexagon_raise_interrupt(env, int_thread, int_num);
     }
 
     /* exit loop if current thread was selected to handle a swi int */
     CPUState *current_cs = env_cpu(env);
     if (current_cs->exception_index >= HEX_EVENT_INT0 &&
-        current_cs->exception_index <= HEX_EVENT_INT7) {
+        current_cs->exception_index <= HEX_EVENT_INTF) {
         HEX_DEBUG_LOG("%s: current selected %p\n", __FUNCTION__, current_cs);
         cpu_loop_exit(current_cs);
     }
@@ -1310,49 +1287,42 @@ void HELPER(resched)(CPUHexagonState *env)
 {
     const uint32_t schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
     const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
-    if (schedcfg_en) {
-        CPUState *cpu = NULL;
-        uint32_t lowest_th_prio = 0; // 0 is highest prio
-        CPU_FOREACH (cpu) {
-            CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
-            uint32_t stid = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID);
-            const uint32_t th_prio = GET_FIELD(STID_PRIO, stid);
-            lowest_th_prio = MAX(th_prio, lowest_th_prio);
-        }
-
-        uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
-        uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
-
-        /* If the lowest priority thread is lower priority than the
-         * value in the BESTWAIT register, we must raise the reschedule
-         * interrupt on the lowest priority thread.
-         */
-        if (lowest_th_prio > best_prio) {
-            // do the resched int
-            const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
-            HEX_DEBUG_LOG(
-                "raising resched int %d, cur PC 0x%08x\n",
-                int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
-            SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
-
-            HexagonCPU *threads[THREADS_MAX];
-            memset(threads, 0, sizeof(threads));
-            size_t i = 0;
-            CPUState *cs = NULL;
-            CPU_FOREACH (cs) {
-                threads[i++] = HEXAGON_CPU(cs);
-            }
-
-            HexagonCPU *int_thread =
-                hexagon_find_lowest_prio_any_thread(threads, i);
-#if HEX_DEBUG
-            CPUHexagonState *int_thread_env = &(HEXAGON_CPU(int_thread)->env);
-            HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
-#endif
-            hexagon_raise_interrupt(env, int_thread, int_number);
-        }
+    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    if (!schedcfg_en) {
+        return;
     }
 
+    uint32_t lowest_th_prio = 0; /* 0 is highest prio */
+    HexagonCPU *threads[THREADS_MAX];
+    memset(threads, 0, sizeof(threads));
+    size_t i = 0;
+    CPU_FOREACH(cs) {
+        threads[i++] = HEXAGON_CPU(cs);
+    }
+    HexagonCPU *int_thread =
+        hexagon_find_lowest_prio_any_thread(threads, i, &lowest_th_prio);
+
+    uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
+    uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
+
+    /*
+     * If the lowest priority thread is lower priority than the
+     * value in the BESTWAIT register, we must raise the reschedule
+     * interrupt on the lowest priority thread.
+     */
+    if (lowest_th_prio > best_prio) {
+        /* do the resched int */
+        const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
+        HEX_DEBUG_LOG(
+                "raising resched int %d, cur PC 0x%08x\n",
+                int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
+        SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
+
+#if HEX_DEBUG
+        HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
+#endif
+        hexagon_raise_interrupt(env, int_thread, int_number);
+    }
 }
 
 void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
@@ -1406,6 +1376,32 @@ uint32_t HELPER(get_ready_count)(CPUHexagonState *env)
     return ready_count;
 }
 
+void HELPER(pending_interrupt)(CPUHexagonState *env)
+{
+    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    const target_ulong pend_mask = *(env->g_pending_interrupt_mask);
+    int intnum;
+
+    if (!pend_mask || cs->exception_index != HEX_EVENT_NONE) {
+        return;
+    }
+
+    for (intnum = 0; intnum < reg_field_info[IPENDAD_IPEND].width;
+         ++intnum) {
+        unsigned mask = 0x1 << intnum;
+        if ((pend_mask & mask) == 0) {
+            continue;
+        }
+
+        HexagonCPU *int_thread = hexagon_find_lowest_prio(env);
+        if (!int_thread) {
+            continue;
+        }
+        CPUHexagonState *thread_env = &int_thread->env;
+
+        hexagon_raise_interrupt(thread_env, int_thread, intnum);
+    }
+}
 #endif
 
 #ifdef CONFIG_USER_ONLY

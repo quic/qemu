@@ -239,6 +239,8 @@ struct CPUHexagonState {
     hex_lock_state_t k0_lock_state;
     uint16_t nmi_threads;
     uint32_t last_cpu;
+    target_ulong pending_interrupt_mask;
+    target_ulong *g_pending_interrupt_mask;
 #endif
 };
 
@@ -292,24 +294,41 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
 #ifndef CONFIG_USER_ONLY
 
-/* Fill @a ints with the interrupt numbers that are currently asserted.
+/*
+ * Fill @a ints with the interrupt numbers that are currently asserted.
  * @param list_size will be written with the count of interrupts found.
  */
 void hexagon_find_asserted_interrupts(CPUHexagonState *env, uint32_t *ints,
                                       size_t list_capacity, size_t *list_size);
 void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
                               HexagonCPU *threads[], size_t *list_size);
+HexagonCPU *hexagon_find_lowest_prio(CPUHexagonState *env);
 HexagonCPU *hexagon_find_lowest_prio_any_thread(HexagonCPU *threads[],
-                                                size_t list_size);
+                                                size_t list_size,
+                                                uint32_t *low_prio);
 HexagonCPU *hexagon_find_lowest_prio_waiting_thread(HexagonCPU *threads[],
-                                                    size_t list_size);
+                                                    size_t list_size,
+                                                    uint32_t *low_prio);
 
-/* @return pointer to the lowest priority thread.
+/*
+ * @return true if thread_env is in an interruptible state
+ */
+bool hexagon_thread_is_interruptible(CPUHexagonState *thread_env);
+
+/*
+ * @return true if thread_env is busy with an interrupt or one is
+ * queued.
+ */
+bool hexagon_thread_is_busy(CPUHexagonState *thread_env);
+
+/*
+ * @return pointer to the lowest priority thread.
  * @a only_waiters if true, only consider threads in the WAIT state.
  */
 HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
                                             size_t list_size,
-                                            bool only_waiters);
+                                            bool only_waiters,
+                                            uint32_t *low_prio);
 void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
                                     uint32_t int_num, uint32_t resume_pc);
 void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,

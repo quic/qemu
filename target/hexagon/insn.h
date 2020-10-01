@@ -62,11 +62,6 @@ struct Instruction {
     size4u_t new_value_producer_slot:4;
     size4u_t hvx_resource:8;
     size4s_t immed[IMMEDS_MAX];    /* immediate field */
-#ifndef CONFIG_USER_ONLY
-    uint32_t is_solo:1;
-    uint32_t could_halt:1;
-    uint32_t triggers_int:1;
-#endif
 };
 
 typedef struct Instruction insn_t;
@@ -148,11 +143,11 @@ struct Packet {
     size8u_t pkt_has_hvx:1;
     size8u_t pkt_has_extension:1;
 
+    insn_t insn[INSTRUCTIONS_MAX];
+
 #ifndef CONFIG_USER_ONLY
     uint32_t pkt_has_sys_visibility:1;
 #endif
-
-    insn_t insn[INSTRUCTIONS_MAX];
 };
 
 typedef struct Packet packet_t;

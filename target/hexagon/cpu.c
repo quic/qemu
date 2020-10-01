@@ -392,6 +392,9 @@ static void hexagon_cpu_reset(DeviceState *dev)
 #ifndef CONFIG_USER_ONLY
     CPUHexagonState *env = &cpu->env;
     SET_SSR_FIELD(env, SSR_EX, 1);
+
+    env->pending_interrupt_mask = 0;
+    env->g_pending_interrupt_mask = &(env->pending_interrupt_mask);
 #endif
 }
 
@@ -419,21 +422,18 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 }
 
 #ifndef CONFIG_USER_ONLY
-static target_ulong ssr_get_ex(CPUHexagonState *env)
-{
-    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    ssr = (ssr & 1<<17) >> 17;
-    return ssr;
-}
-#endif
-
-#ifndef CONFIG_USER_ONLY
 static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 {
     HexagonCPU *cpu = opaque;
     CPUHexagonState *env = &cpu->env;
     CPUState *cs = CPU(cpu);
 
+    target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    target_ulong gbit = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
+    if (!gbit && level) {
+        *(env->g_pending_interrupt_mask) |= 1 << irq;
+        return;
+    }
 
  /* Event#  CauseCode    Description
   * 16       0xC0        Interrupt 0  General interrupt. Maskable,
@@ -465,23 +465,50 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
         memset(threads, 0, sizeof(threads));
         hexagon_find_int_threads(env, irq, threads, &threads_count);
         if (threads_count < 1) {
-            /* FIXME masked? */
-            g_assert_not_reached();
+            /*
+             * No unmasked thread is available for this interrupt.  We
+             * must pend it and assert it later.
+             */
+           *(env->g_pending_interrupt_mask) |= 1 << irq;
+
+           /*
+            * FIXME: or should we make this method the general method
+            * and not one that's only used when threads are occupied?
+            */
+
+           return;
         }
+
         HexagonCPU *int_thread =
-            hexagon_find_lowest_prio_any_thread(threads, threads_count);
+            hexagon_find_lowest_prio_any_thread(threads, threads_count, NULL);
         env = &int_thread->env;
         cs = CPU(int_thread);
-
-/*      printf("XXX: L2VIC: irq = %d, level = %d\n", irq, level); */
-        while (ssr_get_ex(env)) {rcu_read_lock(); printf ("x"); rcu_read_unlock();};
-        /* NOTE: when level is not zero it is equal to the external IRQ # */
-        env->g_sreg[HEX_SREG_VID] = level;
 
         target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
         target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
         fSET_FIELD(ipendad, IPENDAD_IAD, ipendad_iad | (1 << mask[HEXAGON_CPU_IRQ_2]));
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
+
+        target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+        target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
+        if (ex) {
+            /*
+             * This thread is not interruptible.  We
+             * must pend it and assert it later.
+             */
+           *(env->g_pending_interrupt_mask) |= 1 << irq;
+
+           /*
+            * FIXME: or should we make this method the general method
+            * and not one that's only used when threads are occupied?
+            */
+
+           return;
+        }
+
+        /* NOTE: when level is not zero it is equal to the external IRQ # */
+        env->g_sreg[HEX_SREG_VID] = level;
+
         env->cause_code = HEX_CAUSE_INT2;
     }
 
@@ -526,7 +553,13 @@ static void hexagon_cpu_init(Object *obj)
 void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
                              uint32_t int_num)
 {
-    hexagon_raise_interrupt_resume(env, thread, int_num, 0);
+    CPUHexagonState *thread_env = &thread->env;
+    if (!hexagon_thread_is_interruptible(thread_env)) {
+        *(env->g_pending_interrupt_mask) |= 1 << int_num;
+    } else {
+        hexagon_raise_interrupt_resume(env, thread, int_num, 0);
+    }
+    /* assert(!hexagon_thread_is_interruptible(thread_env)); */
 }
 
 void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
@@ -537,6 +570,8 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
 
     const uint32_t int_mask = 1 << int_num;
     CPUHexagonState *thread_env = &(HEXAGON_CPU(thread)->env);
+    assert(hexagon_thread_is_interruptible(thread_env));
+
     CPUState *cs = CPU(thread);
     cs->exception_index = HEX_EVENT_INT0 + int_num;
     thread_env->cause_code = HEX_CAUSE_INT0 + int_num;
@@ -624,32 +659,51 @@ void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
     }
 }
 
+HexagonCPU *hexagon_find_lowest_prio(CPUHexagonState *env) {
+    HexagonCPU *threads[THREADS_MAX];
+    memset(threads, 0, sizeof(threads));
+    size_t i = 0;
+    CPUState *cs = env_cpu(env);
+    CPU_FOREACH(cs) {
+        threads[i++] = HEXAGON_CPU(cs);
+    }
+    return hexagon_find_lowest_prio_any_thread(threads, ARRAY_SIZE(threads), NULL);
+}
+
 HexagonCPU *hexagon_find_lowest_prio_any_thread(HexagonCPU *threads[],
-                                                size_t list_size)
+                                                size_t list_size,
+                                                uint32_t *low_prio)
 {
-    return hexagon_find_lowest_prio_thread(threads, list_size, false);
+    return hexagon_find_lowest_prio_thread(threads, list_size, false, low_prio);
 }
 
 HexagonCPU *hexagon_find_lowest_prio_waiting_thread(HexagonCPU *threads[],
-                                                    size_t list_size)
+                                                    size_t list_size,
+                                                    uint32_t *low_prio)
 {
-    return hexagon_find_lowest_prio_thread(threads, list_size, true);
+    return hexagon_find_lowest_prio_thread(threads, list_size, true, low_prio);
 }
 
 HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
-                                            size_t list_size, bool only_waiters)
+                                            size_t list_size, bool only_waiters,
+                                            uint32_t *low_prio)
 {
     assert(list_size >= 1);
+    target_ulong syscfg = ARCH_GET_SYSTEM_REG(&threads[0]->env,
+        HEX_SREG_SYSCFG);
+    target_ulong gbit = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
+    if (!gbit) {
+        return NULL;
+    }
+
     uint32_t lowest_th_prio = 0;
     size_t lowest_prio_index = 0;
     for (size_t i = 0; i < list_size; i++) {
         CPUHexagonState *thread_env = &(threads[i]->env);
-        target_ulong ssr = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_SSR);
-        target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
         uint32_t th_prio = GET_FIELD(
             STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
         const bool waiting = (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
-        const bool is_candidate = (!ex) && ((only_waiters && waiting) || !only_waiters);
+        const bool is_candidate = ((only_waiters && waiting) || !only_waiters);
         if (!is_candidate) {
             continue;
         }
@@ -671,7 +725,26 @@ HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
     HEX_DEBUG_LOG("\tselected lowest prio tid %d, prio %03x (of %d)\n",
                   (&(threads[lowest_prio_index]->env))->threadId,
                   lowest_th_prio, (int)list_size);
+    if (low_prio) {
+        *low_prio = lowest_th_prio;
+    }
     return threads[lowest_prio_index];
+}
+
+bool hexagon_thread_is_interruptible(CPUHexagonState *thread_env)
+{
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_SSR);
+    target_ulong ie = GET_SSR_FIELD(SSR_IE, ssr);
+    return ie && !hexagon_thread_is_busy(thread_env);
+}
+
+bool hexagon_thread_is_busy(CPUHexagonState *thread_env)
+{
+    CPUState *thread_cs = env_cpu(thread_env);
+
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_SSR);
+    target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
+    return ex || thread_cs->exception_index != HEX_EVENT_NONE;
 }
 
 static bool get_physical_address(CPUHexagonState *env, hwaddr *phys,
