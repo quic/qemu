@@ -19,6 +19,7 @@
 
 
 #include "qemu/osdep.h"
+#include "qemu/units.h"
 #include "exec/address-spaces.h"
 #include "hw/boards.h"
 #include "hw/hexagon/hexagon.h"
@@ -82,6 +83,8 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         machine->cpu_type,
         machine->kernel_filename,
         machine->ram_size, machine->ram_size);
+
+    machine->enable_graphics = 0;
 
     DeviceState *dev;
 
@@ -204,10 +207,11 @@ static void hex_class_init(ObjectClass *oc, void *data)
 
     mc->desc = "a minimal Hexagon board";
     mc->init = hexagonboard_init;
-    mc->is_default = 0;
+    mc->is_default = 1;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->max_cpus = 4;
+    mc->default_ram_size = 4 * GiB;
 }
 
 static const TypeInfo hexagon_testboard_type = {
