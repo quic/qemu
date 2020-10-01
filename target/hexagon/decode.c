@@ -54,8 +54,8 @@ DEF_REGMAP(R_8,   8,  0, 1, 2, 3, 4, 5, 6, 7)
     insn->regno[REGNO] = DECODE_REGISTER_##NAME[insn->regno[REGNO]];
 
 typedef struct {
-    struct _dectree_table_struct *table_link;
-    struct _dectree_table_struct *table_link_b;
+    const struct _dectree_table_struct *table_link;
+    const struct _dectree_table_struct *table_link_b;
     opcode_t opcode;
     enum {
         DECTREE_ENTRY_INVALID,
@@ -71,11 +71,11 @@ typedef struct _dectree_table_struct {
     unsigned int size;
     unsigned int startbit;
     unsigned int width;
-    dectree_entry_t table[];
+    const dectree_entry_t table[];
 } dectree_table_t;
 
 #define DECODE_NEW_TABLE(TAG, SIZE, WHATNOT) \
-    static struct _dectree_table_struct dectree_table_##TAG;
+    static const struct _dectree_table_struct dectree_table_##TAG;
 #define TABLE_LINK(TABLE)                     /* NOTHING */
 #define TERMINAL(TAG, ENC)                    /* NOTHING */
 #define SUBINSNS(TAG, CLASSA, CLASSB, ENC)    /* NOTHING */
@@ -102,7 +102,7 @@ typedef struct _dectree_table_struct {
 
 #define DECODE_SEPARATOR_BITS(START, WIDTH) NULL, START, WIDTH
 #define DECODE_NEW_TABLE_HELPER(TAG, SIZE, FN, START, WIDTH) \
-    static dectree_table_t dectree_table_##TAG = { \
+    static const dectree_table_t dectree_table_##TAG = { \
         .size = SIZE, \
         .lookup_function = FN, \
         .startbit = START, \
@@ -145,14 +145,14 @@ typedef struct _dectree_table_struct {
 #undef DECODE_NEW_TABLE_HELPER
 #undef DECODE_SEPARATOR_BITS
 
-static dectree_table_t dectree_table_DECODE_EXT_EXT_noext = {
+static const dectree_table_t dectree_table_DECODE_EXT_EXT_noext = {
     .size = 1, .lookup_function = NULL, .startbit = 0, .width = 0,
     .table = {
         { .type = DECTREE_ENTRY_INVALID, .opcode = XX_LAST_OPCODE },
     }
 };
 
-static dectree_table_t *ext_trees[XX_LAST_EXT_IDX];
+static const dectree_table_t *ext_trees[XX_LAST_EXT_IDX];
 
 static void decode_ext_init(void)
 {

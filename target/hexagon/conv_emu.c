@@ -17,7 +17,6 @@
 
 #include <math.h>
 #include "qemu/osdep.h"
-#include "hex_arch_types.h"
 #include "macros.h"
 #include "conv_emu.h"
 

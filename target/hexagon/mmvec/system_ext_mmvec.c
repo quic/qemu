@@ -18,7 +18,6 @@
 #include "qemu/osdep.h"
 #include "qemu.h"
 #include "cpu.h"
-#include "hex_arch_types.h"
 #include "mmvec/macros.h"
 
 #define TYPE_LOAD 'L'

@@ -93,7 +93,7 @@ decode_op(insn_t *insn, opcode_t tag, uint32_t encoding)
 #undef DECODE_SEPARATOR_BITS
 
 static unsigned int
-decode_subinsn_tablewalk(insn_t *insn, dectree_table_t *table,
+decode_subinsn_tablewalk(insn_t *insn, const dectree_table_t *table,
                          uint32_t encoding)
 {
     unsigned int i;
@@ -129,7 +129,8 @@ static unsigned int get_insn_b(uint32_t encoding)
 }
 
 static unsigned int
-decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, uint32_t encoding)
+decode_insns_tablewalk(insn_t *insn, const dectree_table_t *table,
+                       uint32_t encoding)
 {
     unsigned int i;
     unsigned int a, b;
@@ -176,7 +177,7 @@ decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, uint32_t encoding)
 static unsigned int
 decode_insns(insn_t *insn, uint32_t encoding)
 {
-    dectree_table_t *table;
+    const dectree_table_t *table;
     if ((encoding & 0x0000c000) != 0) {
         /* Start with PP table */
         table = &dectree_table_DECODE_ROOT_32;

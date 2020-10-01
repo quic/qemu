@@ -18,8 +18,6 @@
 #ifndef HEXAGON_CONV_EMU_H
 #define HEXAGON_CONV_EMU_H
 
-#include "hex_arch_types.h"
-
 extern uint64_t conv_sf_to_8u(float in);
 extern uint32_t conv_sf_to_4u(float in);
 extern int64_t conv_sf_to_8s(float in);

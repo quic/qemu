@@ -18,12 +18,11 @@
 #ifndef HEXAGON_ARCH_H
 #define HEXAGON_ARCH_H
 
-#include "cpu.h"
 #include "hex_arch_types.h"
 
-extern uint8_t rLPS_table_64x4[64][4];
-extern uint8_t AC_next_state_MPS_64[64];
-extern uint8_t AC_next_state_LPS_64[64];
+extern const uint8_t rLPS_table_64x4[64][4];
+extern const uint8_t AC_next_state_MPS_64[64];
+extern const uint8_t AC_next_state_LPS_64[64];
 
 extern uint32_t fbrevaddr(uint32_t pointer);
 extern uint32_t count_leading_ones_2(uint16_t src);

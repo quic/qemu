@@ -17,6 +17,7 @@
 
 #include "qemu/osdep.h"
 #include <math.h>
+#include "cpu.h"
 #include "fma_emu.h"
 #include "arch.h"
 #include "macros.h"
@@ -24,7 +25,7 @@
 /*
  * These three tables are used by the cabacdecbin instruction
  */
-uint8_t rLPS_table_64x4[64][4] = {
+const uint8_t rLPS_table_64x4[64][4] = {
     {128, 176, 208, 240},
     {128, 167, 197, 227},
     {128, 158, 187, 216},
@@ -91,7 +92,7 @@ uint8_t rLPS_table_64x4[64][4] = {
     {2, 2, 2, 2}
 };
 
-uint8_t AC_next_state_MPS_64[64] = {
+const uint8_t AC_next_state_MPS_64[64] = {
     1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
     21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
@@ -102,7 +103,7 @@ uint8_t AC_next_state_MPS_64[64] = {
 };
 
 
-uint8_t AC_next_state_LPS_64[64] = {
+const uint8_t AC_next_state_LPS_64[64] = {
     0, 0, 1, 2, 2, 4, 4, 5, 6, 7,
     8, 9, 9, 11, 11, 12, 13, 13, 15, 15,
     16, 16, 18, 18, 19, 19, 21, 21, 22, 22,

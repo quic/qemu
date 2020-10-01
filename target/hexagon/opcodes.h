@@ -19,7 +19,6 @@
 #define HEXAGON_OPCODES_H
 
 #include "qemu/bitmap.h"
-#include "hex_arch_types.h"
 #include "attribs.h"
 
 typedef enum {

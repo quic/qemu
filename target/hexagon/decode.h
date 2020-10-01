@@ -20,7 +20,6 @@
 
 #include "cpu.h"
 #include "opcodes.h"
-#include "hex_arch_types.h"
 #include "insn.h"
 
 extern void decode_init(void);
