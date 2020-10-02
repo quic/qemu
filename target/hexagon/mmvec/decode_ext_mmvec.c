@@ -23,7 +23,7 @@
 #include "mmvec/mmvec.h"
 #include "mmvec/decode_ext_mmvec.h"
 
-typedef enum hvx_resource {
+typedef enum {
     HVX_RESOURCE_LOAD    = 0,
     HVX_RESOURCE_STORE   = 1,
     HVX_RESOURCE_PERM    = 2,
@@ -32,15 +32,15 @@ typedef enum hvx_resource {
     HVX_RESOURCE_MPY1    = 5,
     HVX_RESOURCE_ZR      = 6,
     HVX_RESOURCE_ZW      = 7
-} hvx_resource_t;
+} HVXResource;
 
 #define FREE    1
 #define USED    0
 
 static int
-check_dv_instruction(hvx_resource_t *resources, int *ilist,
+check_dv_instruction(HVXResource *resources, int *ilist,
                      int num_insn, Packet *packet, unsigned int attribute,
-                     hvx_resource_t resource0, hvx_resource_t resource1)
+                     HVXResource resource0, HVXResource resource1)
 {
 
     int current_insn = 0;
@@ -70,10 +70,10 @@ check_dv_instruction(hvx_resource_t *resources, int *ilist,
 
 /* Double Vector instructions that can use any one of specific or both pairs */
 static int
-check_dv_instruction2(hvx_resource_t *resources, int *ilist,
+check_dv_instruction2(HVXResource *resources, int *ilist,
                       int num_insn, Packet *packet, unsigned int attribute,
-                      hvx_resource_t resource0, hvx_resource_t resource1,
-                      hvx_resource_t resource2, hvx_resource_t resource3)
+                      HVXResource resource0, HVXResource resource1,
+                      HVXResource resource2, HVXResource resource3)
 {
 
     int current_insn = 0;
@@ -110,7 +110,7 @@ check_dv_instruction2(hvx_resource_t *resources, int *ilist,
 }
 
 static int
-check_umem_instruction(hvx_resource_t *resources, int *ilist,
+check_umem_instruction(HVXResource *resources, int *ilist,
                        int num_insn, Packet *packet)
 {
 
@@ -149,7 +149,7 @@ check_umem_instruction(hvx_resource_t *resources, int *ilist,
 
 /* Memory instructions */
 static int
-check_mem_instruction(hvx_resource_t *resources, int *ilist,
+check_mem_instruction(HVXResource *resources, int *ilist,
                       int num_insn, Packet *packet)
 {
 
@@ -219,9 +219,9 @@ check_mem_instruction(hvx_resource_t *resources, int *ilist,
  * Insert instruction into one possible resource
  */
 static int
-check_instruction1(hvx_resource_t *resources, int *ilist,
+check_instruction1(HVXResource *resources, int *ilist,
                    int num_insn, Packet *packet, unsigned int attribute,
-                   hvx_resource_t resource0)
+                   HVXResource resource0)
 {
 
     int current_insn = 0;
@@ -249,9 +249,9 @@ check_instruction1(hvx_resource_t *resources, int *ilist,
 
 /* Insert instruction into one of two possible resource2 */
 static int
-check_instruction2(hvx_resource_t *resources, int *ilist,
+check_instruction2(HVXResource *resources, int *ilist,
                    int num_insn, Packet *packet, unsigned int attribute,
-                   hvx_resource_t resource0, hvx_resource_t resource1)
+                   HVXResource resource0, HVXResource resource1)
 {
 
     int current_insn = 0;
@@ -283,10 +283,10 @@ check_instruction2(hvx_resource_t *resources, int *ilist,
 
 /* Insert instruction into one of 4 four possible resource */
 static int
-check_instruction4(hvx_resource_t *resources, int *ilist,
+check_instruction4(HVXResource *resources, int *ilist,
                    int num_insn, Packet *packet, unsigned int attribute,
-                   hvx_resource_t resource0, hvx_resource_t resource1,
-                   hvx_resource_t resource2, hvx_resource_t resource3)
+                   HVXResource resource0, HVXResource resource1,
+                   HVXResource resource2, HVXResource resource3)
 {
 
     int current_insn = 0;
@@ -325,7 +325,7 @@ check_instruction4(hvx_resource_t *resources, int *ilist,
 }
 
 static int
-check_4res_instruction(hvx_resource_t *resources, int *ilist,
+check_4res_instruction(HVXResource *resources, int *ilist,
                        int num_insn, Packet *packet)
 {
 
@@ -372,7 +372,7 @@ decode_populate_cvi_resources(Packet *packet)
 
     int i, num_insn = 0;
     int vlist[4] = {-1, -1, -1, -1};
-    hvx_resource_t hvx_resources[8] = {
+    HVXResource hvx_resources[8] = {
         FREE,
         FREE,
         FREE,

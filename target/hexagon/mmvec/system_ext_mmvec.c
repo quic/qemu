@@ -25,7 +25,7 @@
 #define TYPE_FETCH 'F'
 #define TYPE_ICINVA 'I'
 
-enum mem_access_types {
+enum {
     access_type_INVALID = 0,
     access_type_unknown = 1,
     access_type_load = 2,
@@ -70,7 +70,7 @@ enum mem_access_types {
     NUM_CORE_ACCESS_TYPES
 };
 
-enum ext_mem_access_types {
+typedef enum {
     access_type_vload = NUM_CORE_ACCESS_TYPES,
     access_type_vstore,
     access_type_vload_nt,
@@ -81,11 +81,11 @@ enum ext_mem_access_types {
     access_type_vgather_release,
     access_type_vfetch,
     NUM_EXT_ACCESS_TYPES
-};
+} ExtMemAccessType;
 
 static inline
 target_ulong mem_init_access(CPUHexagonState *env, int slot, uint32_t vaddr,
-                             int width, enum ext_mem_access_types mtype,
+                             int width, ExtMemAccessType mtype,
                              int type_for_xlate)
 {
 #ifdef CONFIG_USER_ONLY
@@ -181,7 +181,7 @@ void mem_load_vector_oddva(CPUHexagonState *env, vaddr_t vaddr,
 void mem_vector_scatter_init(CPUHexagonState *env, int slot, vaddr_t base_vaddr,
                              int length, int element_size)
 {
-    enum ext_mem_access_types access_type = access_type_vscatter_store;
+    ExtMemAccessType access_type = access_type_vscatter_store;
     int i;
 
     /* Translation for Store Address on Slot 1 - maybe any slot? */
@@ -210,7 +210,7 @@ void mem_vector_scatter_init(CPUHexagonState *env, int slot, vaddr_t base_vaddr,
 void mem_vector_gather_init(CPUHexagonState *env, int slot, vaddr_t base_vaddr,
                             int length, int element_size)
 {
-    enum ext_mem_access_types access_type = access_type_vgather_load;
+    ExtMemAccessType access_type = access_type_vgather_load;
     int i;
 
     mem_init_access(env, slot, base_vaddr, 1,  access_type, TYPE_LOAD);

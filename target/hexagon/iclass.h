@@ -35,6 +35,6 @@ enum {
     NUM_ICLASSES
 };
 
-extern const char *find_iclass_slots(opcode_t opcode, int itype);
+extern const char *find_iclass_slots(Opcode opcode, int itype);
 
 #endif

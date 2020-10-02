@@ -26,7 +26,7 @@ typedef enum {
 #include "opcodes_def_generated.h"
     XX_LAST_OPCODE
 #undef OPCODE
-} opcode_t;
+} Opcode;
 
 typedef enum {
     NORMAL,
@@ -39,7 +39,7 @@ typedef enum {
     EXT_noext,
     EXT_mmvec,
     XX_LAST_ENC_CLASS
-} enc_class_t;
+} EncClass;
 
 extern const char * const opcode_names[];
 
@@ -49,7 +49,7 @@ extern const char * const opcode_wregs[];
 
 typedef struct {
     const char * const encoding;
-    const enc_class_t enc_class;
+    const EncClass enc_class;
 } OpcodeEncoding;
 
 extern const OpcodeEncoding opcode_encodings[XX_LAST_OPCODE];
@@ -58,6 +58,6 @@ extern DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
 
 extern void opcode_init(void);
 
-extern int opcode_which_immediate_is_extended(opcode_t opcode);
+extern int opcode_which_immediate_is_extended(Opcode opcode);
 
 #endif

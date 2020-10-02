@@ -35,7 +35,7 @@ static const IClassInfo iclass_info[] = {
     {0}
 };
 
-const char *find_iclass_slots(opcode_t opcode, int itype)
+const char *find_iclass_slots(Opcode opcode, int itype)
 {
     /* There are some exceptions to what the iclass dictates */
     if (GET_ATTRIB(opcode, A_ICOP)) {

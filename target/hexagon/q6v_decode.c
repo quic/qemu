@@ -54,7 +54,7 @@
         break; \
 
 static void
-decode_op(Insn *insn, opcode_t tag, uint32_t encoding)
+decode_op(Insn *insn, Opcode tag, uint32_t encoding)
 {
     insn->immed[0] = 0;
     insn->immed[1] = 0;
@@ -97,7 +97,7 @@ decode_subinsn_tablewalk(Insn *insn, const DectreeTable *table,
                          uint32_t encoding)
 {
     unsigned int i;
-    opcode_t opc;
+    Opcode opc;
     if (table->lookup_function) {
         i = table->lookup_function(table->startbit, table->width, encoding);
     } else {
@@ -134,7 +134,7 @@ decode_insns_tablewalk(Insn *insn, const DectreeTable *table,
 {
     unsigned int i;
     unsigned int a, b;
-    opcode_t opc;
+    Opcode opc;
     if (table->lookup_function) {
         i = table->lookup_function(table->startbit, table->width, encoding);
     } else {

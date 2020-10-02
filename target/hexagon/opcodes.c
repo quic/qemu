@@ -117,7 +117,7 @@ void opcode_init(void)
 
 #define NEEDLE "IMMEXT("
 
-int opcode_which_immediate_is_extended(opcode_t opcode)
+int opcode_which_immediate_is_extended(Opcode opcode)
 {
     const char *p;
 

@@ -56,7 +56,7 @@ DEF_REGMAP(R_8,   8,  0, 1, 2, 3, 4, 5, 6, 7)
 typedef struct {
     const struct DectreeTable *table_link;
     const struct DectreeTable *table_link_b;
-    opcode_t opcode;
+    Opcode opcode;
     enum {
         DECTREE_ENTRY_INVALID,
         DECTREE_TABLE_LINK,
