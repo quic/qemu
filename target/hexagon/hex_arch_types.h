@@ -20,6 +20,7 @@
 
 #include "qemu/osdep.h"
 #include "mmvec/mmvec.h"
+#include "qemu/int128.h"
 
 /*
  * These types are used by the code imported from the Hexagon
@@ -33,13 +34,7 @@ typedef uint32_t    size4u_t;
 typedef int32_t     size4s_t;
 typedef uint64_t    size8u_t;
 typedef int64_t     size8s_t;
-typedef uint64_t    paddr_t;
-typedef uint32_t    vaddr_t;
-
-typedef struct {
-    int64_t hi;
-    uint64_t lo;
-} size16s_t;
+typedef Int128      size16s_t;
 
 typedef MMVector          mmvector_t;
 typedef MMVectorPair      mmvector_pair_t;

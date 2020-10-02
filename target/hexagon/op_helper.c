@@ -23,6 +23,7 @@
 #include "internal.h"
 #include "macros.h"
 #include "arch.h"
+#include "hex_arch_types.h"
 #include "fma_emu.h"
 #include "conv_emu.h"
 #include "mmvec/mmvec.h"

@@ -18,7 +18,8 @@
 #ifndef HEXAGON_ARCH_H
 #define HEXAGON_ARCH_H
 
-#include "hex_arch_types.h"
+#include "qemu/osdep.h"
+#include "qemu/int128.h"
 
 extern const uint8_t rLPS_table_64x4[64][4];
 extern const uint8_t AC_next_state_MPS_64[64];
@@ -30,13 +31,6 @@ extern uint64_t interleave(uint32_t odd, uint32_t even);
 extern uint64_t deinterleave(uint64_t src);
 extern uint32_t carry_from_add64(uint64_t a, uint64_t b, uint32_t c);
 extern int32_t conv_round(int32_t a, int n);
-extern size16s_t cast8s_to_16s(int64_t a);
-extern int64_t cast16s_to_8s(size16s_t a);
-extern size16s_t add128(size16s_t a, size16s_t b);
-extern size16s_t sub128(size16s_t a, size16s_t b);
-extern size16s_t shiftr128(size16s_t a, uint32_t n);
-extern size16s_t shiftl128(size16s_t a, uint32_t n);
-extern size16s_t and128(size16s_t a, size16s_t b);
 extern void arch_fpop_start(CPUHexagonState *env);
 extern void arch_fpop_end(CPUHexagonState *env);
 extern void arch_raise_fpflag(unsigned int flags);

@@ -17,6 +17,7 @@
 
 #include <math.h>
 #include "qemu/osdep.h"
+#include "qemu/int128.h"
 #include "macros.h"
 #include "conv_emu.h"
 #include "fma_emu.h"
@@ -55,23 +56,6 @@ typedef union {
 } Float;
 
 typedef struct {
-    union {
-        uint64_t low;
-        struct {
-            uint32_t w0;
-            uint32_t w1;
-        };
-    };
-    union {
-        uint64_t high;
-        struct {
-            uint32_t w3;
-            uint32_t w2;
-        };
-    };
-} Int128;
-
-typedef struct {
     Int128 mant;
     int32_t exp;
     uint8_t sign;
@@ -82,8 +66,7 @@ typedef struct {
 
 static inline void xf_init(LongDouble *p)
 {
-    p->mant.low = 0;
-    p->mant.high = 0;
+    p->mant = int128_zero();
     p->exp = 0;
     p->sign = 0;
     p->guard = 0;
@@ -147,120 +130,54 @@ static inline int32_t sf_getexp(Float a)
     };
 }
 
+static inline uint32_t int128_getw0(Int128 x)
+{
+    return int128_getlo(x);
+}
+
+static inline uint32_t int128_getw1(Int128 x)
+{
+    return int128_getlo(x) >> 32;
+}
+
 static inline Int128 int128_mul_6464(uint64_t ai, uint64_t bi)
 {
-    Int128 ret;
     Int128 a, b;
     uint64_t pp0, pp1a, pp1b, pp1s, pp2;
 
-    a.high = b.high = 0;
-    a.low = ai;
-    b.low = bi;
-    pp0 = (uint64_t)a.w0 * (uint64_t)b.w0;
-    pp1a = (uint64_t)a.w1 * (uint64_t)b.w0;
-    pp1b = (uint64_t)b.w1 * (uint64_t)a.w0;
-    pp2 = (uint64_t)a.w1 * (uint64_t)b.w1;
+    a = int128_make64(ai);
+    b = int128_make64(bi);
+    pp0 = (uint64_t)int128_getw0(a) * (uint64_t)int128_getw0(b);
+    pp1a = (uint64_t)int128_getw1(a) * (uint64_t)int128_getw0(b);
+    pp1b = (uint64_t)int128_getw1(b) * (uint64_t)int128_getw0(a);
+    pp2 = (uint64_t)int128_getw1(a) * (uint64_t)int128_getw1(b);
 
     pp1s = pp1a + pp1b;
     if ((pp1s < pp1a) || (pp1s < pp1b)) {
         pp2 += (1ULL << 32);
     }
-    ret.low = pp0 + (pp1s << 32);
-    if ((ret.low < pp0) || (ret.low < (pp1s << 32))) {
+    uint64_t ret_low = pp0 + (pp1s << 32);
+    if ((ret_low < pp0) || (ret_low < (pp1s << 32))) {
         pp2 += 1;
     }
-    ret.high = pp2 + (pp1s >> 32);
 
+    return int128_make128(ret_low, pp2 + (pp1s >> 32));
+}
+
+static inline Int128 int128_sub_borrow(Int128 a, Int128 b, int borrow)
+{
+    Int128 ret = int128_sub(a, b);
+    if (borrow != 0) {
+        ret = int128_sub(ret, int128_one());
+    }
     return ret;
-}
-
-static inline Int128 int128_shl(Int128 a, uint32_t amt)
-{
-    Int128 ret;
-    if (amt == 0) {
-        return a;
-    }
-    if (amt > 128) {
-        ret.high = 0;
-        ret.low = 0;
-        return ret;
-    }
-    if (amt >= 64) {
-        amt -= 64;
-        a.high = a.low;
-        a.low = 0;
-    }
-    ret.high = a.high << amt;
-    ret.high |= (a.low >> (64 - amt));
-    ret.low = a.low << amt;
-    return ret;
-}
-
-static inline Int128 int128_shr(Int128 a, uint32_t amt)
-{
-    Int128 ret;
-    if (amt == 0) {
-        return a;
-    }
-    if (amt > 128) {
-        ret.high = 0;
-        ret.low = 0;
-        return ret;
-    }
-    if (amt >= 64) {
-        amt -= 64;
-        a.low = a.high;
-        a.high = 0;
-    }
-    ret.low = a.low >> amt;
-    ret.low |= (a.high << (64 - amt));
-    ret.high = a.high >> amt;
-    return ret;
-}
-
-static inline Int128 int128_add(Int128 a, Int128 b)
-{
-    Int128 ret;
-    ret.low = a.low + b.low;
-    if ((ret.low < a.low) || (ret.low < b.low)) {
-        /* carry into high part */
-        a.high += 1;
-    }
-    ret.high = a.high + b.high;
-    return ret;
-}
-
-static inline Int128 int128_sub(Int128 a, Int128 b, int borrow)
-{
-    Int128 ret;
-    ret.low = a.low - b.low;
-    if (ret.low > a.low) {
-        /* borrow into high part */
-        a.high -= 1;
-    }
-    ret.high = a.high - b.high;
-    if (borrow == 0) {
-        return ret;
-    } else {
-        a.high = 0;
-        a.low = 1;
-        return int128_sub(ret, a, 0);
-    }
-}
-
-static inline int int128_gt(Int128 a, Int128 b)
-{
-    if (a.high == b.high) {
-        return a.low > b.low;
-    }
-    return a.high > b.high;
 }
 
 static inline LongDouble xf_norm_left(LongDouble a)
 {
     a.exp--;
-    a.mant = int128_shl(a.mant, 1);
-    a.mant.low |= a.guard;
+    a.mant = int128_lshift(a.mant, 1);
+    a.mant = int128_or(a.mant, int128_make64(a.guard));
     a.guard = a.round;
     a.round = a.sticky;
     return a;
@@ -270,18 +187,18 @@ static inline LongDouble xf_norm_right(LongDouble a, int amt)
 {
     if (amt > 130) {
         a.sticky |=
-            a.round | a.guard | (a.mant.low != 0) | (a.mant.high != 0);
-        a.guard = a.round = a.mant.high = a.mant.low = 0;
+            a.round | a.guard | int128_nz(a.mant);
+        a.guard = a.round = 0;
+        a.mant = int128_zero();
         a.exp += amt;
         return a;
 
     }
     while (amt >= 64) {
-        a.sticky |= a.round | a.guard | (a.mant.low != 0);
-        a.guard = (a.mant.low >> 63) & 1;
-        a.round = (a.mant.low >> 62) & 1;
-        a.mant.low = a.mant.high;
-        a.mant.high = 0;
+        a.sticky |= a.round | a.guard | (int128_getlo(a.mant) != 0);
+        a.guard = (int128_getlo(a.mant) >> 63) & 1;
+        a.round = (int128_getlo(a.mant) >> 62) & 1;
+        a.mant = int128_make64(int128_gethi(a.mant));
         a.exp += 64;
         amt -= 64;
     }
@@ -289,8 +206,8 @@ static inline LongDouble xf_norm_right(LongDouble a, int amt)
         a.exp++;
         a.sticky |= a.round;
         a.round = a.guard;
-        a.guard = a.mant.low & 1;
-        a.mant = int128_shr(a.mant, 1);
+        a.guard = int128_getlo(a.mant) & 1;
+        a.mant = int128_rshift(a.mant, 1);
         amt--;
     }
     return a;
@@ -324,7 +241,7 @@ static inline LongDouble xf_sub(LongDouble a, LongDouble b, int negate)
 
     while (a.exp > b.exp) {
         /* Try to normalize exponents: shrink a exponent and grow mantissa */
-        if (a.mant.high & (1ULL << 62)) {
+        if (int128_gethi(a.mant) & (1ULL << 62)) {
             /* Can't grow a any more */
             break;
         } else {
@@ -347,7 +264,7 @@ static inline LongDouble xf_sub(LongDouble a, LongDouble b, int negate)
     ret.exp = a.exp;
     assert(!int128_gt(b.mant, a.mant));
     borrow = (b.round << 2) | (b.guard << 1) | b.sticky;
-    ret.mant = int128_sub(a.mant, b.mant, (borrow != 0));
+    ret.mant = int128_sub_borrow(a.mant, b.mant, (borrow != 0));
     borrow = 0 - borrow;
     ret.guard = (borrow >> 2) & 1;
     ret.round = (borrow >> 1) & 1;
@@ -377,7 +294,7 @@ static LongDouble xf_add(LongDouble a, LongDouble b)
 
     while (a.exp > b.exp) {
         /* Try to normalize exponents: shrink a exponent and grow mantissa */
-        if (a.mant.high & (1ULL << 62)) {
+        if (int128_gethi(a.mant) & (1ULL << 62)) {
             /* Can't grow a any more */
             break;
         } else {
@@ -465,7 +382,7 @@ static inline TYPE xf_round_##SUFFIX(LongDouble a) \
     TYPE ret; \
     ret.i = 0; \
     ret.sign = a.sign; \
-    if ((a.mant.high == 0) && (a.mant.low == 0) \
+    if ((int128_gethi(a.mant) == 0) && (int128_getlo(a.mant) == 0) \
         && ((a.guard | a.round | a.sticky) == 0)) { \
         /* result zero */ \
         switch (fegetround()) { \
@@ -480,7 +397,8 @@ static inline TYPE xf_round_##SUFFIX(LongDouble a) \
     /* That means that we want MANTBITS+1 bits, or 0x000000000000FF_FFFF */ \
     /* So we need to normalize right while the high word is non-zero and \
     * while the low word is nonzero when masked with 0xffe0_0000_0000_0000 */ \
-    while ((a.mant.high != 0) || ((a.mant.low >> (MANTBITS + 1)) != 0)) { \
+    while ((int128_gethi(a.mant) != 0) || \
+           ((int128_getlo(a.mant) >> (MANTBITS + 1)) != 0)) { \
         a = xf_norm_right(a, 1); \
     } \
     /* \
@@ -490,7 +408,7 @@ static inline TYPE xf_round_##SUFFIX(LongDouble a) \
      * shifted out lots of bits from B, or if we had no shift / 1 shift sticky \
      * shoudl be 0  \
      */ \
-    while ((a.mant.low & (1ULL << MANTBITS)) == 0) { \
+    while ((int128_getlo(a.mant) & (1ULL << MANTBITS)) == 0) { \
         a = xf_norm_left(a); \
     } \
     /* \
@@ -518,21 +436,21 @@ static inline TYPE xf_round_##SUFFIX(LongDouble a) \
             break; \
         case FE_UPWARD: \
             if (a.sign == 0) { \
-                a.mant.low += 1; \
+                a.mant = int128_add(a.mant, int128_one()); \
             } \
             break; \
         case FE_DOWNWARD: \
             if (a.sign != 0) { \
-                a.mant.low += 1; \
+                a.mant = int128_add(a.mant, int128_one()); \
             } \
             break; \
         default: \
             if (a.round || a.sticky) { \
                 /* round up if guard is 1, down if guard is zero */ \
-                a.mant.low += a.guard; \
+                a.mant = int128_add(a.mant, int128_make64(a.guard)); \
             } else if (a.guard) { \
                 /* exactly .5, round up if odd */ \
-                a.mant.low += (a.mant.low & 1); \
+                a.mant = int128_add(a.mant, int128_and(a.mant, int128_one())); \
             } \
             break; \
         } \
@@ -543,7 +461,7 @@ static inline TYPE xf_round_##SUFFIX(LongDouble a) \
      * at least we know that the lsb should be zero if we rounded and \
      * got a carry out... \
      */ \
-    if ((a.mant.low >> (MANTBITS + 1)) != 0) { \
+    if ((int128_getlo(a.mant) >> (MANTBITS + 1)) != 0) { \
         a = xf_norm_right(a, 1); \
     } \
     /* Overflow? */ \
@@ -571,10 +489,10 @@ static inline TYPE xf_round_##SUFFIX(LongDouble a) \
         } \
     } \
     /* Underflow? */ \
-    if (a.mant.low & (1ULL << MANTBITS)) { \
+    if (int128_getlo(a.mant) & (1ULL << MANTBITS)) { \
         /* Leading one means: No, we're normal. So, we should be done... */ \
         ret.exp = a.exp; \
-        ret.mant = a.mant.low; \
+        ret.mant = int128_getlo(a.mant); \
         return ret; \
     } \
     if (a.exp != 1) { \
@@ -582,7 +500,7 @@ static inline TYPE xf_round_##SUFFIX(LongDouble a) \
     } \
     assert(a.exp == 1); \
     ret.exp = 0; \
-    ret.mant = a.mant.low; \
+    ret.mant = int128_getlo(a.mant); \
     return ret; \
 }
 

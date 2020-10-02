@@ -190,8 +190,8 @@ static inline MMVector mmvec_zero_vector(void)
 #define fVLOG_VTCM_WORD_INCREMENT(EA, OFFSET, INC, IDX, ALIGNMENT, LEN) \
     do { \
         int log_byte = 0; \
-        vaddr_t va = EA; \
-        vaddr_t va_high = EA + LEN; \
+        target_ulong va = EA; \
+        target_ulong va_high = EA + LEN; \
         for (int i0 = 0; i0 < 4; i0++) { \
             log_byte = (va + i0) <= va_high; \
             LOG_VTCM_BYTE(va + i0, log_byte, INC. ub[4 * IDX + i0], \
@@ -201,8 +201,8 @@ static inline MMVector mmvec_zero_vector(void)
 #define fVLOG_VTCM_HALFWORD_INCREMENT(EA, OFFSET, INC, IDX, ALIGNMENT, LEN) \
     do { \
         int log_byte = 0; \
-        vaddr_t va = EA; \
-        vaddr_t va_high = EA + LEN; \
+        target_ulong va = EA; \
+        target_ulong va_high = EA + LEN; \
         for (int i0 = 0; i0 < 2; i0++) { \
             log_byte = (va + i0) <= va_high; \
             LOG_VTCM_BYTE(va + i0, log_byte, INC.ub[2 * IDX + i0], \
@@ -214,8 +214,8 @@ static inline MMVector mmvec_zero_vector(void)
                                          ALIGNMENT, LEN) \
     do { \
         int log_byte = 0; \
-        vaddr_t va = EA; \
-        vaddr_t va_high = EA + LEN; \
+        target_ulong va = EA; \
+        target_ulong va_high = EA + LEN; \
         for (int i0 = 0; i0 < 2; i0++) { \
             log_byte = (va + i0) <= va_high; \
             LOG_VTCM_BYTE(va + i0, log_byte, INC.ub[2 * IDX + i0], \
@@ -227,8 +227,8 @@ static inline MMVector mmvec_zero_vector(void)
 #define GATHER_FUNCTION(EA, OFFSET, IDX, LEN, ELEMENT_SIZE, BANK_IDX, QVAL) \
     do { \
         int i0; \
-        vaddr_t va = EA; \
-        vaddr_t va_high = EA + LEN; \
+        target_ulong va = EA; \
+        target_ulong va_high = EA + LEN; \
         int log_bank = 0; \
         int log_byte = 0; \
         for (i0 = 0; i0 < ELEMENT_SIZE; i0++) { \
