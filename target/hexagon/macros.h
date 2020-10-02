@@ -1551,7 +1551,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fFRAMECHECK(ADDR, EA) \
     do { \
         TCGLabel *ok = gen_new_label(); \
-        tcg_gen_brcond_tl(TCG_COND_GE, ADDR, hex_gpr[HEX_REG_FRAMELIMIT], \
+        tcg_gen_brcond_tl(TCG_COND_GEU, ADDR, hex_gpr[HEX_REG_FRAMELIMIT], \
                           ok); \
         gen_helper_raise_stack_overflow(cpu_env, slot, EA); \
         gen_set_label(ok); \
