@@ -186,7 +186,7 @@ void mem_vector_scatter_init(CPUHexagonState *env, int slot, vaddr_t base_vaddr,
 
     /* Translation for Store Address on Slot 1 - maybe any slot? */
     mem_init_access(env, slot, base_vaddr, 1, access_type, TYPE_STORE);
-    mem_access_info_t *maptr = &env->mem_access[slot];
+    MemAccessInfo *maptr = &env->mem_access[slot];
     if (EXCEPTION_DETECTED) {
         return;
     }
@@ -214,7 +214,7 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot, vaddr_t base_vaddr,
     int i;
 
     mem_init_access(env, slot, base_vaddr, 1,  access_type, TYPE_LOAD);
-    mem_access_info_t *maptr = &env->mem_access[slot];
+    MemAccessInfo *maptr = &env->mem_access[slot];
 
     if (EXCEPTION_DETECTED) {
         return;

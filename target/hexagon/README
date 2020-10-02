@@ -73,8 +73,8 @@ tcg_funcs_generated.h
     static void generate_A2_add(
                     CPUHexagonState *env,
                     DisasContext *ctx,
-                    insn_t *insn,
-                    packet_t *pkt)
+                    Insn *insn,
+                    Packet *pkt)
     {
         TCGv RdV = tcg_temp_local_new();
         const int RdN = insn->regno[0];

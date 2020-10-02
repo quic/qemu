@@ -28,13 +28,13 @@ struct Instruction;
 struct Packet;
 struct DisasContext;
 
-typedef void (*semantic_insn_t)(CPUHexagonState *env,
-                                struct DisasContext *ctx,
-                                struct Instruction *insn,
-                                struct Packet *pkt);
+typedef void (*SemanticInsn)(CPUHexagonState *env,
+                             struct DisasContext *ctx,
+                             struct Instruction *insn,
+                             struct Packet *pkt);
 
 struct Instruction {
-    semantic_insn_t generate;            /* pointer to genptr routine */
+    SemanticInsn generate;            /* pointer to genptr routine */
     uint8_t regno[REG_OPERANDS_MAX];    /* reg operands including predicates */
     uint16_t opcode;
 
@@ -52,7 +52,7 @@ struct Instruction {
     int32_t immed[IMMEDS_MAX];    /* immediate field */
 };
 
-typedef struct Instruction insn_t;
+typedef struct Instruction Insn;
 
 struct Packet {
     uint16_t num_insns;
@@ -70,9 +70,9 @@ struct Packet {
     uint32_t pkt_has_hvx:1;
     uint32_t pkt_has_extension:1;
 
-    insn_t insn[INSTRUCTIONS_MAX];
+    Insn insn[INSTRUCTIONS_MAX];
 };
 
-typedef struct Packet packet_t;
+typedef struct Packet Packet;
 
 #endif

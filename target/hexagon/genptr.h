@@ -20,6 +20,6 @@
 
 #include "insn.h"
 
-extern const semantic_insn_t opcode_genptr[];
+extern const SemanticInsn opcode_genptr[];
 
 #endif

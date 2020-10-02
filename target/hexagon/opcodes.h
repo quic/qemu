@@ -50,9 +50,9 @@ extern const char * const opcode_wregs[];
 typedef struct {
     const char * const encoding;
     const enc_class_t enc_class;
-} opcode_encoding_t;
+} OpcodeEncoding;
 
-extern const opcode_encoding_t opcode_encodings[XX_LAST_OPCODE];
+extern const OpcodeEncoding opcode_encodings[XX_LAST_OPCODE];
 
 extern DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
 

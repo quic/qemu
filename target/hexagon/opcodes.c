@@ -84,7 +84,7 @@ static void init_attribs(int tag, ...)
     }
 }
 
-const opcode_encoding_t opcode_encodings[] = {
+const OpcodeEncoding opcode_encodings[] = {
 #define DEF_ENC32(OPCODE, ENCSTR) \
     [OPCODE] = { .encoding = ENCSTR },
 

@@ -20,9 +20,9 @@
 
 typedef struct {
     const char * const slots;
-} iclass_info_t;
+} IClassInfo;
 
-static const iclass_info_t iclass_info[] = {
+static const IClassInfo iclass_info[] = {
 
 #define DEF_PP_ICLASS32(TYPE, SLOTS, UNITS) \
     [ICLASS_FROM_TYPE(TYPE)] = { .slots = #SLOTS },

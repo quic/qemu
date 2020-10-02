@@ -54,8 +54,8 @@ DEF_REGMAP(R_8,   8,  0, 1, 2, 3, 4, 5, 6, 7)
     insn->regno[REGNO] = DECODE_REGISTER_##NAME[insn->regno[REGNO]];
 
 typedef struct {
-    const struct _dectree_table_struct *table_link;
-    const struct _dectree_table_struct *table_link_b;
+    const struct DectreeTable *table_link;
+    const struct DectreeTable *table_link_b;
     opcode_t opcode;
     enum {
         DECTREE_ENTRY_INVALID,
@@ -64,18 +64,18 @@ typedef struct {
         DECTREE_EXTSPACE,
         DECTREE_TERMINAL
     } type;
-} dectree_entry_t;
+} DectreeEntry;
 
-typedef struct _dectree_table_struct {
+typedef struct DectreeTable {
     unsigned int (*lookup_function)(int startbit, int width, uint32_t opcode);
     unsigned int size;
     unsigned int startbit;
     unsigned int width;
-    const dectree_entry_t table[];
-} dectree_table_t;
+    const DectreeEntry table[];
+} DectreeTable;
 
 #define DECODE_NEW_TABLE(TAG, SIZE, WHATNOT) \
-    static const struct _dectree_table_struct dectree_table_##TAG;
+    static const DectreeTable dectree_table_##TAG;
 #define TABLE_LINK(TABLE)                     /* NOTHING */
 #define TERMINAL(TAG, ENC)                    /* NOTHING */
 #define SUBINSNS(TAG, CLASSA, CLASSB, ENC)    /* NOTHING */
@@ -102,7 +102,7 @@ typedef struct _dectree_table_struct {
 
 #define DECODE_SEPARATOR_BITS(START, WIDTH) NULL, START, WIDTH
 #define DECODE_NEW_TABLE_HELPER(TAG, SIZE, FN, START, WIDTH) \
-    static const dectree_table_t dectree_table_##TAG = { \
+    static const DectreeTable dectree_table_##TAG = { \
         .size = SIZE, \
         .lookup_function = FN, \
         .startbit = START, \
@@ -145,14 +145,14 @@ typedef struct _dectree_table_struct {
 #undef DECODE_NEW_TABLE_HELPER
 #undef DECODE_SEPARATOR_BITS
 
-static const dectree_table_t dectree_table_DECODE_EXT_EXT_noext = {
+static const DectreeTable dectree_table_DECODE_EXT_EXT_noext = {
     .size = 1, .lookup_function = NULL, .startbit = 0, .width = 0,
     .table = {
         { .type = DECTREE_ENTRY_INVALID, .opcode = XX_LAST_OPCODE },
     }
 };
 
-static const dectree_table_t *ext_trees[XX_LAST_EXT_IDX];
+static const DectreeTable *ext_trees[XX_LAST_EXT_IDX];
 
 static void decode_ext_init(void)
 {
@@ -168,7 +168,7 @@ static void decode_ext_init(void)
 typedef struct {
     uint32_t mask;
     uint32_t match;
-} decode_itable_entry_t;
+} DecodeITableEntry;
 
 #define DECODE_NEW_TABLE(TAG, SIZE, WHATNOT)  /* NOTHING */
 #define TABLE_LINK(TABLE)                     /* NOTHING */
@@ -191,7 +191,7 @@ typedef struct {
 #define DECODE_MATCH_INFO(...) DECODE_MATCH_INFO_NORMAL(__VA_ARGS__)
 #define DECODE_LEGACY_MATCH_INFO(...) /* NOTHING */
 
-static const decode_itable_entry_t decode_itable[XX_LAST_OPCODE] = {
+static const DecodeITableEntry decode_itable[XX_LAST_OPCODE] = {
 #include "dectree_generated.h"
 };
 
@@ -201,7 +201,7 @@ static const decode_itable_entry_t decode_itable[XX_LAST_OPCODE] = {
 #undef DECODE_LEGACY_MATCH_INFO
 #define DECODE_LEGACY_MATCH_INFO(...) DECODE_MATCH_INFO_NORMAL(__VA_ARGS__)
 
-static const decode_itable_entry_t decode_legacy_itable[XX_LAST_OPCODE] = {
+static const DecodeITableEntry decode_legacy_itable[XX_LAST_OPCODE] = {
 #include "dectree_generated.h"
 };
 
@@ -222,9 +222,9 @@ void decode_init(void)
     decode_ext_init();
 }
 
-void decode_send_insn_to(packet_t *packet, int start, int newloc)
+void decode_send_insn_to(Packet *packet, int start, int newloc)
 {
-    insn_t tmpinsn;
+    Insn tmpinsn;
     int direction;
     int i;
     if (start == newloc) {
@@ -246,7 +246,7 @@ void decode_send_insn_to(packet_t *packet, int start, int newloc)
 
 /* Fill newvalue registers with the correct regno */
 static int
-decode_fill_newvalue_regno(packet_t *packet)
+decode_fill_newvalue_regno(Packet *packet)
 {
     int i, use_regidx, def_idx;
     uint16_t def_opcode, use_opcode;
@@ -321,7 +321,7 @@ decode_fill_newvalue_regno(packet_t *packet)
 }
 
 /* Split CJ into a compare and a jump */
-static int decode_split_cmpjump(packet_t *pkt)
+static int decode_split_cmpjump(Packet *pkt)
 {
     int last, i;
     int numinsns = pkt->num_insns;
@@ -377,7 +377,7 @@ static inline int decode_opcode_ends_loop(int opcode)
 }
 
 /* Set the is_* fields in each instruction */
-static int decode_set_insn_attr_fields(packet_t *pkt)
+static int decode_set_insn_attr_fields(Packet *pkt)
 {
     int i;
     int numinsns = pkt->num_insns;
@@ -424,7 +424,7 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
  * Move stores to end (in same order as encoding)
  * Move compares to beginning (for use by .new insns)
  */
-static int decode_shuffle_for_execution(packet_t *packet)
+static int decode_shuffle_for_execution(Packet *packet)
 {
     int changed = 0;
     int i;
@@ -543,7 +543,7 @@ static int decode_shuffle_for_execution(packet_t *packet)
 }
 
 static int
-apply_extender(packet_t *pkt, int i, uint32_t extender)
+apply_extender(Packet *pkt, int i, uint32_t extender)
 {
     int immed_num;
     uint32_t base_immed;
@@ -555,7 +555,7 @@ apply_extender(packet_t *pkt, int i, uint32_t extender)
     return 0;
 }
 
-static int decode_apply_extenders(packet_t *packet)
+static int decode_apply_extenders(Packet *packet)
 {
     int i;
     for (i = 0; i < packet->num_insns; i++) {
@@ -567,7 +567,7 @@ static int decode_apply_extenders(packet_t *packet)
     return 0;
 }
 
-static int decode_remove_extenders(packet_t *packet)
+static int decode_remove_extenders(Packet *packet)
 {
     int i, j;
     for (i = 0; i < packet->num_insns; i++) {
@@ -584,7 +584,7 @@ static int decode_remove_extenders(packet_t *packet)
 }
 
 static const char *
-get_valid_slot_str(const packet_t *pkt, unsigned int slot)
+get_valid_slot_str(const Packet *pkt, unsigned int slot)
 {
     if (GET_ATTRIB(pkt->insn[slot].opcode, A_EXTENSION)) {
         return mmvec_ext_decode_find_iclass_slots(pkt->insn[slot].opcode);
@@ -596,7 +596,7 @@ get_valid_slot_str(const packet_t *pkt, unsigned int slot)
 
 #include "q6v_decode.c"
 
-packet_t *decode_this(int max_words, uint32_t *words, packet_t *decode_pkt)
+Packet *decode_this(int max_words, uint32_t *words, Packet *decode_pkt)
 {
     int ret;
     ret = do_decode_packet(max_words, words, decode_pkt);
@@ -610,7 +610,7 @@ packet_t *decode_this(int max_words, uint32_t *words, packet_t *decode_pkt)
 /* Used for "-d in_asm" logging */
 int disassemble_hexagon(uint32_t *words, int nwords, char *buf, int bufsize)
 {
-    packet_t pkt;
+    Packet pkt;
 
     if (decode_this(nwords, words, &pkt)) {
         snprint_a_pkt(buf, bufsize, &pkt);

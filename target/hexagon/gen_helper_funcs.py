@@ -89,11 +89,11 @@ def gen_helper_dest_decl_pair(f,regtype,regid,regno,subfield=""):
         (regtype,regid,subfield))
 
 def gen_helper_dest_decl_ext(f,regtype,regid):
-    f.write("    /* %s%sV is *(mmvector_t*)(%s%sV_void) */\n" % \
+    f.write("    /* %s%sV is *(MMVector*)(%s%sV_void) */\n" % \
         (regtype,regid,regtype,regid))
 
 def gen_helper_dest_decl_ext_pair(f,regtype,regid,regno):
-    f.write("    /* %s%sV is *(mmvector_pair_t*))%s%sV_void) */\n" % \
+    f.write("    /* %s%sV is *(MMVectorPair*))%s%sV_void) */\n" % \
         (regtype,regid,regtype, regid))
 
 def gen_helper_dest_decl_opn(f,regtype,regid,i):
@@ -111,11 +111,11 @@ def gen_helper_dest_decl_opn(f,regtype,regid,i):
         print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def gen_helper_src_var_ext(f,regtype,regid):
-    f.write("    /* %s%sV is *(mmvector_t*)(%s%sV_void) */\n" % \
+    f.write("    /* %s%sV is *(MMVector*)(%s%sV_void) */\n" % \
         (regtype,regid,regtype,regid))
 
 def gen_helper_src_var_ext_pair(f,regtype,regid,regno):
-    f.write("    /* %s%sV%s is *(mmvector_pair_t*)(%s%sV%s_void) */\n" % \
+    f.write("    /* %s%sV%s is *(MMVectorPair*)(%s%sV%s_void) */\n" % \
         (regtype,regid,regno,regtype,regid,regno))
 
 def gen_helper_return(f,regtype,regid,regno):
@@ -125,11 +125,11 @@ def gen_helper_return_pair(f,regtype,regid,regno):
     f.write("    return %s%sV;\n" % (regtype,regid))
 
 def gen_helper_dst_write_ext(f,regtype,regid):
-    f.write("    /* %s%sV is *(mmvector_t*)%s%sV_void */\n" % \
+    f.write("    /* %s%sV is *(MMVector*)%s%sV_void */\n" % \
         (regtype,regid,regtype,regid))
 
 def gen_helper_dst_write_ext_pair(f,regtype,regid):
-    f.write("    /* %s%sV is *(mmvector_pair_t*)%s%sV_void */\n" % \
+    f.write("    /* %s%sV is *(MMVectorPair*)%s%sV_void */\n" % \
         (regtype,regid, regtype,regid))
 
 def gen_helper_return_opn(f, regtype, regid, i):

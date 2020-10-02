@@ -54,7 +54,7 @@
         break; \
 
 static void
-decode_op(insn_t *insn, opcode_t tag, uint32_t encoding)
+decode_op(Insn *insn, opcode_t tag, uint32_t encoding)
 {
     insn->immed[0] = 0;
     insn->immed[1] = 0;
@@ -93,7 +93,7 @@ decode_op(insn_t *insn, opcode_t tag, uint32_t encoding)
 #undef DECODE_SEPARATOR_BITS
 
 static unsigned int
-decode_subinsn_tablewalk(insn_t *insn, const dectree_table_t *table,
+decode_subinsn_tablewalk(Insn *insn, const DectreeTable *table,
                          uint32_t encoding)
 {
     unsigned int i;
@@ -129,7 +129,7 @@ static unsigned int get_insn_b(uint32_t encoding)
 }
 
 static unsigned int
-decode_insns_tablewalk(insn_t *insn, const dectree_table_t *table,
+decode_insns_tablewalk(Insn *insn, const DectreeTable *table,
                        uint32_t encoding)
 {
     unsigned int i;
@@ -175,9 +175,9 @@ decode_insns_tablewalk(insn_t *insn, const dectree_table_t *table,
 }
 
 static unsigned int
-decode_insns(insn_t *insn, uint32_t encoding)
+decode_insns(Insn *insn, uint32_t encoding)
 {
-    const dectree_table_t *table;
+    const DectreeTable *table;
     if ((encoding & 0x0000c000) != 0) {
         /* Start with PP table */
         table = &dectree_table_DECODE_ROOT_32;
@@ -188,7 +188,7 @@ decode_insns(insn_t *insn, uint32_t encoding)
     return decode_insns_tablewalk(insn, table, encoding);
 }
 
-static void decode_add_endloop_insn(insn_t *insn, int loopnum)
+static void decode_add_endloop_insn(Insn *insn, int loopnum)
 {
     if (loopnum == 10) {
         insn->opcode = J2_endloop01;
@@ -215,7 +215,7 @@ static inline int decode_parsebits_is_loopend(uint32_t encoding32)
 }
 
 static int
-decode_set_slot_number(packet_t *pkt)
+decode_set_slot_number(Packet *pkt)
 {
     int slot;
     int i;
@@ -314,7 +314,7 @@ decode_set_slot_number(packet_t *pkt)
  * and number of words used on success
  */
 
-static int do_decode_packet(int max_words, const uint32_t *words, packet_t *pkt)
+static int do_decode_packet(int max_words, const uint32_t *words, Packet *pkt)
 {
     int num_insns = 0;
     int words_read = 0;

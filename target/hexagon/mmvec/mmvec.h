@@ -38,7 +38,7 @@ typedef union {
     int16_t   h[MAX_VEC_SIZE_BYTES / 2];
     uint8_t  ub[MAX_VEC_SIZE_BYTES / 1];
     int8_t    b[MAX_VEC_SIZE_BYTES / 1];
-} mmvector_t;
+} MMVector;
 
 typedef union {
     uint64_t ud[2 * MAX_VEC_SIZE_BYTES / 8];
@@ -49,8 +49,8 @@ typedef union {
     int16_t   h[2 * MAX_VEC_SIZE_BYTES / 2];
     uint8_t  ub[2 * MAX_VEC_SIZE_BYTES / 1];
     int8_t    b[2 * MAX_VEC_SIZE_BYTES / 1];
-    mmvector_t v[2];
-} mmvector_pair_t;
+    MMVector v[2];
+} MMVectorPair;
 
 typedef union {
     uint64_t ud[MAX_VEC_SIZE_BYTES / 8 / 8];
@@ -61,27 +61,27 @@ typedef union {
     int16_t   h[MAX_VEC_SIZE_BYTES / 2 / 8];
     uint8_t  ub[MAX_VEC_SIZE_BYTES / 1 / 8];
     int8_t    b[MAX_VEC_SIZE_BYTES / 1 / 8];
-} mmqreg_t;
+} MMQReg;
 
 typedef struct {
-    mmvector_t data;
-    mmvector_t mask;
-    mmvector_pair_t offsets;
+    MMVector data;
+    MMVector mask;
+    MMVectorPair offsets;
     int size;
     target_ulong va_base;
     target_ulong va[MAX_VEC_SIZE_BYTES];
     int oob_access;
     int op;
     int op_size;
-} vtcm_storelog_t;
+} VTCMStoreLog;
 
 
 /* Types of vector register assignment */
-typedef enum {
+enum {
     EXT_DFL,      /* Default */
     EXT_NEW,      /* New - value used in the same packet */
     EXT_TMP       /* Temp - value used but not stored to register */
-} vector_dst_type_t;
+};
 
 #endif
 

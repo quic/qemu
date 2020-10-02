@@ -21,9 +21,9 @@
 typedef struct {
     int offset;
     int width;
-} reg_field_t;
+} RegField;
 
-extern const reg_field_t reg_field_info[];
+extern const RegField reg_field_info[];
 
 enum {
 #define DEF_REG_FIELD(TAG, START, WIDTH) \

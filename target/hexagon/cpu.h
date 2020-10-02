@@ -47,25 +47,25 @@ typedef struct CPUHexagonState CPUHexagonState;
 
 #define MMU_USER_IDX 0
 
-struct MemLog {
+typedef struct {
     target_ulong va;
     uint8_t width;
     uint32_t data32;
     uint64_t data64;
-};
+} MemLog;
 
 typedef struct {
     target_ulong va;
     int size;
-    mmvector_t mask;
-    mmvector_t data;
-} vstorelog_t;
+    MMVector mask;
+    MMVector data;
+} VStoreLog;
 
 typedef struct {
     unsigned char cdata[256];
     uint32_t range;
     uint8_t format;
-} mem_access_info_t;
+} MemAccessInfo;
 
 #define EXEC_STATUS_OK          0x0000
 #define EXEC_STATUS_STOP        0x0002
@@ -105,7 +105,7 @@ struct CPUHexagonState {
     target_ulong new_pred_value[NUM_PREGS];
     target_ulong pred_written;
 
-    struct MemLog mem_log_stores[STORES_MAX];
+    MemLog mem_log_stores[STORES_MAX];
 
     target_ulong dczero_addr;
 
@@ -118,29 +118,29 @@ struct CPUHexagonState {
     target_ulong is_gather_store_insn;
     target_ulong gather_issued;
 
-    mmvector_t VRegs[NUM_VREGS];
-    mmvector_t future_VRegs[NUM_VREGS];
-    mmvector_t tmp_VRegs[NUM_VREGS];
+    MMVector VRegs[NUM_VREGS];
+    MMVector future_VRegs[NUM_VREGS];
+    MMVector tmp_VRegs[NUM_VREGS];
 
     VRegMask VRegs_updated_tmp;
     VRegMask VRegs_updated;
     VRegMask VRegs_select;
 
-    mmqreg_t QRegs[NUM_QREGS];
-    mmqreg_t future_QRegs[NUM_QREGS];
+    MMQReg QRegs[NUM_QREGS];
+    MMQReg future_QRegs[NUM_QREGS];
     QRegMask QRegs_updated;
 
-    vstorelog_t vstore[VSTORES_MAX];
+    VStoreLog vstore[VSTORES_MAX];
     uint8_t store_pending[VSTORES_MAX];
     uint8_t vstore_pending[VSTORES_MAX];
     uint8_t vtcm_pending;
-    vtcm_storelog_t vtcm_log;
-    mem_access_info_t mem_access[SLOTS_MAX];
+    VTCMStoreLog vtcm_log;
+    MemAccessInfo mem_access[SLOTS_MAX];
 
     int status;
 
-    mmvector_t temp_vregs[TEMP_VECTORS_MAX];
-    mmqreg_t temp_qregs[TEMP_VECTORS_MAX];
+    MMVector temp_vregs[TEMP_VECTORS_MAX];
+    MMQReg temp_qregs[TEMP_VECTORS_MAX];
 };
 
 #define HEXAGON_CPU_CLASS(klass) \

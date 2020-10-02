@@ -19,9 +19,10 @@
 #define HEXAGON_ARCH_TYPES_H
 
 #include "qemu/osdep.h"
+#include "mmvec/mmvec.h"
 
 /*
- * These types are used by the code generated from the Hexagon
+ * These types are used by the code imported from the Hexagon
  * architecture library.
  */
 typedef uint8_t     size1u_t;
@@ -39,5 +40,9 @@ typedef struct {
     int64_t hi;
     uint64_t lo;
 } size16s_t;
+
+typedef MMVector          mmvector_t;
+typedef MMVectorPair      mmvector_pair_t;
+typedef MMQReg            mmqret_t;
 
 #endif

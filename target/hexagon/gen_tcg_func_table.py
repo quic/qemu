@@ -36,7 +36,7 @@ def main():
     f.write("#ifndef HEXAGON_FUNC_TABLE_H\n")
     f.write("#define HEXAGON_FUNC_TABLE_H\n\n")
 
-    f.write("const semantic_insn_t opcode_genptr[XX_LAST_OPCODE] = {\n")
+    f.write("const SemanticInsn opcode_genptr[XX_LAST_OPCODE] = {\n")
     for tag in tags:
         ## Skip the priv instructions
         if ( "A_PRIV" in attribdict[tag] ) :

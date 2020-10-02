@@ -73,7 +73,7 @@ const char * const opcode_wregs[] = {
 #undef IMMINFO
 };
 
-const opcode_encoding_t opcode_encodings[] = {
+const OpcodeEncoding opcode_encodings[] = {
 #define DEF_ENC32(TAG, ENCSTR) \
     [TAG] = { .encoding = ENCSTR },
 #define DEF_ENC_SUBINSN(TAG, CLASS, ENCSTR) \

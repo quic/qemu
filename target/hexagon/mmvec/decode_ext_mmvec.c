@@ -39,7 +39,7 @@ typedef enum hvx_resource {
 
 static int
 check_dv_instruction(hvx_resource_t *resources, int *ilist,
-                     int num_insn, packet_t *packet, unsigned int attribute,
+                     int num_insn, Packet *packet, unsigned int attribute,
                      hvx_resource_t resource0, hvx_resource_t resource1)
 {
 
@@ -71,7 +71,7 @@ check_dv_instruction(hvx_resource_t *resources, int *ilist,
 /* Double Vector instructions that can use any one of specific or both pairs */
 static int
 check_dv_instruction2(hvx_resource_t *resources, int *ilist,
-                      int num_insn, packet_t *packet, unsigned int attribute,
+                      int num_insn, Packet *packet, unsigned int attribute,
                       hvx_resource_t resource0, hvx_resource_t resource1,
                       hvx_resource_t resource2, hvx_resource_t resource3)
 {
@@ -111,7 +111,7 @@ check_dv_instruction2(hvx_resource_t *resources, int *ilist,
 
 static int
 check_umem_instruction(hvx_resource_t *resources, int *ilist,
-                       int num_insn, packet_t *packet)
+                       int num_insn, Packet *packet)
 {
 
     int current_insn = 0;
@@ -150,7 +150,7 @@ check_umem_instruction(hvx_resource_t *resources, int *ilist,
 /* Memory instructions */
 static int
 check_mem_instruction(hvx_resource_t *resources, int *ilist,
-                      int num_insn, packet_t *packet)
+                      int num_insn, Packet *packet)
 {
 
     int current_insn = 0;
@@ -220,7 +220,7 @@ check_mem_instruction(hvx_resource_t *resources, int *ilist,
  */
 static int
 check_instruction1(hvx_resource_t *resources, int *ilist,
-                   int num_insn, packet_t *packet, unsigned int attribute,
+                   int num_insn, Packet *packet, unsigned int attribute,
                    hvx_resource_t resource0)
 {
 
@@ -250,7 +250,7 @@ check_instruction1(hvx_resource_t *resources, int *ilist,
 /* Insert instruction into one of two possible resource2 */
 static int
 check_instruction2(hvx_resource_t *resources, int *ilist,
-                   int num_insn, packet_t *packet, unsigned int attribute,
+                   int num_insn, Packet *packet, unsigned int attribute,
                    hvx_resource_t resource0, hvx_resource_t resource1)
 {
 
@@ -284,7 +284,7 @@ check_instruction2(hvx_resource_t *resources, int *ilist,
 /* Insert instruction into one of 4 four possible resource */
 static int
 check_instruction4(hvx_resource_t *resources, int *ilist,
-                   int num_insn, packet_t *packet, unsigned int attribute,
+                   int num_insn, Packet *packet, unsigned int attribute,
                    hvx_resource_t resource0, hvx_resource_t resource1,
                    hvx_resource_t resource2, hvx_resource_t resource3)
 {
@@ -326,7 +326,7 @@ check_instruction4(hvx_resource_t *resources, int *ilist,
 
 static int
 check_4res_instruction(hvx_resource_t *resources, int *ilist,
-                       int num_insn, packet_t *packet)
+                       int num_insn, Packet *packet)
 {
 
     int current_insn = 0;
@@ -367,7 +367,7 @@ check_4res_instruction(hvx_resource_t *resources, int *ilist,
 
 
 static int
-decode_populate_cvi_resources(packet_t *packet)
+decode_populate_cvi_resources(Packet *packet)
 {
 
     int i, num_insn = 0;
@@ -440,7 +440,7 @@ decode_populate_cvi_resources(packet_t *packet)
 
 
 static int
-check_new_value(packet_t *packet)
+check_new_value(Packet *packet)
 {
     /* .New Value for a MMVector Store */
     int i, j;
@@ -534,7 +534,7 @@ check_new_value(packet_t *packet)
  */
 
 static void
-decode_mmvec_move_cvi_to_end(packet_t *packet, int max)
+decode_mmvec_move_cvi_to_end(Packet *packet, int max)
 {
     int i;
     for (i = 0; i < max; i++) {
@@ -559,7 +559,7 @@ decode_mmvec_move_cvi_to_end(packet_t *packet, int max)
 }
 
 static int
-decode_shuffle_for_execution_vops(packet_t *packet)
+decode_shuffle_for_execution_vops(Packet *packet)
 {
     /*
      * Sort for V.new = VMEM()
@@ -605,7 +605,7 @@ decode_shuffle_for_execution_vops(packet_t *packet)
 
 /* Collect stats on HVX packet */
 static void
-decode_hvx_packet_contents(packet_t *pkt)
+decode_hvx_packet_contents(Packet *pkt)
 {
     for (int i = 0; i < pkt->num_insns; i++) {
         pkt->pkt_has_hvx |= pkt->insn[i].hvx_resource ? 1 : 0;
@@ -637,7 +637,7 @@ mmvec_ext_decode_find_iclass_slots(int opcode)
     }
 }
 
-int mmvec_ext_decode_checks(packet_t *packet)
+int mmvec_ext_decode_checks(Packet *packet)
 {
     int errors = 0;
     errors += check_new_value(packet);

@@ -55,8 +55,8 @@ typedef union {
         uint64_t mant:52;
         uint64_t exp:11;
         uint64_t sign:1;
-    } x;
-} df_t;
+    };
+} Double;
 
 
 typedef union {
@@ -66,14 +66,14 @@ typedef union {
         uint32_t mant:23;
         uint32_t exp:8;
         uint32_t sign:1;
-    } x;
-} sf_t;
+    };
+} Float;
 
 
-#define MAKE_CONV_8U_TO_XF_N(FLOATID, BIGFLOATID, RETTYPE) \
+#define MAKE_CONV_8U_TO_XF_N(FLOATID, TYPE, BIGFLOATID, RETTYPE) \
 static RETTYPE conv_8u_to_##FLOATID##_n(uint64_t in, int negate) \
 { \
-    FLOATID##_t x; \
+    TYPE x; \
     uint64_t tmp, truncbits, shamt; \
     int leading_zeros; \
     if (in == 0) { \
@@ -112,15 +112,15 @@ static RETTYPE conv_8u_to_##FLOATID##_n(uint64_t in, int negate) \
     if (((tmp << shamt) >> shamt) != tmp) { \
         leading_zeros--; \
     } \
-    x.x.mant = tmp; \
-    x.x.exp = BIGFLOATID##_BIAS + f##BIGFLOATID##_MANTBITS() - \
+    x.mant = tmp; \
+    x.exp = BIGFLOATID##_BIAS + f##BIGFLOATID##_MANTBITS() - \
               leading_zeros + shamt - 1; \
-    x.x.sign = negate; \
+    x.sign = negate; \
     return x.f; \
 }
 
-MAKE_CONV_8U_TO_XF_N(df, DF, double)
-MAKE_CONV_8U_TO_XF_N(sf, SF, float)
+MAKE_CONV_8U_TO_XF_N(df, Double, DF, double)
+MAKE_CONV_8U_TO_XF_N(sf, Float, SF, float)
 
 double conv_8u_to_df(uint64_t in)
 {
@@ -179,7 +179,7 @@ float conv_4s_to_sf(int32_t in)
 
 static uint64_t conv_df_to_8u_n(double in, int will_negate)
 {
-    df_t x;
+    Double x;
     int fracshift, endshift;
     uint64_t tmp, truncbits;
     x.f = in;
@@ -198,7 +198,7 @@ static uint64_t conv_df_to_8u_n(double in, int will_negate)
     if (isz(in)) {
         return 0;
     }
-    if (x.x.sign) {
+    if (x.sign) {
         feraiseexcept(FE_INVALID);
         return 0;
     }
@@ -222,14 +222,14 @@ static uint64_t conv_df_to_8u_n(double in, int will_negate)
             return 0;    /* nearest or towards zero */
         }
     }
-    if ((x.x.exp - DF_BIAS) >= 64) {
+    if ((x.exp - DF_BIAS) >= 64) {
         /* way too big */
         feraiseexcept(FE_INVALID);
         return ~0ULL;
     }
-    fracshift = fMAX(0, (fDF_MANTBITS() - (x.x.exp - DF_BIAS)));
-    endshift = fMAX(0, ((x.x.exp - DF_BIAS - fDF_MANTBITS())));
-    tmp = x.x.mant | (1ULL << fDF_MANTBITS());
+    fracshift = fMAX(0, (fDF_MANTBITS() - (x.exp - DF_BIAS)));
+    endshift = fMAX(0, ((x.exp - DF_BIAS - fDF_MANTBITS())));
+    tmp = x.mant | (1ULL << fDF_MANTBITS());
     truncbits = tmp & ((1ULL << fracshift) - 1);
     tmp >>= fracshift;
     if (truncbits) {
@@ -262,7 +262,7 @@ static uint64_t conv_df_to_8u_n(double in, int will_negate)
      * check to see if overflow
      */
     if ((tmp & ((1ULL << (fDF_MANTBITS() + 1)) - 1)) == 0) {
-        if ((x.x.exp - DF_BIAS) == 63) {
+        if ((x.exp - DF_BIAS) == 63) {
             feclearexcept(FE_INEXACT);
             feraiseexcept(FE_INVALID);
             return ~0ULL;
@@ -297,23 +297,23 @@ uint32_t conv_df_to_4u(double in)
 int64_t conv_df_to_8s(double in)
 {
     uint64_t tmp;
-    df_t x;
+    Double x;
     x.f = in;
     if (isnan(in)) {
         feraiseexcept(FE_INVALID);
         return -1;
     }
-    if (x.x.sign) {
+    if (x.sign) {
         tmp = conv_df_to_8u_n(-in, 1);
     } else {
         tmp = conv_df_to_8u_n(in, 0);
     }
-    if (tmp > (LL_MAX_POS + x.x.sign)) {
+    if (tmp > (LL_MAX_POS + x.sign)) {
         feclearexcept(FE_INEXACT);
         feraiseexcept(FE_INVALID);
-        tmp = (LL_MAX_POS + x.x.sign);
+        tmp = (LL_MAX_POS + x.sign);
     }
-    if (x.x.sign) {
+    if (x.sign) {
         return -tmp;
     } else {
         return tmp;
@@ -323,23 +323,23 @@ int64_t conv_df_to_8s(double in)
 int32_t conv_df_to_4s(double in)
 {
     uint64_t tmp;
-    df_t x;
+    Double x;
     x.f = in;
     if (isnan(in)) {
         feraiseexcept(FE_INVALID);
         return -1;
     }
-    if (x.x.sign) {
+    if (x.sign) {
         tmp = conv_df_to_8u_n(-in, 1);
     } else {
         tmp = conv_df_to_8u_n(in, 0);
     }
-    if (tmp > (MAX_POS + x.x.sign)) {
+    if (tmp > (MAX_POS + x.sign)) {
         feclearexcept(FE_INEXACT);
         feraiseexcept(FE_INVALID);
-        tmp = (MAX_POS + x.x.sign);
+        tmp = (MAX_POS + x.sign);
     }
-    if (x.x.sign) {
+    if (x.sign) {
         return -tmp;
     } else {
         return tmp;

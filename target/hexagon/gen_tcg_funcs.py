@@ -551,8 +551,8 @@ def genptr_dst_write_opn(f,regtype, regid, tag):
 ##    static void generate_A2_add()
 ##                    CPUHexagonState *env
 ##                    DisasContext *ctx,
-##                    insn_t *insn,
-##                    packet_t *pkt)
+##                    Insn *insn,
+##                    Packet *pkt)
 ##       {
 ##           TCGv RdV = tcg_temp_local_new();
 ##           const int RdN = insn->regno[0];
@@ -574,8 +574,8 @@ def gen_tcg_func(f, tag, regs, imms):
     f.write("static void generate_%s(\n" %tag)
     f.write("                CPUHexagonState *env,\n")
     f.write("                DisasContext *ctx,\n")
-    f.write("                insn_t *insn,\n")
-    f.write("                packet_t *pkt)\n")
+    f.write("                Insn *insn,\n")
+    f.write("                Packet *pkt)\n")
     f.write('{\n')
     if need_ea(tag): gen_decl_ea_tcg(f, tag)
     i=0

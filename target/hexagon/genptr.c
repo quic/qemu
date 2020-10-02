@@ -170,7 +170,7 @@ static inline void gen_write_p3_0(TCGv control_reg)
  * in reality they do not.
  *     vdelta instructions overwrite their VuV operand
  */
-static bool readonly_ok(insn_t *insn)
+static bool readonly_ok(Insn *insn)
 {
     uint32_t opcode = insn->opcode;
     if (opcode == V6_vdelta ||
@@ -576,7 +576,7 @@ static inline void gen_cond_return(TCGv pred, TCGv addr)
     tcg_temp_free(zero);
 }
 
-static inline void gen_loop0r(TCGv RsV, int riV, insn_t *insn)
+static inline void gen_loop0r(TCGv RsV, int riV, Insn *insn)
 {
     TCGv tmp = tcg_temp_new();
     fIMMEXT(riV);
@@ -589,7 +589,7 @@ static inline void gen_loop0r(TCGv RsV, int riV, insn_t *insn)
     tcg_temp_free(tmp);
 }
 
-static inline void gen_loop1r(TCGv RsV, int riV, insn_t *insn)
+static inline void gen_loop1r(TCGv RsV, int riV, Insn *insn)
 {
     TCGv tmp = tcg_temp_new();
     fIMMEXT(riV);
@@ -635,7 +635,7 @@ static inline void gen_compare_i64(TCGCond cond, TCGv res,
     tcg_temp_free_i64(temp);
 }
 
-static inline void gen_cmpnd_cmp_jmp(insn_t *insn, int pnum, TCGCond cond,
+static inline void gen_cmpnd_cmp_jmp(Insn *insn, int pnum, TCGCond cond,
                                      bool sense, TCGv arg1, TCGv arg2,
                                      int pc_off)
 {
@@ -671,7 +671,7 @@ static inline void gen_cmpnd_cmp_jmp(insn_t *insn, int pnum, TCGCond cond,
     }
 }
 
-static inline void gen_cmpnd_cmpi_jmp(insn_t *insn, int pnum, TCGCond cond,
+static inline void gen_cmpnd_cmpi_jmp(Insn *insn, int pnum, TCGCond cond,
                                       bool sense, TCGv arg1, int arg2,
                                       int pc_off)
 {
@@ -681,7 +681,7 @@ static inline void gen_cmpnd_cmpi_jmp(insn_t *insn, int pnum, TCGCond cond,
 
 }
 
-static inline void gen_cmpnd_cmp_n1_jmp(insn_t *insn, int pnum, TCGCond cond,
+static inline void gen_cmpnd_cmp_n1_jmp(Insn *insn, int pnum, TCGCond cond,
                                         bool sense, TCGv arg, int pc_off)
 {
     gen_cmpnd_cmpi_jmp(insn, pnum, cond, sense, arg, -1, pc_off);
@@ -925,7 +925,7 @@ static inline void gen_read_qreg(TCGv_ptr var, int num, int vtmp)
     uint32_t offset = offsetof(CPUHexagonState, QRegs[(num)]);
     TCGv_ptr src = tcg_temp_new_ptr();
     tcg_gen_addi_ptr(src, cpu_env, offset);
-    gen_memcpy(var, src, sizeof(mmqreg_t));
+    gen_memcpy(var, src, sizeof(MMQReg));
     tcg_temp_free_ptr(src);
 }
 
@@ -1008,7 +1008,7 @@ static inline void gen_read_vreg(TCGv_ptr var, int num, int vtmp)
 {
     TCGv_ptr ptr_src = tcg_temp_new_ptr();
     gen_read_vreg_ptr_src(ptr_src, num, vtmp);
-    gen_memcpy(var, ptr_src, sizeof(mmvector_t));
+    gen_memcpy(var, ptr_src, sizeof(MMVector));
     tcg_temp_free_ptr(ptr_src);
 }
 
@@ -1016,9 +1016,9 @@ static inline void gen_read_vreg_pair(TCGv_ptr var, int num, int vtmp)
 {
     TCGv_ptr v0 = tcg_temp_new_ptr();
     TCGv_ptr v1 = tcg_temp_new_ptr();
-    tcg_gen_addi_ptr(v0, var, offsetof(mmvector_pair_t, v[0]));
+    tcg_gen_addi_ptr(v0, var, offsetof(MMVectorPair, v[0]));
     gen_read_vreg(v0, num ^ 0, vtmp);
-    tcg_gen_addi_ptr(v1, var, offsetof(mmvector_pair_t, v[1]));
+    tcg_gen_addi_ptr(v1, var, offsetof(MMVectorPair, v[1]));
     gen_read_vreg(v1, num ^ 1, vtmp);
     tcg_temp_free_ptr(v0);
     tcg_temp_free_ptr(v1);
@@ -1047,14 +1047,14 @@ static inline void gen_log_vreg_write(TCGv_ptr var, int num, int vnew,
         }
         tcg_gen_addi_ptr(dst, cpu_env,
                          offsetof(CPUHexagonState, future_VRegs[num]));
-        gen_memcpy(dst, var, sizeof(mmvector_t));
+        gen_memcpy(dst, var, sizeof(MMVector));
         if (vnew == EXT_TMP) {
             TCGv_ptr src = tcg_temp_new_ptr();
             tcg_gen_addi_ptr(dst, cpu_env,
                              offsetof(CPUHexagonState, tmp_VRegs[num]));
             tcg_gen_addi_ptr(src, cpu_env,
                              offsetof(CPUHexagonState, future_VRegs[num]));
-            gen_memcpy(dst, src, sizeof(mmvector_t));
+            gen_memcpy(dst, src, sizeof(MMVector));
             tcg_temp_free_ptr(src);
         }
         tcg_temp_free(mask);
@@ -1070,9 +1070,9 @@ static inline void gen_log_vreg_write_pair(TCGv_ptr var, int num, int vnew,
 {
     TCGv_ptr v0 = tcg_temp_local_new_ptr();
     TCGv_ptr v1 = tcg_temp_local_new_ptr();
-    tcg_gen_addi_ptr(v0, var, offsetof(mmvector_pair_t, v[0]));
+    tcg_gen_addi_ptr(v0, var, offsetof(MMVectorPair, v[0]));
     gen_log_vreg_write(v0, num ^ 0, vnew, slot_num);
-    tcg_gen_addi_ptr(v1, var, offsetof(mmvector_pair_t, v[1]));
+    tcg_gen_addi_ptr(v1, var, offsetof(MMVectorPair, v[1]));
     gen_log_vreg_write(v1, num ^ 1, vnew, slot_num);
     tcg_temp_free_ptr(v0);
     tcg_temp_free_ptr(v1);
@@ -1091,7 +1091,7 @@ static inline void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
         TCGv_ptr dst = tcg_temp_new_ptr();
         tcg_gen_addi_ptr(dst, cpu_env,
                          offsetof(CPUHexagonState, future_QRegs[num]));
-        gen_memcpy(dst, var, sizeof(mmqreg_t));
+        gen_memcpy(dst, var, sizeof(MMQReg));
         tcg_gen_ori_tl(hex_QRegs_updated, hex_QRegs_updated, 1 << num);
         tcg_temp_free_ptr(dst);
     }

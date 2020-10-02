@@ -41,8 +41,8 @@ typedef union {
         uint64_t mant:52;
         uint64_t exp:11;
         uint64_t sign:1;
-    } x;
-} df_t;
+    };
+} Double;
 
 typedef union {
     float f;
@@ -51,8 +51,8 @@ typedef union {
         uint32_t mant:23;
         uint32_t exp:8;
         uint32_t sign:1;
-    } x;
-} sf_t;
+    };
+} Float;
 
 typedef struct {
     union {
@@ -69,17 +69,18 @@ typedef struct {
             uint32_t w2;
         };
     };
-} int128_t;
+} Int128;
+
 typedef struct {
-    int128_t mant;
+    Int128 mant;
     int32_t exp;
     uint8_t sign;
     uint8_t guard;
     uint8_t round;
     uint8_t sticky;
-} xf_t;
+} LongDouble;
 
-static inline void xf_init(xf_t *p)
+static inline void xf_init(LongDouble *p)
 {
     p->mant.low = 0;
     p->mant.high = 0;
@@ -90,66 +91,66 @@ static inline void xf_init(xf_t *p)
     p->sticky = 0;
 }
 
-static inline uint64_t df_getmant(df_t a)
+static inline uint64_t df_getmant(Double a)
 {
     int class = fpclassify(a.f);
     switch (class) {
     case FP_NORMAL:
-    return a.x.mant | 1ULL << 52;
+    return a.mant | 1ULL << 52;
     case FP_ZERO:
         return 0;
     case FP_SUBNORMAL:
-        return a.x.mant;
+        return a.mant;
     default:
         return -1;
     };
 }
 
-static inline int32_t df_getexp(df_t a)
+static inline int32_t df_getexp(Double a)
 {
     int class = fpclassify(a.f);
     switch (class) {
     case FP_NORMAL:
-        return a.x.exp;
+        return a.exp;
     case FP_SUBNORMAL:
-        return a.x.exp + 1;
+        return a.exp + 1;
     default:
         return -1;
     };
 }
 
-static inline uint64_t sf_getmant(sf_t a)
+static inline uint64_t sf_getmant(Float a)
 {
     int class = fpclassify(a.f);
     switch (class) {
     case FP_NORMAL:
-        return a.x.mant | 1ULL << 23;
+        return a.mant | 1ULL << 23;
     case FP_ZERO:
         return 0;
     case FP_SUBNORMAL:
-        return a.x.mant | 0ULL;
+        return a.mant | 0ULL;
     default:
         return -1;
     };
 }
 
-static inline int32_t sf_getexp(sf_t a)
+static inline int32_t sf_getexp(Float a)
 {
     int class = fpclassify(a.f);
     switch (class) {
     case FP_NORMAL:
-        return a.x.exp;
+        return a.exp;
     case FP_SUBNORMAL:
-        return a.x.exp + 1;
+        return a.exp + 1;
     default:
         return -1;
     };
 }
 
-static inline int128_t int128_mul_6464(uint64_t ai, uint64_t bi)
+static inline Int128 int128_mul_6464(uint64_t ai, uint64_t bi)
 {
-    int128_t ret;
-    int128_t a, b;
+    Int128 ret;
+    Int128 a, b;
     uint64_t pp0, pp1a, pp1b, pp1s, pp2;
 
     a.high = b.high = 0;
@@ -173,9 +174,9 @@ static inline int128_t int128_mul_6464(uint64_t ai, uint64_t bi)
     return ret;
 }
 
-static inline int128_t int128_shl(int128_t a, uint32_t amt)
+static inline Int128 int128_shl(Int128 a, uint32_t amt)
 {
-    int128_t ret;
+    Int128 ret;
     if (amt == 0) {
         return a;
     }
@@ -195,9 +196,9 @@ static inline int128_t int128_shl(int128_t a, uint32_t amt)
     return ret;
 }
 
-static inline int128_t int128_shr(int128_t a, uint32_t amt)
+static inline Int128 int128_shr(Int128 a, uint32_t amt)
 {
-    int128_t ret;
+    Int128 ret;
     if (amt == 0) {
         return a;
     }
@@ -217,9 +218,9 @@ static inline int128_t int128_shr(int128_t a, uint32_t amt)
     return ret;
 }
 
-static inline int128_t int128_add(int128_t a, int128_t b)
+static inline Int128 int128_add(Int128 a, Int128 b)
 {
-    int128_t ret;
+    Int128 ret;
     ret.low = a.low + b.low;
     if ((ret.low < a.low) || (ret.low < b.low)) {
         /* carry into high part */
@@ -229,9 +230,9 @@ static inline int128_t int128_add(int128_t a, int128_t b)
     return ret;
 }
 
-static inline int128_t int128_sub(int128_t a, int128_t b, int borrow)
+static inline Int128 int128_sub(Int128 a, Int128 b, int borrow)
 {
-    int128_t ret;
+    Int128 ret;
     ret.low = a.low - b.low;
     if (ret.low > a.low) {
         /* borrow into high part */
@@ -247,7 +248,7 @@ static inline int128_t int128_sub(int128_t a, int128_t b, int borrow)
     }
 }
 
-static inline int int128_gt(int128_t a, int128_t b)
+static inline int int128_gt(Int128 a, Int128 b)
 {
     if (a.high == b.high) {
         return a.low > b.low;
@@ -255,7 +256,7 @@ static inline int int128_gt(int128_t a, int128_t b)
     return a.high > b.high;
 }
 
-static inline xf_t xf_norm_left(xf_t a)
+static inline LongDouble xf_norm_left(LongDouble a)
 {
     a.exp--;
     a.mant = int128_shl(a.mant, 1);
@@ -265,7 +266,7 @@ static inline xf_t xf_norm_left(xf_t a)
     return a;
 }
 
-static inline xf_t xf_norm_right(xf_t a, int amt)
+static inline LongDouble xf_norm_right(LongDouble a, int amt)
 {
     if (amt > 130) {
         a.sticky |=
@@ -300,11 +301,11 @@ static inline xf_t xf_norm_right(xf_t a, int amt)
  * On the add/sub, we need to be able to shift out lots of bits, but need a
  * sticky bit for what was shifted out, I think.
  */
-static xf_t xf_add(xf_t a, xf_t b);
+static LongDouble xf_add(LongDouble a, LongDouble b);
 
-static inline xf_t xf_sub(xf_t a, xf_t b, int negate)
+static inline LongDouble xf_sub(LongDouble a, LongDouble b, int negate)
 {
-    xf_t ret;
+    LongDouble ret;
     xf_init(&ret);
     int borrow;
 
@@ -357,9 +358,9 @@ static inline xf_t xf_sub(xf_t a, xf_t b, int negate)
     return ret;
 }
 
-static xf_t xf_add(xf_t a, xf_t b)
+static LongDouble xf_add(LongDouble a, LongDouble b)
 {
-    xf_t ret;
+    LongDouble ret;
     xf_init(&ret);
     if (a.sign != b.sign) {
         b.sign = !b.sign;
@@ -405,73 +406,73 @@ static xf_t xf_add(xf_t a, xf_t b)
 }
 
 /* Return an infinity with the same sign as a */
-static inline df_t infinite_df_t(xf_t a)
+static inline Double infinite_df_t(LongDouble a)
 {
-    df_t ret;
-    ret.x.sign = a.sign;
-    ret.x.exp = DF_INF_EXP;
-    ret.x.mant = 0ULL;
+    Double ret;
+    ret.sign = a.sign;
+    ret.exp = DF_INF_EXP;
+    ret.mant = 0ULL;
     return ret;
 }
 
 /* Return a maximum finite value with the same sign as a */
-static inline df_t maxfinite_df_t(xf_t a)
+static inline Double maxfinite_df_t(LongDouble a)
 {
-    df_t ret;
-    ret.x.sign = a.sign;
-    ret.x.exp = DF_INF_EXP - 1;
-    ret.x.mant = 0x000fffffffffffffULL;
+    Double ret;
+    ret.sign = a.sign;
+    ret.exp = DF_INF_EXP - 1;
+    ret.mant = 0x000fffffffffffffULL;
     return ret;
 }
 
-static inline df_t f2df_t(double in)
+static inline Double f2df_t(double in)
 {
-    df_t ret;
+    Double ret;
     ret.f = in;
     return ret;
 }
 
 /* Return an infinity with the same sign as a */
-static inline sf_t infinite_sf_t(xf_t a)
+static inline Float infinite_sf_t(LongDouble a)
 {
-    sf_t ret;
-    ret.x.sign = a.sign;
-    ret.x.exp = SF_INF_EXP;
-    ret.x.mant = 0ULL;
+    Float ret;
+    ret.sign = a.sign;
+    ret.exp = SF_INF_EXP;
+    ret.mant = 0ULL;
     return ret;
 }
 
 /* Return a maximum finite value with the same sign as a */
-static inline sf_t maxfinite_sf_t(xf_t a)
+static inline Float maxfinite_sf_t(LongDouble a)
 {
-    sf_t ret;
-    ret.x.sign = a.sign;
-    ret.x.exp = SF_INF_EXP - 1;
-    ret.x.mant = 0x007fffffUL;
+    Float ret;
+    ret.sign = a.sign;
+    ret.exp = SF_INF_EXP - 1;
+    ret.mant = 0x007fffffUL;
     return ret;
 }
 
-static inline sf_t f2sf_t(float in)
+static inline Float f2sf_t(float in)
 {
-    sf_t ret;
+    Float ret;
     ret.f = in;
     return ret;
 }
 
-#define GEN_XF_ROUND(TYPE, MANTBITS, INF_EXP) \
-static inline TYPE xf_round_##TYPE(xf_t a) \
+#define GEN_XF_ROUND(TYPE, SUFFIX, MANTBITS, INF_EXP) \
+static inline TYPE xf_round_##SUFFIX(LongDouble a) \
 { \
     TYPE ret; \
     ret.i = 0; \
-    ret.x.sign = a.sign; \
+    ret.sign = a.sign; \
     if ((a.mant.high == 0) && (a.mant.low == 0) \
         && ((a.guard | a.round | a.sticky) == 0)) { \
         /* result zero */ \
         switch (fegetround()) { \
         case FE_DOWNWARD: \
-            return f2##TYPE(-0.0); \
+            return f2##SUFFIX(-0.0); \
         default: \
-            return f2##TYPE(0.0); \
+            return f2##SUFFIX(0.0); \
         } \
     } \
     /* Normalize right */ \
@@ -552,45 +553,45 @@ static inline TYPE xf_round_##TYPE(xf_t a) \
         feraiseexcept(FE_INEXACT); \
         switch (fegetround()) { \
         case FE_TOWARDZERO: \
-            return maxfinite_##TYPE(a); \
+            return maxfinite_##SUFFIX(a); \
         case FE_UPWARD: \
             if (a.sign == 0) { \
-                return infinite_##TYPE(a); \
+                return infinite_##SUFFIX(a); \
             } else { \
-                return maxfinite_##TYPE(a); \
+                return maxfinite_##SUFFIX(a); \
             } \
         case FE_DOWNWARD: \
             if (a.sign != 0) { \
-                return infinite_##TYPE(a); \
+                return infinite_##SUFFIX(a); \
             } else { \
-                return maxfinite_##TYPE(a); \
+                return maxfinite_##SUFFIX(a); \
             } \
         default: \
-            return infinite_##TYPE(a); \
+            return infinite_##SUFFIX(a); \
         } \
     } \
     /* Underflow? */ \
     if (a.mant.low & (1ULL << MANTBITS)) { \
         /* Leading one means: No, we're normal. So, we should be done... */ \
-        ret.x.exp = a.exp; \
-        ret.x.mant = a.mant.low; \
+        ret.exp = a.exp; \
+        ret.mant = a.mant.low; \
         return ret; \
     } \
     if (a.exp != 1) { \
         printf("a.exp == %d\n", a.exp); \
     } \
     assert(a.exp == 1); \
-    ret.x.exp = 0; \
-    ret.x.mant = a.mant.low; \
+    ret.exp = 0; \
+    ret.mant = a.mant.low; \
     return ret; \
 }
 
-GEN_XF_ROUND(df_t, fDF_MANTBITS(), DF_INF_EXP)
-GEN_XF_ROUND(sf_t, fSF_MANTBITS(), SF_INF_EXP)
+GEN_XF_ROUND(Double, df_t, fDF_MANTBITS(), DF_INF_EXP)
+GEN_XF_ROUND(Float, sf_t, fSF_MANTBITS(), SF_INF_EXP)
 
-static inline double special_fma(df_t a, df_t b, df_t c)
+static inline double special_fma(Double a, Double b, Double c)
 {
-    df_t ret;
+    Double ret;
     ret.i = 0;
 
     /*
@@ -598,7 +599,7 @@ static inline double special_fma(df_t a, df_t b, df_t c)
      * but with the opposite sign, FMA returns NaN and raises invalid.
      */
     if (fISINFPROD(a.f, b.f) && isinf(c.f)) {
-        if ((a.x.sign ^ b.x.sign) != c.x.sign) {
+        if ((a.sign ^ b.sign) != c.sign) {
             ret.i = fDFNANVAL();
             feraiseexcept(FE_INVALID);
             return ret.f;
@@ -632,23 +633,23 @@ static inline double special_fma(df_t a, df_t b, df_t c)
      * Other infinities return infinity with the correct sign
      */
     if (isinf(c.f)) {
-        ret.x.exp = DF_INF_EXP;
-        ret.x.mant = 0;
-        ret.x.sign = c.x.sign;
+        ret.exp = DF_INF_EXP;
+        ret.mant = 0;
+        ret.sign = c.sign;
         return ret.f;
     }
     if (isinf(a.f) || isinf(b.f)) {
-        ret.x.exp = DF_INF_EXP;
-        ret.x.mant = 0;
-        ret.x.sign = (a.x.sign ^ b.x.sign);
+        ret.exp = DF_INF_EXP;
+        ret.mant = 0;
+        ret.sign = (a.sign ^ b.sign);
         return ret.f;
     }
     g_assert_not_reached();
 }
 
-static inline float special_fmaf(sf_t a, sf_t b, sf_t c)
+static inline float special_fmaf(Float a, Float b, Float c)
 {
-    df_t aa, bb, cc;
+    Double aa, bb, cc;
     aa.f = a.f;
     bb.f = b.f;
     cc.f = c.f;
@@ -657,10 +658,10 @@ static inline float special_fmaf(sf_t a, sf_t b, sf_t c)
 
 float internal_fmafx(float a_in, float b_in, float c_in, int scale)
 {
-    sf_t a, b, c;
-    xf_t prod;
-    xf_t acc;
-    xf_t result;
+    Float a, b, c;
+    LongDouble prod;
+    LongDouble acc;
+    LongDouble result;
     xf_init(&prod);
     xf_init(&acc);
     xf_init(&result);
@@ -686,20 +687,20 @@ float internal_fmafx(float a_in, float b_in, float c_in, int scale)
      * 2**23, so adjust here
      */
     prod.exp = sf_getexp(a) + sf_getexp(b) - SF_BIAS - 23;
-    prod.sign = a.x.sign ^ b.x.sign;
+    prod.sign = a.sign ^ b.sign;
     if (isz(a.f) || isz(b.f)) {
         prod.exp = -2 * WAY_BIG_EXP;
     }
     if ((scale > 0) && (fpclassify(c.f) == FP_SUBNORMAL)) {
         acc.mant = int128_mul_6464(0, 0);
         acc.exp = -WAY_BIG_EXP;
-        acc.sign = c.x.sign;
+        acc.sign = c.sign;
         acc.sticky = 1;
         result = xf_add(prod, acc);
     } else if (!isz(c.f)) {
         acc.mant = int128_mul_6464(sf_getmant(c), 1);
         acc.exp = sf_getexp(c);
-        acc.sign = c.x.sign;
+        acc.sign = c.sign;
         result = xf_add(prod, acc);
     } else {
         result = prod;
@@ -730,8 +731,8 @@ static inline double internal_mpyhh_special(double a, double b)
 double internal_mpyhh(double a_in, double b_in,
                       unsigned long long int accumulated)
 {
-    df_t a, b;
-    xf_t x;
+    Double a, b;
+    LongDouble x;
     unsigned long long int prod;
     unsigned int sticky;
 
@@ -756,14 +757,14 @@ double internal_mpyhh(double a_in, double b_in,
         x.sticky = 1;
         x.exp = -4096;
     }
-    x.sign = a.x.sign ^ b.x.sign;
+    x.sign = a.sign ^ b.sign;
     return xf_round_df_t(x).f;
 }
 
 float conv_df_to_sf(double in_f)
 {
-    xf_t x;
-    df_t in;
+    LongDouble x;
+    Double in;
     if (isz(in_f) || isnan(in_f) || isinf(in_f)) {
         return in_f;
     }
@@ -771,7 +772,7 @@ float conv_df_to_sf(double in_f)
     in.f = in_f;
     x.mant = int128_mul_6464(df_getmant(in), 1);
     x.exp = df_getexp(in) - DF_BIAS + SF_BIAS - 52 + 23;
-    x.sign = in.x.sign;
+    x.sign = in.sign;
     return xf_round_sf_t(x).f;
 }
 

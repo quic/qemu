@@ -73,7 +73,7 @@ void gen_exception_debug(void)
 
 #if HEX_DEBUG
 #define PACKET_BUFFER_LEN              1028
-static void print_pkt(packet_t *pkt)
+static void print_pkt(Packet *pkt)
 {
     char buf[PACKET_BUFFER_LEN];
     snprint_a_pkt(buf, PACKET_BUFFER_LEN, pkt);
@@ -118,7 +118,7 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
     return nwords;
 }
 
-static void gen_start_packet(DisasContext *ctx, packet_t *pkt)
+static void gen_start_packet(DisasContext *ctx, Packet *pkt)
 {
     target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
     int i;
@@ -159,7 +159,7 @@ static void gen_start_packet(DisasContext *ctx, packet_t *pkt)
     }
 }
 
-static int is_gather_store_insn(insn_t *insn)
+static int is_gather_store_insn(Insn *insn)
 {
     int check = GET_ATTRIB(insn->opcode, A_CVI_NEW);
     check &= (insn->new_value_producer_slot == 1);
@@ -171,7 +171,7 @@ static int is_gather_store_insn(insn_t *insn)
  * However, there are some implicit writes marked as attributes
  * of the applicable instructions.
  */
-static void mark_implicit_reg_write(DisasContext *ctx, insn_t *insn,
+static void mark_implicit_reg_write(DisasContext *ctx, Insn *insn,
                                     int attrib, int rnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
@@ -185,7 +185,7 @@ static void mark_implicit_reg_write(DisasContext *ctx, insn_t *insn,
     }
 }
 
-static void mark_implicit_pred_write(DisasContext *ctx, insn_t *insn,
+static void mark_implicit_pred_write(DisasContext *ctx, Insn *insn,
                                      int attrib, int pnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
@@ -194,7 +194,7 @@ static void mark_implicit_pred_write(DisasContext *ctx, insn_t *insn,
     }
 }
 
-static void mark_implicit_writes(DisasContext *ctx, insn_t *insn)
+static void mark_implicit_writes(DisasContext *ctx, Insn *insn)
 {
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_FP,  HEX_REG_FP);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_SP,  HEX_REG_SP);
@@ -211,7 +211,7 @@ static void mark_implicit_writes(DisasContext *ctx, insn_t *insn)
 }
 
 static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
-                     insn_t *insn, packet_t *pkt)
+                     Insn *insn, Packet *pkt)
 {
     if (insn->generate) {
         bool is_gather_store = is_gather_store_insn(insn);
@@ -243,7 +243,7 @@ static void gen_reg_writes(DisasContext *ctx)
     }
 }
 
-static void gen_pred_writes(DisasContext *ctx, packet_t *pkt)
+static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
 {
     /* Early exit if the log is empty */
     if (!ctx->preg_log_idx) {
@@ -367,7 +367,7 @@ static void process_store(DisasContext *ctx, int slot_num)
     gen_set_label(label_end);
 }
 
-static void process_store_log(DisasContext *ctx, packet_t *pkt)
+static void process_store_log(DisasContext *ctx, Packet *pkt)
 {
     /*
      *  When a packet has two stores, the hardware processes
@@ -383,7 +383,7 @@ static void process_store_log(DisasContext *ctx, packet_t *pkt)
 }
 
 /* Zero out a 32-bit cache line */
-static void process_dczeroa(DisasContext *ctx, packet_t *pkt)
+static void process_dczeroa(DisasContext *ctx, Packet *pkt)
 {
     if (pkt->pkt_has_dczeroa) {
         /* Store 32 bytes of zero starting at (addr & ~0x1f) */
@@ -465,7 +465,7 @@ static inline void gen_vec_copy(intptr_t dstoff, intptr_t srcoff, size_t size)
     tcg_temp_free_ptr(dst);
 }
 
-static inline bool pkt_has_hvx_store(packet_t *pkt)
+static inline bool pkt_has_hvx_store(Packet *pkt)
 {
     int i;
     for (i = 0; i < pkt->num_insns; i++) {
@@ -477,7 +477,7 @@ static inline bool pkt_has_hvx_store(packet_t *pkt)
     return false;
 }
 
-static bool pkt_has_vhist(packet_t *pkt)
+static bool pkt_has_vhist(Packet *pkt)
 {
     int i;
     for (i = 0; i < pkt->num_insns; i++) {
@@ -489,7 +489,7 @@ static bool pkt_has_vhist(packet_t *pkt)
     return false;
 }
 
-static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
+static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
 {
     int i;
 
@@ -499,7 +499,7 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
      */
     if (pkt_has_vhist(pkt)) {
         TCGv cmp = tcg_temp_local_new();
-        size_t size = sizeof(mmvector_t);
+        size_t size = sizeof(MMVector);
         for (i = 0; i < NUM_VREGS; i++) {
             intptr_t dstoff = offsetof(CPUHexagonState, VRegs[i]);
             intptr_t srcoff = offsetof(CPUHexagonState, future_VRegs[i]);
@@ -533,7 +533,7 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
         int is_predicated = ctx->vreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, VRegs[rnum]);
         intptr_t srcoff = offsetof(CPUHexagonState, future_VRegs[rnum]);
-        size_t size = sizeof(mmvector_t);
+        size_t size = sizeof(MMVector);
 
         if (is_predicated) {
             TCGv cmp = tcg_temp_local_new();
@@ -568,7 +568,7 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
         int is_predicated = ctx->qreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, QRegs[rnum]);
         intptr_t srcoff = offsetof(CPUHexagonState, future_QRegs[rnum]);
-        size_t size = sizeof(mmqreg_t);
+        size_t size = sizeof(MMQReg);
 
         if (is_predicated) {
             TCGv cmp = tcg_temp_local_new();
@@ -591,7 +591,7 @@ static void gen_commit_hvx(DisasContext *ctx, packet_t *pkt)
     }
 }
 
-static void gen_exec_counters(packet_t *pkt)
+static void gen_exec_counters(Packet *pkt)
 {
     int num_insns = pkt->num_insns;
     int num_real_insns = 0;
@@ -617,7 +617,7 @@ static void gen_exec_counters(packet_t *pkt)
                     hex_gpr[HEX_REG_QEMU_HVX_CNT], num_hvx_insns);
 }
 
-static void gen_commit_packet(DisasContext *ctx, packet_t *pkt)
+static void gen_commit_packet(DisasContext *ctx, Packet *pkt)
 {
     gen_reg_writes(ctx);
     gen_pred_writes(ctx, pkt);
@@ -651,7 +651,7 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
 {
     uint32_t words[PACKET_WORDS_MAX];
     int nwords;
-    packet_t pkt;
+    Packet pkt;
     int i;
 
     nwords = read_packet_words(env, ctx, words);

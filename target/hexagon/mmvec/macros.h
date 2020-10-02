@@ -24,34 +24,37 @@
 #include "mmvec/system_ext_mmvec.h"
 
 #ifndef QEMU_GENERATE
-#define VdV      (*(mmvector_t *)(VdV_void))
-#define VsV      (*(mmvector_t *)(VsV_void))
-#define VuV      (*(mmvector_t *)(VuV_void))
-#define VvV      (*(mmvector_t *)(VvV_void))
-#define VwV      (*(mmvector_t *)(VwV_void))
-#define VxV      (*(mmvector_t *)(VxV_void))
-#define VyV      (*(mmvector_t *)(VyV_void))
+#define VdV      (*(MMVector *)(VdV_void))
+#define VsV      (*(MMVector *)(VsV_void))
+#define VuV      (*(MMVector *)(VuV_void))
+#define VvV      (*(MMVector *)(VvV_void))
+#define VwV      (*(MMVector *)(VwV_void))
+#define VxV      (*(MMVector *)(VxV_void))
+#define VyV      (*(MMVector *)(VyV_void))
 
-#define VddV     (*(mmvector_pair_t *)(VddV_void))
-#define VuuV     (*(mmvector_pair_t *)(VuuV_void))
-#define VvvV     (*(mmvector_pair_t *)(VvvV_void))
-#define VxxV     (*(mmvector_pair_t *)(VxxV_void))
+#define VddV     (*(MMVectorPair *)(VddV_void))
+#define VuuV     (*(MMVectorPair *)(VuuV_void))
+#define VvvV     (*(MMVectorPair *)(VvvV_void))
+#define VxxV     (*(MMVectorPair *)(VxxV_void))
 
-#define QeV      (*(mmqreg_t *)(QeV_void))
-#define QdV      (*(mmqreg_t *)(QdV_void))
-#define QsV      (*(mmqreg_t *)(QsV_void))
-#define QtV      (*(mmqreg_t *)(QtV_void))
-#define QuV      (*(mmqreg_t *)(QuV_void))
-#define QvV      (*(mmqreg_t *)(QvV_void))
-#define QxV      (*(mmqreg_t *)(QxV_void))
+#define QeV      (*(MMQReg *)(QeV_void))
+#define QdV      (*(MMQReg *)(QdV_void))
+#define QsV      (*(MMQReg *)(QsV_void))
+#define QtV      (*(MMQReg *)(QtV_void))
+#define QuV      (*(MMQReg *)(QuV_void))
+#define QvV      (*(MMQReg *)(QvV_void))
+#define QxV      (*(MMQReg *)(QxV_void))
 
 #define NEW_WRITTEN(NUM) ((env->VRegs_select >> (NUM)) & 1)
 #define TMP_WRITTEN(NUM) ((env->VRegs_updated_tmp >> (NUM)) & 1)
 
+#define TYPE_VOID(X)   __builtin_types_compatible_p(typeof(X), void *)
+#define TYPE_MMVECTOR(X)   __builtin_types_compatible_p(typeof(X), MMVector)
+
 #define LOG_VREG_WRITE_FUNC(X) \
-    __builtin_choose_expr(__builtin_types_compatible_p(typeof(X), void *), \
+    __builtin_choose_expr(TYPE_VOID(X), \
         log_vreg_write, \
-        __builtin_choose_expr(__builtin_types_compatible_p(typeof(X), mmvector_t), \
+        __builtin_choose_expr(TYPE_MMVECTOR(X), \
             log_mmvector_write, (void)0))
 #define LOG_VREG_WRITE(NUM, VAR, VNEW) \
     LOG_VREG_WRITE_FUNC(VAR)(env, NUM, VAR, VNEW, slot)
@@ -90,7 +93,7 @@
 #define fUSE_LOOKUP_ADDRESS() 1
 #define fNOTQ(VAL) \
     ({ \
-        mmqreg_t _ret;  \
+        MMQReg _ret;  \
         int _i_;  \
         for (_i_ = 0; _i_ < fVECSIZE() / 64; _i_++) { \
             _ret.ud[_i_] = ~VAL.ud[_i_]; \
@@ -137,9 +140,9 @@
 #define fVECLOGSIZE() (7)
 #define fVECSIZE() (1 << fVECLOGSIZE())
 #define fSWAPB(A, B) do { uint8_t tmp = A; A = B; B = tmp; } while (0)
-static inline mmvector_t mmvec_zero_vector(void)
+static inline MMVector mmvec_zero_vector(void)
 {
-    mmvector_t ret;
+    MMVector ret;
     memset(&ret, 0, sizeof(ret));
     return ret;
 }
@@ -369,7 +372,7 @@ static inline mmvector_t mmvec_zero_vector(void)
 #define fSTOREMMV(EA, SRC) fSTOREMMV_AL(EA, fVECSIZE(), fVECSIZE(), SRC)
 #define fSTOREMMVQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
-        mmvector_t maskvec; \
+        MMVector maskvec; \
         int i; \
         for (i = 0; i < fVECSIZE(); i++) { \
             maskvec.ub[i] = fGETQBIT(MASK, i); \
@@ -382,7 +385,7 @@ static inline mmvector_t mmvec_zero_vector(void)
     fSTOREMMVQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
 #define fSTOREMMVNQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
-        mmvector_t maskvec; \
+        MMVector maskvec; \
         int i; \
         for (i = 0; i < fVECSIZE(); i++) { \
             maskvec.ub[i] = fGETQBIT(MASK, i); \
@@ -420,7 +423,7 @@ static inline mmvector_t mmvec_zero_vector(void)
     do { \
         uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
         uint32_t size2; \
-        mmvector_t maskvec; \
+        MMVector maskvec; \
         int i; \
         for (i = 0; i < fVECSIZE(); i++) { \
             maskvec.ub[i] = fGETQBIT(MASK, i); \
@@ -439,7 +442,7 @@ static inline mmvector_t mmvec_zero_vector(void)
     do { \
         uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
         uint32_t size2; \
-        mmvector_t maskvec; \
+        MMVector maskvec; \
         int i; \
         for (i = 0; i < fVECSIZE(); i++) { \
             maskvec.ub[i] = fGETQBIT(MASK, i); \
@@ -463,10 +466,10 @@ static inline mmvector_t mmvec_zero_vector(void)
 #ifndef QEMU_GENERATE
 /* Grabs the .tmp data, wherever it is, and clears the .tmp status */
 /* Used for vhist */
-static inline mmvector_t mmvec_vtmp_data(CPUHexagonState *env)
+static inline MMVector mmvec_vtmp_data(CPUHexagonState *env)
 {
     VRegMask vsel = env->VRegs_updated_tmp;
-    mmvector_t ret;
+    MMVector ret;
     int idx = clo32(~revbit32(vsel));
     if (vsel == 0) {
         printf("[UNDEFINED] no .tmp load when implicitly required...");

@@ -34,9 +34,9 @@
 typedef struct {
     int count;
     const char *tag;
-} helper_count_t;
+} HelperCount;
 
-helper_count_t helper_counts[] = {
+HelperCount helper_counts[] = {
 #define OPCODE(TAG)    { 0, #TAG }
 #include "opcodes_def_generated.h"
 #undef OPCODE
@@ -50,7 +50,7 @@ helper_count_t helper_counts[] = {
 
 void print_helper_counts(void)
 {
-    helper_count_t *p;
+    HelperCount *p;
 
     printf("HELPER COUNTS\n");
     for (p = helper_counts; p->tag; p++) {
@@ -522,7 +522,7 @@ static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
         env->VRegs_updated |=      (vnew != EXT_TMP) ? regnum_mask : 0;
         env->VRegs_select |=       (vnew == EXT_NEW) ? regnum_mask : 0;
         env->VRegs_updated_tmp  |= (vnew == EXT_TMP) ? regnum_mask : 0;
-        env->future_VRegs[num] = *(mmvector_t *)var;
+        env->future_VRegs[num] = *(MMVector *)var;
         if (vnew == EXT_TMP) {
             env->tmp_VRegs[num] = env->future_VRegs[num];
         }
@@ -530,7 +530,7 @@ static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
 }
 
 static inline void log_mmvector_write(CPUHexagonState *env, int num,
-                                      mmvector_t var, int vnew, uint32_t slot)
+                                      MMVector var, int vnew, uint32_t slot)
 {
     log_vreg_write(env, num, &var, vnew, slot);
 }

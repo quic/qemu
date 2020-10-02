@@ -21,6 +21,6 @@
 #include "qemu/osdep.h"
 #include "insn.h"
 
-extern void snprint_a_pkt(char *buf, int n, packet_t *pkt);
+extern void snprint_a_pkt(char *buf, int n, Packet *pkt);
 
 #endif
