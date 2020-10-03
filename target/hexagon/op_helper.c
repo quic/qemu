@@ -468,7 +468,7 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
         }
     }
 
-    HEX_DEBUG_LOG("Next PC = 0x%x\n", env->next_PC);
+    HEX_DEBUG_LOG("tid[%d], Next PC = 0x%x\n", env->threadId, env->next_PC);
     HEX_DEBUG_LOG("Exec counters: pkt = " TARGET_FMT_lx
                   ", insn = " TARGET_FMT_lx
                   ", hvx = " TARGET_FMT_lx "\n",

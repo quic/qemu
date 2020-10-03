@@ -68,7 +68,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 
 /*
  * Represents the maximum number of consecutive
- * translation blocks to execute on a CPU before rescheduling
+ * translation blocks to execute on a CPU before yielding
  * to another CPU.
  */
 #define HEXAGON_TB_EXEC_PER_CPU_MAX 2000

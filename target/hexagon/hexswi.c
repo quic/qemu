@@ -108,6 +108,7 @@ static int MapError(int ERR)
 static int sim_handle_trap_functional(CPUHexagonState *env)
 
 {
+    CPUState *cs = env_cpu(env);
     target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     target_ulong what_swi = ARCH_GET_THREAD_REG(env, HEX_REG_R00);
     target_ulong swi_info = ARCH_GET_THREAD_REG(env, HEX_REG_R01);
@@ -172,7 +173,13 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         ret = ARCH_GET_THREAD_REG(env, HEX_REG_R02);
         HEX_DEBUG_LOG("%s: swi_info 0x%x, ret %d/0x%x\n",
             __FUNCTION__, swi_info, ret, ret);
-        exit(ret);
+
+        if (cs->singlestep_enabled) {
+            cs->exception_index = EXCP_DEBUG;
+        }
+        else {
+            exit(ret);
+        }
     }
     break;
 

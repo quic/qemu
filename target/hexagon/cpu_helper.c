@@ -242,6 +242,7 @@ void hexagon_wait_thread(CPUHexagonState *env)
     }
     ARCH_SET_THREAD_REG(env, HEX_REG_PC,
        ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
+
     cpu_stop_current();
 }
 
@@ -339,6 +340,8 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
         if (found) {
             hexagon_modify_ssr(env, new, old);
         }
+        env->tlb_lock_state = HEX_LOCK_UNLOCKED;
+        env->k0_lock_state = HEX_LOCK_UNLOCKED;
 
         target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
         #if HEX_DEBUG

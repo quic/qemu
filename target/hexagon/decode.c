@@ -396,6 +396,9 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
     pkt->memop_or_nvstore = 0;
     pkt->pkt_has_dczeroa = 0;
     pkt->pkt_has_dealloc_return = 0;
+#ifndef CONFIG_USER_ONLY
+    pkt->pkt_has_sys_visibility = 0;
+#endif
 
     for (i = 0; i < numinsns; i++) {
         opcode = pkt->insn[i].opcode;
@@ -490,6 +493,25 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
             GET_ATTRIB(opcode, A_DCTAGOP)) {
             pkt->insn[i].is_dcop = 1;
         }
+#ifndef CONFIG_USER_ONLY
+        if (opcode == Y2_stop ||
+            opcode == Y2_wait ||
+            opcode == Y2_k0lock ||
+            opcode == Y2_tlblock) {
+            pkt->insn[i].could_halt = 1;
+        }
+        if (opcode == J2_trap0 ||
+            opcode == J2_trap1 ||
+            opcode == Y4_nmi   ||
+            GET_ATTRIB(opcode, A_EXCEPTION_TLB) ||
+            GET_ATTRIB(opcode, A_EXCEPTION_SWI) ||
+            GET_ATTRIB(opcode, A_EXCEPTION_ACCESS)) {
+            pkt->insn[i].triggers_int = 1;
+        }
+        if (GET_ATTRIB(opcode, A_RESTRICT_NOPACKET)) {
+            pkt->insn[i].is_solo = 1;
+        }
+#endif
 
         pkt->pkt_has_call |= GET_ATTRIB(opcode, A_CALL);
         pkt->pkt_has_jumpr |= GET_ATTRIB(opcode, A_INDIRECT) &&
@@ -551,6 +573,19 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
         } else if (pkt->insn[i].is_load) {
             loads++;
         }
+
+#ifndef CONFIG_USER_ONLY
+        pkt->pkt_has_sys_visibility |=
+               (pkt->insn[i].is_solo && !(GET_ATTRIB(opcode, A_STORE) ||
+                                          GET_ATTRIB(opcode, A_LOAD) ||
+                                          GET_ATTRIB(opcode, A_CACHEOP)))
+             || pkt->insn[i].could_halt
+             || pkt->insn[i].triggers_int
+             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IPEND)
+             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IAD)
+             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_K0LOCK)
+             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_TLBLOCK);
+#endif
     }
 
     if (stores == 2) {

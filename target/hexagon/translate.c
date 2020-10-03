@@ -334,8 +334,11 @@ static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
             /* This can change processor state, so end the TB */
             ctx->base.is_jmp = DISAS_TOO_MANY;
         } else if ((reg_num == HEX_SREG_BESTWAIT) ||
-                 (reg_num == HEX_SREG_STID) ||
-                 (reg_num == HEX_SREG_SCHEDCFG)) {
+                 (reg_num == HEX_SREG_STID)     ||
+                 (reg_num == HEX_SREG_SCHEDCFG) ||
+                 (reg_num == HEX_SREG_GEVB)     ||
+                 (reg_num == HEX_SREG_IPENDAD)  ||
+                 (reg_num == HEX_SREG_IMASK)) {
 
             /* This can trigger resched interrupt, so end the TB */
             ctx->base.is_jmp = DISAS_TOO_MANY;
@@ -881,6 +884,9 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     if (pkt->pkt_has_cof) {
         ctx->base.is_jmp = DISAS_NORETURN;
     }
+    else if (pkt->pkt_has_sys_visibility) {
+        ctx->base.is_jmp = DISAS_TOO_MANY;
+    }
 }
 
 static void decode_and_translate_packet(CPUHexagonState *env,
@@ -1054,7 +1060,9 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 
 static void hexagon_tr_disas_log(const DisasContextBase *dcbase, CPUState *cpu)
 {
-    qemu_log("IN: %s\n", lookup_symbol(dcbase->pc_first));
+    HexagonCPU *cpu_ = HEXAGON_CPU(cpu);
+    CPUHexagonState *env = &cpu_->env;
+    qemu_log("IN[%d]: %s\n", env->threadId, lookup_symbol(dcbase->pc_first));
     log_target_disas(cpu, dcbase->pc_first, dcbase->tb->size);
 }
 
