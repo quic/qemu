@@ -536,8 +536,7 @@ void hex_tlb_lock(CPUHexagonState *env)
         }
         qemu_log_mask(CPU_LOG_MMU, "\tWaiting\n");
         env->tlb_lock_state = HEX_LOCK_WAITING;
-        do_raise_exception_err(env, HEX_EVENT_TLBLOCK_WAIT,
-                               env->gpr[HEX_REG_PC]);
+        cpu_stop_current();
     } else {
         qemu_log_mask(CPU_LOG_MMU, "\tAcquired\n");
         env->tlb_lock_state = HEX_LOCK_OWNER;

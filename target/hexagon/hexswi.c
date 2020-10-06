@@ -777,11 +777,8 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 #if CHECK_EX
     const uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     target_ulong EX = GET_SSR_FIELD(SSR_EX, ssr);
-    if ((cs->exception_index != HEX_EVENT_TLBLOCK_WAIT) &&
-        (cs->exception_index != HEX_EVENT_K0LOCK_WAIT)) {
-        if (EX) {
-            cpu_abort(cs, "hexagon_cpu_do_interrupt: EX already set, exiting\n");
-        }
+    if (EX) {
+        cpu_abort(cs, "hexagon_cpu_do_interrupt: EX already set, exiting\n");
     }
 #endif
 
@@ -848,13 +845,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 4, cs->exception_index);
         env->branch_taken = 1;
-        break;
-
-    case HEX_EVENT_TLBLOCK_WAIT:
-    case HEX_EVENT_K0LOCK_WAIT:
-        ARCH_SET_THREAD_REG(env, HEX_REG_PC,
-                ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
-        cpu_stop_current();
         break;
 
     case HEX_EVENT_TLB_MISS_X:

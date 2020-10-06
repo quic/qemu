@@ -85,8 +85,6 @@ enum hex_event {
     HEX_EVENT_INTD = 0x1d,
     HEX_EVENT_INTE = 0x1e,
     HEX_EVENT_INTF = 0x1f,
-    HEX_EVENT_TLBLOCK_WAIT = 0x300,
-    HEX_EVENT_K0LOCK_WAIT = 0x400,
 };
 
 enum data_cache_state {
