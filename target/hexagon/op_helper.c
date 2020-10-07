@@ -1249,12 +1249,7 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
     HexagonCPU *threads[THREADS_MAX];
     memset(threads, 0, sizeof(threads));
 
-    /* Assert all of the interrupts in the `mask` input: */
-    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
-    target_ulong ipendad_ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
-    ipendad_ipend |= mask;
-    SET_SYSTEM_FIELD(env, HEX_SREG_IPENDAD, IPENDAD_IPEND, ipendad_ipend);
-
+    hexagon_set_interrupts(env, mask);
     hexagon_find_asserted_interrupts(env, ints_asserted, sizeof(ints_asserted),
                                      &ints_asserted_count);
 
@@ -1269,7 +1264,7 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
         }
 
         HexagonCPU *int_thread =
-            hexagon_find_lowest_prio_any_thread(threads, threads_count, NULL);
+            hexagon_find_lowest_prio_any_thread(threads, threads_count, int_num, NULL);
         hexagon_raise_interrupt(env, int_thread, int_num);
     }
 
@@ -1286,6 +1281,7 @@ void HELPER(resched)(CPUHexagonState *env)
 {
     const uint32_t schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
     const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
+    const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
     if (!schedcfg_en) {
         return;
@@ -1299,7 +1295,7 @@ void HELPER(resched)(CPUHexagonState *env)
         threads[i++] = HEXAGON_CPU(cs);
     }
     HexagonCPU *int_thread =
-        hexagon_find_lowest_prio_any_thread(threads, i, &lowest_th_prio);
+        hexagon_find_lowest_prio_any_thread(threads, i, int_number, &lowest_th_prio);
 
     uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
     uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
@@ -1311,7 +1307,6 @@ void HELPER(resched)(CPUHexagonState *env)
      */
     if (lowest_th_prio > best_prio) {
         /* do the resched int */
-        const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
         HEX_DEBUG_LOG(
                 "raising resched int %d, cur PC 0x%08x\n",
                 int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
@@ -1392,7 +1387,7 @@ void HELPER(pending_interrupt)(CPUHexagonState *env)
             continue;
         }
 
-        HexagonCPU *int_thread = hexagon_find_lowest_prio(env);
+        HexagonCPU *int_thread = hexagon_find_lowest_prio(env, intnum);
         if (!int_thread) {
             continue;
         }

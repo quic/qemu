@@ -480,14 +480,9 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
         }
 
         HexagonCPU *int_thread =
-            hexagon_find_lowest_prio_any_thread(threads, threads_count, NULL);
+            hexagon_find_lowest_prio_any_thread(threads, threads_count, irq, NULL);
         env = &int_thread->env;
         cs = CPU(int_thread);
-
-        target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
-        target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
-        fSET_FIELD(ipendad, IPENDAD_IAD, ipendad_iad | (1 << mask[HEXAGON_CPU_IRQ_2]));
-        ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
 
         target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
         target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
@@ -550,16 +545,20 @@ static void hexagon_cpu_init(Object *obj)
 
 #ifndef CONFIG_USER_ONLY
 
+
+void hexagon_set_interrupts(CPUHexagonState *env, uint32_t mask)
+{
+    /* Assert all of the interrupts in the `mask` input: */
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    target_ulong ipendad_ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
+    ipendad_ipend |= mask;
+    SET_SYSTEM_FIELD(env, HEX_SREG_IPENDAD, IPENDAD_IPEND, ipendad_ipend);
+}
+
 void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
                              uint32_t int_num)
 {
-    CPUHexagonState *thread_env = &thread->env;
-    if (!hexagon_thread_is_interruptible(thread_env)) {
-        *(env->g_pending_interrupt_mask) |= 1 << int_num;
-    } else {
-        hexagon_raise_interrupt_resume(env, thread, int_num, 0);
-    }
-    /* assert(!hexagon_thread_is_interruptible(thread_env)); */
+    hexagon_raise_interrupt_resume(env, thread, int_num, 0);
 }
 
 void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
@@ -570,7 +569,9 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
 
     const uint32_t int_mask = 1 << int_num;
     CPUHexagonState *thread_env = &(HEXAGON_CPU(thread)->env);
-    assert(hexagon_thread_is_interruptible(thread_env));
+    assert(!hexagon_thread_is_busy(thread_env));
+    assert(hexagon_thread_ints_enabled(thread_env));
+    assert(hexagon_thread_is_interruptible(thread_env, int_num));
 
     CPUState *cs = CPU(thread);
     cs->exception_index = HEX_EVENT_INT0 + int_num;
@@ -659,7 +660,7 @@ void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
     }
 }
 
-HexagonCPU *hexagon_find_lowest_prio(CPUHexagonState *env) {
+HexagonCPU *hexagon_find_lowest_prio(CPUHexagonState *env, uint32_t int_num) {
     HexagonCPU *threads[THREADS_MAX];
     memset(threads, 0, sizeof(threads));
     size_t i = 0;
@@ -667,25 +668,29 @@ HexagonCPU *hexagon_find_lowest_prio(CPUHexagonState *env) {
     CPU_FOREACH(cs) {
         threads[i++] = HEXAGON_CPU(cs);
     }
-    return hexagon_find_lowest_prio_any_thread(threads, ARRAY_SIZE(threads), NULL);
+    return hexagon_find_lowest_prio_any_thread(threads, ARRAY_SIZE(threads), int_num, NULL);
 }
 
 HexagonCPU *hexagon_find_lowest_prio_any_thread(HexagonCPU *threads[],
                                                 size_t list_size,
+                                                uint32_t int_num,
                                                 uint32_t *low_prio)
 {
-    return hexagon_find_lowest_prio_thread(threads, list_size, false, low_prio);
+    return hexagon_find_lowest_prio_thread(threads, list_size, int_num, false, low_prio);
 }
 
 HexagonCPU *hexagon_find_lowest_prio_waiting_thread(HexagonCPU *threads[],
                                                     size_t list_size,
+                                                    uint32_t int_num,
                                                     uint32_t *low_prio)
 {
-    return hexagon_find_lowest_prio_thread(threads, list_size, true, low_prio);
+    return hexagon_find_lowest_prio_thread(threads, list_size, int_num, true, low_prio);
 }
 
 HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
-                                            size_t list_size, bool only_waiters,
+                                            size_t list_size,
+                                            uint32_t int_num,
+                                            bool only_waiters,
                                             uint32_t *low_prio)
 {
     assert(list_size >= 1);
@@ -703,7 +708,8 @@ HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
         uint32_t th_prio = GET_FIELD(
             STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
         const bool waiting = (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT);
-        const bool is_candidate = ((only_waiters && waiting) || !only_waiters);
+        const bool is_candidate = ((only_waiters && waiting) || !only_waiters) &&
+            hexagon_thread_is_interruptible(thread_env, int_num);
         if (!is_candidate) {
             continue;
         }
@@ -731,11 +737,45 @@ HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
     return threads[lowest_prio_index];
 }
 
-bool hexagon_thread_is_interruptible(CPUHexagonState *thread_env)
+
+bool hexagon_thread_ints_enabled(CPUHexagonState *thread_env)
 {
     target_ulong ssr = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_SSR);
     target_ulong ie = GET_SSR_FIELD(SSR_IE, ssr);
-    return ie && !hexagon_thread_is_busy(thread_env);
+    target_ulong syscfg = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_SYSCFG);
+    target_ulong gie = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
+    return ie && gie;
+}
+
+bool hexagon_int_disabled(CPUHexagonState *global_env, uint32_t int_num)
+{
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(global_env, HEX_SREG_IPENDAD);
+    target_ulong iad = GET_FIELD(IPENDAD_IAD, ipendad);
+
+    return iad & (1 << int_num);
+}
+
+void hexagon_disable_int(CPUHexagonState *env, uint32_t int_num)
+{
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
+    fSET_FIELD(ipendad, IPENDAD_IAD, ipendad_iad | (1 << int_num));
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
+}
+
+bool hexagon_thread_is_interruptible(CPUHexagonState *thread_env, uint32_t int_num)
+{
+    target_ulong imask = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK);
+    target_ulong imask_mask = GET_FIELD(IMASK_MASK, imask);
+
+    const uint32_t int_mask = 1 << int_num;
+
+    uint32_t int_is_masked = (imask_mask & int_mask) != 0;
+
+    return hexagon_thread_ints_enabled(thread_env)
+        && !hexagon_thread_is_busy(thread_env)
+        && !hexagon_int_disabled(thread_env, int_num)
+        && !int_is_masked;
 }
 
 bool hexagon_thread_is_busy(CPUHexagonState *thread_env)

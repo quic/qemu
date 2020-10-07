@@ -302,18 +302,41 @@ void hexagon_find_asserted_interrupts(CPUHexagonState *env, uint32_t *ints,
                                       size_t list_capacity, size_t *list_size);
 void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
                               HexagonCPU *threads[], size_t *list_size);
-HexagonCPU *hexagon_find_lowest_prio(CPUHexagonState *env);
+HexagonCPU *hexagon_find_lowest_prio(CPUHexagonState *env, uint32_t int_num);
 HexagonCPU *hexagon_find_lowest_prio_any_thread(HexagonCPU *threads[],
                                                 size_t list_size,
+                                                uint32_t int_num,
                                                 uint32_t *low_prio);
 HexagonCPU *hexagon_find_lowest_prio_waiting_thread(HexagonCPU *threads[],
                                                     size_t list_size,
+                                                    uint32_t int_num,
                                                     uint32_t *low_prio);
 
 /*
- * @return true if thread_env is in an interruptible state
+ * @return true if @a thread_env is in an interruptible state.
  */
-bool hexagon_thread_is_interruptible(CPUHexagonState *thread_env);
+bool hexagon_thread_is_interruptible(CPUHexagonState *thread_env, uint32_t int_num);
+
+/*
+ * @return true if the @a thread_env hardware thread has interrupts
+ * enabled.
+ */
+bool hexagon_thread_ints_enabled(CPUHexagonState *thread_env);
+
+/*
+ * @return true if interrupt number @a int_num is disabled.
+ */
+bool hexagon_int_disabled(CPUHexagonState *global_env, uint32_t int_num);
+
+/*
+ * Disable interrupt number @a int_num for the @a thread_env hardware thread.
+ */
+void hexagon_disable_int(CPUHexagonState *global_env, uint32_t int_num);
+
+/*
+ * Set the interrupt pending bits in the mask.
+ */
+void hexagon_set_interrupts(CPUHexagonState *global_env, uint32_t mask);
 
 /*
  * @return true if thread_env is busy with an interrupt or one is
@@ -327,6 +350,7 @@ bool hexagon_thread_is_busy(CPUHexagonState *thread_env);
  */
 HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
                                             size_t list_size,
+                                            uint32_t int_num,
                                             bool only_waiters,
                                             uint32_t *low_prio);
 void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
