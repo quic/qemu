@@ -79,11 +79,6 @@ static void hexagon_load_kernel(CPUHexagonState *env)
 static void hexagon_testboard_init(MachineState *machine, int board_id)
 {
     const struct MemmapEntry *memmap = hexagon_board_memmap;
-    printf("cpu_type = %s\nfilename = %s\nram_size = %lu/0x%lx\n",
-        machine->cpu_type,
-        machine->kernel_filename,
-        machine->ram_size, machine->ram_size);
-
     machine->enable_graphics = 0;
 
     DeviceState *dev;
