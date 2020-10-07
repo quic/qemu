@@ -75,9 +75,9 @@ static void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
     cpu_loop_exit_restore(cs, pc);
 }
 
-void HELPER(raise_exception)(CPUHexagonState *env, uint32_t exception)
+void QEMU_NORETURN HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
 {
-    do_raise_exception_err(env, exception, 0);
+    do_raise_exception_err(env, excp, 0);
 }
 
 static inline void log_reg_write(CPUHexagonState *env, int rnum,
@@ -331,72 +331,72 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
  * from the arch library), but one returns the register and the other
  * returns the predicate.
  */
-int32_t HELPER(sfrecipa_val)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
+int32_t HELPER(sfrecipa_val)(int32_t RsV, int32_t RtV)
 {
     /* int32_t PeV; Not needed to compute value */
     int32_t RdV;
-    fHIDE(int idx;)
-    fHIDE(int adjust;)
-    fHIDE(int mant;)
-    fHIDE(int exp;)
-    if (fSF_RECIP_COMMON(RsV, RtV, RdV, adjust)) {
+    int idx;
+    int adjust;
+    int mant;
+    int exp;
+    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust)) {
         /* PeV = adjust; Not needed to compute value */
         idx = (RtV >> 16) & 0x7f;
-        mant = (fSF_RECIP_LOOKUP(idx) << 15) | 1;
+        mant = (arch_recip_lookup(idx) << 15) | 1;
         exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
         RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
     }
     return RdV;
 }
 
-int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
+int32_t HELPER(sfrecipa_pred)(int32_t RsV, int32_t RtV)
 {
     int32_t PeV = 0;
     int32_t RdV;
-    fHIDE(int idx;)
-    fHIDE(int adjust;)
-    fHIDE(int mant;)
-    fHIDE(int exp;)
-    if (fSF_RECIP_COMMON(RsV, RtV, RdV, adjust)) {
+    int idx;
+    int adjust;
+    int mant;
+    int exp;
+    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust)) {
         PeV = adjust;
         idx = (RtV >> 16) & 0x7f;
-        mant = (fSF_RECIP_LOOKUP(idx) << 15) | 1;
+        mant = (arch_recip_lookup(idx) << 15) | 1;
         exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
         RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
     }
     return PeV;
 }
 
-int32_t HELPER(sfinvsqrta_val)(CPUHexagonState *env, int32_t RsV)
+int32_t HELPER(sfinvsqrta_val)(int32_t RsV)
 {
     /* int32_t PeV; Not needed for val version */
     int32_t RdV;
-    fHIDE(int idx;)
-    fHIDE(int adjust;)
-    fHIDE(int mant;)
-    fHIDE(int exp;)
-    if (fSF_INVSQRT_COMMON(RsV, RdV, adjust)) {
+    int idx;
+    int adjust;
+    int mant;
+    int exp;
+    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust)) {
         /* PeV = adjust; Not needed for val version */
         idx = (RsV >> 17) & 0x7f;
-        mant = (fSF_INVSQRT_LOOKUP(idx) << 15);
+        mant = (arch_invsqrt_lookup(idx) << 15);
         exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
         RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
     }
     return RdV;
 }
 
-int32_t HELPER(sfinvsqrta_pred)(CPUHexagonState *env, int32_t RsV)
+int32_t HELPER(sfinvsqrta_pred)(int32_t RsV)
 {
     int32_t PeV = 0;
     int32_t RdV;
-    fHIDE(int idx;)
-    fHIDE(int adjust;)
-    fHIDE(int mant;)
-    fHIDE(int exp;)
-    if (fSF_INVSQRT_COMMON(RsV, RdV, adjust)) {
+    int idx;
+    int adjust;
+    int mant;
+    int exp;
+    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust)) {
         PeV = adjust;
         idx = (RsV >> 17) & 0x7f;
-        mant = (fSF_INVSQRT_LOOKUP(idx) << 15);
+        mant = (arch_invsqrt_lookup(idx) << 15);
         exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
         RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
     }
@@ -407,10 +407,10 @@ int64_t HELPER(vacsh_val)(CPUHexagonState *env,
                            int64_t RxxV, int64_t RssV, int64_t RttV)
 {
     int32_t PeV = 0;
-    fHIDE(int i;)
-    fHIDE(int xv;)
-    fHIDE(int sv;)
-    fHIDE(int tv;)
+    int i;
+    int xv;
+    int sv;
+    int tv;
     for (i = 0; i < 4; i++) {
         xv = (int)fGETHALF(i, RxxV);
         sv = (int)fGETHALF(i, RssV);
@@ -428,10 +428,10 @@ int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
                            int64_t RxxV, int64_t RssV, int64_t RttV)
 {
     int32_t PeV = 0;
-    fHIDE(int i;)
-    fHIDE(int xv;)
-    fHIDE(int sv;)
-    fHIDE(int tv;)
+    int i;
+    int xv;
+    int sv;
+    int tv;
     for (i = 0; i < 4; i++) {
         xv = (int)fGETHALF(i, RxxV);
         sv = (int)fGETHALF(i, RssV);

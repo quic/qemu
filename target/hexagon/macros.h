@@ -719,8 +719,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
     } while (0)
 #define fSF_BIAS() 127
 #define fSF_MANTBITS() 23
-#define fSF_RECIP_LOOKUP(IDX) arch_recip_lookup(IDX)
-#define fSF_INVSQRT_LOOKUP(IDX) arch_invsqrt_lookup(IDX)
 #define fSF_MUL_POW2(A, B) \
     (fUNFLOAT(fFLOAT(A) * fFLOAT((fSF_BIAS() + (B)) << fSF_MANTBITS())))
 #define fSF_GETEXP(A) (((A) >> fSF_MANTBITS()) & 0xff)
