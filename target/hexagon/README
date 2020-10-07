@@ -179,7 +179,7 @@ important functions in this file are
 
     gen_start_packet - initialize the data structures for packet semantics
     gen_commit_packet - commit the register writes, stores, etc for a packet
-    decode_packet - disassemble a packet and generate code
+    decode_and_translate_packet - disassemble a packet and generate code
 
 genptr.c
 gen_tcg.h

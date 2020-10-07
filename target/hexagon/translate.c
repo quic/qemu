@@ -76,7 +76,7 @@ void gen_exception_debug(void)
 static void print_pkt(Packet *pkt)
 {
     char buf[PACKET_BUFFER_LEN];
-    snprint_a_pkt(buf, PACKET_BUFFER_LEN, pkt);
+    snprint_a_pkt_debug(buf, PACKET_BUFFER_LEN, pkt);
     HEX_DEBUG_LOG("%s", buf);
 }
 #define HEX_DEBUG_PRINT_PKT(pkt)  print_pkt(pkt)
@@ -661,7 +661,7 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
         return;
     }
 
-    if (decode_this(nwords, words, &pkt)) {
+    if (decode_packet(nwords, words, &pkt, false) > 0) {
         HEX_DEBUG_PRINT_PKT(&pkt);
         gen_start_packet(ctx, &pkt);
         for (i = 0; i < pkt.num_insns; i++) {

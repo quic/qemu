@@ -24,15 +24,9 @@
 
 extern void decode_init(void);
 
-static inline int is_packet_end(uint32_t word)
-{
-    uint32_t bits = (word >> 14) & 0x3;
-    return ((bits == 0x3) || (bits == 0x0));
-}
-
 extern void decode_send_insn_to(Packet *packet, int start, int newloc);
 
-extern Packet *decode_this(int max_words, uint32_t *words,
-                           Packet *decode_pkt);
+extern int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
+                         bool disas_only);
 
 #endif

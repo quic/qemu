@@ -202,12 +202,6 @@ static void decode_add_endloop_insn(Insn *insn, int loopnum)
     }
 }
 
-static inline int decode_parsebits_is_end(uint32_t encoding32)
-{
-    uint32_t bits = (encoding32 >> 14) & 0x3;
-    return ((bits == 0x3) || (bits == 0x0));
-}
-
 static inline int decode_parsebits_is_loopend(uint32_t encoding32)
 {
     uint32_t bits = (encoding32 >> 14) & 0x3;
@@ -308,13 +302,14 @@ decode_set_slot_number(Packet *pkt)
 }
 
 /*
- * do_decode_packet
+ * decode_packet
  * Decodes packet with given words
  * Returns negative on error, 0 on insufficient words,
  * and number of words used on success
  */
 
-static int do_decode_packet(int max_words, const uint32_t *words, Packet *pkt)
+int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
+                  bool disas_only)
 {
     int num_insns = 0;
     int words_read = 0;
@@ -329,7 +324,7 @@ static int do_decode_packet(int max_words, const uint32_t *words, Packet *pkt)
     /* Try to build packet */
     while (!end_of_packet && (words_read < max_words)) {
         encoding32 = words[words_read];
-        end_of_packet = decode_parsebits_is_end(encoding32);
+        end_of_packet = is_packet_end(encoding32);
         new_insns = decode_insns(&pkt->insn[num_insns], encoding32);
         /*
          * If we saw an extender, mark next word extended so immediate
@@ -372,7 +367,9 @@ static int do_decode_packet(int max_words, const uint32_t *words, Packet *pkt)
     }
 
     errors += decode_apply_extenders(pkt);
-    errors += decode_remove_extenders(pkt);
+    if (!disas_only) {
+        errors += decode_remove_extenders(pkt);
+    }
     errors += decode_set_slot_number(pkt);
     errors += decode_fill_newvalue_regno(pkt);
 
@@ -380,9 +377,12 @@ static int do_decode_packet(int max_words, const uint32_t *words, Packet *pkt)
         errors += mmvec_ext_decode_checks(pkt);
     }
 
-    errors += decode_shuffle_for_execution(pkt);
-    errors += decode_split_cmpjump(pkt);
-    errors += decode_set_insn_attr_fields(pkt);
+    if (!disas_only) {
+        errors += decode_shuffle_for_execution(pkt);
+        errors += decode_split_cmpjump(pkt);
+        errors += decode_set_insn_attr_fields(pkt);
+    }
+
     if (errors) {
         return -1;
     }

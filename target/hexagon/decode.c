@@ -596,24 +596,14 @@ get_valid_slot_str(const Packet *pkt, unsigned int slot)
 
 #include "q6v_decode.c"
 
-Packet *decode_this(int max_words, uint32_t *words, Packet *decode_pkt)
-{
-    int ret;
-    ret = do_decode_packet(max_words, words, decode_pkt);
-    if (ret <= 0) {
-        /* ERROR or BAD PARSE */
-        return NULL;
-    }
-    return decode_pkt;
-}
-
 /* Used for "-d in_asm" logging */
-int disassemble_hexagon(uint32_t *words, int nwords, char *buf, int bufsize)
+int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc,
+                        char *buf, int bufsize)
 {
     Packet pkt;
 
-    if (decode_this(nwords, words, &pkt)) {
-        snprint_a_pkt(buf, bufsize, &pkt);
+    if (decode_packet(nwords, words, &pkt, true) > 0) {
+        snprint_a_pkt_disas(buf, bufsize, &pkt, words, pc);
         return pkt.encod_pkt_size_in_bytes;
     } else {
         snprintf(buf, bufsize, "<invalid>");

@@ -29,7 +29,13 @@
 
 #define PACKET_WORDS_MAX         4
 
-extern int disassemble_hexagon(uint32_t *words, int nwords,
+static inline int is_packet_end(uint32_t word)
+{
+    uint32_t bits = (word >> 14) & 0x3;
+    return ((bits == 0x3) || (bits == 0x0));
+}
+
+extern int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc,
                                char *buf, int bufsize);
 
 #endif

@@ -50,27 +50,95 @@ static void snprintinsn(char *buf, int n, Insn * insn)
     }
 }
 
-void snprint_a_pkt(char *buf, int n, Packet *pkt)
+void snprint_a_pkt_disas(char *buf, int n, Packet *pkt, uint32_t *words,
+                         target_ulong pc)
 {
     char tmpbuf[128];
     buf[0] = '\0';
-    int i, slot, opcode;
+    bool has_endloop0 = false;
+    bool has_endloop1 = false;
+    bool has_endloop01 = false;
 
-    if (pkt == NULL) {
-        snprintf(buf, n, "<printpkt: NULL ptr>");
-        return;
+    for (int i = 0; i < pkt->num_insns; i++) {
+        if (pkt->insn[i].part1) {
+            continue;
+        }
+
+        /* We'll print the endloop's at the end of the packet */
+        if (pkt->insn[i].opcode == J2_endloop0) {
+            has_endloop0 = true;
+            continue;
+        }
+        if (pkt->insn[i].opcode == J2_endloop1) {
+            has_endloop1 = true;
+            continue;
+        }
+        if (pkt->insn[i].opcode == J2_endloop01) {
+            has_endloop01 = true;
+            continue;
+        }
+
+        snprintf(tmpbuf, 127, "0x" TARGET_FMT_lx "\t", words[i]);
+        strncat(buf, tmpbuf, n);
+
+        if (i == 0) {
+            strncat(buf, "{", n);
+        }
+
+        snprintinsn(tmpbuf, 127, &(pkt->insn[i]));
+        strncat(buf, "\t", n);
+        strncat(buf, tmpbuf, n);
+
+        if (i < pkt->num_insns - 1) {
+            /*
+             * Subinstructions are two instructions encoded
+             * in the same word. Print them on the same line.
+             */
+            if (GET_ATTRIB(pkt->insn[i].opcode, A_SUBINSN)) {
+                strncat(buf, "; ", n);
+                snprintinsn(tmpbuf, 127, &(pkt->insn[i + 1]));
+                strncat(buf, tmpbuf, n);
+                i++;
+            } else if (pkt->insn[i + 1].opcode != J2_endloop0 &&
+                       pkt->insn[i + 1].opcode != J2_endloop1 &&
+                       pkt->insn[i + 1].opcode != J2_endloop01) {
+                pc += 4;
+                snprintf(tmpbuf, 127, "\n0x" TARGET_FMT_lx ":  ", pc);
+                strncat(buf, tmpbuf, n);
+            }
+        }
     }
+    strncat(buf, " }", n);
+    if (has_endloop0) {
+        strncat(buf, "  :endloop0", n);
+    }
+    if (has_endloop1) {
+        strncat(buf, "  :endloop1", n);
+    }
+    if (has_endloop01) {
+        strncat(buf, "  :endloop01", n);
+    }
+    strncat(buf, "\n", n);
+}
+
+void snprint_a_pkt_debug(char *buf, int n, Packet *pkt)
+{
+    char tmpbuf[128];
+    buf[0] = '\0';
+    int slot, opcode;
 
     if (pkt->num_insns > 1) {
         strncat(buf, "\n{\n", n);
     }
-    for (i = 0; i < pkt->num_insns; i++) {
+
+    for (int i = 0; i < pkt->num_insns; i++) {
         if (pkt->insn[i].part1) {
             continue;
         }
         snprintinsn(tmpbuf, 127, &(pkt->insn[i]));
         strncat(buf, "\t", n);
         strncat(buf, tmpbuf, n);
+
         if (GET_ATTRIB(pkt->insn[i].opcode, A_SUBINSN)) {
             strncat(buf, " //subinsn", n);
         }
@@ -88,4 +156,3 @@ void snprint_a_pkt(char *buf, int n, Packet *pkt)
         strncat(buf, "}\n", n);
     }
 }
-

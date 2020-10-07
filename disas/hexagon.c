@@ -32,15 +32,14 @@
 int print_insn_hexagon(bfd_vma memaddr, struct disassemble_info *info)
 {
     uint32_t words[PACKET_WORDS_MAX];
-    int len, slen;
+    bool found_end = false;
     char buf[PACKET_BUFFER_LEN];
-    int status;
     int i;
 
-    for (i = 0; i < PACKET_WORDS_MAX; i++) {
-        status = (*info->read_memory_func)(memaddr + i * sizeof(uint32_t),
-                                           (bfd_byte *)&words[i],
-                                           sizeof(uint32_t), info);
+    for (i = 0; i < PACKET_WORDS_MAX && !found_end; i++) {
+        int status = (*info->read_memory_func)(memaddr + i * sizeof(uint32_t),
+                                               (bfd_byte *)&words[i],
+                                               sizeof(uint32_t), info);
         if (status) {
             if (i > 0) {
                 break;
@@ -48,10 +47,18 @@ int print_insn_hexagon(bfd_vma memaddr, struct disassemble_info *info)
             (*info->memory_error_func)(status, memaddr, info);
             return status;
         }
+        if (is_packet_end(words[i])) {
+            found_end = true;
+        }
     }
 
-    len = disassemble_hexagon(words, i, buf, PACKET_BUFFER_LEN);
-    slen = strlen(buf);
+    if (!found_end) {
+        (*info->fprintf_func)(info->stream, "<invalid>");
+        return PACKET_WORDS_MAX * 4;
+    }
+
+    int len = disassemble_hexagon(words, i, memaddr, buf, PACKET_BUFFER_LEN);
+    int slen = strlen(buf);
     if (buf[slen - 1] == '\n') {
         buf[slen - 1] = '\0';
     }
