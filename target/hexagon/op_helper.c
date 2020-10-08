@@ -1265,6 +1265,9 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
 
         HexagonCPU *int_thread =
             hexagon_find_lowest_prio_any_thread(threads, threads_count, int_num, NULL);
+        if (!int_thread) {
+            continue;
+        }
         hexagon_raise_interrupt(env, int_thread, int_num);
     }
 
@@ -1392,7 +1395,9 @@ void HELPER(pending_interrupt)(CPUHexagonState *env)
             continue;
         }
         CPUHexagonState *thread_env = &int_thread->env;
-
+        if (!hexagon_thread_is_interruptible(thread_env, intnum)) {
+            continue;
+        }
         hexagon_raise_interrupt(thread_env, int_thread, intnum);
     }
 }
