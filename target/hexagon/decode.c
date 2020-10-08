@@ -583,8 +583,7 @@ static int decode_remove_extenders(Packet *packet)
     return 0;
 }
 
-static const char *
-get_valid_slot_str(const Packet *pkt, unsigned int slot)
+static SlotMask get_valid_slots(const Packet *pkt, unsigned int slot)
 {
     if (GET_ATTRIB(pkt->insn[slot].opcode, A_EXTENSION)) {
         return mmvec_ext_decode_find_iclass_slots(pkt->insn[slot].opcode);

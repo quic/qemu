@@ -19,6 +19,7 @@
 #include "decode.h"
 #include "opcodes.h"
 #include "insn.h"
+#include "iclass.h"
 #include "printinsn.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/decode_ext_mmvec.h"
@@ -616,24 +617,23 @@ decode_hvx_packet_contents(Packet *pkt)
  * Public Functions
  */
 
-const char *
-mmvec_ext_decode_find_iclass_slots(int opcode)
+SlotMask mmvec_ext_decode_find_iclass_slots(int opcode)
 {
     if (GET_ATTRIB(opcode, A_CVI_VM)) {
         if (GET_ATTRIB(opcode, A_RESTRICT_SLOT0ONLY)) {
-            return "0";
+            return SLOTS_0;
         } else if (GET_ATTRIB(opcode, A_RESTRICT_SLOT1ONLY)) {
-            return "1";
+            return SLOTS_1;
         }
-        return "01";
+        return SLOTS_01;
     } else if (GET_ATTRIB(opcode, A_RESTRICT_SLOT2ONLY)) {
-        return "2";
+        return SLOTS_2;
     } else if (GET_ATTRIB(opcode, A_CVI_VX)) {
-        return "23";
+        return SLOTS_23;
     } else if (GET_ATTRIB(opcode, A_CVI_VS_VX)) {
-        return "23";
+        return SLOTS_23;
     } else {
-        return "0123";
+        return SLOTS_0123;
     }
 }
 

@@ -35,6 +35,16 @@ enum {
     NUM_ICLASSES
 };
 
-extern const char *find_iclass_slots(Opcode opcode, int itype);
+typedef enum {
+    SLOTS_0          = (1 << 0),
+    SLOTS_1          = (1 << 1),
+    SLOTS_2          = (1 << 2),
+    SLOTS_3          = (1 << 3),
+    SLOTS_01         = SLOTS_0 | SLOTS_1,
+    SLOTS_23         = SLOTS_2 | SLOTS_3,
+    SLOTS_0123       = SLOTS_0 | SLOTS_1 | SLOTS_2 | SLOTS_3,
+} SlotMask;
+
+extern SlotMask find_iclass_slots(Opcode opcode, int itype);
 
 #endif

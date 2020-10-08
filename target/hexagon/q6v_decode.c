@@ -215,12 +215,11 @@ decode_set_slot_number(Packet *pkt)
     int i;
     int hit_mem_insn = 0;
     int hit_duplex = 0;
-    const char *valid_slot_str;
 
     for (i = 0, slot = 3; i < pkt->num_insns; i++) {
-        valid_slot_str = get_valid_slot_str(pkt, i);
+        SlotMask valid_slots = get_valid_slots(pkt, i);
 
-        while (strchr(valid_slot_str, '0' + slot) == NULL) {
+        while (!(valid_slots & (1 << slot))) {
             slot--;
         }
         pkt->insn[i].slot = slot;
