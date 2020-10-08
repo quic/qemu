@@ -133,6 +133,7 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     for (i = 0; i < STORES_MAX; i++) {
         ctx->store_width[i] = 0;
     }
+    ctx->s1_store_processed = 0;
 
 #if HEX_DEBUG
     /* Handy place to set a breakpoint before the packet executes */
@@ -304,8 +305,17 @@ static inline void gen_check_store_width(DisasContext *ctx, int slot_num)
 #define HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num)  /* nothing */
 #endif
 
-static void process_store(DisasContext *ctx, int slot_num)
+void process_store(DisasContext *ctx, int slot_num)
 {
+    /*
+     * We may have already processed this store
+     * See CHECK_NOSHUF in macros.h
+     */
+    if (slot_num == 1 && ctx->s1_store_processed) {
+        return;
+    }
+    ctx->s1_store_processed = 1;
+
     TCGv cancelled = tcg_temp_new();
     TCGLabel *label_end = gen_new_label();
 

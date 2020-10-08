@@ -91,47 +91,47 @@
  * in the same packet.  When we see this, we call a helper that merges the
  * bytes from the store buffer with the value loaded from memory.
  */
-#define CHECK_NOSHUF(DST, VA, SZ, SIGN) \
+#define CHECK_NOSHUF \
     do { \
         if (insn->slot == 0 && pkt->pkt_has_store_s1) { \
-            gen_helper_merge_inflight_store##SZ##SIGN(DST, cpu_env, VA, DST); \
+            process_store(ctx, 1); \
         } \
     } while (0)
 
 #define MEM_LOAD1s(DST, VA) \
     do { \
+        CHECK_NOSHUF; \
         tcg_gen_qemu_ld8s(DST, VA, ctx->mem_idx); \
-        CHECK_NOSHUF(DST, VA, 1, s); \
     } while (0)
 #define MEM_LOAD1u(DST, VA) \
     do { \
+        CHECK_NOSHUF; \
         tcg_gen_qemu_ld8u(DST, VA, ctx->mem_idx); \
-        CHECK_NOSHUF(DST, VA, 1, u); \
     } while (0)
 #define MEM_LOAD2s(DST, VA) \
     do { \
+        CHECK_NOSHUF; \
         tcg_gen_qemu_ld16s(DST, VA, ctx->mem_idx); \
-        CHECK_NOSHUF(DST, VA, 2, s); \
     } while (0)
 #define MEM_LOAD2u(DST, VA) \
     do { \
+        CHECK_NOSHUF; \
         tcg_gen_qemu_ld16u(DST, VA, ctx->mem_idx); \
-        CHECK_NOSHUF(DST, VA, 2, u); \
     } while (0)
 #define MEM_LOAD4s(DST, VA) \
     do { \
+        CHECK_NOSHUF; \
         tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
-        CHECK_NOSHUF(DST, VA, 4, s); \
     } while (0)
 #define MEM_LOAD4u(DST, VA) \
     do { \
+        CHECK_NOSHUF; \
         tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
-        CHECK_NOSHUF(DST, VA, 4, u); \
     } while (0)
 #define MEM_LOAD8u(DST, VA) \
     do { \
+        CHECK_NOSHUF; \
         tcg_gen_qemu_ld64(DST, VA, ctx->mem_idx); \
-        CHECK_NOSHUF(DST, VA, 8, u); \
     } while (0)
 
 #define MEM_STORE1_FUNC(X) \

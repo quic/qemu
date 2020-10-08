@@ -28,7 +28,8 @@ from hex_common import *
 ## Helpers for gen_tcg_func
 ##
 def gen_decl_ea_tcg(f, tag):
-    if ('A_CONDEXEC' in attribdict[tag]):
+    if ('A_CONDEXEC' in attribdict[tag] or
+        'A_LOAD' in attribdict[tag]):
         f.write("    TCGv EA = tcg_temp_local_new();\n")
     else:
         f.write("    TCGv EA = tcg_temp_new();\n")

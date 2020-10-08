@@ -27,12 +27,5 @@ DEF_HELPER_FLAGS_1(sfinvsqrta_val, TCG_CALL_NO_RWG_SE, s32, s32)
 DEF_HELPER_FLAGS_1(sfinvsqrta_pred, TCG_CALL_NO_RWG_SE, s32, s32)
 DEF_HELPER_4(vacsh_val, s64, env, s64, s64, s64)
 DEF_HELPER_4(vacsh_pred, s32, env, s64, s64, s64)
-DEF_HELPER_FLAGS_3(merge_inflight_store1s, TCG_CALL_NO_WG, s32, env, s32, s32)
-DEF_HELPER_FLAGS_3(merge_inflight_store1u, TCG_CALL_NO_WG, s32, env, s32, s32)
-DEF_HELPER_FLAGS_3(merge_inflight_store2s, TCG_CALL_NO_WG, s32, env, s32, s32)
-DEF_HELPER_FLAGS_3(merge_inflight_store2u, TCG_CALL_NO_WG, s32, env, s32, s32)
-DEF_HELPER_FLAGS_3(merge_inflight_store4s, TCG_CALL_NO_WG, s32, env, s32, s32)
-DEF_HELPER_FLAGS_3(merge_inflight_store4u, TCG_CALL_NO_WG, s32, env, s32, s32)
-DEF_HELPER_FLAGS_3(merge_inflight_store8u, TCG_CALL_NO_WG, s64, env, s32, s64)
 
 #include "helper_protos_generated.h"

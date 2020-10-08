@@ -31,6 +31,7 @@ typedef struct DisasContext {
     int preg_log[PRED_WRITES_MAX];
     int preg_log_idx;
     uint8_t store_width[STORES_MAX];
+    uint8_t s1_store_processed;
     int temp_vregs_idx;
     int temp_qregs_idx;
     int vreg_log[NUM_VREGS];
@@ -117,5 +118,5 @@ extern void gen_exception(int excp);
 extern void gen_exception_debug(void);
 
 extern void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n);
-
+extern void process_store(DisasContext *ctx, int slot_num);
 #endif
