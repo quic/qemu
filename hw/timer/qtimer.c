@@ -33,7 +33,7 @@
 /* Common timer implementation.  */
 
 //#define QTIMER_DEFAULT_FREQ_HZ 19200000ULL
-#define QTIMER_DEFAULT_FREQ_HZ   192000ULL
+#define QTIMER_DEFAULT_FREQ_HZ   19200000ULL
 #define QTMR_TIMER_INDEX_MASK (0xf000)
 #define HIGH_32(val) (0x0ffffffffULL & (val >> 32))
 #define LOW_32(val) (0x0ffffffffULL & val)
@@ -238,13 +238,13 @@ static uint64_t hex_timer_read(void *opaque, hwaddr offset, unsigned size)
         case (QTMR_CNTP_CVAL_HI): /* TimerLoad */
             return HIGH_32((s->cntval));
         case QTMR_CNTPCT_LO:
-            return LOW_32((s->cntpct + (s->limit - ptimer_get_count(s->timer))));
+            return LOW_32((s->cntpct + (ptimer_get_count(s->timer))));
         case QTMR_CNTPCT_HI:
-            return HIGH_32((s->cntpct + (s->limit - ptimer_get_count(s->timer))));
+            return HIGH_32((s->cntpct + (ptimer_get_count(s->timer))));
         case (QTMR_CNTP_TVAL): /* CVAL - CNTP */
             return (s->cntval -
-                    (HIGH_32((s->cntpct + (s->limit - ptimer_get_count(s->timer)))) +
-                     LOW_32((s->cntpct + (s->limit - ptimer_get_count(s->timer))))));
+                    (HIGH_32((s->cntpct + (ptimer_get_count(s->timer)))) +
+                     LOW_32((s->cntpct + (ptimer_get_count(s->timer))))));
 
         case (QTMR_CNTP_CTL): /* TimerMIS */
             return s->int_level;
@@ -271,7 +271,6 @@ static void hex_timer_write(void *opaque, hwaddr offset,
                             uint64_t value, unsigned size)
 {
     hex_timer_state *s = (hex_timer_state *)opaque;
-    int freq;
     HEX_TIMER_LOG("\ta timer write: %lu, %lu\n", offset, value);
 
     switch (offset) {
@@ -283,9 +282,10 @@ static void hex_timer_write(void *opaque, hwaddr offset,
               HEX_TIMER_LOG ("s->cntcval        = %d\n", s->cntval);
               HEX_TIMER_LOG ("value - cntcval   = %d\n", value - s->cntval);
              */
-            //HEX_TIMER_LOG ("%d: value - cntcval   = %d\n", s->devid, value - s->cntval);
-            s->limit = value - s->cntval;
+            HEX_TIMER_LOG("value(%ld) - cntcval(%ld) = %ld\n",
+                           value, s->cntval, value - s->cntval);
             s->int_level = 0;
+            s->cntval = value;
             ptimer_transaction_begin(s->timer);
             if (s->control & QTMR_CNTP_CTL_ENABLE) {
                 /* Pause the timer if it is running.  This may cause some
@@ -293,8 +293,9 @@ static void hex_timer_write(void *opaque, hwaddr offset,
                 ptimer_stop(s->timer);
             }
             hex_timer_recalibrate(s, 1);
-            if (s->control & QTMR_CNTP_CTL_ENABLE)
+            if (s->control & QTMR_CNTP_CTL_ENABLE) {
                 ptimer_run(s->timer, 0);
+            }
             ptimer_transaction_commit(s->timer);
             break;
         case (QTMR_CNTP_CVAL_HI):
@@ -310,11 +311,12 @@ static void hex_timer_write(void *opaque, hwaddr offset,
                 ptimer_stop(s->timer);
             }
             s->control = value;
-            freq = s->freq;
             hex_timer_recalibrate(s, s->control & QTMR_CNTP_CTL_ENABLE);
-            ptimer_set_freq(s->timer, freq);
-            if (s->control & QTMR_CNTP_CTL_ENABLE)
+            ptimer_set_freq(s->timer, s->freq);
+            ptimer_set_period(s->timer, 1);
+            if (s->control & QTMR_CNTP_CTL_ENABLE) {
                 ptimer_run(s->timer, 0);
+            }
             ptimer_transaction_commit(s->timer);
             break;
         case (QTMR_CNTP_TVAL): /* CVAL - CNTP */
@@ -324,10 +326,12 @@ static void hex_timer_write(void *opaque, hwaddr offset,
                    inaccuracy due to rounding, but avoids other issues. */
                 ptimer_stop(s->timer);
             }
-            s->limit = ((s->cntpct + (s->limit - ptimer_get_count(s->timer)))) + value;
-            s->cntval = s->limit;
-            if (s->control & QTMR_CNTP_CTL_ENABLE)
+            s->cntval = s->cntpct + value;
+            ptimer_set_freq(s->timer, s->freq);
+            ptimer_set_period(s->timer, 1);
+            if (s->control & QTMR_CNTP_CTL_ENABLE) {
                 ptimer_run(s->timer, 0);
+            }
             ptimer_transaction_commit(s->timer);
             break;
         default:
@@ -341,15 +345,13 @@ static void hex_timer_write(void *opaque, hwaddr offset,
 static void hex_timer_tick(void *opaque)
 {
     hex_timer_state *s = (hex_timer_state *)opaque;
-    uint64_t count = ptimer_get_count(s->timer);
-    if (s->int_level == 1)
-        HEX_TIMER_LOG ("%d: --------------------------NEXT TICK before isr finished -----------------\n", s->devid);
-    else
-        HEX_TIMER_LOG ("%d: --------------------------NEXT TICK AFTER isr finished -----------------\n", s->devid);
-    s->cntval += count;
-    s->cntpct += count;
-    s->int_level = 1;
-    hex_timer_update(s);
+    s->cntpct += s->limit;
+    if (s->cntpct >= s->cntval) {
+        s->int_level = 1;
+        hex_timer_update(s);
+        ptimer_stop(s->timer);
+        HEX_TIMER_LOG("\nFIRE!!! %ld\n", s->cntpct);
+    }
 }
 
 static const MemoryRegionOps hex_timer_ops = {
@@ -409,6 +411,7 @@ static hex_timer_state *hex_timer_init(hex_timer_state *s, uint32_t freq)
     hex_timer_write(s, QTMR_CNTP_TVAL, 27428, 0);
     hex_timer_write(s, QTMR_CNTP_CTL, 1, 0);
 #endif
+
     return s;
 }
 
@@ -423,9 +426,9 @@ static void hex_timer_realize(DeviceState *dev, Error **errp)
 static Property hex_timer_properties[] = {
     DEFINE_PROP_UINT32("control", hex_timer_state, control, 0),
     DEFINE_PROP_UINT32("cnt_ctrl", hex_timer_state, cnt_ctrl, 0),
-    DEFINE_PROP_UINT64("cntpct", hex_timer_state, cntpct, 0),
     DEFINE_PROP_UINT64("cntval", hex_timer_state, cntval, 0),
-    DEFINE_PROP_UINT64("limit", hex_timer_state, limit, 0),
+    DEFINE_PROP_UINT64("cntpct", hex_timer_state, cntpct, 0),
+    DEFINE_PROP_UINT64("limit", hex_timer_state, limit, 1),
     DEFINE_PROP_INT32("int_level", hex_timer_state, int_level, 0),
     DEFINE_PROP_END_OF_LIST(),
 };

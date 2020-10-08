@@ -23,7 +23,7 @@
 #define QTMR_BASE ((CSR_BASE) + 0x20000)
 #define QTMR_CNTP1_CTL ((uint32_t *)((QTMR_BASE) + 0x102c))
 #define QTMR_CNTP1_TVAL ((uint32_t *)((QTMR_BASE) + 0x1028))
-#define QTMR_FREQ 192000
+#define QTMR_FREQ 19200000ULL
 
 #if 0
 #define DEBUG printf
