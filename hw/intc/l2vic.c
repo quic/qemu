@@ -49,7 +49,7 @@ typedef struct L2VICState {
     uint32_t int_enable_clear;    /* Clear (set to 0) corresponding bit in int_enable */
     uint32_t int_enable_set;      /* Set (to 1) corresponding bit in int_enable */
     uint32_t int_pending[INT_COUNT]; /* Present for debugging, not used */
-    uint32_t int_soft[INT_COUNT];   /* Generate an interrupt, not used */
+    uint32_t int_soft;   /* Generate an interrupt */
     uint32_t int_status[INT_COUNT]; /* Which enabled interrupt is active */
     uint32_t int_type[INT_COUNT];  /* Edge or Level interrupt */
     qemu_irq irq[8];
@@ -184,38 +184,45 @@ static void l2vic_write(void *opaque, hwaddr offset,
 
     if (offset >= L2VIC_INT_ENABLEn &&
         offset <  (L2VIC_INT_ENABLEn + ARRAY_SIZE(s->int_enable)) ) {
-        L2VICA(s->int_enable, offset-L2VIC_INT_ENABLEn) = val;
-    }
-    else if (offset >= (L2VIC_INT_ENABLEn + ARRAY_SIZE(s->int_enable)) &&
+        L2VICA(s->int_enable, offset - L2VIC_INT_ENABLEn) = val;
+    } else if (offset >= (L2VIC_INT_ENABLEn + ARRAY_SIZE(s->int_enable)) &&
         offset <  L2VIC_INT_ENABLE_CLEARn) {
         qemu_log_mask(LOG_UNIMP, "%s: offset %x\n", __func__, (int) offset);
-    }
-    else if (offset >= L2VIC_INT_ENABLE_CLEARn &&
+    } else if (offset >= L2VIC_INT_ENABLE_CLEARn &&
              offset < L2VIC_INT_ENABLE_SETn) {
-        L2VICA(s->int_enable, offset-L2VIC_INT_ENABLE_CLEARn) &= ~val;
-    }
-    else if (offset >= L2VIC_INT_ENABLE_SETn &&
+        L2VICA(s->int_enable, offset - L2VIC_INT_ENABLE_CLEARn) &= ~val;
+    } else if (offset >= L2VIC_INT_ENABLE_SETn &&
              offset < L2VIC_INT_TYPEn) {
-        L2VICA(s->int_status, offset-L2VIC_INT_ENABLE_SETn) &= ~val;
-        L2VICA(s->int_enable, offset-L2VIC_INT_ENABLE_SETn) |= val;
-        /* This will also clear int_status bit. */
-        //qemu_set_irq(s->irq[2], 0);
-    }
-    else if (offset >= L2VIC_INT_TYPEn &&
-             offset < L2VIC_INT_TYPEn+0x80) {
-        L2VICA(s->int_type, offset-L2VIC_INT_TYPEn) = val;
-    }
-    else if (offset >= L2VIC_INT_STATUSn &&
+        L2VICA(s->int_status, offset - L2VIC_INT_ENABLE_SETn) &= ~val;
+        L2VICA(s->int_enable, offset - L2VIC_INT_ENABLE_SETn) |= val;
+    } else if (offset >= L2VIC_INT_TYPEn &&
+             offset < L2VIC_INT_TYPEn + 0x80) {
+        L2VICA(s->int_type, offset - L2VIC_INT_TYPEn) = val;
+    } else if (offset >= L2VIC_INT_STATUSn &&
              offset < L2VIC_INT_CLEARn) {
-        L2VICA(s->int_status, offset-L2VIC_INT_STATUSn) = val;
-    }
-    else if (offset >= L2VIC_INT_CLEARn &&
+        L2VICA(s->int_status, offset - L2VIC_INT_STATUSn) = val;
+    } else if (offset >= L2VIC_INT_CLEARn &&
              offset < L2VIC_SOFT_INTn) {
-        L2VICA(s->int_clear, offset-L2VIC_INT_CLEARn) = val;
-    }
-    else if (offset >= L2VIC_INT_PENDINGn &&
+        L2VICA(s->int_clear, offset - L2VIC_INT_CLEARn) = val;
+    } else if (offset >= L2VIC_SOFT_INTn &&
+             offset < L2VIC_INT_PENDINGn) {
+        L2VICA(s->int_enable, offset - L2VIC_SOFT_INTn) |= val;
+        L2VICA(s->int_pending, offset - L2VIC_SOFT_INTn) |= val;
+        /*
+         *  Need to reverse engineer the actual irq number.
+         */
+        int irq = 0;
+        if ((offset - L2VIC_SOFT_INTn) > 7) {
+            irq = 64 + find_first_bit(&val, 32);
+        } else if ((offset - L2VIC_SOFT_INTn) > 3) {
+            irq = 32 + find_first_bit(&val, 32);
+        } else {
+            irq = find_first_bit(&val, 32);
+        }
+        l2vic_set_irq(opaque, irq, 1);
+    } else if (offset >= L2VIC_INT_PENDINGn &&
              offset < L2VIC_INT_PENDINGn + 0x80) {
-        L2VICA(s->int_pending, offset-L2VIC_INT_PENDINGn) = val;
+        L2VICA(s->int_pending, offset - L2VIC_INT_PENDINGn) = val;
     }
     qemu_mutex_unlock(&s->active);
     return;
@@ -236,9 +243,9 @@ static void l2vic_reset(DeviceState *d)
     memset(s->int_clear, 0, sizeof(s->int_clear));
     memset(s->int_enable, 0, sizeof(s->int_enable));
     memset(s->int_pending, 0, sizeof(s->int_pending));
-    memset(s->int_soft, 0, sizeof(s->int_soft));
     memset(s->int_status, 0, sizeof(s->int_status));
     memset(s->int_type, 0, sizeof(s->int_type));
+    s->int_soft = 0;
 
     l2vic_update(s, 0);
 }
@@ -270,7 +277,7 @@ static const VMStateDescription vmstate_l2vic = {
         VMSTATE_UINT32_ARRAY(int_type, L2VICState, INT_COUNT),
         VMSTATE_UINT32_ARRAY(int_status, L2VICState, INT_COUNT),
         VMSTATE_UINT32_ARRAY(int_clear, L2VICState, INT_COUNT),
-        VMSTATE_UINT32_ARRAY(int_soft, L2VICState, INT_COUNT),
+        VMSTATE_UINT32(int_soft, L2VICState),
         VMSTATE_UINT32_ARRAY(int_pending, L2VICState, INT_COUNT),
         VMSTATE_END_OF_LIST()
     }

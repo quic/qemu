@@ -252,7 +252,7 @@ static void fastl2vic_write(void *opaque, hwaddr offset,
 
         uint32_t cmd = (val >> 16) & 0x3;
         uint32_t irq = val & 0x3ff;
-        uint32_t slice = (irq / 8);
+        uint32_t slice = (irq / 32) * 4;
         val = 1 << (irq % 32);
 
         if (cmd == 0x0) {
