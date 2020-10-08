@@ -27,6 +27,7 @@ TESTS += \
 	pcycle \
 	framelimit \
 	float_excp \
+	hvx_nocoproc \
 	$()
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
@@ -63,6 +64,7 @@ wait: wait.o
 pcycle: pcycle.o
 framelimit: framelimit.o
 float_excp: float_excp.o
+hvx_nocoproc: hvx_nocoproc.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -76,6 +78,7 @@ memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
 standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
 
 standalone_vec.o: CFLAGS+= -mv67 -O2 -mhvx  -fvectorize
+hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
@@ -84,17 +87,12 @@ qtimer_test: LDFLAGS+= -lhexagon
 QEMU_BASE_MACHINE=-M hexagon_testboard -cpu v67,count-gcycle-xt=on
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel
 
-# framelimit raises an exception and returns 255 to the shell
 run-framelimit: framelimit
-	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)"); \
-	if [ $$? -eq 255 ] ; then \
-		return 0; \
-	else \
-		return -1; \
-	fi
-
-# float_excp raises an exception and returns 255 to the shell
+run-hvx_nocoproc: hvx_nocoproc
 run-float_excp: float_excp
+
+# These tests raise an exception and return 255 to the shell
+run-framelimit run-hvx_nocoproc run-float_excp:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)"); \
 	if [ $$? -eq 255 ] ; then \
 		return 0; \

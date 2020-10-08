@@ -583,6 +583,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
           printf("0x%X, Floating-Point: Execution of Floating-Point "
                  "instruction resulted in exception",
                  HEX_CAUSE_FPTRAP_CAUSE_BADFLOAT);
+      case HEX_CAUSE_NO_COPROC_ENABLE:
+          printf("0x%x, Illegal Execution of Coprocessor Instruction",
+                 HEX_CAUSE_NO_COPROC_ENABLE);
           break;
       default:
           printf("Don't know");
@@ -941,6 +944,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         case HEX_CAUSE_MISALIGNED_LOAD:
         case HEX_CAUSE_MISALIGNED_STORE:
         case HEX_CAUSE_PC_NOT_ALIGNED:
+        case HEX_CAUSE_NO_COPROC_ENABLE:
             qemu_log_mask(CPU_LOG_MMU,
                 "MMU permission exception (0x%x) caught: "
                 "Cause code (0x%x) "
