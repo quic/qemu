@@ -47,12 +47,12 @@ static const struct MemmapEntry {
         [HEXAGON_L2CFG] = { 0xd81a0000, 0x0 },
         [HEXAGON_FASTL2VIC] = { 0xd81e0000, 0x10000 },
         [HEXAGON_TCM] = { 0xd8400000, 0x100000 },
-        [HEXAGON_CSR1] = { 0xfab00000, 0x0 },
-        [HEXAGON_L2VIC] = { 0xfab10000, 0x1000 },
-        [HEXAGON_QTMR_RG0] = { 0xfab21000, 0x1000 },
-        [HEXAGON_QTMR_RG1] = { 0xfab22000, 0x1000 },
-        [HEXAGON_CSR2] = { 0xfab40000, 0x0 },
-        [HEXAGON_QTMR2] = { 0xfab60000, 0x0 },
+        [HEXAGON_CSR1] = { 0xfc900000, 0x0 },
+        [HEXAGON_L2VIC] = { 0xfc910000, 0x1000 },
+        [HEXAGON_QTMR_RG0] = { 0xfc921000, 0x1000 },
+        [HEXAGON_QTMR_RG1] = { 0xfc922000, 0x1000 },
+        [HEXAGON_CSR2] = { 0xfc940000, 0x0 },
+        [HEXAGON_QTMR2] = { 0xfc960000, 0x0 },
 };
 
 /* Board init.  */
