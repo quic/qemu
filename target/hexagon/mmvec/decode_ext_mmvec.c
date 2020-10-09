@@ -38,12 +38,11 @@ typedef enum {
 #define FREE    1
 #define USED    0
 
-static int
+static void
 check_dv_instruction(HVXResource *resources, int *ilist,
                      int num_insn, Packet *packet, unsigned int attribute,
                      HVXResource resource0, HVXResource resource1)
 {
-
     int current_insn = 0;
     /* Loop on vector instruction count */
     for (current_insn = 0; current_insn < num_insn; current_insn++) {
@@ -66,17 +65,15 @@ check_dv_instruction(HVXResource *resources, int *ilist,
             }
         }
     }
-    return 0;
 }
 
 /* Double Vector instructions that can use any one of specific or both pairs */
-static int
+static void
 check_dv_instruction2(HVXResource *resources, int *ilist,
                       int num_insn, Packet *packet, unsigned int attribute,
                       HVXResource resource0, HVXResource resource1,
                       HVXResource resource2, HVXResource resource3)
 {
-
     int current_insn = 0;
     /* Loop on vector instruction count */
     for (current_insn = 0; current_insn < num_insn; current_insn++) {
@@ -107,14 +104,12 @@ check_dv_instruction2(HVXResource *resources, int *ilist,
             }
         }
     }
-    return 0;
 }
 
-static int
+static void
 check_umem_instruction(HVXResource *resources, int *ilist,
                        int num_insn, Packet *packet)
 {
-
     int current_insn = 0;
     /* Loop on vector instruction count */
     for (current_insn = 0; current_insn < num_insn; current_insn++) {
@@ -144,16 +139,14 @@ check_umem_instruction(HVXResource *resources, int *ilist,
             }
         }
     }
-    return 0;
 }
 
 
 /* Memory instructions */
-static int
+static void
 check_mem_instruction(HVXResource *resources, int *ilist,
                       int num_insn, Packet *packet)
 {
-
     int current_insn = 0;
     /* Loop on vector instruction count */
     for (current_insn = 0; current_insn < num_insn; current_insn++) {
@@ -212,19 +205,17 @@ check_mem_instruction(HVXResource *resources, int *ilist,
             }
         }
     }
-    return 0;
 }
 
 /*
  * Single Vector instructions that can use one, two, or four resources
  * Insert instruction into one possible resource
  */
-static int
+static void
 check_instruction1(HVXResource *resources, int *ilist,
                    int num_insn, Packet *packet, unsigned int attribute,
                    HVXResource resource0)
 {
-
     int current_insn = 0;
     /* Loop on vector instruction count */
     for (current_insn = 0; current_insn < num_insn; current_insn++) {
@@ -245,16 +236,14 @@ check_instruction1(HVXResource *resources, int *ilist,
             }
         }
     }
-    return 0;
 }
 
 /* Insert instruction into one of two possible resource2 */
-static int
+static void
 check_instruction2(HVXResource *resources, int *ilist,
                    int num_insn, Packet *packet, unsigned int attribute,
                    HVXResource resource0, HVXResource resource1)
 {
-
     int current_insn = 0;
     /* Loop on vector instruction count */
     for (current_insn = 0; current_insn < num_insn; current_insn++) {
@@ -279,17 +268,15 @@ check_instruction2(HVXResource *resources, int *ilist,
             }
         }
     }
-    return 0;
 }
 
 /* Insert instruction into one of 4 four possible resource */
-static int
+static void
 check_instruction4(HVXResource *resources, int *ilist,
                    int num_insn, Packet *packet, unsigned int attribute,
                    HVXResource resource0, HVXResource resource1,
                    HVXResource resource2, HVXResource resource3)
 {
-
     int current_insn = 0;
     /* Loop on vector instruction count */
     for (current_insn = 0; current_insn < num_insn; current_insn++) {
@@ -322,14 +309,12 @@ check_instruction4(HVXResource *resources, int *ilist,
             }
         }
     }
-    return 0;
 }
 
-static int
+static void
 check_4res_instruction(HVXResource *resources, int *ilist,
                        int num_insn, Packet *packet)
 {
-
     int current_insn = 0;
     for (current_insn = 0; current_insn < num_insn; current_insn++) {
         if (ilist[current_insn] > -1) {
@@ -363,14 +348,12 @@ check_4res_instruction(HVXResource *resources, int *ilist,
         }
 
     }
-    return 0;
 }
 
 
-static int
+static void
 decode_populate_cvi_resources(Packet *packet)
 {
-
     int i, num_insn = 0;
     int vlist[4] = {-1, -1, -1, -1};
     HVXResource hvx_resources[8] = {
@@ -383,7 +366,6 @@ decode_populate_cvi_resources(Packet *packet)
         FREE,
         FREE
     };    /* All Available */
-    int errors = 0;
 
 
     /* Count Vector instructions and check for deprecated ones */
@@ -394,53 +376,50 @@ decode_populate_cvi_resources(Packet *packet)
     }
 
     /* Instructions that consume all vector resources */
-    errors += check_4res_instruction(hvx_resources, vlist, num_insn, packet);
+    check_4res_instruction(hvx_resources, vlist, num_insn, packet);
     /* Insert Unaligned Memory Access */
-    errors += check_umem_instruction(hvx_resources, vlist, num_insn, packet);
+    check_umem_instruction(hvx_resources, vlist, num_insn, packet);
 
     /* double vector permute Consumes both permute and shift resources */
-    errors += check_dv_instruction(hvx_resources, vlist, num_insn,
-                                   packet, A_CVI_VP_VS,
-                                   HVX_RESOURCE_SHIFT, HVX_RESOURCE_PERM);
+    check_dv_instruction(hvx_resources, vlist, num_insn,
+                         packet, A_CVI_VP_VS,
+                         HVX_RESOURCE_SHIFT, HVX_RESOURCE_PERM);
     /* Single vector permute can only go to permute resource */
-    errors += check_instruction1(hvx_resources, vlist, num_insn,
-                                 packet, A_CVI_VP, HVX_RESOURCE_PERM);
+    check_instruction1(hvx_resources, vlist, num_insn,
+                       packet, A_CVI_VP, HVX_RESOURCE_PERM);
     /* Single vector permute can only go to permute resource */
-    errors += check_instruction1(hvx_resources, vlist, num_insn,
-                                 packet, A_CVI_VS, HVX_RESOURCE_SHIFT);
+    check_instruction1(hvx_resources, vlist, num_insn,
+                       packet, A_CVI_VS, HVX_RESOURCE_SHIFT);
 
     /* Try to insert double vector multiply */
-    errors += check_dv_instruction(hvx_resources, vlist, num_insn,
-                                   packet, A_CVI_VX_DV,
-                                   HVX_RESOURCE_MPY0, HVX_RESOURCE_MPY1);
+    check_dv_instruction(hvx_resources, vlist, num_insn,
+                         packet, A_CVI_VX_DV,
+                         HVX_RESOURCE_MPY0, HVX_RESOURCE_MPY1);
     /* Try to insert double capacity mult */
-    errors += check_dv_instruction2(hvx_resources, vlist, num_insn,
-                                    packet, A_CVI_VS_VX,
-                                    HVX_RESOURCE_SHIFT, HVX_RESOURCE_MPY0,
-                                    HVX_RESOURCE_PERM, HVX_RESOURCE_MPY1);
+    check_dv_instruction2(hvx_resources, vlist, num_insn,
+                          packet, A_CVI_VS_VX,
+                          HVX_RESOURCE_SHIFT, HVX_RESOURCE_MPY0,
+                          HVX_RESOURCE_PERM, HVX_RESOURCE_MPY1);
     /* Single vector permute can only go to permute resource */
-    errors += check_instruction2(hvx_resources, vlist, num_insn,
-                                 packet, A_CVI_VX,
-                                 HVX_RESOURCE_MPY0, HVX_RESOURCE_MPY1);
+    check_instruction2(hvx_resources, vlist, num_insn,
+                       packet, A_CVI_VX,
+                       HVX_RESOURCE_MPY0, HVX_RESOURCE_MPY1);
     /* Try to insert double vector alu */
-    errors += check_dv_instruction2(hvx_resources, vlist, num_insn,
-                                    packet, A_CVI_VA_DV,
-                                    HVX_RESOURCE_SHIFT, HVX_RESOURCE_PERM,
-                                    HVX_RESOURCE_MPY0, HVX_RESOURCE_MPY1);
+    check_dv_instruction2(hvx_resources, vlist, num_insn,
+                          packet, A_CVI_VA_DV,
+                          HVX_RESOURCE_SHIFT, HVX_RESOURCE_PERM,
+                          HVX_RESOURCE_MPY0, HVX_RESOURCE_MPY1);
 
-    errors += check_mem_instruction(hvx_resources, vlist, num_insn, packet);
+    check_mem_instruction(hvx_resources, vlist, num_insn, packet);
     /* single vector alu can go on any of the 4 pipes */
-    errors += check_instruction4(hvx_resources, vlist, num_insn,
-                                 packet, A_CVI_VA,
-                                 HVX_RESOURCE_SHIFT, HVX_RESOURCE_PERM,
-                                 HVX_RESOURCE_MPY0, HVX_RESOURCE_MPY1);
+    check_instruction4(hvx_resources, vlist, num_insn,
+                       packet, A_CVI_VA,
+                       HVX_RESOURCE_SHIFT, HVX_RESOURCE_PERM,
+                       HVX_RESOURCE_MPY0, HVX_RESOURCE_MPY1);
 
-    return errors;
 }
 
-
-
-static int
+static void
 check_new_value(Packet *packet)
 {
     /* .New Value for a MMVector Store */
@@ -523,7 +502,6 @@ check_new_value(Packet *packet)
             }
         }
     }
-    return 0;
 }
 
 /*
@@ -559,7 +537,7 @@ decode_mmvec_move_cvi_to_end(Packet *packet, int max)
     }
 }
 
-static int
+static void
 decode_shuffle_for_execution_vops(Packet *packet)
 {
     /*
@@ -601,7 +579,6 @@ decode_shuffle_for_execution_vops(Packet *packet)
             break;
         }
     }
-    return 0;
 }
 
 /* Collect stats on HVX packet */
@@ -637,17 +614,11 @@ SlotMask mmvec_ext_decode_find_iclass_slots(int opcode)
     }
 }
 
-int mmvec_ext_decode_checks(Packet *packet)
+void mmvec_ext_decode_checks(Packet *packet)
 {
-    int errors = 0;
-    errors += check_new_value(packet);
-    errors += decode_populate_cvi_resources(packet);
-    errors += decode_shuffle_for_execution_vops(packet);
-
-    if (errors == 0) {
-        decode_hvx_packet_contents(packet);
-    }
-
-    return errors;
+    check_new_value(packet);
+    decode_populate_cvi_resources(packet);
+    decode_shuffle_for_execution_vops(packet);
+    decode_hvx_packet_contents(packet);
 }
 

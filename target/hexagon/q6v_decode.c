@@ -53,6 +53,19 @@
         { BEH  } \
         break; \
 
+/*
+ * Fill in the operands of the instruction
+ * dectree_generated.h had a DECODE_OPINFO entry for each opcode
+ * For example,
+ *     DECODE_OPINFO(A2_addi,
+ *          DECODE_REG(0,5,0)
+ *          DECODE_REG(1,5,16)
+ *          DECODE_IMM(0,7,21,9)
+ *          DECODE_IMM(0,9,5,0)
+ *          DECODE_IMM_SXT(0,16)
+ * with the macros defined above, we'll fill in a switch statement
+ * where each case is an opcode tag.
+ */
 static void
 decode_op(Insn *insn, Opcode tag, uint32_t encoding)
 {
@@ -70,10 +83,8 @@ decode_op(Insn *insn, Opcode tag, uint32_t encoding)
     }
 
     insn->generate = opcode_genptr[tag];
-    insn->iclass = (encoding >> 28) & 0xf;
-    if (((encoding >> 14) & 3) == 0) {
-        insn->iclass += 16;
-    }
+
+    insn->iclass = iclass_bits(encoding);
 }
 
 #undef DECODE_REG
@@ -101,7 +112,7 @@ decode_subinsn_tablewalk(Insn *insn, const DectreeTable *table,
     if (table->lookup_function) {
         i = table->lookup_function(table->startbit, table->width, encoding);
     } else {
-        i = ((encoding >> table->startbit) & ((1 << table->width) - 1));
+        i = extract32(encoding, table->startbit, table->width);
     }
     if (table->table[i].type == DECTREE_TABLE_LINK) {
         return decode_subinsn_tablewalk(insn, table->table[i].table_link,
@@ -120,12 +131,12 @@ decode_subinsn_tablewalk(Insn *insn, const DectreeTable *table,
 
 static unsigned int get_insn_a(uint32_t encoding)
 {
-    return encoding & 0x00001fff;
+    return extract32(encoding, 0, 13);
 }
 
 static unsigned int get_insn_b(uint32_t encoding)
 {
-    return (encoding >> 16) & 0x00001fff;
+    return extract32(encoding, 16, 13);
 }
 
 static unsigned int
@@ -138,7 +149,7 @@ decode_insns_tablewalk(Insn *insn, const DectreeTable *table,
     if (table->lookup_function) {
         i = table->lookup_function(table->startbit, table->width, encoding);
     } else {
-        i = ((encoding >> table->startbit) & ((1 << table->width) - 1));
+        i = extract32(encoding, table->startbit, table->width);
     }
     if (table->table[i].type == DECTREE_TABLE_LINK) {
         return decode_insns_tablewalk(insn, table->table[i].table_link,
@@ -163,12 +174,10 @@ decode_insns_tablewalk(Insn *insn, const DectreeTable *table,
         decode_op(insn, opc, encoding);
         return 1;
     } else if (table->table[i].type == DECTREE_EXTSPACE) {
-        uint32_t active_ext;
         /*
          * For now, HVX will be the only coproc
          */
-        active_ext = 4;
-        return decode_insns_tablewalk(insn, ext_trees[active_ext], encoding);
+        return decode_insns_tablewalk(insn, ext_trees[EXT_IDX_mmvec], encoding);
     } else {
         return 0;
     }
@@ -178,11 +187,11 @@ static unsigned int
 decode_insns(Insn *insn, uint32_t encoding)
 {
     const DectreeTable *table;
-    if ((encoding & 0x0000c000) != 0) {
-        /* Start with PP table */
+    if (parse_bits(encoding) != 0) {
+        /* Start with PP table - 32 bit instructions */
         table = &dectree_table_DECODE_ROOT_32;
     } else {
-        /* start with EE table */
+        /* start with EE table - duplex instructions */
         table = &dectree_table_DECODE_ROOT_EE;
     }
     return decode_insns_tablewalk(insn, table, encoding);
@@ -196,19 +205,21 @@ static void decode_add_endloop_insn(Insn *insn, int loopnum)
     } else if (loopnum == 1) {
         insn->opcode = J2_endloop1;
         insn->generate = opcode_genptr[J2_endloop1];
-    } else {
+    } else if (loopnum == 0) {
         insn->opcode = J2_endloop0;
         insn->generate = opcode_genptr[J2_endloop0];
+    } else {
+        g_assert_not_reached();
     }
 }
 
 static inline int decode_parsebits_is_loopend(uint32_t encoding32)
 {
-    uint32_t bits = (encoding32 >> 14) & 0x3;
-    return ((bits == 0x2));
+    uint32_t bits = parse_bits(encoding32);
+    return bits == 0x2;
 }
 
-static int
+static void
 decode_set_slot_number(Packet *pkt)
 {
     int slot;
@@ -216,6 +227,10 @@ decode_set_slot_number(Packet *pkt)
     int hit_mem_insn = 0;
     int hit_duplex = 0;
 
+    /*
+     * The slots are encoded in reverse order
+     * For each instruction, count down until you find a suitable slot
+     */
     for (i = 0, slot = 3; i < pkt->num_insns; i++) {
         SlotMask valid_slots = get_valid_slots(pkt, i);
 
@@ -231,7 +246,6 @@ decode_set_slot_number(Packet *pkt)
 
     /* Fix the exceptions - mem insns to slot 0,1 */
     for (i = pkt->num_insns - 1; i >= 0; i--) {
-
         /* First memory instruction always goes to slot 0 */
         if ((GET_ATTRIB(pkt->insn[i].opcode, A_MEMLIKE) ||
              GET_ATTRIB(pkt->insn[i].opcode, A_MEMLIKE_PACKET_RULES)) &&
@@ -251,7 +265,6 @@ decode_set_slot_number(Packet *pkt)
 
     /* Fix the exceptions - duplex always slot 0,1 */
     for (i = pkt->num_insns - 1; i >= 0; i--) {
-
         /* First subinsn always goes to slot 0 */
         if (GET_ATTRIB(pkt->insn[i].opcode, A_SUBINSN) && !hit_duplex) {
             hit_duplex = 1;
@@ -266,45 +279,42 @@ decode_set_slot_number(Packet *pkt)
     }
 
     /* Fix the exceptions - slot 1 is never empty, always aligns to slot 0 */
-    {
-        int slot0_found = 0;
-        int slot1_found = 0;
-        int slot1_iidx = 0;
-        for (i = pkt->num_insns - 1; i >= 0; i--) {
-            /* Is slot0 used? */
-            if (pkt->insn[i].slot == 0) {
-                int is_endloop = (pkt->insn[i].opcode == J2_endloop01);
-                is_endloop |= (pkt->insn[i].opcode == J2_endloop0);
-                is_endloop |= (pkt->insn[i].opcode == J2_endloop1);
+    int slot0_found = 0;
+    int slot1_found = 0;
+    int slot1_iidx = 0;
+    for (i = pkt->num_insns - 1; i >= 0; i--) {
+        /* Is slot0 used? */
+        if (pkt->insn[i].slot == 0) {
+            int is_endloop = (pkt->insn[i].opcode == J2_endloop01);
+            is_endloop |= (pkt->insn[i].opcode == J2_endloop0);
+            is_endloop |= (pkt->insn[i].opcode == J2_endloop1);
 
-                /*
-                 * Make sure it's not endloop since, we're overloading
-                 * slot0 for endloop
-                 */
-                if (!is_endloop) {
-                    slot0_found = 1;
-                }
-            }
-            /* Is slot1 used? */
-            if (pkt->insn[i].slot == 1) {
-                slot1_found = 1;
-                slot1_iidx = i;
+            /*
+             * Make sure it's not endloop since, we're overloading
+             * slot0 for endloop
+             */
+            if (!is_endloop) {
+                slot0_found = 1;
             }
         }
-        /* Is slot0 empty and slot1 used? */
-        if ((slot0_found == 0) && (slot1_found == 1)) {
-            /* Then push it to slot0 */
-            pkt->insn[slot1_iidx].slot = 0;
+        /* Is slot1 used? */
+        if (pkt->insn[i].slot == 1) {
+            slot1_found = 1;
+            slot1_iidx = i;
         }
     }
-    return 0;
+    /* Is slot0 empty and slot1 used? */
+    if ((slot0_found == 0) && (slot1_found == 1)) {
+        /* Then push it to slot0 */
+        pkt->insn[slot1_iidx].slot = 0;
+    }
 }
 
 /*
  * decode_packet
  * Decodes packet with given words
- * Returns negative on error, 0 on insufficient words,
- * and number of words used on success
+ * Returns 0 on insufficient words,
+ * or number of words used on success
  */
 
 int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
@@ -314,7 +324,6 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     int words_read = 0;
     int end_of_packet = 0;
     int new_insns = 0;
-    int errors = 0;
     int i;
     uint32_t encoding32;
 
@@ -348,7 +357,12 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
             GET_ATTRIB(pkt->insn[i].opcode, A_EXTENSION);
     }
 
-    /* Shuffle / split / reorder for execution */
+    /*
+     * Check for :endloop in the parse bits
+     * Section 10.6 of the Programmer's Reference describes the encoding
+     *     The end of hardware loop 0 can be encoded with 2 words
+     *     The end of hardware loop 1 needs 3 words
+     */
     if ((words_read == 2) && (decode_parsebits_is_loopend(words[0]))) {
         decode_add_endloop_insn(&pkt->insn[pkt->num_insns++], 0);
     }
@@ -365,25 +379,21 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         }
     }
 
-    errors += decode_apply_extenders(pkt);
+    decode_apply_extenders(pkt);
     if (!disas_only) {
-        errors += decode_remove_extenders(pkt);
+        decode_remove_extenders(pkt);
     }
-    errors += decode_set_slot_number(pkt);
-    errors += decode_fill_newvalue_regno(pkt);
+    decode_set_slot_number(pkt);
+    decode_fill_newvalue_regno(pkt);
 
     if (pkt->pkt_has_extension) {
-        errors += mmvec_ext_decode_checks(pkt);
+        mmvec_ext_decode_checks(pkt);
     }
 
     if (!disas_only) {
-        errors += decode_shuffle_for_execution(pkt);
-        errors += decode_split_cmpjump(pkt);
-        errors += decode_set_insn_attr_fields(pkt);
-    }
-
-    if (errors) {
-        return -1;
+        decode_shuffle_for_execution(pkt);
+        decode_split_cmpjump(pkt);
+        decode_set_insn_attr_fields(pkt);
     }
 
     return words_read;

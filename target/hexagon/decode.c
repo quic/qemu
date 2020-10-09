@@ -245,7 +245,7 @@ void decode_send_insn_to(Packet *packet, int start, int newloc)
 }
 
 /* Fill newvalue registers with the correct regno */
-static int
+static void
 decode_fill_newvalue_regno(Packet *packet)
 {
     int i, use_regidx, def_idx;
@@ -276,11 +276,13 @@ decode_fill_newvalue_regno(Packet *packet)
              * Check for a badly encoded N-field which points to an instruction
              * out-of-range
              */
-            if ((def_idx < 0) || (def_idx > (packet->num_insns - 1))) {
-                g_assert_not_reached();
-            }
+            g_assert(!((def_idx < 0) || (def_idx > (packet->num_insns - 1))));
 
-            /* previous insn is the producer */
+            /*
+             * packet->insn[def_idx] is the producer
+             * Figure out which type of destination it produces
+             * and the corresponding index in the reginfo
+             */
             def_opcode = packet->insn[def_idx].opcode;
             dststr = strstr(opcode_wregs[def_opcode], "Rd");
             if (dststr) {
@@ -306,9 +308,9 @@ decode_fill_newvalue_regno(Packet *packet)
             g_assert(dststr != NULL);
 
             /* Now patch up the consumer with the register number */
+            int dst_idx = dststr - opcode_reginfo[def_opcode];
             packet->insn[i].regno[use_regidx] =
-                packet->insn[def_idx].regno[dststr -
-                    opcode_reginfo[def_opcode]];
+                packet->insn[def_idx].regno[dst_idx];
             /*
              * We need to remember who produces this value to later
              * check if it was dynamically cancelled
@@ -317,11 +319,10 @@ decode_fill_newvalue_regno(Packet *packet)
                 packet->insn[def_idx].slot;
         }
     }
-    return 0;
 }
 
 /* Split CJ into a compare and a jump */
-static int decode_split_cmpjump(Packet *pkt)
+static void decode_split_cmpjump(Packet *pkt)
 {
     int last, i;
     int numinsns = pkt->num_insns;
@@ -339,7 +340,7 @@ static int decode_split_cmpjump(Packet *pkt)
             pkt->insn[last] = pkt->insn[i];    /* copy the instruction */
             pkt->insn[last].part1 = 1;    /* last instruction does the CMP */
             pkt->insn[i].part1 = 0;    /* existing instruction does the JUMP */
-        pkt->num_insns++;
+            pkt->num_insns++;
         }
     }
 
@@ -349,7 +350,6 @@ static int decode_split_cmpjump(Packet *pkt)
             decode_send_insn_to(pkt, i, 0);
         }
     }
-    return 0;
 }
 
 static inline int decode_opcode_can_jump(int opcode)
@@ -377,12 +377,11 @@ static inline int decode_opcode_ends_loop(int opcode)
 }
 
 /* Set the is_* fields in each instruction */
-static int decode_set_insn_attr_fields(Packet *pkt)
+static void decode_set_insn_attr_fields(Packet *pkt)
 {
     int i;
     int numinsns = pkt->num_insns;
     uint16_t opcode;
-    int canjump;
 
     pkt->pkt_has_cof = 0;
     pkt->pkt_has_endloop = 0;
@@ -406,8 +405,7 @@ static int decode_set_insn_attr_fields(Packet *pkt)
             }
         }
 
-        canjump = decode_opcode_can_jump(opcode);
-        pkt->pkt_has_cof |= canjump;
+        pkt->pkt_has_cof |= decode_opcode_can_jump(opcode);
 
         pkt->insn[i].is_endloop = decode_opcode_ends_loop(opcode);
 
@@ -415,8 +413,6 @@ static int decode_set_insn_attr_fields(Packet *pkt)
 
         pkt->pkt_has_cof |= pkt->pkt_has_endloop;
     }
-
-    return 0;
 }
 
 /*
@@ -424,7 +420,7 @@ static int decode_set_insn_attr_fields(Packet *pkt)
  * Move stores to end (in same order as encoding)
  * Move compares to beginning (for use by .new insns)
  */
-static int decode_shuffle_for_execution(Packet *packet)
+static void decode_shuffle_for_execution(Packet *packet)
 {
     int changed = 0;
     int i;
@@ -447,7 +443,7 @@ static int decode_shuffle_for_execution(Packet *packet)
          * Cannot shuffle stores past loads, either.
          * Iterate backwards.  If we see a non-memory instruction,
          * then a store, shuffle the store to the front.  Don't shuffle
-         *  stores wrt each other or a load.
+         * stores wrt each other or a load.
          */
         for (flag = n_mems = 0, i = last_insn; i >= 0; i--) {
             int opcode = packet->insn[i].opcode;
@@ -461,7 +457,7 @@ static int decode_shuffle_for_execution(Packet *packet)
             } else if (GET_ATTRIB(opcode, A_LOAD)) {
                 /*
                  * Don't set flag, since we don't want to shuffle a
-                 * store pasta load
+                 * store past a load
                  */
                 n_mems++;
             } else if (GET_ATTRIB(opcode, A_DOTNEWVALUE)) {
@@ -539,10 +535,9 @@ static int decode_shuffle_for_execution(Packet *packet)
             break;
         }
     }
-    return 0;
 }
 
-static int
+static void
 apply_extender(Packet *pkt, int i, uint32_t extender)
 {
     int immed_num;
@@ -552,10 +547,9 @@ apply_extender(Packet *pkt, int i, uint32_t extender)
     base_immed = pkt->insn[i].immed[immed_num];
 
     pkt->insn[i].immed[immed_num] = extender | fZXTN(6, 32, base_immed);
-    return 0;
 }
 
-static int decode_apply_extenders(Packet *packet)
+static void decode_apply_extenders(Packet *packet)
 {
     int i;
     for (i = 0; i < packet->num_insns; i++) {
@@ -564,14 +558,14 @@ static int decode_apply_extenders(Packet *packet)
             apply_extender(packet, i + 1, packet->insn[i].immed[0]);
         }
     }
-    return 0;
 }
 
-static int decode_remove_extenders(Packet *packet)
+static void decode_remove_extenders(Packet *packet)
 {
     int i, j;
     for (i = 0; i < packet->num_insns; i++) {
         if (GET_ATTRIB(packet->insn[i].opcode, A_IT_EXTENDER)) {
+            /* Remove this one by moving the remaining instructions down */
             for (j = i;
                 (j < packet->num_insns - 1) && (j < INSTRUCTIONS_MAX - 1);
                 j++) {
@@ -580,7 +574,6 @@ static int decode_remove_extenders(Packet *packet)
             packet->num_insns--;
         }
     }
-    return 0;
 }
 
 static SlotMask get_valid_slots(const Packet *pkt, unsigned int slot)
