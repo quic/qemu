@@ -262,10 +262,20 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         size4u_t bufaddr;
         int count;
         int retval;
+        int warm;
 
         DEBUG_MEMORY_READ(swi_info, 4, &fd);
         DEBUG_MEMORY_READ(swi_info + 4, 4, &bufaddr);
         DEBUG_MEMORY_READ(swi_info + 8, 4, &count);
+/*
+ * Need to make sure the page we are going to write to is available.
+ * The file pointer advances with the read.  If the write to bufaddr
+ * faults this function will be restarted but the file pointer
+ * will be wrong.
+ */
+        for (i = 0; i < count; i += 0x1000) {
+            DEBUG_MEMORY_READ(bufaddr + i, 1, &warm);
+        }
 
         int malloc_count = (count) ? count : 1;
         if ((buf = (char *) g_malloc(malloc_count)) == NULL) {
@@ -452,7 +462,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
             ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
         } else {
-            ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
+            ARCH_SET_THREAD_REG(env, HEX_REG_R00, retval);
         }
     }
     break;
