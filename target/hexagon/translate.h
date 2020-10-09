@@ -18,6 +18,7 @@
 #ifndef HEXAGON_TRANSLATE_H
 #define HEXAGON_TRANSLATE_H
 
+#include "qemu/bitmap.h"
 #include "cpu.h"
 #include "exec/translator.h"
 #include "tcg/tcg-op.h"
@@ -28,6 +29,7 @@ typedef struct DisasContext {
     uint32_t mem_idx;
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
+    DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
     int preg_log[PRED_WRITES_MAX];
     int preg_log_idx;
     uint8_t store_width[STORES_MAX];
@@ -45,15 +47,13 @@ typedef struct DisasContext {
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
 {
 #if HEX_DEBUG
-    int i;
-    for (i = 0; i < ctx->reg_log_idx; i++) {
-        if (ctx->reg_log[i] == rnum) {
-            HEX_DEBUG_LOG("WARNING: Multiple writes to r%d\n", rnum);
-        }
+    if (test_bit(rnum, ctx->regs_written)) {
+        HEX_DEBUG_LOG("WARNING: Multiple writes to r%d\n", rnum);
     }
 #endif
     ctx->reg_log[ctx->reg_log_idx] = rnum;
     ctx->reg_log_idx++;
+    set_bit(rnum, ctx->regs_written);
 }
 
 static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
@@ -64,13 +64,7 @@ static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
 
 static inline bool is_preloaded(DisasContext *ctx, int num)
 {
-    int i;
-    for (i = 0; i < ctx->reg_log_idx; i++) {
-        if (ctx->reg_log[i] == num) {
-            return true;
-        }
-    }
-    return false;
+    return test_bit(num, ctx->regs_written);
 }
 
 static inline void ctx_log_vreg_write(DisasContext *ctx,

@@ -125,6 +125,7 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
 
     /* Clear out the disassembly context */
     ctx->reg_log_idx = 0;
+    bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
     ctx->preg_log_idx = 0;
     ctx->temp_vregs_idx = 0;
     ctx->temp_qregs_idx = 0;
@@ -181,8 +182,7 @@ static void mark_implicit_reg_write(DisasContext *ctx, Insn *insn,
             tcg_gen_mov_tl(hex_new_value[rnum], hex_gpr[rnum]);
         }
 
-        ctx->reg_log[ctx->reg_log_idx] = rnum;
-        ctx->reg_log_idx++;
+        ctx_log_reg_write(ctx, rnum);
     }
 }
 
@@ -190,8 +190,7 @@ static void mark_implicit_pred_write(DisasContext *ctx, Insn *insn,
                                      int attrib, int pnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
-        ctx->preg_log[ctx->preg_log_idx] = pnum;
-        ctx->preg_log_idx++;
+        ctx_log_pred_write(ctx, pnum);
     }
 }
 
