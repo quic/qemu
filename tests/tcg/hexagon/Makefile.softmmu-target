@@ -26,6 +26,7 @@ TESTS += \
 	swi \
 	pcycle \
 	framelimit \
+	float_excp \
 	$()
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
@@ -61,6 +62,7 @@ swi: swi.o
 wait: wait.o
 pcycle: pcycle.o
 framelimit: framelimit.o
+float_excp: float_excp.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -84,6 +86,15 @@ QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel
 
 # framelimit raises an exception and returns 255 to the shell
 run-framelimit: framelimit
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)"); \
+	if [ $$? -eq 255 ] ; then \
+		return 0; \
+	else \
+		return -1; \
+	fi
+
+# float_excp raises an exception and returns 255 to the shell
+run-float_excp: float_excp
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)"); \
 	if [ $$? -eq 255 ] ; then \
 		return 0; \

@@ -490,6 +490,7 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
  */
 int32_t HELPER(sfrecipa_val)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
 {
+    fFPOP_START();
     /* int32_t PeV; Not needed to compute value */
     int32_t RdV;
     fHIDE(int idx;)
@@ -503,11 +504,13 @@ int32_t HELPER(sfrecipa_val)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
         exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
         RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
     }
+    fFPOP_END();
     return RdV;
 }
 
 int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
 {
+    fFPOP_START();
     int32_t PeV = 0;
     int32_t RdV;
     fHIDE(int idx;)
@@ -521,11 +524,13 @@ int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
         exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
         RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
     }
+    fFPOP_END();
     return PeV;
 }
 
 int32_t HELPER(sfinvsqrta_val)(CPUHexagonState *env, int32_t RsV)
 {
+    fFPOP_START();
     /* int32_t PeV; Not needed for val version */
     int32_t RdV;
     fHIDE(int idx;)
@@ -539,11 +544,13 @@ int32_t HELPER(sfinvsqrta_val)(CPUHexagonState *env, int32_t RsV)
         exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
         RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
     }
+    fFPOP_END();
     return RdV;
 }
 
 int32_t HELPER(sfinvsqrta_pred)(CPUHexagonState *env, int32_t RsV)
 {
+    fFPOP_START();
     int32_t PeV = 0;
     int32_t RdV;
     fHIDE(int idx;)
@@ -557,6 +564,7 @@ int32_t HELPER(sfinvsqrta_pred)(CPUHexagonState *env, int32_t RsV)
         exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
         RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
     }
+    fFPOP_END();
     return PeV;
 }
 

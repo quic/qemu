@@ -20,6 +20,7 @@
 #include "fma_emu.h"
 #include "arch.h"
 #include "macros.h"
+#include "internal.h"
 
 /*
  * These three tables are used by the cabacdecbin instruction
@@ -440,7 +441,18 @@ void arch_fpop_start(CPUHexagonState *env)
     fesetround(roundingmodes[fREAD_REG_FIELD(USR, USR_FPRND)]);
 }
 
-#define NOTHING             /* Don't do anything */
+#ifdef CONFIG_USER_ONLY
+#define RAISE_FP_EXCEPTION \
+    do {} while (0)            /* Not modelled in qemu user mode */
+#else
+#define RAISE_FP_EXCEPTION \
+    do { \
+        CPUState *cs = env_cpu(env); \
+        cs->exception_index = HEX_EVENT_FPTRAP; \
+        env->cause_code = HEX_CAUSE_FPTRAP_CAUSE_BADFLOAT; \
+        do_raise_exception_err(env, cs->exception_index, env->next_PC); \
+    } while (0)
+#endif
 
 #define TEST_FLAG(LIBCF, MYF, MYE) \
     do { \
@@ -448,7 +460,7 @@ void arch_fpop_start(CPUHexagonState *env)
             if (GET_USR_FIELD(USR_##MYF) == 0) { \
                 SET_USR_FIELD(USR_##MYF, 1); \
                 if (GET_USR_FIELD(USR_##MYE)) { \
-                    NOTHING \
+                    RAISE_FP_EXCEPTION; \
                 } \
             } \
         } \

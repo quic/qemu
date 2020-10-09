@@ -569,6 +569,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
       case HEX_CAUSE_STACK_LIMIT:
           printf("0x%x, Stack limit check error", HEX_CAUSE_STACK_LIMIT);
           break;
+      case HEX_CAUSE_FPTRAP_CAUSE_BADFLOAT:
+          printf("0x%X, Floating-Point: Execution of Floating-Point "
+                 "instruction resulted in exception",
+                 HEX_CAUSE_FPTRAP_CAUSE_BADFLOAT);
+          break;
       default:
           printf("Don't know");
           break;
@@ -905,6 +910,14 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
                 env->cause_code, env->cause_code);
             break;
         }
+        break;
+
+    case HEX_EVENT_FPTRAP:
+        hexagon_ssr_set_cause(env, env->cause_code);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR, env->next_PC);
+        ARCH_SET_THREAD_REG(env, HEX_REG_PC,
+            ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB) |
+            (cs->exception_index << 2));
         break;
 
     case HEX_EVENT_PRECISE:

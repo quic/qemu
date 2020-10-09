@@ -168,7 +168,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     /* Initialize the runtime state for packet semantics */
     tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
     tcg_gen_movi_tl(hex_slot_cancelled, 0);
-    if (pkt->pkt_has_cof) {
+    if (pkt->pkt_has_cof || pkt->pkt_has_fp_op) {
         tcg_gen_movi_tl(hex_branch_taken, 0);
         tcg_gen_movi_tl(hex_next_PC, next_PC);
     }
