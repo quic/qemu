@@ -53,6 +53,21 @@ extern void hexagon_start_threads(CPUHexagonState *env, uint32_t mask);
 extern void hexagon_stop_thread(CPUHexagonState *env);
 extern void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old);
 extern void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause);
+/*
+ * Clear the interrupt pending bits in the mask.
+ */
+extern void hexagon_clear_interrupts(CPUHexagonState *global_env, uint32_t mask);
+
+/*
+ * Assert interrupt number @a irq.  This function will search for the appropriate
+ * thread to handle the given interrupt and if it's not disabled, it will dispatch
+ * it or pend it if none is available.  Threads selected to handle interrupts that
+ * are waiting will be resumed.
+ */
+extern bool hexagon_assert_interrupt(CPUHexagonState *global_env, uint32_t irq);
+extern void hexagon_enable_int(CPUHexagonState *env, uint32_t int_num);
+
+
 
 extern const char *get_sys_ssr_str(uint32_t ssr);
 extern const char *get_sys_str(CPUHexagonState *env);

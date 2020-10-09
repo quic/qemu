@@ -323,8 +323,6 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
             env->hex_tlb = current_env->hex_tlb;
             env->processor_ptr = current_env->processor_ptr;
             env->g_sreg = current_env->g_sreg;
-            env->g_pending_interrupt_mask =
-                current_env->g_pending_interrupt_mask;
             env->threadId = htid;
             ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, htid);
             HEX_DEBUG_LOG("%s: mask 0x%x, cpu %p, g_sreg at %p\n",
@@ -616,4 +614,42 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
     }
 }
 
+void hexagon_clear_interrupts(CPUHexagonState *global_env, uint32_t mask)
+{
+    /* Deassert all of the interrupts in the `mask` input: */
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(global_env, HEX_SREG_IPENDAD);
+    target_ulong ipendad_ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
+    ipendad_ipend &= ~mask;
+    SET_SYSTEM_FIELD(global_env, HEX_SREG_IPENDAD, IPENDAD_IPEND, ipendad_ipend);
+}
+
+bool hexagon_assert_interrupt(CPUHexagonState *global_env, uint32_t irq)
+{
+    if (hexagon_int_disabled(global_env, irq)) {
+        return false;
+    }
+    hexagon_set_interrupts(global_env, 1 << irq);
+
+    HexagonCPU *int_thread = hexagon_find_lowest_prio(global_env, irq);
+    if (!int_thread) {
+        return false;
+    }
+    CPUHexagonState *int_env = &int_thread->env;
+    if (!hexagon_thread_is_interruptible(int_env, irq)) {
+        return false;
+    }
+
+    hexagon_raise_interrupt(int_env, int_thread, irq);
+    hexagon_disable_int(global_env, irq);
+
+    return true;
+}
+
+void hexagon_enable_int(CPUHexagonState *env, uint32_t int_num)
+{
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
+    fSET_FIELD(ipendad, IPENDAD_IAD, ipendad_iad & ~(1 << int_num));
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
+}
 #endif

@@ -371,11 +371,6 @@ static void hexagon_cpu_synchronize_from_tb(CPUState *cs, TranslationBlock *tb)
     env->gpr[HEX_REG_PC] = tb->pc;
 }
 
-static bool hexagon_cpu_has_work(CPUState *cs)
-{
-    return cs->interrupt_request & CPU_INTERRUPT_HARD;
-}
-
 void restore_state_to_opc(CPUHexagonState *env, TranslationBlock *tb,
                           target_ulong *data)
 {
@@ -393,9 +388,6 @@ static void hexagon_cpu_reset(DeviceState *dev)
 #ifndef CONFIG_USER_ONLY
     CPUHexagonState *env = &cpu->env;
     SET_SSR_FIELD(env, SSR_EX, 1);
-
-    env->pending_interrupt_mask = 0;
-    env->g_pending_interrupt_mask = &(env->pending_interrupt_mask);
 #endif
 }
 
@@ -423,6 +415,17 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 }
 
 #ifndef CONFIG_USER_ONLY
+uint32_t hexagon_get_interrupts(CPUHexagonState *env)
+{
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    return GET_FIELD(IPENDAD_IPEND, ipendad);
+}
+
+static bool hexagon_cpu_has_work(CPUState *cs)
+{
+    return cs->interrupt_request & CPU_INTERRUPT_HARD;
+}
+
 static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 {
     HexagonCPU *cpu = opaque;
@@ -432,7 +435,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
     target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     target_ulong gbit = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
     if (!gbit && level) {
-        *(env->g_pending_interrupt_mask) |= 1 << irq;
+        hexagon_set_interrupts(env, 1 << irq);
         return;
     }
 
@@ -470,7 +473,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
              * No unmasked thread is available for this interrupt.  We
              * must pend it and assert it later.
              */
-           *(env->g_pending_interrupt_mask) |= 1 << irq;
+           hexagon_set_interrupts(env, 1 << irq);
 
            /*
             * FIXME: or should we make this method the general method
@@ -492,7 +495,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
              * This thread is not interruptible.  We
              * must pend it and assert it later.
              */
-           *(env->g_pending_interrupt_mask) |= 1 << irq;
+           hexagon_set_interrupts(env, 1 << irq);
 
            /*
             * FIXME: or should we make this method the general method
@@ -520,6 +523,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
             if (get_exe_mode(env) == HEX_EXE_MODE_WAIT) {
                 hexagon_resume_thread(env, HEX_EVENT_NONE);
             }
+            hexagon_disable_int(env, irq);
             cpu_interrupt(cs, mask[irq]);
         } else {
             cpu_reset_interrupt(cs, mask[irq]);
@@ -568,7 +572,6 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
     // This logic is for interrupt numbers 0-15 only
     assert(int_num <= 15);
 
-    const uint32_t int_mask = 1 << int_num;
     CPUHexagonState *thread_env = &(HEXAGON_CPU(thread)->env);
     assert(!hexagon_thread_is_busy(thread_env));
     assert(hexagon_thread_ints_enabled(thread_env));
@@ -581,10 +584,7 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
     if (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT) {
         hexagon_resume_thread(thread_env, cs->exception_index);
     }
-    target_ulong ipendad = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IPENDAD);
-    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad) | int_mask;
-    HEX_DEBUG_LOG("%s: tid %d handling interrupt %d, ipend_iad 0x%x\n",
-                  __FUNCTION__, thread_env->threadId, int_num, ipendad_iad);
+    hexagon_disable_int(env, int_num);
 }
 
 void hexagon_find_asserted_interrupts(CPUHexagonState *env, uint32_t *ints,
@@ -614,7 +614,6 @@ void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
 {
     // This logic is for interrupt numbers 0-15 only
     assert(int_num <= 15);
-    const uint32_t interrupt_mask = 1 << int_num;
 
     *list_size = 0;
 
@@ -631,27 +630,7 @@ void hexagon_find_int_threads(CPUHexagonState *env, uint32_t int_num,
     CPU_FOREACH (cs) {
         HexagonCPU *chk_cpu = HEXAGON_CPU(cs);
         CPUHexagonState *chk_env = &chk_cpu->env;
-        target_ulong ssr = ARCH_GET_SYSTEM_REG(chk_env, HEX_SREG_SSR);
-        target_ulong ie = GET_SSR_FIELD(SSR_IE, ssr);
-        target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
-        HEX_DEBUG_LOG("%s: checking tid = %d, cpu %p, env %p "
-                      "ssr 0x%x ie %u, ex %u\n",
-                      __FUNCTION__, chk_env->threadId, chk_cpu, chk_env, syscfg,
-                      ie, ex);
-        if (!ie || ex) {
-            HEX_DEBUG_LOG("%s: !ie %d || ex %d: tid %d: "
-                          "pc 0x%x: continue\n",
-                          __FUNCTION__, ie, ex, chk_env->threadId,
-                          ARCH_GET_THREAD_REG(chk_env, HEX_REG_PC));
-            continue;
-        }
-        target_ulong imask = ARCH_GET_SYSTEM_REG(chk_env, HEX_SREG_IMASK);
-        target_ulong imask_mask = GET_FIELD(IMASK_MASK, imask);
-        HEX_DEBUG_LOG("%s: tid %d: imask 0x%x, "
-                      "imask_mask 0x%x, mask 0x%x\n",
-                      __FUNCTION__, chk_env->threadId, imask, imask_mask,
-                      interrupt_mask);
-        if (imask_mask & interrupt_mask) {
+        if (!hexagon_thread_is_interruptible(chk_env, int_num)) {
             HEX_DEBUG_LOG("%s: imask & mask: continue\n", __FUNCTION__);
             continue;
         }
@@ -972,7 +951,9 @@ static const VMStateDescription vmstate_hexagon_cpu = {
 static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 {
     CPUClass *cc = CPU_GET_CLASS(cs);
-    if (interrupt_request & CPU_INTERRUPT_HARD) {
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+    if (interrupt_request & CPU_INTERRUPT_HARD && !hexagon_thread_is_busy(env)) {
         qemu_log_mask(CPU_LOG_INT,
                 "got a hard int, full mask is %08x|%d\n",
                 (int)interrupt_request, (int)interrupt_request);
@@ -1028,8 +1009,8 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
     device_class_set_parent_reset(dc, hexagon_cpu_reset, &mcc->parent_reset);
 
     cc->class_by_name = hexagon_cpu_class_by_name;
-    cc->has_work = hexagon_cpu_has_work;
 #ifndef CONFIG_USER_ONLY
+    cc->has_work = hexagon_cpu_has_work;
     cc->do_interrupt = hexagon_cpu_do_interrupt;
     cc->cpu_exec_interrupt = hexagon_cpu_exec_interrupt;
     cc->do_unaligned_access = hexagon_do_unaligned_access;

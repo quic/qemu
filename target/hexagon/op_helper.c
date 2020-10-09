@@ -86,6 +86,15 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
             env->gpr[HEX_REG_PC],
         pc);
 
+#if 0
+    if (cs->exception_index != HEX_EVENT_NONE)
+        fprintf(stderr, "old exception_index: 0x%02x, new exception_index 0x%02x, cc: 0x%02x\n",
+            cs->exception_index, exception,
+            env->cause_code);
+    assert(cs->exception_index == HEX_EVENT_NONE ||
+           cs->exception_index == 6);
+#endif
+
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
 #ifndef CONFIG_USER_ONLY
@@ -1304,8 +1313,6 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
         size_t threads_count = 0;
         hexagon_find_int_threads(env, int_num, threads, &threads_count);
         if (threads_count < 1) {
-            /* FIXME? pend this somehow? */
-           *(env->g_pending_interrupt_mask) |= 1 << int_num;
             continue;
         }
 
@@ -1332,7 +1339,7 @@ void HELPER(resched)(CPUHexagonState *env)
     const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
     const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
-    if (!schedcfg_en) {
+    if (!schedcfg_en || hexagon_int_disabled(env, int_number)) {
         return;
     }
 
@@ -1346,6 +1353,11 @@ void HELPER(resched)(CPUHexagonState *env)
     HexagonCPU *int_thread =
         hexagon_find_lowest_prio_any_thread(threads, i, int_number, &lowest_th_prio);
 
+    if (!int_thread) {
+        return;
+    }
+
+    CPUHexagonState *int_thread_env = &int_thread->env;
     uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
     uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
 
@@ -1364,6 +1376,7 @@ void HELPER(resched)(CPUHexagonState *env)
 #if HEX_DEBUG
         HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
 #endif
+        assert(!hexagon_thread_is_busy(int_thread_env));
         hexagon_raise_interrupt(env, int_thread, int_number);
     }
 }
@@ -1422,7 +1435,7 @@ uint32_t HELPER(get_ready_count)(CPUHexagonState *env)
 void HELPER(pending_interrupt)(CPUHexagonState *env)
 {
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
-    const target_ulong pend_mask = *(env->g_pending_interrupt_mask);
+    const target_ulong pend_mask = hexagon_get_interrupts(env);
     int intnum;
 
     if (!pend_mask || cs->exception_index != HEX_EVENT_NONE) {
@@ -1436,6 +1449,9 @@ void HELPER(pending_interrupt)(CPUHexagonState *env)
             continue;
         }
 
+        if (hexagon_int_disabled(env, intnum)) {
+            continue;
+        }
         HexagonCPU *int_thread = hexagon_find_lowest_prio(env, intnum);
         if (!int_thread) {
             continue;

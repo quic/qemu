@@ -239,8 +239,6 @@ struct CPUHexagonState {
     hex_lock_state_t k0_lock_state;
     uint16_t nmi_threads;
     uint32_t last_cpu;
-    target_ulong pending_interrupt_mask;
-    target_ulong *g_pending_interrupt_mask;
 #endif
 };
 
@@ -337,6 +335,11 @@ void hexagon_disable_int(CPUHexagonState *global_env, uint32_t int_num);
  * Set the interrupt pending bits in the mask.
  */
 void hexagon_set_interrupts(CPUHexagonState *global_env, uint32_t mask);
+
+/*
+ * Get the interrupt pending bits.
+ */
+uint32_t hexagon_get_interrupts(CPUHexagonState *global_env);
 
 /*
  * @return true if thread_env is busy with an interrupt or one is
