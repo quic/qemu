@@ -223,6 +223,9 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     if (hex_cpu->count_gcycle_xt) {
         gen_helper_inc_gcycle_xt(cpu_env);
     }
+    if (pkt->pkt_has_hvx) {
+        gen_helper_check_hvx(cpu_env);
+    }
 #endif
 }
 
@@ -861,9 +864,6 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     process_store_log(ctx, pkt);
     process_dczeroa(ctx, pkt);
     if (pkt->pkt_has_hvx) {
-#ifndef CONFIG_USER_ONLY
-        gen_helper_check_hvx(cpu_env);
-#endif
         gen_commit_hvx(ctx, pkt);
     }
     gen_exec_counters(pkt);
