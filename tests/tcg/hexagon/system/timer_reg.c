@@ -90,6 +90,8 @@ int main()
         DEBUG("\tupair: %llu | %08llx\n", val, val);
         assert(val != 0);
     }
-    assert(start != timer_read());
+    while (start == timer_read()) {
+        ;
+    }
     puts("PASS");
 }
