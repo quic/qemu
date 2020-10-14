@@ -18,10 +18,14 @@
 #ifndef HEXAGON_FMA_EMU_H
 #define HEXAGON_FMA_EMU_H
 
-extern float internal_fmafx(float a_in, float b_in, float c_in, int scale);
-extern float internal_fmaf(float a_in, float b_in, float c_in);
-extern float internal_mpyf(float a_in, float b_in);
+extern float internal_fmafx(float a_in, float b_in, float c_in,
+                            int scale, float_status *fp_status);
+extern float internal_fmaf(float a_in, float b_in, float c_in,
+                           float_status *fp_status);
+extern float internal_mpyf(float a_in, float b_in,
+                             float_status *fp_status);
 extern double internal_mpyhh(double a_in, double b_in,
-                             unsigned long long int accumulated);
+                             unsigned long long int accumulated,
+                             float_status *fp_status);
 
 #endif

@@ -725,9 +725,12 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
 #define fSF_MAXEXP() (254)
 #define fSF_RECIP_COMMON(N, D, O, A) arch_sf_recip_common(&N, &D, &O, &A)
 #define fSF_INVSQRT_COMMON(N, O, A) arch_sf_invsqrt_common(&N, &O, &A)
-#define fFMAFX(A, B, C, ADJ) internal_fmafx(A, B, C, fSXTN(8, 64, ADJ))
-#define fFMAF(A, B, C) internal_fmafx(A, B, C, 0)
-#define fSFMPY(A, B) internal_mpyf(A, B)
+#define fFMAFX(A, B, C, ADJ) \
+    internal_fmafx(A, B, C, fSXTN(8, 64, ADJ), &env->fp_status)
+#define fFMAF(A, B, C) \
+    internal_fmafx(A, B, C, 0, &env->fp_status)
+#define fSFMPY(A, B) \
+    internal_mpyf(A, B, &env->fp_status)
 #define fMAKESF(SIGN, EXP, MANT) \
     ((((SIGN) & 1) << 31) | \
      (((EXP) & 0xff) << fSF_MANTBITS()) | \
@@ -745,20 +748,30 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
 #define fDF_MANTBITS() 52
 #define fDF_GETEXP(A) (((A) >> fDF_MANTBITS()) & 0x7ff)
 #define fFMA(A, B, C) internal_fma(A, B, C)
-#define fDF_MPY_HH(A, B, ACC) internal_mpyhh(A, B, ACC)
+#define fDF_MPY_HH(A, B, ACC) \
+    internal_mpyhh(A, B, ACC, &env->fp_status)
 
-#ifdef QEMU_GENERATE
-/* These will be needed if we write any FP instructions with TCG */
-#define fFPOP_START()      /* nothing */
-#define fFPOP_END()        /* nothing */
-#else
+#ifndef QEMU_GENERATE
 #define fFPOP_START() arch_fpop_start(env)
 #define fFPOP_END() arch_fpop_end(env)
 #endif
 
-#define fFPSETROUND_NEAREST() fesetround(FE_TONEAREST)
-#define fFPSETROUND_CHOP() fesetround(FE_TOWARDZERO)
-#define fFPCANCELFLAGS() feclearexcept(FE_ALL_EXCEPT)
+#define fFPSETROUND_NEAREST() \
+    do { \
+        fesetround(FE_TONEAREST); \
+        set_float_rounding_mode(float_round_nearest_even, &env->fp_status); \
+    } while (0)
+#define fFPSETROUND_CHOP() \
+    do { \
+        fesetround(FE_TOWARDZERO); \
+        set_float_rounding_mode(float_round_to_zero, &env->fp_status); \
+    } while (0)
+#define fFPCANCELFLAGS() \
+    do { \
+        feclearexcept(FE_ALL_EXCEPT); \
+        set_float_exception_flags(0, &env->fp_status); \
+    } while (0)
+
 #define fISINFPROD(A, B) \
     ((isinf(A) && isinf(B)) || \
      (isinf(A) && isfinite(B) && ((B) != 0.0)) || \

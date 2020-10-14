@@ -21,6 +21,7 @@
 /* Forward declaration needed by some of the header files */
 typedef struct CPUHexagonState CPUHexagonState;
 
+#include "fpu/softfloat-types.h"
 #include <fenv.h>
 
 #include "qemu-common.h"
@@ -109,6 +110,7 @@ struct CPUHexagonState {
 
     target_ulong dczero_addr;
 
+    float_status fp_status;
     fenv_t fenv;
 
     target_ulong llsc_addr;

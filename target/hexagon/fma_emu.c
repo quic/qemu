@@ -507,7 +507,8 @@ static inline TYPE xf_round_##SUFFIX(LongDouble a) \
 GEN_XF_ROUND(Double, df_t, fDF_MANTBITS(), DF_INF_EXP)
 GEN_XF_ROUND(Float, sf_t, fSF_MANTBITS(), SF_INF_EXP)
 
-static inline double special_fma(Double a, Double b, Double c)
+static inline double special_fma(Double a, Double b, Double c,
+                                 float_status *fp_status)
 {
     Double ret;
     ret.i = 0;
@@ -565,16 +566,18 @@ static inline double special_fma(Double a, Double b, Double c)
     g_assert_not_reached();
 }
 
-static inline float special_fmaf(Float a, Float b, Float c)
+static inline float special_fmaf(Float a, Float b, Float c,
+                                 float_status *fp_status)
 {
     Double aa, bb, cc;
     aa.f = a.f;
     bb.f = b.f;
     cc.f = c.f;
-    return special_fma(aa, bb, cc);
+    return special_fma(aa, bb, cc, fp_status);
 }
 
-float internal_fmafx(float a_in, float b_in, float c_in, int scale)
+float internal_fmafx(float a_in, float b_in, float c_in, int scale,
+                     float_status *fp_status)
 {
     Float a, b, c;
     LongDouble prod;
@@ -588,10 +591,10 @@ float internal_fmafx(float a_in, float b_in, float c_in, int scale)
     c.f = c_in;
 
     if (isinf(a.f) || isinf(b.f) || isinf(c.f)) {
-        return special_fmaf(a, b, c);
+        return special_fmaf(a, b, c, fp_status);
     }
     if (isnan(a.f) || isnan(b.f) || isnan(c.f)) {
-        return special_fmaf(a, b, c);
+        return special_fmaf(a, b, c, fp_status);
     }
     if ((scale == 0) && (isz(a.f) || isz(b.f))) {
         return a.f * b.f + c.f;
@@ -628,26 +631,28 @@ float internal_fmafx(float a_in, float b_in, float c_in, int scale)
 }
 
 
-float internal_fmaf(float a_in, float b_in, float c_in)
+float internal_fmaf(float a_in, float b_in, float c_in, float_status *fp_status)
 {
-    return internal_fmafx(a_in, b_in, c_in, 0);
+    return internal_fmafx(a_in, b_in, c_in, 0, fp_status);
 }
 
-float internal_mpyf(float a_in, float b_in)
+float internal_mpyf(float a_in, float b_in, float_status *fp_status)
 {
     if (isz(a_in) || isz(b_in)) {
         return a_in * b_in;
     }
-    return internal_fmafx(a_in, b_in, 0.0, 0);
+    return internal_fmafx(a_in, b_in, 0.0, 0, fp_status);
 }
 
-static inline double internal_mpyhh_special(double a, double b)
+static inline double internal_mpyhh_special(double a, double b,
+                                            float_status *fp_status)
 {
     return a * b;
 }
 
 double internal_mpyhh(double a_in, double b_in,
-                      unsigned long long int accumulated)
+                      unsigned long long int accumulated,
+                      float_status *fp_status)
 {
     Double a, b;
     LongDouble x;
@@ -660,10 +665,10 @@ double internal_mpyhh(double a_in, double b_in,
     accumulated >>= 1;
     xf_init(&x);
     if (isz(a_in) || isnan(a_in) || isinf(a_in)) {
-        return internal_mpyhh_special(a_in, b_in);
+        return internal_mpyhh_special(a_in, b_in, fp_status);
     }
     if (isz(b_in) || isnan(b_in) || isinf(b_in)) {
-        return internal_mpyhh_special(a_in, b_in);
+        return internal_mpyhh_special(a_in, b_in, fp_status);
     }
     x.mant = int128_mul_6464(accumulated, 1);
     x.sticky = sticky;
@@ -679,7 +684,7 @@ double internal_mpyhh(double a_in, double b_in,
     return xf_round_df_t(x).f;
 }
 
-float conv_df_to_sf(double in_f)
+float conv_df_to_sf(double in_f, float_status *fp_status)
 {
     LongDouble x;
     Double in;
@@ -693,4 +698,3 @@ float conv_df_to_sf(double in_f)
     x.sign = in.sign;
     return xf_round_sf_t(x).f;
 }
-

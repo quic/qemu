@@ -19,6 +19,7 @@
 #include "qemu/osdep.h"
 #include "qemu.h"
 #include "exec/helper-proto.h"
+#include "fpu/softfloat.h"
 #include "cpu.h"
 #include "internal.h"
 #include "macros.h"
@@ -443,6 +444,223 @@ int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
         fSETHALF(i, RxxV, fSATH(fMAX(xv, sv)));
     }
     return PeV;
+}
+
+/* Floating point */
+int64_t HELPER(conv_sf2df)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fUNDOUBLE(conv_sf_to_df(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(conv_df2sf)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fUNFLOAT(conv_df_to_sf(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_uw2sf)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fUNFLOAT(conv_4u_to_sf(fCAST4u(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int64_t HELPER(conv_uw2df)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fUNDOUBLE(conv_4u_to_df(fCAST4u(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(conv_w2sf)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fUNFLOAT(conv_4s_to_sf(fCAST4s(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int64_t HELPER(conv_w2df)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fUNDOUBLE(conv_4s_to_df(fCAST4s(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(conv_ud2sf)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fUNFLOAT(conv_8u_to_sf(fCAST8u(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int64_t HELPER(conv_ud2df)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fUNDOUBLE(conv_8u_to_df(fCAST8u(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(conv_d2sf)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fUNFLOAT(conv_8s_to_sf(fCAST8s(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int64_t HELPER(conv_d2df)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fUNDOUBLE(conv_8s_to_df(fCAST8s(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(conv_sf2uw)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fCAST4u(conv_sf_to_4u(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_sf2w)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fCAST4s(conv_sf_to_4s(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int64_t HELPER(conv_sf2ud)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fCAST8u(conv_sf_to_8u(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int64_t HELPER(conv_sf2d)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fCAST8s(conv_sf_to_8s(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(conv_df2uw)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fCAST4u(conv_df_to_4u(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_df2w)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int32_t RdV = fCAST4s(conv_df_to_4s(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int64_t HELPER(conv_df2ud)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fCAST8u(conv_df_to_8u(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int64_t HELPER(conv_df2d)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    int64_t RddV = fCAST8s(conv_df_to_8s(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(conv_sf2uw_chop)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    fFPSETROUND_CHOP();
+    int32_t RdV = fCAST4u(conv_sf_to_4u(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_sf2w_chop)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    fFPSETROUND_CHOP();
+    int32_t RdV = fCAST4s(conv_sf_to_4s(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int64_t HELPER(conv_sf2ud_chop)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    fFPSETROUND_CHOP();
+    int64_t RddV = fCAST8u(conv_sf_to_8u(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int64_t HELPER(conv_sf2d_chop)(CPUHexagonState *env, int32_t RsV)
+{
+    arch_fpop_start(env);
+    fFPSETROUND_CHOP();
+    int64_t RddV = fCAST8s(conv_sf_to_8s(fFLOAT(RsV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(conv_df2uw_chop)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    fFPSETROUND_CHOP();
+    int32_t RdV = fCAST4u(conv_df_to_4u(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_df2w_chop)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    fFPSETROUND_CHOP();
+    int32_t RdV = fCAST4s(conv_df_to_4s(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int64_t HELPER(conv_df2ud_chop)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    fFPSETROUND_CHOP();
+    int64_t RddV = fCAST8u(conv_df_to_8u(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int64_t HELPER(conv_df2d_chop)(CPUHexagonState *env, int64_t RssV)
+{
+    arch_fpop_start(env);
+    fFPSETROUND_CHOP();
+    int64_t RddV = fCAST8s(conv_df_to_8s(fDOUBLE(RssV), &env->fp_status));
+    arch_fpop_end(env);
+    return RddV;
 }
 
 /* Log a write to HVX vector */

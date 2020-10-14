@@ -71,7 +71,8 @@ typedef union {
 
 
 #define MAKE_CONV_8U_TO_XF_N(FLOATID, TYPE, BIGFLOATID, RETTYPE) \
-static RETTYPE conv_8u_to_##FLOATID##_n(uint64_t in, int negate) \
+static RETTYPE conv_8u_to_##FLOATID##_n(uint64_t in, int negate, \
+                                        float_status * fp_status) \
 { \
     TYPE x; \
     uint64_t tmp, truncbits, shamt; \
@@ -122,62 +123,63 @@ static RETTYPE conv_8u_to_##FLOATID##_n(uint64_t in, int negate) \
 MAKE_CONV_8U_TO_XF_N(df, Double, DF, double)
 MAKE_CONV_8U_TO_XF_N(sf, Float, SF, float)
 
-double conv_8u_to_df(uint64_t in)
+double conv_8u_to_df(uint64_t in, float_status * fp_status)
 {
-    return conv_8u_to_df_n(in, 0);
+    return conv_8u_to_df_n(in, 0, fp_status);
 }
 
-double conv_8s_to_df(int64_t in)
-{
-    if (in == 0x8000000000000000) {
-        return -0x1p63;
-    }
-    if (in < 0) {
-        return conv_8u_to_df_n(-in, 1);
-    } else {
-        return conv_8u_to_df_n(in, 0);
-    }
-}
-
-double conv_4u_to_df(uint32_t in)
-{
-    return conv_8u_to_df((uint64_t) in);
-}
-
-double conv_4s_to_df(int32_t in)
-{
-    return conv_8s_to_df(in);
-}
-
-float conv_8u_to_sf(uint64_t in)
-{
-    return conv_8u_to_sf_n(in, 0);
-}
-
-float conv_8s_to_sf(int64_t in)
+double conv_8s_to_df(int64_t in, float_status *fp_status)
 {
     if (in == 0x8000000000000000) {
         return -0x1p63;
     }
     if (in < 0) {
-        return conv_8u_to_sf_n(-in, 1);
+        return conv_8u_to_df_n(-in, 1, fp_status);
     } else {
-        return conv_8u_to_sf_n(in, 0);
+        return conv_8u_to_df_n(in, 0, fp_status);
     }
 }
 
-float conv_4u_to_sf(uint32_t in)
+double conv_4u_to_df(uint32_t in, float_status *fp_status)
 {
-    return conv_8u_to_sf(in);
+    return conv_8u_to_df((uint64_t) in, fp_status);
 }
 
-float conv_4s_to_sf(int32_t in)
+double conv_4s_to_df(int32_t in, float_status *fp_status)
 {
-    return conv_8s_to_sf(in);
+    return conv_8s_to_df(in, fp_status);
+}
+
+float conv_8u_to_sf(uint64_t in, float_status *fp_status)
+{
+    return conv_8u_to_sf_n(in, 0, fp_status);
+}
+
+float conv_8s_to_sf(int64_t in, float_status *fp_status)
+{
+    if (in == 0x8000000000000000) {
+        return -0x1p63;
+    }
+    if (in < 0) {
+        return conv_8u_to_sf_n(-in, 1, fp_status);
+    } else {
+        return conv_8u_to_sf_n(in, 0, fp_status);
+    }
+}
+
+float conv_4u_to_sf(uint32_t in, float_status *fp_status)
+{
+    return conv_8u_to_sf(in, fp_status);
+}
+
+float conv_4s_to_sf(int32_t in, float_status *fp_status)
+{
+    return conv_8s_to_sf(in, fp_status);
 }
 
 
-static uint64_t conv_df_to_8u_n(double in, int will_negate)
+static uint64_t conv_df_to_8u_n(double in, int will_negate,
+                                float_status *fp_status)
 {
     Double x;
     int fracshift, endshift;
@@ -272,10 +274,11 @@ static uint64_t conv_df_to_8u_n(double in, int will_negate)
     return tmp;
 }
 
-static uint32_t conv_df_to_4u_n(double in, int will_negate)
+static uint32_t conv_df_to_4u_n(double in, int will_negate,
+                                float_status *fp_status)
 {
     uint64_t tmp;
-    tmp = conv_df_to_8u_n(in, will_negate);
+    tmp = conv_df_to_8u_n(in, will_negate, fp_status);
     if (tmp > 0x00000000ffffffffULL) {
         feclearexcept(FE_INEXACT);
         feraiseexcept(FE_INVALID);
@@ -284,17 +287,17 @@ static uint32_t conv_df_to_4u_n(double in, int will_negate)
     return (uint32_t)tmp;
 }
 
-uint64_t conv_df_to_8u(double in)
+uint64_t conv_df_to_8u(double in, float_status *fp_status)
 {
-    return conv_df_to_8u_n(in, 0);
+    return conv_df_to_8u_n(in, 0, fp_status);
 }
 
-uint32_t conv_df_to_4u(double in)
+uint32_t conv_df_to_4u(double in, float_status *fp_status)
 {
-    return conv_df_to_4u_n(in, 0);
+    return conv_df_to_4u_n(in, 0, fp_status);
 }
 
-int64_t conv_df_to_8s(double in)
+int64_t conv_df_to_8s(double in, float_status *fp_status)
 {
     uint64_t tmp;
     Double x;
@@ -304,9 +307,9 @@ int64_t conv_df_to_8s(double in)
         return -1;
     }
     if (x.sign) {
-        tmp = conv_df_to_8u_n(-in, 1);
+        tmp = conv_df_to_8u_n(-in, 1, fp_status);
     } else {
-        tmp = conv_df_to_8u_n(in, 0);
+        tmp = conv_df_to_8u_n(in, 0, fp_status);
     }
     if (tmp > (LL_MAX_POS + x.sign)) {
         feclearexcept(FE_INEXACT);
@@ -320,7 +323,7 @@ int64_t conv_df_to_8s(double in)
     }
 }
 
-int32_t conv_df_to_4s(double in)
+int32_t conv_df_to_4s(double in, float_status *fp_status)
 {
     uint64_t tmp;
     Double x;
@@ -330,9 +333,9 @@ int32_t conv_df_to_4s(double in)
         return -1;
     }
     if (x.sign) {
-        tmp = conv_df_to_8u_n(-in, 1);
+        tmp = conv_df_to_8u_n(-in, 1, fp_status);
     } else {
-        tmp = conv_df_to_8u_n(in, 0);
+        tmp = conv_df_to_8u_n(in, 0, fp_status);
     }
     if (tmp > (MAX_POS + x.sign)) {
         feclearexcept(FE_INEXACT);
@@ -346,23 +349,22 @@ int32_t conv_df_to_4s(double in)
     }
 }
 
-uint64_t conv_sf_to_8u(float in)
+uint64_t conv_sf_to_8u(float in, float_status *fp_status)
 {
-    return conv_df_to_8u(in);
+    return conv_df_to_8u(in, fp_status);
 }
 
-uint32_t conv_sf_to_4u(float in)
+uint32_t conv_sf_to_4u(float in, float_status *fp_status)
 {
-    return conv_df_to_4u(in);
+    return conv_df_to_4u(in, fp_status);
 }
 
-int64_t conv_sf_to_8s(float in)
+int64_t conv_sf_to_8s(float in, float_status *fp_status)
 {
-    return conv_df_to_8s(in);
+    return conv_df_to_8s(in, fp_status);
 }
 
-int32_t conv_sf_to_4s(float in)
+int32_t conv_sf_to_4s(float in, float_status *fp_status)
 {
-    return conv_df_to_4s(in);
+    return conv_df_to_4s(in, fp_status);
 }
-

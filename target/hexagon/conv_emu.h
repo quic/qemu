@@ -18,29 +18,29 @@
 #ifndef HEXAGON_CONV_EMU_H
 #define HEXAGON_CONV_EMU_H
 
-extern uint64_t conv_sf_to_8u(float in);
-extern uint32_t conv_sf_to_4u(float in);
-extern int64_t conv_sf_to_8s(float in);
-extern int32_t conv_sf_to_4s(float in);
+extern uint64_t conv_sf_to_8u(float in, float_status *fp_status);
+extern uint32_t conv_sf_to_4u(float in, float_status *fp_status);
+extern int64_t conv_sf_to_8s(float in, float_status *fp_status);
+extern int32_t conv_sf_to_4s(float in, float_status *fp_status);
 
-extern uint64_t conv_df_to_8u(double in);
-extern uint32_t conv_df_to_4u(double in);
-extern int64_t conv_df_to_8s(double in);
-extern int32_t conv_df_to_4s(double in);
+extern uint64_t conv_df_to_8u(double in, float_status *fp_status);
+extern uint32_t conv_df_to_4u(double in, float_status *fp_status);
+extern int64_t conv_df_to_8s(double in, float_status *fp_status);
+extern int32_t conv_df_to_4s(double in, float_status *fp_status);
 
-extern double conv_8u_to_df(uint64_t in);
-extern double conv_4u_to_df(uint32_t in);
-extern double conv_8s_to_df(int64_t in);
-extern double conv_4s_to_df(int32_t in);
+extern double conv_8u_to_df(uint64_t in, float_status *fp_status);
+extern double conv_4u_to_df(uint32_t in, float_status *fp_status);
+extern double conv_8s_to_df(int64_t in, float_status *fp_status);
+extern double conv_4s_to_df(int32_t in, float_status *fp_status);
 
-extern float conv_8u_to_sf(uint64_t in);
-extern float conv_4u_to_sf(uint32_t in);
-extern float conv_8s_to_sf(int64_t in);
-extern float conv_4s_to_sf(int32_t in);
+extern float conv_8u_to_sf(uint64_t in, float_status *fp_status);
+extern float conv_4u_to_sf(uint32_t in, float_status *fp_status);
+extern float conv_8s_to_sf(int64_t in, float_status *fp_status);
+extern float conv_4s_to_sf(int32_t in, float_status *fp_status);
 
-extern float conv_df_to_sf(double in);
+extern float conv_df_to_sf(double in, float_status *fp_status);
 
-static inline double conv_sf_to_df(float in)
+static inline double conv_sf_to_df(float in, float_status *fp_status)
 {
     return in;
 }

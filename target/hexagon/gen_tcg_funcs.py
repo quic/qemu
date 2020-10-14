@@ -591,8 +591,6 @@ def gen_tcg_func(f, tag, regs, imms):
         f.write('    fCHECKFORPRIV();\n')
     if 'A_GUEST' in attribdict[tag]:
         f.write('    fCHECKFORGUEST();\n')
-    if 'A_FPOP' in attribdict[tag]:
-        f.write('    fFPOP_START();\n');
 
     ## Read all the inputs
     for regtype,regid,toss,numregs in regs:
@@ -650,10 +648,6 @@ def gen_tcg_func(f, tag, regs, imms):
     for regtype,regid,toss,numregs in regs:
         if (is_written(regid)):
             genptr_dst_write_opn(f,regtype, regid, tag)
-
-    if 'A_FPOP' in attribdict[tag]:
-        f.write('    fFPOP_END();\n');
-
 
     ## Free all the operands (regs and immediates)
     if need_ea(tag): gen_free_ea_tcg(f)
