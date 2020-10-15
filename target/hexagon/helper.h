@@ -29,8 +29,8 @@ DEF_HELPER_4(vacsh_val, s64, env, s64, s64, s64)
 DEF_HELPER_4(vacsh_pred, s32, env, s64, s64, s64)
 
 /* Floating point */
-DEF_HELPER_2(conv_sf2df, s64, env, s32)
-DEF_HELPER_2(conv_df2sf, s32, env, s64)
+DEF_HELPER_2(conv_sf2df, f64, env, f32)
+DEF_HELPER_2(conv_df2sf, f32, env, f64)
 DEF_HELPER_2(conv_uw2sf, s32, env, s32)
 DEF_HELPER_2(conv_uw2df, s64, env, s32)
 DEF_HELPER_2(conv_w2sf, s32, env, s32)

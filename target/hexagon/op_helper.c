@@ -447,20 +447,23 @@ int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
 }
 
 /* Floating point */
-int64_t HELPER(conv_sf2df)(CPUHexagonState *env, int32_t RsV)
+float64 HELPER(conv_sf2df)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fUNDOUBLE(conv_sf_to_df(fFLOAT(RsV), &env->fp_status));
+    float64 out_f64 = float32_to_float64(RsV, &env->fp_status);
+    if (float64_is_any_nan(out_f64)) {
+        out_f64 = make_float64(0xFFFFFFFFFFFFFFFFULL);
+    }
     arch_fpop_end(env);
-    return RddV;
+    return out_f64;
 }
 
-int32_t HELPER(conv_df2sf)(CPUHexagonState *env, int64_t RssV)
+float32 HELPER(conv_df2sf)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fUNFLOAT(conv_df_to_sf(fDOUBLE(RssV), &env->fp_status));
+    float32 out_f32 = float64_to_float32(RssV, &env->fp_status);
     arch_fpop_end(env);
-    return RdV;
+    return out_f32;
 }
 
 int32_t HELPER(conv_uw2sf)(CPUHexagonState *env, int32_t RsV)

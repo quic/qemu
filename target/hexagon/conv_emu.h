@@ -38,11 +38,4 @@ extern float conv_4u_to_sf(uint32_t in, float_status *fp_status);
 extern float conv_8s_to_sf(int64_t in, float_status *fp_status);
 extern float conv_4s_to_sf(int32_t in, float_status *fp_status);
 
-extern float conv_df_to_sf(double in, float_status *fp_status);
-
-static inline double conv_sf_to_df(float in, float_status *fp_status)
-{
-    return in;
-}
-
 #endif

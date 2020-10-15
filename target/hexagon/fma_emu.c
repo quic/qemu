@@ -683,18 +683,3 @@ double internal_mpyhh(double a_in, double b_in,
     x.sign = a.sign ^ b.sign;
     return xf_round_df_t(x).f;
 }
-
-float conv_df_to_sf(double in_f, float_status *fp_status)
-{
-    LongDouble x;
-    Double in;
-    if (isz(in_f) || isnan(in_f) || isinf(in_f)) {
-        return in_f;
-    }
-    xf_init(&x);
-    in.f = in_f;
-    x.mant = int128_mul_6464(df_getmant(in), 1);
-    x.exp = df_getexp(in) - DF_BIAS + SF_BIAS - 52 + 23;
-    x.sign = in.sign;
-    return xf_round_sf_t(x).f;
-}
