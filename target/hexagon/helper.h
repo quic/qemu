@@ -55,5 +55,7 @@ DEF_HELPER_2(conv_df2uw_chop, s32, env, s64)
 DEF_HELPER_2(conv_df2w_chop, s32, env, s64)
 DEF_HELPER_2(conv_df2ud_chop, s64, env, s64)
 DEF_HELPER_2(conv_df2d_chop, s64, env, s64)
+DEF_HELPER_3(sfadd, f32, env, f32, f32)
+DEF_HELPER_3(sfsub, f32, env, f32, f32)
 
 #include "helper_protos_generated.h"

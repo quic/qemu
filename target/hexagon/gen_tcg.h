@@ -2368,5 +2368,9 @@
     gen_helper_conv_df2ud_chop(RddV, cpu_env, RssV)
 #define fGEN_TCG_F2_conv_df2d_chop(SHORTCODE) \
     gen_helper_conv_df2d_chop(RddV, cpu_env, RssV)
+#define fGEN_TCG_F2_sfadd(SHORTCODE) \
+    gen_helper_sfadd(RdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sfsub(SHORTCODE) \
+    gen_helper_sfsub(RdV, cpu_env, RsV, RtV)
 
 #endif

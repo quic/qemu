@@ -663,6 +663,22 @@ int64_t HELPER(conv_df2d_chop)(CPUHexagonState *env, int64_t RssV)
     return RddV;
 }
 
+float32 HELPER(sfadd)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    float32 RdV = float32_add(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float32 HELPER(sfsub)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    float32 RdV = float32_sub(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
 /* Log a write to HVX vector */
 static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
                                       int vnew, uint32_t slot)
