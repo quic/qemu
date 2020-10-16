@@ -711,24 +711,12 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
             DST = fSFNANVAL(); \
         } \
     } while (0)
-#define fCHECKSFNAN3(DST, A, B, C) \
-    do { \
-        fCHECKSFNAN(DST, A); \
-        fCHECKSFNAN(DST, B); \
-        fCHECKSFNAN(DST, C); \
-    } while (0)
 #define fSF_BIAS() 127
 #define fSF_MANTBITS() 23
 #define fSF_MUL_POW2(A, B) \
     (fUNFLOAT(fFLOAT(A) * fFLOAT((fSF_BIAS() + (B)) << fSF_MANTBITS())))
 #define fSF_GETEXP(A) (((A) >> fSF_MANTBITS()) & 0xff)
 #define fSF_MAXEXP() (254)
-#define fFMAFX(A, B, C, ADJ) \
-    internal_fmafx(A, B, C, fSXTN(8, 64, ADJ), &env->fp_status)
-#define fFMAF(A, B, C) \
-    internal_fmafx(A, B, C, 0, &env->fp_status)
-#define fSFMPY(A, B) \
-    internal_mpyf(A, B, &env->fp_status)
 #define fMAKESF(SIGN, EXP, MANT) \
     ((((SIGN) & 1) << 31) | \
      (((EXP) & 0xff) << fSF_MANTBITS()) | \
@@ -739,7 +727,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
     ({ union { double f; uint64_t i; } _fipun; \
      _fipun.f = (A); \
      isnan(_fipun.f) ? 0xFFFFFFFFFFFFFFFFULL : _fipun.i; })
-#define fDFNANVAL() 0xffffffffffffffffULL
 #define fDF_ISNORMAL(X) (fpclassify(fDOUBLE(X)) == FP_NORMAL)
 #define fDF_ISDENORM(X) (fpclassify(fDOUBLE(X)) == FP_SUBNORMAL)
 #define fDF_ISBIG(X) (fDF_GETEXP(X) >= 512)
@@ -765,12 +752,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
         set_float_exception_flags(0, &env->fp_status); \
     } while (0)
 
-#define fISINFPROD(A, B) \
-    ((isinf(A) && isinf(B)) || \
-     (isinf(A) && isfinite(B) && ((B) != 0.0)) || \
-     (isinf(B) && isfinite(A) && ((A) != 0.0)))
-#define fISZEROPROD(A, B) \
-    ((((A) == 0.0) && isfinite(B)) || (((B) == 0.0) && isfinite(A)))
 #define fRAISEFLAGS(A) arch_raise_fpflag(A)
 #define fDF_MAX(A, B) \
     (((A) == (B)) ? fDOUBLE(fUNDOUBLE(A) & fUNDOUBLE(B)) : fmax(A, B))

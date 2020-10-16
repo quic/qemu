@@ -2418,5 +2418,17 @@
         gen_helper_dfclass(PdV, cpu_env, RssV, imm); \
         tcg_temp_free(imm); \
     } while (0)
+#define fGEN_TCG_F2_sfmpy(SHORTCODE) \
+    gen_helper_sfmpy(RdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sffma(SHORTCODE) \
+    gen_helper_sffma(RxV, cpu_env, RxV, RsV, RtV)
+#define fGEN_TCG_F2_sffma_sc(SHORTCODE) \
+    gen_helper_sffma_sc(RxV, cpu_env, RxV, RsV, RtV, PuV)
+#define fGEN_TCG_F2_sffms(SHORTCODE) \
+    gen_helper_sffms(RxV, cpu_env, RxV, RsV, RtV)
+#define fGEN_TCG_F2_sffma_lib(SHORTCODE) \
+    gen_helper_sffma_lib(RxV, cpu_env, RxV, RsV, RtV)
+#define fGEN_TCG_F2_sffms_lib(SHORTCODE) \
+    gen_helper_sffms_lib(RxV, cpu_env, RxV, RsV, RtV)
 
 #endif

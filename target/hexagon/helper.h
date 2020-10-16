@@ -78,4 +78,11 @@ DEF_HELPER_3(dfcmpge, s32, env, f64, f64)
 DEF_HELPER_3(dfcmpuo, s32, env, f64, f64)
 DEF_HELPER_3(dfclass, s32, env, f64, s32)
 
+DEF_HELPER_3(sfmpy, f32, env, f32, f32)
+DEF_HELPER_4(sffma, f32, env, f32, f32, f32)
+DEF_HELPER_5(sffma_sc, f32, env, f32, f32, f32, f32)
+DEF_HELPER_4(sffms, f32, env, f32, f32, f32)
+DEF_HELPER_4(sffma_lib, f32, env, f32, f32, f32)
+DEF_HELPER_4(sffms_lib, f32, env, f32, f32, f32)
+
 #include "helper_protos_generated.h"
