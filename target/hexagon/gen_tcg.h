@@ -2396,5 +2396,27 @@
     gen_helper_sffixupd(RdV, cpu_env, RsV, RtV)
 #define fGEN_TCG_F2_sffixupr(SHORTCODE) \
     gen_helper_sffixupr(RdV, cpu_env, RsV)
+#define fGEN_TCG_F2_dfadd(SHORTCODE) \
+    gen_helper_dfadd(RddV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfsub(SHORTCODE) \
+    gen_helper_dfsub(RddV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfmax(SHORTCODE) \
+    gen_helper_dfmax(RddV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfmin(SHORTCODE) \
+    gen_helper_dfmin(RddV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfcmpeq(SHORTCODE) \
+    gen_helper_dfcmpeq(PdV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfcmpgt(SHORTCODE) \
+    gen_helper_dfcmpgt(PdV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfcmpge(SHORTCODE) \
+    gen_helper_dfcmpge(PdV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfcmpuo(SHORTCODE) \
+    gen_helper_dfcmpuo(PdV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfclass(SHORTCODE) \
+    do { \
+        TCGv imm = tcg_const_tl(uiV); \
+        gen_helper_dfclass(PdV, cpu_env, RssV, imm); \
+        tcg_temp_free(imm); \
+    } while (0)
 
 #endif

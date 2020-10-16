@@ -791,6 +791,97 @@ int32_t HELPER(sffixupr)(CPUHexagonState *env, int32_t RsV)
     return RdV;
 }
 
+float64 HELPER(dfadd)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    float64 RddV = float64_add(RssV, RttV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float64 HELPER(dfsub)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    float64 RddV = float64_sub(RssV, RttV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float64 HELPER(dfmax)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    float64 RddV = float64_max(RssV, RttV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float64 HELPER(dfmin)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    float64 RddV = float64_min(RssV, RttV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(dfcmpeq)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    int32_t PdV = f8BITSOF(float64_eq(RssV, RttV, &env->fp_status));
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(dfcmpgt)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    int cmp = float64_compare(RssV, RttV, &env->fp_status);
+    int32_t PdV = f8BITSOF(cmp == float_relation_greater);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(dfcmpge)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    int cmp = float64_compare(RssV, RttV, &env->fp_status);
+    int32_t PdV = f8BITSOF(cmp == float_relation_greater ||
+                           cmp == float_relation_equal);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(dfcmpuo)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    int32_t PdV = f8BITSOF(float64_is_any_nan(RssV) ||
+                           float64_is_any_nan(RttV));
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(dfclass)(CPUHexagonState *env, float64 RssV, int32_t uiV)
+{
+    arch_fpop_start(env);
+    int32_t PdV = 0;
+    if (fGETBIT(0, uiV) && float64_is_zero(RssV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(1, uiV) && float64_is_normal(RssV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(2, uiV) && float64_is_denormal(RssV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(3, uiV) && float64_is_infinity(RssV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(4, uiV) && float64_is_any_nan(RssV)) {
+        PdV = 0xff;
+    }
+    set_float_exception_flags(0, &env->fp_status);
+    arch_fpop_end(env);
+    return PdV;
+}
 
 /* Log a write to HVX vector */
 static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,

@@ -68,4 +68,14 @@ DEF_HELPER_3(sffixupn, s32, env, s32, s32)
 DEF_HELPER_3(sffixupd, s32, env, s32, s32)
 DEF_HELPER_2(sffixupr, s32, env, s32)
 
+DEF_HELPER_3(dfadd, f64, env, f64, f64)
+DEF_HELPER_3(dfsub, f64, env, f64, f64)
+DEF_HELPER_3(dfmax, f64, env, f64, f64)
+DEF_HELPER_3(dfmin, f64, env, f64, f64)
+DEF_HELPER_3(dfcmpeq, s32, env, f64, f64)
+DEF_HELPER_3(dfcmpgt, s32, env, f64, f64)
+DEF_HELPER_3(dfcmpge, s32, env, f64, f64)
+DEF_HELPER_3(dfcmpuo, s32, env, f64, f64)
+DEF_HELPER_3(dfclass, s32, env, f64, s32)
+
 #include "helper_protos_generated.h"
