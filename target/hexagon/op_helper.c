@@ -466,202 +466,202 @@ float32 HELPER(conv_df2sf)(CPUHexagonState *env, float64 RssV)
     return out_f32;
 }
 
-int32_t HELPER(conv_uw2sf)(CPUHexagonState *env, int32_t RsV)
+float32 HELPER(conv_uw2sf)(CPUHexagonState *env, int32_t RsV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fUNFLOAT(conv_4u_to_sf(fCAST4u(RsV), &env->fp_status));
+    float32 RdV = uint32_to_float32(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int64_t HELPER(conv_uw2df)(CPUHexagonState *env, int32_t RsV)
+float64 HELPER(conv_uw2df)(CPUHexagonState *env, int32_t RsV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fUNDOUBLE(conv_4u_to_df(fCAST4u(RsV), &env->fp_status));
+    float64 RddV = uint32_to_float64(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int32_t HELPER(conv_w2sf)(CPUHexagonState *env, int32_t RsV)
+float32 HELPER(conv_w2sf)(CPUHexagonState *env, int32_t RsV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fUNFLOAT(conv_4s_to_sf(fCAST4s(RsV), &env->fp_status));
+    float32 RdV = int32_to_float32(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int64_t HELPER(conv_w2df)(CPUHexagonState *env, int32_t RsV)
+float64 HELPER(conv_w2df)(CPUHexagonState *env, int32_t RsV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fUNDOUBLE(conv_4s_to_df(fCAST4s(RsV), &env->fp_status));
+    float64 RddV = int32_to_float64(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int32_t HELPER(conv_ud2sf)(CPUHexagonState *env, int64_t RssV)
+float32 HELPER(conv_ud2sf)(CPUHexagonState *env, int64_t RssV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fUNFLOAT(conv_8u_to_sf(fCAST8u(RssV), &env->fp_status));
+    float32 RdV = uint64_to_float32(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int64_t HELPER(conv_ud2df)(CPUHexagonState *env, int64_t RssV)
+float64 HELPER(conv_ud2df)(CPUHexagonState *env, int64_t RssV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fUNDOUBLE(conv_8u_to_df(fCAST8u(RssV), &env->fp_status));
+    float64 RddV = uint64_to_float64(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int32_t HELPER(conv_d2sf)(CPUHexagonState *env, int64_t RssV)
+float32 HELPER(conv_d2sf)(CPUHexagonState *env, int64_t RssV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fUNFLOAT(conv_8s_to_sf(fCAST8s(RssV), &env->fp_status));
+    float32 RdV = int64_to_float32(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int64_t HELPER(conv_d2df)(CPUHexagonState *env, int64_t RssV)
+float64 HELPER(conv_d2df)(CPUHexagonState *env, int64_t RssV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fUNDOUBLE(conv_8s_to_df(fCAST8s(RssV), &env->fp_status));
+    float64 RddV = int64_to_float64(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int32_t HELPER(conv_sf2uw)(CPUHexagonState *env, int32_t RsV)
+int32_t HELPER(conv_sf2uw)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fCAST4u(conv_sf_to_4u(fFLOAT(RsV), &env->fp_status));
+    int32_t RdV = conv_sf_to_4u(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int32_t HELPER(conv_sf2w)(CPUHexagonState *env, int32_t RsV)
+int32_t HELPER(conv_sf2w)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fCAST4s(conv_sf_to_4s(fFLOAT(RsV), &env->fp_status));
+    int32_t RdV = conv_sf_to_4s(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int64_t HELPER(conv_sf2ud)(CPUHexagonState *env, int32_t RsV)
+int64_t HELPER(conv_sf2ud)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fCAST8u(conv_sf_to_8u(fFLOAT(RsV), &env->fp_status));
+    int64_t RddV = conv_sf_to_8u(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int64_t HELPER(conv_sf2d)(CPUHexagonState *env, int32_t RsV)
+int64_t HELPER(conv_sf2d)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fCAST8s(conv_sf_to_8s(fFLOAT(RsV), &env->fp_status));
+    int64_t RddV = conv_sf_to_8s(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int32_t HELPER(conv_df2uw)(CPUHexagonState *env, int64_t RssV)
+int32_t HELPER(conv_df2uw)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fCAST4u(conv_df_to_4u(fDOUBLE(RssV), &env->fp_status));
+    int32_t RdV = conv_df_to_4u(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int32_t HELPER(conv_df2w)(CPUHexagonState *env, int64_t RssV)
+int32_t HELPER(conv_df2w)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    int32_t RdV = fCAST4s(conv_df_to_4s(fDOUBLE(RssV), &env->fp_status));
+    int32_t RdV = conv_df_to_4s(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int64_t HELPER(conv_df2ud)(CPUHexagonState *env, int64_t RssV)
+int64_t HELPER(conv_df2ud)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fCAST8u(conv_df_to_8u(fDOUBLE(RssV), &env->fp_status));
+    int64_t RddV = conv_df_to_8u(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int64_t HELPER(conv_df2d)(CPUHexagonState *env, int64_t RssV)
+int64_t HELPER(conv_df2d)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    int64_t RddV = fCAST8s(conv_df_to_8s(fDOUBLE(RssV), &env->fp_status));
+    int64_t RddV = conv_df_to_8s(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int32_t HELPER(conv_sf2uw_chop)(CPUHexagonState *env, int32_t RsV)
+int32_t HELPER(conv_sf2uw_chop)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_CHOP();
-    int32_t RdV = fCAST4u(conv_sf_to_4u(fFLOAT(RsV), &env->fp_status));
+    set_float_rounding_mode(float_round_to_zero, &env->fp_status);
+    int32_t RdV = conv_sf_to_4u(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int32_t HELPER(conv_sf2w_chop)(CPUHexagonState *env, int32_t RsV)
+int32_t HELPER(conv_sf2w_chop)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_CHOP();
-    int32_t RdV = fCAST4s(conv_sf_to_4s(fFLOAT(RsV), &env->fp_status));
+    set_float_rounding_mode(float_round_to_zero, &env->fp_status);
+    int32_t RdV = conv_sf_to_4s(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int64_t HELPER(conv_sf2ud_chop)(CPUHexagonState *env, int32_t RsV)
+int64_t HELPER(conv_sf2ud_chop)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_CHOP();
-    int64_t RddV = fCAST8u(conv_sf_to_8u(fFLOAT(RsV), &env->fp_status));
+    set_float_rounding_mode(float_round_to_zero, &env->fp_status);
+    int64_t RddV = conv_sf_to_8u(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int64_t HELPER(conv_sf2d_chop)(CPUHexagonState *env, int32_t RsV)
+int64_t HELPER(conv_sf2d_chop)(CPUHexagonState *env, float32 RsV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_CHOP();
-    int64_t RddV = fCAST8s(conv_sf_to_8s(fFLOAT(RsV), &env->fp_status));
+    set_float_rounding_mode(float_round_to_zero, &env->fp_status);
+    int64_t RddV = conv_sf_to_8s(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int32_t HELPER(conv_df2uw_chop)(CPUHexagonState *env, int64_t RssV)
+int32_t HELPER(conv_df2uw_chop)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_CHOP();
-    int32_t RdV = fCAST4u(conv_df_to_4u(fDOUBLE(RssV), &env->fp_status));
+    set_float_rounding_mode(float_round_to_zero, &env->fp_status);
+    int32_t RdV = conv_df_to_4u(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int32_t HELPER(conv_df2w_chop)(CPUHexagonState *env, int64_t RssV)
+int32_t HELPER(conv_df2w_chop)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_CHOP();
-    int32_t RdV = fCAST4s(conv_df_to_4s(fDOUBLE(RssV), &env->fp_status));
+    set_float_rounding_mode(float_round_to_zero, &env->fp_status);
+    int32_t RdV = conv_df_to_4s(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
-int64_t HELPER(conv_df2ud_chop)(CPUHexagonState *env, int64_t RssV)
+int64_t HELPER(conv_df2ud_chop)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_CHOP();
-    int64_t RddV = fCAST8u(conv_df_to_8u(fDOUBLE(RssV), &env->fp_status));
+    set_float_rounding_mode(float_round_to_zero, &env->fp_status);
+    int64_t RddV = conv_df_to_8u(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
-int64_t HELPER(conv_df2d_chop)(CPUHexagonState *env, int64_t RssV)
+int64_t HELPER(conv_df2d_chop)(CPUHexagonState *env, float64 RssV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_CHOP();
-    int64_t RddV = fCAST8s(conv_df_to_8s(fDOUBLE(RssV), &env->fp_status));
+    set_float_rounding_mode(float_round_to_zero, &env->fp_status);
+    int64_t RddV = conv_df_to_8s(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }

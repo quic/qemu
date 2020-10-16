@@ -761,11 +761,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
         fesetround(FE_TONEAREST); \
         set_float_rounding_mode(float_round_nearest_even, &env->fp_status); \
     } while (0)
-#define fFPSETROUND_CHOP() \
-    do { \
-        fesetround(FE_TOWARDZERO); \
-        set_float_rounding_mode(float_round_to_zero, &env->fp_status); \
-    } while (0)
 #define fFPCANCELFLAGS() \
     do { \
         feclearexcept(FE_ALL_EXCEPT); \

@@ -15,206 +15,49 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <math.h>
 #include "qemu/osdep.h"
+#include "qemu/host-utils.h"
+#include "fpu/softfloat.h"
 #include "macros.h"
 #include "conv_emu.h"
-
-#define isz(X) (fpclassify(X) == FP_ZERO)
-#define DF_BIAS 1023
-#define SF_BIAS 127
 
 #define LL_MAX_POS 0x7fffffffffffffffULL
 #define MAX_POS 0x7fffffffU
 
-#ifdef VCPP
-/*
- * Visual C isn't GNU C and doesn't have __builtin_clzll
- */
-
-static int __builtin_clzll(unsigned long long int input)
+static uint64_t conv_f64_to_8u_n(float64 in, int will_negate,
+                                 float_status *fp_status)
 {
-    int total = 0;
-    if (input == 0) {
-        return 64;
-    }
-    total += ((input >> (total + 32)) != 0) ? 32 : 0;
-    total += ((input >> (total + 16)) != 0) ? 16 : 0;
-    total += ((input >> (total +  8)) != 0) ?  8 : 0;
-    total += ((input >> (total +  4)) != 0) ?  4 : 0;
-    total += ((input >> (total +  2)) != 0) ?  2 : 0;
-    total += ((input >> (total +  1)) != 0) ?  1 : 0;
-    return 63 - total;
-}
-#endif
-
-typedef union {
-    double f;
-    uint64_t i;
-    struct {
-        uint64_t mant:52;
-        uint64_t exp:11;
-        uint64_t sign:1;
-    };
-} Double;
-
-
-typedef union {
-    float f;
-    uint32_t i;
-    struct {
-        uint32_t mant:23;
-        uint32_t exp:8;
-        uint32_t sign:1;
-    };
-} Float;
-
-
-#define MAKE_CONV_8U_TO_XF_N(FLOATID, TYPE, BIGFLOATID, RETTYPE) \
-static RETTYPE conv_8u_to_##FLOATID##_n(uint64_t in, int negate, \
-                                        float_status * fp_status) \
-{ \
-    TYPE x; \
-    uint64_t tmp, truncbits, shamt; \
-    int leading_zeros; \
-    if (in == 0) { \
-        return 0.0; \
-    } \
-    leading_zeros = __builtin_clzll(in); \
-    tmp = in << (leading_zeros); \
-    tmp <<= 1; \
-    shamt = 64 - f##BIGFLOATID##_MANTBITS(); \
-    truncbits = tmp & ((1ULL << (shamt)) - 1); \
-    tmp >>= shamt; \
-    if (truncbits != 0) { \
-        feraiseexcept(FE_INEXACT); \
-        switch (fegetround()) { \
-        case FE_TOWARDZERO: \
-            break; \
-        case FE_DOWNWARD: \
-            if (negate) { \
-                tmp += 1; \
-            } \
-            break; \
-        case FE_UPWARD: \
-            if (!negate) { \
-                tmp += 1; \
-            } \
-            break; \
-        default: \
-            if ((truncbits & ((1ULL << (shamt - 1)) - 1)) == 0) { \
-                tmp += (tmp & 1); \
-            } else { \
-                tmp += ((truncbits >> (shamt - 1)) & 1); \
-            } \
-            break; \
-        } \
-    } \
-    if (((tmp << shamt) >> shamt) != tmp) { \
-        leading_zeros--; \
-    } \
-    x.mant = tmp; \
-    x.exp = BIGFLOATID##_BIAS + f##BIGFLOATID##_MANTBITS() - \
-              leading_zeros + shamt - 1; \
-    x.sign = negate; \
-    return x.f; \
-}
-
-MAKE_CONV_8U_TO_XF_N(df, Double, DF, double)
-MAKE_CONV_8U_TO_XF_N(sf, Float, SF, float)
-
-double conv_8u_to_df(uint64_t in, float_status * fp_status)
-{
-    return conv_8u_to_df_n(in, 0, fp_status);
-}
-
-double conv_8s_to_df(int64_t in, float_status *fp_status)
-{
-    if (in == 0x8000000000000000) {
-        return -0x1p63;
-    }
-    if (in < 0) {
-        return conv_8u_to_df_n(-in, 1, fp_status);
-    } else {
-        return conv_8u_to_df_n(in, 0, fp_status);
-    }
-}
-
-double conv_4u_to_df(uint32_t in, float_status *fp_status)
-{
-    return conv_8u_to_df((uint64_t) in, fp_status);
-}
-
-double conv_4s_to_df(int32_t in, float_status *fp_status)
-{
-    return conv_8s_to_df(in, fp_status);
-}
-
-float conv_8u_to_sf(uint64_t in, float_status *fp_status)
-{
-    return conv_8u_to_sf_n(in, 0, fp_status);
-}
-
-float conv_8s_to_sf(int64_t in, float_status *fp_status)
-{
-    if (in == 0x8000000000000000) {
-        return -0x1p63;
-    }
-    if (in < 0) {
-        return conv_8u_to_sf_n(-in, 1, fp_status);
-    } else {
-        return conv_8u_to_sf_n(in, 0, fp_status);
-    }
-}
-
-float conv_4u_to_sf(uint32_t in, float_status *fp_status)
-{
-    return conv_8u_to_sf(in, fp_status);
-}
-
-float conv_4s_to_sf(int32_t in, float_status *fp_status)
-{
-    return conv_8s_to_sf(in, fp_status);
-}
-
-
-static uint64_t conv_df_to_8u_n(double in, int will_negate,
-                                float_status *fp_status)
-{
-    Double x;
-    int fracshift, endshift;
-    uint64_t tmp, truncbits;
-    x.f = in;
-    if (isinf(in)) {
-        feraiseexcept(FE_INVALID);
-        if (in > 0.0) {
-            return ~0ULL;
-        } else {
+    uint8_t sign = float64_is_neg(in);
+    if (float64_is_infinity(in)) {
+        float_raise(float_flag_invalid, fp_status);
+        if (float64_is_neg(in)) {
             return 0ULL;
+        } else {
+            return ~0ULL;
         }
     }
-    if (isnan(in)) {
-        feraiseexcept(FE_INVALID);
+    if (float64_is_any_nan(in)) {
+        float_raise(float_flag_invalid, fp_status);
         return ~0ULL;
     }
-    if (isz(in)) {
+    if (float64_is_zero(in)) {
         return 0;
     }
-    if (x.sign) {
-        feraiseexcept(FE_INVALID);
+    if (sign) {
+        float_raise(float_flag_invalid, fp_status);
         return 0;
     }
-    if (in < 0.5) {
+    if (float64_lt(in, float64_half, fp_status)) {
         /* Near zero, captures large fracshifts, denorms, etc */
-        feraiseexcept(FE_INEXACT);
-        switch (fegetround()) {
-        case FE_DOWNWARD:
+        float_raise(float_flag_inexact, fp_status);
+        switch (get_float_rounding_mode(fp_status)) {
+        case float_round_down:
             if (will_negate) {
                 return 1;
             } else {
                 return 0;
             }
-        case FE_UPWARD:
+        case float_round_up:
             if (!will_negate) {
                 return 1;
             } else {
@@ -224,147 +67,111 @@ static uint64_t conv_df_to_8u_n(double in, int will_negate,
             return 0;    /* nearest or towards zero */
         }
     }
-    if ((x.exp - DF_BIAS) >= 64) {
-        /* way too big */
-        feraiseexcept(FE_INVALID);
-        return ~0ULL;
-    }
-    fracshift = fMAX(0, (fDF_MANTBITS() - (x.exp - DF_BIAS)));
-    endshift = fMAX(0, ((x.exp - DF_BIAS - fDF_MANTBITS())));
-    tmp = x.mant | (1ULL << fDF_MANTBITS());
-    truncbits = tmp & ((1ULL << fracshift) - 1);
-    tmp >>= fracshift;
-    if (truncbits) {
-        /* Apply Rounding */
-        feraiseexcept(FE_INEXACT);
-        switch (fegetround()) {
-        case FE_TOWARDZERO:
-            break;
-        case FE_DOWNWARD:
-            if (will_negate) {
-                tmp += 1;
-            }
-            break;
-        case FE_UPWARD:
-            if (!will_negate) {
-                tmp += 1;
-            }
-            break;
-        default:
-            if ((truncbits & ((1ULL << (fracshift - 1)) - 1)) == 0) {
-                /* Exactly .5 */
-                tmp += (tmp & 1);
-            } else {
-                tmp += ((truncbits >> (fracshift - 1)) & 1);
-            }
-        }
-    }
-    /*
-     * If we added one and it carried all the way out,
-     * check to see if overflow
-     */
-    if ((tmp & ((1ULL << (fDF_MANTBITS() + 1)) - 1)) == 0) {
-        if ((x.exp - DF_BIAS) == 63) {
-            feclearexcept(FE_INEXACT);
-            feraiseexcept(FE_INVALID);
-            return ~0ULL;
-        }
-    }
-    tmp <<= endshift;
-    return tmp;
+    return float64_to_uint64(in, fp_status);
 }
 
-static uint32_t conv_df_to_4u_n(double in, int will_negate,
+static void clr_float_exception_flags(uint8_t flag, float_status *fp_status)
+{
+    uint8_t flags = fp_status->float_exception_flags;
+    flags &= ~flag;
+    set_float_exception_flags(flags, fp_status);
+}
+
+static uint32_t conv_df_to_4u_n(float64 fp64, int will_negate,
                                 float_status *fp_status)
 {
     uint64_t tmp;
-    tmp = conv_df_to_8u_n(in, will_negate, fp_status);
+    tmp = conv_f64_to_8u_n(fp64, will_negate, fp_status);
     if (tmp > 0x00000000ffffffffULL) {
-        feclearexcept(FE_INEXACT);
-        feraiseexcept(FE_INVALID);
+        clr_float_exception_flags(float_flag_inexact, fp_status);
+        float_raise(float_flag_invalid, fp_status);
         return ~0U;
     }
     return (uint32_t)tmp;
 }
 
-uint64_t conv_df_to_8u(double in, float_status *fp_status)
+uint64_t conv_df_to_8u(float64 in, float_status *fp_status)
 {
-    return conv_df_to_8u_n(in, 0, fp_status);
+    return conv_f64_to_8u_n(in, 0, fp_status);
 }
 
-uint32_t conv_df_to_4u(double in, float_status *fp_status)
+uint32_t conv_df_to_4u(float64 in, float_status *fp_status)
 {
     return conv_df_to_4u_n(in, 0, fp_status);
 }
 
-int64_t conv_df_to_8s(double in, float_status *fp_status)
+int64_t conv_df_to_8s(float64 in, float_status *fp_status)
 {
+    uint8_t sign = float64_is_neg(in);
     uint64_t tmp;
-    Double x;
-    x.f = in;
-    if (isnan(in)) {
-        feraiseexcept(FE_INVALID);
+    if (float64_is_any_nan(in)) {
+        float_raise(float_flag_invalid, fp_status);
         return -1;
     }
-    if (x.sign) {
-        tmp = conv_df_to_8u_n(-in, 1, fp_status);
+    if (sign) {
+        float64 minus_fp64 = float64_abs(in);
+        tmp = conv_f64_to_8u_n(minus_fp64, 1, fp_status);
     } else {
-        tmp = conv_df_to_8u_n(in, 0, fp_status);
+        tmp = conv_f64_to_8u_n(in, 0, fp_status);
     }
-    if (tmp > (LL_MAX_POS + x.sign)) {
-        feclearexcept(FE_INEXACT);
-        feraiseexcept(FE_INVALID);
-        tmp = (LL_MAX_POS + x.sign);
+    if (tmp > (LL_MAX_POS + sign)) {
+        clr_float_exception_flags(float_flag_inexact, fp_status);
+        float_raise(float_flag_invalid, fp_status);
+        tmp = (LL_MAX_POS + sign);
     }
-    if (x.sign) {
+    if (sign) {
         return -tmp;
     } else {
         return tmp;
     }
 }
 
-int32_t conv_df_to_4s(double in, float_status *fp_status)
+int32_t conv_df_to_4s(float64 in, float_status *fp_status)
 {
+    uint8_t sign = float64_is_neg(in);
     uint64_t tmp;
-    Double x;
-    x.f = in;
-    if (isnan(in)) {
-        feraiseexcept(FE_INVALID);
+    if (float64_is_any_nan(in)) {
+        float_raise(float_flag_invalid, fp_status);
         return -1;
     }
-    if (x.sign) {
-        tmp = conv_df_to_8u_n(-in, 1, fp_status);
+    if (sign) {
+        float64 minus_fp64 = float64_abs(in);
+        tmp = conv_f64_to_8u_n(minus_fp64, 1, fp_status);
     } else {
-        tmp = conv_df_to_8u_n(in, 0, fp_status);
+        tmp = conv_f64_to_8u_n(in, 0, fp_status);
     }
-    if (tmp > (MAX_POS + x.sign)) {
-        feclearexcept(FE_INEXACT);
-        feraiseexcept(FE_INVALID);
-        tmp = (MAX_POS + x.sign);
+    if (tmp > (MAX_POS + sign)) {
+        clr_float_exception_flags(float_flag_inexact, fp_status);
+        float_raise(float_flag_invalid, fp_status);
+        tmp = (MAX_POS + sign);
     }
-    if (x.sign) {
+    if (sign) {
         return -tmp;
     } else {
         return tmp;
     }
 }
 
-uint64_t conv_sf_to_8u(float in, float_status *fp_status)
+uint64_t conv_sf_to_8u(float32 in, float_status *fp_status)
 {
-    return conv_df_to_8u(in, fp_status);
+    float64 fp64 = float32_to_float64(in, fp_status);
+    return conv_df_to_8u(fp64, fp_status);
 }
 
-uint32_t conv_sf_to_4u(float in, float_status *fp_status)
+uint32_t conv_sf_to_4u(float32 in, float_status *fp_status)
 {
-    return conv_df_to_4u(in, fp_status);
+    float64 fp64 = float32_to_float64(in, fp_status);
+    return conv_df_to_4u(fp64, fp_status);
 }
 
-int64_t conv_sf_to_8s(float in, float_status *fp_status)
+int64_t conv_sf_to_8s(float32 in, float_status *fp_status)
 {
-    return conv_df_to_8s(in, fp_status);
+    float64 fp64 = float32_to_float64(in, fp_status);
+    return conv_df_to_8s(fp64, fp_status);
 }
 
-int32_t conv_sf_to_4s(float in, float_status *fp_status)
+int32_t conv_sf_to_4s(float32 in, float_status *fp_status)
 {
-    return conv_df_to_4s(in, fp_status);
+    float64 fp64 = float32_to_float64(in, fp_status);
+    return conv_df_to_4s(fp64, fp_status);
 }
