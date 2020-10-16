@@ -723,8 +723,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
     (fUNFLOAT(fFLOAT(A) * fFLOAT((fSF_BIAS() + (B)) << fSF_MANTBITS())))
 #define fSF_GETEXP(A) (((A) >> fSF_MANTBITS()) & 0xff)
 #define fSF_MAXEXP() (254)
-#define fSF_RECIP_COMMON(N, D, O, A) arch_sf_recip_common(&N, &D, &O, &A)
-#define fSF_INVSQRT_COMMON(N, O, A) arch_sf_invsqrt_common(&N, &O, &A)
 #define fFMAFX(A, B, C, ADJ) \
     internal_fmafx(A, B, C, fSXTN(8, 64, ADJ), &env->fp_status)
 #define fFMAF(A, B, C) \

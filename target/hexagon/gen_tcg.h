@@ -2372,5 +2372,29 @@
     gen_helper_sfadd(RdV, cpu_env, RsV, RtV)
 #define fGEN_TCG_F2_sfsub(SHORTCODE) \
     gen_helper_sfsub(RdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sfcmpeq(SHORTCODE) \
+    gen_helper_sfcmpeq(PdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sfcmpgt(SHORTCODE) \
+    gen_helper_sfcmpgt(PdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sfcmpge(SHORTCODE) \
+    gen_helper_sfcmpge(PdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sfcmpuo(SHORTCODE) \
+    gen_helper_sfcmpuo(PdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sfmax(SHORTCODE) \
+    gen_helper_sfmax(RdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sfmin(SHORTCODE) \
+    gen_helper_sfmin(RdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sfclass(SHORTCODE) \
+    do { \
+        TCGv imm = tcg_const_tl(uiV); \
+        gen_helper_sfclass(PdV, cpu_env, RsV, imm); \
+        tcg_temp_free(imm); \
+    } while (0)
+#define fGEN_TCG_F2_sffixupn(SHORTCODE) \
+    gen_helper_sffixupn(RdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sffixupd(SHORTCODE) \
+    gen_helper_sffixupd(RdV, cpu_env, RsV, RtV)
+#define fGEN_TCG_F2_sffixupr(SHORTCODE) \
+    gen_helper_sffixupr(RdV, cpu_env, RsV)
 
 #endif

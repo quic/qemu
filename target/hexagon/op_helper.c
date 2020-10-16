@@ -682,6 +682,116 @@ float32 HELPER(sfsub)(CPUHexagonState *env, float32 RsV, float32 RtV)
     return RdV;
 }
 
+int32_t HELPER(sfcmpeq)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    int32_t PdV = f8BITSOF(float32_eq(RsV, RtV, &env->fp_status));
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(sfcmpgt)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    int cmp = float32_compare(RsV, RtV, &env->fp_status);
+    int32_t PdV = f8BITSOF(cmp == float_relation_greater);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(sfcmpge)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    int cmp = float32_compare(RsV, RtV, &env->fp_status);
+    int32_t PdV = f8BITSOF(cmp == float_relation_greater ||
+                           cmp == float_relation_equal);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(sfcmpuo)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    int32_t PdV = f8BITSOF(float32_is_any_nan(RsV) ||
+                           float32_is_any_nan(RtV));
+    arch_fpop_end(env);
+    return PdV;
+}
+
+float32 HELPER(sfmax)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    float32 RdV = float32_max(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float32 HELPER(sfmin)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    float32 RdV = float32_min(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(sfclass)(CPUHexagonState *env, float32 RsV, int32_t uiV)
+{
+    arch_fpop_start(env);
+    int32_t PdV = 0;
+    if (fGETBIT(0, uiV) && float32_is_zero(RsV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(1, uiV) && float32_is_normal(RsV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(2, uiV) && float32_is_denormal(RsV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(3, uiV) && float32_is_infinity(RsV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(4, uiV) && float32_is_any_nan(RsV)) {
+        PdV = 0xff;
+    }
+    set_float_exception_flags(0, &env->fp_status);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(sffixupn)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
+{
+    int32_t RdV = 0;
+    arch_fpop_start(env);
+    int adjust;
+    arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust);
+    RdV = RsV;
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(sffixupd)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
+{
+    int32_t RdV = 0;
+    arch_fpop_start(env);
+    int adjust;
+    arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust);
+    RdV = RtV;
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(sffixupr)(CPUHexagonState *env, int32_t RsV)
+{
+    int32_t RdV = 0;
+    arch_fpop_start(env);
+    int adjust;
+    arch_sf_invsqrt_common(&RsV, &RdV, &adjust);
+    RdV = RsV;
+    arch_fpop_end(env);
+    return RdV;
+}
+
+
 /* Log a write to HVX vector */
 static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
                                       int vnew, uint32_t slot)
