@@ -2431,4 +2431,9 @@
 #define fGEN_TCG_F2_sffms_lib(SHORTCODE) \
     gen_helper_sffms_lib(RxV, cpu_env, RxV, RsV, RtV)
 
+#define fGEN_TCG_F2_dfmpyfix(SHORTCODE) \
+    gen_helper_dfmpyfix(RddV, cpu_env, RssV, RttV)
+#define fGEN_TCG_F2_dfmpyhh(SHORTCODE) \
+    gen_helper_dfmpyhh(RxxV, cpu_env, RxxV, RssV, RttV)
+
 #endif

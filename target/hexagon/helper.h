@@ -85,4 +85,7 @@ DEF_HELPER_4(sffms, f32, env, f32, f32, f32)
 DEF_HELPER_4(sffma_lib, f32, env, f32, f32, f32)
 DEF_HELPER_4(sffms_lib, f32, env, f32, f32, f32)
 
+DEF_HELPER_3(dfmpyfix, f64, env, f64, f64)
+DEF_HELPER_4(dfmpyhh, f64, env, f64, f64, f64)
+
 #include "helper_protos_generated.h"

@@ -733,8 +733,6 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
 #define fDF_MANTBITS() 52
 #define fDF_GETEXP(A) (((A) >> fDF_MANTBITS()) & 0x7ff)
 #define fFMA(A, B, C) internal_fma(A, B, C)
-#define fDF_MPY_HH(A, B, ACC) \
-    internal_mpyhh(A, B, ACC, &env->fp_status)
 
 #ifndef QEMU_GENERATE
 #define fFPOP_START() arch_fpop_start(env)

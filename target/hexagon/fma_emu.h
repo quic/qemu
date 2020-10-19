@@ -18,12 +18,13 @@
 #ifndef HEXAGON_FMA_EMU_H
 #define HEXAGON_FMA_EMU_H
 
+extern int32_t float64_getexp(float64 f64);
 extern float32 internal_fmafx(float32 a, float32 b, float32 c,
                               int scale, float_status *fp_status);
 extern float32 internal_mpyf(float32 a, float32 b,
                              float_status *fp_status);
-extern double internal_mpyhh(double a, double b,
-                             unsigned long long int accumulated,
-                             float_status *fp_status);
+extern float64 internal_mpyhh(float64 a, float64 b,
+                              unsigned long long int accumulated,
+                              float_status *fp_status);
 
 #endif

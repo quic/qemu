@@ -1009,6 +1009,35 @@ float32 HELPER(sffms_lib)(CPUHexagonState *env, float32 RxV,
     return RxV;
 }
 
+float64 HELPER(dfmpyfix)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    int64_t RddV;
+    if (float64_is_denormal(RssV) &&
+        (float64_getexp(RttV) >= 512) &&
+        float64_is_normal(RttV)) {
+        RddV = float64_mul(RssV, make_float64(0x4330000000000000),
+                           &env->fp_status);
+    } else if (float64_is_denormal(RttV) &&
+               (float64_getexp(RssV) >= 512) &&
+               float64_is_normal(RssV)) {
+        RddV = float64_mul(RssV, make_float64(0x3cb0000000000000),
+                           &env->fp_status);
+    } else {
+        RddV = RssV;
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float64 HELPER(dfmpyhh)(CPUHexagonState *env, float64 RxxV,
+                        float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    RxxV = internal_mpyhh(RssV, RttV, RxxV, &env->fp_status);
+    arch_fpop_end(env);
+    return RxxV;
+}
+
 /* Log a write to HVX vector */
 static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
                                       int vnew, uint32_t slot)

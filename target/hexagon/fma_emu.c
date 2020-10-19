@@ -77,7 +77,7 @@ static inline uint64_t float64_getmant(float64 f64)
     return ~0ULL;
 }
 
-static inline int32_t float64_getexp(float64 f64)
+int32_t float64_getexp(float64 f64)
 {
     Double a = { .i = f64 };
     if (float64_is_normal(f64)) {
@@ -666,46 +666,39 @@ float32 internal_mpyf(float32 a, float32 b, float_status *fp_status)
     return internal_fmafx(a, b, float32_zero, 0, fp_status);
 }
 
-static inline double internal_mpyhh_special(double a, double b,
-                                            float_status *fp_status)
-{
-    return a * b;
-}
-
-double internal_mpyhh(double a_in, double b_in,
+float64 internal_mpyhh(float64 a, float64 b,
                       unsigned long long int accumulated,
                       float_status *fp_status)
 {
-    Double a, b;
     Accum x;
     unsigned long long int prod;
     unsigned int sticky;
 
-    a.f = a_in;
-    b.f = b_in;
     sticky = accumulated & 1;
     accumulated >>= 1;
     accum_init(&x);
-    if (float64_is_zero(a.i) ||
-        float64_is_any_nan(a.i) ||
-        float64_is_infinity(a.i)) {
-        return internal_mpyhh_special(a_in, b_in, fp_status);
+    if (float64_is_zero(a) ||
+        float64_is_any_nan(a) ||
+        float64_is_infinity(a)) {
+        return float64_mul(a, b, fp_status);
     }
-    if (float64_is_zero(b.i) ||
-        float64_is_any_nan(b.i) ||
-        float64_is_infinity(b.i)) {
-        return internal_mpyhh_special(a_in, b_in, fp_status);
+    if (float64_is_zero(b) ||
+        float64_is_any_nan(b) ||
+        float64_is_infinity(b)) {
+        return float64_mul(a, b, fp_status);
     }
     x.mant = int128_mul_6464(accumulated, 1);
     x.sticky = sticky;
-    prod = fGETUWORD(1, float64_getmant(a.i)) * fGETUWORD(1, float64_getmant(b.i));
+    prod = fGETUWORD(1, float64_getmant(a)) * fGETUWORD(1, float64_getmant(b));
     x.mant = int128_add(x.mant, int128_mul_6464(prod, 0x100000000ULL));
-    x.exp = float64_getexp(a.i) + float64_getexp(b.i) - DF_BIAS - 20;
-    if (!float64_is_normal(a.i) || !float64_is_normal(b.i)) {
+    x.exp = float64_getexp(a) + float64_getexp(b) - DF_BIAS - 20;
+    if (!float64_is_normal(a) || !float64_is_normal(b)) {
         /* crush to inexact zero */
         x.sticky = 1;
         x.exp = -4096;
     }
-    x.sign = a.sign ^ b.sign;
-    return fDOUBLE(accum_round_float64(x, fp_status));
+    uint8_t a_sign = float64_is_neg(a);
+    uint8_t b_sign = float64_is_neg(b);
+    x.sign = a_sign ^ b_sign;
+    return accum_round_float64(x, fp_status);
 }
