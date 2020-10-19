@@ -1690,8 +1690,8 @@
  */
 #define fGEN_TCG_F2_sfrecipa(SHORTCODE) \
     do { \
-        gen_helper_sfrecipa_val(RdV, RsV, RtV);  \
-        gen_helper_sfrecipa_pred(PeV, RsV, RtV);  \
+        gen_helper_sfrecipa_val(RdV, cpu_env, RsV, RtV);  \
+        gen_helper_sfrecipa_pred(PeV, cpu_env, RsV, RtV);  \
     } while (0)
 
 /*
@@ -1700,8 +1700,8 @@
  */
 #define fGEN_TCG_F2_sfinvsqrta(SHORTCODE) \
     do { \
-        gen_helper_sfinvsqrta_val(RdV, RsV); \
-        gen_helper_sfinvsqrta_pred(PeV, RsV); \
+        gen_helper_sfinvsqrta_val(RdV, cpu_env, RsV); \
+        gen_helper_sfinvsqrta_pred(PeV, cpu_env, RsV); \
     } while (0)
 
 #define fGEN_TCG_A5_ACS(SHORTCODE) \

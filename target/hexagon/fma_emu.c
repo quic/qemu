@@ -104,7 +104,7 @@ static inline uint64_t float32_getmant(float32 f32)
     return ~0ULL;
 }
 
-static inline int32_t float32_getexp(float32 f32)
+int32_t float32_getexp(float32 f32)
 {
     Float a = { .i = f32 };
     if (float32_is_normal(f32)) {
@@ -357,7 +357,7 @@ static inline float64 zero_float64(uint8_t sign)
 }
 
 /* Return an infinity with the requested sign */
-static inline float32 infinite_float32(uint8_t sign)
+float32 infinite_float32(uint8_t sign)
 {
     if (sign) {
         return make_float32(SF_MINUS_INF);

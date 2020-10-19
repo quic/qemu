@@ -34,9 +34,10 @@ extern int32_t conv_round(int32_t a, int n);
 extern void arch_fpop_start(CPUHexagonState *env);
 extern void arch_fpop_end(CPUHexagonState *env);
 extern void arch_raise_fpflag(unsigned int flags);
-extern int arch_sf_recip_common(int32_t *Rs, int32_t *Rt, int32_t *Rd,
-                                int *adjust);
-extern int arch_sf_invsqrt_common(int32_t *Rs, int32_t *Rd, int *adjust);
+extern int arch_sf_recip_common(float32 *Rs, float32 *Rt, float32 *Rd,
+                                int *adjust, float_status *fp_status);
+extern int arch_sf_invsqrt_common(float32 *Rs, float32 *Rd, int *adjust,
+                                  float_status *fp_status);
 extern int arch_recip_lookup(int index);
 extern int arch_invsqrt_lookup(int index);
 

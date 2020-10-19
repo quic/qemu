@@ -19,6 +19,8 @@
 #define HEXAGON_FMA_EMU_H
 
 extern int32_t float64_getexp(float64 f64);
+extern int32_t float32_getexp(float32 f32);
+extern float32 infinite_float32(uint8_t sign);
 extern float32 internal_fmafx(float32 a, float32 b, float32 c,
                               int scale, float_status *fp_status);
 extern float32 internal_mpyf(float32 a, float32 b,

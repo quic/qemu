@@ -23,6 +23,11 @@
 #include "arch.h"
 #include "macros.h"
 
+#define SF_BIAS        127
+#define SF_MAXEXP      254
+#define SF_MANTBITS    23
+#define float32_nan    make_float32(0xffffffff)
+
 /*
  * These three tables are used by the cabacdecbin instruction
  */
@@ -289,90 +294,96 @@ void arch_raise_fpflag(unsigned int flags)
     feraiseexcept(flags);
 }
 
-int arch_sf_recip_common(int32_t *Rs, int32_t *Rt, int32_t *Rd, int *adjust)
+static float32 float32_mul_pow2(float32 a, uint32_t p, float_status *fp_status)
 {
-    int n_class;
-    int d_class;
+    float32 b = make_float32((SF_BIAS + p) << SF_MANTBITS);
+    return float32_mul(a, b, fp_status);
+}
+
+int arch_sf_recip_common(float32 *Rs, float32 *Rt, float32 *Rd, int *adjust,
+                         float_status *fp_status)
+{
     int n_exp;
     int d_exp;
     int ret = 0;
-    int32_t RsV, RtV, RdV;
+    float32 RsV, RtV, RdV;
     int PeV = 0;
     RsV = *Rs;
     RtV = *Rt;
-    n_class = fpclassify(fFLOAT(RsV));
-    d_class = fpclassify(fFLOAT(RtV));
-    if ((n_class == FP_NAN) && (d_class == FP_NAN)) {
-        if (fGETBIT(22, RsV & RtV) == 0) {
-            fRAISEFLAGS(FE_INVALID);
+    if (float32_is_any_nan(RsV) && float32_is_any_nan(RtV)) {
+        if (extract32(RsV & RtV, 22, 1)) {
+            float_raise(float_flag_invalid, fp_status);
         }
-        RdV = RsV = RtV = fSFNANVAL();
-    } else if (n_class == FP_NAN) {
-        if (fGETBIT(22, RsV) == 0) {
-            fRAISEFLAGS(FE_INVALID);
+        RdV = RsV = RtV = float32_nan;
+    } else if (float32_is_any_nan(RsV)) {
+        if (extract32(RsV, 22, 1)) {
+            float_raise(float_flag_invalid, fp_status);
         }
-        RdV = RsV = RtV = fSFNANVAL();
-    } else if (d_class == FP_NAN) {
+        RdV = RsV = RtV = float32_nan;
+    } else if (float32_is_any_nan(RtV)) {
         /* or put NaN in num/den fixup? */
-        if (fGETBIT(22, RtV) == 0) {
-            fRAISEFLAGS(FE_INVALID);
+        if (extract32(RtV, 22, 1)) {
+            float_raise(float_flag_invalid, fp_status);
         }
-        RdV = RsV = RtV = fSFNANVAL();
-    } else if ((n_class == FP_INFINITE) && (d_class == FP_INFINITE)) {
+        RdV = RsV = RtV = float32_nan;
+    } else if (float32_is_infinity(RsV) && float32_is_infinity(RtV)) {
         /* or put Inf in num fixup? */
-        RdV = RsV = RtV = fSFNANVAL();
-        fRAISEFLAGS(FE_INVALID);
-    } else if ((n_class == FP_ZERO) && (d_class == FP_ZERO)) {
+        RdV = RsV = RtV = float32_nan;
+        float_raise(float_flag_invalid, fp_status);
+    } else if (float32_is_zero(RsV) && float32_is_zero(RtV)) {
         /* or put zero in num fixup? */
-        RdV = RsV = RtV = fSFNANVAL();
-        fRAISEFLAGS(FE_INVALID);
-    } else if (d_class == FP_ZERO) {
+        RdV = RsV = RtV = float32_nan;
+        float_raise(float_flag_invalid, fp_status);
+    } else if (float32_is_zero(RtV)) {
         /* or put Inf in num fixup? */
-        RsV = fSFINFVAL(RsV ^ RtV);
-        RtV = fSFONEVAL(0);
-        RdV = fSFONEVAL(0);
-        if (n_class != FP_INFINITE) {
-            fRAISEFLAGS(FE_DIVBYZERO);
+        uint8_t RsV_sign = float32_is_neg(RsV);
+        uint8_t RtV_sign = float32_is_neg(RtV);
+        RsV = infinite_float32(RsV_sign ^ RtV_sign);
+        RtV = float32_one;
+        RdV = float32_one;
+        if (float32_is_infinity(RsV)) {
+            float_raise(float_flag_divbyzero, fp_status);
         }
-    } else if (d_class == FP_INFINITE) {
-        RsV = 0x80000000 & (RsV ^ RtV);
-        RtV = fSFONEVAL(0);
-        RdV = fSFONEVAL(0);
-    } else if (n_class == FP_ZERO) {
+    } else if (float32_is_infinity(RtV)) {
+        RsV = make_float32(0x80000000 & (RsV ^ RtV));
+        RtV = float32_one;
+        RdV = float32_one;
+    } else if (float32_is_zero(RsV)) {
         /* Does this just work itself out? */
         /* No, 0/Inf causes problems. */
-        RsV = 0x80000000 & (RsV ^ RtV);
-        RtV = fSFONEVAL(0);
-        RdV = fSFONEVAL(0);
-    } else if (n_class == FP_INFINITE) {
-        /* Does this just work itself out? */
-        RsV = fSFINFVAL(RsV ^ RtV);
-        RtV = fSFONEVAL(0);
-        RdV = fSFONEVAL(0);
+        RsV = make_float32(0x80000000 & (RsV ^ RtV));
+        RtV = float32_one;
+        RdV = float32_one;
+    } else if (float32_is_infinity(RsV)) {
+        uint8_t RsV_sign = float32_is_neg(RsV);
+        uint8_t RtV_sign = float32_is_neg(RtV);
+        RsV = infinite_float32(RsV_sign ^ RtV_sign);
+        RtV = float32_one;
+        RdV = float32_one;
     } else {
         PeV = 0x00;
         /* Basic checks passed */
-        n_exp = fSF_GETEXP(RsV);
-        d_exp = fSF_GETEXP(RtV);
-        if ((n_exp - d_exp + fSF_BIAS()) <= fSF_MANTBITS()) {
+        n_exp = float32_getexp(RsV);
+        d_exp = float32_getexp(RtV);
+        if ((n_exp - d_exp + SF_BIAS) <= SF_MANTBITS) {
             /* Near quotient underflow / inexact Q */
             PeV = 0x80;
-            RtV = fSF_MUL_POW2(RtV, -64);
-            RsV = fSF_MUL_POW2(RsV, 64);
-        } else if ((n_exp - d_exp + fSF_BIAS()) > (fSF_MAXEXP() - 24)) {
+            RtV = float32_mul_pow2(RtV, -64, fp_status);
+            RsV = float32_mul_pow2(RsV, 64, fp_status);
+        } else if ((n_exp - d_exp + SF_BIAS) > (SF_MAXEXP - 24)) {
             /* Near quotient overflow */
             PeV = 0x40;
-            RtV = fSF_MUL_POW2(RtV, 32);
-            RsV = fSF_MUL_POW2(RsV, -32);
-        } else if (n_exp <= fSF_MANTBITS() + 2) {
-            RtV = fSF_MUL_POW2(RtV, 64);
-            RsV = fSF_MUL_POW2(RsV, 64);
+            RtV = float32_mul_pow2(RtV, 32, fp_status);
+            RsV = float32_mul_pow2(RsV, -32, fp_status);
+        } else if (n_exp <= SF_MANTBITS + 2) {
+            RtV = float32_mul_pow2(RtV, 64, fp_status);
+            RsV = float32_mul_pow2(RsV, 64, fp_status);
         } else if (d_exp <= 1) {
-            RtV = fSF_MUL_POW2(RtV, 32);
-            RsV = fSF_MUL_POW2(RsV, 32);
+            RtV = float32_mul_pow2(RtV, 32, fp_status);
+            RsV = float32_mul_pow2(RsV, 32, fp_status);
         } else if (d_exp > 252) {
-            RtV = fSF_MUL_POW2(RtV, -32);
-            RsV = fSF_MUL_POW2(RsV, -32);
+            RtV = float32_mul_pow2(RtV, -32, fp_status);
+            RsV = float32_mul_pow2(RsV, -32, fp_status);
         }
         RdV = 0;
         ret = 1;
@@ -384,38 +395,37 @@ int arch_sf_recip_common(int32_t *Rs, int32_t *Rt, int32_t *Rd, int *adjust)
     return ret;
 }
 
-int arch_sf_invsqrt_common(int32_t *Rs, int32_t *Rd, int *adjust)
+int arch_sf_invsqrt_common(float32 *Rs, float32 *Rd, int *adjust,
+                           float_status *fp_status)
 {
-    int r_class;
-    int32_t RsV, RdV;
+    float32 RsV, RdV;
     int PeV = 0;
     int r_exp;
     int ret = 0;
     RsV = *Rs;
-    r_class = fpclassify(fFLOAT(RsV));
-    if (r_class == FP_NAN) {
-        if (fGETBIT(22, RsV) == 0) {
-            fRAISEFLAGS(FE_INVALID);
+    if (float32_is_infinity(RsV)) {
+        if (extract32(RsV, 22, 1) == 0) {
+            float_raise(float_flag_invalid, fp_status);
         }
-        RdV = RsV = fSFNANVAL();
-    } else if (fFLOAT(RsV) < 0.0) {
+        RdV = RsV = float32_nan;
+    } else if (float32_lt(RsV, float32_zero, fp_status)) {
         /* Negative nonzero values are NaN */
-        fRAISEFLAGS(FE_INVALID);
-        RsV = fSFNANVAL();
-        RdV = fSFNANVAL();
-    } else if (r_class == FP_INFINITE) {
+        float_raise(float_flag_invalid, fp_status);
+        RsV = float32_nan;
+        RdV = float32_nan;
+    } else if (float32_is_infinity(RsV)) {
         /* or put Inf in num fixup? */
-        RsV = fSFINFVAL(-1);
-        RdV = fSFINFVAL(-1);
-    } else if (r_class == FP_ZERO) {
+        RsV = infinite_float32(1);
+        RdV = infinite_float32(1);
+    } else if (float32_is_zero(RsV)) {
         /* or put zero in num fixup? */
-        RdV = fSFONEVAL(0);
+        RdV = float32_one;
     } else {
         PeV = 0x00;
         /* Basic checks passed */
-        r_exp = fSF_GETEXP(RsV);
+        r_exp = float32_getexp(RsV);
         if (r_exp <= 24) {
-            RsV = fSF_MUL_POW2(RsV, 64);
+            RsV = float32_mul_pow2(RsV, 64, fp_status);
             PeV = 0xe0;
         }
         RdV = 0;

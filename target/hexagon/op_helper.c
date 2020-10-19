@@ -332,75 +332,69 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
  * from the arch library), but one returns the register and the other
  * returns the predicate.
  */
-int32_t HELPER(sfrecipa_val)(int32_t RsV, int32_t RtV)
+float32 HELPER(sfrecipa_val)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    arch_fpop_start(env);
     /* int32_t PeV; Not needed to compute value */
-    int32_t RdV;
+    float32 RdV;
     int idx;
     int adjust;
     int mant;
     int exp;
-    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust)) {
+    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
         /* PeV = adjust; Not needed to compute value */
         idx = (RtV >> 16) & 0x7f;
         mant = (arch_recip_lookup(idx) << 15) | 1;
         exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
         RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
     }
+    arch_fpop_end(env);
     return RdV;
 }
 
-int32_t HELPER(sfrecipa_pred)(int32_t RsV, int32_t RtV)
+int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    arch_fpop_start(env);
     int32_t PeV = 0;
-    int32_t RdV;
-    int idx;
+    float32 RdV;
     int adjust;
-    int mant;
-    int exp;
-    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust)) {
+    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
         PeV = adjust;
-        idx = (RtV >> 16) & 0x7f;
-        mant = (arch_recip_lookup(idx) << 15) | 1;
-        exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
-        RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
     }
+    arch_fpop_end(env);
     return PeV;
 }
 
-int32_t HELPER(sfinvsqrta_val)(int32_t RsV)
+float32 HELPER(sfinvsqrta_val)(CPUHexagonState *env, float32 RsV)
 {
+    arch_fpop_start(env);
     /* int32_t PeV; Not needed for val version */
-    int32_t RdV;
+    float32 RdV;
     int idx;
     int adjust;
     int mant;
     int exp;
-    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust)) {
+    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
         /* PeV = adjust; Not needed for val version */
         idx = (RsV >> 17) & 0x7f;
         mant = (arch_invsqrt_lookup(idx) << 15);
         exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
         RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
     }
+    arch_fpop_end(env);
     return RdV;
 }
 
-int32_t HELPER(sfinvsqrta_pred)(int32_t RsV)
+int32_t HELPER(sfinvsqrta_pred)(CPUHexagonState *env, float32 RsV)
 {
+    arch_fpop_start(env);
     int32_t PeV = 0;
-    int32_t RdV;
-    int idx;
+    float32 RdV;
     int adjust;
-    int mant;
-    int exp;
-    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust)) {
+    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
         PeV = adjust;
-        idx = (RsV >> 17) & 0x7f;
-        mant = (arch_invsqrt_lookup(idx) << 15);
-        exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
-        RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
     }
+    arch_fpop_end(env);
     return PeV;
 }
 
@@ -758,34 +752,34 @@ int32_t HELPER(sfclass)(CPUHexagonState *env, float32 RsV, int32_t uiV)
     return PdV;
 }
 
-int32_t HELPER(sffixupn)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
+float32 HELPER(sffixupn)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
-    int32_t RdV = 0;
+    float32 RdV = 0;
     arch_fpop_start(env);
     int adjust;
-    arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust);
+    arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status);
     RdV = RsV;
     arch_fpop_end(env);
     return RdV;
 }
 
-int32_t HELPER(sffixupd)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
+float32 HELPER(sffixupd)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
-    int32_t RdV = 0;
+    float32 RdV = 0;
     arch_fpop_start(env);
     int adjust;
-    arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust);
+    arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status);
     RdV = RtV;
     arch_fpop_end(env);
     return RdV;
 }
 
-int32_t HELPER(sffixupr)(CPUHexagonState *env, int32_t RsV)
+float32 HELPER(sffixupr)(CPUHexagonState *env, float32 RsV)
 {
-    int32_t RdV = 0;
+    float32 RdV = 0;
     arch_fpop_start(env);
     int adjust;
-    arch_sf_invsqrt_common(&RsV, &RdV, &adjust);
+    arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status);
     RdV = RsV;
     arch_fpop_end(env);
     return RdV;
