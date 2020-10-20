@@ -33,7 +33,6 @@ extern uint32_t carry_from_add64(uint64_t a, uint64_t b, uint32_t c);
 extern int32_t conv_round(int32_t a, int n);
 extern void arch_fpop_start(CPUHexagonState *env);
 extern void arch_fpop_end(CPUHexagonState *env);
-extern void arch_raise_fpflag(unsigned int flags);
 extern int arch_sf_recip_common(float32 *Rs, float32 *Rt, float32 *Rd,
                                 int *adjust, float_status *fp_status);
 extern int arch_sf_invsqrt_common(float32 *Rs, float32 *Rd, int *adjust,

@@ -262,13 +262,13 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     print("Bad register parse: ",regtype,regid,toss,numregs)
 
         if 'A_FPOP' in attribdict[tag]:
-            f.write('    fFPOP_START();\n');
+            f.write('    arch_fpop_start(env);\n');
 
         f.write("    %s\n" % semdict[tag])
         f.write("    COUNT_HELPER(%s);\n" % tag )
 
         if 'A_FPOP' in attribdict[tag]:
-            f.write('    fFPOP_END();\n');
+            f.write('    arch_fpop_end(env);\n');
 
         ## Save/return the return variable
         for regtype,regid,toss,numregs in regs:

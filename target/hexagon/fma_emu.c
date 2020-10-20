@@ -22,16 +22,18 @@
 #include "conv_emu.h"
 #include "fma_emu.h"
 
-#define DF_INF_EXP 0x7ff
-#define DF_BIAS 1023
+#define DF_INF_EXP     0x7ff
+#define DF_BIAS        1023
+#define DF_MANTBITS    52
 #define DF_NAN         0xffffffffffffffffULL
 #define DF_INF         0x7ff0000000000000ULL
 #define DF_MINUS_INF   0xfff0000000000000ULL
 #define DF_MAXF        0x7fefffffffffffffULL
 #define DF_MINUS_MAXF  0xffefffffffffffffULL
 
-#define SF_INF_EXP 0xff
-#define SF_BIAS 127
+#define SF_INF_EXP     0xff
+#define SF_BIAS        127
+#define SF_MANTBITS    23
 #define SF_INF         0x7f800000
 #define SF_MINUS_INF   0xff800000
 #define SF_MAXF        0x7f7fffff
@@ -514,8 +516,8 @@ static inline SUFFIX accum_round_##SUFFIX(Accum a, float_status * fp_status) \
     return ret.i; \
 }
 
-GEN_XF_ROUND(float64, fDF_MANTBITS(), DF_INF_EXP, Double)
-GEN_XF_ROUND(float32, fSF_MANTBITS(), SF_INF_EXP, Float)
+GEN_XF_ROUND(float64, DF_MANTBITS, DF_INF_EXP, Double)
+GEN_XF_ROUND(float32, SF_MANTBITS, SF_INF_EXP, Float)
 
 static bool isfinite(float64 x)
 {

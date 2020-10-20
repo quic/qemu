@@ -17,7 +17,6 @@
 
 #include "qemu/osdep.h"
 #include "fpu/softfloat.h"
-#include <math.h>
 #include "cpu.h"
 #include "fma_emu.h"
 #include "arch.h"
@@ -215,13 +214,6 @@ int32_t conv_round(int32_t a, int n)
 
 /* Floating Point Stuff */
 
-static const int roundingmodes[] = {
-    FE_TONEAREST,
-    FE_TOWARDZERO,
-    FE_DOWNWARD,
-    FE_UPWARD
-};
-
 static const int softfloat_roundingmodes[] = {
     float_round_nearest_even,
     float_round_to_zero,
@@ -231,10 +223,6 @@ static const int softfloat_roundingmodes[] = {
 
 void arch_fpop_start(CPUHexagonState *env)
 {
-    fegetenv(&env->fenv);
-    feclearexcept(FE_ALL_EXCEPT);
-    fesetround(roundingmodes[fREAD_REG_FIELD(USR, USR_FPRND)]);
-
     set_float_exception_flags(0, &env->fp_status);
     set_float_rounding_mode(
         softfloat_roundingmodes[fREAD_REG_FIELD(USR, USR_FPRND)],
@@ -243,18 +231,6 @@ void arch_fpop_start(CPUHexagonState *env)
 
 #define RAISE_FP_EXCEPTION \
     do {} while (0)            /* Not modelled in qemu user mode */
-
-#define TEST_FLAG(LIBCF, MYF, MYE) \
-    do { \
-        if (fetestexcept(LIBCF)) { \
-            if (GET_USR_FIELD(USR_##MYF) == 0) { \
-                SET_USR_FIELD(USR_##MYF, 1); \
-                if (GET_USR_FIELD(USR_##MYE)) { \
-                    RAISE_FP_EXCEPTION; \
-                } \
-            } \
-        } \
-    } while (0)
 
 #define SOFTFLOAT_TEST_FLAG(FLAG, MYF, MYE) \
     do { \
@@ -270,15 +246,6 @@ void arch_fpop_start(CPUHexagonState *env)
 
 void arch_fpop_end(CPUHexagonState *env)
 {
-    if (fetestexcept(FE_ALL_EXCEPT)) {
-        TEST_FLAG(FE_INEXACT, FPINPF, FPINPE);
-        TEST_FLAG(FE_DIVBYZERO, FPDBZF, FPDBZE);
-        TEST_FLAG(FE_INVALID, FPINVF, FPINVE);
-        TEST_FLAG(FE_OVERFLOW, FPOVFF, FPOVFE);
-        TEST_FLAG(FE_UNDERFLOW, FPUNFF, FPUNFE);
-    }
-    fesetenv(&env->fenv);
-
     int flags = get_float_exception_flags(&env->fp_status);
     if (flags != 0) {
         SOFTFLOAT_TEST_FLAG(float_flag_inexact, FPINPF, FPINPE);
@@ -287,11 +254,6 @@ void arch_fpop_end(CPUHexagonState *env)
         SOFTFLOAT_TEST_FLAG(float_flag_overflow, FPOVFF, FPOVFE);
         SOFTFLOAT_TEST_FLAG(float_flag_underflow, FPUNFF, FPUNFE);
     }
-}
-
-void arch_raise_fpflag(unsigned int flags)
-{
-    feraiseexcept(flags);
 }
 
 static float32 float32_mul_pow2(float32 a, uint32_t p, float_status *fp_status)

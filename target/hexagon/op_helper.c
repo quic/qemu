@@ -15,7 +15,6 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <math.h>
 #include "qemu/osdep.h"
 #include "qemu.h"
 #include "exec/helper-proto.h"
@@ -29,6 +28,9 @@
 #include "conv_emu.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/macros.h"
+
+#define SF_BIAS        127
+#define SF_MANTBITS    23
 
 #if COUNT_HEX_HELPERS
 #include "opcodes.h"
@@ -322,6 +324,14 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
 
 }
 
+static float32 build_float32(uint8_t sign, uint32_t exp, uint32_t mant)
+{
+    return make_float32(
+        ((sign & 1) << 31) |
+        ((exp & 0xff) << SF_MANTBITS) |
+        (mant & ((1 << SF_MANTBITS) - 1)));
+}
+
 /*
  * sfrecipa, sfinvsqrta, vacsh have two results
  *     r0,p0=sfrecipa(r1,r2)
@@ -345,8 +355,8 @@ float32 HELPER(sfrecipa_val)(CPUHexagonState *env, float32 RsV, float32 RtV)
         /* PeV = adjust; Not needed to compute value */
         idx = (RtV >> 16) & 0x7f;
         mant = (arch_recip_lookup(idx) << 15) | 1;
-        exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
-        RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
+        exp = SF_BIAS - (float32_getexp(RtV) - SF_BIAS) - 1;
+        RdV = build_float32(extract32(RtV, 31, 1), exp, mant);
     }
     arch_fpop_end(env);
     return RdV;
@@ -378,8 +388,8 @@ float32 HELPER(sfinvsqrta_val)(CPUHexagonState *env, float32 RsV)
         /* PeV = adjust; Not needed for val version */
         idx = (RsV >> 17) & 0x7f;
         mant = (arch_invsqrt_lookup(idx) << 15);
-        exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
-        RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
+        exp = SF_BIAS - ((float32_getexp(RsV) - SF_BIAS) >> 1) - 1;
+        RdV = build_float32(extract32(RsV, 31, 1), exp, mant);
     }
     arch_fpop_end(env);
     return RdV;
@@ -894,12 +904,27 @@ float32 HELPER(sffma)(CPUHexagonState *env, float32 RxV,
     return RxV;
 }
 
-static bool is_zero_prod(int32_t a, int32_t b)
+static bool isfinite(float32 x)
 {
-    float A = fFLOAT(a);
-    float B = fFLOAT(b);
-    return ((((A) == 0.0) && isfinite(B)) ||
-            (((B) == 0.0) && isfinite(A)));
+    return !float32_is_any_nan(x) && !float32_is_infinity(x);
+}
+
+static bool is_zero_prod(float32 a, float32 b)
+{
+    return ((float32_is_zero(a) && isfinite(b)) ||
+            (float32_is_zero(b) && isfinite(a)));
+}
+
+static float32 check_nan(float32 dst, float32 x, float_status *fp_status)
+{
+    float32 ret = dst;
+    if (float32_is_any_nan(x)) {
+        if (extract32(x, 22, 1) == 0) {
+            float_raise(float_flag_invalid, fp_status);
+        }
+        ret = make_float32(0xffffffff);    /* nan */
+    }
+    return ret;
 }
 
 float32 HELPER(sffma_sc)(CPUHexagonState *env, float32 RxV,
@@ -907,11 +932,11 @@ float32 HELPER(sffma_sc)(CPUHexagonState *env, float32 RxV,
 {
     arch_fpop_start(env);
     size4s_t tmp;
-    fCHECKSFNAN(RxV, RxV);
-    fCHECKSFNAN(RxV, RsV);
-    fCHECKSFNAN(RxV, RtV);
+    RxV = check_nan(RxV, RxV, &env->fp_status);
+    RxV = check_nan(RxV, RsV, &env->fp_status);
+    RxV = check_nan(RxV, RtV, &env->fp_status);
     tmp = internal_fmafx(RsV, RtV, RxV, fSXTN(8, 64, PuV), &env->fp_status);
-    if (!((fFLOAT(RxV) == 0.0) && is_zero_prod(RsV, RtV))) {
+    if (!(float32_is_zero(RxV) && is_zero_prod(RsV, RtV))) {
         RxV = tmp;
     }
     arch_fpop_end(env);
@@ -930,19 +955,16 @@ float32 HELPER(sffms)(CPUHexagonState *env, float32 RxV,
 
 static inline bool is_inf_prod(int32_t a, int32_t b)
 {
-    float A = fFLOAT(a);
-    float B = fFLOAT(b);
-
     return (float32_is_infinity(a) && float32_is_infinity(b)) ||
-           (float32_is_infinity(a) && isfinite(B) && !float32_is_zero(b)) ||
-           (float32_is_infinity(b) && isfinite(A) && !float32_is_zero(a));
+           (float32_is_infinity(a) && isfinite(b) && !float32_is_zero(b)) ||
+           (float32_is_infinity(b) && isfinite(a) && !float32_is_zero(a));
 }
 
 float32 HELPER(sffma_lib)(CPUHexagonState *env, float32 RxV,
                           float32 RsV, float32 RtV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_NEAREST();
+    set_float_rounding_mode(float_round_nearest_even, &env->fp_status);
     int infinp;
     int infminusinf;
     float32 tmp;
@@ -952,14 +974,14 @@ float32 HELPER(sffma_lib)(CPUHexagonState *env, float32 RxV,
     infinp = float32_is_infinity(RxV) ||
              float32_is_infinity(RtV) ||
              float32_is_infinity(RsV);
-    fCHECKSFNAN(RxV, RxV);
-    fCHECKSFNAN(RxV, RsV);
-    fCHECKSFNAN(RxV, RtV);
+    RxV = check_nan(RxV, RxV, &env->fp_status);
+    RxV = check_nan(RxV, RsV, &env->fp_status);
+    RxV = check_nan(RxV, RtV, &env->fp_status);
     tmp = internal_fmafx(RsV, RtV, RxV, 0, &env->fp_status);
     if (!(float32_is_zero(RxV) && is_zero_prod(RsV, RtV))) {
         RxV = tmp;
     }
-    fFPCANCELFLAGS();
+    set_float_exception_flags(0, &env->fp_status);
     if (float32_is_infinity(RxV) && !infinp) {
         RxV = RxV - 1;
     }
@@ -974,7 +996,7 @@ float32 HELPER(sffms_lib)(CPUHexagonState *env, float32 RxV,
                           float32 RsV, float32 RtV)
 {
     arch_fpop_start(env);
-    fFPSETROUND_NEAREST();
+    set_float_rounding_mode(float_round_nearest_even, &env->fp_status);
     int infinp;
     int infminusinf;
     float32 tmp;
@@ -984,15 +1006,15 @@ float32 HELPER(sffms_lib)(CPUHexagonState *env, float32 RxV,
     infinp = float32_is_infinity(RxV) ||
              float32_is_infinity(RtV) ||
              float32_is_infinity(RsV);
-    fCHECKSFNAN(RxV, RxV);
-    fCHECKSFNAN(RxV, RsV);
-    fCHECKSFNAN(RxV, RtV);
+    RxV = check_nan(RxV, RxV, &env->fp_status);
+    RxV = check_nan(RxV, RsV, &env->fp_status);
+    RxV = check_nan(RxV, RtV, &env->fp_status);
     float32 minus_RsV = float32_sub(float32_zero, RsV, &env->fp_status);
     tmp = internal_fmafx(minus_RsV, RtV, RxV, 0, &env->fp_status);
     if (!(float32_is_zero(RxV) && is_zero_prod(RsV, RtV))) {
         RxV = tmp;
     }
-    fFPCANCELFLAGS();
+    set_float_exception_flags(0, &env->fp_status);
     if (float32_is_infinity(RxV) && !infinp) {
         RxV = RxV - 1;
     }
