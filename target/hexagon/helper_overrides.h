@@ -167,7 +167,7 @@
         TCGv tmp = tcg_temp_new(); \
         fEA_REG(RxV); \
         fREAD_IREG(MuV, SHIFT); \
-        gen_fcircadd(RxV, ireg, MuV, fREAD_CSREG(MuN)); \
+        gen_helper_fcircadd(RxV, RxV, ireg, MuV, fREAD_CSREG(MuN)); \
         LOAD; \
         tcg_temp_free(tmp); \
         tcg_temp_free(ireg); \

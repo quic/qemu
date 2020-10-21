@@ -478,6 +478,44 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
 
 }
 
+static int32_t fcircadd_v4(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
+{
+    int32_t length = M & 0x0001ffff;
+    uint32_t new_ptr = RxV + offset;
+    uint32_t start_addr = CS;
+    uint32_t end_addr = start_addr + length;
+
+    if (new_ptr >= end_addr) {
+        new_ptr -= length;
+    } else if (new_ptr < start_addr) {
+        new_ptr += length;
+    }
+
+    return new_ptr;
+}
+
+int32_t HELPER(fcircadd)(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
+{
+    int32_t K_const = (M >> 24) & 0xf;
+    int32_t length = M & 0x1ffff;
+    int32_t mask = (1 << (K_const + 2)) - 1;
+    uint32_t new_ptr = RxV + offset;
+    uint32_t start_addr = RxV & (~mask);
+    uint32_t end_addr = start_addr | length;
+
+    if (K_const == 0 && length >= 4) {
+        return fcircadd_v4(RxV, offset, M, CS);
+    }
+
+    if (new_ptr >= end_addr) {
+        new_ptr -= length;
+    } else if (new_ptr < start_addr) {
+        new_ptr += length;
+    }
+
+    return new_ptr;
+}
+
 /*
  * sfrecipa, sfinvsqrta, vacsh have two results
  *     r0,p0=sfrecipa(r1,r2)
