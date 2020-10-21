@@ -310,6 +310,7 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     print_sreg(f, env, HEX_SREG_BADVA);
     print_sreg(f, env, HEX_SREG_IMASK);
     print_sreg(f, env, HEX_SREG_IPENDAD);
+    print_sreg(f, env, HEX_SREG_VID);
     print_sreg(f, env, HEX_SREG_GEVB);
     print_greg(f, env, HEX_GREG_GELR);
     print_greg(f, env, HEX_GREG_GSR);
