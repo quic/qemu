@@ -669,7 +669,7 @@ HexagonCPU *hexagon_find_lowest_prio(CPUHexagonState *env, uint32_t int_num) {
     CPU_FOREACH(cs) {
         threads[i++] = HEXAGON_CPU(cs);
     }
-    return hexagon_find_lowest_prio_any_thread(threads, ARRAY_SIZE(threads), int_num, NULL);
+    return hexagon_find_lowest_prio_any_thread(threads, i, int_num, NULL);
 }
 
 HexagonCPU *hexagon_find_lowest_prio_any_thread(HexagonCPU *threads[],
