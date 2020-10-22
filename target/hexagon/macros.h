@@ -361,16 +361,26 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
 #define fPCALIGN(IMM) IMM = (IMM & ~PCALIGN_MASK)
 
 #ifdef QEMU_GENERATE
-static inline TCGv gen_read_ireg(TCGv tmp, TCGv val, int shift)
+static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 {
     /*
      *  #define fREAD_IREG(VAL) \
-     *      (fSXTN(11, 64, (((VAL) & 0xf0000000)>>21) | ((VAL >> 17) & 0x7f)))
+     *      (fSXTN(11, 64, (((VAL) & 0xf0000000) >> 21) | ((VAL >> 17) & 0x7f)))
      */
-    tcg_gen_sari_tl(tmp, val, 17);
-    tcg_gen_andi_tl(tmp, tmp, 0x7f);
-    tcg_gen_shli_tl(tmp, tmp, shift);
-    return tmp;
+    TCGv tmp1 = tcg_temp_new();
+    TCGv tmp2 = tcg_temp_new();
+    tcg_gen_andi_tl(tmp1, val, 0xf0000000);
+    tcg_gen_sari_tl(tmp1, tmp1, 21);
+    tcg_gen_sextract_tl(tmp1, tmp1, 0, 11);
+
+    tcg_gen_sari_tl(tmp2, val, 17);
+    tcg_gen_andi_tl(tmp2, tmp2, 0x7f);
+    tcg_gen_or_tl(tmp1, tmp1, tmp2);
+
+    tcg_gen_shli_tl(result, tmp1, shift);
+    tcg_temp_free(tmp1);
+    tcg_temp_free(tmp2);
+    return result;
 }
 #define fREAD_IREG(VAL, SHIFT) gen_read_ireg(ireg, (VAL), (SHIFT))
 #define fREAD_LR() (READ_REG(tmp, HEX_REG_LR))
@@ -591,29 +601,6 @@ static inline void gen_fbrev(TCGv result, TCGv src)
     tcg_temp_free(tmp1);
     tcg_temp_free(tmp2);
 }
-static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
-{
-    TCGv length = tcg_temp_new();
-    TCGv new_ptr = tcg_temp_new();
-    TCGv end_addr = tcg_temp_new();
-    TCGv tmp = tcg_temp_new();
-
-    tcg_gen_andi_tl(length, M, 0x1ffff);
-    tcg_gen_add_tl(new_ptr, reg, incr);
-    tcg_gen_add_tl(end_addr, start_addr, length);
-
-    tcg_gen_sub_tl(tmp, new_ptr, length);
-    tcg_gen_movcond_tl(TCG_COND_GE, new_ptr, new_ptr, end_addr, tmp, new_ptr);
-    tcg_gen_add_tl(tmp, new_ptr, length);
-    tcg_gen_movcond_tl(TCG_COND_LT, new_ptr, new_ptr, start_addr, tmp, new_ptr);
-
-    tcg_gen_mov_tl(reg, new_ptr);
-
-    tcg_temp_free(length);
-    tcg_temp_free(new_ptr);
-    tcg_temp_free(end_addr);
-    tcg_temp_free(tmp);
-}
 
 #define fEA_BREVR(REG)      gen_fbrev(EA, REG)
 #define fEA_GPI(IMM)        tcg_gen_addi_tl(EA, fREAD_GP(), IMM)
@@ -622,7 +609,7 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
 #else
 #define fEA_IMM(IMM)        do { EA = (IMM); } while (0)
 #define fEA_REG(REG)        do { EA = (REG); } while (0)
-#define fEA_GPI(IMM)        do { EA = (fREAD_GP() + (IMM); } while (0)
+#define fEA_GPI(IMM)        do { EA = (fREAD_GP() + (IMM)); } while (0)
 #define fPM_I(REG, IMM)     do { REG = REG + (IMM); } while (0)
 #define fPM_M(REG, MVAL)    do { REG = REG + (MVAL); } while (0)
 #define fEA_BREVR(REG)      do { EA = fbrev(REG); } while (0)
@@ -697,9 +684,7 @@ static inline void gen_fcircadd(TCGv reg, TCGv incr, TCGv M, TCGv start_addr)
 
 #ifdef QEMU_GENERATE
 #define fcirc_add(REG, INCR, MV) \
-    gen_fcircadd(REG, INCR, MV, fREAD_CSREG(MuN))
-#else
-#define fcirc_add(REG, INCR, IMMED)  /* Not possible in helpers */
+    gen_helper_fcircadd(REG, REG, INCR, MV, fREAD_CSREG(MuN))
 #endif
 
 #define fbrev(REG) (fbrevaddr(REG))
