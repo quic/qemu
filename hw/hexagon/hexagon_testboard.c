@@ -178,7 +178,10 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     hexagon_binfo.ram_size = machine->ram_size;
     hexagon_binfo.kernel_filename = machine->kernel_filename;
 
-    env->cmdline = machine->kernel_cmdline;
+    GString *argv = g_string_new(machine->kernel_filename);
+    g_string_append(argv, " ");
+    g_string_append(argv, machine->kernel_cmdline);
+    env->cmdline = g_string_free(argv, false);
 
     if (machine->kernel_filename) {
         hexagon_load_kernel(env);

@@ -230,8 +230,8 @@ struct CPUHexagonState {
     target_ulong cache_tags[CACHE_TAGS_MAX];
     unsigned int timing_on;
     unsigned int threadId;
-    const char *cmdline;
 #ifndef CONFIG_USER_ONLY
+    const char *cmdline;
     Processor *processor_ptr;
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <assert.h>
 
 extern void test_set_prio();
 
@@ -35,6 +36,7 @@ int main(int argc, const char *argv[])
 {
     inst_test();
     printf("Hello, World: (argc: %d)\n", argc);
+    assert(argc >= 1);
     for (int i = 0; i < argc; i++) {
         printf("\t> '%s'\n", argv[i]);
     }
