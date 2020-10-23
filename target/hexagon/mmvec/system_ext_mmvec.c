@@ -18,8 +18,10 @@
 #include <stdio.h>
 #include <string.h>
 #include "qemu/osdep.h"
+#include "exec/exec-all.h"
 #include "opcodes.h"
 #include "insn.h"
+#include "mmvec/mmvec.h"
 #include "mmvec/macros.h"
 #ifdef CONFIG_USER_ONLY
 #include "qemu.h"
@@ -31,63 +33,6 @@
 #define TYPE_FETCH 'F'
 #define TYPE_ICINVA 'I'
 
-enum mem_access_types {
-    access_type_INVALID = 0,
-    access_type_unknown = 1,
-    access_type_load = 2,
-    access_type_store = 3,
-    access_type_fetch = 4,
-    access_type_dczeroa = 5,
-    access_type_dccleana = 6,
-    access_type_dcinva = 7,
-    access_type_dccleaninva = 8,
-    access_type_icinva = 9,
-    access_type_ictagr = 10,
-    access_type_ictagw = 11,
-    access_type_icdatar = 12,
-    access_type_dcfetch = 13,
-    access_type_l2fetch = 14,
-    access_type_l2cleanidx = 15,
-    access_type_l2cleaninvidx = 16,
-    access_type_l2tagr = 17,
-    access_type_l2tagw = 18,
-    access_type_dccleanidx = 19,
-    access_type_dcinvidx = 20,
-    access_type_dccleaninvidx = 21,
-    access_type_dctagr = 22,
-    access_type_dctagw = 23,
-    access_type_k0unlock = 24,
-    access_type_l2locka = 25,
-    access_type_l2unlocka = 26,
-    access_type_l2kill = 27,
-    access_type_l2gclean = 28,
-    access_type_l2gcleaninv = 29,
-    access_type_l2gunlock = 30,
-    access_type_synch = 31,
-    access_type_isync = 32,
-    access_type_pause = 33,
-    access_type_load_phys = 34,
-    access_type_load_locked = 35,
-    access_type_store_conditional = 36,
-    access_type_barrier = 37,
-    access_type_memcpy_load = 39,
-    access_type_memcpy_store = 40,
-
-    NUM_CORE_ACCESS_TYPES
-};
-
-enum ext_mem_access_types {
-    access_type_vload = NUM_CORE_ACCESS_TYPES,
-    access_type_vstore,
-    access_type_vload_nt,
-    access_type_vstore_nt,
-    access_type_vgather_load,
-    access_type_vscatter_store,
-    access_type_vscatter_release,
-    access_type_vgather_release,
-    access_type_vfetch,
-    NUM_EXT_ACCESS_TYPES
-};
 
 static inline
 target_ulong mem_init_access(CPUHexagonState *env, int slot, size4u_t vaddr,

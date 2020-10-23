@@ -30,12 +30,23 @@
 #include "qemu/log.h"
 #include "tcg/tcg-op.h"
 #include "internal.h"
+#include "stall.h"
 #include "macros.h"
 #include "arch.h"
 #include "fma_emu.h"
 #include "conv_emu.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/macros.h"
+#include "arch_options_calc.h"
+#include "hmx/hmx.h"
+#include "hmx/macros.h"
+#include "hmx/ext_hmx.h"
+#include "hmx/mpy_fp16.h"
+#include "system.h"
+#include "dma_adapter.h"
+#include "fma_emu.h"
+#include "myfenv.h"
+#include "conv_emu.h"
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
 #endif
@@ -1486,14 +1497,98 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 }
 #endif
 
+void HELPER(commit_hmx)(CPUHexagonState *env)
+{
+    hmx_ext_commit_regs(env);
+    hmx_ext_commit_mem(env, 0);
+}
+static inline uint8_t mem_load1(CPUHexagonState *env,
+                                target_ulong vaddr)
+{
+    uint8_t retval;
+#ifdef CONFIG_USER_ONLY
+    get_user_u8(retval, vaddr);
+#else
+    hexagon_tools_memory_read(env, vaddr, 1, &retval);
+#endif
+    return retval;
+}
+static inline uint16_t mem_load2(CPUHexagonState *env,
+                                 target_ulong vaddr)
+{
+    uint16_t retval;
+#ifdef CONFIG_USER_ONLY
+    get_user_u16(retval, vaddr);
+#else
+    hexagon_tools_memory_read(env, vaddr, 2, &retval);
+#endif
+    return retval;
+}
+static inline uint32_t mem_load4(CPUHexagonState *env,
+                                 target_ulong vaddr)
+{
+    uint32_t retval;
+#ifdef CONFIG_USER_ONLY
+    get_user_u32(retval, vaddr);
+#else
+    hexagon_tools_memory_read(env, vaddr, 4, &retval);
+#endif
+    return retval;
+}
+static inline uint64_t mem_load8(CPUHexagonState *env,
+                                 target_ulong vaddr)
+{
+    uint64_t retval;
+#ifdef CONFIG_USER_ONLY
+    get_user_u64(retval, vaddr);
+#else
+    hexagon_tools_memory_read(env, vaddr, 8, &retval);
+#endif
+    return retval;
+}
+static inline size1u_t mem_read1(CPUHexagonState *env, paddr_t paddr)
+{
+    size1u_t retval;
+#ifdef CONFIG_USER_ONLY
+    get_user_u8(val, paddr);
+#else
+    hexagon_tools_memory_read(env, paddr, 1, &retval);
+#endif
+    return retval;
+}
+static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
+{
+    size2u_t retval;
+#ifdef CONFIG_USER_ONLY
+    get_user_u16(val, paddr);
+#else
+    hexagon_tools_memory_read(env, paddr, 2, &retval);
+#endif
+    return retval;
+}
+static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
+{
+    size4u_t retval;
+#ifdef CONFIG_USER_ONLY
+    get_user_u32(val, paddr);
+#else
+    hexagon_tools_memory_read(env, paddr, 4, &retval);
+#endif
+    return retval;
+}
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();
 #define thread env
+#define THREAD2STRUCT ((hmx_state_t*)env->processor_ptr->shared_extptr)
 
 #define BOGUS_HELPER(tag) \
     printf("ERROR: bogus helper: " #tag "\n")
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPFN
 #include "qemu_def_generated.h"
 #undef DEF_QEMU
+#pragma GCC diagnostic pop

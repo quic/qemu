@@ -629,6 +629,20 @@ decode_hvx_packet_contents(packet_t *pkt) {
     }
 }
 
+static int
+decode_mx_ops(packet_t * pkt)
+{
+    for (int i = 0; i < pkt->num_insns; i++) {
+#ifdef FIXME
+        if ( GET_ATTRIB(pkt->insn[i].opcode, A_HMX) &&
+          !thread->processor_ptr->arch_proc_options->hmx_enable)
+          return handle_bad_packet(thread, einfo,
+              "Architecture doesn't support Matrix Op. Only v68 and up");
+#endif
+    }
+      return 0;
+}
+
 /*
  * Public Functions
  */
@@ -660,6 +674,7 @@ int mmvec_ext_decode_checks(packet_t *packet)
     errors += check_new_value(packet);
     errors += decode_populate_cvi_resources(packet);
     errors += decode_shuffle_for_execution_vops(packet);
+    errors += decode_mx_ops(packet);
 
     if (errors == 0) {
         decode_hvx_packet_contents(packet);

@@ -20,6 +20,8 @@
  */
 #define EXTNAME mmvec
 #define EXTSTR "mmvec"
+#include "ext_macros.h"
 #include "mmvec/ext.idef"
+#include "ext_unmacros.h"
 #undef EXTNAME
 #undef EXTSTR

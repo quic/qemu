@@ -1,0 +1,217 @@
+/*
+ *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+#define CONCAT(A,B) A##B
+#define EXTEXTNAME(X) CONCAT(EXT_,X)
+#define DEF_ENC(TAG,STR) DEF_EXT_ENC(TAG,EXTEXTNAME(EXTNAME),STR)
+
+
+#ifndef NO_HMX
+// HMX LOAD Operations
+// Activations
+
+DEF_ENC32(M8_mxmem_sm_act_ub,      ICLASS_LD" 001 0 000 sssss PP0ttttt 11100000")
+DEF_ENC32(M8_mxmem_dm_act_ub,      ICLASS_LD" 001 0 000 sssss PP0ttttt 11100001")
+DEF_ENC32(M8_mxmem_sm_act_hf,      ICLASS_LD" 001 0 000 sssss PP0ttttt 11100010")
+//DEF_ENC32(,    ICLASS_LD" 001 0 000 sssss PP0ttttt 11100011")
+DEF_ENC32(M8_mxmem_blk_sm_act_hf,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11100100")
+//DEF_ENC32(,   ICLASS_LD" 001 0 000 sssss PP0ttttt 11100101")
+DEF_ENC32(M8_mxmemu_blk_sm_act_hf, ICLASS_LD" 001 0 000 sssss PP0ttttt 11100110")
+//DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11100111")
+
+DEF_ENC32(M8_mxmemd_blk_sm_act_ub, ICLASS_LD" 001 0 000 sssss PP0ttttt 11101000")
+DEF_ENC32(M8_mxmemd_blk_dm_act_ub, ICLASS_LD" 001 0 000 sssss PP0ttttt 11101001")
+
+//DEF_ENC32(,   ICLASS_LD" 001 0 000 sssss PP0ttttt 11101011")
+DEF_ENC32(M8_mxmem_blk_sm_act_ub,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11101100")
+DEF_ENC32(M8_mxmem_blk_dm_act_ub,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11101101")
+DEF_ENC32(M8_mxmemu_blk_sm_act_ub, ICLASS_LD" 001 0 000 sssss PP0ttttt 11101110")
+DEF_ENC32(M8_mxmemu_blk_dm_act_ub, ICLASS_LD" 001 0 000 sssss PP0ttttt 11101111")
+
+DEF_ENC32(M8_mxmems_blk_sm_act_ub, ICLASS_LD" 001 0 000 sssss PP0ttttt 11110000")
+DEF_ENC32(M8_mxmems_blk_dm_act_ub, ICLASS_LD" 001 0 000 sssss PP0ttttt 11110001")
+//DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11110010")
+//DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11110011")
+//DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11110100")
+//DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11110101")
+//DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11110110")
+//DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11110111")
+
+DEF_ENC32(M8_mxmems_blk_sm_act_hf, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111000")
+//DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111001")
+DEF_ENC32(M8_mxmemd_blk_sm_act_hf, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111010")
+//DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111011")
+//DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111100")
+//DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111101")
+//DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111110")
+//DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111111")
+
+
+// Weights
+DEF_ENC32(M8_mxmems_wei_sc,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11000000")
+DEF_ENC32(M8_mxmemdr_wei_sc,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11000001")
+DEF_ENC32(M8_mxmemdp_wei_sc,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11000010")
+DEF_ENC32(M8_mxmema_wei_sc,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11000011")
+DEF_ENC32(M8_mxmemdi_wei_sc,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11000100")
+DEF_ENC32(M8_mxmems_wei_b1,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11000101")
+DEF_ENC32(M8_mxmemdr_wei_b1,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11000110")
+DEF_ENC32(M8_mxmemdp_wei_b1,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11000111")
+
+DEF_ENC32(M8_mxmema_wei_b1,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11001000")
+DEF_ENC32(M8_mxmemdi_wei_b1,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11001001")
+DEF_ENC32(M8_mxmems_wei_sb1,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11001010")
+DEF_ENC32(M8_mxmemdr_wei_sb1,    ICLASS_LD" 001 0 000 sssss PP1ttttt 11001011")
+DEF_ENC32(M8_mxmemdp_wei_sb1,    ICLASS_LD" 001 0 000 sssss PP1ttttt 11001100")
+DEF_ENC32(M8_mxmema_wei_sb1,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11001101")
+DEF_ENC32(M8_mxmemdi_wei_sb1,    ICLASS_LD" 001 0 000 sssss PP1ttttt 11001110")
+DEF_ENC32(M8_mxmems_wei_sm,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11001111")
+
+DEF_ENC32(M8_mxmemdr_wei_sm,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11010000")
+DEF_ENC32(M8_mxmemdp_wei_sm,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11010001")
+DEF_ENC32(M8_mxmema_wei_sm,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11010010")
+DEF_ENC32(M8_mxmemdi_wei_sm,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11010011")
+//
+//
+//
+//
+
+//
+DEF_ENC32(M8_mxmem_wei_b,        ICLASS_LD" 001 0 000 sssss PP1ttttt 11100000")
+DEF_ENC32(M8_mxmem_wei_n,        ICLASS_LD" 001 0 000 sssss PP1ttttt 11100001")
+DEF_ENC32(M8_mxmem_wei_c,        ICLASS_LD" 001 0 000 sssss PP1ttttt 11100010")
+DEF_ENC32(M8_mxmem_wei_b1,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11100011")
+DEF_ENC32(M8_mxmem_wei_sb1,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11100100")
+//
+DEF_ENC32(M8_mxmems_wei_b,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11100110")
+DEF_ENC32(M8_mxmemdr_wei_b,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11100111")
+
+DEF_ENC32(M8_mxmemdp_wei_b,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11101000")
+DEF_ENC32(M8_mxmema_wei_b,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11101001")
+//
+DEF_ENC32(M8_mxmemdi_wei_b,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11101011")
+DEF_ENC32(M8_mxmems_wei_n,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11101100")
+DEF_ENC32(M8_mxmemdr_wei_n,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11101101")
+DEF_ENC32(M8_mxmemdp_wei_n,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11101110")
+DEF_ENC32(M8_mxmem_wei_hf,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11101111")
+
+DEF_ENC32(M8_mxmem_wei_sc,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11110000")
+DEF_ENC32(M8_mxmem_wei_sm,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11110001")
+DEF_ENC32(M8_mxmems_wei_hf,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11110010")
+DEF_ENC32(M8_mxmemdr_wei_hf,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11110011")
+DEF_ENC32(M8_mxmemdp_wei_hf,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11110100")
+DEF_ENC32(M8_mxmema_wei_hf,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11110101")
+DEF_ENC32(M8_mxmemdi_wei_hf,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11110110")
+DEF_ENC32(M8_mxmema_wei_n,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11110111")
+
+DEF_ENC32(M8_mxmemdi_wei_n,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11111000")
+DEF_ENC32(M8_mxmems_wei_c,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11111001")
+DEF_ENC32(M8_mxmemdr_wei_c,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11111010")
+DEF_ENC32(M8_mxmemdp_wei_c,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11111011")
+DEF_ENC32(M8_mxmema_wei_c,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11111100")
+DEF_ENC32(M8_mxmemdi_wei_c,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11111101")
+DEF_ENC32(M8_mxmem2_bias,        ICLASS_LD" 001 0 000 sssss PP--0011 11111110")
+DEF_ENC32(M8_mxmem_bias,         ICLASS_LD" 001 0 000 sssss PP--0011 11111111")
+
+// DEBUG FAKE INSNS
+DEF_ENC32(M8_pldacc,             ICLASS_LD" 001 0 000 ----- PP--1111 11111110")
+DEF_ENC32(M8_pv64fp,             ICLASS_LD" 001 0 000 ----- PP--1100 11111111")
+DEF_ENC32(M8_pv64dfp,            ICLASS_LD" 001 0 000 ----- PP--1101 11111111")
+DEF_ENC32(M8_pv64d,              ICLASS_LD" 001 0 000 ----- PP--1110 11111111")
+DEF_ENC32(M8_pv64,               ICLASS_LD" 001 0 000 ----- PP--1111 11111111")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Fixed Point Converts
+DEF_ENC32(M8_mxcvtl_sat_ub,      ICLASS_ST" 011 01 11sssss PP0ttttt --000000")
+DEF_ENC32(M8_mxcvtl_dm_sat_ub,   ICLASS_ST" 011 01 11sssss PP0ttttt --000001")
+DEF_ENC32(M8_mxcvtl_ub,          ICLASS_ST" 011 01 11sssss PP0ttttt --000010")
+DEF_ENC32(M8_mxcvtl_dm_ub,       ICLASS_ST" 011 01 11sssss PP0ttttt --000011")
+DEF_ENC32(M8_mxcvtr_sat_ub,      ICLASS_ST" 011 01 11sssss PP0ttttt --000100")
+DEF_ENC32(M8_mxcvtr_dm_sat_ub,   ICLASS_ST" 011 01 11sssss PP0ttttt --000101")
+DEF_ENC32(M8_mxcvtr_ub,          ICLASS_ST" 011 01 11sssss PP0ttttt --000110")
+DEF_ENC32(M8_mxcvtr_dm_ub,       ICLASS_ST" 011 01 11sssss PP0ttttt --000111")
+DEF_ENC32(M8_mxcvtl_sat_ub_r,    ICLASS_ST" 011 01 11sssss PP0ttttt --001000")
+DEF_ENC32(M8_mxcvtl_dm_sat_ub_r, ICLASS_ST" 011 01 11sssss PP0ttttt --001001")
+DEF_ENC32(M8_mxcvtl_ub_r,        ICLASS_ST" 011 01 11sssss PP0ttttt --001010")
+DEF_ENC32(M8_mxcvtl_dm_ub_r,     ICLASS_ST" 011 01 11sssss PP0ttttt --001011")
+DEF_ENC32(M8_mxcvtr_sat_ub_r,    ICLASS_ST" 011 01 11sssss PP0ttttt --001100")
+DEF_ENC32(M8_mxcvtr_dm_sat_ub_r, ICLASS_ST" 011 01 11sssss PP0ttttt --001101")
+DEF_ENC32(M8_mxcvtr_ub_r,        ICLASS_ST" 011 01 11sssss PP0ttttt --001110")
+DEF_ENC32(M8_mxcvtr_dm_ub_r,     ICLASS_ST" 011 01 11sssss PP0ttttt --001111")
+
+DEF_ENC32(M8_mxmem_st_bias,      ICLASS_ST" 011 01 11sssss PP0----- --010000")
+
+DEF_ENC32(M8_mxclracc,           ICLASS_ST" 011 01 11----- PP0----- --010001")
+DEF_ENC32(M8_mxclracc_hf,        ICLASS_ST" 011 01 11----- PP0----- --010011")
+DEF_ENC32(M8_mxswap,             ICLASS_ST" 011 01 11----- PP0----- --010100")
+DEF_ENC32(M8_mxswap_hf,          ICLASS_ST" 011 01 11----- PP0----- --010101")
+DEF_ENC32(M8_mxmem2_st_bias,     ICLASS_ST" 011 01 11sssss PP0----- --010110")
+DEF_ENC32(M8_mxaccshl,           ICLASS_ST" 011 01 11----- PP0----- --010111")
+
+//DEF_ENC32(M8_mxcvtr_dw_ub_r,     ICLASS_ST" 011 01 11sssss PP0ttttt --100000")
+
+
+// Floating Point Converts
+DEF_ENC32(M8_mxcvtl_sat_hf,       ICLASS_ST" 011 01 11sssss PP1ttttt ---00000")
+DEF_ENC32(M8_mxcvtl_sat_pos_hf,   ICLASS_ST" 011 01 11sssss PP1ttttt ---00001")
+DEF_ENC32(M8_mxcvtb_sat_uh,       ICLASS_ST" 011 01 11sssss PP1ttttt ---00010")
+DEF_ENC32(M8_mxcvtb_uh,           ICLASS_ST" 011 01 11sssss PP1ttttt ---00011")
+DEF_ENC32(M8_mxcvtr_sat_hf,       ICLASS_ST" 011 01 11sssss PP1ttttt ---00100")
+DEF_ENC32(M8_mxcvtl_sat_pos_hf_r, ICLASS_ST" 011 01 11sssss PP1ttttt ---00101")
+DEF_ENC32(M8_mxcvtb_sat_uh_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---00110")
+DEF_ENC32(M8_mxcvtb_uh_r,         ICLASS_ST" 011 01 11sssss PP1ttttt ---00111")
+DEF_ENC32(M8_mxcvtl_sat_hf_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---01000")
+DEF_ENC32(M8_mxcvtr_sat_pos_hf,   ICLASS_ST" 011 01 11sssss PP1ttttt ---01001")
+DEF_ENC32(M8_mxcvta_sat_uh,       ICLASS_ST" 011 01 11sssss PP1ttttt ---01010")
+DEF_ENC32(M8_mxcvta_uh,           ICLASS_ST" 011 01 11sssss PP1ttttt ---01011")
+DEF_ENC32(M8_mxcvtr_sat_hf_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---01100")
+DEF_ENC32(M8_mxcvtr_sat_pos_hf_r, ICLASS_ST" 011 01 11sssss PP1ttttt ---01101")
+DEF_ENC32(M8_mxcvta_sat_uh_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---01110")
+DEF_ENC32(M8_mxcvta_uh_r,         ICLASS_ST" 011 01 11sssss PP1ttttt ---01111")
+
+//DEF_ENC32(, ICLASS_ST" 011 01 11sssss PP1ttttt ---10000")
+//DEF_ENC32(, ICLASS_ST" 011 01 11sssss PP1ttttt ---10001")
+DEF_ENC32(M8_mxcvtb_sat_uh2x2,       ICLASS_ST" 011 01 11sssss PP1ttttt ---10010")
+DEF_ENC32(M8_mxcvtb_uh2x2,           ICLASS_ST" 011 01 11sssss PP1ttttt ---10011")
+//DEF_ENC32(, ICLASS_ST" 011 01 11sssss PP1ttttt ---10100")
+//DEF_ENC32(, ICLASS_ST" 011 01 11sssss PP1ttttt ---10101")
+DEF_ENC32(M8_mxcvtb_sat_uh2x2_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---10110")
+DEF_ENC32(M8_mxcvtb_uh2x2_r,         ICLASS_ST" 011 01 11sssss PP1ttttt ---10111")
+//DEF_ENC32(, ICLASS_ST" 011 01 11sssss PP1ttttt ---11000")
+//DEF_ENC32(, ICLASS_ST" 011 01 11sssss PP1ttttt ---11001")
+DEF_ENC32(M8_mxcvta_sat_uh2x2,       ICLASS_ST" 011 01 11sssss PP1ttttt ---11010")
+DEF_ENC32(M8_mxcvta_uh2x2,           ICLASS_ST" 011 01 11sssss PP1ttttt ---11011")
+//DEF_ENC32(, ICLASS_ST" 011 01 11sssss PP1ttttt ---11100")
+//DEF_ENC32(, ICLASS_ST" 011 01 11sssss PP1ttttt ---11101")
+DEF_ENC32(M8_mxcvta_sat_uh2x2_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---11110")
+DEF_ENC32(M8_mxcvta_uh2x2_r,         ICLASS_ST" 011 01 11sssss PP1ttttt ---11111")
+
+
+
+#endif /* NO HMX */

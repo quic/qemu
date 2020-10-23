@@ -235,7 +235,8 @@ def need_slot(tag):
     if ('A_CONDEXEC' in attribdict[tag] or
         'A_STORE' in attribdict[tag] or
         'A_LOAD' in attribdict[tag] or
-        'A_CVI' in attribdict[tag]):
+        'A_CVI' in attribdict[tag] or
+        'A_HMX' in attribdict[tag]):
         return 1
     else:
         return 0
@@ -245,6 +246,12 @@ def need_part1(tag):
 
 def need_ea(tag):
     return re.compile(r"\bEA\b").search(semdict[tag])
+
+def is_hmx_act(attrs):
+    return ('A_HMX' in attrs and 'A_PAIR_1OF2' in attrs);
+
+def is_hmx(attrs):
+    return ('A_HMX' in attrs);
 
 def imm_name(immlett):
     return "%siV" % immlett
@@ -280,7 +287,7 @@ def gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i):
     elif (is_single(regid)):
         f.write(", %s" % (def_helper_types[regtype]))
     else:
-        print("Bad register parse: ",regtype,regid,toss,numregs)
+        print("Bad register parse: ",'regtype =', regtype,'regid =',regid,'toss =',toss,'numregs =',numregs)
 
 ##
 ## Generate the DEF_HELPER prototype for an instruction
@@ -398,7 +405,7 @@ def genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i):
         else:
             print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
-        print("Bad register parse: ",regtype,regid,toss,numregs)
+        print("Bad register parse: ",'regtype =',regtype,'regid =',regid,'toss =',toss,'numregs =',numregs)
 
 def genptr_decl_imm(f,immlett):
     if (immlett.isupper()):
@@ -466,7 +473,7 @@ def gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i):
         else:
             print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
-        print("Bad register parse: ",regtype,regid,toss,numregs)
+        print("Bad register parse: ",'regtype =',regtype,'regid =',regid,'toss =',toss,'numregs =',numregs)
 
 def gen_helper_decl_imm(f,immlett):
     f.write("DECL_TCG_IMM(tcgv_%s, %s);\n" % \
@@ -510,7 +517,7 @@ def genptr_dst_write_opn(f,regtype, regid, tag):
         else:
             genptr_dst_write(f, regtype, regid)
     else:
-        print("Bad register parse: ",regtype,regid,toss,numregs)
+        print("Bad register parse: ",'regtype =',regtype,'regid =',regid)
 
 ##
 ## Generate the TCG code to call the helper
@@ -560,9 +567,11 @@ def gen_tcg_func(f, tag, regs, imms):
             genptr_src_read_opn(f,regtype,regid)
 
     ## Generate the call to the helper
+#'A_HMX' in attribdict[tag]:
     if need_slot(tag): f.write("SLOT_WRAP(")
     f.write("fWRAP_%s(\n" % tag)
     f.write("do {\n")
+
     for immlett,bits,immshift in imms:
         gen_helper_decl_imm(f,immlett)
     if need_part1(tag): f.write("PART1_WRAP(")
@@ -634,6 +643,11 @@ def gen_decl_ea(tag,f):
     if (tag in ea_excludes):
         f.write("__attribute__((unused)) ")
     f.write("size4u_t EA;\n")
+
+def gen_decl_insn(tag,f,slot):
+    str = 'tmp_insn_t tmp_insn = { .slot = %d };\n' % (slot);
+    f.write(str);
+    f.write('tmp_insn_t *insn = &tmp_insn;\n');
 
 def gen_helper_return_type(f,regtype,regid,regno):
     if regno > 1 : f.write(", ")
@@ -853,6 +867,12 @@ def gen_helper_definition(f, tag, regs, imms):
         f.write(")\n{\n")
         if (not need_slot(tag)): f.write("uint32_t slot = 4; slot = slot;\n" )
         if need_ea(tag): gen_decl_ea(tag,f)
+        if is_hmx(attribdict[tag]):
+            if is_hmx_act(attribdict[tag]):
+                gen_decl_insn(tag,f,1)
+            else:
+                gen_decl_insn(tag,f,0)
+
         ## Declare the return variable
         i=0
         for regtype,regid,toss,numregs in regs:
@@ -945,6 +965,8 @@ supported_privs = [
     'Y2_k0lock', 'Y2_k0unlock',
     'Y2_getimask', 'Y2_setimask',
     'Y4_nmi',
+
+    'Y6_dmcfgrd', 'Y6_dmcfgwr',
 ]
 
 # Sanity check for typos:

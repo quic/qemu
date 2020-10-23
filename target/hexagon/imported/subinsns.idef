@@ -15,8 +15,11 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+
 /*
  * sub-instructions
+ *
+ *
  */
 
 
@@ -53,6 +56,8 @@ Q6INSN(SA1_combine2i,"Rdd8=combine(#2,#u2)", ATTRIBS(A_SUBINSN,A_ROPS_2),"Combin
 Q6INSN(SA1_combine3i,"Rdd8=combine(#3,#u2)", ATTRIBS(A_SUBINSN,A_ROPS_2),"Combines",   { fSETWORD(0,RddV,uiV); fSETWORD(1,RddV,3); })
 Q6INSN(SA1_cmpeqi,   "p0=cmp.eq(Rs16,#u2)",   ATTRIBS(A_SUBINSN),"CompareImmed",{fWRITE_P0(f8BITSOF(RsV==uiV));})
 
+//Q6INSN(SA1_asrh,     "Rd16=asrh(Rs16)",       ATTRIBS(A_SUBINSN),"Shift half", { RdV= RsV>>16;})
+//Q6INSN(SA1_aslh,     "Rd16=aslh(Rs16)",       ATTRIBS(A_SUBINSN),"Shift half", { RdV= RsV<<16;})
 
 
 
@@ -143,7 +148,13 @@ Q6INSN(SS2_storewi0,   "memw(Rs16+#u4:2)=#0", ATTRIBS(A_MEMSIZE_4B,A_STORE,A_SUB
 Q6INSN(SS2_storebi0,   "memb(Rs16+#u4:0)=#0", ATTRIBS(A_MEMSIZE_1B,A_STORE,A_SUBINSN,A_ROPS_2), "store byte", {fEA_RI(RsV,uiV); fSTORE(1,1,EA,0);})
 Q6INSN(SS2_storewi1,   "memw(Rs16+#u4:2)=#1", ATTRIBS(A_MEMSIZE_4B,A_STORE,A_SUBINSN,A_ROPS_2), "store word", {fEA_RI(RsV,uiV); fSTORE(1,4,EA,1);})
 Q6INSN(SS2_storebi1,   "memb(Rs16+#u4:0)=#1", ATTRIBS(A_MEMSIZE_1B,A_STORE,A_SUBINSN,A_ROPS_2), "store byte", {fEA_RI(RsV,uiV); fSTORE(1,1,EA,1);})
+//Q6INSN(SS2_storew_new, "memw(Rs16+#u4:2)=Rt0.new", ATTRIBS(A_MEMSIZE_4B,A_STORE,A_SUBINSN), "store word", {fEA_RI(RsV,uiV); fSTORE(1,4,EA,fNEWREG(RtN));})
+//Q6INSN(SS2_storeb_new, "memb(Rs16+#u4:0)=Rt0.new", ATTRIBS(A_MEMSIZE_1B,A_STORE,A_SUBINSN), "store byte", {fEA_RI(RsV,uiV); fSTORE(1,1,EA,fGETBYTE(0,fNEWREG(RtN)));})
+//Q6INSN(SS2_storeh_new, "memh(Rs16+#u4:1)=Rt0.new", ATTRIBS(A_MEMSIZE_2B,A_STORE,A_SUBINSN), "store half", {fEA_RI(RsV,uiV); fSTORE(1,2,EA,fGETHALF(0,fNEWREG(RtN)));})
 
 
 Q6INSN(SS2_allocframe,"allocframe(#u5:3)", ATTRIBS(A_SUBINSN,A_MEMSIZE_8B,A_STORE,A_RESTRICT_SLOT0ONLY), "Allocate stack frame",
 { fEA_RI(fREAD_SP(),-8);  fSTORE(1,8,EA,fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | fCAST4_4u(fREAD_FP()))); fWRITE_FP(EA); fFRAMECHECK(EA-uiV,EA); fWRITE_SP(EA-uiV); })
+
+
+

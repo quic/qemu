@@ -1,0 +1,274 @@
+/*
+ * The User-DMA engine adapter between Hexagon ArchSim and the User-DMA engine.
+ */
+
+#ifndef ARCH_DMA_ADAPTER_H_
+#define ARCH_DMA_ADAPTER_H_
+
+#include "dma.h"
+#include "external_api.h"
+//#include "arch/thread.h"
+#include "uarch/queue.h"
+#include "global_types.h"
+#include "desc_tracker.h"
+
+#include <stdint.h>
+
+#define thread_t CPUHexagonState
+
+//! Structure to figure out which memory subsystem covers what address range.
+struct dma_addr_range_t {
+  paddr_t base;    //!> Base address.
+  paddr_t size;    //!> Length (size) in bytes.
+  void *owner;     //!> An owner memory subsystem to place memory requests.
+};
+
+
+typedef struct dma_access_rights {
+  union {
+    struct{
+      uint32_t x:1;
+      uint32_t w:1;
+      uint32_t r:1;
+      uint32_t u:1;
+    };
+    uint32_t val;
+  };
+} dma_access_rights_t;
+
+typedef struct dma_memtype {
+  union {
+    struct{
+      uint32_t vtcm:1;
+      uint32_t l2tcm:1;
+      uint32_t ahb:1;
+      uint32_t l2vic:1;
+      uint32_t l1s:1;
+      uint32_t l2itcm:1;
+      uint32_t axi2:1;
+      uint32_t invalid:1;
+			uint32_t invalid_cccc:1;
+			uint32_t invalid_dma:1;
+    };
+    uint32_t val;
+  };
+} dma_memtype_t;
+
+typedef struct dma_memaccess_info {
+	vaddr_t va;
+	paddr_t pa;
+
+	uint32_t jtlb_idx;
+	uint64_t jtlb_entry;			///< Raw 64b TLB entry
+	uint32_t exception;
+	uint32_t access_type;
+ 	dma_access_rights_t perm;
+	dma_memtype_t memtype;
+} dma_memaccess_info_t;
+
+
+
+
+//! Structure to support a DMA engine - maintain useful information per thread
+//! at the adapter side.
+
+
+typedef struct dma_adapter_engine_info_t {
+	exception_info  einfo;       //!> Exception information stored for later use.
+	thread_t * owner;            //!> Owner HW thread to take an exception.
+	desc_tracker_t desc_tracker;
+	queue_t desc_queue;
+	desc_tracker_entry_t * desc_entries[DESC_TABLESIZE];
+
+#ifdef FAKE_TIMING
+	// Remove me: this is just for initial bring up
+	pipequeue_t fake_timing_queue;
+	desc_tracker_entry_t * fake_timing_entries[DESC_TABLESIZE];
+#endif
+
+} dma_adapter_engine_info_t;
+
+
+
+//! Function to register an address range that will be used on placing
+//! one instance of memory transaction for timing.
+//! @param owner Memory subsystem owning a given address range.
+//! @param start Start address of a range.
+//! @param size Size of the range in bytes.
+//! @return 1 for successful registration. 0 for failure.
+int dma_adapter_register_addr_range(void *owner, paddr_t start, paddr_t size);
+
+struct dma_addr_range_t* dma_adapter_find_mem(paddr_t paddr);
+
+//! Function to place a piece of memory transaction.
+//! @param ptr General purpose.
+//! @param param Memory transaction information to place.
+//! @return 1 if the given transaction is accepted. Otherwise 0.
+int dma_adapter_create_mem_xact(struct dma_mem_xact *param);
+
+/* System memory access interface. */
+//! @param va Virtual address to translate.
+//! @param pa Physical address to get translated.
+//! @param perm permissions bit 0: user 1: write: 2: read 3: execute
+//! @param memtype 0: L2 space 1: VTCM
+//! @param width width of transaction
+//! @param store 0 for load type, and non-0 for store type.
+//! @return 1 for success, and 0 for exception
+
+int dma_adapter_xlate_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_memaccess_info_t * dma_mem_access, int width, int store);
+int dma_adapter_xlate_desc_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_memaccess_info_t * dma_mem_access);
+
+//! @return 1 for success, and 0 for running into exception.
+int dma_adapter_memread(dma_t *dma, uint32_t va, uint64_t pa, uint8_t* dst,
+                        int width);
+
+//! @return 1 for success, and 0 for running into exception.
+int dma_adapter_memwrite(dma_t *dma, uint32_t va, uint64_t pa, uint8_t* src,
+                         int width);
+
+//! Initialize the DMA engine when a simulator is invoked.
+dma_t *dma_adapter_init(processor_t *proc, int dmanum);
+
+//! Free the DMA engine and resources.
+void dma_adapter_free(processor_t *proc, int dmanum);
+
+#ifdef FIXME
+//! DMA ticking interface to make progress.
+void arch_dma_cycle(processor_t *proc, int dmanum);
+/// Doesn't do any data transfers
+void arch_dma_cycle_no_desc_step(processor_t *proc, int dmanum);
+
+uint32_t arch_dma_enable_timing(processor_t *proc);
+#endif
+
+//! Single entrance to drive the user-DMA instructions (commands)
+//! @param thread Owner thread.
+//! @param opcode DMA instruction (command) identifier.
+//! @param arg1 dmstart: new descriptor
+//              dmlink: tail to append at
+//              dmpoll/dmwait: not used
+//              dmsyncht: not used
+//              dmwaitdescriptor: descriptor
+//              dmcfgrd/dmcfgwr: dma number
+//              dmpause: not used
+//              dmresume: descriptor
+//              dmtlbsync: not used
+//! @param arg2 dmstart: not used
+//              dmlink: new descriptor to append
+//              dmpoll/dmwait: not used
+//              dmsyncht: not used
+//              dmwaitdescriptor: not used
+//              dmcfgrd : not used
+//              dmcfgwr: data
+//              dmpause: not used
+//              dmresume: not used
+//              dmtlbsync: not used
+size4u_t dma_adapter_cmd(thread_t *thread, dma_cmd_t opcode,
+                         size4u_t arg1, size4u_t arg2);
+
+
+
+void dma_adapter_tlb_invalidate(thread_t *thread, int tlb_idx, uint64_t tlb_entry_old, uint64_t tlb_entry_new);
+
+
+int dma_adapter_callback(processor_t *proc, int dma_num, void * dma_xact);
+
+int dma_test_gen_mode(dma_t *dma);
+
+#ifdef FIXME
+int dma_adapter_register_perm_exception(dma_t *dma, uint32_t va,  dma_access_rights_t access_rights, int store);
+#endif
+int dma_adapter_register_error_exception(dma_t *dma, uint32_t va);
+
+
+int dma_adapter_descriptor_start(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info);
+int dma_adapter_descriptor_end(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info, int pause, int exception);
+
+//! Verification testbench step interface
+//! Will tick DMA in loop until not no longer running or exception
+void arch_dma_tick_until_stop(processor_t *proc, int dmanum);
+
+int dma_adapter_in_monitor_mode(dma_t *dma);
+int dma_adapter_in_guest_mode(dma_t *dma);
+int dma_adapter_in_user_mode(dma_t *dma);
+int dma_adapter_in_debug_mode(dma_t *dma);
+FILE * dma_adapter_debug_log(dma_t *dma);
+int dma_adapter_debug_verbosity(dma_t *dma);
+
+enum {
+  DMA_PMU_ACTIVE=0,
+  DMA_PMU_STALL_DESC_FETCH,
+  DMA_PMU_STALL_SYNC_RESP,
+  DMA_PMU_STALL_TLB_MISS,
+	DMA_PMU_TLB_MISS,
+  DMA_PMU_PAUSE_CYCLES,
+  DMA_PMU_DMPOLL_CYCLES,
+  DMA_PMU_DMWAIT_CYCLES,
+  DMA_PMU_SYNCHT_CYCLES,
+  DMA_PMU_TLBSYNCH_CYCLES,
+  DMA_PMU_DESC_DONE,
+  DMA_PMU_DLBC_FETCH,
+  DMA_PMU_DLBC_FETCH_CYCLES,
+  DMA_PMU_UNALIGNED_DESCRIPTOR,
+  DMA_PMU_ORDERING_DESCRIPTOR,
+  DMA_PMU_PADDING_DESCRIPTOR,
+  DMA_PMU_UNALIGNED_RD,
+  DMA_PMU_UNALIGNED_WR,
+  DMA_PMU_COHERENT_RD_CYCLES,
+  DMA_PMU_COHERENT_WR_CYCLES,
+  DMA_PMU_NONCOHERENT_RD_CYCLES,
+  DMA_PMU_NONCOHERENT_WR_CYCLES,
+  DMA_PMU_VTCM_RD_CYCLES,
+  DMA_PMU_VTCM_WR_CYCLES,
+  DMA_PMU_RD_BUFFER_LEVEL_LOW,
+  DMA_PMU_RD_BUFFER_LEVEL_HALF,
+  DMA_PMU_RD_BUFFER_LEVEL_HIGH,
+  DMA_PMU_RD_BUFFER_LEVEL_FULL,
+  DMA_PMU_CMD_START,
+  DMA_PMU_CMD_LINK,
+  DMA_PMU_CMD_RESUME,
+  DMA_PMU_NUM};
+
+enum {
+	DMA_ACTIVE_ALL_UARCH_TRACE = 0,
+	DMA_ACTIVE_RD_UARCH_TRACE = 1,
+	DMA_ACTIVE_RD_PENDING_UARCH_TRACE = 2,
+};
+
+enum {
+	DMA_INSN_LATENCY_DMSTART=0,
+	DMA_INSN_LATENCY_DMRESUME,
+	DMA_INSN_LATENCY_DMLINK,
+	DMA_INSN_LATENCY_DMPAUSE,
+	DMA_INSN_LATENCY_DMPOLL,
+	DMA_INSN_LATENCY_DMWAIT,
+	DMA_INSN_LATENCY_NUM};
+
+void dma_adapter_pmu_increment(dma_t *dma, int event, int increment);
+int dma_adapter_get_insn_latency(dma_t *dma, int increment);
+void dma_adapter_force_dma_error(thread_t *thread, uint32_t badva, uint32_t syndrome);
+void dma_adapter_set_target_descriptor(thread_t *thread, uint32_t dm0, uint32_t va, uint32_t width, uint32_t height);
+
+void dma_adapter_active_uarch_callback(dma_t *dma, int lvl);
+
+desc_tracker_entry_t *  dma_adapter_insert_desc_queue(dma_t *dma, dma_decoded_descriptor_t * desc );
+desc_tracker_entry_t * dma_adapter_peek_desc_queue_head(dma_t *dma);
+int dma_adapter_pop_desc_queue(dma_t *dma, desc_tracker_entry_t * entry );
+int dma_adapter_pop_desc_queue_done(dma_t *dma );
+int dma_adapter_desc_queue_empty(dma_t *dma);
+void dma_adapter_set_dm5(dma_t *dma, uint32_t addr);
+
+thread_t* dma_adapter_retrieve_thread(dma_t *dma);
+thread_t* dma_adapter_retrieve_athread(dma_t *dma);
+#ifdef FAKE_TIMING
+// Fake timing model, remove when real thing working
+int dma_adapter_insert_to_timing(dma_t *dma, desc_tracker_entry_t * entry );
+int dma_adapter_pop_from_timing(dma_t *dma );
+int dma_adapter_flush_timing(dma_t *dma);
+#endif
+uint32_t dma_adapter_peek_desc_queue_head_va(dma_t *dma);
+
+uint64_t dma_adapter_get_pcycle(dma_t *dma);
+
+
+#endif /* ARCH_DMA_ADAPTER_H_ */

@@ -789,6 +789,7 @@ static void gen_exec_counters(packet_t *pkt)
     int num_insns = pkt->num_insns;
     int num_real_insns = 0;
     int num_hvx_insns = 0;
+    int num_hmx_insns = 0;
     int i;
 
     for (i = 0; i < num_insns; i++) {
@@ -799,6 +800,9 @@ static void gen_exec_counters(packet_t *pkt)
         }
         if (pkt->insn[i].hvx_resource) {
             num_hvx_insns++;
+        }
+        if (GET_ATTRIB(pkt->insn[i].opcode, A_HMX)) {
+            num_hmx_insns++;
         }
     }
 
@@ -811,6 +815,10 @@ static void gen_exec_counters(packet_t *pkt)
     if (num_hvx_insns) {
         tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HVX_CNT],
                         hex_gpr[HEX_REG_QEMU_HVX_CNT], num_hvx_insns);
+    }
+    if (num_hmx_insns) {
+        tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HMX_CNT],
+                        hex_gpr[HEX_REG_QEMU_HMX_CNT], num_hmx_insns);
     }
 }
 
@@ -865,6 +873,9 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     process_dczeroa(ctx, pkt);
     if (pkt->pkt_has_hvx) {
         gen_commit_hvx(ctx, pkt);
+    }
+    if (pkt->pkt_has_hmx) {
+        gen_helper_commit_hmx(cpu_env);
     }
     gen_exec_counters(pkt);
 #if HEX_DEBUG
@@ -1144,12 +1155,6 @@ void hexagon_translate_init(void)
 #if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
             hex_t_sreg_written[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, t_sreg_written[i]), "sreg_written");
-#endif
-        } else {
-#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
-//            hex_g_sreg_written[i] = tcg_global_mem_new(cpu_env,
-//                offsetof(CPUHexagonState, g_sreg_written[i]),
-//                "sreg_written");
 #endif
         }
     }

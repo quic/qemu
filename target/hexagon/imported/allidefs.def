@@ -79,7 +79,12 @@
 		"CVI Mapping from " FROMSYN " to " TOSYN, \
 		fASM_MAP(FROMSYN,TOSYN))
 
+#define DEF_HMX_MAPPING(TAG,FROMSYN,TOSYN) \
+	Q6INSN(TAG,FROMSYN,ATTRIBS(A_MAPPING,A_HMX), \
+		"HMX Mapping from " FROMSYN " to " TOSYN, \
+		fASM_MAP(FROMSYN,TOSYN))
 
+#include "null.idef"
 #include "branch.idef"
 #include "ldst.idef"
 #include "compare.idef"
@@ -89,4 +94,6 @@
 #include "shift.idef"
 #include "system.idef"
 #include "subinsns.idef"
+#include "16bit.idef"
 #include "allext.idef"
+#include "shared_ext.idef"

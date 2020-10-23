@@ -54,6 +54,7 @@ DEF_ATTRIB(SUBINSN, "sub-instruction", "", "")
 DEF_ATTRIB(LOAD, "Loads from memory", "", "")
 DEF_ATTRIB(STORE, "Stores to memory", "", "")
 DEF_ATTRIB(STOREIMMED, "Stores immed to memory", "", "")
+DEF_ATTRIB(MEMSIZE_0B, "Memory width is 0 byte", "", "")
 DEF_ATTRIB(MEMSIZE_1B, "Memory width is 1 byte", "", "")
 DEF_ATTRIB(MEMSIZE_2B, "Memory width is 2 bytes", "", "")
 DEF_ATTRIB(MEMSIZE_4B, "Memory width is 4 bytes", "", "")
@@ -67,6 +68,10 @@ DEF_ATTRIB(RELEASE, "Releases a lock", "", "")
 DEF_ATTRIB(ACQUIRE, "Acquires a lock", "", "")
 DEF_ATTRIB(LLSC, "load-locked/store-conditional instruction", "", "")
 
+DEF_ATTRIB(RLS_INNER, "Store release inner visibility", "", "")
+DEF_ATTRIB(RLS_OUTER, "Store release outer visibility", "", "")
+DEF_ATTRIB(RLS_ALL_THREAD, "Store release among all threads", "", "")
+DEF_ATTRIB(RLS_SAME_THREAD, "Store release with the same thread", "", "")
 
 /* Load and Store Addressing Mode Attributes */
 DEF_ATTRIB(EA_REG_ONLY, "EA = input register only", "", "")
@@ -87,6 +92,9 @@ DEF_ATTRIB(PM_CIRR, "Post Modify with Circular Addressing by I field", "", "")
 DEF_ATTRIB(VMEM, "VMEM-type", "", "")
 DEF_ATTRIB(VBUF, "Touches the VBUF", "", "")
 DEF_ATTRIB(VDBG, "Vector debugging instruction", "", "")
+DEF_ATTRIB(VREG_2SRC, "Silver instruction with 2 sources", "", "")
+DEF_ATTRIB(VREG_3SRC, "Silver instruction with 3 sources", "", "")
+DEF_ATTRIB(VEXTRACT, "Silver instruction is vextract", "", "")
 
 /* V6 Vector attributes */
 DEF_ATTRIB(CVI, "Executes on the HVX extension", "", "")
@@ -100,11 +108,14 @@ DEF_ATTRIB(CVI_VP_VS, "Double vector permute/shft insn executes on HVX", "", "")
 DEF_ATTRIB(CVI_VX, "Multiply instruction executes on HVX", "", "")
 DEF_ATTRIB(CVI_VX_DV, "Double vector multiply insn executes on HVX", "", "")
 DEF_ATTRIB(CVI_VS, "Shift instruction executes on HVX", "", "")
+DEF_ATTRIB(CVI_VS_3SRC, "This shift instruction needs to borrow a source register from the VP slot", "", "")
 DEF_ATTRIB(CVI_VS_VX, "Permute/shift and multiply insn executes on HVX", "", "")
 DEF_ATTRIB(CVI_VA, "ALU instruction executes on HVX", "", "")
+DEF_ATTRIB(CVI_VA_2SRC, "This alu instruction executes on multimedia vector engine and requires two vectro sources", "", "")
 DEF_ATTRIB(CVI_VA_DV, "Double vector alu instruction executes on HVX", "", "")
 DEF_ATTRIB(CVI_4SLOT, "Consumes all the vector execution resources", "", "")
 DEF_ATTRIB(CVI_TMP, "Transient Memory Load not written to register", "", "")
+DEF_ATTRIB(CVI_REMAP, "Register Renaming not written to register file", "", "")
 DEF_ATTRIB(CVI_TMP_SRC, "Transient reassign", "", "")
 DEF_ATTRIB(CVI_EXTRACT, "HVX Extract Instruction that goes through L2", "", "")
 DEF_ATTRIB(CVI_EARLY, "HVX instructions that require early sources", "", "")
@@ -120,6 +131,9 @@ DEF_ATTRIB(CVI_GATHER_RELEASE, "CVI Store Release for gather", "", "")
 DEF_ATTRIB(CVI_TMP_DST, "CVI instruction that doesn't write a register", "", "")
 DEF_ATTRIB(CVI_SCATTER_WORD_ACC, "CVI Scatter Word Accum (second pass)", "", "")
 DEF_ATTRIB(CVI_SCATTER_ACC, "CVI Scatter Accumulate", "", "")
+DEF_ATTRIB(CVI_VX_VSRC0_IS_DST, "For the assembler to handle the special case of non-linear instructions with Vxx specified both as src and dst in syntax ", "", "")
+
+DEF_ATTRIB(CVI_VX_ACC_FWD, "VX Accumulator Forwarding", "", "")
 
 DEF_ATTRIB(CVI_GATHER_ADDR_2B, "CVI Scatter/Gather address is halfword", "", "")
 DEF_ATTRIB(CVI_GATHER_ADDR_4B, "CVI Scatter/Gather address is word", "", "")
@@ -128,7 +142,17 @@ DEF_ATTRIB(VFETCH, "memory fetch op to L2 for a single vector", "", "")
 
 DEF_ATTRIB(CVI_SLOT23, "Can execute in slot 2 or slot 3 (HVX)", "", "")
 
-DEF_ATTRIB(VTCM_ALLBANK_ACCESS, "Allocates in all VTCM schedulers", "", "")
+DEF_ATTRIB(HMX, "This a matrix multiply instruction.", "", "")
+DEF_ATTRIB(HMX_ACC, "This a matrix multiply instruction accessing only accumulator(s).", "", "")
+
+DEF_ATTRIB(HMX_FLT, "This a matrix multiply instruction with FP16.", "", "")
+DEF_ATTRIB(HVX_FLT, "This a floating point HVX instruction.", "", "")
+
+DEF_ATTRIB(VTCM_ALLBANK_ACCESS, "This instruction allocates in all VTCM schedulers due to a region access.", "", "")
+
+DEF_ATTRIB(SYNC_MARKER, "This instruction needs a sync marker.", "", "")
+DEF_ATTRIB(HMX_BLOCK_ALIGN, "This instruction aligns the address to the HMX block size for page translation checks.", "", "")
+
 
 /* Change-of-flow attributes */
 DEF_ATTRIB(JUMP, "Jump-type instruction", "", "")
@@ -300,6 +324,8 @@ DEF_ATTRIB(NOTE_COMPAT_ACCURACY, "In the future accuracy may increase", "", "")
 DEF_ATTRIB(NOTE_NVSLOT0, "Can execute only in slot 0 (ST)", "", "")
 DEF_ATTRIB(NOTE_DEPRECATED, "Will be deprecated in a future version.", "", "")
 DEF_ATTRIB(NOTE_NONAPALIV1, "may not work correctly in Napali V1.", "", "")
+DEF_ATTRIB(NOTE_NOLAHAINAV1, "This may not work correctly in Lahaina V1.", "", "")
+DEF_ATTRIB(NOTE_EXPERIMENTAL, "This may not work correctly.", "", "")
 DEF_ATTRIB(NOTE_BADTAG_UNDEF, "Undefined if a tag is non-present", "", "")
 DEF_ATTRIB(NOTE_NOSLOT2_MPY, "Packet cannot have a slot 2 multiply", "", "")
 DEF_ATTRIB(NOTE_HVX_ONLY, "Only available on a core with HVX.", "", "")
@@ -309,6 +335,10 @@ DEF_ATTRIB(NOTE_BRANCHADDER_MAX1, "One PC-plus-offset calculation", "", "")
 
 DEF_ATTRIB(NOTE_CRSLOT23, "Execute on either slot2 or slot3 (CR)", "", "")
 DEF_ATTRIB(NOTE_EXTENSION_AUDIO, "Hexagon audio extensions", "", "")
+DEF_ATTRIB(NOTE_VECX_V67, "This instruction is only available on V67", "", "")
+
+DEF_ATTRIB(NOTE_NOVP, "This instruction cannot be paired with a HVX permute instruction", "", "")
+DEF_ATTRIB(NOTE_VA_UNARY, "If a packet contains this instruction and a HVX ALU op then the ALU OP must be unary.", "", "")
 
 
 /* V6 MMVector Notes for Documentation */
@@ -324,6 +354,11 @@ DEF_ATTRIB(NOTE_VMEM, "Immediates are in multiples of vector length.", "", "")
 DEF_ATTRIB(NOTE_ANY_VS_VX_RESOURCE, "Consumes two resources", "", "")
 
 DEF_ATTRIB(NOTE_RT8, "Input scalar register Rt is limited to R0-R7", "", "")
+
+DEF_ATTRIB(NOTE_MX, "This is in-memory matrix multiply instruction.", "", "")
+DEF_ATTRIB(NOTE_VX_ACC_FWD, "The accumulator (Vxx) source of this instruction must be generate in the previous packet to avoid a stall. The accumulator cannot come from a .tmp operation.", "", "")
+DEF_ATTRIB(NOTE_TMP_NO_VX, "The tmp load instruction destination register cannot be an accumulator register.", "", "")
+
 
 /* Restrictions to make note of */
 DEF_ATTRIB(RESTRICT_LOOP_LA, "Cannot be in the last packet of a loop", "", "")
@@ -351,6 +386,7 @@ DEF_ATTRIB(RESTRICT_LATEPRED, "Predicate can not be used as a .new.", "", "")
 
 DEF_ATTRIB(PAIR_1OF2, "For assembler", "", "")
 DEF_ATTRIB(PAIR_2OF2, "For assembler", "", "")
+DEF_ATTRIB(NOTE_MX_PAIR, "Weights and Activations need to be paired in a packet.", "", "")
 
 /* Performance based preferences */
 DEF_ATTRIB(PREFER_SLOT3, "Complex XU prefering slot3", "", "")
@@ -399,6 +435,11 @@ DEF_ATTRIB(MEMCPY, "memcpy or dma-type instruction", "", "")
 DEF_ATTRIB(NO_INTRINSIC, "Don't generate an intrisic", "", "")
 
 DEF_ATTRIB(NO_XML, "Don't generate a XML docs for this instruction", "", "")
+
+DEF_ATTRIB(DMA,  "User-DMA instruction", "", "")
+DEF_ATTRIB(VERIF_DMASTEP,  "Hiphop needs to step dma prior to executing this packet", "", "")
+DEF_ATTRIB(VERIF_DMATICK,  "DMA gets a tick in verif mode for this instruction after a commit", "", "")
+
 
 /* Keep this as the last attribute: */
 DEF_ATTRIB(ZZ_LASTATTRIB, "Last attribute in the file", "", "")

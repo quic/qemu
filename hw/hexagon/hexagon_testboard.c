@@ -32,6 +32,7 @@
 #include "elf.h"
 #include "cpu.h"
 #include "hex_mmu.h"
+#include "hmx/ext_hmx.h"
 #include "include/migration/cpu.h"
 #include "include/sysemu/sysemu.h"
 #include "internal.h"
@@ -55,6 +56,55 @@ static const struct MemmapEntry {
         [HEXAGON_QTMR2] = { 0xfc960000, 0x0 },
 };
 
+const rev_features_t rev_features_v68 = {
+};
+
+// mgl fix
+const options_struct options_struct_v68 = {
+    .l2tcm_base  = 0,  /* FIXME - Should be l2tcm_base ?? */
+    .hmx_mac_fxp_callback = (void *)0,
+    .hmx_mac_flt_callback = (void *)0,
+};
+
+const arch_proc_opt_t arch_proc_opt_v68 = {
+    .hmx_output_depth = HMX_OUTPUT_DEPTH,
+    .hmx_block_size = HMX_BLOCK_SIZE,
+    .hmx_v1 = HMX_V1,
+    .dmadebug_verbosity = 0,
+    .hmx_spatial_size = HMX_SPATIAL_SIZE,
+    .hmx_channel_size = HMX_CHANNEL_SIZE,
+    .hmx_addr_mask = HMX_ADDR_MASK,
+    .hmx_block_bit = HMX_BLOCK_BIT,
+    .hmxdebuglvl = HMXDEBUGLVL,
+    .hmxaccpreloadfile = NULL,
+    .hmxdebugfile = NULL,
+    .pmu_enable = 0,
+    .vtcm_size = VTCM_SIZE,
+    .vtcm_offset = VTCM_OFFSET,
+    .dmadebugfile = NULL,
+    .QDSP6_MX_FP_ACC_INT   = 18,
+    .QDSP6_MX_FP_ACC_FRAC  = 46,
+    .QDSP6_MX_CHANNELS     = 32,
+    .QDSP6_MX_FP_RATE      = 2,
+    .QDSP6_MX_RATE         = 4,
+    .QDSP6_DMA_PRESENT     = 1,
+    .QDSP6_MX_CVT_MPY_SZ   = 10,
+    .QDSP6_MX_FP_PRESENT   = 1,
+    .QDSP6_MX_FP_ROWS      = 32,
+    .QDSP6_MX_ROWS         = 64,
+    .QDSP6_MX_COLS         = 32,
+};
+
+struct ProcessorState ProcessorStateV68 = {
+    .features = &rev_features_v68,
+    .options = &options_struct_v68,
+    .arch_proc_options = &arch_proc_opt_v68,
+    .runnable_threads_max = 4,
+    .thread_system_mask = 0xf,
+    .shared_extptr = 0,
+};
+
+
 /* Board init.  */
 static struct hexagon_board_boot_info hexagon_binfo;
 
@@ -76,9 +126,11 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     env->gpr[HEX_REG_PC] = pentry;
 }
 
+extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
 static void hexagon_testboard_init(MachineState *machine, int board_id)
 {
     const struct MemmapEntry *memmap = hexagon_board_memmap;
+
     machine->enable_graphics = 0;
 
     DeviceState *dev;
@@ -88,9 +140,11 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
     HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
         __FUNCTION__, cpu, env);
 
-    env->processor_ptr = g_malloc(sizeof(Processor));
-    env->processor_ptr->runnable_threads_max = 4;
-    env->processor_ptr->thread_system_mask = 0xf;
+    env->processor_ptr = (processor_t *)&ProcessorStateV68;
+    env->processor_ptr->thread[env->threadId = 0] = env;
+    //env->processor_ptr = g_malloc(sizeof(Processor));
+//    env->processor_ptr->runnable_threads_max = 4;
+//    env->processor_ptr->thread_system_mask = 0xf;
     env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     hex_mmu_init(env);
 
@@ -192,6 +246,9 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
         HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_CONFIG_TABLE].base);
     env->g_sreg[HEX_SREG_REV] = 0x8d68; //0x86d8;
     env->g_sreg[HEX_SREG_MODECTL] = 0x1;
+
+    env->processor_ptr->dma[env->threadId] = dma_adapter_init(env->processor_ptr, env->threadId);
+    env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
 }
 
 static void hexagonboard_init(MachineState *machine)

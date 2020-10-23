@@ -776,6 +776,15 @@
     _Generic((X), int64_t : gen_store8i, TCGv_i64 : gen_store8)
 #define MEM_STORE8(VA, DATA, SLOT) \
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
+#else
+#define MEM_LOAD4u(VA) mem_load4(env, VA)
+#define MEM_LOAD8u(VA) mem_load8(env, VA)
+
+#define MEM_STORE0(VA, DATA, SLOT) log_store32(env, VA, DATA, 0, SLOT)
+#define MEM_STORE1(VA, DATA, SLOT) log_store32(env, VA, DATA, 1, SLOT)
+#define MEM_STORE2(VA, DATA, SLOT) log_store32(env, VA, DATA, 2, SLOT)
+#define MEM_STORE4(VA, DATA, SLOT) log_store32(env, VA, DATA, 4, SLOT)
+#define MEM_STORE8(VA, DATA, SLOT) log_store64(env, VA, DATA, 8, SLOT)
 #endif
 
 #ifdef QEMU_GENERATE
@@ -1483,7 +1492,7 @@ static inline void gen_fbrev(TCGv result, TCGv src)
 #define fLOAD(NUM, SIZE, SIGN, EA, DST) MEM_LOAD##SIZE##SIGN(DST, EA)
 #else
 #define fLOAD(NUM, SIZE, SIGN, EA, DST) \
-    DST = (size##SIZE##SIGN##_t)MEM_LOAD##SIZE##SIGN(EA)
+    DST = (size##SIZE##SIGN##_t)MEM_LOAD##SIZE##SIGN(EA);
 #endif
 
 #define fMEMOP(NUM, SIZE, SIGN, EA, FNTYPE, VALUE)
@@ -1566,7 +1575,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #ifdef QEMU_GENERATE
 #define fSTORE(NUM, SIZE, EA, SRC) MEM_STORE##SIZE(EA, SRC, insn->slot)
 #else
-#define fSTORE(NUM, SIZE, EA, SRC) MEM_STORE##SIZE(EA, SRC, slot)
+#define fSTORE(NUM, SIZE, EA, SRC) MEM_STORE##SIZE(EA, SRC, slot);
 #endif
 
 #ifdef QEMU_GENERATE
@@ -1980,4 +1989,26 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
         /* tag: RD[23:0], state: RD[30:29] */ \
         DST = HEX_DC_STATE_INVALID | 0x00; \
     } while (0);
+
+#define fSTORE_DMA(NUM,SIZE,EA,SRC) { mem_dmalink_store(thread, EA, SIZE, SRC, 0); }
+#define fDMSTART(NEWPTR) \
+    do { \
+        dma_adapter_cmd(thread, DMA_CMD_START, NEWPTR, 0); \
+        arch_dma_tick_until_stop(thread->processor_ptr, thread->threadId); \
+    } while (0)
+#define fDMLINK(CURPTR, NEWPTR) \
+    do { \
+        dma_adapter_cmd(thread, DMA_CMD_LINK, CURPTR, NEWPTR); \
+        arch_dma_tick_until_stop(thread->processor_ptr, thread->threadId); \
+    } while (0)
+#define fDMPOLL(DST) DST=dma_adapter_cmd(thread,DMA_CMD_POLL,0,0)
+#define fDMWAIT(DST) DST=dma_adapter_cmd(thread,DMA_CMD_WAIT,0,0)
+#define fDMSYNCHT(DST) DST=dma_adapter_cmd(thread,DMA_CMD_SYNCHT,0,0)
+#define fDMTLBSYNCH(DST) DST=dma_adapter_cmd(thread,DMA_CMD_TLBSYNCH,0,0)
+#define fDMPAUSE(DST) DST=dma_adapter_cmd(thread,DMA_CMD_PAUSE,0,0)
+#define fDMRESUME(PTR) dma_adapter_cmd(thread,DMA_CMD_RESUME,PTR,0)
+#define fDMWAITDESCRIPTOR(SRC,DST) DST=dma_adapter_cmd(thread,DMA_CMD_WAITDESCRIPTOR,SRC,0)
+#define fDMCFGRD(DMANUM,DST) DST=dma_adapter_cmd(thread,DMA_CMD_CFGRD,DMANUM,0)
+#define fDMCFGWR(DMANUM,DATA) dma_adapter_cmd(thread,DMA_CMD_CFGWR,DMANUM,DATA)
+
 #endif

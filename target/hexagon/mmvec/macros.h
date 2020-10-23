@@ -21,6 +21,7 @@
 #include "qemu/osdep.h"
 #include "qemu/host-utils.h"
 #include "mmvec/system_ext_mmvec.h"
+#include "q6v_defines.h"
 
 #ifdef QEMU_GENERATE
 #else
@@ -45,6 +46,22 @@
 #define QvV      (*(mmqreg_t *)(QvV_void))
 #define QxV      (*(mmqreg_t *)(QxV_void))
 #endif
+
+#ifdef QEMU_GENERATE
+#else
+/*
+ * Loads should never be executed from a helper, but they are needed so
+ * the helpers will compile.  All the instructions with loads must be
+ * implemented under QEMU_GENERATE
+ */
+
+static inline void mem_store_release(uint32_t size, uint32_t align_vaddr,
+                                     uint32_t vaddr, int32_t type,
+                                     bool use_lookup)
+{
+}
+#endif
+
 
 #ifdef QEMU_GENERATE
 #define DECL_VREG(VAR, NUM, X, OFF) \
@@ -537,6 +554,8 @@ static inline mmvector_t mmvec_zero_vector(void)
 #define fSTORERELEASE(EA, TYPE) \
     do { \
         fV_AL_CHECK(EA, fVECSIZE() - 1); \
+        mem_store_release(fVECSIZE(), EA & ~(fVECSIZE() - 1), EA, TYPE, \
+                          fUSE_LOOKUP_ADDRESS_BY_REV()); \
     } while (0)
 #define fLOADMMV_AL(EA, ALIGNMENT, LEN, DST) \
     do { \
@@ -716,4 +735,10 @@ static inline mmvector_t mmvec_vtmp_data(CPUHexagonState *env)
 #define fUARCH_NOTE_PUMP_4X()
 #define fUARCH_NOTE_PUMP_2X()
 
+#define fGET10BIT(COE, VAL, POS) \
+    do { \
+        COE = (((((fGETUBYTE(3, VAL) >> (2 * POS)) & 3) << 8) | \
+                   fGETUBYTE(POS, VAL)) << 6); \
+        COE >>= 6; \
+    } while (0);
 #endif

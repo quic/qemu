@@ -77,7 +77,8 @@ enum {
     HEX_REG_QEMU_PKT_CNT      = 52,
     HEX_REG_QEMU_INSN_CNT     = 53,
     HEX_REG_QEMU_HVX_CNT      = 54,
-    HEX_REG_QEMU_CPU_TB_CNT   = 55,
+    HEX_REG_QEMU_HMX_CNT      = 55,
+    HEX_REG_QEMU_CPU_TB_CNT   = 56,
     HEX_REG_UTIMERLO          = 62,
     HEX_REG_UTIMERHI          = 63,
 };
@@ -165,6 +166,7 @@ enum {
     HEX_SREG_GCYCLE_4T       = 61,
     HEX_SREG_GCYCLE_5T       = 62,
     HEX_SREG_GCYCLE_6T       = 63,
+
 };
 
 #endif

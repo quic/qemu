@@ -414,6 +414,12 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
         errors += mmvec_ext_decode_checks(pkt);
     }
 
+    for (i = 0; i < num_insns; i++) {
+        if (GET_ATTRIB(pkt->insn[i].opcode, A_HMX)) {
+            pkt->pkt_has_hmx = 1;
+        }
+    }
+
     if (pkt->num_insns == 0) {
         return -1;
     }

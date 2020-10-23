@@ -42,6 +42,7 @@ extern size8u_t interleave(size4u_t odd, size4u_t even);
 extern size8u_t deinterleave(size8u_t src);
 extern size4u_t carry_from_add64(size8u_t a, size8u_t b, size4u_t c);
 extern size4s_t conv_round(size4s_t a, int n);
+extern size8s_t conv_round64(size8s_t a, size4u_t n);
 extern size16s_t cast8s_to_16s(size8s_t a);
 extern size8s_t cast16s_to_8s(size16s_t a);
 extern size4s_t cast16s_to_4s(size16s_t a);

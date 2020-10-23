@@ -18,6 +18,8 @@
 #ifndef HEXAGON_ARCH_TYPES_H
 #define HEXAGON_ARCH_TYPES_H
 
+#include <stdint.h>
+
 /*
  * These types are used by the code generated from the Hexagon
  * architecture library.
@@ -35,8 +37,13 @@ typedef size4u_t vaddr_t;
 typedef size8u_t pcycles_t;
 
 typedef struct size16s {
-    size8s_t hi;
-    size8u_t lo;
+    union {
+        struct {
+            size8u_t lo;
+            size8s_t hi;
+        };
+        size4u_t w[4];
+    };
 } size16s_t;
 
 #endif

@@ -18,13 +18,14 @@
 #ifndef HEXAGON_INSN_H
 #define HEXAGON_INSN_H
 
-#include "cpu.h"
+//#include "cpu.h"
 #include "hex_arch_types.h"
 
 #define INSTRUCTIONS_MAX 7    /* 2 pairs + loopend */
 #define REG_OPERANDS_MAX 5
 #define IMMEDS_MAX 2
 
+typedef struct CPUHexagonState CPUHexagonState;
 struct Instruction;
 struct Packet;
 struct DisasContext;
@@ -141,6 +142,7 @@ struct Packet {
     size8u_t pkt_hvx_none:4;
 
     size8u_t pkt_has_hvx:1;
+    size8u_t pkt_has_hmx:1;
     size8u_t pkt_has_extension:1;
 
     insn_t insn[INSTRUCTIONS_MAX];

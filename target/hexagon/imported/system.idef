@@ -15,8 +15,12 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+
 /*
  * System Interface Instructions
+ *
+ * $Id$
+ *
  */
 
 
@@ -27,7 +31,15 @@
 
 Q6INSN(J2_trap0,"trap0(#u8)",ATTRIBS(A_COF,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
 "Trap to Operating System",
+#if 0
+	if (!fTRAP0_TO_GUEST()) {
+		fTRAP(0,uiV);
+	} else {
+		fGUESTTRAP(0,uiV);
+	}
+#else
 	fTRAP(0,uiV);
+#endif
 )
 
 Q6INSN(J2_trap1,"trap1(Rx32,#u8)",ATTRIBS(A_COF,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
@@ -62,6 +74,20 @@ fHIDE(CALLBACK(thread->processor_ptr->options->rte_callback,
       thread->threadId,0);)
 fCLEAR_RTE_EX();
 fBRANCH(fREAD_ELR(),COF_TYPE_RTE);})
+
+
+#if 0
+Q6INSN(J2_rteunlock,  "rteunlock", ATTRIBS(A_PRIV,A_NOTE_PRIV),
+"Return from Exception and unlock TLB",
+{
+fHIDE(if((thread->timing_on) && (thread->status & EXEC_STATUS_REPLAY)) { return; })
+fHIDE(CALLBACK(thread->processor_ptr->options->rte_callback,
+      thread->system_ptr,thread->processor_ptr,
+      thread->threadId,0);)
+fCLEAR_RTE_EX();
+fCLEAR_TLB_LOCK();
+fBRANCH(fREAD_ELR(),COF_TYPE_RTE);})
+#endif
 
 
 /********************************************/
@@ -120,12 +146,16 @@ Q6INSN(Y2_tlbp,"Rd32=tlbp(Rs32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_R
 Q6INSN(Y5_tlbasidi,"tlbinvasid(Rs32)",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET), "Invalidate ASID",
 {
 	fHIDE(int i;)
-	for (i = 0; i < NUM_TLB_ENTRIES; i++) {
+    fHIDE(unsigned int num_tlb_entries = NUM_TLB_REGS(thread->processor_ptr);)
+
+	for (i = 0; i < num_tlb_entries; i++) {
+		//warn("TLB[%d] tlbinvasid for Target ASID=%x PTE_G=%d PTE_ASID=%x", i, fEXTRACTU_RANGE(RsV,26,20), fGET_FIELD(fTLBR(i),PTE_G), fGET_FIELD(fTLBR(i),PTE_ASID));
 		if ((fGET_FIELD(fTLBR(i),PTE_G) == 0) &&
 			(fGET_FIELD(fTLBR(i),PTE_ASID) == fEXTRACTU_RANGE(RsV,26,20))) {
 			fTLBW(i,fTLBR(i) & ~(1ULL << 63));
 		}
 	}
+	fHIDE(iic_flush_cache(thread->processor_ptr);) // Flush iic regardless if we invalidated or now
 })
 
 Q6INSN(Y2_tlblock,"tlblock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_NO_TIMING_LOG), "Lock TLB",
@@ -143,6 +173,13 @@ Q6INSN(Y2_k0lock,"k0lock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT
 Q6INSN(Y2_k0unlock,"k0unlock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET), "Unlock K0",
 {fCLEAR_K0_LOCK();})
 
+#if 0
+Q6INSN(Y2_k0lock,"k2lock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET), "Lock K2",
+{fSET_K2_LOCK()})
+
+Q6INSN(Y2_k0unlock,"k2unlock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET), "Unlock K2",
+{fCLEAR_K2_LOCK();})
+#endif
 /********************************************/
 /* Supervisor Reg Management                */
 /********************************************/
@@ -270,7 +307,53 @@ Q6INSN(Y4_l2fetch,"l2fetch(Rs32,Rt32)",ATTRIBS(A_RESTRICT_SLOT0ONLY,A_RESTRICT_P
 	0); /*extra attrib flags*/
 })
 
+Q6INSN(Y6_dmstart,"dmstart(Rs32)",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_VERIF_DMATICK,A_RESTRICT_SLOT0ONLY,A_SYNC_MARKER,A_NO_TIMING_LOG),"DMA Start", {
+	fDMSTART(RsV);
+	fHIDE( thread->mem_access[0].vaddr = RsV;)  /* For Disassembly in uarchtrace and pctrace */
+})
 
+Q6INSN(Y6_dmlink,"dmlink(Rs32,Rt32)",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_VERIF_DMATICK,A_RESTRICT_SLOT0ONLY,A_SYNC_MARKER,A_NO_TIMING_LOG),"DMA Link", {
+ fHIDE( fEA_REG(RsV));
+ fHIDE( if (RsV != 0) {  fSTORE_DMA(1,4,EA,RtV); warn("DMLINK EA=%x RtV=%x",EA, RtV);  }  else {warn("Not storeing RsV=%x RtV=%x",RsV, RtV);});
+ fDMLINK(RsV, RtV);
+ fHIDE( thread->mem_access[1].vaddr = RtV;)  /* For Disassembly in uarchtrace and pctrace */
+})
+
+Q6INSN(Y6_dmpoll,"Rd32=dmpoll",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_NO_TIMING_LOG),"DMA Poll", {
+	fDMPOLL(RdV);
+})
+
+Q6INSN(Y6_dmwait,"Rd32=dmwait",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_VERIF_DMASTEP,A_NO_TIMING_LOG),"DMA Wait", {
+	fDMWAIT(RdV);
+})
+
+Q6INSN(Y6_dmsyncht,"Rd32=dmsyncht",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_NO_TIMING_LOG),"DMA SynchT",{
+	fDMSYNCHT(RdV);
+})
+Q6INSN(Y6_dmtlbsynch,"Rd32=dmtlbsynch",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_NO_TIMING_LOG),"DMA TLB Synch",{
+	fDMTLBSYNCH(RdV);
+})
+
+
+
+Q6INSN(Y6_dmcfgrd,"Rd32=dmcfgrd(Rs32)",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_NO_TIMING_LOG),
+  "DMA Config Read", {
+	fDMCFGRD(RsV, RdV);
+})
+
+Q6INSN(Y6_dmcfgwr,"dmcfgwr(Rs32,Rt32)",ATTRIBS(A_NOTE_PRIV,A_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_NO_TIMING_LOG),
+  "DMA Config Write", {
+	fDMCFGWR(RsV, RtV);
+})
+
+Q6INSN(Y6_dmpause,"Rd32=dmpause",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_VERIF_DMASTEP,A_NO_TIMING_LOG),"DMA Pause",{
+	fDMPAUSE(RdV);
+})
+
+Q6INSN(Y6_dmresume,"dmresume(Rs32)",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_VERIF_DMATICK,A_RESTRICT_SLOT0ONLY,A_SYNC_MARKER,A_NO_TIMING_LOG),"DMA Resume",{
+	fDMRESUME(RsV);
+	fHIDE( thread->mem_access[0].vaddr = RsV;)  /* For Disassembly in uarchtrace and pctrace */
+})
 
 Q6INSN(Y5_l2fetch,"l2fetch(Rs32,Rtt32)",ATTRIBS(A_RESTRICT_SLOT0ONLY,A_RESTRICT_PACKET_AXOK,A_NOTE_AXOK),"L2 Cache Prefetch",
 { fL2FETCH(RsV,
@@ -297,3 +380,5 @@ Q6INSN(Y5_l2gcleaninv,"l2gcleaninv",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A
 Q6INSN(Y6_l2gcleanpa,"l2gclean(Rtt32)",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_SLOT0ONLY,A_RESTRICT_NOPACKET,A_CACHEOP,A_L2FLUSHOP),"L2 Global Clean by PA Range",{fL2CLEANPA(RttV);})
 
 Q6INSN(Y6_l2gcleaninvpa,"l2gcleaninv(Rtt32)",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_SLOT0ONLY,A_RESTRICT_NOPACKET,A_CACHEOP,A_L2FLUSHOP),"L2 Global Clean and Invalidate by PA Range",{fL2CLEANINVPA(RttV);})
+
+

@@ -17,6 +17,9 @@
 
 /*
  * Compare Instructions
+ *
+ * $Id$
+ *
  */
 
 
@@ -222,11 +225,37 @@ Q6INSN(C2_vitpack,"Rd32=vitpack(Ps4,Pt4)",ATTRIBS(),
 "Pack the odd and even bits of two predicate registers",
 { fPREDUSE_TIMING();RdV = (PsV&0x55) | (PtV&0xAA); })
 
+#if 0
+Q6INSN(C2_vitpack_lsl,"Rxx32|=vitpack(Ps4,Pt4)",ATTRIBS(),
+"Shift double left by 8bits then pack the odd and even bits of two predicate registers into lower 8bits of double",
+{ RxxV = (RxxV<<8) | (PsV&0x55) | (PtV&0xAA); })
+#endif
+
 /* Mux instructions */
 
 Q6INSN(C2_mux,"Rd32=mux(Pu4,Rs32,Rt32)",ATTRIBS(),
 "Scalar MUX",
 { fPREDUSE_TIMING();(fLSBOLD(PuV)) ? (RdV=RsV):(RdV=RtV); })
+
+
+/* MAPPED to if pu add(Rs,#0) */
+#if 0
+Q6INSN(C2_cmovenewt,"if (Pu4.new) Rd32=Rs32",ATTRIBS(),
+"Scalar conditional move",
+{ if (fLSBNEW(PuN)) RdV=RsV; else CANCEL;})
+
+Q6INSN(C2_cmovenewf,"if (!Pu4.new) Rd32=Rs32",ATTRIBS(),
+"Scalar conditional move",
+{ if (fLSBNEWNOT(PuN)) RdV=RsV;else CANCEL; })
+
+Q6INSN(C2_cmovet,"if (Pu4) Rd32=Rs32",ATTRIBS(),
+"Scalar conditional move",
+{ if (fLSBOLD(PuV)) RdV=RsV; else CANCEL;})
+
+Q6INSN(C2_cmovef,"if (!Pu4) Rd32=Rs32",ATTRIBS(),
+"Scalar conditional move",
+{ if (fLSBOLDNOT(PuV)) RdV=RsV;else CANCEL; })
+#endif
 
 
 Q6INSN(C2_cmovenewit,"if (Pu4.new) Rd32=#s12",ATTRIBS(A_ARCHV2),
@@ -281,6 +310,196 @@ Q6INSN(C2_ccombinewf,"if (!Pu4) Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ARCHV2,A_ROP
 
 
 
+#if 0
+
+
+Q6INSN(C2_ccombinewnewtri,"if (Pu4.new) Rdd32=combine(Rs32,#s6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBNEW(PuN)) {
+    fSETWORD(0,RddV,siV);
+    fSETWORD(1,RddV,RsV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewnewfri,"if (!Pu4.new) Rdd32=combine(Rs32,#s6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBNEWNOT(PuN)) {
+    fSETWORD(0,RddV,siV);
+    fSETWORD(1,RddV,RsV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewtri,"if (Pu4) Rdd32=combine(Rs32,#s6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBOLD(PuV)) {
+    fSETWORD(0,RddV,siV);
+    fSETWORD(1,RddV,RsV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewfri,"if (!Pu4) Rdd32=combine(Rs32,#s6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBOLDNOT(PuV)) {
+    fSETWORD(0,RddV,siV);
+    fSETWORD(1,RddV,RsV);
+  } else {CANCEL;}
+})
+
+
+
+
+
+Q6INSN(C2_ccombinewnewtir,"if (Pu4.new) Rdd32=combine(#s6,Rs32)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBNEW(PuN)) {
+    fSETWORD(0,RddV,RsV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewnewfir,"if (!Pu4.new) Rdd32=combine(#s6,Rs32)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBNEWNOT(PuN)) {
+    fSETWORD(0,RddV,RsV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewtir,"if (Pu4) Rdd32=combine(#s6,Rs32)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBOLD(PuV)) {
+    fSETWORD(0,RddV,RsV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewfir,"if (!Pu4) Rdd32=combine(#s6,Rs32)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBOLDNOT(PuV)) {
+    fSETWORD(0,RddV,RsV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+
+
+
+Q6INSN(C2_ccombinewnewtii,"if (Pu4.new) Rdd32=combine(#s6,#S6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBNEW(PuN)) {
+    fSETWORD(0,RddV,SiV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewnewfii,"if (!Pu4.new) Rdd32=combine(#s6,#S6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBNEWNOT(PuN)) {
+    fSETWORD(0,RddV,SiV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewtii,"if (Pu4) Rdd32=combine(#s6,#S6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBOLD(PuV)) {
+    fSETWORD(0,RddV,SiV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewfii,"if (!Pu4) Rdd32=combine(#s6,#S6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(siV);
+	if (fLSBOLDNOT(PuV)) {
+    fSETWORD(0,RddV,SiV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+
+
+Q6INSN(C2_ccombinewnewtiiu,"if (Pu4.new) Rdd32=combine(#s6,#u6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(uiV);
+	if (fLSBNEW(PuN)) {
+    fSETWORD(0,RddV,uiV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewnewfiiu,"if (!Pu4.new) Rdd32=combine(#s6,#u6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(uiV);
+	if (fLSBNEWNOT(PuN)) {
+    fSETWORD(0,RddV,uiV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewtiiu,"if (Pu4) Rdd32=combine(#s6,#u6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(uiV);
+	if (fLSBOLD(PuV)) {
+    fSETWORD(0,RddV,uiV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+Q6INSN(C2_ccombinewfiiu,"if (!Pu4) Rdd32=combine(#s6,#u6)",ATTRIBS(A_ROPS_2),
+"Conditionally combine two words into a register pair",
+{
+	fIMMEXT(uiV);
+	if (fLSBOLDNOT(PuV)) {
+    fSETWORD(0,RddV,uiV);
+    fSETWORD(1,RddV,siV);
+  } else {CANCEL;}
+})
+
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Q6INSN(C2_muxii,"Rd32=mux(Pu4,#s8,#S8)",ATTRIBS(A_ARCHV2),
 "Scalar MUX immediates",
 { fPREDUSE_TIMING();fIMMEXT(siV); (fLSBOLD(PuV)) ? (RdV=siV):(RdV=SiV); })
@@ -315,6 +534,17 @@ Q6INSN(C2_mask,"Rdd32=mask(Pt4)",ATTRIBS(),
 		fSETBYTE(i,RddV,(fGETBIT(i,PtV)?(0xff):(0x00)));
 	}
 })
+
+#if 0 /* This is just a vcmpb.eq #0 */
+Q6INSN(C2_unmask,"Pd4=unmask(Rss32)",ATTRIBS(),
+"Create Predicate from Mask",
+{
+	fHIDE(int i;)
+	for (i = 0; i < 8; i++) {
+		fSETBIT(i,PdV,((fGETBYTE(i,RssV)==0x00)?(0):(1)));
+	}
+})
+#endif
 
 /* VCMP */
 
@@ -357,6 +587,18 @@ Q6INSN(A6_vcmpbeq_notany,"Pd4=!any8(vcmpb.eq(Rss32,Rtt32))",ATTRIBS(),
 	PdV = ~PdV;
 })
 
+#if 0
+Q6INSN(A4_vcmpbeq_all,"Pd4=all8(vcmpb.eq(Rss32,Rtt32))",ATTRIBS(),
+"Compare elements of two vectors ",
+{
+	fHIDE(int i;)
+	PdV = f8BITSOF(1);
+	for (i = 0; i < 8; i++) {
+		if (fGETBYTE(i,RssV) != fGETBYTE(i,RttV)) PdV = f8BITSOF(0);
+	}
+})
+#endif
+
 Q6INSN(A2_vcmpbgtu,"Pd4=vcmpb.gtu(Rss32,Rtt32)",ATTRIBS(),
 "Compare elements of two vectors ",
 {
@@ -392,6 +634,8 @@ Q6INSN(A4_vcmpbgti,"Pd4=vcmpb.gt(Rss32,#s8)",ATTRIBS(),
 		fSETBIT(i,PdV,(fGETBYTE(i,RssV) > siV));
 	}
 })
+//DEF_MAPPING(A4_vcmpbgei,"Pd4=vcmpb.ge(Rs32,#s8)","Pd4=vcmpb.gt(Rs32,#s8-1)")
+//DEF_COND_MAPPING(A4_vcmpbgeui,"Pd4=vcmpb.geu(Rs32,#u8)","#u8==0","Pd4=vcmpb.eq(Rs32,Rs32)","Pd4=vcmpb.gtu(Rs32,#u8-1)")
 
 
 
@@ -482,6 +726,8 @@ Q6INSN(A4_vcmphgti,"Pd4=vcmph.gt(Rss32,#s8)",ATTRIBS(),
 	}
 })
 
+//DEF_MAPPING(A4_vcmphgei,"Pd4=vcmph.ge(Rs32,#s8)","Pd4=vcmph.gt(Rs32,#s8-1)")
+//DEF_COND_MAPPING(A4_vcmphgeui,"Pd4=vcmph.geu(Rs32,#u8)","#u8==0","Pd4=vcmph.eq(Rs32,Rs32)","Pd4=vcmph.gtu(Rs32,#u8-1)")
 
 Q6INSN(A4_vcmphgtui,"Pd4=vcmph.gtu(Rss32,#u7)",ATTRIBS(),
 "Compare elements of two vectors ",
@@ -635,3 +881,5 @@ Q6INSN(C4_fastcorner9_not,"Pd4=!fastcorner9(Ps4,Pt4)",ATTRIBS(A_CRSLOT23,A_NOTE_
 	}
 	PdV = f8BITSOF(tmp == 0);
 })
+
+

@@ -15,10 +15,19 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "qemu/osdep.h"
 #include <math.h>
-#include "fma_emu.h"
+
+#ifndef CONFIG_USER_ONLY
+#include "qemu/osdep.h"
+#include "exec/exec-all.h"
+#include "migration/vmstate.h"
+#include "qapi/error.h"
+#include "qemu/log.h"
+#include "qemu/qemu-print.h"
+#include "cpu.h"
 #include "arch.h"
+#endif
+#include "fma_emu.h"
 #include "macros.h"
 #include "internal.h"
 
@@ -356,74 +365,6 @@ size4s_t conv_round(size4s_t a, int n)
     return (size4s_t)val;
 }
 
-size16s_t cast8s_to_16s(size8s_t a)
-{
-    size16s_t result = {.hi = 0, .lo = 0};
-    result.lo = a;
-    if (a < 0) {
-        result.hi = -1;
-    }
-    return result;
-}
-
-size8s_t cast16s_to_8s(size16s_t a)
-{
-    return a.lo;
-}
-
-size4s_t cast16s_to_4s(size16s_t a)
-{
-    return (size4s_t)a.lo;
-}
-
-size16s_t add128(size16s_t a, size16s_t b)
-{
-    size16s_t result = {.hi = 0, .lo = 0};
-    result.lo = a.lo + b.lo;
-    result.hi = a.hi + b.hi;
-
-    if (result.lo < b.lo) {
-        result.hi++;
-    }
-
-    return result;
-}
-
-size16s_t sub128(size16s_t a, size16s_t b)
-{
-    size16s_t result = {.hi = 0, .lo = 0};
-    result.lo = a.lo - b.lo;
-    result.hi = a.hi - b.hi;
-    if (result.lo > a.lo) {
-        result.hi--;
-    }
-
-    return result;
-}
-
-size16s_t shiftr128(size16s_t a, size4u_t n)
-{
-    size16s_t result;
-    result.lo = (a.lo >> n) | (a.hi << (64 - n));
-    result.hi = a.hi >> n;
-    return result;
-}
-
-size16s_t shiftl128(size16s_t a, size4u_t n)
-{
-    size16s_t result;
-    result.lo = a.lo << n;
-    result.hi = (a.hi << n) | (a.lo >> (64 - n));
-    return result;
-}
-
-size16s_t and128(size16s_t a, size16s_t b)
-{
-    size16s_t result;
-    result.lo = a.lo & b.lo;
-    result.hi = a.hi & b.hi;
-    return result;
-}
 
 /* Floating Point Stuff */
 

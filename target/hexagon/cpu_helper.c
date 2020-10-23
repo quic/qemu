@@ -291,6 +291,7 @@ void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
     }
 }
 
+extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
 void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
 
 {
@@ -319,11 +320,25 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
             env = &cpu->env;
             HEX_DEBUG_LOG("creating new cpu %p, tid %d, env %p\n",
                 cpu, htid, env);
+            env->system_ptr = 0;
+            env->threadId = htid;
             env->cmdline = machine->kernel_cmdline;
             env->hex_tlb = current_env->hex_tlb;
             env->processor_ptr = current_env->processor_ptr;
+            env->processor_ptr->thread[env->threadId] = env;
             env->g_sreg = current_env->g_sreg;
-            env->threadId = htid;
+
+            /* get dm2 from currently running thread */
+            dma_t *dma_ptr = current_env->processor_ptr->dma[current_env->threadId];
+            udma_ctx_t *udma_ctx = (udma_ctx_t *)dma_ptr->udma_ctx;
+            uint32_t dm2_val = udma_ctx->dm2.val;
+
+            /* init dma for new cpu */
+            env->processor_ptr->dma[env->threadId] = dma_adapter_init(env->processor_ptr, env->threadId);
+            dma_ptr = env->processor_ptr->dma[current_env->threadId];
+            udma_ctx = (udma_ctx_t *)dma_ptr->udma_ctx;
+            udma_ctx->dm2.val = dm2_val;  /* init dm2 of new thread to current thread */
+
             ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, htid);
             HEX_DEBUG_LOG("%s: mask 0x%x, cpu %p, g_sreg at %p\n",
                 __FUNCTION__, mask, cpu, env->g_sreg);

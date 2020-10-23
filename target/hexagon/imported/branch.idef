@@ -15,6 +15,13 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * Branch Instructions
+ *
+ * $Id$
+ *
+ */
+
 
 /*********************************************/
 /* Jump instructions			 */
@@ -38,6 +45,21 @@ Q6INSN(J2_jump,"jump #r22:2",ATTRIBS(A_JDIR,A_RELAX_UNC), "direct unconditional 
 Q6INSN(J2_jumpr,"jumpr Rs32",ATTRIBS(A_JINDIR), "indirect unconditional jump",
 {fJUMPR(RsN,RsV,COF_TYPE_JUMPR);})
 
+#if 0
+Q6INSN(J2_jumpt,"if (Pu4) jump #r15:2",ATTRIBS(A_CJOLDDIR,A_NOTE_CONDITIONAL,A_RELAX_COND,A_PRED_BIT_12),"direct conditional jump if true",
+{fIMMEXT(riV); fPCALIGN(riV); fBRANCH_SPECULATE_STALL(fLSBOLD(PuV),, SPECULATE_NOT_TAKEN,12,0); if (fLSBOLD(PuV)) { fBRANCH(fREAD_PC()+riV,COF_TYPE_JUMP);}})
+
+Q6INSN(J2_jumpf,"if (!Pu4) jump #r15:2",ATTRIBS(A_CJOLDDIR,A_NOTE_CONDITIONAL,A_RELAX_COND,A_PRED_BIT_12),"direct conditional jump if false",
+{fIMMEXT(riV); fPCALIGN(riV); fBRANCH_SPECULATE_STALL(fLSBOLDNOT(PuV),, SPECULATE_NOT_TAKEN,12,0); if (fLSBOLDNOT(PuV)) {fBRANCH(fREAD_PC()+riV,COF_TYPE_JUMP);}})
+
+Q6INSN(J2_jumprt,"if (Pu4) jumpr Rs32",ATTRIBS(A_JINDIROLD,A_NOTE_CONDITIONAL,A_PRED_BIT_12),"indirect conditional jump if true",
+{fBRANCH_SPECULATE_STALL(fLSBOLD(PuV),, SPECULATE_NOT_TAKEN,12,0); if (fLSBOLD(PuV)) {fJUMPR(RsN,RsV,COF_TYPE_JUMPR);}})
+
+Q6INSN(J2_jumprf,"if (!Pu4) jumpr Rs32",ATTRIBS(A_JINDIROLD,A_NOTE_CONDITIONAL,A_PRED_BIT_12),"indirect conditional jump if false",
+{fBRANCH_SPECULATE_STALL(fLSBOLDNOT(PuV),, SPECULATE_NOT_TAKEN,12,0); if (fLSBOLDNOT(PuV)) {fJUMPR(RsN,RsV,COF_TYPE_JUMPR);}})
+
+#else
+
 #define OLDCOND_JUMP(TAG,OPER,OPER2,ATTRIB,DESCR,SEMANTICS) \
 Q6INSN(TAG##t,"if (Pu4) "OPER":nt "OPER2,ATTRIB,DESCR,{fBRANCH_SPECULATE_STALL(fLSBOLD(PuV),,SPECULATE_NOT_TAKEN,12,0); if (fLSBOLD(PuV)) { SEMANTICS; }}) \
 Q6INSN(TAG##f,"if (!Pu4) "OPER":nt "OPER2,ATTRIB,DESCR,{fBRANCH_SPECULATE_STALL(fLSBOLDNOT(PuV),,SPECULATE_NOT_TAKEN,12,0); if (fLSBOLDNOT(PuV)) { SEMANTICS; }}) \
@@ -51,6 +73,19 @@ fIMMEXT(riV);fPCALIGN(riV); fBRANCH(fREAD_PC()+riV,COF_TYPE_JUMP);)
 
 OLDCOND_JUMP(J2_jumpr,"jumpr","Rs32",ATTRIBS(A_JINDIROLD,A_NOTE_CONDITIONAL,A_PRED_BIT_12),"indirect conditional jump",
 fJUMPR(RsN,RsV,COF_TYPE_JUMPR);)
+
+#endif
+
+//Q6INSN(J4_jumpnr,"jumpr Rs32.new",ATTRIBS(A_JINDIR,A_DOTNEWVALUE), "indirect unconditional jump",
+//{fBRANCH(RsV,COF_TYPE_JUMPR);})
+
+//Q6INSN(J4_jumpnr_t,"if (Pu4) jumpr Rs32.new",ATTRIBS(A_JINDIR,A_NOTE_CONDITIONAL,A_DOTNEWVALUE),"indirect conditional jump if true",
+//{if (fLSBOLD(PuV)) {fBRANCH(fNEWREG(RsN),COF_TYPE_JUMPR);}})
+
+//Q6INSN(J4_jumpnr_f,"if (!Pu4) jumpr Rs32.new",ATTRIBS(A_JINDIR,A_NOTE_CONDITIONAL,A_DOTNEWVALUE),"indirect conditional jump if false",
+//{if (!fLSBOLD(PuV)) {fBRANCH(fNEWREG(RsN),COF_TYPE_JUMPR);}})
+
+
 
 #define NEWCOND_JUMP(TAG,OPER,OPER2,ATTRIB,DESCR,SEMANTICS)\
 Q6INSN(TAG##tnew,"if (Pu4.new) "OPER":nt "OPER2,ATTRIB,DESCR,{fBRANCH_SPECULATE_STALL(fLSBNEW(PuN),, SPECULATE_NOT_TAKEN , 12,0)} {if(fLSBNEW(PuN)){SEMANTICS;}})\
@@ -304,6 +339,11 @@ Q6INSN(J2_endloop01,"endloop01",ATTRIBS(ATTRIB_HWLOOP,A_HWLOOP0_END,A_HWLOOP1_EN
       /* decrement loop count */
       fWRITE_LC1(fREAD_LC1-1);
     }
+#ifdef VERIFICATION
+  else {
+	  fCOF_CALLBACK(fREAD_PC(), COF_TYPE_LOOPFALLTHROUGH );
+  }
+#endif
   }
 
 })
@@ -328,6 +368,11 @@ Q6INSN(J2_endloop0,"endloop0",ATTRIBS(ATTRIB_HWLOOP,A_HWLOOP0_END,A_RESTRICT_LAT
     /* decrement loop count */
     fWRITE_LC0(fREAD_LC0-1);
   }
+#ifdef VERIFICATION
+  else {
+	  fCOF_CALLBACK(fREAD_PC(), COF_TYPE_LOOPFALLTHROUGH );
+  }
+#endif
 })
 
 Q6INSN(J2_endloop1,"endloop1",ATTRIBS(ATTRIB_HWLOOP,A_HWLOOP1_END),"Loopend for outer loop",
@@ -339,4 +384,11 @@ Q6INSN(J2_endloop1,"endloop1",ATTRIBS(ATTRIB_HWLOOP,A_HWLOOP1_END),"Loopend for 
     /* decrement loop count */
     fWRITE_LC1(fREAD_LC1-1);
   }
+#ifdef VERIFICATION
+  else {
+	  fCOF_CALLBACK(fREAD_PC(), COF_TYPE_LOOPFALLTHROUGH );
+  }
+#endif
 })
+
+

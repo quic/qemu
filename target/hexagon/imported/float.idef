@@ -17,6 +17,9 @@
 
 /*
  * Floating-Point Instructions
+ *
+ * $Id$
+ *
  */
 
 /*************************************/
@@ -495,3 +498,9 @@ GEN(df##2,Rss32,RssV,fDOUBLE,df,MODETAG,MODESYN,MODEBEH)
 ALLINTSRC(ALLFPDST,,,)
 ALLFPSRC(ALLINTDST,,,)
 ALLFPSRC(ALLINTDST,_chop,:chop,fFPSETROUND_CHOP();)
+
+#if 0
+CONVERT(hf2sf,Rd32,RdV,Rs32,RsV,fUNFLOAT,sf,fHALF,hf,,,)
+CONVERT(sf2hf,Rd32,RdV,Rs32,RsV,fUNHALF,hf,fFLOAT,sf,,,)
+CONVERT(df2hf,Rd32,RdV,Rss32,RssV,fUNHALF,hf,fDOUBLE,df,,,)
+#endif
