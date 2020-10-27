@@ -1387,10 +1387,6 @@ int arch_has_hmx(processor_t *proc);
 int arch_get_hmx_spatial_size(processor_t *proc);
 int arch_get_hmx_channel_depth(processor_t *proc);
 
-/* Silver MEM read/write to L1S with compression */
-int arch_memwrite_pcfl(processor_t *proc, paddr_t paddr, int pcfl_format, int width, unsigned char * bytes);
-int arch_memread_pcfl(processor_t *proc, paddr_t paddr, int pcfl_format, int width, unsigned char * bytes);
-
 
 /* Translate a VA to PA using just the TLB */
 /* Uses the ASID of the thread threadno */

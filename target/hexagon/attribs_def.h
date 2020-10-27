@@ -92,9 +92,6 @@ DEF_ATTRIB(PM_CIRR, "Post Modify with Circular Addressing by I field", "", "")
 DEF_ATTRIB(VMEM, "VMEM-type", "", "")
 DEF_ATTRIB(VBUF, "Touches the VBUF", "", "")
 DEF_ATTRIB(VDBG, "Vector debugging instruction", "", "")
-DEF_ATTRIB(VREG_2SRC, "Silver instruction with 2 sources", "", "")
-DEF_ATTRIB(VREG_3SRC, "Silver instruction with 3 sources", "", "")
-DEF_ATTRIB(VEXTRACT, "Silver instruction is vextract", "", "")
 
 /* V6 Vector attributes */
 DEF_ATTRIB(CVI, "Executes on the HVX extension", "", "")

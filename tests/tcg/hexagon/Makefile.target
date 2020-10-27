@@ -27,13 +27,13 @@ TIMEOUT=40
 endif
 
 
-CFLAGS = -mv67 -O2 -mhvx -fvectorize
+CFLAGS = -mv69 -O2 -mhvx -fvectorize
 
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
 VPATH += $(HEX_SRC)
 
 first: $(HEX_SRC)/first.S
-	$(CC) -static -mv67 -nostdlib $^ -o $@
+	$(CC) -static -mv69 -nostdlib $^ -o $@
 
 HEX_TESTS = first
 HEX_TESTS += exec_counters

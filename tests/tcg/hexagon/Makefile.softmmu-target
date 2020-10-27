@@ -24,6 +24,7 @@ TESTS += \
 	fastl2vic \
 	fastint \
 	swi \
+	udma \
 	pcycle \
 	framelimit \
 	float_excp \
@@ -60,6 +61,7 @@ ciad-siad: ciad-siad.o
 fastl2vic: fastl2vic.o
 fastint: fastint.o
 swi: swi.o
+udma: udma.o
 wait: wait.o
 pcycle: pcycle.o
 framelimit: framelimit.o
@@ -77,7 +79,7 @@ memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
 # TODO: We should see if we can find a way to avoid this:
 standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
 
-standalone_vec.o: CFLAGS+= -mv67 -O2 -mhvx  -fvectorize
+standalone_vec.o: CFLAGS+= -mv69 -O2 -mhvx  -fvectorize
 hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
