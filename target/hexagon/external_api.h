@@ -478,7 +478,6 @@ typedef enum {
 #define L2TCM_CLADE2_BASE	(512*1024)  // FIXME?
 #define L2TCM_FASTL2VIC_BASE	(384*1024)
 #define L2TCM_ECCREG_BASE	(448*1024)
-#define L2TCM_SILVERCFG_BASE	(192*1024)
 
 /* ECC Memory Mapped register offsets */
 #define ECC_IUDATA_REGS_START (0)
@@ -490,7 +489,6 @@ typedef enum {
 typedef enum {
   EXT_NONE = 0,
   EXT_HVX = 1,
-  EXT_SILVER = 2
 } ext_type_e;
 
 
@@ -791,7 +789,6 @@ typedef enum hvx_resource {
 
 enum coproc_type_info {
     COPROC_HVX,
-    COPROC_SILVER,
 	COPROC_HMX,
 	COPROC_EXT
 };
@@ -869,7 +866,6 @@ typedef struct vmem_callback_info_struct vmem_callback_info_t;
 
 typedef struct coproc_callback_info_struct coproc_callback_info_t;
 typedef coproc_callback_info_t mmvec_callback_info_t;
-typedef coproc_callback_info_t silver_callback_info_t;
 
 enum l2fetch_callback_event {
     arch_l2fetch_command,
@@ -980,8 +976,6 @@ typedef void (*tcm_access_callback_t) (system_t * sys, processor_t * proc,
 									   int threadno, size4u_t pc,
 									   size4u_t vaddr, paddr_t paddr,
                                        int width,  int type);
-typedef void (*silverstall_callback_t) (system_t * sys, processor_t * proc,
-								  int stall_id, char *stall_name, size4u_t pc);
 typedef void (*stall_callback_t) (system_t * sys, processor_t * proc,
 								  int threadno, int stall_id,
 								  size4u_t * data);
@@ -1121,7 +1115,6 @@ typedef struct options_struct {
 	   the stall whenever the thread profiling is on and
 	   the associated model is enabled (--icache --dcache)
 	 */
-	silverstall_callback_t sim_silverstall_callback;
     coproc_cycle_status_callback_t sim_coproc_cycle_status_callback;
 	vmem_callback_t sim_vmem_callback;
 	stall_callback_t stall_callback;	/* callback from a stall */
@@ -1385,11 +1378,8 @@ int arch_set_ext_accumulator_word(processor_t *proc, int arrayno, int spatial_id
 int arch_get_ext_bias_word(processor_t *proc, int arrayno, int spatial_idx, int channel_idx, size4u_t word_idx, size4u_t *result);
 int arch_set_ext_bias_word(processor_t *proc, int arrayno, int spatial_idx, int channel_idx, size4u_t word_idx, size4u_t val);
 
-int arch_get_hmx_acc_qformat(processor_t *proc, size4s_t spatial_idx, size4s_t channel_idx, size4s_t acc_index, size8s_t * integer, size8u_t * fractional);
-int arch_set_hmx_acc_qformat(processor_t *proc, size4s_t spatial_idx, size4s_t channel_idx, size4s_t acc_index, size8s_t integer, size8u_t fractional);
 void arch_hmx_acc_ptr_reset(processor_t * proc);
 
-int arch_has_silver(processor_t *proc);
 int arch_has_hvx(processor_t *proc);
 int arch_has_hmx(processor_t *proc);
 
@@ -1860,24 +1850,9 @@ enum {
 #define GENERATE_STRING(STRING) #STRING,
 #endif
 
-#define FOREACH_ARCH_EXT_SILVER_SUBCLASS_TYPE(EXT_SILVER_SUBCLASS)\
-    EXT_SILVER_SUBCLASS(SB_VECX_VXA)                                 \
-    EXT_SILVER_SUBCLASS(SB_VECX_VXASIC)                              \
-    EXT_SILVER_SUBCLASS(SB_VECX_VXF)                                 \
-    EXT_SILVER_SUBCLASS(SB_VECX_VXM)                                 \
-    EXT_SILVER_SUBCLASS(SB_VECX_VXR)                                 \
-    EXT_SILVER_SUBCLASS(SB_VECX_VXS)                                 \
-    EXT_SILVER_SUBCLASS(SB_VECX_VXT)                                 \
-    EXT_SILVER_SUBCLASS(SB_VECX_VXTA)                                \
-	EXT_SILVER_SUBCLASS(SB_VECX_VMEM)                                \
-    EXT_SILVER_SUBCLASS(SB_VECX_LAST_SUBCLASS)
 
 size4u_t arch_get_max_opcodes(processor_t *proc);
 
-enum ext_silver_subclass {
-    FOREACH_ARCH_EXT_SILVER_SUBCLASS_TYPE(GENERATE_ENUM)
-};
-typedef enum ext_silver_subclass ext_silver_subclass_e;
 
 struct opcode_info_struct {
     char *opcode_name;
@@ -1885,8 +1860,6 @@ struct opcode_info_struct {
     size1u_t iclass;
     char *iclass_name;
     ext_type_e ext;
-    ext_silver_subclass_e ext_silver_subclass;
-    char *ext_silver_subclass_name;
 };
 typedef struct opcode_info_struct opcode_info_t;
 

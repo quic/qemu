@@ -36,48 +36,11 @@
     NT (non-temporal) is bit 22
     VMEMU decodes as bit[2:1] = 11
 
-	000 - (Rt+#s4)    CVI: mostly full,  SILVER: unused
-	      0-0  Rt32, Loads
-	      0-1  Rt32, Stores
-		  1-0  Rt32, Stores
-          1-1  Rt32, Pv Conditional Stores
-	001 - (Rx++#s3)   CVI: half full,    SILVER: unused
-	      0-0  Rx32, Loads
-	      0-1  Rx32, Stores
-		  1-0  Rx32, Stores
-          1-1  Rx32, Pv Conditional Stores
-	010 - (Rx++I:circ) CVI: unused, SILVER: mostly empty
-	011 - (Rt++M)      CVI: mostly empty, SILVER: mostly empty
-	      0-0  Rx32, Mu, Loads
-	      0-1  Rx32, Mu, Stores
-		  1-0  Rx32, Mu, Stores
-          1-1  Rx32, Mu, Pv Conditional Stores
-	100 - (Rx++#s10)  CVI: unused, SILVER: full
-		  0--  Loads
-          1--  Stores
-	101 - (Rx++#s10)  CVI: unused, SILVER: half used
-          0--  unused
-          1--  stores
-	110 - (Rt+#s10)   CVI: unused, SILVER: half used
-          0--  unused
-          1--  stores
-	111 - (Rt+#s10)   CVI: unused, SILVER: full
-          0--  Loads
-          1--  Stores
 
 
 	CLASS_CJ '1 - ALL VX OPS
 
 	SUBCLASS
-
-	000	- Q6: Rtt32  				CVI: mostly empty,  	SILVER: UNUSED
-	001 - Q6: Rt32 					CVI: 14/16 used,  		SILVER: half used
-	010 - Q6: Rt8(silver)/Ps(cvi)   CVI: mosly empty,          	SILVER: 10/16 used
-	011 - Q6: Rt8					CVI: ~half used, 		SILVER: 9/16 used
-	100 - Q6: none					CVI: 11/16 used			SILVER: FFT full
-	101 - Q6: Rx					CVI: rsv/Deprecated		SILVER: FFT full
-	110 - Q6: none					CVI: ~half used  		SILVER: mostly used
-	111 - Q6: none					CVI: ~7/16 used		 	SILVER: 3/16 used
 
 
 */
@@ -576,8 +539,6 @@ DEF_ENC(V6_vdeal, 			ICLASS_CJ" 1 001 111 ttttt PP 1 yyyyy 010 xxxxx") //
 
 
 /***************************************************************
-*
-*  Group #2, Uses Q6 Ps4, note SILVER uses Rt8
 *
 *  Lots of encoding space here!
 *

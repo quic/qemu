@@ -46,13 +46,6 @@ DEF_MACRO(fRT8NOTE, (),
 	(A_NOTE_RT8)
 )
 
-DEF_MACRO(fEXPERIMENTAL, (),
-	"",
-	"",
-	,
-	(A_EXPERIMENTAL)
-)
-
 DEF_MACRO(fNOTQ,(VAL),
 	"~VAL",
 	"~VAL",

@@ -34,9 +34,6 @@ void hmx_ext_dump_regs(FILE *fp, processor_t *proc, int e);
 int hmx_ext_load_vreg(processor_t *proc, int extno, size4u_t regno, size4u_t wordno, size4u_t val);
 int hmx_ext_load_qreg(processor_t *proc, int extno, size4u_t regno, size4u_t wordno, size4u_t val);
 
-int hmx_ext_get_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_index, size8s_t * integer, size8u_t * fractional, size4u_t * ovf);
-int hmx_ext_set_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_index, size8s_t integer, size8u_t fractional, size4u_t ovf);
-
 semantic_insn_t hmx_ext_bq_exec(int opcode); /* BQ */
 
 

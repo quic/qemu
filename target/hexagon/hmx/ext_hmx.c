@@ -454,39 +454,6 @@ void hmx_ext_print_acc(thread_t *thread, FILE *fp) {
 #endif
 }
 #endif
-int hmx_ext_get_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_index, size8s_t * integer, size8u_t * fractional, size4u_t * ovf) {
-	*integer = 0xDEADBEEF;
-	*fractional = 0xDEADBEEF;
-	*ovf = 0xDEADBEEF;
-	if (THREAD2STRUCT != NULL) {
-		spatial_idx <<= 1;
-		*integer = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].hi;
-		*fractional = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].lo;
-		*ovf = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_index];
-		//fMX_VERIF_DEBUG_LOG(2,  "TB HMX READ: FLT ACC[%02d][%02d][%02d] = %016llx.%016llx\n",
-		//	spatial_idx, channel_idx, acc_index, *integer, *fractional);
-		return 0;
-	}
-	return -1;
-}
-int hmx_ext_set_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_index, size8s_t integer, size8u_t fractional, size4u_t ovf)
-{
-
-	if (THREAD2STRUCT != NULL) {
-		spatial_idx <<= 1;
-		THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].hi = integer;
-		THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].lo = fractional;
-		THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_index] = ovf;
-		fMX_VERIF_DEBUG_LOG(2,  "TB HMX WRITE: FLT ACC[%02d][%02d][%02d] = %016llx.%016llx ovf=%x",
-			spatial_idx/2, channel_idx, acc_index,
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].hi,
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].lo,
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_index] );
-		return 0;
-	}
-	return -1;
-}
-
 int hmx_ext_get_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t wordno, size4u_t *result) {
 	*result = 0xDEADBEEF;
 	if (THREAD2STRUCT != NULL) {

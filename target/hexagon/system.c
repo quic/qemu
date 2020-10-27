@@ -2802,14 +2802,6 @@ mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
         thread->has_devtype_st |= (1<<slot);
     }
 
-	#ifndef NO_SILVER
-	if (CHECK_L1S(thread->processor_ptr, maptr->paddr)) {
-		thread->last_pkt_to_silver=1;
-		thread->last_pkt_slot_to_silver |= (1<<slot);
-
-		ver_fill_silver_mem_info(thread->processor_ptr, thread->threadId, slot, width, maptr->pc_va, maptr->paddr, vaddr, mtype, maptr->xlate_info.memtype.arch_cacheable);
-	}
-	#endif
 #endif
 
 
@@ -2873,16 +2865,6 @@ mem_init_access_silent(thread_t * thread, int slot, size4u_t vaddr,
 	} else {
 	    maptr->paddr = maptr->xlate_info.pa;
 	}
-#ifdef VERIFICATION
-	#ifndef NO_SILVER
-	if (CHECK_L1S(thread->processor_ptr, maptr->paddr) && !cancel)
-	{
-		thread->last_pkt_to_silver=1;
-		thread->last_pkt_slot_to_silver |= (1<<slot);
-		ver_fill_silver_mem_info(thread->processor_ptr, thread->threadId, slot, width, maptr->pc_va, maptr->paddr, vaddr, mtype, maptr->xlate_info.memtype.arch_cacheable);
-	}
-	#endif
-#endif
 
 	return (maptr->paddr);
 }
@@ -3131,16 +3113,6 @@ mem_general_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, i
 
 	LOG_MEM_STORE(vaddr,paddr,width,data,slot);
 
-	/* FIXME: This should not be here. It should be in an exec equivalent
-	for silver. Should be fixed for V6 */
-#ifndef NO_SILVER
-	if (thread->processor_ptr->arch_proc_options->silver_context>0) {
-		processor_t *proc = thread->processor_ptr;
-		if(thread->last_pkt && CHECK_L1S(proc, paddr)) {
-			thread->last_pkt->pkt_has_l1s_scalar = 1;
-		}
-	}
-#endif
 }
 #endif
 
@@ -3268,16 +3240,6 @@ mem_store_conditional(thread_t * thread, size4u_t vaddr, size8u_t data, int widt
 	SYSVERWARN("store_conditional:begin:paddr=%llx:vaddr=%x:width=%d current lockaddr=%llx lockvalid=%x:cacheable=%d\n",paddr, vaddr, width,thread->lockaddr,thread->lockvalid,maptr->xlate_info.memtype.arch_cacheable);
 	if (((maptr->paddr& 0xfffffffffffffff8LL) != thread->lockaddr) || (!thread->lockvalid)) {
 		SYSVERWARN("store_conditional fails internally. paddr=%llx:vaddr=%x",paddr,vaddr);
-#ifdef VERIFICATION
-#ifndef NO_SILVER
-		// HEXDEV-3466 - RTL doesn't send dropped store conditional to Silver
-		if (CHECK_L1S(thread->processor_ptr, paddr)) {
-			thread->last_pkt_to_silver = 0;
-			thread->last_pkt_slot_to_silver = 0;
-			ver_fill_silver_mem_info_clear(thread->processor_ptr, thread->threadId, slot);
-		}
-#endif
-#endif
 		return 0;
 	}
 
@@ -4952,28 +4914,6 @@ void sys_nop_executed(thread_t * thread)
 	if (thread->timing_on && thread->processor_ptr->uarch.cachedrive) {
 		cachedrive_go(thread);
 	}
-	/* FIXME:
-	   White aura says: There should be no reference to uarch or th_uarch in
-	   system.c
-	   The two horns say: Come one man, this is a quick fix to check if
-	   the silver instructions work. Will be deleting anyways once the silver
-	   ISA is merged in.
-	   Finally: Two horns wins!
-       Yuck! There should be no reference to uarch in system.c */
-#if 0
-	if (thread->timing_on &&
-		thread->processor_ptr->arch_proc_options->nop_latency) {
-		th_uarch_t *th_uarch = TH_UARCH(proc, thread->threadId);
-		if (th_uarch->nop_tinsns == thread->tstats[tinsns]) {
-			return;
-		}
-		th_uarch->nop_tinsns = thread->tstats[tinsns];
-		thread->stall_time =
-			thread->processor_ptr->arch_proc_options->nop_latency;
-		STALL_SET(nop_stall);
-		return;
-	}
-#endif
 }
 
 int

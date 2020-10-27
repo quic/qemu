@@ -251,7 +251,7 @@ def is_hmx_act(attrs):
     return ('A_HMX' in attrs and 'A_PAIR_1OF2' in attrs);
 
 def is_hmx(attrs):
-    return ('A_HMX' in attrs);
+    return ('A_HMX' in attrs)
 
 def imm_name(immlett):
     return "%siV" % immlett
