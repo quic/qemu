@@ -1134,4 +1134,3 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
     printf("ERROR: bogus helper: " #tag "\n")
 
 #include "helper_funcs_generated.h"
-

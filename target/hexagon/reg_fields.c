@@ -25,4 +25,3 @@ const RegField reg_field_info[] = {
       { 0, 0 }
 #undef DEF_REG_FIELD
 };
-

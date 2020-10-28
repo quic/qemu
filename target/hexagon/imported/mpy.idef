@@ -332,28 +332,28 @@ Q6INSN(M5_vrmpybuu,"Rdd32=vrmpybu(Rss32,Rtt32)",ATTRIBS(),
  "vector dual mpy bytes",
 {
   fSETWORD(0,RddV,(fMPY16SS(fGETUBYTE(0,RssV),fGETUBYTE(0,RttV)) +
-		   fMPY16SS(fGETUBYTE(1,RssV),fGETUBYTE(1,RttV)) +
-		   fMPY16SS(fGETUBYTE(2,RssV),fGETUBYTE(2,RttV)) +
-		   fMPY16SS(fGETUBYTE(3,RssV),fGETUBYTE(3,RttV))));
+                   fMPY16SS(fGETUBYTE(1,RssV),fGETUBYTE(1,RttV)) +
+                   fMPY16SS(fGETUBYTE(2,RssV),fGETUBYTE(2,RttV)) +
+                   fMPY16SS(fGETUBYTE(3,RssV),fGETUBYTE(3,RttV))));
   fSETWORD(1,RddV,(fMPY16SS(fGETUBYTE(4,RssV),fGETUBYTE(4,RttV)) +
-		   fMPY16SS(fGETUBYTE(5,RssV),fGETUBYTE(5,RttV)) +
-		   fMPY16SS(fGETUBYTE(6,RssV),fGETUBYTE(6,RttV)) +
-		   fMPY16SS(fGETUBYTE(7,RssV),fGETUBYTE(7,RttV))));
+                   fMPY16SS(fGETUBYTE(5,RssV),fGETUBYTE(5,RttV)) +
+                   fMPY16SS(fGETUBYTE(6,RssV),fGETUBYTE(6,RttV)) +
+                   fMPY16SS(fGETUBYTE(7,RssV),fGETUBYTE(7,RttV))));
  })
 
 Q6INSN(M5_vrmacbuu,"Rxx32+=vrmpybu(Rss32,Rtt32)",ATTRIBS(),
  "vector dual mac bytes",
 {
   fSETWORD(0,RxxV,(fGETWORD(0,RxxV) +
-	           fMPY16SS(fGETUBYTE(0,RssV),fGETUBYTE(0,RttV)) +
-		   fMPY16SS(fGETUBYTE(1,RssV),fGETUBYTE(1,RttV)) +
-		   fMPY16SS(fGETUBYTE(2,RssV),fGETUBYTE(2,RttV)) +
-		   fMPY16SS(fGETUBYTE(3,RssV),fGETUBYTE(3,RttV))));
+                   fMPY16SS(fGETUBYTE(0,RssV),fGETUBYTE(0,RttV)) +
+                   fMPY16SS(fGETUBYTE(1,RssV),fGETUBYTE(1,RttV)) +
+                   fMPY16SS(fGETUBYTE(2,RssV),fGETUBYTE(2,RttV)) +
+                   fMPY16SS(fGETUBYTE(3,RssV),fGETUBYTE(3,RttV))));
   fSETWORD(1,RxxV,(fGETWORD(1,RxxV) +
-		   fMPY16SS(fGETUBYTE(4,RssV),fGETUBYTE(4,RttV)) +
-		   fMPY16SS(fGETUBYTE(5,RssV),fGETUBYTE(5,RttV)) +
-		   fMPY16SS(fGETUBYTE(6,RssV),fGETUBYTE(6,RttV)) +
-		   fMPY16SS(fGETUBYTE(7,RssV),fGETUBYTE(7,RttV))));
+                   fMPY16SS(fGETUBYTE(4,RssV),fGETUBYTE(4,RttV)) +
+                   fMPY16SS(fGETUBYTE(5,RssV),fGETUBYTE(5,RttV)) +
+                   fMPY16SS(fGETUBYTE(6,RssV),fGETUBYTE(6,RttV)) +
+                   fMPY16SS(fGETUBYTE(7,RssV),fGETUBYTE(7,RttV))));
  })
 
 
@@ -361,28 +361,28 @@ Q6INSN(M5_vrmpybsu,"Rdd32=vrmpybsu(Rss32,Rtt32)",ATTRIBS(),
  "vector dual mpy bytes",
 {
   fSETWORD(0,RddV,(fMPY16SS(fGETBYTE(0,RssV),fGETUBYTE(0,RttV)) +
-		   fMPY16SS(fGETBYTE(1,RssV),fGETUBYTE(1,RttV)) +
-		   fMPY16SS(fGETBYTE(2,RssV),fGETUBYTE(2,RttV)) +
-		   fMPY16SS(fGETBYTE(3,RssV),fGETUBYTE(3,RttV))));
+                   fMPY16SS(fGETBYTE(1,RssV),fGETUBYTE(1,RttV)) +
+                   fMPY16SS(fGETBYTE(2,RssV),fGETUBYTE(2,RttV)) +
+                   fMPY16SS(fGETBYTE(3,RssV),fGETUBYTE(3,RttV))));
   fSETWORD(1,RddV,(fMPY16SS(fGETBYTE(4,RssV),fGETUBYTE(4,RttV)) +
-		   fMPY16SS(fGETBYTE(5,RssV),fGETUBYTE(5,RttV)) +
-		   fMPY16SS(fGETBYTE(6,RssV),fGETUBYTE(6,RttV)) +
-		   fMPY16SS(fGETBYTE(7,RssV),fGETUBYTE(7,RttV))));
+                   fMPY16SS(fGETBYTE(5,RssV),fGETUBYTE(5,RttV)) +
+                   fMPY16SS(fGETBYTE(6,RssV),fGETUBYTE(6,RttV)) +
+                   fMPY16SS(fGETBYTE(7,RssV),fGETUBYTE(7,RttV))));
  })
 
 Q6INSN(M5_vrmacbsu,"Rxx32+=vrmpybsu(Rss32,Rtt32)",ATTRIBS(),
  "vector dual mac bytes",
 {
   fSETWORD(0,RxxV,(fGETWORD(0,RxxV) +
-		   fMPY16SS(fGETBYTE(0,RssV),fGETUBYTE(0,RttV)) +
-		   fMPY16SS(fGETBYTE(1,RssV),fGETUBYTE(1,RttV)) +
-		   fMPY16SS(fGETBYTE(2,RssV),fGETUBYTE(2,RttV)) +
-		   fMPY16SS(fGETBYTE(3,RssV),fGETUBYTE(3,RttV))));
+                   fMPY16SS(fGETBYTE(0,RssV),fGETUBYTE(0,RttV)) +
+                   fMPY16SS(fGETBYTE(1,RssV),fGETUBYTE(1,RttV)) +
+                   fMPY16SS(fGETBYTE(2,RssV),fGETUBYTE(2,RttV)) +
+                   fMPY16SS(fGETBYTE(3,RssV),fGETUBYTE(3,RttV))));
   fSETWORD(1,RxxV,(fGETWORD(1,RxxV) +
-		   fMPY16SS(fGETBYTE(4,RssV),fGETUBYTE(4,RttV)) +
-		   fMPY16SS(fGETBYTE(5,RssV),fGETUBYTE(5,RttV)) +
-		   fMPY16SS(fGETBYTE(6,RssV),fGETUBYTE(6,RttV)) +
-		   fMPY16SS(fGETBYTE(7,RssV),fGETUBYTE(7,RttV))));
+                   fMPY16SS(fGETBYTE(4,RssV),fGETUBYTE(4,RttV)) +
+                   fMPY16SS(fGETBYTE(5,RssV),fGETUBYTE(5,RttV)) +
+                   fMPY16SS(fGETBYTE(6,RssV),fGETUBYTE(6,RttV)) +
+                   fMPY16SS(fGETBYTE(7,RssV),fGETUBYTE(7,RttV))));
  })
 
 
@@ -429,13 +429,13 @@ Q6INSN(M5_vdmpybsu,"Rdd32=vdmpybsu(Rss32,Rtt32):sat",ATTRIBS(),
  "vector quad mpy bytes",
 {
   fSETHALF(0,RddV,fSATN(16,(fMPY16SS(fGETBYTE(0,RssV),fGETUBYTE(0,RttV)) +
-         		   fMPY16SS(fGETBYTE(1,RssV),fGETUBYTE(1,RttV)))));
+                            fMPY16SS(fGETBYTE(1,RssV),fGETUBYTE(1,RttV)))));
   fSETHALF(1,RddV,fSATN(16,(fMPY16SS(fGETBYTE(2,RssV),fGETUBYTE(2,RttV)) +
-         		   fMPY16SS(fGETBYTE(3,RssV),fGETUBYTE(3,RttV)))));
+                            fMPY16SS(fGETBYTE(3,RssV),fGETUBYTE(3,RttV)))));
   fSETHALF(2,RddV,fSATN(16,(fMPY16SS(fGETBYTE(4,RssV),fGETUBYTE(4,RttV)) +
-         		   fMPY16SS(fGETBYTE(5,RssV),fGETUBYTE(5,RttV)))));
+                            fMPY16SS(fGETBYTE(5,RssV),fGETUBYTE(5,RttV)))));
   fSETHALF(3,RddV,fSATN(16,(fMPY16SS(fGETBYTE(6,RssV),fGETUBYTE(6,RttV)) +
-         		   fMPY16SS(fGETBYTE(7,RssV),fGETUBYTE(7,RttV)))));
+                            fMPY16SS(fGETBYTE(7,RssV),fGETUBYTE(7,RttV)))));
  })
 
 
@@ -443,17 +443,17 @@ Q6INSN(M5_vdmacbsu,"Rxx32+=vdmpybsu(Rss32,Rtt32):sat",ATTRIBS(),
  "vector quad mac bytes",
 {
   fSETHALF(0,RxxV,fSATN(16,(fGETHALF(0,RxxV) +
-		   fMPY16SS(fGETBYTE(0,RssV),fGETUBYTE(0,RttV)) +
-		   fMPY16SS(fGETBYTE(1,RssV),fGETUBYTE(1,RttV)))));
+                   fMPY16SS(fGETBYTE(0,RssV),fGETUBYTE(0,RttV)) +
+                   fMPY16SS(fGETBYTE(1,RssV),fGETUBYTE(1,RttV)))));
   fSETHALF(1,RxxV,fSATN(16,(fGETHALF(1,RxxV) +
-		   fMPY16SS(fGETBYTE(2,RssV),fGETUBYTE(2,RttV)) +
-		   fMPY16SS(fGETBYTE(3,RssV),fGETUBYTE(3,RttV)))));
+                   fMPY16SS(fGETBYTE(2,RssV),fGETUBYTE(2,RttV)) +
+                   fMPY16SS(fGETBYTE(3,RssV),fGETUBYTE(3,RttV)))));
   fSETHALF(2,RxxV,fSATN(16,(fGETHALF(2,RxxV) +
-		   fMPY16SS(fGETBYTE(4,RssV),fGETUBYTE(4,RttV)) +
-		   fMPY16SS(fGETBYTE(5,RssV),fGETUBYTE(5,RttV)))));
+                   fMPY16SS(fGETBYTE(4,RssV),fGETUBYTE(4,RttV)) +
+                   fMPY16SS(fGETBYTE(5,RssV),fGETUBYTE(5,RttV)))));
   fSETHALF(3,RxxV,fSATN(16,(fGETHALF(3,RxxV) +
-		   fMPY16SS(fGETBYTE(6,RssV),fGETUBYTE(6,RttV)) +
-		   fMPY16SS(fGETBYTE(7,RssV),fGETUBYTE(7,RttV)))));
+                   fMPY16SS(fGETBYTE(6,RssV),fGETUBYTE(6,RttV)) +
+                   fMPY16SS(fGETBYTE(7,RssV),fGETUBYTE(7,RttV)))));
  })
 
 
@@ -914,25 +914,25 @@ Q6INSN(M4_cmpyr_whc,"Rd32=cmpyrwh(Rss32,Rt32*):<<1:rnd:sat",ATTRIBS(),"Mixed Pre
 
 #undef VCMPYSEMI
 #define VCMPYSEMI(DST,ACC0,ACC1,SHIFT,SAT) \
-	fSETWORD(0,DST,SAT(ACC0 fSCALE(SHIFT,fMPY16SS(fGETHALF(1,RssV),fGETHALF(0,RttV)) + \
-	                                    fMPY16SS(fGETHALF(0,RssV),fGETHALF(1,RttV))))); \
-	fSETWORD(1,DST,SAT(ACC1 fSCALE(SHIFT,fMPY16SS(fGETHALF(3,RssV),fGETHALF(2,RttV)) + \
-	                                    fMPY16SS(fGETHALF(2,RssV),fGETHALF(3,RttV))))); \
+    fSETWORD(0,DST,SAT(ACC0 fSCALE(SHIFT,fMPY16SS(fGETHALF(1,RssV),fGETHALF(0,RttV)) + \
+        fMPY16SS(fGETHALF(0,RssV),fGETHALF(1,RttV))))); \
+    fSETWORD(1,DST,SAT(ACC1 fSCALE(SHIFT,fMPY16SS(fGETHALF(3,RssV),fGETHALF(2,RttV)) + \
+        fMPY16SS(fGETHALF(2,RssV),fGETHALF(3,RttV))))); \
 
 #undef VCMPYSEMR
 #define VCMPYSEMR(DST,ACC0,ACC1,SHIFT,SAT) \
-	fSETWORD(0,DST,SAT(ACC0 fSCALE(SHIFT,fMPY16SS(fGETHALF(0,RssV),fGETHALF(0,RttV)) - \
-	                       fMPY16SS(fGETHALF(1,RssV),fGETHALF(1,RttV))))); \
-	fSETWORD(1,DST,SAT(ACC1 fSCALE(SHIFT,fMPY16SS(fGETHALF(2,RssV),fGETHALF(2,RttV)) - \
-	                       fMPY16SS(fGETHALF(3,RssV),fGETHALF(3,RttV))))); \
+    fSETWORD(0,DST,SAT(ACC0 fSCALE(SHIFT,fMPY16SS(fGETHALF(0,RssV),fGETHALF(0,RttV)) - \
+        fMPY16SS(fGETHALF(1,RssV),fGETHALF(1,RttV))))); \
+    fSETWORD(1,DST,SAT(ACC1 fSCALE(SHIFT,fMPY16SS(fGETHALF(2,RssV),fGETHALF(2,RttV)) - \
+        fMPY16SS(fGETHALF(3,RssV),fGETHALF(3,RttV))))); \
 
 
 #undef VCMPYIR
 #define VCMPYIR(TAGBASE,DSTSYN,DSTVAL,ACCSEM,ACCVAL0,ACCVAL1,SHIFTSYN,SHIFTVAL,SATSYN,SATVAL) \
 Q6INSN(M2_##TAGBASE##i,DSTSYN ACCSEM "vcmpyi(Rss32,Rtt32)" SHIFTSYN SATSYN,ATTRIBS(A_ARCHV2), \
-	"Vector Complex Multiply Imaginary", { VCMPYSEMI(DSTVAL,ACCVAL0,ACCVAL1,SHIFTVAL,SATVAL); }) \
+    "Vector Complex Multiply Imaginary", { VCMPYSEMI(DSTVAL,ACCVAL0,ACCVAL1,SHIFTVAL,SATVAL); }) \
 Q6INSN(M2_##TAGBASE##r,DSTSYN ACCSEM "vcmpyr(Rss32,Rtt32)" SHIFTSYN SATSYN,ATTRIBS(A_ARCHV2), \
-	"Vector Complex Multiply Imaginary", { VCMPYSEMR(DSTVAL,ACCVAL0,ACCVAL1,SHIFTVAL,SATVAL); })
+    "Vector Complex Multiply Imaginary", { VCMPYSEMR(DSTVAL,ACCVAL0,ACCVAL1,SHIFTVAL,SATVAL); })
 
 
 VCMPYIR(vcmpy_s0_sat_,"Rdd32",RddV,"=",,,"",0,":sat",fSAT)
@@ -946,133 +946,133 @@ VCMPYIR(vcmac_s0_sat_,"Rxx32",RxxV,"+=",fGETWORD(0,RxxV) + ,fGETWORD(1,RxxV) + ,
 
 Q6INSN(S2_vcrotate,"Rdd32=vcrotate(Rss32,Rt32)",ATTRIBS(A_ARCHV2),"Rotate complex value by multiple of PI/2",
 {
-	fHIDE(size1u_t tmp;)
-	tmp = fEXTRACTU_RANGE(RtV,1,0);
-	if (tmp == 0) { /* No rotation */
-		fSETHALF(0,RddV,fGETHALF(0,RssV));
-		fSETHALF(1,RddV,fGETHALF(1,RssV));
-	} else if (tmp == 1) { /* Multiply by -J */
-		fSETHALF(0,RddV,fGETHALF(1,RssV));
-		fSETHALF(1,RddV,fSATH(-fGETHALF(0,RssV)));
-	} else if (tmp == 2) { /* Multiply by J */
-		fSETHALF(0,RddV,fSATH(-fGETHALF(1,RssV)));
-		fSETHALF(1,RddV,fGETHALF(0,RssV));
-	} else { /* Multiply by -1 */
-		fHIDE(if (tmp != 3) fatal("C is broken");)
-		fSETHALF(0,RddV,fSATH(-fGETHALF(0,RssV)));
-		fSETHALF(1,RddV,fSATH(-fGETHALF(1,RssV)));
-	}
-	tmp = fEXTRACTU_RANGE(RtV,3,2);
-	if (tmp == 0) { /* No rotation */
-		fSETHALF(2,RddV,fGETHALF(2,RssV));
-		fSETHALF(3,RddV,fGETHALF(3,RssV));
-	} else if (tmp == 1) { /* Multiply by -J */
-		fSETHALF(2,RddV,fGETHALF(3,RssV));
-		fSETHALF(3,RddV,fSATH(-fGETHALF(2,RssV)));
-	} else if (tmp == 2) { /* Multiply by J */
-		fSETHALF(2,RddV,fSATH(-fGETHALF(3,RssV)));
-		fSETHALF(3,RddV,fGETHALF(2,RssV));
-	} else { /* Multiply by -1 */
-		fHIDE(if (tmp != 3) fatal("C is broken");)
-		fSETHALF(2,RddV,fSATH(-fGETHALF(2,RssV)));
-		fSETHALF(3,RddV,fSATH(-fGETHALF(3,RssV)));
-	}
+    fHIDE(size1u_t tmp;)
+    tmp = fEXTRACTU_RANGE(RtV,1,0);
+    if (tmp == 0) { /* No rotation */
+        fSETHALF(0,RddV,fGETHALF(0,RssV));
+        fSETHALF(1,RddV,fGETHALF(1,RssV));
+    } else if (tmp == 1) { /* Multiply by -J */
+        fSETHALF(0,RddV,fGETHALF(1,RssV));
+        fSETHALF(1,RddV,fSATH(-fGETHALF(0,RssV)));
+    } else if (tmp == 2) { /* Multiply by J */
+        fSETHALF(0,RddV,fSATH(-fGETHALF(1,RssV)));
+        fSETHALF(1,RddV,fGETHALF(0,RssV));
+    } else { /* Multiply by -1 */
+        fHIDE(if (tmp != 3) fatal("C is broken");)
+        fSETHALF(0,RddV,fSATH(-fGETHALF(0,RssV)));
+        fSETHALF(1,RddV,fSATH(-fGETHALF(1,RssV)));
+    }
+    tmp = fEXTRACTU_RANGE(RtV,3,2);
+    if (tmp == 0) { /* No rotation */
+        fSETHALF(2,RddV,fGETHALF(2,RssV));
+        fSETHALF(3,RddV,fGETHALF(3,RssV));
+    } else if (tmp == 1) { /* Multiply by -J */
+        fSETHALF(2,RddV,fGETHALF(3,RssV));
+        fSETHALF(3,RddV,fSATH(-fGETHALF(2,RssV)));
+    } else if (tmp == 2) { /* Multiply by J */
+        fSETHALF(2,RddV,fSATH(-fGETHALF(3,RssV)));
+        fSETHALF(3,RddV,fGETHALF(2,RssV));
+    } else { /* Multiply by -1 */
+        fHIDE(if (tmp != 3) fatal("C is broken");)
+        fSETHALF(2,RddV,fSATH(-fGETHALF(2,RssV)));
+        fSETHALF(3,RddV,fSATH(-fGETHALF(3,RssV)));
+    }
 })
 
 
 Q6INSN(S4_vrcrotate_acc,"Rxx32+=vrcrotate(Rss32,Rt32,#u2)",ATTRIBS(),"Rotate and Reduce Bytes",
 {
-	fHIDE(int i; int tmpr; int tmpi; unsigned int control;)
-	fHIDE(int sumr; int sumi;)
-	sumr = 0;
-	sumi = 0;
-	control = fGETUBYTE(uiV,RtV);
-	for (i = 0; i < 8; i += 2) {
-		tmpr = fGETBYTE(i  ,RssV);
-		tmpi = fGETBYTE(i+1,RssV);
-		switch (control & 3) {
-			case 0: /* No Rotation */
-				sumr += tmpr;
-				sumi += tmpi;
-				break;
-			case 1: /* Multiply by -J */
-				sumr += tmpi;
-				sumi -= tmpr;
-				break;
-			case 2: /* Multiply by J */
-				sumr -= tmpi;
-				sumi += tmpr;
-				break;
-			case 3: /* Multiply by -1 */
-				sumr -= tmpr;
-				sumi -= tmpi;
-				break;
-			fHIDE(default: fatal("C is broken!");)
-		}
-		control = control >> 2;
-	}
-	fSETWORD(0,RxxV,fGETWORD(0,RxxV) + sumr);
-	fSETWORD(1,RxxV,fGETWORD(1,RxxV) + sumi);
+    fHIDE(int i; int tmpr; int tmpi; unsigned int control;)
+    fHIDE(int sumr; int sumi;)
+    sumr = 0;
+    sumi = 0;
+    control = fGETUBYTE(uiV,RtV);
+    for (i = 0; i < 8; i += 2) {
+        tmpr = fGETBYTE(i  ,RssV);
+        tmpi = fGETBYTE(i+1,RssV);
+        switch (control & 3) {
+        case 0: /* No Rotation */
+            sumr += tmpr;
+            sumi += tmpi;
+            break;
+        case 1: /* Multiply by -J */
+            sumr += tmpi;
+            sumi -= tmpr;
+            break;
+        case 2: /* Multiply by J */
+            sumr -= tmpi;
+            sumi += tmpr;
+            break;
+        case 3: /* Multiply by -1 */
+            sumr -= tmpr;
+            sumi -= tmpi;
+            break;
+        fHIDE(default: fatal("C is broken!");)
+        }
+        control = control >> 2;
+    }
+    fSETWORD(0,RxxV,fGETWORD(0,RxxV) + sumr);
+    fSETWORD(1,RxxV,fGETWORD(1,RxxV) + sumi);
 })
 
 Q6INSN(S4_vrcrotate,"Rdd32=vrcrotate(Rss32,Rt32,#u2)",ATTRIBS(),"Rotate and Reduce Bytes",
 {
-	fHIDE(int i; int tmpr; int tmpi; unsigned int control;)
-	fHIDE(int sumr; int sumi;)
-	sumr = 0;
-	sumi = 0;
-	control = fGETUBYTE(uiV,RtV);
-	for (i = 0; i < 8; i += 2) {
-		tmpr = fGETBYTE(i  ,RssV);
-		tmpi = fGETBYTE(i+1,RssV);
-		switch (control & 3) {
-			case 0: /* No Rotation */
-				sumr += tmpr;
-				sumi += tmpi;
-				break;
-			case 1: /* Multiply by -J */
-				sumr += tmpi;
-				sumi -= tmpr;
-				break;
-			case 2: /* Multiply by J */
-				sumr -= tmpi;
-				sumi += tmpr;
-				break;
-			case 3: /* Multiply by -1 */
-				sumr -= tmpr;
-				sumi -= tmpi;
-				break;
-			fHIDE(default: fatal("C is broken!");)
-		}
-		control = control >> 2;
-	}
-	fSETWORD(0,RddV,sumr);
-	fSETWORD(1,RddV,sumi);
+    fHIDE(int i; int tmpr; int tmpi; unsigned int control;)
+    fHIDE(int sumr; int sumi;)
+    sumr = 0;
+    sumi = 0;
+    control = fGETUBYTE(uiV,RtV);
+    for (i = 0; i < 8; i += 2) {
+        tmpr = fGETBYTE(i  ,RssV);
+        tmpi = fGETBYTE(i+1,RssV);
+        switch (control & 3) {
+        case 0: /* No Rotation */
+            sumr += tmpr;
+            sumi += tmpi;
+            break;
+        case 1: /* Multiply by -J */
+            sumr += tmpi;
+            sumi -= tmpr;
+            break;
+        case 2: /* Multiply by J */
+            sumr -= tmpi;
+            sumi += tmpr;
+            break;
+        case 3: /* Multiply by -1 */
+            sumr -= tmpr;
+            sumi -= tmpi;
+            break;
+        fHIDE(default: fatal("C is broken!");)
+        }
+        control = control >> 2;
+    }
+    fSETWORD(0,RddV,sumr);
+    fSETWORD(1,RddV,sumi);
 })
 
 
 Q6INSN(S2_vcnegh,"Rdd32=vcnegh(Rss32,Rt32)",ATTRIBS(),"Conditional Negate halfwords",
 {
-	fHIDE(int i;)
-	for (i = 0; i < 4; i++) {
-		if (fGETBIT(i,RtV)) {
-			fSETHALF(i,RddV,fSATH(-fGETHALF(i,RssV)));
-		} else {
-			fSETHALF(i,RddV,fGETHALF(i,RssV));
-		}
-	}
+    fHIDE(int i;)
+    for (i = 0; i < 4; i++) {
+        if (fGETBIT(i,RtV)) {
+            fSETHALF(i,RddV,fSATH(-fGETHALF(i,RssV)));
+        } else {
+            fSETHALF(i,RddV,fGETHALF(i,RssV));
+        }
+    }
 })
 
 Q6INSN(S2_vrcnegh,"Rxx32+=vrcnegh(Rss32,Rt32)",ATTRIBS(),"Vector Reduce Conditional Negate halfwords",
 {
-	fHIDE(int i;)
-	for (i = 0; i < 4; i++) {
-		if (fGETBIT(i,RtV)) {
-			RxxV += -fGETHALF(i,RssV);
-		} else {
-			RxxV += fGETHALF(i,RssV);
-		}
-	}
+    fHIDE(int i;)
+    for (i = 0; i < 4; i++) {
+        if (fGETBIT(i,RtV)) {
+            RxxV += -fGETHALF(i,RssV);
+        } else {
+            RxxV += fGETHALF(i,RssV);
+        }
+    }
 })
 
 
@@ -1091,7 +1091,7 @@ Q6INSN(M4_pmpyw,"Rdd32=pmpyw(Rs32,Rt32)",ATTRIBS(),"Polynomial 32bit Multiplicat
         for(i=0; i < 32; i++) {
             if((y >> i) & 1) prod ^= (x << i);
         }
-	RddV = prod;
+        RddV = prod;
 })
 
 Q6INSN(M4_vpmpyh,"Rdd32=vpmpyh(Rs32,Rt32)",ATTRIBS(),"Dual Polynomial 16bit Multiplication with Addition in GF(2)",
@@ -1127,7 +1127,7 @@ Q6INSN(M4_pmpyw_acc,"Rxx32^=pmpyw(Rs32,Rt32)",ATTRIBS(),"Polynomial 32bit Multip
         for(i=0; i < 32; i++) {
             if((y >> i) & 1) prod ^= (x << i);
         }
-	RxxV ^= prod;
+        RxxV ^= prod;
 })
 
 Q6INSN(M4_vpmpyh_acc,"Rxx32^=vpmpyh(Rs32,Rt32)",ATTRIBS(),"Dual Polynomial 16bit Multiplication with Addition in GF(2)",
@@ -1206,7 +1206,3 @@ CMPY128RND(wcmpyrw, "cmpyrw", "Rtt32", 0, 0, 1, 1, fSUB128)
 CMPY128RND(wcmpyrwc, "cmpyrw", "Rtt32*", 0, 0, 1, 1, fADD128)
 CMPY128RND(wcmpyiw, "cmpyiw", "Rtt32", 0, 1, 1, 0, fADD128)
 CMPY128RND(wcmpyiwc, "cmpyiw", "Rtt32*", 1, 0, 0, 1, fSUB128)
-
-
-
-

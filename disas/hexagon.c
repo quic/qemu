@@ -66,4 +66,3 @@ int print_insn_hexagon(bfd_vma memaddr, struct disassemble_info *info)
 
     return len;
 }
-

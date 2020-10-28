@@ -123,4 +123,3 @@
 #undef __SELF_DEF_EXT_ENC
 #undef DEF_EXT_ENC
 #endif
-

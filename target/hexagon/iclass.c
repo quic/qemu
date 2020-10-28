@@ -90,4 +90,3 @@ SlotMask find_iclass_slots(Opcode opcode, int itype)
         return iclass_info[itype];
     }
 }
-

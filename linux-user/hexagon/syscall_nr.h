@@ -340,4 +340,3 @@
 #define TARGET_NR_fork 1079
 
 #endif /* LINUX_USER_HEXAGON_SYSCALL_NR_H */
-

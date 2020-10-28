@@ -446,4 +446,3 @@ int arch_invsqrt_lookup(int index)
     };
     return roundrom[index];
 };
-

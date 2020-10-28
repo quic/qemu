@@ -135,4 +135,3 @@ DEF_ATTRIB(DCCLEANINVA, "dccleaninva", "", "")
 
 /* Keep this as the last attribute: */
 DEF_ATTRIB(ZZ_LASTATTRIB, "Last attribute in the file", "", "")
-

@@ -819,8 +819,8 @@ DEF_ENC32(C4_and_orn,   ICLASS_CR" 1011  1011--ss  PP0---tt  uu----dd")
 DEF_ENC32(C4_or_andn,   ICLASS_CR" 1011  1101--ss  PP0---tt  uu----dd")
 DEF_ENC32(C4_or_orn,    ICLASS_CR" 1011  1111--ss  PP0---tt  uu----dd")
 
-DEF_ENC32(C4_fastcorner9,	ICLASS_CR"1011 0000--ss  PP1---tt 1--1--dd")
-DEF_ENC32(C4_fastcorner9_not,	ICLASS_CR"1011 0001--ss  PP1---tt 1--1--dd")
+DEF_ENC32(C4_fastcorner9,       ICLASS_CR"1011 0000--ss  PP1---tt 1--1--dd")
+DEF_ENC32(C4_fastcorner9_not,   ICLASS_CR"1011 0001--ss  PP1---tt 1--1--dd")
 
 
 
@@ -1076,9 +1076,9 @@ MPY_ENC(F2_dffixupd,         "1000","ddddd","0","1","1","0","11")
 MPY_ENC(F2_dfrecipa,         "1000","ddddd","0","1","1","1","ee")
 #endif
 
-MPY_ENC(M7_dcmpyrw,       	"1000","ddddd","0","0","0","1","10")
+MPY_ENC(M7_dcmpyrw,          "1000","ddddd","0","0","0","1","10")
 MPY_ENC(M7_dcmpyrwc,         "1000","ddddd","0","0","1","1","10")
-MPY_ENC(M7_dcmpyiw,       	"1000","ddddd","0","1","1","0","10")
+MPY_ENC(M7_dcmpyiw,          "1000","ddddd","0","1","1","0","10")
 MPY_ENC(M7_dcmpyiwc,         "1000","ddddd","0","1","1","1","10")
 
 
@@ -1087,14 +1087,14 @@ DEF_FIELDROW_DESC32(ICLASS_M" 1001 -------- PP------ --------","[#9] Rd=(Rss,Rtt
 MPY_ENC(M2_vdmpyrs_s0,       "1001","ddddd","0","0","0","0","00")
 MPY_ENC(M2_vdmpyrs_s1,       "1001","ddddd","0","0","0","1","00")
 
-MPY_ENC(M7_wcmpyrw,      	 "1001","ddddd","0","0","1","0","00")
+MPY_ENC(M7_wcmpyrw,          "1001","ddddd","0","0","1","0","00")
 MPY_ENC(M7_wcmpyrw_rnd,      "1001","ddddd","0","0","1","1","00")
-MPY_ENC(M7_wcmpyiw,       	 "1001","ddddd","0","1","0","0","00")
+MPY_ENC(M7_wcmpyiw,          "1001","ddddd","0","1","0","0","00")
 MPY_ENC(M7_wcmpyiw_rnd,      "1001","ddddd","0","1","0","1","00")
 
-MPY_ENC(M7_wcmpyrwc,      	 "1001","ddddd","0","1","1","0","00")
+MPY_ENC(M7_wcmpyrwc,         "1001","ddddd","0","1","1","0","00")
 MPY_ENC(M7_wcmpyrwc_rnd,     "1001","ddddd","0","1","1","1","00")
-MPY_ENC(M7_wcmpyiwc,       	 "1001","ddddd","1","0","0","0","00")
+MPY_ENC(M7_wcmpyiwc,         "1001","ddddd","1","0","0","0","00")
 MPY_ENC(M7_wcmpyiwc_rnd,     "1001","ddddd","1","0","0","1","00")
 
 
@@ -1159,10 +1159,10 @@ MPY_ENC(F2_dffma_sc,         "1010","xxxxx","0","1","1","1","uu")
 #endif
 
 
-MPY_ENC(M7_dcmpyrw_acc,       	"1010","xxxxx","0","0","0","1","10")
-MPY_ENC(M7_dcmpyrwc_acc,         "1010","xxxxx","0","0","1","1","10")
-MPY_ENC(M7_dcmpyiw_acc,       	"1010","xxxxx","0","1","1","0","10")
-MPY_ENC(M7_dcmpyiwc_acc,         "1010","xxxxx","1","0","1","0","10")
+MPY_ENC(M7_dcmpyrw_acc,      "1010","xxxxx","0","0","0","1","10")
+MPY_ENC(M7_dcmpyrwc_acc,     "1010","xxxxx","0","0","1","1","10")
+MPY_ENC(M7_dcmpyiw_acc,      "1010","xxxxx","0","1","1","0","10")
+MPY_ENC(M7_dcmpyiwc_acc,     "1010","xxxxx","1","0","1","0","10")
 
 
 
@@ -1756,8 +1756,8 @@ SH2_RR_ENC(A2_roundsat,           "1000","110","-","001","ddddd")
 SH_RRI5_ENC(S2_asr_i_svw_trun,    "1000","110",    "010","ddddd")
 SH_RRI5_ENC(A4_bitspliti,         "1000","110",    "100","ddddd")
 
-SH_RRI5_ENC(A7_clip,         	  "1000","110",    "101","ddddd")
-SH_RRI5_ENC(A7_vclip,         	  "1000","110",    "110","ddddd")
+SH_RRI5_ENC(A7_clip,              "1000","110",    "101","ddddd")
+SH_RRI5_ENC(A7_vclip,             "1000","110",    "110","ddddd")
 
 
 SH2_RR_ENC(S4_clbpnorm,           "1000","011","-","000","ddddd")
@@ -1881,9 +1881,9 @@ SH_RRR_ENC(S2_shuffeh,          "0001","00-","-","11-","ddddd")
 
 SH_RRR_ENC(S2_shuffoh,          "0001","10-","-","000","ddddd")
 SH_RRR_ENC(S2_vtrunewh,         "0001","10-","-","010","ddddd")
-SH_RRR_ENC(S6_vtrunehb_ppp,		"0001","10-","-","011","ddddd")
+SH_RRR_ENC(S6_vtrunehb_ppp,     "0001","10-","-","011","ddddd")
 SH_RRR_ENC(S2_vtrunowh,         "0001","10-","-","100","ddddd")
-SH_RRR_ENC(S6_vtrunohb_ppp,		"0001","10-","-","101","ddddd")
+SH_RRR_ENC(S6_vtrunohb_ppp,     "0001","10-","-","101","ddddd")
 SH_RRR_ENC(S2_lfsp,             "0001","10-","-","110","ddddd")
 
 SH_RRR_ENC(S4_vxaddsubw,        "0001","01-","-","000","ddddd")
@@ -1901,8 +1901,8 @@ SH_RRR_ENC(S2_cabacdecbin,      "0001","11-","-","11-","ddddd") /* implicit P0 w
 DEF_FIELDROW_DESC32(ICLASS_S3op" 0010 -------- PP------ --------","[#2] Rdd=(Rss,Rtt,Pu)")
 SH_RRR_ENC(S2_valignrb,         "0010","0--","-","-uu","ddddd")
 SH_RRR_ENC(S2_vsplicerb,        "0010","100","-","-uu","ddddd")
-SH_RRR_ENC(A4_addp_c,	    	"0010","110","-","-xx","ddddd")
-SH_RRR_ENC(A4_subp_c,		"0010","111","-","-xx","ddddd")
+SH_RRR_ENC(A4_addp_c,           "0010","110","-","-xx","ddddd")
+SH_RRR_ENC(A4_subp_c,           "0010","111","-","-xx","ddddd")
 
 
 DEF_FIELDROW_DESC32(ICLASS_S3op" 0011 -------- PP------ --------","[#3] Rdd=(Rss,Rt)")
@@ -1985,19 +1985,19 @@ RSHIFTTYPES(p_nac,              "1011","100","-","-","xxxxx")
 RSHIFTTYPES(p_acc,              "1011","110","-","-","xxxxx")
 RSHIFTTYPES(p_xor,              "1011","011","-","-","xxxxx")
 
-SH_RRR_ENCX(A4_vrmaxh,		"1011","001","0","001","uuuuu")
-SH_RRR_ENCX(A4_vrmaxuh,		"1011","001","1","001","uuuuu")
-SH_RRR_ENCX(A4_vrmaxw,		"1011","001","0","010","uuuuu")
-SH_RRR_ENCX(A4_vrmaxuw,		"1011","001","1","010","uuuuu")
+SH_RRR_ENCX(A4_vrmaxh,          "1011","001","0","001","uuuuu")
+SH_RRR_ENCX(A4_vrmaxuh,         "1011","001","1","001","uuuuu")
+SH_RRR_ENCX(A4_vrmaxw,          "1011","001","0","010","uuuuu")
+SH_RRR_ENCX(A4_vrmaxuw,         "1011","001","1","010","uuuuu")
 
-SH_RRR_ENCX(A4_vrminh,		"1011","001","0","101","uuuuu")
-SH_RRR_ENCX(A4_vrminuh,		"1011","001","1","101","uuuuu")
-SH_RRR_ENCX(A4_vrminw,		"1011","001","0","110","uuuuu")
-SH_RRR_ENCX(A4_vrminuw,		"1011","001","1","110","uuuuu")
+SH_RRR_ENCX(A4_vrminh,          "1011","001","0","101","uuuuu")
+SH_RRR_ENCX(A4_vrminuh,         "1011","001","1","101","uuuuu")
+SH_RRR_ENCX(A4_vrminw,          "1011","001","0","110","uuuuu")
+SH_RRR_ENCX(A4_vrminuw,         "1011","001","1","110","uuuuu")
 
-SH_RRR_ENC(S2_vrcnegh,		"1011","001","1","111","xxxxx")
+SH_RRR_ENC(S2_vrcnegh,          "1011","001","1","111","xxxxx")
 
-SH_RRR_ENC(S4_vrcrotate_acc,	"1011","101","i","--i","xxxxx")
+SH_RRR_ENC(S4_vrcrotate_acc,    "1011","101","i","--i","xxxxx")
 
 
 DEF_FIELDROW_DESC32(ICLASS_S3op" 1100 -------- PP------ --------","[#12] Rx=(Rs,Rt)")
@@ -2130,7 +2130,7 @@ ALU64_RRR_ENC(A2_vminh,          "0011","101","-","001","ddddd")
 ALU64_RRR_ENC(A2_vminuh,         "0011","101","-","010","ddddd")
 ALU64_RRR_ENC(A2_vminw,          "0011","101","-","011","ddddd")
 ALU64_RRR_ENC(A2_vminuw,         "0011","101","-","100","ddddd")
-ALU64_RRR_ENC(A2_vmaxuw,         "0011","101","-","101","ddddd")	/* Doh! We did not put max with other max insns in v3 */
+ALU64_RRR_ENC(A2_vmaxuw,         "0011","101","-","101","ddddd")
 ALU64_RRR_ENC(A2_minp,           "0011","101","-","110","ddddd")
 ALU64_RRR_ENC(A2_minup,          "0011","101","-","111","ddddd")
 
@@ -2141,7 +2141,7 @@ ALU64_RRR_ENC(A2_vmaxw,          "0011","110","-","011","ddddd")
 ALU64_RRR_ENC(A2_maxp,           "0011","110","-","100","ddddd")
 ALU64_RRR_ENC(A2_maxup,          "0011","110","-","101","ddddd")
 ALU64_RRR_ENC(A2_vmaxb,          "0011","110","-","110","ddddd")
-ALU64_RRR_ENC(A2_vminb,          "0011","110","-","111","ddddd")	/* EJP: Because vmaxuw out of place */
+ALU64_RRR_ENC(A2_vminb,          "0011","110","-","111","ddddd")
 
 ALU64_RRR_ENC(A2_andp,           "0011","111","-","000","ddddd")
 ALU64_RRR_ENC(A2_orp,            "0011","111","-","010","ddddd")

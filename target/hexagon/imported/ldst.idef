@@ -130,41 +130,41 @@ Q6INSN(S2_allocframe,"allocframe(Rx32,#u11:3):raw", ATTRIBS(A_STORE,A_RESTRICT_S
 
 Q6INSN(L2_deallocframe,"Rdd32=deallocframe(Rs32):raw", ATTRIBS(A_LOAD), "Deallocate stack frame",
 { fHIDE(size8u_t tmp;) fEA_REG(RsV);
-	fLOAD(1,8,u,EA,tmp);
-	RddV = fFRAME_UNSCRAMBLE(tmp);
-	fWRITE_SP(EA+8); })
+  fLOAD(1,8,u,EA,tmp);
+  RddV = fFRAME_UNSCRAMBLE(tmp);
+  fWRITE_SP(EA+8); })
 
 Q6INSN(L4_return,"Rdd32=dealloc_return(Rs32):raw", ATTRIBS(A_JINDIR,A_LOAD,A_RETURN), "Deallocate stack frame and return",
 { fHIDE(size8u_t tmp;) fEA_REG(RsV);
-	fLOAD(1,8,u,EA,tmp);
-	RddV = fFRAME_UNSCRAMBLE(tmp);
-	fWRITE_SP(EA+8);
-    fJUMPR(REG_LR,fGETWORD(1,RddV),COF_TYPE_JUMPR);})
+  fLOAD(1,8,u,EA,tmp);
+  RddV = fFRAME_UNSCRAMBLE(tmp);
+  fWRITE_SP(EA+8);
+  fJUMPR(REG_LR,fGETWORD(1,RddV),COF_TYPE_JUMPR);})
 
 #define CONDSEM(SRCREG,STALLBITS0,STALLBITS1,PREDFUNC,PREDARG,STALLSPEC,PREDCOND) \
 { \
-	fHIDE(size8u_t tmp;) \
-	fBRANCH_SPECULATE_STALL(PREDFUNC##PREDCOND(PREDARG),,STALLSPEC,STALLBITS0,STALLBITS1); \
-	fEA_REG(SRCREG); \
-	if (PREDFUNC##PREDCOND(PREDARG)) { \
-		fLOAD(1,8,u,EA,tmp); \
-		RddV = fFRAME_UNSCRAMBLE(tmp); \
-		fWRITE_SP(EA+8); \
-		fJUMPR(REG_LR,fGETWORD(1,RddV),COF_TYPE_JUMPR); \
-	} else { \
-		LOAD_CANCEL(EA); \
-	} \
+    fHIDE(size8u_t tmp;) \
+    fBRANCH_SPECULATE_STALL(PREDFUNC##PREDCOND(PREDARG),,STALLSPEC,STALLBITS0,STALLBITS1); \
+    fEA_REG(SRCREG); \
+    if (PREDFUNC##PREDCOND(PREDARG)) { \
+        fLOAD(1,8,u,EA,tmp); \
+        RddV = fFRAME_UNSCRAMBLE(tmp); \
+        fWRITE_SP(EA+8); \
+        fJUMPR(REG_LR,fGETWORD(1,RddV),COF_TYPE_JUMPR); \
+    } else { \
+        LOAD_CANCEL(EA); \
+    } \
 }
 
 #define COND_RETURN_TF(TG,TG2,DOTNEW,STALLBITS0,STALLBITS1,STALLSPEC,ATTRIBS,PREDFUNC,PREDARG,T_NT) \
-	Q6INSN(TG##_t##TG2,"if (Pv4"DOTNEW") Rdd32=dealloc_return(Rs32)"T_NT":raw",ATTRIBS,"deallocate stack frame and return", \
-		CONDSEM(RsV,STALLBITS0,STALLBITS1,PREDFUNC,PREDARG,STALLSPEC,)) \
-	Q6INSN(TG##_f##TG2,"if (!Pv4"DOTNEW") Rdd32=dealloc_return(Rs32)"T_NT":raw",ATTRIBS,"deallocate stack frame and return", \
-		CONDSEM(RsV,STALLBITS0,STALLBITS1,PREDFUNC##NOT,PREDARG,STALLSPEC,))
+    Q6INSN(TG##_t##TG2,"if (Pv4"DOTNEW") Rdd32=dealloc_return(Rs32)"T_NT":raw",ATTRIBS,"deallocate stack frame and return", \
+    CONDSEM(RsV,STALLBITS0,STALLBITS1,PREDFUNC,PREDARG,STALLSPEC,)) \
+    Q6INSN(TG##_f##TG2,"if (!Pv4"DOTNEW") Rdd32=dealloc_return(Rs32)"T_NT":raw",ATTRIBS,"deallocate stack frame and return", \
+    CONDSEM(RsV,STALLBITS0,STALLBITS1,PREDFUNC##NOT,PREDARG,STALLSPEC,))
 
 #define COND_RETURN_NEW(TG,STALLBITS0,STALLBITS1,ATTRIBS) \
-	COND_RETURN_TF(TG,new_pt,".new",12,0,SPECULATE_TAKEN,ATTRIBS,fLSBNEW,PvN,":t") \
-	COND_RETURN_TF(TG,new_pnt,".new",12,0,SPECULATE_NOT_TAKEN,ATTRIBS,fLSBNEW,PvN,":nt") \
+    COND_RETURN_TF(TG,new_pt,".new",12,0,SPECULATE_TAKEN,ATTRIBS,fLSBNEW,PvN,":t") \
+    COND_RETURN_TF(TG,new_pnt,".new",12,0,SPECULATE_NOT_TAKEN,ATTRIBS,fLSBNEW,PvN,":nt") \
 
 #define RETURN_ATTRIBS A_LOAD,A_RETURN
 

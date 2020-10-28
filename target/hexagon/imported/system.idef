@@ -27,26 +27,26 @@
 
 Q6INSN(J2_trap0,"trap0(#u8)",ATTRIBS(A_COF),
 "Trap to Operating System",
-	fTRAP(0,uiV);
+    fTRAP(0,uiV);
 )
 
 Q6INSN(J2_trap1,"trap1(Rx32,#u8)",ATTRIBS(A_COF),
 "Trap to Operating System",
-	/*
-	 * Note: if RxV is not written, we get the same as the input.
-	 * Since trap1 is SOLO, this means the register will effectively not be updated
-	 */
-	if (!fTRAP1_VIRTINSN(uiV)) {
-		fTRAP(1,uiV);
-	} else if (uiV == 1) {
-		fVIRTINSN_RTE(uiV,RxV);
-	} else if (uiV == 3) {
-		fVIRTINSN_SETIE(uiV,RxV);
-	} else if (uiV == 4) {
-		fVIRTINSN_GETIE(uiV,RxV);
-	} else if (uiV == 6) {
-		fVIRTINSN_SPSWAP(uiV,RxV);
-	})
+    /*
+     * Note: if RxV is not written, we get the same as the input.
+     * Since trap1 is SOLO, this means the register will effectively not be updated
+     */
+    if (!fTRAP1_VIRTINSN(uiV)) {
+        fTRAP(1,uiV);
+    } else if (uiV == 1) {
+        fVIRTINSN_RTE(uiV,RxV);
+    } else if (uiV == 3) {
+        fVIRTINSN_SETIE(uiV,RxV);
+    } else if (uiV == 4) {
+        fVIRTINSN_GETIE(uiV,RxV);
+    } else if (uiV == 6) {
+        fVIRTINSN_SPSWAP(uiV,RxV);
+    })
 
 
 Q6INSN(J2_pause,"pause(#u8)",ATTRIBS(A_COF),
@@ -118,14 +118,14 @@ Q6INSN(Y2_tlbp,"Rd32=tlbp(Rs32)", ATTRIBS(A_PRIV), "Probe TLB", {RdV=fTLBP(RsV);
 
 Q6INSN(Y5_tlbasidi,"tlbinvasid(Rs32)",ATTRIBS(A_PRIV), "Invalidate ASID",
 {
-	fHIDE(int i;)
+    fHIDE(int i;)
     fHIDE(unsigned int NUM_TLB_ENTRIES = NUM_TLB_REGS(thread->processor_ptr);)
-	for (i = 0; i < NUM_TLB_ENTRIES; i++) {
-		if ((fGET_FIELD(fTLBR(i),PTE_G) == 0) &&
-			(fGET_FIELD(fTLBR(i),PTE_ASID) == fEXTRACTU_RANGE(RsV,26,20))) {
-			fTLBW(i,fTLBR(i) & ~(1ULL << 63));
-		}
-	}
+    for (i = 0; i < NUM_TLB_ENTRIES; i++) {
+        if ((fGET_FIELD(fTLBR(i),PTE_G) == 0) &&
+            (fGET_FIELD(fTLBR(i),PTE_ASID) == fEXTRACTU_RANGE(RsV,26,20))) {
+            fTLBW(i,fTLBR(i) & ~(1ULL << 63));
+        }
+    }
 })
 
 Q6INSN(Y2_tlblock,"tlblock", ATTRIBS(A_PRIV), "Lock TLB",
@@ -206,7 +206,7 @@ Q6INSN(Y2_start,"start(Rs32)",ATTRIBS(A_PRIV),"Start thread(s)",fSTART(RsV);)
 Q6INSN(Y2_wait,"wait(Rs32)",ATTRIBS(A_PRIV),"Make thread(s) wait",{
     fHIDE(RsV=RsV;)
     if (!fIN_DEBUG_MODE(fGET_TNUM())) fSET_WAIT_MODE(fGET_TNUM());
-	fIN_DEBUG_MODE_WARN(fGET_TNUM());
+    fIN_DEBUG_MODE_WARN(fGET_TNUM());
 })
 
 Q6INSN(Y2_resume,"resume(Rs32)",ATTRIBS(A_PRIV),"Make thread(s) stop waiting",fRESUME(RsV);)
@@ -244,34 +244,30 @@ Q6INSN(Y2_dcinva,"dcinva(Rs32)",ATTRIBS(A_RESTRICT_SLOT0ONLY,A_DCFLUSHOP),"Data 
 Q6INSN(Y2_dcinvidx,"dcinvidx(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_DCFLUSHOP),"Data Cache Invalidate Index",{fDCINVIDX(RsV);})
 Q6INSN(Y2_dctagr,"Rd32=dctagr(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_DCTAGOP),"Data Cache Tag Read",{fDCTAGR(RsV,RdV,RdN);})
 Q6INSN(Y2_dctagw,"dctagw(Rs32,Rt32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_DCTAGOP),"Data Cache Tag Write",{fDCTAGW(RsV,RtV);})
-
-
 Q6INSN(Y2_l2kill,"l2kill",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2FLUSHOP),"L2 Cache Invalidate",{fL2KILL();})
 Q6INSN(Y4_l2tagw,"l2tagw(Rs32,Rt32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2TAGOP),"L2 Cache Tag Write",{fL2TAGW(RsV,RtV);})
 Q6INSN(Y4_l2tagr,"Rd32=l2tagr(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2TAGOP),"L2 Cache Tag Read",{fL2TAGR(RsV,RdV,RdN);})
-
 Q6INSN(Y2_l2cleaninvidx,"l2cleaninvidx(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2FLUSHOP),"L2 Cache Clean and Invalidate Index",{fL2CLEANINVIDX(RsV); })
 Q6INSN(Y5_l2cleanidx,"l2cleanidx(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2FLUSHOP),"L2 Cache Clean by Index",{fL2CLEANIDX(RsV); })
 Q6INSN(Y5_l2invidx,"l2invidx(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2FLUSHOP),"L2 Cache Invalidate by Index",{fL2INVIDX(RsV); })
 
 
-
 Q6INSN(Y4_l2fetch,"l2fetch(Rs32,Rt32)",ATTRIBS(A_RESTRICT_SLOT0ONLY),"L2 Cache Prefetch",
 { fL2FETCH(RsV,
-	(RtV&0xff), /*height*/
-	((RtV>>8)&0xff), /*width*/
-	((RtV>>16)&0xffff), /*stride*/
-	0); /*extra attrib flags*/
+           (RtV&0xff), /*height*/
+           ((RtV>>8)&0xff), /*width*/
+           ((RtV>>16)&0xffff), /*stride*/
+           0); /*extra attrib flags*/
 })
 
 
 
 Q6INSN(Y5_l2fetch,"l2fetch(Rs32,Rtt32)",ATTRIBS(A_RESTRICT_SLOT0ONLY),"L2 Cache Prefetch",
 { fL2FETCH(RsV,
-	fGETUHALF(0,RttV), /*height*/
-	fGETUHALF(1,RttV), /*width*/
-	fGETUHALF(2,RttV), /*stride*/
-	fGETUHALF(3,RttV)); /*flags*/
+           fGETUHALF(0,RttV), /*height*/
+           fGETUHALF(1,RttV), /*width*/
+           fGETUHALF(2,RttV), /*stride*/
+           fGETUHALF(3,RttV)); /*flags*/
 })
 
 Q6INSN(Y5_l2locka,"Pd4=l2locka(Rs32)", ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY),
@@ -291,5 +287,3 @@ Q6INSN(Y5_l2gcleaninv,"l2gcleaninv",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2FLUS
 Q6INSN(Y6_l2gcleanpa,"l2gclean(Rtt32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2FLUSHOP),"L2 Global Clean by PA Range",{fL2CLEANPA(RttV);})
 
 Q6INSN(Y6_l2gcleaninvpa,"l2gcleaninv(Rtt32)",ATTRIBS(A_PRIV,A_RESTRICT_SLOT0ONLY,A_L2FLUSHOP),"L2 Global Clean and Invalidate by PA Range",{fL2CLEANINVPA(RttV);})
-
-

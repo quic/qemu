@@ -17,7 +17,7 @@
 
 
 /*********************************************/
-/* Jump instructions			 */
+/* Jump instructions                         */
 /*********************************************/
 
 #define A_JDIR A_JUMP
@@ -65,7 +65,7 @@ Q6INSN(J4_hintjumpr,"hintjr(Rs32)",ATTRIBS(A_JINDIR),"hint indirect conditional 
 
 
 /*********************************************/
-/* Compound Compare-Jumps		    */
+/* Compound Compare-Jumps                    */
 /*********************************************/
 Q6INSN(J2_jumprz,"if (Rs32!=#0) jump:nt #r13:2",ATTRIBS(A_CJNEWDIR,A_ARCHV3),"direct conditional jump if register true",
 {fBRANCH_SPECULATE_STALL((RsV!=0), , SPECULATE_NOT_TAKEN,12,0) if (RsV != 0) { fBRANCH(fREAD_PC()+riV,COF_TYPE_JUMP);}})
@@ -94,7 +94,7 @@ Q6INSN(J2_jumprltezpt,"if (Rs32<=#0) jump:t #r13:2",ATTRIBS(A_CJNEWDIR,A_ARCHV3)
 
 
 /*********************************************/
-/* V4 Compound Compare-Jumps		 */
+/* V4 Compound Compare-Jumps                 */
 /*********************************************/
 
 
@@ -172,7 +172,7 @@ STD_CMPJUMPNEWRS(cmpltu_f,"!cmp.gtu(Rt32,Ns8.new)",!(fCAST4u(RtV)>fCAST4u(fNEWRE
 
 
 /*********************************************/
-/* Subroutine Call instructions	      */
+/* Subroutine Call instructions              */
 /*********************************************/
 
 #define CDIR_STD   A_CALL
@@ -200,7 +200,7 @@ Q6INSN(J2_callrf,"if (!Pu4) callr Rs32",ATTRIBS(CINDIR_STD),"indirect conditiona
 
 
 /*********************************************/
-/* HW Loop instructions		      */
+/* HW Loop instructions                      */
 /*********************************************/
 
 Q6INSN(J2_loop0r,"loop0(#r7:2,Rs32)",ATTRIBS(),"Initialize HW loop 0",
@@ -324,5 +324,3 @@ Q6INSN(J2_endloop1,"endloop1",ATTRIBS(A_HWLOOP1_END),"Loopend for outer loop",
     fWRITE_LC1(fREAD_LC1-1);
   }
 })
-
-

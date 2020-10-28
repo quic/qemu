@@ -73,20 +73,20 @@ Q6INSN(SL2_loadrd_sp,  "Rdd8=memd(r29+#u5:3)", ATTRIBS(A_LOAD,A_SUBINSN),"load d
 
 Q6INSN(SL2_deallocframe,"deallocframe", ATTRIBS(A_SUBINSN,A_LOAD), "Deallocate stack frame",
 { fHIDE(size8u_t tmp;) fEA_REG(fREAD_FP());
-	fLOAD(1,8,u,EA,tmp);
-	tmp = fFRAME_UNSCRAMBLE(tmp);
-	fWRITE_LR(fGETWORD(1,tmp));
-	fWRITE_FP(fGETWORD(0,tmp));
-	fWRITE_SP(EA+8); })
+  fLOAD(1,8,u,EA,tmp);
+  tmp = fFRAME_UNSCRAMBLE(tmp);
+  fWRITE_LR(fGETWORD(1,tmp));
+  fWRITE_FP(fGETWORD(0,tmp));
+  fWRITE_SP(EA+8); })
 
 Q6INSN(SL2_return,"dealloc_return", ATTRIBS(A_JINDIR,A_SUBINSN,A_LOAD,A_RETURN,A_RESTRICT_SLOT0ONLY), "Deallocate stack frame and return",
 { fHIDE(size8u_t tmp;) fEA_REG(fREAD_FP());
-	fLOAD(1,8,u,EA,tmp);
-	tmp = fFRAME_UNSCRAMBLE(tmp);
-	fWRITE_LR(fGETWORD(1,tmp));
-	fWRITE_FP(fGETWORD(0,tmp));
-	fWRITE_SP(EA+8);
-    fJUMPR(REG_LR,fGETWORD(1,tmp),COF_TYPE_JUMPR);})
+  fLOAD(1,8,u,EA,tmp);
+  tmp = fFRAME_UNSCRAMBLE(tmp);
+  fWRITE_LR(fGETWORD(1,tmp));
+  fWRITE_FP(fGETWORD(0,tmp));
+  fWRITE_SP(EA+8);
+  fJUMPR(REG_LR,fGETWORD(1,tmp),COF_TYPE_JUMPR);})
 
 Q6INSN(SL2_return_t,"if (p0) dealloc_return", ATTRIBS(A_JINDIROLD,A_SUBINSN,A_LOAD,A_RETURN,A_RESTRICT_SLOT0ONLY), "Deallocate stack frame and return",
 { fHIDE(size8u_t tmp;); fBRANCH_SPECULATE_STALL(fLSBOLD(fREAD_P0()),, SPECULATE_NOT_TAKEN,4,0); fEA_REG(fREAD_FP()); if (fLSBOLD(fREAD_P0())) { fLOAD(1,8,u,EA,tmp); tmp = fFRAME_UNSCRAMBLE(tmp); fWRITE_LR(fGETWORD(1,tmp)); fWRITE_FP(fGETWORD(0,tmp)); fWRITE_SP(EA+8);
@@ -147,6 +147,3 @@ Q6INSN(SS2_storebi1,   "memb(Rs16+#u4:0)=#1", ATTRIBS(A_STORE,A_SUBINSN), "store
 
 Q6INSN(SS2_allocframe,"allocframe(#u5:3)", ATTRIBS(A_SUBINSN,A_STORE,A_RESTRICT_SLOT0ONLY), "Allocate stack frame",
 { fEA_RI(fREAD_SP(),-8);  fSTORE(1,8,EA,fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | fCAST4_4u(fREAD_FP()))); fWRITE_FP(EA); fFRAMECHECK(EA-uiV,EA); fWRITE_SP(EA-uiV); })
-
-
-
