@@ -37,6 +37,7 @@
 #include "include/sysemu/sysemu.h"
 #include "internal.h"
 
+
 static const struct MemmapEntry {
     hwaddr base;
     hwaddr size;
@@ -126,8 +127,9 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     env->gpr[HEX_REG_PC] = pentry;
 }
 
+
 extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
-static void hexagon_testboard_init(MachineState *machine, int board_id)
+static void hexagon_common_init(MachineState *machine, int board_id)
 {
     const struct MemmapEntry *memmap = hexagon_board_memmap;
 
@@ -253,7 +255,17 @@ static void hexagon_testboard_init(MachineState *machine, int board_id)
 
 static void hexagonboard_init(MachineState *machine)
 {
-    hexagon_testboard_init(machine, 845);
+    hexagon_common_init(machine, 845);
+}
+
+static void hexagon_kona_init(MachineState *machine)
+{
+    hexagon_common_init(machine, 855);
+}
+
+static void hexagon_lahaina_init(MachineState *machine)
+{
+    hexagon_common_init(machine, 865);
 }
 
 static void hex_class_init(ObjectClass *oc, void *data)
@@ -269,15 +281,30 @@ static void hex_class_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 4 * GiB;
 }
 
-static const TypeInfo hexagon_testboard_type = {
-        .name = MACHINE_TYPE_NAME("hexagon_testboard"),
-        .parent = TYPE_MACHINE,
-        .class_init = hex_class_init,
-};
-
-static void hexagon_machine_init(void)
+static void hex_kona_init(ObjectClass *oc, void *data)
 {
-    type_register_static(&hexagon_testboard_type);
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon Kona board";
+    mc->init = hexagon_kona_init;
+    mc->is_default = 0;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
+    mc->max_cpus = 4;
+    mc->default_ram_size = 4 * GiB;
+}
+
+static void hex_lahaina_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon Lahaina board";
+    mc->init = hexagon_lahaina_init;
+    mc->is_default = 0;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
+    mc->max_cpus = 4;
+    mc->default_ram_size = 4 * GiB;
 }
 
 void hexagon_read_timer(uint32_t *low, uint32_t *high)
@@ -289,9 +316,6 @@ void hexagon_read_timer(uint32_t *low, uint32_t *high)
     cpu_physical_memory_read(low_addr, low, sizeof(*low));
     cpu_physical_memory_read(high_addr, high, sizeof(*high));
 }
-
-type_init(hexagon_machine_init)
-
 
 #define TYPE_FASTL2VIC "fastl2vic"
 #define FASTL2VIC(obj) OBJECT_CHECK(FastL2VICState, (obj), TYPE_FASTL2VIC)
@@ -382,3 +406,21 @@ static void fastl2vic_register_types(void)
 }
 
 type_init(fastl2vic_register_types)
+
+static const TypeInfo hexagon_machine_types[] = {
+    {
+        .name = MACHINE_TYPE_NAME("hexagon_testboard"),
+        .parent = TYPE_MACHINE,
+        .class_init = hex_class_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("hexagon_kona"),
+        .parent = TYPE_MACHINE,
+        .class_init = hex_kona_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("hexagon_lahaina"),
+        .parent = TYPE_MACHINE,
+        .class_init = hex_lahaina_init,
+    }
+};
+
+DEFINE_TYPES(hexagon_machine_types)

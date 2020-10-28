@@ -31,7 +31,7 @@
 #include "hw/qdev-properties.h"
 #endif
 
-static void hexagon_v67_cpu_init(Object *obj)
+static void hexagon_common_cpu_init(Object *obj)
 {
 }
 
@@ -1096,7 +1096,7 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_size = sizeof(HexagonCPUClass),
         .class_init = hexagon_cpu_class_init,
     },
-    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,              hexagon_v67_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,              hexagon_common_cpu_init),
 };
 
 DEFINE_TYPES(hexagon_cpu_type_infos)
