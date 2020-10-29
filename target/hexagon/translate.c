@@ -157,6 +157,10 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     ctx->ctx_qreg_log_idx = 0;
     for (i = 0; i < STORES_MAX; i++) {
         ctx->ctx_store_width[i] = 0;
+        if (pkt->pkt_has_hvx) {
+            tcg_gen_movi_tl(hex_store_addr[i], 0);
+            tcg_gen_movi_tl(hex_store_width[i], 0);
+        }
     }
 
 #if HEX_DEBUG
