@@ -157,10 +157,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     ctx->ctx_qreg_log_idx = 0;
     for (i = 0; i < STORES_MAX; i++) {
         ctx->ctx_store_width[i] = 0;
-        if (pkt->pkt_has_hvx) {
-            tcg_gen_movi_tl(hex_store_addr[i], 0);
-            tcg_gen_movi_tl(hex_store_width[i], 0);
-        }
     }
 
 #if HEX_DEBUG
@@ -536,10 +532,10 @@ static void process_store_log(DisasContext *ctx, packet_t *pkt)
      *  slot 1 and then slot 2.  This will be important when
      *  the memory accesses overlap.
      */
-    if (pkt->pkt_has_store_s1 && !pkt->pkt_has_dczeroa) {
+    if (pkt->pkt_has_scalar_store_s1 && !pkt->pkt_has_dczeroa) {
         process_store(ctx, 1);
     }
-    if (pkt->pkt_has_store_s0 && !pkt->pkt_has_dczeroa) {
+    if (pkt->pkt_has_scalar_store_s0 && !pkt->pkt_has_dczeroa) {
         process_store(ctx, 0);
     }
 }
@@ -848,12 +844,12 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     packet_t *pkt)
 {
 #ifndef CONFIG_USER_ONLY
-    if (pkt->pkt_has_store_s0 ||
-        pkt->pkt_has_store_s1 ||
+    if (pkt->pkt_has_scalar_store_s0 ||
+        pkt->pkt_has_scalar_store_s1 ||
         pkt->pkt_has_dczeroa ||
         pkt_has_hvx_store(pkt)) {
-        TCGv has_st0 = tcg_const_tl(pkt->pkt_has_store_s0);
-        TCGv has_st1 = tcg_const_tl(pkt->pkt_has_store_s1);
+        TCGv has_st0 = tcg_const_tl(pkt->pkt_has_scalar_store_s0);
+        TCGv has_st1 = tcg_const_tl(pkt->pkt_has_scalar_store_s1);
         TCGv has_dczeroa = tcg_const_tl(pkt->pkt_has_dczeroa);
         TCGv has_hvx_stores = tcg_const_tl(pkt_has_hvx_store(pkt));
 
@@ -886,9 +882,11 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     {
         /* Handy place to set a breakpoint at the end of execution */
         TCGv has_st0 =
-            tcg_const_tl(pkt->pkt_has_store_s0 && !pkt->pkt_has_dczeroa);
+            tcg_const_tl(pkt->pkt_has_scalar_store_s0 &&
+                         !pkt->pkt_has_dczeroa);
         TCGv has_st1 =
-            tcg_const_tl(pkt->pkt_has_store_s1 && !pkt->pkt_has_dczeroa);
+            tcg_const_tl(pkt->pkt_has_scalar_store_s1 &&
+                         !pkt->pkt_has_dczeroa);
 
         gen_helper_debug_commit_end(cpu_env, has_st0, has_st1);
 

@@ -123,8 +123,8 @@ struct Packet {
     /* load store for slots */
     size8u_t pkt_has_load_s0:1;
     size8u_t pkt_has_load_s1:1;
-    size8u_t pkt_has_store_s0:1;
-    size8u_t pkt_has_store_s1:1;
+    size8u_t pkt_has_scalar_store_s0:1;
+    size8u_t pkt_has_scalar_store_s1:1;
 
     /* Misc */
     size8u_t num_rops:4;            /* Num risc ops in the packet */
