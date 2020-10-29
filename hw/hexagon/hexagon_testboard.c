@@ -211,8 +211,7 @@ static void hexagon_common_init(MachineState *machine, int board_id)
     config_table.l2tcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_TCM].base);
     config_table.subsystem_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_CSR1].base);
     config_table.vtcm_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_VTCM].base);
-    config_table.vtcm_size_kb = HEXAGON_CFG_ADDR_BASE(
-        memmap[HEXAGON_VTCM].size / 1024);
+    config_table.vtcm_size_kb = memmap[HEXAGON_VTCM].size / 1024;
     config_table.l2cfg_base = HEXAGON_CFG_ADDR_BASE(memmap[HEXAGON_L2CFG].base);
     config_table.l2tag_size = HEXAGON_DEFAULT_L2_TAG_SIZE;
     config_table.jtlb_size_entries = HEXAGON_DEFAULT_TLB_ENTRIES;
