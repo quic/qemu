@@ -108,12 +108,13 @@ static void l2vic_set_irq(void *opaque, int irq, int level) {
 
     if (level && isset(s->int_enable, irq)) {
 #if 0
-        printf ("ACK, irq = %d\n", irq);
-        printf ("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%lx\n",
+        printf("ACK, irq = %d\n", irq);
+        printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
                 L2VICA(s->int_enable, 4 * (irq / 32)));
-        printf ("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
+        printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
 #endif
         setbit(s->int_status, irq);
+        setbit(s->int_pending, irq);
 
         /* Interrupts are automatically cleared and disabled, the ISR must
          * re-enable it by writing to L2VIC_INT_ENABLE_SETn area
@@ -126,10 +127,10 @@ static void l2vic_set_irq(void *opaque, int irq, int level) {
 
     } else {
 #if 0
-        printf ("NACK, irq = %d\n", irq);
-        printf ("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%lx\n",
+        printf("NACK, irq = %d\n", irq);
+        printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%lx\n",
                 L2VICA(s->int_enable, 4 * (irq / 32)));
-        printf ("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
+        printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
 #endif
 
         return l2vic_update (s, 0);
@@ -194,6 +195,7 @@ static void l2vic_write(void *opaque, hwaddr offset,
     } else if (offset >= L2VIC_INT_ENABLE_SETn &&
              offset < L2VIC_INT_TYPEn) {
         L2VICA(s->int_status, offset - L2VIC_INT_ENABLE_SETn) &= ~val;
+        L2VICA(s->int_pending, offset - L2VIC_INT_ENABLE_SETn) &= ~val;
         L2VICA(s->int_enable, offset - L2VIC_INT_ENABLE_SETn) |= val;
     } else if (offset >= L2VIC_INT_TYPEn &&
              offset < L2VIC_INT_TYPEn + 0x80) {
@@ -204,25 +206,30 @@ static void l2vic_write(void *opaque, hwaddr offset,
     } else if (offset >= L2VIC_INT_CLEARn &&
              offset < L2VIC_SOFT_INTn) {
         L2VICA(s->int_clear, offset - L2VIC_INT_CLEARn) = val;
+    } else if (offset >= L2VIC_INT_PENDINGn &&
+               offset < L2VIC_INT_PENDINGn + 0x80) {
+            L2VICA(s->int_pending, offset - L2VIC_INT_PENDINGn) = val;
     } else if (offset >= L2VIC_SOFT_INTn &&
              offset < L2VIC_INT_PENDINGn) {
         L2VICA(s->int_enable, offset - L2VIC_SOFT_INTn) |= val;
-        L2VICA(s->int_pending, offset - L2VIC_SOFT_INTn) |= val;
         /*
          *  Need to reverse engineer the actual irq number.
          */
         int irq = 0;
         if ((offset - L2VIC_SOFT_INTn) > 7) {
-            irq = 64 + find_first_bit(&val, 32);
+            irq = find_first_bit(&val, 32);
+            g_assert(irq != 32);
+            irq += 64;   /* 64 -> 95 */
         } else if ((offset - L2VIC_SOFT_INTn) > 3) {
-            irq = 32 + find_first_bit(&val, 32);
+            irq = find_first_bit(&val, 32);
+            g_assert(irq != 32);
+            irq += 32;  /* 32 - 63 */
         } else {
             irq = find_first_bit(&val, 32);
+            g_assert(irq != 32);
         }
-        l2vic_set_irq(opaque, irq, 1);
-    } else if (offset >= L2VIC_INT_PENDINGn &&
-             offset < L2VIC_INT_PENDINGn + 0x80) {
-        L2VICA(s->int_pending, offset - L2VIC_INT_PENDINGn) = val;
+        qemu_mutex_unlock(&s->active);
+        return l2vic_set_irq(opaque, irq, 1);
     }
     qemu_mutex_unlock(&s->active);
     return;

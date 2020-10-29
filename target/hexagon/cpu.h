@@ -532,9 +532,11 @@ HexagonCPU *hexagon_find_lowest_prio_thread(HexagonCPU *threads[],
                                             bool only_waiters,
                                             uint32_t *low_prio);
 void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
-                                    uint32_t int_num, uint32_t resume_pc);
+                                    uint32_t int_num, uint32_t vid_int_pending,
+                                    uint32_t resume_pc);
+
 void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
-                             uint32_t int_num);
+                             uint32_t int_num, uint32_t vid_int_pending);
 
 uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg);
 #endif

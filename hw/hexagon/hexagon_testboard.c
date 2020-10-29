@@ -317,6 +317,89 @@ void hexagon_read_timer(uint32_t *low, uint32_t *high)
     cpu_physical_memory_read(high_addr, high, sizeof(*high));
 }
 
+void hexagon_set_l2vic_pending(uint32_t int_num)
+{
+    const struct MemmapEntry *memmap = hexagon_board_memmap;
+    uint64_t val;
+    uint32_t slice = (int_num / 32) * 4;
+    val = 1 << (int_num % 32);
+    target_ulong vidval, origval;
+
+    const hwaddr addr = memmap[HEXAGON_L2VIC].base + L2VIC_INT_PENDINGn;
+    cpu_physical_memory_read(addr + slice, &vidval, 4);
+    origval = vidval;
+    vidval |= val;
+    if (origval == vidval) {
+        HEX_DEBUG_LOG("%s, slice = %d, int_num = %d\n",
+                      __func__, slice / 4, int_num);
+        HEX_DEBUG_LOG("val = 0x%lx, vidval = 0x%x\n", val, vidval);
+        HEX_DEBUG_LOG("Double pend of int#:%ld\n", find_first_bit(&val, 32));
+    }
+    cpu_physical_memory_write(addr + slice, &vidval, 4);
+}
+
+
+void hexagon_clear_l2vic_pending(uint32_t int_num)
+{
+    const struct MemmapEntry *memmap = hexagon_board_memmap;
+    uint32_t val;
+    target_ulong vidval;
+    uint32_t slice = (int_num / 32) * 4;
+    val = 1 << (int_num % 32);
+    const hwaddr addr = memmap[HEXAGON_L2VIC].base + L2VIC_INT_PENDINGn;
+    cpu_physical_memory_read(addr + slice, &vidval, 4);
+    vidval &= ~val;
+    cpu_physical_memory_write(addr + slice, &vidval, 4);
+}
+
+
+uint32_t hexagon_find_l2vic_pending(void)
+{
+    const struct MemmapEntry *memmap = hexagon_board_memmap;
+    const hwaddr pend = memmap[HEXAGON_L2VIC].base + L2VIC_INT_PENDINGn;
+    uint64_t val;
+    cpu_physical_memory_read(pend, &val, 8);
+    uint32_t inum = find_first_bit(&val, 64);
+
+    if (inum == 64) {
+        cpu_physical_memory_read(pend + 8, &val, 8);
+        inum = find_first_bit(&val, 64);
+        if (inum == 64) {
+            inum = 0;
+        } else {
+            inum += 64;
+        }
+    }
+    /* Verify that stat matches which indicates a truly pending interrupt */
+    if (inum != 64) {
+        const hwaddr stat = memmap[HEXAGON_L2VIC].base + L2VIC_INT_STATUSn;
+        cpu_physical_memory_read(stat, &val, 8);
+        uint32_t stat_num = find_first_bit(&val, 64);
+        if (stat_num == 64) {
+            cpu_physical_memory_read(stat + 8, &val, 8);
+            stat_num = find_first_bit(&val, 64);
+            if (stat_num == 64) {
+                inum = 0;
+            } else {
+                stat_num += 64;
+            }
+        }
+        if (inum != stat_num) {
+            HEX_DEBUG_LOG("inum = %d\n", inum);
+            HEX_DEBUG_LOG("stat_num = %d\n", stat_num);
+           /*
+            * If stat and pending don't match it means,
+            * hexagon_clear_l2vic_pending has kicked off the pending
+            * interrupt but it has not finished.  In this case just
+            * return 0?
+            */
+            return 0;
+        }
+    }
+    return (inum == 64) ? 0 : inum;
+}
+
+
 #define TYPE_FASTL2VIC "fastl2vic"
 #define FASTL2VIC(obj) OBJECT_CHECK(FastL2VICState, (obj), TYPE_FASTL2VIC)
 

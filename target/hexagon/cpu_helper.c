@@ -654,7 +654,7 @@ bool hexagon_assert_interrupt(CPUHexagonState *global_env, uint32_t irq)
         return false;
     }
 
-    hexagon_raise_interrupt(int_env, int_thread, irq);
+    hexagon_raise_interrupt(int_env, int_thread, irq, 0);
     hexagon_disable_int(global_env, irq);
 
     return true;

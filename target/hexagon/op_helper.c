@@ -1332,7 +1332,7 @@ void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
         if (!int_thread) {
             continue;
         }
-        hexagon_raise_interrupt(env, int_thread, int_num);
+        hexagon_raise_interrupt(env, int_thread, int_num, 0);
     }
 
     /* exit loop if current thread was selected to handle a swi int */
@@ -1388,7 +1388,7 @@ void HELPER(resched)(CPUHexagonState *env)
         HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
 #endif
         assert(!hexagon_thread_is_busy(int_thread_env));
-        hexagon_raise_interrupt(env, int_thread, int_number);
+        hexagon_raise_interrupt(env, int_thread, int_number, 0);
     }
 }
 
@@ -1471,7 +1471,8 @@ void HELPER(pending_interrupt)(CPUHexagonState *env)
         if (!hexagon_thread_is_interruptible(thread_env, intnum)) {
             continue;
         }
-        hexagon_raise_interrupt(thread_env, int_thread, intnum);
+        uint32_t vid_num = hexagon_find_l2vic_pending();
+        hexagon_raise_interrupt(thread_env, int_thread, intnum, vid_num);
     }
 }
 

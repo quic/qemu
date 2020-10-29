@@ -120,5 +120,8 @@ struct hexagon_config_table {
     uint32_t axi3_lowaddr; /* FIXME: undocumented */
 };
 void hexagon_read_timer(uint32_t *low, uint32_t *high);
+void hexagon_set_l2vic_pending(uint32_t int_num);
+void hexagon_clear_l2vic_pending(uint32_t int_num);
+uint32_t hexagon_find_l2vic_pending(void);
 
 #endif

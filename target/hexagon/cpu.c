@@ -29,6 +29,8 @@
 #include "macros.h"
 #include "hex_mmu.h"
 #include "hw/qdev-properties.h"
+#include "include/hw/hexagon/hexagon.h"
+
 #endif
 
 static void hexagon_common_cpu_init(Object *obj)
@@ -474,6 +476,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
              * must pend it and assert it later.
              */
            hexagon_set_interrupts(env, 1 << irq);
+           hexagon_set_l2vic_pending(level);
 
            /*
             * FIXME: or should we make this method the general method
@@ -506,7 +509,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
         }
 
         /* NOTE: when level is not zero it is equal to the external IRQ # */
-        env->g_sreg[HEX_SREG_VID] = level;
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_VID, level);
 
         env->cause_code = HEX_CAUSE_INT2;
     }
@@ -561,13 +564,14 @@ void hexagon_set_interrupts(CPUHexagonState *env, uint32_t mask)
 }
 
 void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
-                             uint32_t int_num)
+                             uint32_t int_num, uint32_t vid_int_pending)
 {
-    hexagon_raise_interrupt_resume(env, thread, int_num, 0);
+    hexagon_raise_interrupt_resume(env, thread, int_num, vid_int_pending, 0);
 }
 
 void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
-                                    uint32_t int_num, target_ulong resume_pc)
+                                    uint32_t int_num, uint32_t vid_int_pending,
+                                    target_ulong resume_pc)
 {
     // This logic is for interrupt numbers 0-15 only
     assert(int_num <= 15);
@@ -580,6 +584,10 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
     CPUState *cs = CPU(thread);
     cs->exception_index = HEX_EVENT_INT0 + int_num;
     thread_env->cause_code = HEX_CAUSE_INT0 + int_num;
+    if (vid_int_pending) {
+        hexagon_clear_l2vic_pending(vid_int_pending);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_VID, vid_int_pending);
+    }
 
     if (get_exe_mode(thread_env) == HEX_EXE_MODE_WAIT) {
         hexagon_resume_thread(thread_env, cs->exception_index);
@@ -946,6 +954,7 @@ static const VMStateDescription vmstate_hexagon_cpu = {
 };
 
 
+#define CHECK_EX 0
 #ifndef CONFIG_USER_ONLY
 /* XXX_SM: */
 static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
@@ -957,6 +966,25 @@ static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
         qemu_log_mask(CPU_LOG_INT,
                 "got a hard int, full mask is %08x|%d\n",
                 (int)interrupt_request, (int)interrupt_request);
+
+#if CHECK_EX
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *env = &cpu->env;
+        const uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+        target_ulong EX = GET_SSR_FIELD(SSR_EX, ssr);
+        const uint32_t tid = ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID);
+        if (hexagon_thread_is_busy(env)) {
+            return false;
+        }
+        if (EX) {
+            printf("got a hard int, full mask is %08x|%d\n",
+                          (int)interrupt_request, (int)interrupt_request);
+            printf("SSR = 0x%x\n", ssr);
+            printf("HTID = 0x%x\n", tid);
+            return false;
+            hexagon_debug(env);
+        }
+#endif
         cs->exception_index = HEX_EVENT_INT2;
         cc->do_interrupt(cs);
         cs->interrupt_request &= ~CPU_INTERRUPT_HARD;
