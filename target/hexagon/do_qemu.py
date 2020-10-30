@@ -145,12 +145,21 @@ def MACROATTRIB(macname,beh,attribstring,ext=""):
         attribs = []
     macros[mackey] = Macro(mackey,macname,beh,attribs,ext)
 
+# When qemu needs an attribute that isn't in the imported files,
+# we'll add it here.
+def add_qemu_macro_attrib(name, attrib, ext=""):
+    key = name + ":" + ext
+    macros[key].attribs.add(attrib)
+
 # read in file.  Evaluate each line: each line calls a function above
 
 for line in open(sys.argv[2], 'rt').readlines():
     if not line.startswith("#"):
         eval(line.strip())
 
+add_qemu_macro_attrib('fLOAD_LOCKED', 'A_LLSC')
+add_qemu_macro_attrib('fSTORE_LOCKED', 'A_LLSC')
+add_qemu_macro_attrib('fCLEAR_RTE_EX', 'A_IMPLICIT_WRITES_SSR')
 
 calculate_attribs()
 

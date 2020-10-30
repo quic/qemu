@@ -2488,7 +2488,7 @@ DEF_MACRO(fLOAD_LOCKED,(NUM,SIZE,SIGN,EA,DST),
 	"Get SIZE bytes from memory at EA and save in DST.",
 	{     DST = (size##SIZE##SIGN##_t)mem_load_locked(thread,EA,SIZE,insn);
   },
-	(A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_LLSC)
+	(A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
 DEF_MACRO(fLOAD_PHYS,(NUM,SIZE,SIGN,SRC1,SRC2,DST),
@@ -2520,7 +2520,7 @@ DEF_MACRO(fSTORE_LOCKED,(NUM,SIZE,EA,SRC,PRED),
 	"if (lock_valid) { *EA = SRC; PRED = 0xff; lock_valid = 0; } else { PRED = 0; }",
 	"if the lock is valid, Store SIZE bytes from SRC into memory at EA, and invalidate the lock.  PRED is set to all 1s if the write actually took place.",
 	{ PRED = (mem_store_conditional(thread,EA,SRC,SIZE,insn) ? 0xff : 0); },
-	(A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_LLSC)
+	(A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
 DEF_MACRO(fVTCM_MEMCPY,(DST,SRC,SIZE),
@@ -3174,7 +3174,7 @@ DEF_MACRO(fCLEAR_RTE_EX,(),
         fLOG_REG_FIELD(SSR,SSR_EX,0);
   	    fINTERNAL_CLEAR_SAMEPAGE();
       },
-      (A_IMPLICIT_WRITES_SSR)
+      ()
 )
 
 DEF_MACRO(fTLB_LOCK_AVAILABLE,(),
