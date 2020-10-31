@@ -27,11 +27,8 @@
 
 DEF_ENC32(M8_mxmem_sm_act_ub,      ICLASS_LD" 001 0 000 sssss PP0ttttt 11100000")
 DEF_ENC32(M8_mxmem_dm_act_ub,      ICLASS_LD" 001 0 000 sssss PP0ttttt 11100001")
-DEF_ENC32(M8_mxmem_sm_act_hf,      ICLASS_LD" 001 0 000 sssss PP0ttttt 11100010")
 //DEF_ENC32(,    ICLASS_LD" 001 0 000 sssss PP0ttttt 11100011")
-DEF_ENC32(M8_mxmem_blk_sm_act_hf,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11100100")
 //DEF_ENC32(,   ICLASS_LD" 001 0 000 sssss PP0ttttt 11100101")
-DEF_ENC32(M8_mxmemu_blk_sm_act_hf, ICLASS_LD" 001 0 000 sssss PP0ttttt 11100110")
 //DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11100111")
 
 DEF_ENC32(M8_mxmemd_blk_sm_act_ub, ICLASS_LD" 001 0 000 sssss PP0ttttt 11101000")
@@ -52,9 +49,7 @@ DEF_ENC32(M8_mxmems_blk_dm_act_ub, ICLASS_LD" 001 0 000 sssss PP0ttttt 11110001"
 //DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11110110")
 //DEF_ENC32(,  ICLASS_LD" 001 0 000 sssss PP0ttttt 11110111")
 
-DEF_ENC32(M8_mxmems_blk_sm_act_hf, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111000")
 //DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111001")
-DEF_ENC32(M8_mxmemd_blk_sm_act_hf, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111010")
 //DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111011")
 //DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111100")
 //DEF_ENC32(, ICLASS_LD" 001 0 000 sssss PP0ttttt 11111101")
@@ -107,15 +102,9 @@ DEF_ENC32(M8_mxmemdi_wei_b,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11101011")
 DEF_ENC32(M8_mxmems_wei_n,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11101100")
 DEF_ENC32(M8_mxmemdr_wei_n,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11101101")
 DEF_ENC32(M8_mxmemdp_wei_n,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11101110")
-DEF_ENC32(M8_mxmem_wei_hf,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11101111")
 
 DEF_ENC32(M8_mxmem_wei_sc,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11110000")
 DEF_ENC32(M8_mxmem_wei_sm,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11110001")
-DEF_ENC32(M8_mxmems_wei_hf,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11110010")
-DEF_ENC32(M8_mxmemdr_wei_hf,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11110011")
-DEF_ENC32(M8_mxmemdp_wei_hf,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11110100")
-DEF_ENC32(M8_mxmema_wei_hf,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11110101")
-DEF_ENC32(M8_mxmemdi_wei_hf,     ICLASS_LD" 001 0 000 sssss PP1ttttt 11110110")
 DEF_ENC32(M8_mxmema_wei_n,       ICLASS_LD" 001 0 000 sssss PP1ttttt 11110111")
 
 DEF_ENC32(M8_mxmemdi_wei_n,      ICLASS_LD" 001 0 000 sssss PP1ttttt 11111000")
@@ -168,9 +157,7 @@ DEF_ENC32(M8_mxcvtr_dm_ub_r,     ICLASS_ST" 011 01 11sssss PP0ttttt --001111")
 DEF_ENC32(M8_mxmem_st_bias,      ICLASS_ST" 011 01 11sssss PP0----- --010000")
 
 DEF_ENC32(M8_mxclracc,           ICLASS_ST" 011 01 11----- PP0----- --010001")
-DEF_ENC32(M8_mxclracc_hf,        ICLASS_ST" 011 01 11----- PP0----- --010011")
 DEF_ENC32(M8_mxswap,             ICLASS_ST" 011 01 11----- PP0----- --010100")
-DEF_ENC32(M8_mxswap_hf,          ICLASS_ST" 011 01 11----- PP0----- --010101")
 DEF_ENC32(M8_mxmem2_st_bias,     ICLASS_ST" 011 01 11sssss PP0----- --010110")
 DEF_ENC32(M8_mxaccshl,           ICLASS_ST" 011 01 11----- PP0----- --010111")
 
@@ -178,20 +165,12 @@ DEF_ENC32(M8_mxaccshl,           ICLASS_ST" 011 01 11----- PP0----- --010111")
 
 
 // Floating Point Converts
-DEF_ENC32(M8_mxcvtl_sat_hf,       ICLASS_ST" 011 01 11sssss PP1ttttt ---00000")
-DEF_ENC32(M8_mxcvtl_sat_pos_hf,   ICLASS_ST" 011 01 11sssss PP1ttttt ---00001")
 DEF_ENC32(M8_mxcvtb_sat_uh,       ICLASS_ST" 011 01 11sssss PP1ttttt ---00010")
 DEF_ENC32(M8_mxcvtb_uh,           ICLASS_ST" 011 01 11sssss PP1ttttt ---00011")
-DEF_ENC32(M8_mxcvtr_sat_hf,       ICLASS_ST" 011 01 11sssss PP1ttttt ---00100")
-DEF_ENC32(M8_mxcvtl_sat_pos_hf_r, ICLASS_ST" 011 01 11sssss PP1ttttt ---00101")
 DEF_ENC32(M8_mxcvtb_sat_uh_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---00110")
 DEF_ENC32(M8_mxcvtb_uh_r,         ICLASS_ST" 011 01 11sssss PP1ttttt ---00111")
-DEF_ENC32(M8_mxcvtl_sat_hf_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---01000")
-DEF_ENC32(M8_mxcvtr_sat_pos_hf,   ICLASS_ST" 011 01 11sssss PP1ttttt ---01001")
 DEF_ENC32(M8_mxcvta_sat_uh,       ICLASS_ST" 011 01 11sssss PP1ttttt ---01010")
 DEF_ENC32(M8_mxcvta_uh,           ICLASS_ST" 011 01 11sssss PP1ttttt ---01011")
-DEF_ENC32(M8_mxcvtr_sat_hf_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---01100")
-DEF_ENC32(M8_mxcvtr_sat_pos_hf_r, ICLASS_ST" 011 01 11sssss PP1ttttt ---01101")
 DEF_ENC32(M8_mxcvta_sat_uh_r,     ICLASS_ST" 011 01 11sssss PP1ttttt ---01110")
 DEF_ENC32(M8_mxcvta_uh_r,         ICLASS_ST" 011 01 11sssss PP1ttttt ---01111")
 
