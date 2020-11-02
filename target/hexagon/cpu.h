@@ -405,9 +405,9 @@ struct CPUHexagonState {
     insn_t insn_env;
     size8u_t pktid;
     unsigned int threadId;
+    processor_t *processor_ptr;
 #ifndef CONFIG_USER_ONLY
     const char *cmdline;
-    processor_t *processor_ptr;
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;
     hex_lock_state_t tlb_lock_state;

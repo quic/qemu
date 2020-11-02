@@ -1551,7 +1551,7 @@ static inline size1u_t mem_read1(CPUHexagonState *env, paddr_t paddr)
 {
     size1u_t retval;
 #ifdef CONFIG_USER_ONLY
-    get_user_u8(val, paddr);
+    get_user_u8(retval, paddr);
 #else
     hexagon_tools_memory_read(env, paddr, 1, &retval);
 #endif
@@ -1561,7 +1561,7 @@ static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
 {
     size2u_t retval;
 #ifdef CONFIG_USER_ONLY
-    get_user_u16(val, paddr);
+    get_user_u16(retval, paddr);
 #else
     hexagon_tools_memory_read(env, paddr, 2, &retval);
 #endif
@@ -1571,7 +1571,7 @@ static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
 {
     size4u_t retval;
 #ifdef CONFIG_USER_ONLY
-    get_user_u32(val, paddr);
+    get_user_u32(retval, paddr);
 #else
     hexagon_tools_memory_read(env, paddr, 4, &retval);
 #endif

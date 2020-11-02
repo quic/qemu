@@ -12,6 +12,9 @@
 #include "qapi/error.h"
 #include "qemu/log.h"
 #include "qemu/qemu-print.h"
+#ifdef CONFIG_USER_ONLY
+#include "qemu.h"
+#endif
 #include "cpu.h"
 #include "arch.h"
 #include "system.h"
@@ -292,13 +295,25 @@ static int dma_adapter_set_staller(dma_t *dma, dma_insn_checker_ptr insn_checker
 }
 
 int dma_adapter_in_monitor_mode(dma_t *dma) {
+#ifdef CONFIG_USER_ONLY
+  return 0;
+#else
   return sys_in_monitor_mode(dma_adapter_retrieve_thread(dma));
+#endif
 }
 int dma_adapter_in_guest_mode(dma_t *dma) {
+#ifdef CONFIG_USER_ONLY
+  return 0;
+#else
   return sys_in_guest_mode(dma_adapter_retrieve_thread(dma));
+#endif
 }
 int dma_adapter_in_user_mode(dma_t *dma) {
+#ifdef CONFIG_USER_ONLY
+  return 1;
+#else
   return sys_in_user_mode(dma_adapter_retrieve_thread(dma));
+#endif
 }
 int dma_adapter_in_debug_mode(dma_t *dma) {
   thread_t* thread __attribute__((unused)) = dma_adapter_retrieve_thread(dma);

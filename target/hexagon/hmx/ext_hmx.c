@@ -6,7 +6,9 @@
 #include "qemu/qemu-print.h"
 #include "cpu.h"
 #include "arch.h"
-//#include "qemu.h"
+#ifdef CONFIG_USER_ONLY
+#include "qemu.h"
+#endif
 #include "utils.h"
 #include "hmx/ext_hmx.h"
 #include "hmx/hmx.h"
