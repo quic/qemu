@@ -870,8 +870,8 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 
 #ifdef QEMU_GENERATE
 #define fLSBNEW(PVAL)   tcg_gen_mov_tl(LSB, (PVAL))
-#define fLSBNEW0        fLSBNEW(0)
-#define fLSBNEW1        fLSBNEW(1)
+#define fLSBNEW0        tcg_gen_mov_tl(LSB, hex_new_pred_value[0])
+#define fLSBNEW1        tcg_gen_mov_tl(LSB, hex_new_pred_value[1])
 #else
 #define fLSBNEW(PVAL)   (PVAL)
 #define fLSBNEW0        new_pred_value(env, 0)
