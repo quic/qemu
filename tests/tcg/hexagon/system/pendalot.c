@@ -42,7 +42,7 @@ static uint32_t _rdcfg(uint32_t cfgbase, uint32_t offset)
 volatile int pass;
 int g_irq;
 volatile uint32_t g_l2vic_base;
-int irqlog[96];
+int irqlog[1024];
 void intr_handler(int irq)
 {
     unsigned int vid, irq_bit;
@@ -53,7 +53,7 @@ void intr_handler(int irq)
     irq_bit = (1 << (vid  % 32));
     *L2VIC_INT_ENABLE_SET(g_l2vic_base, vid) = irq_bit;
     irqlog[vid] += 1;
-    if (vid == 94) {
+    if (vid == 1023) {
         pass++;
     }
 
@@ -75,7 +75,7 @@ main()
     register_interrupt(2, intr_handler);
 
     /* Setup interrupts */
-    for (int irq = 1; irq < 95; irq++) {
+    for (int irq = 1; irq < 1024; irq++) {
         irq_bit  = (1 << (irq  % 32));
         *A = irq;
         *L2VIC_INT_TYPE(g_l2vic_base, irq) |= irq_bit; /* Edge */
@@ -89,13 +89,13 @@ main()
 
     /* Verify none of the setup interrupts have been triggered */
     assert(irqlog[0] == 0);
-    assert(irqlog[95] == 0);
-    for (int i = 1; i < 95; i++) {
+    assert(irqlog[1024] == 0);
+    for (int i = 1; i < 1024; i++) {
         assert(irqlog[i] == 0);
     }
 
     /* Trigger interrupts */
-    for (int irq = 1; irq < 95; irq++) {
+    for (int irq = 1; irq < 1024; irq++) {
         irq_bit  = (1 << (irq  % 32));
         *L2VIC_SOFT_INT_SET(g_l2vic_base, irq) = irq_bit;
     }
@@ -106,8 +106,8 @@ main()
 
     /* Verify the setup interrupts have been triggered */
     assert(irqlog[0] == 0);
-    assert(irqlog[95] == 0);
-    for (int i = 1; i < 95; i++) {
+    assert(irqlog[1024] == 0);
+    for (int i = 1; i < 1024; i++) {
         assert(irqlog[i] == 1);
     }
 

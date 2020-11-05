@@ -55,46 +55,6 @@ typedef struct L2VICState {
     qemu_irq irq[8];
 } L2VICState;
 
-/* Utility routines for dealing with the 128 possible irq bits */
-typedef struct {
-    uint64_t lo;
-    uint64_t hi;
-} irq_t;
-
-static void setbit(void *addr, unsigned int n) {
-    irq_t irq;
-    memcpy(&irq, addr, sizeof(irq));
-    if (n > 128)
-        return;
-    if (n < 64)
-        irq.lo |= (1ull << n);
-    else
-        irq.hi |= (1ull << (n - 64));
-    memcpy(addr, &irq, sizeof(irq));
-    return;
-}
-static void clearbit(void  *addr, unsigned int n) {
-    irq_t irq;
-    memcpy(&irq, addr, sizeof(irq));
-    if (n > 128)
-        return;
-    if (n < 64)
-        irq.lo &= ~(1ull << n);
-    else
-        irq.hi &= ~(1ull << (n - 64));
-    memcpy(addr, &irq, sizeof(irq));
-    return;
-}
-static int isset(const void *addr, unsigned int n)
-{
-    irq_t irq;
-    memcpy(&irq, addr, sizeof(irq));
-    if (n>128)
-        return 0;
-    if (n<64)
-        return ((irq.lo & (1ull << n)) != 0);
-    return ((irq.hi & (1ull << (n - 64))) != 0);
-}
 
 static void l2vic_update(L2VICState *s, int level)
 {
@@ -106,20 +66,20 @@ static void l2vic_set_irq(void *opaque, int irq, int level) {
     L2VICState *s = (L2VICState *) opaque;
     s->level = level;
 
-    if (level && isset(s->int_enable, irq)) {
+    if (level && test_bit(irq, (unsigned long *)s->int_enable)) {
 #if 0
-        printf("ACK, irq = %d\n", irq);
+        printf("ACK, irq:level = %d, %d\n", irq, level);
         printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
                 L2VICA(s->int_enable, 4 * (irq / 32)));
         printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
 #endif
-        setbit(s->int_status, irq);
-        setbit(s->int_pending, irq);
+        set_bit(irq, (unsigned long *)s->int_status);
+        set_bit(irq, (unsigned long *)s->int_pending);
 
         /* Interrupts are automatically cleared and disabled, the ISR must
          * re-enable it by writing to L2VIC_INT_ENABLE_SETn area
         */
-        clearbit(s->int_enable, irq);
+        clear_bit(irq, (unsigned long *)s->int_enable);
         /* Use the irq number as "level" so that hexagon_cpu_set_irq
          * can update the VID register*/
         l2vic_update (s, irq);
@@ -127,8 +87,8 @@ static void l2vic_set_irq(void *opaque, int irq, int level) {
 
     } else {
 #if 0
-        printf("NACK, irq = %d\n", irq);
-        printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%lx\n",
+        printf("NACK, irq:level = %d, %d\n", irq, level);
+        printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
                 L2VICA(s->int_enable, 4 * (irq / 32)));
         printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
 #endif
@@ -143,34 +103,27 @@ static uint64_t l2vic_read(void *opaque, hwaddr offset,
     L2VICState *s = (L2VICState *)opaque;
 
     if (offset >= L2VIC_INT_ENABLEn &&
-        offset <  (L2VIC_INT_ENABLEn + ARRAY_SIZE(s->int_enable)) ) {
+        offset < (L2VIC_INT_ENABLEn + sizeof(s->int_enable))) {
         return L2VICA(s->int_enable, offset-L2VIC_INT_ENABLEn);
-    }
-    else if (offset >= (L2VIC_INT_ENABLEn + ARRAY_SIZE(s->int_enable)) &&
-             offset <  L2VIC_INT_ENABLE_CLEARn) {
+    } else if (offset >= (L2VIC_INT_ENABLEn + sizeof(s->int_enable)) &&
+               offset <  L2VIC_INT_ENABLE_CLEARn) {
         qemu_log_mask(LOG_UNIMP, "%s: offset %x\n", __func__, (int) offset);
-    }
-    else if (offset >= L2VIC_INT_ENABLE_CLEARn &&
-             offset < L2VIC_INT_ENABLE_SETn) {
+    } else if (offset >= L2VIC_INT_ENABLE_CLEARn &&
+               offset < L2VIC_INT_ENABLE_SETn) {
         return 0;
-    }
-    else if (offset >= L2VIC_INT_ENABLE_SETn &&
-             offset < L2VIC_INT_TYPEn) {
+    } else if (offset >= L2VIC_INT_ENABLE_SETn &&
+               offset < L2VIC_INT_TYPEn) {
         return 0;
-    }
-    else if (offset >= L2VIC_INT_TYPEn &&
+    } else if (offset >= L2VIC_INT_TYPEn &&
              offset < L2VIC_INT_TYPEn+0x80) {
         return L2VICA(s->int_type, offset-L2VIC_INT_TYPEn);
-    }
-    else if (offset >= L2VIC_INT_STATUSn &&
+    } else if (offset >= L2VIC_INT_STATUSn &&
              offset < L2VIC_INT_CLEARn) {
         return L2VICA(s->int_status, offset-L2VIC_INT_STATUSn);
-    }
-    else if (offset >= L2VIC_INT_CLEARn &&
+    } else if (offset >= L2VIC_INT_CLEARn &&
              offset < L2VIC_SOFT_INTn) {
         return L2VICA(s->int_clear, offset-L2VIC_INT_CLEARn);
-    }
-    else if (offset >= L2VIC_INT_PENDINGn &&
+    } else if (offset >= L2VIC_INT_PENDINGn &&
              offset < L2VIC_INT_PENDINGn + 0x80) {
         return L2VICA(s->int_pending, offset-L2VIC_INT_PENDINGn);
     }
@@ -215,19 +168,11 @@ static void l2vic_write(void *opaque, hwaddr offset,
         /*
          *  Need to reverse engineer the actual irq number.
          */
-        int irq = 0;
-        if ((offset - L2VIC_SOFT_INTn) > 7) {
-            irq = find_first_bit(&val, 32);
-            g_assert(irq != 32);
-            irq += 64;   /* 64 -> 95 */
-        } else if ((offset - L2VIC_SOFT_INTn) > 3) {
-            irq = find_first_bit(&val, 32);
-            g_assert(irq != 32);
-            irq += 32;  /* 32 - 63 */
-        } else {
-            irq = find_first_bit(&val, 32);
-            g_assert(irq != 32);
-        }
+        int irq = find_first_bit(&val, 32);
+        hwaddr wordoffset = offset - L2VIC_SOFT_INTn;
+        g_assert(irq != 32);
+        irq += wordoffset * 8;
+
         qemu_mutex_unlock(&s->active);
         return l2vic_set_irq(opaque, irq, 1);
     }
@@ -266,7 +211,7 @@ static void l2vic_init(Object *obj)
 
     memory_region_init_io(&s->iomem, obj, &l2vic_ops, s, "l2vic", 0x1000);
     sysbus_init_mmio(sbd, &s->iomem);
-    qdev_init_gpio_in(dev, l2vic_set_irq, 128);
+    qdev_init_gpio_in(dev, l2vic_set_irq, 1024);
     for (i=0; i<8; i++)
         sysbus_init_irq(sbd, &s->irq[i]);
     qemu_mutex_init(&s->active); /* TODO: Remove this is an experiment */

@@ -581,6 +581,7 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
                (is_solo && !(GET_ATTRIB(opcode, A_STORE) ||
                              GET_ATTRIB(opcode, A_LOAD) ||
                              GET_ATTRIB(opcode, A_CACHEOP)))
+             || GET_ATTRIB(opcode, A_LLSC)
              || could_halt
              || triggers_int
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IPEND)

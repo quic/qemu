@@ -39,6 +39,7 @@ static uint32_t _rdcfg(uint32_t cfgbase, uint32_t offset)
 #define L2VIC_INT_TYPE(b, n) \
    ((volatile unsigned int *) ((b) + 0x280 + 4 * (n / 32))) /* device memory */
 
+#define RESET 0
 volatile int pass;
 int g_irq;
 uint32_t g_l2vic_base;
@@ -71,28 +72,29 @@ main()
     register_interrupt(2, intr_handler);
 
     /* Setup interrupts */
-    for (int irq = 1; irq < 95; irq++) {
+    for (int irq = 1; irq < 1024; irq++) {
         irq_bit  = (1 << (irq  % 32));
         *A = irq;
         *L2VIC_INT_TYPE(g_l2vic_base, irq) |= irq_bit; /* Edge */
 
         if ((*L2VIC_INT_ENABLE(g_l2vic_base, irq) &
              (1 << (irq % 32))) != (1 << irq%32)) {
-            printf(" ERROR: 0x%x\n", *L2VIC_INT_ENABLE(g_l2vic_base, irq));
+            printf(" ERROR got: 0x%x\n", *L2VIC_INT_ENABLE(g_l2vic_base, irq));
+            printf(" ERROR exp: 0x%x\n",  (1 << irq % 32));
             ret = __LINE__;
         }
     }
 
     /* Trigger interrupts */
-    for (int irq = 1; irq < 95; irq++) {
+    for (int irq = 1; irq < 1024; irq++) {
         irq_bit  = (1 << (irq  % 32));
         *L2VIC_SOFT_INT_SET(g_l2vic_base, irq) = irq_bit;
        while (!pass) {
-            ;
+             ;
+             /* printf("waiting for irq %d\n", irq); */
         }
-        printf ("irq = %d g_irq = %d\n", irq, g_irq);
         assert(g_irq == irq);
-	pass = 0;
+	pass = RESET;
      }
 
     if (ret) {
