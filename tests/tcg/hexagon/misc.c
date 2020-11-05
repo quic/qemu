@@ -219,6 +219,26 @@ static void check(int val, int expect)
 uint32_t init[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 uint32_t array[10];
 
+uint32_t early_exit;
+
+/*
+ * Write this as a function because we can't guarantee the compiler will
+ * allocate a frame with just the SL2_return_tnew packet.
+ */
+static void SL2_return_tnew(int x);
+asm ("SL2_return_tnew:\n\t"
+     "   allocframe(#0)\n\t"
+     "   r1 = #1\n\t"
+     "   memw(##early_exit) = r1\n\t"
+     "   {\n\t"
+     "       p0 = cmp.eq(r0, #1)\n\t"
+     "       if (p0.new) dealloc_return:nt\n\t"    /* SL2_return_tnew */
+     "   }\n\t"
+     "   r1 = #0\n\t"
+     "   memw(##early_exit) = r1\n\t"
+     "   dealloc_return\n\t"
+    );
+
 int main()
 {
 
@@ -315,6 +335,11 @@ int main()
 
     int x = cmpnd_cmp_jump();
     check(x, 12);
+
+    SL2_return_tnew(0);
+    check(early_exit, 0);
+    SL2_return_tnew(1);
+    check(early_exit, 1);
 
     puts(err ? "FAIL" : "PASS");
     return err;
