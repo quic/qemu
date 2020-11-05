@@ -40,6 +40,7 @@ static uint32_t _rdcfg(uint32_t cfgbase, uint32_t offset)
    ((volatile unsigned int *) ((b) + 0x280 + 4 * (n / 32))) /* device memory */
 
 #define RESET 0
+#define INTMAX 1024
 volatile int pass;
 int g_irq;
 uint32_t g_l2vic_base;
@@ -72,7 +73,7 @@ main()
     register_interrupt(2, intr_handler);
 
     /* Setup interrupts */
-    for (int irq = 1; irq < 1024; irq++) {
+    for (int irq = 1; irq < INTMAX; irq++) {
         irq_bit  = (1 << (irq  % 32));
         *A = irq;
         *L2VIC_INT_TYPE(g_l2vic_base, irq) |= irq_bit; /* Edge */
@@ -86,7 +87,7 @@ main()
     }
 
     /* Trigger interrupts */
-    for (int irq = 1; irq < 1024; irq++) {
+    for (int irq = 1; irq < INTMAX; irq++) {
         irq_bit  = (1 << (irq  % 32));
         *L2VIC_SOFT_INT_SET(g_l2vic_base, irq) = irq_bit;
        while (!pass) {
