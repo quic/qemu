@@ -1,3 +1,23 @@
+/*
+ * Hexagon Baseboard System emulation.
+ *
+ * Copyright (c) 2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #ifndef HW_HEXAGON_H
 #define HW_HEXAGON_H
 
@@ -63,7 +83,7 @@ typedef enum {
  */
 #define HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES (7)
 
-struct hexagon_config_table {
+typedef struct {
     uint32_t l2tcm_base; /* Base address of L2TCM space */
     uint32_t reserved; /* Reserved */
     uint32_t subsystem_base; /* Base address of subsystem space */
@@ -118,7 +138,19 @@ struct hexagon_config_table {
                          'VICTIM CACHE MODE' */
     uint32_t hmx_cvt_mpy_size; /* FIXME: undocumented Size of the fractional multiplier in the HMX Covert */
     uint32_t axi3_lowaddr; /* FIXME: undocumented */
-};
+} hexagon_config_table;
+
+typedef struct {
+    uint32_t cfgbase; /* Base address of config table */
+    uint32_t cfgtable_size; /* Size of config table */
+    uint32_t l2tcm_size; /* Size of L2 TCM */
+    uint32_t l2vic_base; /* Base address of L2VIC */
+    uint32_t l2vic_size; /* Size of L2VIC region */
+    uint32_t csr_base; /* QTimer csr base */
+    uint32_t qtmr_rg0;
+    uint32_t qtmr_rg1;
+} hexagon_config_extensions;
+
 void hexagon_read_timer(uint32_t *low, uint32_t *high);
 void hexagon_set_l2vic_pending(uint32_t int_num);
 void hexagon_clear_l2vic_pending(uint32_t int_num);
