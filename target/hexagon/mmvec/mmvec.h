@@ -18,6 +18,8 @@
 #ifndef HEXAGON_MMVEC_H
 #define HEXAGON_MMVEC_H
 
+#include "mmvec_qfloat.h"
+
 enum mem_access_types {
     access_type_INVALID = 0,
     access_type_unknown = 1,
@@ -110,6 +112,8 @@ typedef union {
     size2s_t  h[MAX_VEC_SIZE_BYTES / 2];
     size1u_t ub[MAX_VEC_SIZE_BYTES / 1];
     size1s_t  b[MAX_VEC_SIZE_BYTES / 1];
+    size4s_t qf32[MAX_VEC_SIZE_BYTES/4];
+	size2s_t qf16[MAX_VEC_SIZE_BYTES/2];
     size4s_t sf[MAX_VEC_SIZE_BYTES / 4];
     size2s_t hf[MAX_VEC_SIZE_BYTES / 2];
 } mmvector_t;
@@ -123,10 +127,27 @@ typedef union {
     size2s_t  h[2 * MAX_VEC_SIZE_BYTES / 2];
     size1u_t ub[2 * MAX_VEC_SIZE_BYTES / 1];
     size1s_t  b[2 * MAX_VEC_SIZE_BYTES / 1];
+    size4s_t qf32[MAX_VEC_SIZE_BYTES/4];
+	size2s_t qf16[MAX_VEC_SIZE_BYTES/2];
     size4s_t sf[MAX_VEC_SIZE_BYTES / 4];
     size2s_t hf[MAX_VEC_SIZE_BYTES / 2];
     mmvector_t v[2];
 } mmvector_pair_t;
+typedef union {
+	size8u_t ud[4*MAX_VEC_SIZE_BYTES/8];
+	size8s_t  d[4*MAX_VEC_SIZE_BYTES/8];
+	size4u_t uw[4*MAX_VEC_SIZE_BYTES/4];
+	size4s_t  w[4*MAX_VEC_SIZE_BYTES/4];
+	size2u_t uh[4*MAX_VEC_SIZE_BYTES/2];
+	size2s_t  h[4*MAX_VEC_SIZE_BYTES/2];
+	size1u_t ub[4*MAX_VEC_SIZE_BYTES/1];
+	size1s_t  b[4*MAX_VEC_SIZE_BYTES/1];
+    size4s_t qf32[MAX_VEC_SIZE_BYTES/4];
+	size2s_t qf16[MAX_VEC_SIZE_BYTES/2];
+	size4s_t sf[MAX_VEC_SIZE_BYTES/4];
+	size2s_t hf[MAX_VEC_SIZE_BYTES/2];
+	mmvector_t v[4];
+} mmvector_quad_t;
 
 typedef union {
     size8u_t ud[MAX_VEC_SIZE_BYTES / 8 / 8];
@@ -137,6 +158,8 @@ typedef union {
     size2s_t  h[MAX_VEC_SIZE_BYTES / 2 / 8];
     size1u_t ub[MAX_VEC_SIZE_BYTES / 1 / 8];
     size1s_t  b[MAX_VEC_SIZE_BYTES / 1 / 8];
+    size4s_t qf32[MAX_VEC_SIZE_BYTES/4];
+	size2s_t qf16[MAX_VEC_SIZE_BYTES/2];
     size4s_t sf[MAX_VEC_SIZE_BYTES / 4];
     size2s_t hf[MAX_VEC_SIZE_BYTES / 2];
 } mmqreg_t;

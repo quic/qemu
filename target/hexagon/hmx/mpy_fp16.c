@@ -338,7 +338,7 @@ size2u_t hmx_fp16_cvt(processor_t *proc, size16s_t acc, size1s_t ovf,  size1s_t 
     size16s_t bias = { .hi= 0, .lo = 0 };
     size4s_t bias_exp = (bias_raw >> 15) & 0x1F;
     size4s_t bias_sgn = (bias_raw >> 20) & 0x1;
-    size16s_t epsilon = { .hi= 0, .lo = 1 };
+    size16s_t epsilon_val = { .hi= 0, .lo = 1 };
     size16s_t epsilon_out = { .hi= 0, .lo = (1ll << ULP_BIT) };
     size2u_t use_1c = hi | lo | 0;
 
@@ -456,7 +456,7 @@ size2u_t hmx_fp16_cvt(processor_t *proc, size16s_t acc, size1s_t ovf,  size1s_t 
     if (lo && (normalized.hi == 0)) {
         size16s_t two = { .hi= 0, .lo = 2};
         normalized = sub128(two, normalized);
-        normalized = sub128(normalized, epsilon);
+        normalized = sub128(normalized, epsilon_val);
         DEBUG_PRINT("lo: %016llx.%016llx ", normalized.hi, normalized.lo);
         sgn = !sgn;
     }
@@ -475,13 +475,13 @@ size2u_t hmx_fp16_cvt(processor_t *proc, size16s_t acc, size1s_t ovf,  size1s_t 
         }
     } else {
         if (sgn && use_1c) {
-            normalized = add128(normalized, epsilon);
+            normalized = add128(normalized, epsilon_val);
             DEBUG_PRINT("add eps :  %016llx.%016llx  ", normalized.hi, normalized.lo);
         }
         DEBUG_PRINT("rnd in :  %016llx %016llx  ", normalized.hi, normalized.lo);
         if (((normalized.lo >> ULP_BIT) & 0x1)==0) {
-            normalized = sub128(normalized, epsilon);
-            DEBUG_PRINT("eps in :  %016llx.%016llx  ", epsilon.hi, epsilon.lo);
+            normalized = sub128(normalized, epsilon_val);
+            DEBUG_PRINT("eps in :  %016llx.%016llx  ", epsilon_val.hi, epsilon_val.lo);
             DEBUG_PRINT("nor in :  %016llx.%016llx  ", normalized.hi, normalized.lo);
         }
         epsilon_out.lo >>=1;

@@ -1012,5 +1012,54 @@ DEF_ENC(V6_vmpyewuh,	ICLASS_CJ" 1 111 111 vvvvv PP 0 uuuuu 101 ddddd")
 DEF_ENC(V6_vmpyowh,	    ICLASS_CJ" 1 111 111 vvvvv PP 0 uuuuu 111 ddddd")
 
 
+/* FP instructions */
+DEF_ENC(V6_vmpy_qf32,       ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 000 ddddd")
+DEF_ENC(V6_vmpy_qf32_sf,	ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 001 ddddd")
+DEF_ENC(V6_vmpy_qf16,       ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 011 ddddd")
+DEF_ENC(V6_vmpy_qf16_hf,	ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 100 ddddd")
+DEF_ENC(V6_vmpy_qf16_mix_hf,ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 101 ddddd")
+DEF_ENC(V6_vmpy_qf32_qf16,  ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 110 ddddd")
+DEF_ENC(V6_vmpy_qf32_hf,	ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 111 ddddd")
+DEF_ENC(V6_vmpy_qf32_mix_hf,ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 000 ddddd")
+
+
+DEF_ENC(V6_vadd_qf32, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 000 ddddd")
+DEF_ENC(V6_vadd_sf, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 001 ddddd")
+DEF_ENC(V6_vadd_qf32_mix, 	ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 010 ddddd")
+DEF_ENC(V6_vsub_qf32, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 011 ddddd")
+DEF_ENC(V6_vsub_sf, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 100 ddddd")
+DEF_ENC(V6_vsub_qf32_mix, 	ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 101 ddddd")
+
+
+DEF_ENC(V6_vadd_qf16, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 010 ddddd")
+DEF_ENC(V6_vadd_hf, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 011 ddddd")
+DEF_ENC(V6_vadd_qf16_mix, 	ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 100 ddddd")
+DEF_ENC(V6_vsub_qf16, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 101 ddddd")
+DEF_ENC(V6_vsub_hf, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 110 ddddd")
+DEF_ENC(V6_vsub_qf16_mix, 	ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 111 ddddd")
+
+
+//Vconvert FP
+DEF_ENC(V6_vconv_sf_qf32, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 000 ddddd")
+DEF_ENC(V6_vconv_hf_qf16, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 011 ddddd")
+DEF_ENC(V6_vconv_hf_qf32, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 110 ddddd")
+
+//Vcmp for FP
+DEF_ENC(V6_vgtsf_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 010xx") //
+DEF_ENC(V6_vgthf_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 011xx") //
+DEF_ENC(V6_vgtsf_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 010xx") //
+DEF_ENC(V6_vgthf_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 011xx") //
+DEF_ENC(V6_vgtsf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 100xx") //
+DEF_ENC(V6_vgthf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 101xx") //
+DEF_ENC(V6_vgtsf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 100dd") //
+DEF_ENC(V6_vgthf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 101dd") //
+
+DEF_ENC(V6_vgtsf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 100dd") //
+DEF_ENC(V6_vmax_sf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 001 ddddd") //
+DEF_ENC(V6_vmin_sf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 010 ddddd") //
+DEF_ENC(V6_vmax_hf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 011 ddddd") //
+DEF_ENC(V6_vmin_hf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 100 ddddd") //
+
+
 
 #endif /* NO MMVEC */

@@ -33,6 +33,7 @@ obj-y += \
     conv_emu.o \
     mmvec/decode_ext_mmvec.o \
     mmvec/system_ext_mmvec.o \
+    mmvec/mmvec_qfloat.o \
     int16_emu.o \
     system.o \
     arch_options_calc.o \

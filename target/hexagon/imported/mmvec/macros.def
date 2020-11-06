@@ -1283,3 +1283,254 @@ DEF_MACRO(fVDOCHKPAGECROSS,(BASE,SUM),
 	(A_EA_PAGECROSS)
 )
 
+/* FP instructions */
+/*Qfloat Macros for muls*/
+DEF_MACRO(fPARSEQF32,(A),
+  "A",
+  "Parsing QF32 to extract exp/sig",
+  parse_qf32(A),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATQF32,(A,B,C),
+  "rnd_sat(A,B,C)",
+  "Rnd/Sat/Norm of Vector Multiply of two QF32 inputs",
+  rnd_sat_qf32(A,B,C),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fPARSEQF16,(A),
+  "A",
+  "Parsing QF16 to extract exp/sig",
+  parse_qf16(A),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATQF16,(A,B,C),
+  "rnd_sat(A,B,C)",
+  "Rnd/Sat/Norm of Vector Multiply of two QF16 inputs",
+  rnd_sat_qf16(A,B,C),
+  ()
+)
+
+/*Qfloat Macros for others*/
+DEF_MACRO(fPARSESF,(A),
+  "A",
+  "Parsing IEEE SF to extract sign/exp/sig",
+  parse_sf(A),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATSF,(A,B),
+  "rnd_sat(A,B)",
+  "Rnd/Sat/Norm of Vector Multiply of two IEEE SF inputs",
+  rnd_sat_sf(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fPARSEHF,(A),
+  "A",
+  "Parsing IEEE HF to extract sign/exp/sig",
+  parse_hf(A),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATHF,(A,B),
+  "rnd_sat(A,B)",
+  "Rnd/Sat/Norm of Vector Multiply of two IEEE HF inputs",
+  rnd_sat_hf(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATW,(A,B),
+  "rnd_sat(A,B)",
+  "Rnd/Sat/Norm of Vector convert of W inputs",
+  rnd_sat_w(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATUW,(A,B),
+  "rnd_sat(A,B)",
+  "Rnd/Sat/Norm of Vector convert of UW inputs",
+  rnd_sat_uw(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATH,(A,B),
+  "rnd_sat(A,B)",
+  "Rnd/Sat/Norm of Vector convert of H inputs",
+  rnd_sat_h(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATUH,(A,B),
+  "rnd_sat(A,B)",
+  "Rnd/Sat/Norm of Vector convert of UW inputs",
+  rnd_sat_uh(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATB,(A,B),
+  "rnd_sat(A,B)",
+  "Rnd/Sat/Norm of Vector convert of B inputs",
+  rnd_sat_b(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fRNDSATUB,(A,B),
+  "rnd_sat(A,B)",
+  "Rnd/Sat/Norm of Vector convert of UB inputs",
+  rnd_sat_ub(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fNEGQF32,(A),
+  "-(A)",
+  "Take Ones complement",
+  negate32(A),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fNEGQF16,(A),
+  "-(A)",
+  "Take Ones complement",
+  negate16(A),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fNEGSF,(A),
+  "-(A)",
+  "Change sign",
+  negate_sf(A),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fNEGHF,(A),
+  "-(A)",
+  "Change sign",
+  negate_hf(A),
+  (A_HVX_FLT)
+)
+
+//FP vector compare
+DEF_MACRO(fCMPGT_QF32,(A,B),
+  "(A > B)",
+  "Vector compare of QF32 format",
+  cmpgt_qf32(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fCMPGT_QF16,(A,B),
+  "(A > B)",
+  "Vector compare of QF16 format",
+  cmpgt_qf16(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fCMPGT_SF,(A,B),
+  "(A > B)",
+  "Vector compare of SF format",
+  cmpgt_sf(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fCMPGT_HF,(A,B),
+  "(A > B)",
+  "Vector compare of HF format",
+  cmpgt_hf(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fCMPGT_QF32_SF,(A,B),
+  "(A > B)",
+  "Vector compare of QF32/SF format",
+  cmpgt_qf32_sf(A,B),
+  (A_HVX_FLT)
+)
+
+DEF_MACRO(fCMPGT_QF16_HF,(A,B),
+  "(A > B)",
+  "Vector compare of QF16/HF format",
+  cmpgt_qf16_hf(A,B),
+  (A_HVX_FLT)
+)
+
+//VMAX/VMIN_QF32/QF16
+DEF_MACRO(fMAX_QF32,(X,Y),
+  "max(X,Y)",
+  "",
+  max_qf32(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMIN_QF32,(X,Y),
+  "min(X,Y)",
+  "",
+  min_qf32(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMAX_QF32_SF,(X,Y),
+  "max(X,Y)",
+  "",
+  max_qf32_sf(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMIN_QF32_SF,(X,Y),
+  "min(X,Y)",
+  "",
+  min_qf32_sf(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMAX_QF16,(X,Y),
+  "max(X,Y)",
+  "",
+  max_qf16(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMIN_QF16,(X,Y),
+  "min(X,Y)",
+  "",
+  min_qf16(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMAX_QF16_HF,(X,Y),
+  "max(X,Y)",
+  "",
+  max_qf16_hf(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMIN_QF16_HF,(X,Y),
+  "min(X,Y)",
+  "",
+  min_qf16_hf(X,Y),
+  (A_HVX_FLT)
+)
+
+//MAX/MIN_SF/HF
+DEF_MACRO(fMAX_SF,(X,Y),
+  "max(X,Y)",
+  "",
+  max_sf(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMIN_SF,(X,Y),
+  "min(X,Y)",
+  "",
+  min_sf(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMAX_HF,(X,Y),
+  "max(X,Y)",
+  "",
+  max_hf(X,Y),
+  (A_HVX_FLT)
+)
+DEF_MACRO(fMIN_HF,(X,Y),
+  "min(X,Y)",
+  "",
+  min_hf(X,Y),
+  (A_HVX_FLT)
+)
+
+
+
+
+
