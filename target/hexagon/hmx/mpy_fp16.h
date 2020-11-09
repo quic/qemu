@@ -77,15 +77,8 @@ size16s_t hmx_fp16_mac(processor_t *proc, size16s_t acc, size1s_t * ovf, size1s_
 void hmx_fp16_acc_ovf_check(processor_t *proc, size16s_t acc, size1s_t * ovf, size1s_t fp_rnd_bits);
 
 
-size2u_t hmx_fp16_cvt(processor_t *proc,  size16s_t acc, size1s_t  ovf, size1s_t fp_rnd_bits, size4s_t bias, size2s_t exp_scale, size2u_t exp_sat, size4s_t sat, size4s_t hi, size4s_t lo);
-
 size2u_t hmx_u8_cvt( processor_t *proc, size4s_t acc,   size4s_t bias32, size2s_t exp, size2s_t sig, size2s_t rnd_bit, size4s_t sat, size4s_t frac_bits);
 size2u_t hmx_u16_cvt(processor_t *proc, size4s_t acc_hl, size4s_t acc_ll, size4s_t bias32, size2s_t exp, size2s_t sig, size2s_t rnd_bit, size4s_t sat, size4s_t frac_bits);
 size2u_t hmx_u16x16_cvt(processor_t *proc, size4s_t acc_hh, size4s_t acc_hl, size4s_t acc_lh, size4s_t acc_ll, size8s_t bias48, size2s_t exp, size4s_t sig, size2s_t rnd_bit, size4s_t sat, size4s_t frac_bits);
-
-
-double hmx_fp16_float(size2u_t in);
-
-double hmx_acc_double(size16s_t acc);
 
 #endif
