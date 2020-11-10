@@ -461,6 +461,8 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
     *cs_base = 0;
 #ifdef CONFIG_USER_ONLY
     *flags = 0;
+#else
+    *flags = cpu_mmu_index(env, false);
 #endif
 }
 

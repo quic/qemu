@@ -753,19 +753,17 @@ void HELPER(checkforpriv)(CPUHexagonState *env)
     }
 }
 
-static inline void probe_store(CPUHexagonState *env, int slot)
+static inline void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
 {
     if (!(env->slot_cancelled & (1 << slot))) {
         size1u_t width = env->mem_log_stores[slot].width;
         target_ulong va = env->mem_log_stores[slot].va;
-        int mmu_idx = cpu_mmu_index(env, false);
         probe_write(env, va, width, mmu_idx, env->gpr[HEX_REG_PC]);
     }
 }
 
-static inline void probe_hvx_stores(CPUHexagonState *env)
+static inline void probe_hvx_stores(CPUHexagonState *env, int mmu_idx)
 {
-    int mmu_idx = cpu_mmu_index(env, false);
     uintptr_t retaddr = env->gpr[HEX_REG_PC];
     int i;
 
@@ -806,25 +804,24 @@ static inline void probe_hvx_stores(CPUHexagonState *env)
 }
 
 void HELPER(probe_pkt_stores)(CPUHexagonState *env, int has_st0, int has_st1,
-                              int has_dczeroa, int has_hvx_stores)
+                              int has_dczeroa, int has_hvx_stores, int mmu_idx)
 {
     if (has_st0 && !has_dczeroa) {
-        probe_store(env, 0);
+        probe_store(env, 0, mmu_idx);
     }
     if (has_st1 && !has_dczeroa) {
-        probe_store(env, 1);
+        probe_store(env, 1, mmu_idx);
     }
     if (has_dczeroa) {
         /* Probe 32 bytes starting at (dczero_addr & ~0x1f) */
         target_ulong va = env->dczero_addr & ~0x1f;
-        int mmu_idx = cpu_mmu_index(env, false);
         probe_write(env, va +  0, 8, mmu_idx, env->gpr[HEX_REG_PC]);
         probe_write(env, va +  8, 8, mmu_idx, env->gpr[HEX_REG_PC]);
         probe_write(env, va + 16, 8, mmu_idx, env->gpr[HEX_REG_PC]);
         probe_write(env, va + 24, 8, mmu_idx, env->gpr[HEX_REG_PC]);
     }
     if (has_hvx_stores) {
-        probe_hvx_stores(env);
+        probe_hvx_stores(env, mmu_idx);
     }
 }
 
