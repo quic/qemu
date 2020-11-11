@@ -586,8 +586,7 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IPEND)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IAD)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_K0LOCK)
-             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_TLBLOCK)
-             || GET_ATTRIB(opcode, A_LLSC);
+             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_TLBLOCK);
 #endif
     }
 

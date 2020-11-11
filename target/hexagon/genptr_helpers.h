@@ -469,7 +469,7 @@ static inline void gen_store_conditional4(CPUHexagonState *env,
     tcg_gen_br(done);
 
     gen_set_label(fail);
-    tcg_gen_movi_tl(pred, 0);
+    tcg_gen_movi_tl(hex_pred[prednum], 0);
 
     gen_set_label(done);
     tcg_gen_movi_tl(hex_llsc_addr, ~0);
@@ -498,7 +498,7 @@ static inline void gen_store_conditional8(CPUHexagonState *env,
     tcg_gen_br(done);
 
     gen_set_label(fail);
-    tcg_gen_movi_tl(pred, 0);
+    tcg_gen_movi_tl(hex_pred[prednum], 0);
 
     gen_set_label(done);
     tcg_gen_movi_tl(hex_llsc_addr, ~0);
