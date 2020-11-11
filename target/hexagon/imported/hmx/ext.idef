@@ -44,7 +44,6 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 	MX_MULT(WEIGHTS_PER_BYTE_LOG,UNPACK,size1s_t)\
 })
 
-
 #define MX_MULT(WEIGHTS_PER_BYTE_LOG,UNPACK,TYPES)\
 	fHIDE(int tile_y_mask = THREAD2STRUCT->tile_y_mask;) \
 	fHIDE(int tile_x_mask = THREAD2STRUCT->tile_x_mask;) \
@@ -66,10 +65,10 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 	fHIDE(int input_weight_idx = 0;)\
 	fHIDE(int pmu_block = 0;)\
 	fHIDE(int deep_mode = thread->mem_access[0].hmx_ma.deep;)\
-	fHIDE(int flt_mode = thread->mem_access[1].hmx_ma.flt;)\
+	fHIDE(int fxp2_mode = 0;)\
 	fHIDE(int deep_block_end = deep_mode ? 2 : 1 ;)\
-	fHIDE(int current_acc = flt_mode ? THREAD2STRUCT->current_acc_flt : THREAD2STRUCT->current_acc_fxp;)\
-	fHIDE(vaddr_t weight_inc = flt_mode ? 256 : 128 ; )\
+	fHIDE(int current_acc = THREAD2STRUCT->current_acc_fxp;)\
+	fHIDE(vaddr_t weight_inc = fxp2_mode ? 256 : 128 ; )\
 	for(int block_idx = 0; block_idx < block_end; block_idx++) {\
 		fHIDE(int input_ch_end = 0;) \
 		fHIDE(int input_ch_start = 0;) \
@@ -86,7 +85,7 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 				fHIDE(int x_tap_stop = thread->mem_access[1].hmx_ma.x_stop;)\
 				while (x_tap_idx>=0) {\
 					for(int input_ch_idx = input_ch_start; input_ch_idx < input_ch_end; input_ch_idx += 4*input_ch_stride) {\
-						fHIDE(fMXLOAD_WEIGHTS(weight_addr, input_weight_idx, flt_mode );)\
+						fHIDE(fMXLOAD_WEIGHTS(weight_addr, input_weight_idx, fxp2_mode );)\
 						for(int input_ch_idx2 = input_ch_idx; input_ch_idx2 < input_ch_idx + 4*input_ch_stride; input_ch_idx2 += input_ch_stride) {\
 							\
 							fHIDE(fMXDEBUG_PRINT_TAP(x_tap_idx,y_tap_idx,input_ch_idx2,deep_block_idx);)\
@@ -98,13 +97,13 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 									fHIDE(int output_idx=0;) \
 									fHIDE(int acc_select =0;) \
 									fMX_COMPUTE_ACC_INDEX(output_idx, acc_select, x_tap_idx, intra_tile_x, tile_x_mask, intra_tile_y, current_acc);\
-									fMXLOAD_ACTIVATION(activation, x_tap_idx, y_tap_idx, intra_tile_x, intra_tile_y, input_ch_idx2, block_idx, tile_y_mask, flt_mode);\
+									fMXLOAD_ACTIVATION(activation, x_tap_idx, y_tap_idx, intra_tile_x, intra_tile_y, input_ch_idx2, block_idx, tile_y_mask, fxp2_mode);\
 									for(int output_ch_idx = 0; output_ch_idx < output_channels; output_ch_idx++) {\
 										fHIDE(TYPES weight=0;)\
 										fHIDE(TYPES weight_valid=0;)\
-										fMXSELECT_WEIGHT(weight, weight_valid, weight_addr, WEIGHTS_PER_BYTE_LOG, UNPACK, output_ch_idx, input_weight_idx,flt_mode);\
-										fMX_MULT(output_idx, output_ch_idx, acc_select, activation, weight, weight_valid, flt_mode, (input_ch_idx2 >> format), x_tap_decoded, y_tap_decoded,block_idx, deep_block_idx );\
-										fHIDE(fMX_MULT_ARRAY_PMU(output_idx, (input_ch_idx2 >> format), output_ch_idx, activation, weight, flt_mode);)\
+										fMXSELECT_WEIGHT(weight, weight_valid, weight_addr, WEIGHTS_PER_BYTE_LOG, UNPACK, output_ch_idx, input_weight_idx,fxp2_mode);\
+										fMX_MULT(output_idx, output_ch_idx, acc_select, activation, weight, weight_valid, fxp2_mode, (input_ch_idx2 >> format), x_tap_decoded, y_tap_decoded,block_idx, deep_block_idx );\
+										fHIDE(fMX_MULT_ARRAY_PMU(output_idx, (input_ch_idx2 >> format), output_ch_idx, activation, weight, fxp2_mode);)\
 									}\
 									fMX_INC_TAP_MASKED(intra_tile_x, tile_x_inc, tile_x_mask_msb, 0);\
 								}\
@@ -114,7 +113,7 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 						}\
 						fHIDE(fMX_CHECK_MAC_LIMIT(y_tap_idx, x_tap_idx, block_idx, block_end, input_ch_idx,input_ch_end, deep_block_idx, deep_block_end);)\
 					}\
-					fHIDE(fMX_UPDATE_ARRAY_PMU(flt_mode, pmu_block);)\
+					fHIDE(fMX_UPDATE_ARRAY_PMU(fxp2_mode, pmu_block);)\
 					fMX_INC_TAP_MASKED(x_tap_idx, tile_x_inc, tile_x_mask_msb, x_dilate);\
 					fHIDE(if (x_tap_idx > x_tap_stop) x_tap_idx = -1;)\
 					fHIDE(fMX_WEIGHTS_RANGE_CHECK(weight_addr, x_tap_idx,-1);)\
@@ -130,8 +129,8 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 		}\
 		fHIDE(fMX_WEIGHTS_RANGE_CHECK(weight_addr, block_idx,block_end);)\
 	}\
-	fHIDE(fDEBUG_VERIF_ACC_PRINT(flt_mode);)\
-	fHIDE(fMX_UPDATE_ACC(flt_mode);)\
+	fHIDE(fDEBUG_VERIF_ACC_PRINT(fxp2_mode);)\
+	fHIDE(fMX_UPDATE_ACC(fxp2_mode);)\
 
 
 #define FORMAT_DM 0
@@ -309,17 +308,6 @@ MXMEMCONVERT_16x16(M8_mxcvta_sat_uh2x2,   "mxmem(Rs32,Rt32):after:sat.uh=acc:2x2
 MXMEMCONVERT_16x16(M8_mxcvta_uh2x2,       "mxmem(Rs32,Rt32):after.uh=acc:2x2",             HMX_NOSAT, RsV, RtV, HMX_CVT_AFTER,  fMX_CLEAR_ACC_FXP)
 MXMEMCONVERT_16x16(M8_mxcvta_sat_uh2x2_r, "mxmem(Rs32,Rt32):after:retain:sat.uh=acc:2x2",  HMX_SAT,   RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC)
 MXMEMCONVERT_16x16(M8_mxcvta_uh2x2_r,     "mxmem(Rs32,Rt32):after:retain.uh=acc:2x2",      HMX_NOSAT, RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC)
-
-
-//MXMEMCONVERT_FP16(M8_mxcvtl_sat_hi_hf,    "mxmem(Rs32,Rt32):before:hi.hf=acc",         HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_CLEAR_ACC_FLT, HMX_FP_CVT_HI)
-//MXMEMCONVERT_FP16(M8_mxcvtl_sat_lo_hf,    "mxmem(Rs32,Rt32):before:lo.hf=acc",         HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_CLEAR_ACC_FLT, HMX_FP_CVT_LO)
-//MXMEMCONVERT_FP16(M8_mxcvtl_sat_hi_hf_r,  "mxmem(Rs32,Rt32):before:retain:hi.hf=acc",  HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_NOCLEAR_ACC,   HMX_FP_CVT_HI)
-//MXMEMCONVERT_FP16(M8_mxcvtl_sat_lo_hf_r,  "mxmem(Rs32,Rt32):before:retain:lo.hf=acc",  HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_NOCLEAR_ACC,   HMX_FP_CVT_LO)
-//MXMEMCONVERT_FP16(M8_mxcvtr_sat_hi_hf,    "mxmem(Rs32,Rt32):after:hi.hf=acc",          HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_CLEAR_ACC_FLT, HMX_FP_CVT_HI)
-//MXMEMCONVERT_FP16(M8_mxcvtr_sat_lo_hf,    "mxmem(Rs32,Rt32):after:lo.hf=acc",          HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_CLEAR_ACC_FLT, HMX_FP_CVT_LO)
-//MXMEMCONVERT_FP16(M8_mxcvtr_sat_hi_hf_r,  "mxmem(Rs32,Rt32):after:retain:hi.hf=acc",   HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC,   HMX_FP_CVT_HI)
-//MXMEMCONVERT_FP16(M8_mxcvtr_sat_lo_hf_r,  "mxmem(Rs32,Rt32):after:retain:lo.hf=acc",   HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC,   HMX_FP_CVT_HI)
-
 
 
 

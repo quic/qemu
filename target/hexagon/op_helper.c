@@ -41,7 +41,7 @@
 #include "hmx/hmx.h"
 #include "hmx/macros.h"
 #include "hmx/ext_hmx.h"
-#include "hmx/mpy_fp16.h"
+#include "hmx/mpy_hmx.h"
 #include "system.h"
 #include "dma_adapter.h"
 #include "fma_emu.h"

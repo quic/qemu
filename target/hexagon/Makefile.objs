@@ -38,7 +38,7 @@ obj-y += \
     system.o \
     arch_options_calc.o \
     hmx/ext_hmx.o \
-    hmx/mpy_fp16.o \
+    hmx/mpy_hmx.o \
     hmx/system_ext_hmx.o \
     dma_adapter.o \
     dma.o \

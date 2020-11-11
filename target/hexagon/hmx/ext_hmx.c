@@ -118,29 +118,6 @@ void hmx_ext_print_regs(thread_t *thread, FILE *fp) {
 }
 #endif
 
-int hmx_ext_get_ovf(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t acc_select, size4u_t *result)
-{
-	*result = 0x0;
-	if (THREAD2STRUCT != NULL) {
-		spatial_index <<= 1;
-		*result = THREAD2STRUCT->accum_flt[spatial_index][channel_index].ovf[acc_select];
-		fMX_VERIF_DEBUG_LOG(2, "TB HMX READ: FLT OVERFLOW BITS ACC[%02d][%02d][%02d]=%08x", spatial_index/2, channel_index, acc_select, *result);
-		return 0;
-	}
-
-	return -1;
-}
-
-int hmx_ext_set_ovf(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t acc_select, size4u_t val)
-{
-	if (THREAD2STRUCT != NULL) {
-		spatial_index <<= 1;
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].ovf[acc_select] = val;
-		fMX_VERIF_DEBUG_LOG(2, "TB HMX WRITE: FLT OVERFLOW BITS ACC[%02d][%02d][%02d]=%08x", spatial_index/2, channel_index, acc_select, val);
-		return 0;
-	}
-	return -1;
-}
 
 void *hmx_ext_palloc(processor_t *proc, int slots)
 {
@@ -162,7 +139,6 @@ void hmx_ext_tfree(processor_t *proc, int xa, int slots)
 {
 }
 void hmx_acc_ptr_reset(processor_t *proc) {
-	((hmx_state_t*)proc->shared_extptr)->current_acc_flt = 0;
 	((hmx_state_t*)proc->shared_extptr)->current_acc_fxp = 0;
 }
 #endif
@@ -183,32 +159,17 @@ void hmx_ext_commit_regs(thread_t *thread)
 	THREAD2STRUCT->fxp_commit_state.bias_update = 0;
 
 
-	// Floating Point Array
-	if(THREAD2STRUCT->flt_commit_state.acc_update) {
-		memcpy(THREAD2STRUCT->accum_flt, THREAD2STRUCT->future_accum_flt, sizeof(hmx_acc_flt_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-		memset(THREAD2STRUCT->future_accum_flt, 0, sizeof(hmx_acc_flt_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-	}
-	THREAD2STRUCT->flt_commit_state.acc_update = 0;
 
 	if(THREAD2STRUCT->fxp_commit_state.acc_clear_both) {
 		THREAD2STRUCT->fxp_commit_state.acc_clear_both = 0;
 		memset(THREAD2STRUCT->accum_fxp, 0, sizeof(hmx_acc_fxp_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 		memset(THREAD2STRUCT->future_accum_fxp, 0, sizeof(hmx_acc_fxp_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	}
-	if(THREAD2STRUCT->flt_commit_state.acc_clear_both) {
-		THREAD2STRUCT->flt_commit_state.acc_clear_both = 0;
-		memset(THREAD2STRUCT->accum_flt, 0, sizeof(hmx_acc_flt_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-		memset(THREAD2STRUCT->future_accum_flt, 0, sizeof(hmx_acc_flt_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-	}
 
 
 	if(THREAD2STRUCT->fxp_commit_state.swap_acc) {
         THREAD2STRUCT->current_acc_fxp ^= 1;
 		THREAD2STRUCT->fxp_commit_state.swap_acc = 0;
-	}
-	if(THREAD2STRUCT->flt_commit_state.swap_acc) {
-		THREAD2STRUCT->current_acc_flt ^= 1;
-		THREAD2STRUCT->flt_commit_state.swap_acc = 0;
 	}
 }
 
@@ -218,7 +179,6 @@ void hmx_ext_rewind(thread_t *thread)
 {
 	THREAD2STRUCT->operand_ready = 0;
 	THREAD2STRUCT->fxp_commit_state.val = 0;
-	THREAD2STRUCT->flt_commit_state.val = 0;
 };
 
 
@@ -226,7 +186,6 @@ void hmx_ext_commit_rewind(thread_t *thread)
 {
 	THREAD2STRUCT->operand_ready = 0;
 	THREAD2STRUCT->fxp_commit_state.val = 0;
-	THREAD2STRUCT->flt_commit_state.val = 0;
 }
 
 static void write_converted_peg(thread_t *thread, int x_idx, int y_idx, int x_acc_idx, int y_acc_idx) {
@@ -234,7 +193,6 @@ static void write_converted_peg(thread_t *thread, int x_idx, int y_idx, int x_ac
 	int acc_idx = (x_acc_idx|y_acc_idx);
 	int current_acc __attribute__ ((unused)) = thread->mem_access[0].hmx_ma.acc_select;
 	int format =  thread->mem_access[0].hmx_ma.format;
-	int flt = thread->mem_access[0].hmx_ma.flt;
 	int enable16x16 = thread->mem_access[0].hmx_ma.enable16x16;
 	int outputselect16x16 = thread->mem_access[0].hmx_ma.outputselect16x16;
 	paddr_t paddr_base = thread->mem_access[0].paddr;
@@ -259,24 +217,16 @@ static void write_converted_peg(thread_t *thread, int x_idx, int y_idx, int x_ac
 		paddr_t pa = paddr_base + (x_idx|y_idx) + (z_idx << format);
 
 		size1u_t byte = 0;
-		size2u_t hf = 0;
-		if(flt) {
-			hf = hmx_state->future_accum_flt[acc_idx][z_idx].val[0].w[0];	// Using word 0 if future accumulator to store the converted float
-			sim_mem_write2(thread->system_ptr,thread->threadId, pa, hf);
-			fMX_DEBUG_LOG(3,        "HMX_CVT_FLT: write ACC[%02d][%02d][%02d] to PA=%08llx Half word: %04x pktid:%08x" , acc_idx/2, z_idx, current_acc, pa, hf, thread->pktid);
-			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT_FLT: write ACC[%02d][%02d][%02d] to PA=%08llx Half word: %04x pktid:%08x" , acc_idx/2, z_idx, current_acc, pa, hf, thread->pktid);
-		} else {
 			byte = hmx_state->future_accum_fxp[acc_idx][z_idx].b[0];
 			sim_mem_write1(thread->system_ptr,thread->threadId, pa, byte);
 			fMX_DEBUG_LOG(3,         "HMX_CVT_FXP: write ACC[%02d][%02d][%02d] to PA=%08llx Byte: %02x pktid:%08x" , acc_idx, z_idx, current_acc, pa, byte, thread->pktid);
 			fMX_VERIF_DEBUG_LOG(1,   "HMX_CVT_FXP: write ACC[%02d][%02d][%02d] to PA=%08llx Byte: %02x pktid:%08x" , acc_idx, z_idx, current_acc, pa, byte, thread->pktid);
-		}
 
 #ifdef VERIFICATION
 		int slot_tmp = thread->ver_cur_slot;
 		thread->ver_cur_slot = 0;
-		int width = (flt) ? 2 : 1;
-		int val = (flt) ? hf : byte;
+		int width = 1;
+		int val = byte;
 		if (thread->processor_ptr->options->sim_vtcm_memory_callback) {
 			thread->processor_ptr->options->sim_vtcm_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId, 0, pa, width, DWRITE, val);
 		}
@@ -295,10 +245,10 @@ static void write_x_row(thread_t *thread, int y_idx, int y_acc_idx) {
 	int x_mask = hmx_state->tile_x_mask | (1<<31);
 	int x_offset  = thread->mem_access[0].hmx_ma.x_offset;	// Start at offset
 
-	fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT_FLT: starting x=%x offset = %x pktid:%08x" , x_idx, x_offset, thread->pktid);
+	fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT: starting x=%x offset = %x pktid:%08x" , x_idx, x_offset, thread->pktid);
 	for (; x_idx < x_offset; ) {
 		if (hmx_state->cvt_type == HMX_CVT_BEFORE) {
-			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT_FLT: before: writing peg x=%x pktid:%08x" , x_idx, thread->pktid);
+			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT: before: writing peg x=%x pktid:%08x" , x_idx, thread->pktid);
 			write_converted_peg(thread, x_idx, y_idx, x_acc_idx, y_acc_idx );
 			x_acc_idx = fMX_INC_MASKED(x_acc_idx, x_inc, x_mask);
 		}
@@ -309,7 +259,7 @@ static void write_x_row(thread_t *thread, int y_idx, int y_acc_idx) {
 
 	while(x_idx>=0) {
 		if (hmx_state->cvt_type == HMX_CVT_AFTER) {
-			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT_FLT: after: writing peg x=%x pktid:%08x" , x_idx, thread->pktid);
+			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT: after: writing peg x=%x pktid:%08x" , x_idx, thread->pktid);
 			write_converted_peg(thread, x_idx, y_idx, x_acc_idx, y_acc_idx );
 			x_acc_idx = fMX_INC_MASKED(x_acc_idx, x_inc, x_mask);
 		}
@@ -328,7 +278,7 @@ static void write_out_convert(thread_t *thread) {
 
 		while(y_idx>=0) {
 			// Write out Horizontal Strip
-			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT_FLT: writing row offset y=%x pktid:%08x" , y_idx, thread->pktid);
+			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT: writing row offset y=%x pktid:%08x" , y_idx, thread->pktid);
 			write_x_row(thread, y_idx, y_acc_idx);
 			y_idx = fMX_INC_MASKED(y_idx, y_inc, y_mask);
 			y_acc_idx = fMX_INC_MASKED(y_acc_idx, y_inc, y_mask);
@@ -337,7 +287,7 @@ static void write_out_convert(thread_t *thread) {
 		if (dY != 0) {
 			// Address to next tile
 			thread->mem_access[0].paddr += dY;
-			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT_FLT: second block writing row y=%x pktid:%08x" , y_idx, thread->pktid);
+			fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT: second block writing row y=%x pktid:%08x" , y_idx, thread->pktid);
 			for (y_idx  = 0; y_idx < y_offset; )  {
 				write_x_row(thread, y_idx, y_acc_idx);
 				y_idx = fMX_INC_MASKED(y_idx, y_inc, y_mask);
@@ -346,7 +296,7 @@ static void write_out_convert(thread_t *thread) {
 			}
 		} else {
 			for (y_idx  = 0; y_idx < y_offset; )  {
-				fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT_FLT: writing row y=%x pktid:%08x" , y_idx, thread->pktid);
+				fMX_VERIF_DEBUG_LOG(1,  "HMX_CVT: writing row y=%x pktid:%08x" , y_idx, thread->pktid);
 				write_x_row(thread, y_idx, y_acc_idx );
 				y_idx = fMX_INC_MASKED(y_idx, y_inc, y_mask);
 				y_acc_idx = fMX_INC_MASKED(y_acc_idx, y_inc, y_mask);
@@ -382,30 +332,6 @@ void hmx_ext_commit_mem(thread_t *thread, int slot)
 		memset(THREAD2STRUCT->future_accum_fxp, 0, sizeof(hmx_acc_fxp_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	}
 
-	// Float Array
-	if(hmx_state->flt_commit_state.cvt_write) {
-		write_out_convert(thread);
-
-		if (hmx_state->flt_commit_state.acc_clear) {
-			int current_acc = thread->mem_access[0].hmx_ma.acc_select;
-			for (int x = 0; x < MAX_ACCUMULATORS_DEPTH; x++) {
-				for(int y = 0; y < MAX_ACCUMULATORS_SPATIAL; y++) {
-					hmx_state->accum_flt[y][x].val[current_acc].w[0] = 0;
-					hmx_state->accum_flt[y][x].val[current_acc].w[1] = 0;
-					hmx_state->accum_flt[y][x].val[current_acc].w[2] = 0;
-					hmx_state->accum_flt[y][x].val[current_acc].w[3] = 0;
-					hmx_state->accum_flt[y][x].ovf[current_acc] = 0;
-				}
-			}
-			hmx_state->current_acc_flt ^= 0x1 ; // Flip Accumulator
-#ifdef VERIFICATION
-			warn("MXMEM cvt clear swapped accumulator: %x", hmx_state->flt_commit_state.acc_clear);
-#endif
-		}
-		hmx_state->flt_commit_state.cvt_write = 0;
-		hmx_state->flt_commit_state.acc_clear = 0;
-		memset(THREAD2STRUCT->future_accum_flt, 0, sizeof(hmx_acc_flt_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-	}
 
 	// This will get cleaned up when old bias instructions are replicated
 	if(hmx_state->fxp_commit_state.bias_write) {
@@ -473,56 +399,6 @@ void hmx_ext_print_acc(thread_t *thread, FILE *fp) {
 #endif
 }
 #endif
-int hmx_ext_get_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t wordno, size4u_t *result) {
-	*result = 0xDEADBEEF;
-	if (THREAD2STRUCT != NULL) {
-		int acc_select = (wordno > 3);
-		int word_select = wordno & 0x3;
-		int acc_shift = 16+66 - (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_FRAC+thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_INT);
-		spatial_index <<= 1;
-		size16s_t acc =  THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select];
-
-		acc = shiftr128(acc, acc_shift);
-		*result = acc.w[word_select];
-
-		fMX_VERIF_DEBUG_LOG(2, "TB HMX READ: FLT ACC[%02d][%02d][%02d].w[%d]=%08x pktid:%08x", spatial_index/2, channel_index, acc_select, wordno, *result, thread->pktid);
-
-
-		return 0;
-	}
-	return -1;
-}
-int hmx_ext_set_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t wordno, size4u_t val) {
-
-	if (THREAD2STRUCT != NULL) {
-		int acc_select = (wordno > 3);
-		int word_select = wordno & 0x3;
-		int acc_shift = 16+(66 - (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_FRAC+thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_INT)) + (word_select*32);
-		size16s_t acc =  {0};
-		spatial_index <<= 1;
-		acc.w[0] = val;
-		acc = shiftl128(acc, acc_shift);
-		if (word_select == 0) {
-			THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[0] = 0;
-			THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[1] = 0;
-			THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[2] = 0;
-			THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[3] = 0;
-		}
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[0] |= acc.w[0];
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[1] |= acc.w[1];
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[2] |= acc.w[2];
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[3] |= acc.w[3];
-
-		// Sign extend
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select] = shiftr128(shiftl128(THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select], 46), 46);
-		fMX_VERIF_DEBUG_LOG(2,  "TB HMX WRITE: FLT ACC[%02d][%02d][%02d] = %016llx.%016llx w[%d]=%08x",
-			spatial_index/2, channel_index, acc_select,
-			THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].hi,
-			THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].lo, wordno, val);
-		return 0;
-	}
-	return -1;
-}
 
 int hmx_ext_get_acc(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t wordno, size4u_t *result) {
 	*result = 0xDEADBEEF;

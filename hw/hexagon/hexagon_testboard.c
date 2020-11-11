@@ -48,7 +48,6 @@ const rev_features_t rev_features_v68 = {
 const options_struct options_struct_v68 = {
     .l2tcm_base  = 0,  /* FIXME - Should be l2tcm_base ?? */
     .hmx_mac_fxp_callback = (void *)0,
-    .hmx_mac_flt_callback = (void *)0,
 };
 
 const arch_proc_opt_t arch_proc_opt_v68 = {
@@ -67,15 +66,10 @@ const arch_proc_opt_t arch_proc_opt_v68 = {
     .vtcm_size = VTCM_SIZE,
     .vtcm_offset = VTCM_OFFSET,
     .dmadebugfile = NULL,
-    .QDSP6_MX_FP_ACC_INT   = 18,
-    .QDSP6_MX_FP_ACC_FRAC  = 46,
     .QDSP6_MX_CHANNELS     = 32,
-    .QDSP6_MX_FP_RATE      = 2,
     .QDSP6_MX_RATE         = 4,
     .QDSP6_DMA_PRESENT     = 1,
     .QDSP6_MX_CVT_MPY_SZ   = 10,
-    .QDSP6_MX_FP_PRESENT   = 1,
-    .QDSP6_MX_FP_ROWS      = 32,
     .QDSP6_MX_ROWS         = 64,
     .QDSP6_MX_COLS         = 32,
 };
@@ -148,6 +142,9 @@ static void hexagon_common_init(MachineState *machine)
     memory_region_init_ram(vtcm, NULL, "vtcm.ram", cfgTable.vtcm_size_kb * 1024,
         &error_fatal);
     memory_region_add_subregion(address_space, cfgTable.vtcm_base, vtcm);
+    MemoryRegion *cpz = g_new(MemoryRegion, 1);
+    memory_region_init_ram(cpz, NULL, "cpz.ram", 0x10000000, &error_fatal);
+    memory_region_add_subregion(address_space, 0x910000000, cpz);
 
     /* Test region for cpz addresses above 32-bits */
     MemoryRegion *cpz = g_new(MemoryRegion, 1);
