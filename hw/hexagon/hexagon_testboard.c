@@ -149,6 +149,11 @@ static void hexagon_common_init(MachineState *machine)
         &error_fatal);
     memory_region_add_subregion(address_space, cfgTable.vtcm_base, vtcm);
 
+    /* Test region for cpz addresses above 32-bits */
+    MemoryRegion *cpz = g_new(MemoryRegion, 1);
+    memory_region_init_ram(cpz, NULL, "cpz.ram", 0x10000000, &error_fatal);
+    memory_region_add_subregion(address_space, 0x910000000, cpz);
+
     /* Skip if the core doesn't allocate space for TCM */
     if (cfgExtensions.l2tcm_size) {
         MemoryRegion *tcm = g_new(MemoryRegion, 1);
