@@ -142,9 +142,6 @@ static void hexagon_common_init(MachineState *machine)
     memory_region_init_ram(vtcm, NULL, "vtcm.ram", cfgTable.vtcm_size_kb * 1024,
         &error_fatal);
     memory_region_add_subregion(address_space, cfgTable.vtcm_base, vtcm);
-    MemoryRegion *cpz = g_new(MemoryRegion, 1);
-    memory_region_init_ram(cpz, NULL, "cpz.ram", 0x10000000, &error_fatal);
-    memory_region_add_subregion(address_space, 0x910000000, cpz);
 
     /* Test region for cpz addresses above 32-bits */
     MemoryRegion *cpz = g_new(MemoryRegion, 1);
