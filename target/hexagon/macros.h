@@ -291,10 +291,10 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
 #define fLSBNEW1NOT (!fLSBNEW1)
 #endif
 
-#define fNEWREG(RNUM) ((int32_t)(env->new_value[(RNUM)]))
+#define fNEWREG(VAL) ((int32_t)(VAL))
 
 #ifdef QEMU_GENERATE
-#define fNEWREG_ST(RNUM) (hex_new_value[NtX])
+#define fNEWREG_ST(VAL) (VAL)
 #endif
 
 #define fVSATUVALN(N, VAL) \

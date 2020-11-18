@@ -239,6 +239,16 @@ asm ("SL2_return_tnew:\n\t"
      "   dealloc_return\n\t"
     );
 
+static long long creg_pair(int x, int y)
+{
+    long long retval;
+    asm ("m0 = %1\n\t"
+         "m1 = %2\n\t"
+         "%0 = c7:6\n\t"
+         : "=r"(retval) : "r"(x), "r"(y) : "m0", "m1");
+    return retval;
+}
+
 int main()
 {
 
@@ -340,6 +350,10 @@ int main()
     check(early_exit, 0);
     SL2_return_tnew(1);
     check(early_exit, 1);
+
+    long long pair = creg_pair(5, 7);
+    check((int)pair, 5);
+    check((int)(pair >> 32), 7);
 
     puts(err ? "FAIL" : "PASS");
     return err;

@@ -41,7 +41,11 @@ def genptr_decl_pair_writeble(f, tag, regtype, regid, regno):
     regN="%s%sN" % (regtype,regid)
     f.write("    TCGv_i64 %s%sV = tcg_temp_local_new_i64();\n" % \
         (regtype, regid))
-    f.write("    const int %s = insn->regno[%d];\n" % (regN, regno))
+    if (regtype == "C"):
+        f.write("    const int %s = insn->regno[%d] + HEX_REG_SA0;\n" % \
+            (regN, regno))
+    else:
+        f.write("    const int %s = insn->regno[%d];\n" % (regN, regno))
     if ('A_CONDEXEC' in attribdict[tag]):
         f.write("    if (!is_preloaded(ctx, %s)) {\n" % regN)
         f.write("        tcg_gen_mov_tl(hex_new_value[%s], hex_gpr[%s]);\n" % \
@@ -56,7 +60,11 @@ def genptr_decl_writeble(f, tag, regtype, regid, regno):
     regN="%s%sN" % (regtype,regid)
     f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
         (regtype, regid))
-    f.write("    const int %s = insn->regno[%d];\n" % (regN, regno))
+    if (regtype == "C"):
+        f.write("    const int %s = insn->regno[%d] + HEX_REG_SA0;\n" % \
+            (regN, regno))
+    else:
+        f.write("    const int %s = insn->regno[%d];\n" % (regN, regno))
     if ('A_CONDEXEC' in attribdict[tag]):
         f.write("    if (!is_preloaded(ctx, %s)) {\n" % regN)
         f.write("        tcg_gen_mov_tl(hex_new_value[%s], hex_gpr[%s]);\n" % \
@@ -92,14 +100,14 @@ def genptr_decl(f, tag, regtype, regid, regno):
         if (regid == "ss"):
             f.write("    TCGv_i64 %s%sV = tcg_temp_local_new_i64();\n" % \
                 (regtype, regid))
-            f.write("    const int %s = insn->regno[%d];\n" % \
+            f.write("    const int %s = insn->regno[%d] + HEX_REG_SA0;\n" % \
                 (regN, regno))
         elif (regid == "dd"):
             genptr_decl_pair_writeble(f, tag, regtype, regid, regno)
         elif (regid == "s"):
             f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
                 (regtype, regid))
-            f.write("    const int %s%sN = insn->regno[%d];\n" % \
+            f.write("    const int %s%sN = insn->regno[%d] + HEX_REG_SA0;\n" % \
                 (regtype, regid, regno))
         elif (regid == "d"):
             genptr_decl_writeble(f, tag, regtype, regid, regno)
@@ -165,10 +173,8 @@ def genptr_decl(f, tag, regtype, regid, regno):
 def genptr_decl_new(f,regtype,regid,regno):
     if (regtype == "N"):
         if (regid in {"s", "t"}):
-            f.write("    const int %s%sX = insn->regno[%d];\n" % \
+            f.write("    TCGv %s%sN = hex_new_value[insn->regno[%d]];\n" % \
                 (regtype, regid, regno))
-            f.write("    TCGv %s%sN = tcg_const_tl(%s%sX);\n" % \
-                (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "P"):
@@ -179,10 +185,8 @@ def genptr_decl_new(f,regtype,regid,regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "O"):
         if (regid == "s"):
-            f.write("    const int %s%sX = insn->regno[%d];\n" % \
+            f.write("    TCGv %s%sN = tcg_const_tl(insn->regno[%d]);\n" % \
                 (regtype, regid, regno))
-            f.write("    TCGv %s%sN = tcg_const_tl(%s%sX);\n" % \
-                (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
@@ -249,10 +253,7 @@ def genptr_free(f,regtype,regid,regno):
 
 def genptr_free_new(f,regtype,regid,regno):
     if (regtype == "N"):
-        if (regid in {"s", "t"}):
-            f.write("    tcg_temp_free(%s%sN);\n" % \
-                (regtype, regid))
-        else:
+        if (regid not in {"s", "t"}):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "P"):
         if (regid not in {"t", "u", "v"}):
@@ -299,28 +300,31 @@ def genptr_src_read(f,regtype,regid):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "C"):
         if (regid == "ss"):
-            f.write("    if (%s%sN + HEX_REG_SA0 == HEX_REG_P3_0) {\n" % \
+            f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
                                  (regtype, regid))
             f.write("        TCGv p3_0 = tcg_temp_new();\n")
             f.write("        gen_read_p3_0(p3_0);\n")
-            f.write("        tcg_gen_concat_i32_i64(%s%sV, p3_0,\n" % \
+            f.write("        tcg_gen_concat_i32_i64(%s%sV,\n" % \
                                  (regtype, regid))
-            f.write("                                     hex_gpr[%s%sN + 1]);\n" % \
+            f.write("            p3_0,\n")
+            f.write("            hex_gpr[%s%sN + 1]);\n" % \
                                  (regtype, regid))
             f.write("        tcg_temp_free(p3_0);\n")
             f.write("    } else {\n")
-            f.write("        tcg_gen_concat_i32_i64(%s%sV, hex_gpr[%s%sN],\n" % \
-                                 (regtype, regid, regtype, regid))
-            f.write("                                     hex_gpr[%s%sN + 1]);\n" % \
+            f.write("        tcg_gen_concat_i32_i64(%s%sV,\n" % \
+                                 (regtype, regid))
+            f.write("            hex_gpr[%s%sN],\n" % \
+                                 (regtype, regid))
+            f.write("            hex_gpr[%s%sN + 1]);\n" % \
                                  (regtype, regid))
             f.write("    }\n")
         elif (regid == "s"):
-            f.write("    if (%s%sN + HEX_REG_SA0 == HEX_REG_P3_0) {\n" % \
+            f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
                                  (regtype, regid))
             f.write("        gen_read_p3_0(%s%sV);\n" % \
                                  (regtype, regid))
             f.write("    } else {\n")
-            f.write("        tcg_gen_mov_tl(%s%sV, hex_gpr[%s%sN + HEX_REG_SA0]);\n" % \
+            f.write("        tcg_gen_mov_tl(%s%sV, hex_gpr[%s%sN]);\n" % \
                                  (regtype, regid, regtype, regid))
             f.write("    }\n")
         else:
@@ -411,9 +415,7 @@ def genptr_dst_write_pair(f, tag, regtype, regid):
     else:
         f.write("    gen_log_reg_write_pair(%s%sN, %s%sV);\n" % \
             (regtype, regid, regtype, regid))
-    f.write("    ctx_log_reg_write(ctx, %s%sN);\n" % \
-        (regtype, regid))
-    f.write("    ctx_log_reg_write(ctx, %s%sN + 1);\n" % \
+    f.write("    ctx_log_reg_write_pair(ctx, %s%sN);\n" % \
         (regtype, regid))
 
 def genptr_dst_write(f, tag, regtype, regid):
@@ -442,7 +444,7 @@ def genptr_dst_write(f, tag, regtype, regid):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "C"):
         if (regid == "dd"):
-            f.write("    if (%s%sN + HEX_REG_SA0 == HEX_REG_P3_0) {\n" % \
+            f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
                                  (regtype, regid))
             f.write("        TCGv val32 = tcg_temp_new();\n")
             f.write("        tcg_gen_extrl_i64_i32(val32, %s%sV);\n" % \
@@ -450,28 +452,26 @@ def genptr_dst_write(f, tag, regtype, regid):
             f.write("        gen_write_p3_0(val32);\n")
             f.write("        tcg_gen_extrh_i64_i32(val32, %s%sV);\n" % \
                                  (regtype, regid))
-            f.write("        gen_log_reg_write(%s%sN + HEX_REG_SA0 + 1, val32);\n" % \
+            f.write("        gen_log_reg_write(%s%sN + 1, val32);\n" % \
                                  (regtype, regid))
             f.write("        tcg_temp_free(val32);\n")
-            f.write("        ctx_log_reg_write(ctx, %s%sN + HEX_REG_SA0 + 1);\n" % \
+            f.write("        ctx_log_reg_write(ctx, %s%sN + 1);\n" % \
                                  (regtype, regid))
             f.write("    } else {\n")
-            f.write("        gen_log_reg_write_pair(%s%sN + HEX_REG_SA0, %s%sV);\n" % \
+            f.write("        gen_log_reg_write_pair(%s%sN, %s%sV);\n" % \
                                  (regtype, regid, regtype, regid))
-            f.write("        ctx_log_reg_write(ctx, %s%sN + HEX_REG_SA0);\n" % \
-                                 (regtype, regid))
-            f.write("        ctx_log_reg_write(ctx, %s%sN + HEX_REG_SA0 + 1);\n" % \
+            f.write("        ctx_log_reg_write_pair(ctx, %s%sN);\n" % \
                                  (regtype, regid))
             f.write("    }\n")
         elif (regid == "d"):
-            f.write("    if (%s%sN + HEX_REG_SA0 == HEX_REG_P3_0) {\n" % \
+            f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
                                  (regtype, regid))
             f.write("        gen_write_p3_0(%s%sV);\n" % \
                                  (regtype, regid))
             f.write("    } else {\n")
-            f.write("        gen_log_reg_write(%s%sN + HEX_REG_SA0, %s%sV);\n" % \
+            f.write("        gen_log_reg_write(%s%sN, %s%sV);\n" % \
                                  (regtype, regid, regtype, regid))
-            f.write("        ctx_log_reg_write(ctx, %s%sN + HEX_REG_SA0);\n" % \
+            f.write("        ctx_log_reg_write(ctx, %s%sN);\n" % \
                                  (regtype, regid))
             f.write("    }\n")
         else:

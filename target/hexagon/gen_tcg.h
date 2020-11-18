@@ -968,7 +968,7 @@
 
 /* Byte (new value) */
 #define fGEN_TCG_pstoreX_rr_byte_new(PRED) \
-    fGEN_TCG_pstoreX_rr(PRED, fGETBYTE(0, hex_new_value[NtX]), 1)
+    fGEN_TCG_pstoreX_rr(PRED, fGETBYTE(0, NtN), 1)
 
 #define fGEN_TCG_S4_pstorerbnewt_rr(SHORTCODE) \
     fGEN_TCG_pstoreX_rr_byte_new(fLSBOLD(PvV))
@@ -994,7 +994,7 @@
 
 /* Half word (new value) */
 #define fGEN_TCG_pstoreX_rr_half_new(PRED) \
-    fGEN_TCG_pstoreX_rr(PRED, fGETHALF(0, hex_new_value[NtX]), 2)
+    fGEN_TCG_pstoreX_rr(PRED, fGETHALF(0, NtN), 2)
 
 #define fGEN_TCG_S4_pstorerhnewt_rr(SHORTCODE) \
     fGEN_TCG_pstoreX_rr_half_new(fLSBOLD(PvV))
@@ -1033,7 +1033,7 @@
 
 /* Word (new value) */
 #define fGEN_TCG_pstoreX_rr_word_new(PRED) \
-    fGEN_TCG_pstoreX_rr(PRED, hex_new_value[NtX], 4)
+    fGEN_TCG_pstoreX_rr(PRED, NtN, 4)
 
 #define fGEN_TCG_S4_pstorerinewt_rr(SHORTCODE) \
     fGEN_TCG_pstoreX_rr_word_new(fLSBOLD(PvV))
@@ -1079,7 +1079,7 @@
 
 /* Byte (new value) */
 #define fGEN_TCG_pstoreX_io_byte_new(PRED) \
-    fGEN_TCG_pstoreX_io(PRED, fGETBYTE(0, hex_new_value[NtX]), 1)
+    fGEN_TCG_pstoreX_io(PRED, fGETBYTE(0, NtN), 1)
 
 #define fGEN_TCG_S2_pstorerbnewt_io(SHORTCODE) \
     fGEN_TCG_pstoreX_io_byte_new(fLSBOLD(PvV))
@@ -1105,7 +1105,7 @@
 
 /* Half word (new value) */
 #define fGEN_TCG_pstoreX_io_half_new(PRED) \
-    fGEN_TCG_pstoreX_io(PRED, fGETHALF(0, hex_new_value[NtX]), 2)
+    fGEN_TCG_pstoreX_io(PRED, fGETHALF(0, NtN), 2)
 
 #define fGEN_TCG_S2_pstorerhnewt_io(SHORTCODE) \
     fGEN_TCG_pstoreX_io_half_new(fLSBOLD(PvV))
@@ -1144,7 +1144,7 @@
 
 /* Word (new value) */
 #define fGEN_TCG_pstoreX_io_word_new(PRED) \
-    fGEN_TCG_pstoreX_io(PRED, hex_new_value[NtX], 4)
+    fGEN_TCG_pstoreX_io(PRED, NtN, 4)
 
 #define fGEN_TCG_S2_pstorerinewt_io(SHORTCODE) \
     fGEN_TCG_pstoreX_io_word_new(fLSBOLD(PvV))
@@ -1190,7 +1190,7 @@
 
 /* Byte (new value) */
 #define fGEN_TCG_pstoreX_abs_byte_new(PRED) \
-    fGEN_TCG_pstoreX_abs(PRED, fGETBYTE(0, hex_new_value[NtX]), 1)
+    fGEN_TCG_pstoreX_abs(PRED, fGETBYTE(0, NtN), 1)
 
 #define fGEN_TCG_S4_pstorerbnewt_abs(SHORTCODE) \
     fGEN_TCG_pstoreX_abs_byte_new(fLSBOLD(PvV))
@@ -1216,7 +1216,7 @@
 
 /* Half word (new value) */
 #define fGEN_TCG_pstoreX_abs_half_new(PRED) \
-    fGEN_TCG_pstoreX_abs(PRED, fGETHALF(0, hex_new_value[NtX]), 2)
+    fGEN_TCG_pstoreX_abs(PRED, fGETHALF(0, NtN), 2)
 
 #define fGEN_TCG_S4_pstorerhnewt_abs(SHORTCODE) \
     fGEN_TCG_pstoreX_abs_half_new(fLSBOLD(PvV))
@@ -1255,7 +1255,7 @@
 
 /* Word (new value) */
 #define fGEN_TCG_pstoreX_abs_word_new(PRED) \
-    fGEN_TCG_pstoreX_abs(PRED, hex_new_value[NtX], 4)
+    fGEN_TCG_pstoreX_abs(PRED, NtN, 4)
 
 #define fGEN_TCG_S4_pstorerinewt_abs(SHORTCODE) \
     fGEN_TCG_pstoreX_abs_word_new(fLSBOLD(PvV))
@@ -1301,7 +1301,7 @@
 
 /* Byte (new value) */
 #define fGEN_TCG_pstoreX_pi_byte_new(PRED) \
-    fGEN_TCG_pstoreX_pi(PRED, fGETBYTE(0, hex_new_value[NtX]), 1)
+    fGEN_TCG_pstoreX_pi(PRED, fGETBYTE(0, NtN), 1)
 
 #define fGEN_TCG_S2_pstorerbnewt_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_byte_new(fLSBOLD(PvV))
@@ -1327,7 +1327,7 @@
 
 /* Half word (new value) */
 #define fGEN_TCG_pstoreX_pi_half_new(PRED) \
-    fGEN_TCG_pstoreX_pi(PRED, fGETHALF(0, hex_new_value[NtX]), 2)
+    fGEN_TCG_pstoreX_pi(PRED, fGETHALF(0, NtN), 2)
 
 #define fGEN_TCG_S2_pstorerhnewt_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_half_new(fLSBOLD(PvV))
@@ -1366,7 +1366,7 @@
 
 /* Word (new value) */
 #define fGEN_TCG_pstoreX_pi_word_new(PRED) \
-    fGEN_TCG_pstoreX_pi(PRED, hex_new_value[NtX], 4)
+    fGEN_TCG_pstoreX_pi(PRED, NtN, 4)
 
 #define fGEN_TCG_S2_pstorerinewt_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_word_new(fLSBOLD(PvV))
@@ -2037,27 +2037,27 @@
  * if ([!]COND(r0.new, #7) jump:t address
  */
 #define fGEN_TCG_J4_cmpgt_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_LE, NsX, RtV, riV)
+    gen_cmp_jumpnv(TCG_COND_LE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeq_f_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_NE, NsX, RtV, riV)
+    gen_cmp_jumpnv(TCG_COND_NE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgt_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_GT, NsX, RtV, riV)
+    gen_cmp_jumpnv(TCG_COND_GT, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeqi_t_jumpnv_nt(SHORTCODE) \
-    gen_cmpi_jumpnv(TCG_COND_EQ, NsX, UiV, riV)
+    gen_cmpi_jumpnv(TCG_COND_EQ, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpltu_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_GEU, NsX, RtV, riV)
+    gen_cmp_jumpnv(TCG_COND_GEU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgtui_t_jumpnv_t(SHORTCODE) \
-    gen_cmpi_jumpnv(TCG_COND_GTU, NsX, UiV, riV)
+    gen_cmpi_jumpnv(TCG_COND_GTU, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpeq_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_NE, NsX, RtV, riV)
+    gen_cmp_jumpnv(TCG_COND_NE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeqi_f_jumpnv_t(SHORTCODE) \
-    gen_cmpi_jumpnv(TCG_COND_NE, NsX, UiV, riV)
+    gen_cmpi_jumpnv(TCG_COND_NE, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpgtu_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_GTU, NsX, RtV, riV)
+    gen_cmp_jumpnv(TCG_COND_GTU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgtu_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_LEU, NsX, RtV, riV)
+    gen_cmp_jumpnv(TCG_COND_LEU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmplt_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_LT, NsX, RtV, riV)
+    gen_cmp_jumpnv(TCG_COND_LT, NsN, RtV, riV)
 
 /* r0 = r1 ; jump address */
 #define fGEN_TCG_J4_jumpsetr(SHORTCODE) \

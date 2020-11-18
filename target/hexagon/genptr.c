@@ -822,18 +822,18 @@ static inline void gen_ashiftl_4_4s(TCGv dst, TCGv src, int32_t shift_amt)
     }
 }
 
-static inline void gen_cmp_jumpnv(TCGCond cond, int rnum, TCGv src, int pc_off)
+static inline void gen_cmp_jumpnv(TCGCond cond, TCGv val, TCGv src, int pc_off)
 {
     TCGv pred = tcg_temp_new();
-    tcg_gen_setcond_tl(cond, pred, hex_new_value[rnum], src);
+    tcg_gen_setcond_tl(cond, pred, val, src);
     gen_cond_jump(pred, pc_off);
     tcg_temp_free(pred);
 }
 
-static inline void gen_cmpi_jumpnv(TCGCond cond, int rnum, int src, int pc_off)
+static inline void gen_cmpi_jumpnv(TCGCond cond, TCGv val, int src, int pc_off)
 {
     TCGv pred = tcg_temp_new();
-    tcg_gen_setcondi_tl(cond, pred, hex_new_value[rnum], src);
+    tcg_gen_setcondi_tl(cond, pred, val, src);
     gen_cond_jump(pred, pc_off);
     tcg_temp_free(pred);
 }

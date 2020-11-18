@@ -56,6 +56,12 @@ static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
     set_bit(rnum, ctx->regs_written);
 }
 
+static inline void ctx_log_reg_write_pair(DisasContext *ctx, int rnum)
+{
+    ctx_log_reg_write(ctx, rnum);
+    ctx_log_reg_write(ctx, rnum + 1);
+}
+
 static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
 {
     ctx->preg_log[ctx->preg_log_idx] = pnum;
