@@ -22,21 +22,21 @@ import re
 import string
 from io import StringIO
 
-from hex_common import *
+import hex_common
 
 def main():
-    read_semantics_file(sys.argv[1])
-    read_attribs_file(sys.argv[2])
-    calculate_attribs()
+    hex_common.read_semantics_file(sys.argv[1])
+    hex_common.read_attribs_file(sys.argv[2])
+    hex_common.calculate_attribs()
 
     ##
     ## Generate the op_attribs_generated.h file
     ##     Lists all the attributes associated with each instruction
     ##
     f = StringIO()
-    for tag in tags:
+    for tag in hex_common.tags:
         f.write('OP_ATTRIB(%s,ATTRIBS(%s))\n' % \
-            (tag, ','.join(sorted(attribdict[tag]))))
+            (tag, ','.join(sorted(hex_common.attribdict[tag]))))
     realf = open(sys.argv[3], 'wt')
     realf.write(f.getvalue())
     realf.close()

@@ -22,7 +22,7 @@ import re
 import string
 from io import StringIO
 
-from hex_common import *
+import hex_common
 
 ##
 ## Generate the op_regs_generated.h file
@@ -39,7 +39,7 @@ def calculate_regid_reg(tag):
     for reg in ordered_implregs:
         reg_rd = 0
         reg_wr = 0
-        if ('A_IMPLICIT_WRITES_'+reg) in attribdict[tag]: reg_wr = 1
+        if ('A_IMPLICIT_WRITES_'+reg) in hex_common.attribdict[tag]: reg_wr = 1
         if reg_rd and reg_wr:
             retstr += srcdst_lett
             mapdict[srcdst_lett] = reg
@@ -64,35 +64,35 @@ def strip_reg_prefix(x):
     return y.replace('GREG.','')
 
 def main():
-    read_semantics_file(sys.argv[1])
-    read_attribs_file(sys.argv[2])
-    tagregs = get_tagregs()
-    tagimms = get_tagimms()
+    hex_common.read_semantics_file(sys.argv[1])
+    hex_common.read_attribs_file(sys.argv[2])
+    tagregs = hex_common.get_tagregs()
+    tagimms = hex_common.get_tagimms()
 
     f = StringIO()
 
-    for tag in tags:
+    for tag in hex_common.tags:
         regs = tagregs[tag]
         rregs = []
         wregs = []
         regids = ""
         for regtype,regid,toss,numregs in regs:
-            if is_read(regid):
+            if hex_common.is_read(regid):
                 if regid[0] not in regids: regids += regid[0]
                 rregs.append(regtype+regid+numregs)
-            if is_written(regid):
+            if hex_common.is_written(regid):
                 wregs.append(regtype+regid+numregs)
                 if regid[0] not in regids: regids += regid[0]
-        for attrib in attribdict[tag]:
-            if attribinfo[attrib]['rreg']:
+        for attrib in hex_common.attribdict[tag]:
+            if hex_common.attribinfo[attrib]['rreg']:
                 rregs.append(strip_reg_prefix(attribinfo[attrib]['rreg']))
-            if attribinfo[attrib]['wreg']:
+            if hex_common.attribinfo[attrib]['wreg']:
                 wregs.append(strip_reg_prefix(attribinfo[attrib]['wreg']))
         regids += calculate_regid_letters(tag)
         f.write('REGINFO(%s,"%s",\t/*RD:*/\t"%s",\t/*WR:*/\t"%s")\n' % \
             (tag,regids,",".join(rregs),",".join(wregs)))
 
-    for tag in tags:
+    for tag in hex_common.tags:
         imms = tagimms[tag]
         f.write( 'IMMINFO(%s' % tag)
         if not imms:

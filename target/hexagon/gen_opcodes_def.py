@@ -22,17 +22,17 @@ import re
 import string
 from io import StringIO
 
-from hex_common import *
+import hex_common
 
 def main():
-    read_semantics_file(sys.argv[1])
+    hex_common.read_semantics_file(sys.argv[1])
 
     ##
     ## Generate the opcodes_def_generated.h file
     ##     Gives a list of all the opcodes
     ##
     f = StringIO()
-    for tag in tags:
+    for tag in hex_common.tags:
         f.write ( "OPCODE(%s),\n" % (tag) )
     realf = open(sys.argv[3], 'wt')
     realf.write(f.getvalue())

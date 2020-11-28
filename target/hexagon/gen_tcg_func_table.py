@@ -22,14 +22,14 @@ import re
 import string
 from io import StringIO
 
-from hex_common import *
+import hex_common
 
 def main():
-    read_semantics_file(sys.argv[1])
-    read_attribs_file(sys.argv[2])
-    calculate_attribs()
-    tagregs = get_tagregs()
-    tagimms = get_tagimms()
+    hex_common.read_semantics_file(sys.argv[1])
+    hex_common.read_attribs_file(sys.argv[2])
+    hex_common.calculate_attribs()
+    tagregs = hex_common.get_tagregs()
+    tagimms = hex_common.get_tagimms()
 
     f = StringIO()
 
@@ -37,12 +37,12 @@ def main():
     f.write("#define HEXAGON_FUNC_TABLE_H\n\n")
 
     f.write("const SemanticInsn opcode_genptr[XX_LAST_OPCODE] = {\n")
-    for tag in tags:
+    for tag in hex_common.tags:
         ## Skip the priv instructions
-        if ( "A_PRIV" in attribdict[tag] ) :
+        if ( "A_PRIV" in hex_common.attribdict[tag] ) :
             continue
         ## Skip the guest instructions
-        if ( "A_GUEST" in attribdict[tag] ) :
+        if ( "A_GUEST" in hex_common.attribdict[tag] ) :
             continue
         ## Skip the diag instructions
         if ( tag == "Y6_diag" ) :

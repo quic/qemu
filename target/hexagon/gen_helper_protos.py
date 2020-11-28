@@ -22,7 +22,7 @@ import re
 import string
 from io import StringIO
 
-from hex_common import *
+import hex_common
 
 ##
 ## Helpers for gen_helper_prototype
@@ -48,9 +48,9 @@ def_helper_types_pair = {
 }
 
 def gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i):
-    if (is_pair(regid)):
+    if (hex_common.is_pair(regid)):
         f.write(", %s" % (def_helper_types_pair[regtype]))
-    elif (is_single(regid)):
+    elif (hex_common.is_single(regid)):
         f.write(", %s" % (def_helper_types[regtype]))
     else:
         print("Bad register parse: ",regtype,regid,toss,numregs)
@@ -69,12 +69,12 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
     numscalarresults = 0
     numscalarreadwrite = 0
     for regtype,regid,toss,numregs in regs:
-        if (is_written(regid)):
+        if (hex_common.is_written(regid)):
             numresults += 1
-            if (is_scalar_reg(regtype)):
+            if (hex_common.is_scalar_reg(regtype)):
                 numscalarresults += 1
-        if (is_readwrite(regid)):
-            if (is_scalar_reg(regtype)):
+        if (hex_common.is_readwrite(regid)):
+            if (hex_common.is_scalar_reg(regtype)):
                 numscalarreadwrite += 1
 
     if (numscalarresults > 1):
@@ -84,15 +84,15 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
         ## Figure out how many arguments the helper will take
         if (numscalarresults == 0):
             def_helper_size = len(regs)+len(imms)+numscalarreadwrite+1
-            if need_part1(tag): def_helper_size += 1
-            if need_slot(tag): def_helper_size += 1
+            if hex_common.need_part1(tag): def_helper_size += 1
+            if hex_common.need_slot(tag): def_helper_size += 1
             f.write('DEF_HELPER_%s(%s' % (def_helper_size, tag))
             ## The return type is void
             f.write(', void' )
         else:
             def_helper_size = len(regs)+len(imms)+numscalarreadwrite
-            if need_part1(tag): def_helper_size += 1
-            if need_slot(tag): def_helper_size += 1
+            if hex_common.need_part1(tag): def_helper_size += 1
+            if hex_common.need_slot(tag): def_helper_size += 1
             f.write('DEF_HELPER_%s(%s' % (def_helper_size, tag))
 
         ## Generate the qemu DEF_HELPER type for each result
@@ -101,8 +101,8 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
         ## - Emit the vector result
         i=0
         for regtype,regid,toss,numregs in regs:
-            if (is_written(regid)):
-                if (not is_hvx_reg(regtype)):
+            if (hex_common.is_written(regid)):
+                if (not hex_common.is_hvx_reg(regtype)):
                     gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i)
                 i += 1
 
@@ -112,15 +112,16 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
 
         # Second pass
         for regtype,regid,toss,numregs in regs:
-            if (is_written(regid)):
-                if (is_hvx_reg(regtype)):
+            if (hex_common.is_written(regid)):
+                if (hex_common.is_hvx_reg(regtype)):
                     gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i)
                     i += 1
 
         ## Generate the qemu type for each input operand (regs and immediates)
         for regtype,regid,toss,numregs in regs:
-            if (is_read(regid)):
-                if (is_hvx_reg(regtype) and is_readwrite(regid)):
+            if (hex_common.is_read(regid)):
+                if (hex_common.is_hvx_reg(regtype) and
+                    hex_common.is_readwrite(regid)):
                     continue
                 gen_def_helper_opn(f, tag, regtype, regid, toss, numregs, i)
                 i += 1
@@ -128,26 +129,26 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
             f.write(", s32")
 
         ## Add the arguments for the instruction slot and part1 (if needed)
-        if need_slot(tag): f.write(', i32' )
-        if need_part1(tag): f.write(' , i32' )
+        if hex_common.need_slot(tag): f.write(', i32' )
+        if hex_common.need_part1(tag): f.write(' , i32' )
         f.write(')\n')
 
 def main():
-    read_semantics_file(sys.argv[1])
-    read_attribs_file(sys.argv[2])
-    read_overrides_file(sys.argv[3])
-    calculate_attribs()
-    tagregs = get_tagregs()
-    tagimms = get_tagimms()
+    hex_common.read_semantics_file(sys.argv[1])
+    hex_common.read_attribs_file(sys.argv[2])
+    hex_common.read_overrides_file(sys.argv[3])
+    hex_common.calculate_attribs()
+    tagregs = hex_common.get_tagregs()
+    tagimms = hex_common.get_tagimms()
 
     f = StringIO()
 
-    for tag in tags:
+    for tag in hex_common.tags:
         ## Skip the priv instructions
-        if ( "A_PRIV" in attribdict[tag] ) :
+        if ( "A_PRIV" in hex_common.attribdict[tag] ) :
             continue
         ## Skip the guest instructions
-        if ( "A_GUEST" in attribdict[tag] ) :
+        if ( "A_GUEST" in hex_common.attribdict[tag] ) :
             continue
         ## Skip the diag instructions
         if ( tag == "Y6_diag" ) :
@@ -157,7 +158,7 @@ def main():
         if ( tag == "Y6_diag1" ) :
             continue
 
-        if ( skip_qemu_helper(tag) ):
+        if ( hex_common.skip_qemu_helper(tag) ):
             continue
 
         gen_helper_prototype(f, tag, tagregs, tagimms)

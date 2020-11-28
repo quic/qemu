@@ -22,7 +22,7 @@ import re
 import string
 from io import StringIO
 
-from hex_common import *
+import hex_common
 
 ##
 ## Generate the printinsn_generated.h file
@@ -96,34 +96,35 @@ def spacify(s):
     return ''.join(out)
 
 def main():
-    read_semantics_file(sys.argv[1])
-    read_attribs_file(sys.argv[2])
+    hex_common.read_semantics_file(sys.argv[1])
+    hex_common.read_attribs_file(sys.argv[2])
 
     immext_casere = re.compile(r'IMMEXT\(([A-Za-z])')
 
     f = StringIO()
 
-    for tag in tags:
-        if not behdict[tag]: continue
+    for tag in hex_common.tags:
+        if not hex_common.behdict[tag]: continue
         extendable_upper_imm = False
         extendable_lower_imm = False
-        m = immext_casere.search(semdict[tag])
+        m = immext_casere.search(hex_common.semdict[tag])
         if m:
             if m.group(1).isupper():
                 extendable_upper_imm = True
             else:
                 extendable_lower_imm = True
-        beh = behdict[tag]
-        beh = regre.sub(regprinter,beh)
-        beh = absimmre.sub(r"#%s0x%x",beh)
-        beh = relimmre.sub(r"PC+%s%d",beh)
+        beh = hex_common.behdict[tag]
+        beh = hex_common.regre.sub(regprinter,beh)
+        beh = hex_common.absimmre.sub(r"#%s0x%x",beh)
+        beh = hex_common.relimmre.sub(r"PC+%s%d",beh)
         beh = spacify(beh)
         # Print out a literal "%s" at the end, used to match empty string
         # so C won't complain at us
-        if ("A_VECX" in attribdict[tag]): macname = "DEF_VECX_PRINTINFO"
+        if ("A_VECX" in hex_common.attribdict[tag]):
+            macname = "DEF_VECX_PRINTINFO"
         else: macname = "DEF_PRINTINFO"
         f.write('%s(%s,"%s%%s"' % (macname,tag,beh))
-        regs_or_imms = reg_or_immre.findall(behdict[tag])
+        regs_or_imms = hex_common.reg_or_immre.findall(hex_common.behdict[tag])
         ri = 0
         seenregs = {}
         for allregs,a,b,c,d,allimm,immlett,bits,immshift in regs_or_imms:
