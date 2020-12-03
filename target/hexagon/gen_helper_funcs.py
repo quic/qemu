@@ -286,32 +286,26 @@ def main():
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    f = StringIO()
 
-    for tag in hex_common.tags:
-        ## Skip the priv instructions
-        if ( "A_PRIV" in hex_common.attribdict[tag] ) :
-            continue
-        ## Skip the guest instructions
-        if ( "A_GUEST" in hex_common.attribdict[tag] ) :
-            continue
-        ## Skip the diag instructions
-        if ( tag == "Y6_diag" ) :
-            continue
-        if ( tag == "Y6_diag0" ) :
-            continue
-        if ( tag == "Y6_diag1" ) :
-            continue
-        if ( hex_common.skip_qemu_helper(tag) ):
-            continue
+    with open(sys.argv[4], 'w') as f:
+        for tag in hex_common.tags:
+            ## Skip the priv instructions
+            if ( "A_PRIV" in hex_common.attribdict[tag] ) :
+                continue
+            ## Skip the guest instructions
+            if ( "A_GUEST" in hex_common.attribdict[tag] ) :
+                continue
+            ## Skip the diag instructions
+            if ( tag == "Y6_diag" ) :
+                continue
+            if ( tag == "Y6_diag0" ) :
+                continue
+            if ( tag == "Y6_diag1" ) :
+                continue
+            if ( hex_common.skip_qemu_helper(tag) ):
+                continue
 
-        gen_helper_function(f, tag, tagregs, tagimms)
-
-
-    realf = open(sys.argv[4], 'w')
-    realf.write(f.getvalue())
-    realf.close()
-    f.close()
+            gen_helper_function(f, tag, tagregs, tagimms)
 
 if __name__ == "__main__":
     main()

@@ -33,14 +33,10 @@ def main():
     ## Generate the op_attribs_generated.h file
     ##     Lists all the attributes associated with each instruction
     ##
-    f = StringIO()
-    for tag in hex_common.tags:
-        f.write('OP_ATTRIB(%s,ATTRIBS(%s))\n' % \
-            (tag, ','.join(sorted(hex_common.attribdict[tag]))))
-    realf = open(sys.argv[3], 'wt')
-    realf.write(f.getvalue())
-    realf.close()
-    f.close()
+    with open(sys.argv[3], 'w') as f:
+        for tag in hex_common.tags:
+            f.write('OP_ATTRIB(%s,ATTRIBS(%s))\n' % \
+                (tag, ','.join(sorted(hex_common.attribdict[tag]))))
 
 if __name__ == "__main__":
     main()

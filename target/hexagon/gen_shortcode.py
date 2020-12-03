@@ -37,35 +37,29 @@ def main():
     ##
     ## Generate the shortcode_generated.h file
     ##
-    f = StringIO()
+    with open(sys.argv[3], 'w') as f:
+        f.write("#ifndef DEF_SHORTCODE\n")
+        f.write("#define DEF_SHORTCODE(TAG,SHORTCODE)    /* Nothing */\n")
+        f.write("#endif\n")
 
-    f.write("#ifndef DEF_SHORTCODE\n")
-    f.write("#define DEF_SHORTCODE(TAG,SHORTCODE)    /* Nothing */\n")
-    f.write("#endif\n")
+        for tag in hex_common.tags:
+            ## Skip the priv instructions
+            if ( "A_PRIV" in hex_common.attribdict[tag] ) :
+                continue
+            ## Skip the guest instructions
+            if ( "A_GUEST" in hex_common.attribdict[tag] ) :
+                continue
+            ## Skip the diag instructions
+            if ( tag == "Y6_diag" ) :
+                continue
+            if ( tag == "Y6_diag0" ) :
+                continue
+            if ( tag == "Y6_diag1" ) :
+                continue
 
-    for tag in hex_common.tags:
-        ## Skip the priv instructions
-        if ( "A_PRIV" in hex_common.attribdict[tag] ) :
-            continue
-        ## Skip the guest instructions
-        if ( "A_GUEST" in hex_common.attribdict[tag] ) :
-            continue
-        ## Skip the diag instructions
-        if ( tag == "Y6_diag" ) :
-            continue
-        if ( tag == "Y6_diag0" ) :
-            continue
-        if ( tag == "Y6_diag1" ) :
-            continue
+            gen_shortcode(f, tag)
 
-        gen_shortcode(f, tag)
-
-    f.write("#undef DEF_SHORTCODE\n")
-
-    realf = open(sys.argv[3], 'w')
-    realf.write(f.getvalue())
-    realf.close()
-    f.close()
+        f.write("#undef DEF_SHORTCODE\n")
 
 if __name__ == "__main__":
     main()

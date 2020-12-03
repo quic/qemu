@@ -69,51 +69,45 @@ def main():
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    f = StringIO()
+    with open(sys.argv[3], 'w') as f:
+        for tag in hex_common.tags:
+            regs = tagregs[tag]
+            rregs = []
+            wregs = []
+            regids = ""
+            for regtype,regid,toss,numregs in regs:
+                if hex_common.is_read(regid):
+                    if regid[0] not in regids: regids += regid[0]
+                    rregs.append(regtype+regid+numregs)
+                if hex_common.is_written(regid):
+                    wregs.append(regtype+regid+numregs)
+                    if regid[0] not in regids: regids += regid[0]
+            for attrib in hex_common.attribdict[tag]:
+                if hex_common.attribinfo[attrib]['rreg']:
+                    rregs.append(strip_reg_prefix(attribinfo[attrib]['rreg']))
+                if hex_common.attribinfo[attrib]['wreg']:
+                    wregs.append(strip_reg_prefix(attribinfo[attrib]['wreg']))
+            regids += calculate_regid_letters(tag)
+            f.write('REGINFO(%s,"%s",\t/*RD:*/\t"%s",\t/*WR:*/\t"%s")\n' % \
+                (tag,regids,",".join(rregs),",".join(wregs)))
 
-    for tag in hex_common.tags:
-        regs = tagregs[tag]
-        rregs = []
-        wregs = []
-        regids = ""
-        for regtype,regid,toss,numregs in regs:
-            if hex_common.is_read(regid):
-                if regid[0] not in regids: regids += regid[0]
-                rregs.append(regtype+regid+numregs)
-            if hex_common.is_written(regid):
-                wregs.append(regtype+regid+numregs)
-                if regid[0] not in regids: regids += regid[0]
-        for attrib in hex_common.attribdict[tag]:
-            if hex_common.attribinfo[attrib]['rreg']:
-                rregs.append(strip_reg_prefix(attribinfo[attrib]['rreg']))
-            if hex_common.attribinfo[attrib]['wreg']:
-                wregs.append(strip_reg_prefix(attribinfo[attrib]['wreg']))
-        regids += calculate_regid_letters(tag)
-        f.write('REGINFO(%s,"%s",\t/*RD:*/\t"%s",\t/*WR:*/\t"%s")\n' % \
-            (tag,regids,",".join(rregs),",".join(wregs)))
-
-    for tag in hex_common.tags:
-        imms = tagimms[tag]
-        f.write( 'IMMINFO(%s' % tag)
-        if not imms:
-            f.write(''','u',0,0,'U',0,0''')
-        for sign,size,shamt in imms:
-            if sign == 'r': sign = 's'
-            if not shamt:
-                shamt = "0"
-            f.write(''','%s',%s,%s''' % (sign,size,shamt))
-        if len(imms) == 1:
-            if sign.isupper():
-                myu = 'u'
-            else:
-                myu = 'U'
-            f.write(''','%s',0,0''' % myu)
-        f.write(')\n')
-
-    realf = open(sys.argv[3], 'w')
-    realf.write(f.getvalue())
-    realf.close()
-    f.close()
+        for tag in hex_common.tags:
+            imms = tagimms[tag]
+            f.write( 'IMMINFO(%s' % tag)
+            if not imms:
+                f.write(''','u',0,0,'U',0,0''')
+            for sign,size,shamt in imms:
+                if sign == 'r': sign = 's'
+                if not shamt:
+                    shamt = "0"
+                f.write(''','%s',%s,%s''' % (sign,size,shamt))
+            if len(imms) == 1:
+                if sign.isupper():
+                    myu = 'u'
+                else:
+                    myu = 'U'
+                f.write(''','%s',0,0''' % myu)
+            f.write(')\n')
 
 if __name__ == "__main__":
     main()

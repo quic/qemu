@@ -672,34 +672,28 @@ def main():
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    f = StringIO()
+    with open(sys.argv[4], 'w') as f:
+        f.write("#ifndef HEXAGON_TCG_FUNCS_H\n")
+        f.write("#define HEXAGON_TCG_FUNCS_H\n\n")
 
-    f.write("#ifndef HEXAGON_TCG_FUNCS_H\n")
-    f.write("#define HEXAGON_TCG_FUNCS_H\n\n")
+        for tag in hex_common.tags:
+            ## Skip the priv instructions
+            if ( "A_PRIV" in hex_common.attribdict[tag] ) :
+                continue
+            ## Skip the guest instructions
+            if ( "A_GUEST" in hex_common.attribdict[tag] ) :
+                continue
+            ## Skip the diag instructions
+            if ( tag == "Y6_diag" ) :
+                continue
+            if ( tag == "Y6_diag0" ) :
+                continue
+            if ( tag == "Y6_diag1" ) :
+                continue
 
-    for tag in hex_common.tags:
-        ## Skip the priv instructions
-        if ( "A_PRIV" in hex_common.attribdict[tag] ) :
-            continue
-        ## Skip the guest instructions
-        if ( "A_GUEST" in hex_common.attribdict[tag] ) :
-            continue
-        ## Skip the diag instructions
-        if ( tag == "Y6_diag" ) :
-            continue
-        if ( tag == "Y6_diag0" ) :
-            continue
-        if ( tag == "Y6_diag1" ) :
-            continue
+            gen_def_tcg_func(f, tag, tagregs, tagimms)
 
-        gen_def_tcg_func(f, tag, tagregs, tagimms)
-
-    f.write("#endif    /* HEXAGON_TCG_FUNCS_H */\n")
-
-    realf = open(sys.argv[4], 'w')
-    realf.write(f.getvalue())
-    realf.close()
-    f.close()
+        f.write("#endif    /* HEXAGON_TCG_FUNCS_H */\n")
 
 if __name__ == "__main__":
     main()

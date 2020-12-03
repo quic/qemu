@@ -101,86 +101,81 @@ def main():
 
     immext_casere = re.compile(r'IMMEXT\(([A-Za-z])')
 
-    f = StringIO()
-
-    for tag in hex_common.tags:
-        if not hex_common.behdict[tag]: continue
-        extendable_upper_imm = False
-        extendable_lower_imm = False
-        m = immext_casere.search(hex_common.semdict[tag])
-        if m:
-            if m.group(1).isupper():
-                extendable_upper_imm = True
-            else:
-                extendable_lower_imm = True
-        beh = hex_common.behdict[tag]
-        beh = hex_common.regre.sub(regprinter,beh)
-        beh = hex_common.absimmre.sub(r"#%s0x%x",beh)
-        beh = hex_common.relimmre.sub(r"PC+%s%d",beh)
-        beh = spacify(beh)
-        # Print out a literal "%s" at the end, used to match empty string
-        # so C won't complain at us
-        if ("A_VECX" in hex_common.attribdict[tag]):
-            macname = "DEF_VECX_PRINTINFO"
-        else: macname = "DEF_PRINTINFO"
-        f.write('%s(%s,"%s%%s"' % (macname,tag,beh))
-        regs_or_imms = hex_common.reg_or_immre.findall(hex_common.behdict[tag])
-        ri = 0
-        seenregs = {}
-        for allregs,a,b,c,d,allimm,immlett,bits,immshift in regs_or_imms:
-            if a:
-                #register
-                if b in seenregs:
-                    regno = seenregs[b]
+    with open(sys.argv[3], 'w') as f:
+        for tag in hex_common.tags:
+            if not hex_common.behdict[tag]: continue
+            extendable_upper_imm = False
+            extendable_lower_imm = False
+            m = immext_casere.search(hex_common.semdict[tag])
+            if m:
+                if m.group(1).isupper():
+                    extendable_upper_imm = True
                 else:
-                    regno = ri
-                if len(b) == 1:
-                    f.write(', insn->regno[%d]' % regno)
-                    if 'S' in a:
-                        f.write(', sreg2str(insn->regno[%d])' % regno)
-                    elif 'C' in a:
-                        f.write(', creg2str(insn->regno[%d])' % regno)
-                elif len(b) == 2:
-                    f.write(', insn->regno[%d] + 1, insn->regno[%d]' % \
-                        (regno,regno))
-                elif len(b) == 4:
-                    f.write(', insn->regno[%d] ^ 3, insn->regno[%d] ^ 2, ' % \
-                            (regno, regno))
-                    f.write('insn->regno[%d] ^ 1, insn->regno[%d]' % \
-                            (regno, regno))
-                else:
-                    print("Put some stuff to handle quads here")
-                if b not in seenregs:
-                    seenregs[b] = ri
-                    ri += 1
-            else:
-                #immediate
-                if (immlett.isupper()):
-                    if extendable_upper_imm:
-                        if immlett in 'rR':
-                            f.write(',insn->extension_valid?"##":""')
-                        else:
-                            f.write(',insn->extension_valid?"#":""')
+                    extendable_lower_imm = True
+            beh = hex_common.behdict[tag]
+            beh = hex_common.regre.sub(regprinter,beh)
+            beh = hex_common.absimmre.sub(r"#%s0x%x",beh)
+            beh = hex_common.relimmre.sub(r"PC+%s%d",beh)
+            beh = spacify(beh)
+            # Print out a literal "%s" at the end, used to match empty string
+            # so C won't complain at us
+            if ("A_VECX" in hex_common.attribdict[tag]):
+                macname = "DEF_VECX_PRINTINFO"
+            else: macname = "DEF_PRINTINFO"
+            f.write('%s(%s,"%s%%s"' % (macname,tag,beh))
+            regs_or_imms = \
+                hex_common.reg_or_immre.findall(hex_common.behdict[tag])
+            ri = 0
+            seenregs = {}
+            for allregs,a,b,c,d,allimm,immlett,bits,immshift in regs_or_imms:
+                if a:
+                    #register
+                    if b in seenregs:
+                        regno = seenregs[b]
                     else:
-                        f.write(',""')
-                    ii = 1
-                else:
-                    if extendable_lower_imm:
-                        if immlett in 'rR':
-                            f.write(',insn->extension_valid?"##":""')
-                        else:
-                            f.write(',insn->extension_valid?"#":""')
+                        regno = ri
+                    if len(b) == 1:
+                        f.write(', insn->regno[%d]' % regno)
+                        if 'S' in a:
+                            f.write(', sreg2str(insn->regno[%d])' % regno)
+                        elif 'C' in a:
+                            f.write(', creg2str(insn->regno[%d])' % regno)
+                    elif len(b) == 2:
+                        f.write(', insn->regno[%d] + 1, insn->regno[%d]' % \
+                            (regno,regno))
+                    elif len(b) == 4:
+                        f.write(', insn->regno[%d] ^ 3' % regid)
+                        f.write(', insn->regno[%d] ^ 2' % regid)
+                        f.write(', insn->regno[%d] ^ 1' % regid)
+                        f.write(', insn->regno[%d]' % regid)
                     else:
-                        f.write(',""')
-                    ii = 0
-                f.write(', insn->immed[%d]' % ii)
-        # append empty string so there is at least one more arg
-        f.write(',"")\n')
-
-    realf = open(sys.argv[3], 'w')
-    realf.write(f.getvalue())
-    realf.close()
-    f.close()
+                        print("Put some stuff to handle quads here")
+                    if b not in seenregs:
+                        seenregs[b] = ri
+                        ri += 1
+                else:
+                    #immediate
+                    if (immlett.isupper()):
+                        if extendable_upper_imm:
+                            if immlett in 'rR':
+                                f.write(',insn->extension_valid?"##":""')
+                            else:
+                                f.write(',insn->extension_valid?"#":""')
+                        else:
+                            f.write(',""')
+                        ii = 1
+                    else:
+                        if extendable_lower_imm:
+                            if immlett in 'rR':
+                                f.write(',insn->extension_valid?"##":""')
+                            else:
+                                f.write(',insn->extension_valid?"#":""')
+                        else:
+                            f.write(',""')
+                        ii = 0
+                    f.write(', insn->immed[%d]' % ii)
+            # append empty string so there is at least one more arg
+            f.write(',"")\n')
 
 if __name__ == "__main__":
     main()
