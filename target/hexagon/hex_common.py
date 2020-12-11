@@ -20,7 +20,6 @@
 import sys
 import re
 import string
-from io import StringIO
 
 behdict = {}          # tag ->behavior
 semdict = {}          # tag -> semantics

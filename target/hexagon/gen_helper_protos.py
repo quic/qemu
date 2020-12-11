@@ -20,8 +20,6 @@
 import sys
 import re
 import string
-from io import StringIO
-
 import hex_common
 
 ##
@@ -140,8 +138,6 @@ def main():
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
-
-    f = StringIO()
 
     with open(sys.argv[4], 'w') as f:
         for tag in hex_common.tags:

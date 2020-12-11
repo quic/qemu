@@ -20,8 +20,6 @@
 import sys
 import re
 import string
-from io import StringIO
-
 import hex_common
 
 def gen_shortcode(f, tag):

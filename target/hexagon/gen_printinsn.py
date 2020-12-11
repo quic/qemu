@@ -20,8 +20,6 @@
 import sys
 import re
 import string
-from io import StringIO
-
 import hex_common
 
 ##
@@ -143,11 +141,6 @@ def main():
                     elif len(b) == 2:
                         f.write(', insn->regno[%d] + 1, insn->regno[%d]' % \
                             (regno,regno))
-                    elif len(b) == 4:
-                        f.write(', insn->regno[%d] ^ 3' % regid)
-                        f.write(', insn->regno[%d] ^ 2' % regid)
-                        f.write(', insn->regno[%d] ^ 1' % regid)
-                        f.write(', insn->regno[%d]' % regid)
                     else:
                         print("Put some stuff to handle quads here")
                     if b not in seenregs:

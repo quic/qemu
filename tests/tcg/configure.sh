@@ -49,6 +49,8 @@ fi
 : $(cross_cc_alpha="alpha-linux-gnu-gcc")
 : ${cross_cc_arm="arm-linux-gnueabihf-gcc"}
 : ${cross_cc_cflags_armeb="-mbig-endian"}
+: ${cross_cc_hexagon="hexagon-linux-clang"}
+: ${cross_cc_cflags_hexagon="-mv67 -O2 -Wno-incompatible-pointer-types"}
 : ${cross_cc_hppa="hppa-linux-gnu-gcc"}
 : ${cross_cc_i386="i386-pc-linux-gnu-gcc"}
 : ${cross_cc_cflags_i386="-m32"}
@@ -67,8 +69,6 @@ fi
 : ${cross_cc_cflags_sparc="-m32 -mv8plus -mcpu=ultrasparc"}
 : ${cross_cc_sparc64="sparc64-linux-gnu-gcc"}
 : ${cross_cc_cflags_sparc64="-m64 -mcpu=ultrasparc"}
-: ${cross_cc_hexagon="hexagon-linux-clang"}
-: ${cross_cc_cflags_hexagon="-mv67"}
 : ${cross_cc_x86_64="x86_64-pc-linux-gnu-gcc"}
 : ${cross_cc_cflags_x86_64="-m64"}
 
@@ -96,7 +96,8 @@ for target in $target_list; do
     xtensa|xtensaeb)
       arches=xtensa
       ;;
-    alpha|cris|hppa|i386|lm32|microblaze|microblazeel|m68k|openrisc|riscv64|s390x|sh4|sparc64|hexagon)
+    alpha|cris|hexagon|hppa|i386|lm32|microblaze|microblazeel|m68k|openrisc| \
+    riscv64|s390x|sh4|sparc64)
       arches=$target
       ;;
     *)
