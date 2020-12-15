@@ -262,7 +262,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         size4u_t bufaddr;
         int count;
         int retval;
-        int warm;
 
         DEBUG_MEMORY_READ(swi_info, 4, &fd);
         DEBUG_MEMORY_READ(swi_info + 4, 4, &bufaddr);
@@ -273,9 +272,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
  * faults this function will be restarted but the file pointer
  * will be wrong.
  */
-        for (i = 0; i < count; i += 0x1000) {
-            DEBUG_MEMORY_READ(bufaddr + i, 1, &warm);
-        }
+        hexagon_touch_memory(env, bufaddr, count);
 
         int malloc_count = (count) ? count : 1;
         if ((buf = (char *) g_malloc(malloc_count)) == NULL) {

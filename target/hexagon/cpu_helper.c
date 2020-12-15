@@ -234,6 +234,16 @@ int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
     return ret;
 }
 
+void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr, uint32_t length)
+
+{
+    unsigned int warm;
+
+    for (uint32_t i = 0; i < length; i += 0x1000) {
+         DEBUG_MEMORY_READ(start_addr + i, 1, &warm);
+    }
+}
+
 void hexagon_wait_thread(CPUHexagonState *env)
 
 {

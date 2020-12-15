@@ -57,7 +57,8 @@
 	}\
 }
 #else
-#define PRINTF(DMA, ...)
+#define PRINTF(...)
+//#define PRINTF(DMA, ...)  printf(__VA_ARGS__)
 #endif
 
 #ifndef MIN
@@ -135,6 +136,7 @@ static uint32_t dma_data_read(dma_t *dma, uint64_t pa, uint32_t len, uint8_t *bu
     uint32_t count;
     uint8_t *p = buffer;
     uint64_t pa_cur = pa;
+
     while (bytes)
     {
         count = 1;
@@ -795,7 +797,7 @@ static uint32_t dma_step_descriptor_chain(dma_t *dma)
                     transfer_size_write = 0;
                 }
                 if (dma->verbosity >= 5) {
-                PRINTF(dma, "DMA %d: Tick %d: 2D Desc Step: transform=%d bytes to read=%d write=%d rd_size=%d wr_size=%d\n", dma->num, udma_ctx->dma_tick_count,
+                PRINTF(dma, "DMA %d: Tick %d: 2D Desc Step: transform=%d bytes to read1=%d write=%d rd_size=%d wr_size=%d\n", dma->num, udma_ctx->dma_tick_count,
                 (int)transform_mode,(int) udma_ctx->active.bytes_to_read, (int)udma_ctx->active.bytes_to_write, (int)transfer_size_read, (int)transfer_size_write);
             }
             }
@@ -829,7 +831,7 @@ static uint32_t dma_step_descriptor_chain(dma_t *dma)
 
                         // Update a descriptor accordingly.
 						if (dma->verbosity >= 5) {
-                        PRINTF(dma, "DMA %d: Tick %d: bytes to read=%d to write=%d\n", dma->num, udma_ctx->dma_tick_count, udma_ctx->active.bytes_to_read, udma_ctx->active.bytes_to_write);
+                        PRINTF(dma, "DMA %d: Tick %d: bytes to read2=%d to write=%d\n", dma->num, udma_ctx->dma_tick_count, udma_ctx->active.bytes_to_read, udma_ctx->active.bytes_to_write);
 						}
                         desc_transfer_done = ((udma_ctx->active.bytes_to_read == 0) && (udma_ctx->active.bytes_to_write == 0));
                     }
@@ -1073,6 +1075,30 @@ dma_instruction_latency(dma_t *dma, dma_cmd_report_t *report, uint32_t latency, 
 }
 
 
+static void load_dma_descriptor(thread_t *env, uint32_t desc_addr, dma_descriptor_type0_t *desc)
+
+{
+    uint8_t *store_ptr = (uint8_t *)desc;
+    for (uint32_t i = 0; i < sizeof(dma_descriptor_type0_t); i += 4) {
+        DEBUG_MEMORY_READ(desc_addr + i, 4, store_ptr + i);
+    }
+}
+
+static void preload_buffers(dma_t *dma, uint32_t new)
+
+{
+    /* make sure tlb miss doesn't happen when dma actually in progress */
+    thread_t* env = dma_adapter_retrieve_thread(dma);
+    dma_descriptor_type0_t desc;
+    uint32_t desc_addr = new;
+    while (desc_addr) {
+        load_dma_descriptor(env, desc_addr, &desc);
+        uint32_t dest_va = (uint32_t)(desc.dst);
+        uint32_t length = get_dma_desc_length(&desc);
+        hexagon_touch_memory(env, dest_va, length);
+        desc_addr = desc.next;
+    }
+}
 
 void dma_cmd_start(dma_t *dma, uint32_t new, dma_cmd_report_t *report)
 {
@@ -1090,6 +1116,8 @@ void dma_cmd_start(dma_t *dma, uint32_t new, dma_cmd_report_t *report)
         set_dma_error(dma, new, DMA_CFG0_SYNDRONE_CODE___DMSTART_DMRESUME_IN_RUNSTATE, "DMSTART_DMRESUME_IN_RUNSTATE");
         return;
     }
+
+    preload_buffers(dma, new);
 
     DMA_STATUS_INT_SET(udma_ctx, DMA_STATUS_INT_RUNNING);
     udma_ctx->ext_status = DM0_STATUS_RUN;

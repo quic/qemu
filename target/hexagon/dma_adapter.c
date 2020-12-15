@@ -68,6 +68,7 @@
 #endif
 #else
 #define PRINTF(...)
+//#define PRINTF(DMA, ...)  printf(__VA_ARGS__)
 #if 0
 #define PRINTF(DMA, ...) do {\
     fprintf(stdout, __VA_ARGS__); \
@@ -398,7 +399,7 @@ void do_callback(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info,
 
 void dma_adapter_set_target_descriptor(thread_t *thread, uint32_t dm0,  uint32_t va, uint32_t width, uint32_t height) {
 	dma_t *dma = thread->processor_ptr->dma[thread->threadId];
-	PRINTF(dma, "DMA %d: ADAPTER  setting target descriptor dm0=%x va=%x width=%d height=%x", dma->num, dm0, va, width, height);
+	PRINTF(dma, "DMA %d: ADAPTER  setting target descriptor dm0=%x va=%x width=%d height=%x\n", dma->num, dm0, va, width, height);
 	dma_target_desc(dma, va, width, height);
 }
 
@@ -417,7 +418,7 @@ int dma_adapter_descriptor_start(dma_t *dma, uint32_t id, uint32_t desc_va, uint
 }
 
 int dma_adapter_descriptor_end(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info, int pause, int exception) {
-	PRINTF(dma, "DMA %d: ADAPTER  dma_adapter_descriptor_end : desc_va = 0x%x id=%d", dma->num, desc_va, id);
+	PRINTF(dma, "DMA %d: ADAPTER  dma_adapter_descriptor_end : desc_va = 0x%x id=%d\n", dma->num, desc_va, id);
 	int callback_state = DMA_DESC_STATE_DONE;
 	callback_state = (pause) ? DMA_DESC_STATE_PAUSE : callback_state;
 	callback_state = (exception) ? DMA_DESC_STATE_EXCEPT : callback_state;
@@ -451,7 +452,7 @@ int dma_adapter_create_mem_xact(struct dma_mem_xact *param) {
 
   int status = proc->uarch.uarch_udma_if_log_ptr(proc, &ma, param->is_desc, param->is_bypass, param);
 
-	PRINTF(param->dma, "DMA %d: ADAPTER  placing a mem xact 0x%x(0x%lx) : is_read=%u is_bypass=%u len=%ld status=%d @PCYCLE=%llu",
+	PRINTF(param->dma, "DMA %d: ADAPTER  placing a mem xact 0x%x(0x%lx) : is_read=%u is_bypass=%u len=%ld status=%d @PCYCLE=%llu\n",
          param->dma->num, param->vaddr, param->paddr, param->is_read,
          param->is_bypass, param->len, status, thread->processor_ptr->monotonic_pcycles);
 
@@ -561,11 +562,11 @@ int dma_adapter_xlate_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_memaccess_in
 		dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
 		dma_info->einfo = e_info;
 
-		PRINTF(dma, "DMA %d: Tick %d: ADAPTER %s Exception Encounted: VA=0x%x PA=0x%llx size=%d. cause=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d U:%x R:%x W:%x X:%x",dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), (store) ? "WR" : "RD",
+		PRINTF(dma, "DMA %d: Tick %d: ADAPTER %s Exception Encounted: VA=0x%x PA=0x%llx size=%d. cause=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d U:%x R:%x W:%x X:%x\n",dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), (store) ? "WR" : "RD",
 		(unsigned int)va, (long long int)*pa, width, dma_info->einfo.cause, xlate_task.jtlbidx , memtype->invalid_cccc, memtype->invalid_dma,
 		perm->u, perm->w, perm->r, perm->x);
 
-		warn("DMA %d: ADAPTER %s Exception Encounted: VA=0x%x PA=0x%llx size=%d cause=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d U:%x R:%x W:%x X:%x",dma->num, (store) ? "WR" : "RD",
+		warn("DMA %d: ADAPTER %s Exception Encounted: VA=0x%x PA=0x%llx size=%d cause=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d U:%x R:%x W:%x X:%x\n",dma->num, (store) ? "WR" : "RD",
 		(unsigned int)va, (long long int)pa,  width, dma_info->einfo.cause, xlate_task.jtlbidx , memtype->invalid_cccc, memtype->invalid_dma,
 		perm->u, perm->w, perm->r, perm->x);
 
@@ -777,6 +778,7 @@ dma_t *dma_adapter_init(processor_t *proc, int dmanum) {
 
   // Set up other arguments.
   dma->num = dmanum;
+	dma->verbosity = 0; // set to 5 for a lot more debug
 
   // An owner of each DMA instance is a hardware thread.
 	dma_adapter->owner = proc->thread[dmanum];
@@ -1141,7 +1143,7 @@ size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new, size4u_t dummy,
   dma_t *dma = thread->processor_ptr->dma[thread->threadId];
 	dma->pc = thread->gpr[HEX_REG_PC];
   // mgl
-	PRINTF(dma, "DMA %d: Tick %d: ADAPTER dma_start thread=%u new=0x%08x", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), thread->threadId, new);
+	PRINTF(dma, "DMA %d: Tick %d: ADAPTER dma_start thread=%u new=0x%08x\n", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), thread->threadId, new);
 
   // Call the DMA engine.
   dma_cmd_report_t report;
@@ -1233,7 +1235,7 @@ size4u_t dma_adapter_cmd_poll(thread_t *thread, size4u_t dummy1,
   // We should relay the instruction completeness checker.
   (*insn_checker) = report.insn_checker;
 
-	PRINTF(dma, "DMA %d: Tick: %d ADAPTER dma_poll thread=%u dst=%x", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), thread->threadId, dst);
+	PRINTF(dma, "DMA %d: Tick: %d ADAPTER dma_poll thread=%u dst=%x\n", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), thread->threadId, dst);
   return dst;
 }
 
@@ -1393,7 +1395,7 @@ size4u_t dma_adapter_cmd_cfgrd(thread_t *thread,
   // We should relay the instruction completeness checker.
   (*insn_checker) = report.insn_checker;
 
-	PRINTF(dma, "DMA %d: ADAPTER  dma_cfgrd thread=%u val=%x", dma->num, thread->threadId, val);
+	PRINTF(dma, "DMA %d: ADAPTER  dma_cfgrd thread=%u val=%x\n", dma->num, thread->threadId, val);
 
     return val;
 }
@@ -1429,7 +1431,7 @@ size4u_t dma_adapter_cmd_cfgwr(thread_t *thread,
   // We should relay the instruction completeness checker.
   (*insn_checker) = report.insn_checker;
 
-	PRINTF(dma, "DMA %d: ADAPTER  dma_cfgwr thread=%u val=%x", dma->num, thread->threadId, val);
+	PRINTF(dma, "DMA %d: ADAPTER  dma_cfgwr thread=%u val=%x\n", dma->num, thread->threadId, val);
 
     return val;
 }
@@ -1438,7 +1440,7 @@ void dma_adapter_set_dm5(dma_t *dma, uint32_t addr) {
 	for (int tnum = 0; tnum < thread->processor_ptr->runnable_threads_max; tnum++) {
 		dma_t *dma_ptr = thread->processor_ptr->dma[thread->threadId];
     if (dma_ptr) {
-  		PRINTF(dma_ptr, "DMA %d: ADAPTER  forcing dm5 on all DMA engines thread=%u val=%x", dma_ptr->num, thread->threadId, addr);
+  		PRINTF(dma_ptr, "DMA %d: ADAPTER  forcing dm5 on all DMA engines thread=%u val=%x\n", dma_ptr->num, thread->threadId, addr);
 	  	dma_cmd_cfgwr(dma_ptr, 5, addr, NULL);
     }
 	}
@@ -1494,7 +1496,7 @@ size4u_t dma_adapter_cmd_syncht(thread_t *thread, size4u_t dummy1, size4u_t dumm
   // Obtain a current DMA instance from a thread ID.
   dma_t *dma = thread->processor_ptr->dma[thread->threadId];
 
-	PRINTF(dma, "DMA %d: ADAPTER  dma_syncht thread=%u", dma->num, thread->threadId);
+	PRINTF(dma, "DMA %d: ADAPTER  dma_syncht thread=%u\n", dma->num, thread->threadId);
   dma_cmd_report_t report;
   report.excpt = 0;
   report.insn_checker = NULL;
