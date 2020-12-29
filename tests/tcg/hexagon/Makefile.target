@@ -50,6 +50,6 @@ HEX_TESTS += pthread_cancel
 HEX_TESTS += vector_add_int
 HEX_TESTS += scatter_gather
 HEX_TESTS += atomics
-HEX_TESTS += sfminmax
+HEX_TESTS += fpstuff
 
 TESTS += $(HEX_TESTS)

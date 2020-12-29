@@ -273,18 +273,18 @@ int arch_sf_recip_common(float32 *Rs, float32 *Rt, float32 *Rd, int *adjust,
     RsV = *Rs;
     RtV = *Rt;
     if (float32_is_any_nan(RsV) && float32_is_any_nan(RtV)) {
-        if (extract32(RsV & RtV, 22, 1)) {
+        if (extract32(RsV & RtV, 22, 1) == 0) {
             float_raise(float_flag_invalid, fp_status);
         }
         RdV = RsV = RtV = float32_nan;
     } else if (float32_is_any_nan(RsV)) {
-        if (extract32(RsV, 22, 1)) {
+        if (extract32(RsV, 22, 1) == 0) {
             float_raise(float_flag_invalid, fp_status);
         }
         RdV = RsV = RtV = float32_nan;
     } else if (float32_is_any_nan(RtV)) {
         /* or put NaN in num/den fixup? */
-        if (extract32(RtV, 22, 1)) {
+        if (extract32(RtV, 22, 1) == 0) {
             float_raise(float_flag_invalid, fp_status);
         }
         RdV = RsV = RtV = float32_nan;

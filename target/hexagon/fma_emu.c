@@ -519,16 +519,11 @@ static inline SUFFIX accum_round_##SUFFIX(Accum a, float_status * fp_status) \
 GEN_XF_ROUND(float64, DF_MANTBITS, DF_INF_EXP, Double)
 GEN_XF_ROUND(float32, SF_MANTBITS, SF_INF_EXP, Float)
 
-static bool isfinite(float64 x)
-{
-    return !float64_is_any_nan(x) && !float64_is_infinity(x);
-}
-
 static bool is_inf_prod(float64 a, float64 b)
 {
     return ((float64_is_infinity(a) && float64_is_infinity(b)) ||
-            (float64_is_infinity(a) && isfinite(b) && (!float64_is_zero(b))) ||
-            (float64_is_infinity(b) && isfinite(a) && (float64_is_zero(a))));
+            (float64_is_infinity(a) && is_finite(b) && (!float64_is_zero(b))) ||
+            (float64_is_infinity(b) && is_finite(a) && (!float64_is_zero(a))));
 }
 
 static inline float64 special_fma(float64 a, float64 b, float64 c,
