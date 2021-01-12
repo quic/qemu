@@ -206,6 +206,21 @@ static inline int cmpnd_cmp_jump(void)
     return retval;
 }
 
+static inline int test_clrtnew(int arg1, int old_val)
+{
+  int ret;
+  asm volatile("r5 = %2\n\t"
+               "{\n\t"
+                   "p0 = cmp.eq(%1, #1)\n\t"
+                   "if (p0.new) r5=#0\n\t"
+               "}\n\t"
+               "%0 = r5\n\t"
+               : "=r"(ret)
+               : "r"(arg1), "r"(old_val)
+               : "p0", "r5");
+  return ret;
+}
+
 int err;
 
 static void check(int val, int expect)
@@ -354,6 +369,11 @@ int main()
     long long pair = creg_pair(5, 7);
     check((int)pair, 5);
     check((int)(pair >> 32), 7);
+
+    int res = test_clrtnew(1, 7);
+    check(res, 0);
+    res = test_clrtnew(2, 7);
+    check(res, 7);
 
     puts(err ? "FAIL" : "PASS");
     return err;

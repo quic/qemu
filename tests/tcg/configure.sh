@@ -50,7 +50,7 @@ fi
 : ${cross_cc_arm="arm-linux-gnueabihf-gcc"}
 : ${cross_cc_cflags_armeb="-mbig-endian"}
 : ${cross_cc_hexagon="hexagon-linux-clang"}
-: ${cross_cc_cflags_hexagon="-mv67 -O2 -Wno-incompatible-pointer-types"}
+: ${cross_cc_cflags_hexagon="-mv67 -O2 -static"}
 : ${cross_cc_hppa="hppa-linux-gnu-gcc"}
 : ${cross_cc_i386="i386-pc-linux-gnu-gcc"}
 : ${cross_cc_cflags_i386="-m32"}
