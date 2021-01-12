@@ -25,9 +25,9 @@ static int gdb_get_vreg(CPUHexagonState *env, GByteArray *mem_buf, int n)
 {
     int total = 0;
     int i;
-    for (i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
+    for (i = 0; i < MAX_VEC_SIZE_BYTES / sizeof(uint32_t); i++) {
         total += gdb_get_regl(mem_buf, env->VRegs[n].uw[i]);
-        mem_buf += 4;
+        mem_buf += sizeof(uint32_t);
     }
     return total;
 }
@@ -36,9 +36,11 @@ static int gdb_get_qreg(CPUHexagonState *env, GByteArray *mem_buf, int n)
 {
     int total = 0;
     int i;
-    for (i = 0; i < MAX_VEC_SIZE_BYTES / 4 / 8; i++) {
+    for (i = 0;
+         i < MAX_VEC_SIZE_BYTES / sizeof(uint32_t) / BITS_PER_BYTE;
+         i++) {
         total += gdb_get_regl(mem_buf, env->QRegs[n].uw[i]);
-        mem_buf += 4;
+        mem_buf += sizeof(uint32_t);
     }
     return total;
 }
@@ -68,9 +70,9 @@ int hexagon_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
 static int gdb_put_vreg(CPUHexagonState *env, uint8_t *mem_buf, int n)
 {
     int i;
-    for (i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
+    for (i = 0; i < MAX_VEC_SIZE_BYTES / sizeof(uint32_t); i++) {
         env->VRegs[n].uw[i] = ldtul_p(mem_buf);
-        mem_buf += 4;
+        mem_buf += sizeof(uint32_t);
     }
     return MAX_VEC_SIZE_BYTES;
 }
@@ -78,11 +80,13 @@ static int gdb_put_vreg(CPUHexagonState *env, uint8_t *mem_buf, int n)
 static int gdb_put_qreg(CPUHexagonState *env, uint8_t *mem_buf, int n)
 {
     int i;
-    for (i = 0; i < MAX_VEC_SIZE_BYTES / 4 / 8; i++) {
+    for (i = 0;
+         i < MAX_VEC_SIZE_BYTES / sizeof(uint32_t) / BITS_PER_BYTE;
+         i++) {
         env->QRegs[n].uw[i] = ldtul_p(mem_buf);
-        mem_buf += 4;
+        mem_buf += sizeof(uint32_t);
     }
-    return MAX_VEC_SIZE_BYTES / 8;
+    return MAX_VEC_SIZE_BYTES / BITS_PER_BYTE;
 }
 
 int hexagon_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
