@@ -268,9 +268,16 @@ decode_fill_newvalue_regno(Packet *packet)
 
             /*
              * What's encoded at the N-field is the offset to who's producing
-             * the value.  Shift off the LSB which indicates odd/even register.
+             * the value.  Shift off the LSB which indicates odd/even register,
+             * then walk backwards and skip over the constant extenders.
              */
-            def_idx = i - ((packet->insn[i].regno[use_regidx]) >> 1);
+            int offset = packet->insn[i].regno[use_regidx] >> 1;
+            def_idx = i - offset;
+            for (int j = 0; j < offset; j++) {
+                if (GET_ATTRIB(packet->insn[i - j - 1].opcode, A_IT_EXTENDER)) {
+                    def_idx--;
+                }
+            }
 
             /*
              * Check for a badly encoded N-field which points to an instruction
@@ -590,15 +597,15 @@ static SlotMask get_valid_slots(const Packet *pkt, unsigned int slot)
 
 /* Used for "-d in_asm" logging */
 int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc,
-                        char *buf, int bufsize)
+                        GString *buf)
 {
     Packet pkt;
 
     if (decode_packet(nwords, words, &pkt, true) > 0) {
-        snprint_a_pkt_disas(buf, bufsize, &pkt, words, pc);
+        snprint_a_pkt_disas(buf, &pkt, words, pc);
         return pkt.encod_pkt_size_in_bytes;
     } else {
-        snprintf(buf, bufsize, "<invalid>");
+        g_string_assign(buf, "<invalid>");
         return 0;
     }
 }

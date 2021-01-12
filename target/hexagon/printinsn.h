@@ -21,8 +21,8 @@
 #include "qemu/osdep.h"
 #include "insn.h"
 
-extern void snprint_a_pkt_disas(char *buf, int n, Packet *pkt, uint32_t *words,
+extern void snprint_a_pkt_disas(GString *buf, Packet *pkt, uint32_t *words,
                                 target_ulong pc);
-extern void snprint_a_pkt_debug(char *buf, int n, Packet *pkt);
+extern void snprint_a_pkt_debug(GString *buf, Packet *pkt);
 
 #endif

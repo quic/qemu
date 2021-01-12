@@ -75,9 +75,10 @@ void gen_exception_debug(void)
 #define PACKET_BUFFER_LEN              1028
 static void print_pkt(Packet *pkt)
 {
-    char buf[PACKET_BUFFER_LEN];
-    snprint_a_pkt_debug(buf, PACKET_BUFFER_LEN, pkt);
-    HEX_DEBUG_LOG("%s", buf);
+    GString *buf = g_string_sized_new(PACKET_BUFFER_LEN);
+    snprint_a_pkt_debug(buf, pkt);
+    HEX_DEBUG_LOG("%s", buf->str);
+    g_string_free(buf, true);
 }
 #define HEX_DEBUG_PRINT_PKT(pkt)  print_pkt(pkt)
 #else
