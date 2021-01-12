@@ -34,7 +34,7 @@ int print_insn_hexagon(bfd_vma memaddr, struct disassemble_info *info)
     uint32_t words[PACKET_WORDS_MAX];
     bool found_end = false;
     GString *buf = g_string_sized_new(PACKET_BUFFER_LEN);
-    int i;
+    int i, len;
 
     for (i = 0; i < PACKET_WORDS_MAX && !found_end; i++) {
         int status = (*info->read_memory_func)(memaddr + i * sizeof(uint32_t),
@@ -54,10 +54,10 @@ int print_insn_hexagon(bfd_vma memaddr, struct disassemble_info *info)
 
     if (!found_end) {
         (*info->fprintf_func)(info->stream, "<invalid>");
-        return PACKET_WORDS_MAX * 4;
+        return PACKET_WORDS_MAX * sizeof(uint32_t);
     }
 
-    int len = disassemble_hexagon(words, i, memaddr, buf);
+    len = disassemble_hexagon(words, i, memaddr, buf);
     (*info->fprintf_func)(info->stream, "%s", buf->str);
     g_string_free(buf, true);
 

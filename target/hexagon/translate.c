@@ -89,7 +89,7 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
                              uint32_t words[])
 {
     bool found_end = false;
-    int nwords;
+    int nwords, max_words;
 
     memset(words, 0, PACKET_WORDS_MAX * sizeof(uint32_t));
     for (nwords = 0; !found_end && nwords < PACKET_WORDS_MAX; nwords++) {
@@ -103,7 +103,7 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
     }
 
     /* Check for page boundary crossing */
-    int max_words = -(ctx->base.pc_next | TARGET_PAGE_MASK) / sizeof(uint32_t);
+    max_words = -(ctx->base.pc_next | TARGET_PAGE_MASK) / sizeof(uint32_t);
     if (nwords > max_words) {
         /* We can only cross a page boundary at the beginning of a TB */
         g_assert(ctx->base.num_insns == 1);
@@ -246,15 +246,17 @@ static void gen_reg_writes(DisasContext *ctx)
 
 static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
 {
+    TCGv zero, control_reg, pval;
+    int i;
+
     /* Early exit if the log is empty */
     if (!ctx->preg_log_idx) {
         return;
     }
 
-    TCGv zero = tcg_const_tl(0);
-    TCGv control_reg = tcg_temp_new();
-    TCGv pval = tcg_temp_new();
-    int i;
+    zero = tcg_const_tl(0);
+    control_reg = tcg_temp_new();
+    pval = tcg_temp_new();
 
     /*
      * Only endloop instructions will conditionally
@@ -307,6 +309,9 @@ static inline void gen_check_store_width(DisasContext *ctx, int slot_num)
 
 void process_store(DisasContext *ctx, int slot_num)
 {
+    TCGv cancelled;
+    TCGLabel *label_end;
+
     /*
      * We may have already processed this store
      * See CHECK_NOSHUF in macros.h
@@ -316,8 +321,8 @@ void process_store(DisasContext *ctx, int slot_num)
     }
     ctx->s1_store_processed = 1;
 
-    TCGv cancelled = tcg_temp_new();
-    TCGLabel *label_end = gen_new_label();
+    cancelled = tcg_temp_new();
+    label_end = gen_new_label();
 
     /* Don't do anything if the slot was cancelled */
     tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);

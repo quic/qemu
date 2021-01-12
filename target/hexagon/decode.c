@@ -248,7 +248,7 @@ void decode_send_insn_to(Packet *packet, int start, int newloc)
 static void
 decode_fill_newvalue_regno(Packet *packet)
 {
-    int i, use_regidx, def_idx;
+    int i, use_regidx, offset, def_idx, dst_idx;
     uint16_t def_opcode, use_opcode;
     char *dststr;
 
@@ -271,7 +271,7 @@ decode_fill_newvalue_regno(Packet *packet)
              * the value.  Shift off the LSB which indicates odd/even register,
              * then walk backwards and skip over the constant extenders.
              */
-            int offset = packet->insn[i].regno[use_regidx] >> 1;
+            offset = packet->insn[i].regno[use_regidx] >> 1;
             def_idx = i - offset;
             for (int j = 0; j < offset; j++) {
                 if (GET_ATTRIB(packet->insn[i - j - 1].opcode, A_IT_EXTENDER)) {
@@ -315,7 +315,7 @@ decode_fill_newvalue_regno(Packet *packet)
             g_assert(dststr != NULL);
 
             /* Now patch up the consumer with the register number */
-            int dst_idx = dststr - opcode_reginfo[def_opcode];
+            dst_idx = dststr - opcode_reginfo[def_opcode];
             packet->insn[i].regno[use_regidx] =
                 packet->insn[def_idx].regno[dst_idx];
             /*

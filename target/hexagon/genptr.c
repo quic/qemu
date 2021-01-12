@@ -369,12 +369,13 @@ static inline void gen_store_conditional4(CPUHexagonState *env,
 {
     TCGLabel *fail = gen_new_label();
     TCGLabel *done = gen_new_label();
+    TCGv one, zero, tmp;
 
     tcg_gen_brcond_tl(TCG_COND_NE, vaddr, hex_llsc_addr, fail);
 
-    TCGv one = tcg_const_tl(0xff);
-    TCGv zero = tcg_const_tl(0);
-    TCGv tmp = tcg_temp_new();
+    one = tcg_const_tl(0xff);
+    zero = tcg_const_tl(0);
+    tmp = tcg_temp_new();
     tcg_gen_atomic_cmpxchg_tl(tmp, hex_llsc_addr, hex_llsc_val, src,
                               ctx->mem_idx, MO_32);
     tcg_gen_movcond_tl(TCG_COND_EQ, hex_pred[prednum], tmp, hex_llsc_val,
@@ -397,12 +398,13 @@ static inline void gen_store_conditional8(CPUHexagonState *env,
 {
     TCGLabel *fail = gen_new_label();
     TCGLabel *done = gen_new_label();
+    TCGv_i64 one, zero, tmp;
 
     tcg_gen_brcond_tl(TCG_COND_NE, vaddr, hex_llsc_addr, fail);
 
-    TCGv_i64 one = tcg_const_i64(0xff);
-    TCGv_i64 zero = tcg_const_i64(0);
-    TCGv_i64 tmp = tcg_temp_new_i64();
+    one = tcg_const_i64(0xff);
+    zero = tcg_const_i64(0);
+    tmp = tcg_temp_new_i64();
     tcg_gen_atomic_cmpxchg_i64(tmp, hex_llsc_addr, hex_llsc_val_i64, src,
                                ctx->mem_idx, MO_64);
     tcg_gen_movcond_i64(TCG_COND_EQ, tmp, tmp, hex_llsc_val_i64,
@@ -772,9 +774,9 @@ static inline void gen_endloop0(void)
     TCGLabel *label3 = gen_new_label();
     tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC0], 1, label3);
     {
+        TCGv lc0 = tcg_temp_local_new();
         tcg_gen_mov_tl(hex_next_PC, hex_gpr[HEX_REG_SA0]);
         tcg_gen_movi_tl(hex_branch_taken, 1);
-        TCGv lc0 = tcg_temp_local_new();
         tcg_gen_mov_tl(lc0, hex_gpr[HEX_REG_LC0]);
         tcg_gen_subi_tl(lc0, lc0, 1);
         tcg_gen_mov_tl(hex_new_value[HEX_REG_LC0], lc0);
@@ -797,9 +799,9 @@ static inline void gen_endloop1(void)
     TCGLabel *label = gen_new_label();
     tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC1], 1, label);
     {
+        TCGv lc1 = tcg_temp_local_new();
         tcg_gen_mov_tl(hex_next_PC, hex_gpr[HEX_REG_SA1]);
         tcg_gen_movi_tl(hex_branch_taken, 1);
-        TCGv lc1 = tcg_temp_local_new();
         tcg_gen_mov_tl(lc1, hex_gpr[HEX_REG_LC1]);
         tcg_gen_subi_tl(lc1, lc1, 1);
         tcg_gen_mov_tl(hex_new_value[HEX_REG_LC1], lc1);

@@ -153,8 +153,7 @@ void HELPER(debug_start_packet)(CPUHexagonState *env)
     HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx "\n",
                   env->gpr[HEX_REG_PC]);
 
-    int i;
-    for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
+    for (int i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         env->reg_written[i] = 0;
     }
 }
@@ -230,7 +229,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
                 g_assert_not_reached();
             }
         } else {
-            for (int i = 0; i < env->vtcm_log.size; i++) {
+            for (i = 0; i < env->vtcm_log.size; i++) {
                 if (env->vtcm_log.mask.ub[i] != 0) {
                     put_user_u8(env->vtcm_log.data.ub[i], env->vtcm_log.va[i]);
                     env->vtcm_log.mask.ub[i] = 0;
@@ -402,13 +401,14 @@ static float64 hex_check_dfnan(float64 x)
  */
 float32 HELPER(sfrecipa_val)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
-    arch_fpop_start(env);
     /* int32_t PeV; Not needed to compute value */
     float32 RdV;
     int idx;
     int adjust;
     int mant;
     int exp;
+
+    arch_fpop_start(env);
     if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
         /* PeV = adjust; Not needed to compute value */
         idx = (RtV >> 16) & 0x7f;
@@ -422,10 +422,11 @@ float32 HELPER(sfrecipa_val)(CPUHexagonState *env, float32 RsV, float32 RtV)
 
 int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
-    arch_fpop_start(env);
     int32_t PeV = 0;
     float32 RdV;
     int adjust;
+
+    arch_fpop_start(env);
     if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
         PeV = adjust;
     }
@@ -435,13 +436,14 @@ int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, float32 RsV, float32 RtV)
 
 float32 HELPER(sfinvsqrta_val)(CPUHexagonState *env, float32 RsV)
 {
-    arch_fpop_start(env);
     /* int32_t PeV; Not needed for val version */
     float32 RdV;
     int idx;
     int adjust;
     int mant;
     int exp;
+
+    arch_fpop_start(env);
     if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
         /* PeV = adjust; Not needed for val version */
         idx = (RsV >> 17) & 0x7f;
@@ -455,10 +457,11 @@ float32 HELPER(sfinvsqrta_val)(CPUHexagonState *env, float32 RsV)
 
 int32_t HELPER(sfinvsqrta_pred)(CPUHexagonState *env, float32 RsV)
 {
-    arch_fpop_start(env);
     int32_t PeV = 0;
     float32 RdV;
     int adjust;
+
+    arch_fpop_start(env);
     if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
         PeV = adjust;
     }
@@ -511,8 +514,9 @@ int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
 /* Floating point */
 float64 HELPER(conv_sf2df)(CPUHexagonState *env, float32 RsV)
 {
+    float64 out_f64;
     arch_fpop_start(env);
-    float64 out_f64 = float32_to_float64(RsV, &env->fp_status);
+    out_f64 = float32_to_float64(RsV, &env->fp_status);
     out_f64 = hex_check_dfnan(out_f64);
     arch_fpop_end(env);
     return out_f64;
@@ -520,8 +524,9 @@ float64 HELPER(conv_sf2df)(CPUHexagonState *env, float32 RsV)
 
 float32 HELPER(conv_df2sf)(CPUHexagonState *env, float64 RssV)
 {
+    float32 out_f32;
     arch_fpop_start(env);
-    float32 out_f32 = float64_to_float32(RssV, &env->fp_status);
+    out_f32 = float64_to_float32(RssV, &env->fp_status);
     out_f32 = hex_check_sfnan(out_f32);
     arch_fpop_end(env);
     return out_f32;
@@ -529,8 +534,9 @@ float32 HELPER(conv_df2sf)(CPUHexagonState *env, float64 RssV)
 
 float32 HELPER(conv_uw2sf)(CPUHexagonState *env, int32_t RsV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = uint32_to_float32(RsV, &env->fp_status);
+    RdV = uint32_to_float32(RsV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -538,8 +544,9 @@ float32 HELPER(conv_uw2sf)(CPUHexagonState *env, int32_t RsV)
 
 float64 HELPER(conv_uw2df)(CPUHexagonState *env, int32_t RsV)
 {
+    float64 RddV;
     arch_fpop_start(env);
-    float64 RddV = uint32_to_float64(RsV, &env->fp_status);
+    RddV = uint32_to_float64(RsV, &env->fp_status);
     RddV = hex_check_dfnan(RddV);
     arch_fpop_end(env);
     return RddV;
@@ -547,8 +554,9 @@ float64 HELPER(conv_uw2df)(CPUHexagonState *env, int32_t RsV)
 
 float32 HELPER(conv_w2sf)(CPUHexagonState *env, int32_t RsV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = int32_to_float32(RsV, &env->fp_status);
+    RdV = int32_to_float32(RsV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -556,8 +564,9 @@ float32 HELPER(conv_w2sf)(CPUHexagonState *env, int32_t RsV)
 
 float64 HELPER(conv_w2df)(CPUHexagonState *env, int32_t RsV)
 {
+    float64 RddV;
     arch_fpop_start(env);
-    float64 RddV = int32_to_float64(RsV, &env->fp_status);
+    RddV = int32_to_float64(RsV, &env->fp_status);
     RddV = hex_check_dfnan(RddV);
     arch_fpop_end(env);
     return RddV;
@@ -565,8 +574,9 @@ float64 HELPER(conv_w2df)(CPUHexagonState *env, int32_t RsV)
 
 float32 HELPER(conv_ud2sf)(CPUHexagonState *env, int64_t RssV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = uint64_to_float32(RssV, &env->fp_status);
+    RdV = uint64_to_float32(RssV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -574,8 +584,9 @@ float32 HELPER(conv_ud2sf)(CPUHexagonState *env, int64_t RssV)
 
 float64 HELPER(conv_ud2df)(CPUHexagonState *env, int64_t RssV)
 {
+    float64 RddV;
     arch_fpop_start(env);
-    float64 RddV = uint64_to_float64(RssV, &env->fp_status);
+    RddV = uint64_to_float64(RssV, &env->fp_status);
     RddV = hex_check_dfnan(RddV);
     arch_fpop_end(env);
     return RddV;
@@ -583,8 +594,9 @@ float64 HELPER(conv_ud2df)(CPUHexagonState *env, int64_t RssV)
 
 float32 HELPER(conv_d2sf)(CPUHexagonState *env, int64_t RssV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = int64_to_float32(RssV, &env->fp_status);
+    RdV = int64_to_float32(RssV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -592,8 +604,9 @@ float32 HELPER(conv_d2sf)(CPUHexagonState *env, int64_t RssV)
 
 float64 HELPER(conv_d2df)(CPUHexagonState *env, int64_t RssV)
 {
+    float64 RddV;
     arch_fpop_start(env);
-    float64 RddV = int64_to_float64(RssV, &env->fp_status);
+    RddV = int64_to_float64(RssV, &env->fp_status);
     RddV = hex_check_dfnan(RddV);
     arch_fpop_end(env);
     return RddV;
@@ -601,144 +614,161 @@ float64 HELPER(conv_d2df)(CPUHexagonState *env, int64_t RssV)
 
 int32_t HELPER(conv_sf2uw)(CPUHexagonState *env, float32 RsV)
 {
+    int32_t RdV;
     arch_fpop_start(env);
-    int32_t RdV = conv_sf_to_4u(RsV, &env->fp_status);
+    RdV = conv_sf_to_4u(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
 int32_t HELPER(conv_sf2w)(CPUHexagonState *env, float32 RsV)
 {
+    int32_t RdV;
     arch_fpop_start(env);
-    int32_t RdV = conv_sf_to_4s(RsV, &env->fp_status);
+    RdV = conv_sf_to_4s(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
 int64_t HELPER(conv_sf2ud)(CPUHexagonState *env, float32 RsV)
 {
+    int64_t RddV;
     arch_fpop_start(env);
-    int64_t RddV = conv_sf_to_8u(RsV, &env->fp_status);
+    RddV = conv_sf_to_8u(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
 int64_t HELPER(conv_sf2d)(CPUHexagonState *env, float32 RsV)
 {
+    int64_t RddV;
     arch_fpop_start(env);
-    int64_t RddV = conv_sf_to_8s(RsV, &env->fp_status);
+    RddV = conv_sf_to_8s(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
 int32_t HELPER(conv_df2uw)(CPUHexagonState *env, float64 RssV)
 {
+    int32_t RdV;
     arch_fpop_start(env);
-    int32_t RdV = conv_df_to_4u(RssV, &env->fp_status);
+    RdV = conv_df_to_4u(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
 int32_t HELPER(conv_df2w)(CPUHexagonState *env, float64 RssV)
 {
+    int32_t RdV;
     arch_fpop_start(env);
-    int32_t RdV = conv_df_to_4s(RssV, &env->fp_status);
+    RdV = conv_df_to_4s(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
 int64_t HELPER(conv_df2ud)(CPUHexagonState *env, float64 RssV)
 {
+    int64_t RddV;
     arch_fpop_start(env);
-    int64_t RddV = conv_df_to_8u(RssV, &env->fp_status);
+    RddV = conv_df_to_8u(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
 int64_t HELPER(conv_df2d)(CPUHexagonState *env, float64 RssV)
 {
+    int64_t RddV;
     arch_fpop_start(env);
-    int64_t RddV = conv_df_to_8s(RssV, &env->fp_status);
+    RddV = conv_df_to_8s(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
 int32_t HELPER(conv_sf2uw_chop)(CPUHexagonState *env, float32 RsV)
 {
+    int32_t RdV;
     arch_fpop_start(env);
     set_float_rounding_mode(float_round_to_zero, &env->fp_status);
-    int32_t RdV = conv_sf_to_4u(RsV, &env->fp_status);
+    RdV = conv_sf_to_4u(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
 int32_t HELPER(conv_sf2w_chop)(CPUHexagonState *env, float32 RsV)
 {
+    int32_t RdV;
     arch_fpop_start(env);
     set_float_rounding_mode(float_round_to_zero, &env->fp_status);
-    int32_t RdV = conv_sf_to_4s(RsV, &env->fp_status);
+    RdV = conv_sf_to_4s(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
 int64_t HELPER(conv_sf2ud_chop)(CPUHexagonState *env, float32 RsV)
 {
+    int64_t RddV;
     arch_fpop_start(env);
     set_float_rounding_mode(float_round_to_zero, &env->fp_status);
-    int64_t RddV = conv_sf_to_8u(RsV, &env->fp_status);
+    RddV = conv_sf_to_8u(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
 int64_t HELPER(conv_sf2d_chop)(CPUHexagonState *env, float32 RsV)
 {
+    int64_t RddV;
     arch_fpop_start(env);
     set_float_rounding_mode(float_round_to_zero, &env->fp_status);
-    int64_t RddV = conv_sf_to_8s(RsV, &env->fp_status);
+    RddV = conv_sf_to_8s(RsV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
 int32_t HELPER(conv_df2uw_chop)(CPUHexagonState *env, float64 RssV)
 {
+    int32_t RdV;
     arch_fpop_start(env);
     set_float_rounding_mode(float_round_to_zero, &env->fp_status);
-    int32_t RdV = conv_df_to_4u(RssV, &env->fp_status);
+    RdV = conv_df_to_4u(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
 int32_t HELPER(conv_df2w_chop)(CPUHexagonState *env, float64 RssV)
 {
+    int32_t RdV;
     arch_fpop_start(env);
     set_float_rounding_mode(float_round_to_zero, &env->fp_status);
-    int32_t RdV = conv_df_to_4s(RssV, &env->fp_status);
+    RdV = conv_df_to_4s(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RdV;
 }
 
 int64_t HELPER(conv_df2ud_chop)(CPUHexagonState *env, float64 RssV)
 {
+    int64_t RddV;
     arch_fpop_start(env);
     set_float_rounding_mode(float_round_to_zero, &env->fp_status);
-    int64_t RddV = conv_df_to_8u(RssV, &env->fp_status);
+    RddV = conv_df_to_8u(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
 int64_t HELPER(conv_df2d_chop)(CPUHexagonState *env, float64 RssV)
 {
+    int64_t RddV;
     arch_fpop_start(env);
     set_float_rounding_mode(float_round_to_zero, &env->fp_status);
-    int64_t RddV = conv_df_to_8s(RssV, &env->fp_status);
+    RddV = conv_df_to_8s(RssV, &env->fp_status);
     arch_fpop_end(env);
     return RddV;
 }
 
 float32 HELPER(sfadd)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = float32_add(RsV, RtV, &env->fp_status);
+    RdV = float32_add(RsV, RtV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -746,8 +776,9 @@ float32 HELPER(sfadd)(CPUHexagonState *env, float32 RsV, float32 RtV)
 
 float32 HELPER(sfsub)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = float32_sub(RsV, RtV, &env->fp_status);
+    RdV = float32_sub(RsV, RtV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -755,44 +786,51 @@ float32 HELPER(sfsub)(CPUHexagonState *env, float32 RsV, float32 RtV)
 
 int32_t HELPER(sfcmpeq)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    int32_t PdV;
     arch_fpop_start(env);
-    int32_t PdV = f8BITSOF(float32_eq_quiet(RsV, RtV, &env->fp_status));
+    PdV = f8BITSOF(float32_eq_quiet(RsV, RtV, &env->fp_status));
     arch_fpop_end(env);
     return PdV;
 }
 
 int32_t HELPER(sfcmpgt)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    int cmp;
+    int32_t PdV;
     arch_fpop_start(env);
-    int cmp = float32_compare_quiet(RsV, RtV, &env->fp_status);
-    int32_t PdV = f8BITSOF(cmp == float_relation_greater);
+    cmp = float32_compare_quiet(RsV, RtV, &env->fp_status);
+    PdV = f8BITSOF(cmp == float_relation_greater);
     arch_fpop_end(env);
     return PdV;
 }
 
 int32_t HELPER(sfcmpge)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    int cmp;
+    int32_t PdV;
     arch_fpop_start(env);
-    int cmp = float32_compare_quiet(RsV, RtV, &env->fp_status);
-    int32_t PdV = f8BITSOF(cmp == float_relation_greater ||
-                           cmp == float_relation_equal);
+    cmp = float32_compare_quiet(RsV, RtV, &env->fp_status);
+    PdV = f8BITSOF(cmp == float_relation_greater ||
+                   cmp == float_relation_equal);
     arch_fpop_end(env);
     return PdV;
 }
 
 int32_t HELPER(sfcmpuo)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    int32_t PdV;
     arch_fpop_start(env);
-    int32_t PdV = f8BITSOF(float32_is_any_nan(RsV) ||
-                           float32_is_any_nan(RtV));
+    PdV = f8BITSOF(float32_is_any_nan(RsV) ||
+                   float32_is_any_nan(RtV));
     arch_fpop_end(env);
     return PdV;
 }
 
 float32 HELPER(sfmax)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = float32_maxnum(RsV, RtV, &env->fp_status);
+    RdV = float32_maxnum(RsV, RtV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -800,8 +838,9 @@ float32 HELPER(sfmax)(CPUHexagonState *env, float32 RsV, float32 RtV)
 
 float32 HELPER(sfmin)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = float32_minnum(RsV, RtV, &env->fp_status);
+    RdV = float32_minnum(RsV, RtV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -809,8 +848,8 @@ float32 HELPER(sfmin)(CPUHexagonState *env, float32 RsV, float32 RtV)
 
 int32_t HELPER(sfclass)(CPUHexagonState *env, float32 RsV, int32_t uiV)
 {
-    arch_fpop_start(env);
     int32_t PdV = 0;
+    arch_fpop_start(env);
     if (fGETBIT(0, uiV) && float32_is_zero(RsV)) {
         PdV = 0xff;
     }
@@ -834,8 +873,8 @@ int32_t HELPER(sfclass)(CPUHexagonState *env, float32 RsV, int32_t uiV)
 float32 HELPER(sffixupn)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
     float32 RdV = 0;
-    arch_fpop_start(env);
     int adjust;
+    arch_fpop_start(env);
     arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status);
     RdV = RsV;
     arch_fpop_end(env);
@@ -845,8 +884,8 @@ float32 HELPER(sffixupn)(CPUHexagonState *env, float32 RsV, float32 RtV)
 float32 HELPER(sffixupd)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
     float32 RdV = 0;
-    arch_fpop_start(env);
     int adjust;
+    arch_fpop_start(env);
     arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status);
     RdV = RtV;
     arch_fpop_end(env);
@@ -856,8 +895,8 @@ float32 HELPER(sffixupd)(CPUHexagonState *env, float32 RsV, float32 RtV)
 float32 HELPER(sffixupr)(CPUHexagonState *env, float32 RsV)
 {
     float32 RdV = 0;
-    arch_fpop_start(env);
     int adjust;
+    arch_fpop_start(env);
     arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status);
     RdV = RsV;
     arch_fpop_end(env);
@@ -866,8 +905,9 @@ float32 HELPER(sffixupr)(CPUHexagonState *env, float32 RsV)
 
 float64 HELPER(dfadd)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
+    float64 RddV;
     arch_fpop_start(env);
-    float64 RddV = float64_add(RssV, RttV, &env->fp_status);
+    RddV = float64_add(RssV, RttV, &env->fp_status);
     RddV = hex_check_dfnan(RddV);
     arch_fpop_end(env);
     return RddV;
@@ -875,8 +915,9 @@ float64 HELPER(dfadd)(CPUHexagonState *env, float64 RssV, float64 RttV)
 
 float64 HELPER(dfsub)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
+    float64 RddV;
     arch_fpop_start(env);
-    float64 RddV = float64_sub(RssV, RttV, &env->fp_status);
+    RddV = float64_sub(RssV, RttV, &env->fp_status);
     RddV = hex_check_dfnan(RddV);
     arch_fpop_end(env);
     return RddV;
@@ -884,8 +925,9 @@ float64 HELPER(dfsub)(CPUHexagonState *env, float64 RssV, float64 RttV)
 
 float64 HELPER(dfmax)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
+    float64 RddV;
     arch_fpop_start(env);
-    float64 RddV = float64_maxnum(RssV, RttV, &env->fp_status);
+    RddV = float64_maxnum(RssV, RttV, &env->fp_status);
     if (float64_is_any_nan(RssV) || float64_is_any_nan(RttV)) {
         float_raise(float_flag_invalid, &env->fp_status);
     }
@@ -896,8 +938,9 @@ float64 HELPER(dfmax)(CPUHexagonState *env, float64 RssV, float64 RttV)
 
 float64 HELPER(dfmin)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
+    float64 RddV;
     arch_fpop_start(env);
-    float64 RddV = float64_minnum(RssV, RttV, &env->fp_status);
+    RddV = float64_minnum(RssV, RttV, &env->fp_status);
     if (float64_is_any_nan(RssV) || float64_is_any_nan(RttV)) {
         float_raise(float_flag_invalid, &env->fp_status);
     }
@@ -908,44 +951,50 @@ float64 HELPER(dfmin)(CPUHexagonState *env, float64 RssV, float64 RttV)
 
 int32_t HELPER(dfcmpeq)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
+    int32_t PdV;
     arch_fpop_start(env);
-    int32_t PdV = f8BITSOF(float64_eq_quiet(RssV, RttV, &env->fp_status));
+    PdV = f8BITSOF(float64_eq_quiet(RssV, RttV, &env->fp_status));
     arch_fpop_end(env);
     return PdV;
 }
 
 int32_t HELPER(dfcmpgt)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
+    int cmp;
+    int32_t PdV;
     arch_fpop_start(env);
-    int cmp = float64_compare_quiet(RssV, RttV, &env->fp_status);
-    int32_t PdV = f8BITSOF(cmp == float_relation_greater);
+    cmp = float64_compare_quiet(RssV, RttV, &env->fp_status);
+    PdV = f8BITSOF(cmp == float_relation_greater);
     arch_fpop_end(env);
     return PdV;
 }
 
 int32_t HELPER(dfcmpge)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
+    int cmp;
+    int32_t PdV;
     arch_fpop_start(env);
-    int cmp = float64_compare_quiet(RssV, RttV, &env->fp_status);
-    int32_t PdV = f8BITSOF(cmp == float_relation_greater ||
-                           cmp == float_relation_equal);
+    cmp = float64_compare_quiet(RssV, RttV, &env->fp_status);
+    PdV = f8BITSOF(cmp == float_relation_greater ||
+                   cmp == float_relation_equal);
     arch_fpop_end(env);
     return PdV;
 }
 
 int32_t HELPER(dfcmpuo)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
+    int32_t PdV;
     arch_fpop_start(env);
-    int32_t PdV = f8BITSOF(float64_is_any_nan(RssV) ||
-                           float64_is_any_nan(RttV));
+    PdV = f8BITSOF(float64_is_any_nan(RssV) ||
+                   float64_is_any_nan(RttV));
     arch_fpop_end(env);
     return PdV;
 }
 
 int32_t HELPER(dfclass)(CPUHexagonState *env, float64 RssV, int32_t uiV)
 {
-    arch_fpop_start(env);
     int32_t PdV = 0;
+    arch_fpop_start(env);
     if (fGETBIT(0, uiV) && float64_is_zero(RssV)) {
         PdV = 0xff;
     }
@@ -968,8 +1017,9 @@ int32_t HELPER(dfclass)(CPUHexagonState *env, float64 RssV, int32_t uiV)
 
 float32 HELPER(sfmpy)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
+    float32 RdV;
     arch_fpop_start(env);
-    float32 RdV = internal_mpyf(RsV, RtV, &env->fp_status);
+    RdV = internal_mpyf(RsV, RtV, &env->fp_status);
     RdV = hex_check_sfnan(RdV);
     arch_fpop_end(env);
     return RdV;
@@ -1006,8 +1056,8 @@ static float32 check_nan(float32 dst, float32 x, float_status *fp_status)
 float32 HELPER(sffma_sc)(CPUHexagonState *env, float32 RxV,
                          float32 RsV, float32 RtV, float32 PuV)
 {
-    arch_fpop_start(env);
     size4s_t tmp;
+    arch_fpop_start(env);
     RxV = check_nan(RxV, RxV, &env->fp_status);
     RxV = check_nan(RxV, RsV, &env->fp_status);
     RxV = check_nan(RxV, RtV, &env->fp_status);
@@ -1023,8 +1073,9 @@ float32 HELPER(sffma_sc)(CPUHexagonState *env, float32 RxV,
 float32 HELPER(sffms)(CPUHexagonState *env, float32 RxV,
                       float32 RsV, float32 RtV)
 {
+    float32 neg_RsV;
     arch_fpop_start(env);
-    float32 neg_RsV = float32_sub(float32_zero, RsV, &env->fp_status);
+    neg_RsV = float32_sub(float32_zero, RsV, &env->fp_status);
     RxV = internal_fmafx(neg_RsV, RtV, RxV, 0, &env->fp_status);
     RxV = hex_check_sfnan(RxV);
     arch_fpop_end(env);
@@ -1041,11 +1092,12 @@ static inline bool is_inf_prod(int32_t a, int32_t b)
 float32 HELPER(sffma_lib)(CPUHexagonState *env, float32 RxV,
                           float32 RsV, float32 RtV)
 {
-    arch_fpop_start(env);
-    set_float_rounding_mode(float_round_nearest_even, &env->fp_status);
     int infinp;
     int infminusinf;
     float32 tmp;
+
+    arch_fpop_start(env);
+    set_float_rounding_mode(float_round_nearest_even, &env->fp_status);
     infminusinf = float32_is_infinity(RxV) &&
                   is_inf_prod(RsV, RtV) &&
                   (fGETBIT(31, RsV ^ RxV ^ RtV) != 0);
@@ -1074,11 +1126,12 @@ float32 HELPER(sffma_lib)(CPUHexagonState *env, float32 RxV,
 float32 HELPER(sffms_lib)(CPUHexagonState *env, float32 RxV,
                           float32 RsV, float32 RtV)
 {
-    arch_fpop_start(env);
-    set_float_rounding_mode(float_round_nearest_even, &env->fp_status);
     int infinp;
     int infminusinf;
     float32 tmp;
+
+    arch_fpop_start(env);
+    set_float_rounding_mode(float_round_nearest_even, &env->fp_status);
     infminusinf = float32_is_infinity(RxV) &&
                   is_inf_prod(RsV, RtV) &&
                   (fGETBIT(31, RsV ^ RxV ^ RtV) == 0);
@@ -1108,6 +1161,7 @@ float32 HELPER(sffms_lib)(CPUHexagonState *env, float32 RxV,
 float64 HELPER(dfmpyfix)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
     int64_t RddV;
+    arch_fpop_start(env);
     if (float64_is_denormal(RssV) &&
         (float64_getexp(RttV) >= 512) &&
         float64_is_normal(RttV)) {

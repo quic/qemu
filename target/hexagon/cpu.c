@@ -74,13 +74,12 @@ static inline target_ulong adjust_stack_ptrs(CPUHexagonState *env,
 {
     HexagonCPU *cpu = container_of(env, HexagonCPU, env);
     target_ulong stack_adjust = cpu->lldb_stack_adjust;
+    target_ulong stack_start = env->stack_start;
+    target_ulong stack_size = 0x10000;
 
     if (stack_adjust == 0) {
         return addr;
     }
-
-    target_ulong stack_start = env->stack_start;
-    target_ulong stack_size = 0x10000;
 
     if (stack_start + 0x1000 >= addr && addr >= (stack_start - stack_size)) {
         return addr - stack_adjust;

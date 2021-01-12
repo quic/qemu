@@ -670,6 +670,7 @@ float64 internal_mpyhh(float64 a, float64 b,
     Accum x;
     unsigned long long int prod;
     unsigned int sticky;
+    uint8_t a_sign, b_sign;
 
     sticky = accumulated & 1;
     accumulated >>= 1;
@@ -694,8 +695,8 @@ float64 internal_mpyhh(float64 a, float64 b,
         x.sticky = 1;
         x.exp = -4096;
     }
-    uint8_t a_sign = float64_is_neg(a);
-    uint8_t b_sign = float64_is_neg(b);
+    a_sign = float64_is_neg(a);
+    b_sign = float64_is_neg(b);
     x.sign = a_sign ^ b_sign;
     return accum_round_float64(x, fp_status);
 }
