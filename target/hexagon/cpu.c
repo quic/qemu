@@ -465,7 +465,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 
 
     /* IRQ 2, event number: 18, Cause Code: 0xc2 (VIC0 interface) */
-    if (level && (irq == HEXAGON_CPU_IRQ_2)) {
+    if (level) {
         HexagonCPU *threads[THREADS_MAX];
         size_t threads_count = 0;
         memset(threads, 0, sizeof(threads));
@@ -511,7 +511,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
         /* NOTE: when level is not zero it is equal to the external IRQ # */
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_VID, level);
 
-        env->cause_code = HEX_CAUSE_INT2;
+        env->cause_code = HEX_CAUSE_INT0 + irq;
     }
 
     /*
@@ -521,7 +521,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 
     switch (irq) {
     case HEXAGON_CPU_IRQ_0 ... HEXAGON_CPU_IRQ_7:
-      //  printf ("%s: IRQ irq:%d, level:%d\n", __func__, irq, level);
+        HEX_DEBUG_LOG("%s: IRQ irq:%d, level:%d\n", __func__, irq, level);
         if (level) {
             if (get_exe_mode(env) == HEX_EXE_MODE_WAIT) {
                 hexagon_resume_thread(env, HEX_EVENT_NONE);

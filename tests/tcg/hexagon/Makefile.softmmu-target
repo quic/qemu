@@ -31,6 +31,7 @@ TESTS += \
 	float_excp \
 	hvx_nocoproc \
 	pendalot \
+	vid-group \
 	$()
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
@@ -73,6 +74,7 @@ framelimit: framelimit.o
 float_excp: float_excp.o
 hvx_nocoproc: hvx_nocoproc.o
 pendalot: pendalot.o
+vid-group: vid-group.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)

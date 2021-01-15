@@ -28,3 +28,17 @@
 #define L2VIC_INT_CLEARn        0x400   /* Write */
 #define L2VIC_SOFT_INTn         0x480   /* Write */
 #define L2VIC_INT_PENDINGn      0x500   /* Read */
+#define L2VIC_INT_GRPn_0        0x600   /* Read/Write */
+#define L2VIC_INT_GRPn_1        0x680   /* Read/Write */
+#define L2VIC_INT_GRPn_2        0x700   /* Read/Write */
+#define L2VIC_INT_GRPn_3        0x780   /* Read/Write */
+
+/*
+ * Note about l2vic groups:
+ * Each interrupt to L2VIC can be configured to associate with one of
+ * four groups.
+ * Group 0 interrupts go to IRQ2 via VID 0 (SSR: 0xC2, the default)
+ * Group 1 interrupts go to IRQ3 via VID 1 (SSR: 0xC3)
+ * Group 2 interrupts go to IRQ4 via VID 2 (SSR: 0xC4)
+ * Group 3 interrupts go to IRQ5 via VID 3 (SSR: 0xC5)
+ */

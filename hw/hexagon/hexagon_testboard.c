@@ -337,7 +337,9 @@ static void fastl2vic_write(void *opaque, hwaddr offset,
                                 + L2VIC_INT_ENABLE_CLEARn;
             return cpu_physical_memory_write(addr + slice, &val, size);
         } else if (cmd == 2) {
-            g_assert(0);
+            const hwaddr addr = cfgExtensions.l2vic_base
+                                + L2VIC_SOFT_INTn;
+            return cpu_physical_memory_write(addr + slice, &val, size);
         }
         /* RESERVED */
         else if ((val & 0xff0000) == 0x110000) {
