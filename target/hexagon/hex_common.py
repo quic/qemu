@@ -60,8 +60,16 @@ def expand_macro_attribs(macro,allmac_re):
             finished_macros.add(macro.key)
     return macro.attribs
 
+# When qemu needs an attribute that isn't in the imported files,
+# we'll add it here.
+def add_qemu_macro_attrib(name, attrib):
+    macros[name].attribs.add(attrib)
+
 immextre = re.compile(r'f(MUST_)?IMMEXT[(]([UuSsRr])')
 def calculate_attribs():
+    add_qemu_macro_attrib('fREAD_PC', 'A_IMPLICIT_READS_PC')
+    add_qemu_macro_attrib('fTRAP', 'A_IMPLICIT_READS_PC')
+
     # Recurse down macros, find attributes from sub-macros
     macroValues = list(macros.values())
     allmacros_restr = "|".join(set([ m.re.pattern for m in macroValues ]))

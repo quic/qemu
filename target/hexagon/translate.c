@@ -119,6 +119,21 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
     return nwords;
 }
 
+static bool check_for_attrib(Packet *pkt, int attrib)
+{
+    for (int i = 0; i < pkt->num_insns; i++) {
+        if (GET_ATTRIB(pkt->insn[i].opcode, attrib)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool need_pc(Packet *pkt)
+{
+    return check_for_attrib(pkt, A_IMPLICIT_READS_PC);
+}
+
 static void gen_start_packet(DisasContext *ctx, Packet *pkt)
 {
     target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
@@ -144,7 +159,9 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
 #endif
 
     /* Initialize the runtime state for packet semantics */
-    tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
+    if (need_pc(pkt)) {
+        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
+    }
     tcg_gen_movi_tl(hex_slot_cancelled, 0);
     if (pkt->pkt_has_cof) {
         tcg_gen_movi_tl(hex_branch_taken, 0);

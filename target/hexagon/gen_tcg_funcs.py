@@ -308,6 +308,15 @@ def genptr_src_read(f,regtype,regid):
             f.write("            hex_gpr[%s%sN + 1]);\n" % \
                                  (regtype, regid))
             f.write("        tcg_temp_free(p3_0);\n")
+            f.write("    } else if (%s%sN == HEX_REG_PC - 1) {\n" % \
+                                  (regtype, regid))
+            f.write("        TCGv pc = tcg_const_tl(ctx->base.pc_next);\n")
+            f.write("        tcg_gen_concat_i32_i64(%s%sV,\n" % \
+                                 (regtype, regid))
+            f.write("            hex_gpr[%s%sN],\n" % \
+                                 (regtype, regid))
+            f.write("            pc);\n")
+            f.write("        tcg_temp_free(pc);\n")
             f.write("    } else {\n")
             f.write("        tcg_gen_concat_i32_i64(%s%sV,\n" % \
                                  (regtype, regid))
@@ -320,6 +329,10 @@ def genptr_src_read(f,regtype,regid):
             f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
                                  (regtype, regid))
             f.write("        gen_read_p3_0(%s%sV);\n" % \
+                                 (regtype, regid))
+            f.write("    } else if (%s%sN == HEX_REG_PC) {\n" % \
+                                 (regtype, regid))
+            f.write("        tcg_gen_movi_tl(%s%sV, ctx->base.pc_next);\n" % \
                                  (regtype, regid))
             f.write("    } else {\n")
             f.write("        tcg_gen_mov_tl(%s%sV, hex_gpr[%s%sN]);\n" % \
