@@ -1019,14 +1019,19 @@ static inline void gen_read_vreg_pair(TCGv_ptr var, int num, int vtmp)
 }
 
 static inline void gen_log_vreg_write(TCGv_ptr var, int num, int vnew,
-                                      int slot_num)
+                                      int slot_num, bool is_predicated)
 {
-    TCGv cancelled = tcg_temp_local_new();
-    TCGLabel *label_end = gen_new_label();
+    TCGLabel *label_end = NULL;
 
-    /* Don't do anything if the slot was cancelled */
-    tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
-    tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
+    if (is_predicated) {
+        TCGv cancelled = tcg_temp_local_new();
+        label_end = gen_new_label();
+
+        /* Don't do anything if the slot was cancelled */
+        tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
+        tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
+        tcg_temp_free(cancelled);
+    }
     {
         TCGv mask = tcg_const_tl(1 << num);
         TCGv_ptr dst = tcg_temp_new_ptr();
@@ -1054,33 +1059,38 @@ static inline void gen_log_vreg_write(TCGv_ptr var, int num, int vnew,
         tcg_temp_free(mask);
         tcg_temp_free_ptr(dst);
     }
-    gen_set_label(label_end);
-
-    tcg_temp_free(cancelled);
+    if (is_predicated) {
+        gen_set_label(label_end);
+    }
 }
 
 static inline void gen_log_vreg_write_pair(TCGv_ptr var, int num, int vnew,
-                                           int slot_num)
+                                           int slot_num, bool is_predicated)
 {
     TCGv_ptr v0 = tcg_temp_local_new_ptr();
     TCGv_ptr v1 = tcg_temp_local_new_ptr();
     tcg_gen_addi_ptr(v0, var, offsetof(MMVectorPair, v[0]));
-    gen_log_vreg_write(v0, num ^ 0, vnew, slot_num);
+    gen_log_vreg_write(v0, num ^ 0, vnew, slot_num, is_predicated);
     tcg_gen_addi_ptr(v1, var, offsetof(MMVectorPair, v[1]));
-    gen_log_vreg_write(v1, num ^ 1, vnew, slot_num);
+    gen_log_vreg_write(v1, num ^ 1, vnew, slot_num, is_predicated);
     tcg_temp_free_ptr(v0);
     tcg_temp_free_ptr(v1);
 }
 
 static inline void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
-                                          int slot_num)
+                                          int slot_num, bool is_predicated)
 {
-    TCGv cancelled = tcg_temp_local_new();
-    TCGLabel *label_end = gen_new_label();
+    TCGLabel *label_end = NULL;
 
-    /* Don't do anything if the slot was cancelled */
-    tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
-    tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
+    if (is_predicated) {
+        TCGv cancelled = tcg_temp_local_new();
+        label_end = gen_new_label();
+
+        /* Don't do anything if the slot was cancelled */
+        tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
+        tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
+        tcg_temp_free(cancelled);
+    }
     {
         TCGv_ptr dst = tcg_temp_new_ptr();
         tcg_gen_addi_ptr(dst, cpu_env,
@@ -1089,9 +1099,9 @@ static inline void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
         tcg_gen_ori_tl(hex_QRegs_updated, hex_QRegs_updated, 1 << num);
         tcg_temp_free_ptr(dst);
     }
-    gen_set_label(label_end);
-
-    tcg_temp_free(cancelled);
+    if (is_predicated) {
+        gen_set_label(label_end);
+    }
 }
 
 #include "tcg_funcs_generated.h"

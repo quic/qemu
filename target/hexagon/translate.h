@@ -37,10 +37,10 @@ typedef struct DisasContext {
     int temp_vregs_idx;
     int temp_qregs_idx;
     int vreg_log[NUM_VREGS];
-    int vreg_is_predicated[NUM_VREGS];
+    bool vreg_is_predicated[NUM_VREGS];
     int vreg_log_idx;
     int qreg_log[NUM_QREGS];
-    int qreg_is_predicated[NUM_QREGS];
+    bool qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
 } DisasContext;
 
@@ -74,15 +74,22 @@ static inline bool is_preloaded(DisasContext *ctx, int num)
 }
 
 static inline void ctx_log_vreg_write(DisasContext *ctx,
-                                      int rnum, int is_predicated)
+                                      int rnum, bool is_predicated)
 {
     ctx->vreg_log[ctx->vreg_log_idx] = rnum;
     ctx->vreg_is_predicated[ctx->vreg_log_idx] = is_predicated;
     ctx->vreg_log_idx++;
 }
 
+static inline void ctx_log_vreg_write_pair(DisasContext *ctx,
+                                           int rnum, bool is_predicated)
+{
+    ctx_log_vreg_write(ctx, rnum ^ 0, is_predicated);
+    ctx_log_vreg_write(ctx, rnum ^ 1, is_predicated);
+}
+
 static inline void ctx_log_qreg_write(DisasContext *ctx,
-                                      int rnum, int is_predicated)
+                                      int rnum, bool is_predicated)
 {
     ctx->qreg_log[ctx->qreg_log_idx] = rnum;
     ctx->qreg_is_predicated[ctx->qreg_log_idx] = is_predicated;
@@ -118,5 +125,5 @@ extern void gen_exception(int excp);
 extern void gen_exception_debug(void);
 
 extern void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n);
-extern void process_store(DisasContext *ctx, int slot_num);
+extern void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif

@@ -88,29 +88,16 @@ static inline void log_reg_write(CPUHexagonState *env, int rnum,
 {
     HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
                   rnum, val, val);
-    if (env->slot_cancelled & (1 << slot)) {
-        HEX_DEBUG_LOG(" CANCELLED");
-    }
     if (val == env->gpr[rnum]) {
         HEX_DEBUG_LOG(" NO CHANGE");
     }
     HEX_DEBUG_LOG("\n");
-    if (!(env->slot_cancelled & (1 << slot))) {
-        env->new_value[rnum] = val;
-#if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        env->reg_written[rnum] = 1;
-#endif
-    }
-}
 
-static __attribute__((unused))
-inline void log_reg_write_pair(CPUHexagonState *env, int rnum,
-                                      int64_t val, uint32_t slot)
-{
-    HEX_DEBUG_LOG("log_reg_write_pair[%d:%d] = %ld\n", rnum + 1, rnum, val);
-    log_reg_write(env, rnum, val & 0xFFFFFFFF, slot);
-    log_reg_write(env, rnum + 1, (val >> 32) & 0xFFFFFFFF, slot);
+    env->new_value[rnum] = val;
+#if HEX_DEBUG
+    /* Do this so HELPER(debug_commit_end) will know */
+    env->reg_written[rnum] = 1;
+#endif
 }
 
 static inline void log_pred_write(CPUHexagonState *env, int pnum,
@@ -1195,21 +1182,17 @@ float64 HELPER(dfmpyhh)(CPUHexagonState *env, float64 RxxV,
 static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
                                       int vnew, uint32_t slot)
 {
+    VRegMask regnum_mask = ((VRegMask)1) << num;
+
     HEX_DEBUG_LOG("log_vreg_write[%d]", num);
-    if (env->slot_cancelled & (1 << slot)) {
-        HEX_DEBUG_LOG(" CANCELLED");
-    }
     HEX_DEBUG_LOG("\n");
 
-    if (!(env->slot_cancelled & (1 << slot))) {
-        VRegMask regnum_mask = ((VRegMask)1) << num;
-        env->VRegs_updated |=      (vnew != EXT_TMP) ? regnum_mask : 0;
-        env->VRegs_select |=       (vnew == EXT_NEW) ? regnum_mask : 0;
-        env->VRegs_updated_tmp  |= (vnew == EXT_TMP) ? regnum_mask : 0;
-        env->future_VRegs[num] = *(MMVector *)var;
-        if (vnew == EXT_TMP) {
-            env->tmp_VRegs[num] = env->future_VRegs[num];
-        }
+    env->VRegs_updated      |= (vnew != EXT_TMP) ? regnum_mask : 0;
+    env->VRegs_select       |= (vnew == EXT_NEW) ? regnum_mask : 0;
+    env->VRegs_updated_tmp  |= (vnew == EXT_TMP) ? regnum_mask : 0;
+    env->future_VRegs[num] = *(MMVector *)var;
+    if (vnew == EXT_TMP) {
+        env->tmp_VRegs[num] = env->future_VRegs[num];
     }
 }
 

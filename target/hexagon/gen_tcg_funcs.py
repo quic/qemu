@@ -493,37 +493,45 @@ def genptr_dst_write(f, tag, regtype, regid):
 def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
     if (regtype == "V"):
         if (regid in {"dd", "xx", "yy"}):
-            f.write("    gen_log_vreg_write_pair(%s%sV, %s%sN, %s, insn->slot);\n" % \
-                (regtype, regid, regtype, regid,newv))
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    ctx_log_vreg_write(ctx, %s%sN ^ 0, 1);\n" % \
-                    (regtype, regid))
-                f.write("    ctx_log_vreg_write(ctx, %s%sN ^ 1, 1);\n" % \
+                f.write("    gen_log_vreg_write_pair(%s%sV, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid,newv))
+                f.write("insn->slot, true);\n")
+                f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, true);\n" % \
                     (regtype, regid))
             else:
-                f.write("    ctx_log_vreg_write(ctx, %s%sN ^ 0, 0);\n" % \
-                    (regtype, regid))
-                f.write("    ctx_log_vreg_write(ctx, %s%sN ^ 1, 0);\n" % \
+                f.write("    gen_log_vreg_write_pair(%s%sV, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid,newv))
+                f.write("insn->slot, false);\n")
+                f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, false);\n" % \
                     (regtype, regid))
         elif (regid in {"d", "x", "y"}):
-            f.write("    gen_log_vreg_write(%s%sV, %s%sN, %s, insn->slot);\n" % \
-                (regtype, regid, regtype, regid,newv))
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    ctx_log_vreg_write(ctx, %s%sN, 1);\n" % \
+                f.write("    gen_log_vreg_write(%s%sV, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid,newv))
+                f.write("insn->slot, true);\n")
+                f.write("    ctx_log_vreg_write(ctx, %s%sN, true);\n" % \
                     (regtype, regid))
             else:
-                f.write("    ctx_log_vreg_write(ctx, %s%sN, 0);\n" % \
+                f.write("    gen_log_vreg_write(%s%sV, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid,newv))
+                f.write("insn->slot, false);\n")
+                f.write("    ctx_log_vreg_write(ctx, %s%sN, false);\n" % \
                     (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "Q"):
         if (regid in {"d", "e", "x"}):
-            f.write("    gen_log_qreg_write(%s%sV, %s%sN, %s, insn->slot);\n" % \
-                (regtype, regid, regtype, regid, newv))
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
+                f.write("    gen_log_qreg_write(%s%sV, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid, newv))
+                f.write("insn->slot, true);\n")
                 f.write("    ctx_log_qreg_write(ctx, %s%sN, 1);\n" % \
                     (regtype, regid))
             else:
+                f.write("    gen_log_qreg_write(%s%sV, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid, newv))
+                f.write("insn->slot, false);\n")
                 f.write("    ctx_log_qreg_write(ctx, %s%sN, 0);\n" % \
                     (regtype, regid))
         else:

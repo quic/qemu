@@ -94,7 +94,7 @@
 #define CHECK_NOSHUF \
     do { \
         if (insn->slot == 0 && pkt->pkt_has_store_s1) { \
-            process_store(ctx, 1); \
+            process_store(ctx, pkt, 1); \
         } \
     } while (0)
 

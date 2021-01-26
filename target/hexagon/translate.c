@@ -134,6 +134,12 @@ static bool need_pc(Packet *pkt)
     return check_for_attrib(pkt, A_IMPLICIT_READS_PC);
 }
 
+static bool need_slot_cancelled(Packet *pkt)
+{
+    return check_for_attrib(pkt, A_CONDEXEC);
+}
+
+
 static void gen_start_packet(DisasContext *ctx, Packet *pkt)
 {
     target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
@@ -162,7 +168,9 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     if (need_pc(pkt)) {
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
     }
-    tcg_gen_movi_tl(hex_slot_cancelled, 0);
+    if (need_slot_cancelled(pkt)) {
+        tcg_gen_movi_tl(hex_slot_cancelled, 0);
+    }
     if (pkt->pkt_has_cof) {
         tcg_gen_movi_tl(hex_branch_taken, 0);
         tcg_gen_movi_tl(hex_next_PC, next_PC);
@@ -324,10 +332,21 @@ static inline void gen_check_store_width(DisasContext *ctx, int slot_num)
 #define HEX_DEBUG_GEN_CHECK_STORE_WIDTH(ctx, slot_num)  /* nothing */
 #endif
 
-void process_store(DisasContext *ctx, int slot_num)
+static bool slot_is_predicated(Packet *pkt, int slot_num)
 {
-    TCGv cancelled;
-    TCGLabel *label_end;
+    for (int i = 0; i < pkt->num_insns; i++) {
+        if (pkt->insn[i].slot == slot_num) {
+            return GET_ATTRIB(pkt->insn[i].opcode, A_CONDEXEC);
+        }
+    }
+    /* If we get to here, we didn't find an instruction in the requested slot */
+    g_assert_not_reached();
+}
+
+void process_store(DisasContext *ctx, Packet *pkt, int slot_num)
+{
+    bool is_predicated = slot_is_predicated(pkt, slot_num);
+    TCGLabel *label_end = NULL;
 
     /*
      * We may have already processed this store
@@ -338,13 +357,15 @@ void process_store(DisasContext *ctx, int slot_num)
     }
     ctx->s1_store_processed = 1;
 
-    cancelled = tcg_temp_new();
-    label_end = gen_new_label();
+    if (is_predicated) {
+        TCGv cancelled = tcg_temp_new();
+        label_end = gen_new_label();
 
-    /* Don't do anything if the slot was cancelled */
-    tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
-    tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
-    tcg_temp_free(cancelled);
+        /* Don't do anything if the slot was cancelled */
+        tcg_gen_extract_tl(cancelled, hex_slot_cancelled, slot_num, 1);
+        tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, label_end);
+        tcg_temp_free(cancelled);
+    }
     {
         TCGv address = tcg_temp_local_new();
         tcg_gen_mov_tl(address, hex_store_addr[slot_num]);
@@ -396,7 +417,9 @@ void process_store(DisasContext *ctx, int slot_num)
         }
         tcg_temp_free(address);
     }
-    gen_set_label(label_end);
+    if (is_predicated) {
+        gen_set_label(label_end);
+    }
 }
 
 static void process_store_log(DisasContext *ctx, Packet *pkt)
@@ -407,10 +430,10 @@ static void process_store_log(DisasContext *ctx, Packet *pkt)
      *  the memory accesses overlap.
      */
     if (pkt->pkt_has_store_s1 && !pkt->pkt_has_dczeroa) {
-        process_store(ctx, 1);
+        process_store(ctx, pkt, 1);
     }
     if (pkt->pkt_has_store_s0 && !pkt->pkt_has_dczeroa) {
-        process_store(ctx, 0);
+        process_store(ctx, pkt, 0);
     }
 }
 
