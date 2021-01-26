@@ -54,7 +54,6 @@ static inline int is_packet_end(uint32_t endocing)
     return ((bits == 0x3) || (bits == 0x0));
 }
 
-extern int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc,
-                               GString *buf);
+int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc, GString *buf);
 
 #endif

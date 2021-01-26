@@ -121,9 +121,9 @@ extern TCGv hex_VRegs_updated;
 extern TCGv hex_VRegs_select;
 extern TCGv hex_QRegs_updated;
 
-extern void gen_exception(int excp);
-extern void gen_exception_debug(void);
+void gen_exception(int excp);
+void gen_exception_debug(void);
 
-extern void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n);
-extern void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
+void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n);
+void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif

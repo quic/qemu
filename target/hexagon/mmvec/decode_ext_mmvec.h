@@ -18,7 +18,7 @@
 #ifndef HEXAGON_DECODE_EXT_MMVEC_H
 #define HEXAGON_DECODE_EXT_MMVEC_H
 
-extern void mmvec_ext_decode_checks(Packet *pkt);
-extern SlotMask mmvec_ext_decode_find_iclass_slots(int opcode);
+void mmvec_ext_decode_checks(Packet *pkt);
+SlotMask mmvec_ext_decode_find_iclass_slots(int opcode);
 
 #endif

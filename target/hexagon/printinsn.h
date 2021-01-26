@@ -18,11 +18,10 @@
 #ifndef HEXAGON_PRINTINSN_H
 #define HEXAGON_PRINTINSN_H
 
-#include "qemu/osdep.h"
 #include "insn.h"
 
-extern void snprint_a_pkt_disas(GString *buf, Packet *pkt, uint32_t *words,
-                                target_ulong pc);
-extern void snprint_a_pkt_debug(GString *buf, Packet *pkt);
+void snprint_a_pkt_disas(GString *buf, Packet *pkt, uint32_t *words,
+                         target_ulong pc);
+void snprint_a_pkt_debug(GString *buf, Packet *pkt);
 
 #endif

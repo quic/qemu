@@ -56,8 +56,8 @@ extern const OpcodeEncoding opcode_encodings[XX_LAST_OPCODE];
 
 extern DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
 
-extern void opcode_init(void);
+void opcode_init(void);
 
-extern int opcode_which_immediate_is_extended(Opcode opcode);
+int opcode_which_immediate_is_extended(Opcode opcode);
 
 #endif

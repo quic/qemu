@@ -18,14 +18,14 @@
 #ifndef HEXAGON_CONV_EMU_H
 #define HEXAGON_CONV_EMU_H
 
-extern uint64_t conv_sf_to_8u(float32 in, float_status *fp_status);
-extern uint32_t conv_sf_to_4u(float32 in, float_status *fp_status);
-extern int64_t conv_sf_to_8s(float32 in, float_status *fp_status);
-extern int32_t conv_sf_to_4s(float32 in, float_status *fp_status);
+uint64_t conv_sf_to_8u(float32 in, float_status *fp_status);
+uint32_t conv_sf_to_4u(float32 in, float_status *fp_status);
+int64_t conv_sf_to_8s(float32 in, float_status *fp_status);
+int32_t conv_sf_to_4s(float32 in, float_status *fp_status);
 
-extern uint64_t conv_df_to_8u(float64 in, float_status *fp_status);
-extern uint32_t conv_df_to_4u(float64 in, float_status *fp_status);
-extern int64_t conv_df_to_8s(float64 in, float_status *fp_status);
-extern int32_t conv_df_to_4s(float64 in, float_status *fp_status);
+uint64_t conv_df_to_8u(float64 in, float_status *fp_status);
+uint32_t conv_df_to_4u(float64 in, float_status *fp_status);
+int64_t conv_df_to_8s(float64 in, float_status *fp_status);
+int32_t conv_df_to_4s(float64 in, float_status *fp_status);
 
 #endif

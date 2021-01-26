@@ -45,6 +45,6 @@ typedef enum {
     SLOTS_0123       = SLOTS_0 | SLOTS_1 | SLOTS_2 | SLOTS_3,
 } SlotMask;
 
-extern SlotMask find_iclass_slots(Opcode opcode, int itype);
+SlotMask find_iclass_slots(Opcode opcode, int itype);
 
 #endif
