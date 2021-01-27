@@ -18,9 +18,6 @@
 #ifndef HEXAGON_OPCODES_H
 #define HEXAGON_OPCODES_H
 
-#include "qemu/bitmap.h"
-#include "attribs.h"
-
 typedef enum {
 #define OPCODE(IID) IID
 #include "opcodes_def_generated.h"
@@ -53,8 +50,6 @@ typedef struct {
 } OpcodeEncoding;
 
 extern const OpcodeEncoding opcode_encodings[XX_LAST_OPCODE];
-
-extern DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
 
 void opcode_init(void);
 

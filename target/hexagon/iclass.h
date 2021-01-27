@@ -18,7 +18,7 @@
 #ifndef HEXAGON_ICLASS_H
 #define HEXAGON_ICLASS_H
 
-#include "opcodes.h"
+#include "attribs.h"
 
 #define ICLASS_FROM_TYPE(TYPE) ICLASS_##TYPE
 

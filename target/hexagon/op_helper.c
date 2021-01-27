@@ -235,18 +235,22 @@ static void print_store(CPUHexagonState *env, int slot)
         uint8_t width = env->mem_log_stores[slot].width;
         if (width == 1) {
             uint32_t data = env->mem_log_stores[slot].data32 & 0xff;
-            HEX_DEBUG_LOG("\tmemb[0x" TARGET_FMT_lx "] = %d (0x%02x)\n",
+            HEX_DEBUG_LOG("\tmemb[0x" TARGET_FMT_lx "] = %" PRId32
+                          " (0x%02" PRIx32 ")\n",
                           env->mem_log_stores[slot].va, data, data);
         } else if (width == 2) {
             uint32_t data = env->mem_log_stores[slot].data32 & 0xffff;
-            HEX_DEBUG_LOG("\tmemh[0x" TARGET_FMT_lx "] = %d (0x%04x)\n",
+            HEX_DEBUG_LOG("\tmemh[0x" TARGET_FMT_lx "] = %" PRId32
+                          " (0x%04" PRIx32 ")\n",
                           env->mem_log_stores[slot].va, data, data);
         } else if (width == 4) {
             uint32_t data = env->mem_log_stores[slot].data32;
-            HEX_DEBUG_LOG("\tmemw[0x" TARGET_FMT_lx "] = %d (0x%08x)\n",
+            HEX_DEBUG_LOG("\tmemw[0x" TARGET_FMT_lx "] = %" PRId32
+                          " (0x%08" PRIx32 ")\n",
                           env->mem_log_stores[slot].va, data, data);
         } else if (width == 8) {
-            HEX_DEBUG_LOG("\tmemd[0x" TARGET_FMT_lx "] = %lu (0x%016lx)\n",
+            HEX_DEBUG_LOG("\tmemd[0x" TARGET_FMT_lx "] = %" PRId64
+                          " (0x%016" PRIx64 ")\n",
                           env->mem_log_stores[slot].va,
                           env->mem_log_stores[slot].data64,
                           env->mem_log_stores[slot].data64);
@@ -300,7 +304,7 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
         }
     }
 
-    HEX_DEBUG_LOG("Next PC = 0x%x\n", env->next_PC);
+    HEX_DEBUG_LOG("Next PC = " TARGET_FMT_lx "\n", env->next_PC);
     HEX_DEBUG_LOG("Exec counters: pkt = " TARGET_FMT_lx
                   ", insn = " TARGET_FMT_lx
                   ", hvx = " TARGET_FMT_lx "\n",

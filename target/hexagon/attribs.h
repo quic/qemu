@@ -18,11 +18,16 @@
 #ifndef HEXAGON_ATTRIBS_H
 #define HEXAGON_ATTRIBS_H
 
+#include "qemu/bitmap.h"
+#include "opcodes.h"
+
 enum {
 #define DEF_ATTRIB(NAME, ...) A_##NAME,
 #include "attribs_def.h"
 #undef DEF_ATTRIB
 };
+
+extern DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
 
 #define GET_ATTRIB(opcode, attrib) \
     test_bit(attrib, opcode_attribs[opcode])

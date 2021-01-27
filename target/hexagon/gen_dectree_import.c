@@ -21,7 +21,8 @@
  * preprocessor to manipulate the files imported from the Hexagon
  * architecture library.
  */
-#include "qemu/osdep.h"
+#include <stdio.h>
+#include <string.h>
 #include "opcodes.h"
 
 #define STRINGIZE(X)    #X

@@ -23,7 +23,7 @@
  */
 
 #include "qemu/osdep.h"
-#include "opcodes.h"
+#include "attribs.h"
 #include "decode.h"
 
 #define VEC_DESCR(A, B, C) DESCR(A, B, C)

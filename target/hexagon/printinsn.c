@@ -16,7 +16,7 @@
  */
 
 #include "qemu/osdep.h"
-#include "opcodes.h"
+#include "attribs.h"
 #include "printinsn.h"
 #include "insn.h"
 #include "reg_fields.h"
