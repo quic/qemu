@@ -22,12 +22,11 @@
  * Change HEX_DEBUG to 1 to turn on debugging output
  */
 #define HEX_DEBUG 0
-#define HEX_DEBUG_LOG(...) \
-    do { \
-        if (HEX_DEBUG) { \
-            qemu_log(__VA_ARGS__); \
-        } \
-    } while (0)
+#if HEX_DEBUG
+#define HEX_DEBUG_LOG(...) qemu_log(__VA_ARGS__)
+#else
+#define HEX_DEBUG_LOG(...) do { } while (0)
+#endif
 
 /*
  * Change COUNT_HEX_HELPERS to 1 to count how many times each helper
