@@ -229,8 +229,14 @@ void arch_fpop_start(CPUHexagonState *env)
         &env->fp_status);
 }
 
-#define RAISE_FP_EXCEPTION \
-    do {} while (0)            /* Not modelled in qemu user mode */
+#ifdef CONFIG_USER_ONLY
+/*
+ * Hexagon Linux kernel only sets the relevant bits in USR (user status
+ * register).  The exception isn't raised to user mode, so we don't
+ * model it in qemu user mode.
+ */
+#define RAISE_FP_EXCEPTION   do {} while (0)
+#endif
 
 #define SOFTFLOAT_TEST_FLAG(FLAG, MYF, MYE) \
     do { \
