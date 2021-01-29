@@ -39,6 +39,7 @@ typedef enum {
 	HMX_UH,
 	HMX_W,
 	HMX_FULL,
+	HMX_FP16,
 	HMX_UH_UH
 } hmx_operand_type_t;
 
@@ -68,6 +69,11 @@ typedef enum {
 	HMX_CVT_AFTER=1,
 	HMX_CVT_TYPES=2
 } hmx_cvt_type_t;
+typedef enum {
+	HMX_FP_CVT_NORMAL=0,
+	HMX_FP_CVT_HI=1,
+	HMX_FP_CVT_LO=2
+} hmx_fp_cvt_type_t;
 
 typedef enum {
 	HMX_ACT_BLOCK=0,
@@ -103,6 +109,13 @@ typedef union {
 	};
 } hmx_acc_fxp_t;
 
+typedef struct {
+	union {
+		size16s_t val[2];
+		size2s_t  hf[32/2];
+	};
+	size1s_t ovf[2];
+} hmx_acc_flt_t;
 
 typedef struct {
 	size4u_t sig:10;
@@ -114,9 +127,16 @@ typedef struct {
 	size4u_t bias32;
 } hmx_bias_fxp_t;
 
+typedef struct {
+	size4u_t exp_delta:6;
+	size4u_t sat_exp:5;
+	size4u_t bias:21;
+	size4u_t bias32;
+} hmx_bias_flt_t;
 
 typedef union {
 	hmx_bias_fxp_t fxp;
+	hmx_bias_flt_t flt;
 	size4u_t val[2];
 } hmx_bias_t;
 
@@ -140,6 +160,7 @@ typedef union {
 typedef struct {
 	union {
 		size2s_t val;
+		size2s_t flt;
 		size1s_t fxp;
 	};
 	size1s_t valid;
@@ -171,16 +192,20 @@ typedef struct HMX_State {
 	size4u_t x_acc_offset;
 
 	hmx_commit_state_t fxp_commit_state;
+	hmx_commit_state_t flt_commit_state;
 
 	size4u_t current_acc_fxp:1;
+	size4u_t current_acc_flt:1;
 
 	hmx_acc_fxp_t accum_fxp[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
+	hmx_acc_flt_t accum_flt[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
 
 	hmx_bias_t bias[MAX_ACCUMULATORS_DEPTH];
 	hmx_bias_t future_bias[MAX_ACCUMULATORS_DEPTH];
 
 	//union {
 		hmx_acc_fxp_t future_accum_fxp[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
+		hmx_acc_flt_t future_accum_flt[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
 	//};
 
 	hmx_wgt_cache_t wgt_cache[8*256];	// TODO: see if we can reduce the size

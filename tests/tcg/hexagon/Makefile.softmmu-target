@@ -26,6 +26,7 @@ TESTS += \
 	swi \
 	udma \
 	hmx \
+	hmx_conv \
 	pcycle \
 	framelimit \
 	float_excp \
@@ -68,6 +69,7 @@ fastint: fastint.o
 swi: swi.o
 udma: udma.o
 hmx: hmx.o
+hmx_conv: hmx_conv.o hmx_conv_asm.o util.o
 wait: wait.o
 pcycle: pcycle.o
 framelimit: framelimit.o
@@ -90,6 +92,8 @@ standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
 standalone_vec.o: CFLAGS+= -mv69 -O2 -mhvx  -fvectorize
 hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
 hmx.o: CFLAGS+= -mhmx
+hmx_conv.o: CFLAGS+= -mhmx
+hmx_conv_asm.o: ASFLAGS+= -mhmx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4

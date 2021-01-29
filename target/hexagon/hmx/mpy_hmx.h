@@ -29,8 +29,11 @@
 
 typedef struct arch_proc_opt {
     int hmx_mxmem_debug;
+	int	hmx_fp16_acc_width_int;
+    int	hmx_fp16_acc_width_frac;
     int hmx_mxmem_debug_depth;
     int hmx_mxmem_debug_spatial;
+    int QDSP6_MX_FP_ACC_FRAC;
 } arch_proc_opt_t;
 
 typedef struct th {
@@ -65,15 +68,32 @@ typedef struct ProcessorState {
 #define EXP_MASK (0x1F<<10)
 #define SGN_MASK (1<<15)
 
+#define MAX_ACC_FP16_POS 131071
+#define MAX_ACC_FP16_NEG -131072
 
 
+#define FP16_POS_OVF_BIT 0
+#define FP16_NEG_OVF_BIT 1
 
+#define FP16_POS_INF 0x7C00
+#define FP16_NEG_INF 0xFC00
+#define FP21_POS_INF 0x0F8000
+#define FP21_NEG_INF 0x1F8000
+#define FP16_POS_ZERO 0x0000
+#define FP16_NEG_ZERO 0x8000
+#define FP16_NAN 0xFFFF
+#define MANTISSA_MASK_FP21 0x7FFF
 #define USR_IEEE_INF_NAN(VAL) ((VAL>>0) & 0x1)
 #define USR_IEEE_NAN_PROPAGATE(VAL) ((VAL>>1) & 0x1)
 
+size16s_t hmx_fp16_mac(processor_t *proc, size16s_t acc, size1s_t * ovf, size1s_t fp_rnd_bits, size2u_t A, size2u_t B);
+void hmx_fp16_acc_ovf_check(processor_t *proc, size16s_t acc, size1s_t * ovf, size1s_t fp_rnd_bits);
 
+size2u_t hmx_fp16_cvt(processor_t *proc,  size16s_t acc, size1s_t  ovf, size1s_t fp_rnd_bits, size4s_t bias, size2s_t exp_scale, size2u_t exp_sat, size4s_t sat, size4s_t hi, size4s_t lo);
 size2u_t hmx_u8_cvt( processor_t *proc, size4s_t acc,   size4s_t bias32, size2s_t exp, size2s_t sig, size2s_t rnd_bit, size4s_t sat, size4s_t frac_bits);
 size2u_t hmx_u16_cvt(processor_t *proc, size4s_t acc_hl, size4s_t acc_ll, size4s_t bias32, size2s_t exp, size2s_t sig, size2s_t rnd_bit, size4s_t sat, size4s_t frac_bits);
 size2u_t hmx_u16x16_cvt(processor_t *proc, size4s_t acc_hh, size4s_t acc_hl, size4s_t acc_lh, size4s_t acc_ll, size8s_t bias48, size2s_t exp, size4s_t sig, size2s_t rnd_bit, size4s_t sat, size4s_t frac_bits);
 
+double hmx_fp16_float(size2u_t in);
+double hmx_acc_double(size16s_t acc);
 #endif

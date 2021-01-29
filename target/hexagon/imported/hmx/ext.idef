@@ -34,6 +34,12 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_MEMLIKE,A_VTCM_ALLB
 	fMX_ACTIVATION_INIT(RsV,RtV,TYPE, FORMAT_OFFSET,BLOCK_TYPE);\
 	fMX_ACT_DESC();\
 })
+#define MX_ACTIVATION_FP16(TAG,SYNTAX, TYPE, FORMAT_OFFSET, BLOCK_TYPE) \
+EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_MEMLIKE,A_VTCM_ALLBANK_ACCESS,A_HMX_BLOCK_ALIGN,A_EA_PAGECROSS,A_NOTE_MX_PAIR,A_HMX_FLT,A_PAIR_1OF2),"Matrix Multiply Fp16",  \
+{\
+	fMX_ACTIVATION_INIT(RsV,RtV,TYPE, FORMAT_OFFSET,BLOCK_TYPE);\
+	fMX_ACT_DESC();\
+})
 
 #define MXMEM_WEIGHT(TAG,SYNTAX,TYPE,WEIGHTS_PER_BYTE_LOG,UNPACK,SHIFT,BLOCK_TYPE) \
 EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,A_MEMLIKE,A_VTCM_ALLBANK_ACCESS,A_EA_PAGECROSS,A_NOTE_MX_PAIR,A_PAIR_2OF2),"Matrix Multiply",  \
@@ -42,6 +48,14 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 	fHIDE(fMX_CHECK_OPERANDS_SETUP_ACC();)	/* Only Execute Instruction if both operands havee been registered */ \
 	SHIFT()\
 	MX_MULT(WEIGHTS_PER_BYTE_LOG,UNPACK,size1s_t)\
+})
+#define MXMEM_WEIGHT_FP16(TAG,SYNTAX,TYPE,WEIGHTS_PER_BYTE_LOG,UNPACK,SHIFT,BLOCK_TYPE) \
+EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,A_MEMLIKE,A_VTCM_ALLBANK_ACCESS,A_EA_PAGECROSS,A_NOTE_MX_PAIR,A_PAIR_2OF2,A_HMX_FLT),"Matrix Multiply",  \
+{\
+	fMX_WEIGHT_INIT(RsV, RtV,TYPE,BLOCK_TYPE, WEIGHTS_PER_BYTE_LOG);\
+	fHIDE(fMX_CHECK_OPERANDS_SETUP_ACC();)	/* Only Execute Instruction if both operands havee been registered */ \
+	SHIFT()\
+	MX_MULT(WEIGHTS_PER_BYTE_LOG,UNPACK,size2u_t)\
 })
 
 #define MX_MULT(WEIGHTS_PER_BYTE_LOG,UNPACK,TYPES)\
@@ -65,10 +79,10 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 	fHIDE(int input_weight_idx = 0;)\
 	fHIDE(int pmu_block = 0;)\
 	fHIDE(int deep_mode = thread->mem_access[0].hmx_ma.deep;)\
-	fHIDE(int fxp2_mode = 0;)\
+	fHIDE(int flt_mode = thread->mem_access[1].hmx_ma.flt;)\
 	fHIDE(int deep_block_end = deep_mode ? 2 : 1 ;)\
-	fHIDE(int current_acc = THREAD2STRUCT->current_acc_fxp;)\
-	fHIDE(vaddr_t weight_inc = fxp2_mode ? 256 : 128 ; )\
+	fHIDE(int current_acc = flt_mode ? THREAD2STRUCT->current_acc_flt : THREAD2STRUCT->current_acc_fxp;)\
+	fHIDE(vaddr_t weight_inc = flt_mode ? 256 : 128 ; )\
 	for(int block_idx = 0; block_idx < block_end; block_idx++) {\
 		fHIDE(int input_ch_end = 0;) \
 		fHIDE(int input_ch_start = 0;) \
@@ -85,7 +99,7 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 				fHIDE(int x_tap_stop = thread->mem_access[1].hmx_ma.x_stop;)\
 				while (x_tap_idx>=0) {\
 					for(int input_ch_idx = input_ch_start; input_ch_idx < input_ch_end; input_ch_idx += 4*input_ch_stride) {\
-						fHIDE(fMXLOAD_WEIGHTS(weight_addr, input_weight_idx, fxp2_mode );)\
+						fHIDE(fMXLOAD_WEIGHTS(weight_addr, input_weight_idx, flt_mode );)\
 						for(int input_ch_idx2 = input_ch_idx; input_ch_idx2 < input_ch_idx + 4*input_ch_stride; input_ch_idx2 += input_ch_stride) {\
 							\
 							fHIDE(fMXDEBUG_PRINT_TAP(x_tap_idx,y_tap_idx,input_ch_idx2,deep_block_idx);)\
@@ -97,13 +111,13 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 									fHIDE(int output_idx=0;) \
 									fHIDE(int acc_select =0;) \
 									fMX_COMPUTE_ACC_INDEX(output_idx, acc_select, x_tap_idx, intra_tile_x, tile_x_mask, intra_tile_y, current_acc);\
-									fMXLOAD_ACTIVATION(activation, x_tap_idx, y_tap_idx, intra_tile_x, intra_tile_y, input_ch_idx2, block_idx, tile_y_mask, fxp2_mode);\
+									fMXLOAD_ACTIVATION(activation, x_tap_idx, y_tap_idx, intra_tile_x, intra_tile_y, input_ch_idx2, block_idx, tile_y_mask, flt_mode);\
 									for(int output_ch_idx = 0; output_ch_idx < output_channels; output_ch_idx++) {\
 										fHIDE(TYPES weight=0;)\
 										fHIDE(TYPES weight_valid=0;)\
-										fMXSELECT_WEIGHT(weight, weight_valid, weight_addr, WEIGHTS_PER_BYTE_LOG, UNPACK, output_ch_idx, input_weight_idx,fxp2_mode);\
-										fMX_MULT(output_idx, output_ch_idx, acc_select, activation, weight, weight_valid, fxp2_mode, (input_ch_idx2 >> format), x_tap_decoded, y_tap_decoded,block_idx, deep_block_idx );\
-										fHIDE(fMX_MULT_ARRAY_PMU(output_idx, (input_ch_idx2 >> format), output_ch_idx, activation, weight, fxp2_mode);)\
+										fMXSELECT_WEIGHT(weight, weight_valid, weight_addr, WEIGHTS_PER_BYTE_LOG, UNPACK, output_ch_idx, input_weight_idx,flt_mode);\
+										fMX_MULT(output_idx, output_ch_idx, acc_select, activation, weight, weight_valid, flt_mode, (input_ch_idx2 >> format), x_tap_decoded, y_tap_decoded,block_idx, deep_block_idx );\
+										fHIDE(fMX_MULT_ARRAY_PMU(output_idx, (input_ch_idx2 >> format), output_ch_idx, activation, weight, flt_mode);)\
 									}\
 									fMX_INC_TAP_MASKED(intra_tile_x, tile_x_inc, tile_x_mask_msb, 0);\
 								}\
@@ -113,7 +127,7 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 						}\
 						fHIDE(fMX_CHECK_MAC_LIMIT(y_tap_idx, x_tap_idx, block_idx, block_end, input_ch_idx,input_ch_end, deep_block_idx, deep_block_end);)\
 					}\
-					fHIDE(fMX_UPDATE_ARRAY_PMU(fxp2_mode, pmu_block);)\
+					fHIDE(fMX_UPDATE_ARRAY_PMU(flt_mode, pmu_block);)\
 					fMX_INC_TAP_MASKED(x_tap_idx, tile_x_inc, tile_x_mask_msb, x_dilate);\
 					fHIDE(if (x_tap_idx > x_tap_stop) x_tap_idx = -1;)\
 					fHIDE(fMX_WEIGHTS_RANGE_CHECK(weight_addr, x_tap_idx,-1);)\
@@ -129,8 +143,8 @@ EXTINSN(TAG,SYNTAX,ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_LOAD,A_RESTRICT_SLOT0ONLY,
 		}\
 		fHIDE(fMX_WEIGHTS_RANGE_CHECK(weight_addr, block_idx,block_end);)\
 	}\
-	fHIDE(fDEBUG_VERIF_ACC_PRINT(fxp2_mode);)\
-	fHIDE(fMX_UPDATE_ACC(fxp2_mode);)\
+	fHIDE(fDEBUG_VERIF_ACC_PRINT(flt_mode);)\
+	fHIDE(fMX_UPDATE_ACC(flt_mode);)\
 
 
 #define FORMAT_DM 0
@@ -158,6 +172,12 @@ MX_ACTIVATION(M8_mxmemd_blk_dm_act_ub, "activation.ub=mxmem(Rs32,Rt32):dilate:cm
 //MX_ACTIVATION(M8_mxmemb_blk_sm_act_ub, "activation.ub=mxmem(Rs32,Rt32):batch",        HMX_UB, FORMAT_SM, HMX_ACT_BATCH)
 //MX_ACTIVATION(M8_mxmemb_blk_dm_act_ub, "activation.ub=mxmem(Rs32,Rt32):batch:cm",     HMX_UB, FORMAT_DM, HMX_ACT_BATCH)
 
+// Qranium FP16
+MX_ACTIVATION_FP16(M8_mxmem_blk_sm_act_hf,  "activation.hf=mxmem(Rs32,Rt32)",              HMX_FP16, FORMAT_SM, HMX_ACT_BLOCK)
+MX_ACTIVATION_FP16(M8_mxmem_sm_act_hf,      "activation.hf=mxmem(Rs32,Rt32):deep",         HMX_FP16, FORMAT_SM, HMX_ACT_DEEP)
+MX_ACTIVATION_FP16(M8_mxmemu_blk_sm_act_hf, "activation.hf=mxmem(Rs32,Rt32):above",        HMX_FP16, FORMAT_SM, HMX_ACT_ABOVE)
+MX_ACTIVATION_FP16(M8_mxmems_blk_sm_act_hf, "activation.hf=mxmem(Rs32,Rt32):single",       HMX_FP16, FORMAT_SM, HMX_ACT_SINGLE)
+MX_ACTIVATION_FP16(M8_mxmemd_blk_sm_act_hf, "activation.hf=mxmem(Rs32,Rt32):dilate",       HMX_FP16, FORMAT_SM, HMX_ACT_DILATE)
 
 #define MXMEM_WEIGHT_INSN(TYPE, TYPE2, SCALE, UNPACK) \
 MXMEM_WEIGHT(M8_mxmem_wei_##TYPE,        "weight." TYPE2 "=mxmem(Rs32,Rt32)",        HMX_B, SCALE, UNPACK,   fMX_NO_SHIFT_ACC, HMX_WEI_NORMAL) \
@@ -176,6 +196,13 @@ MXMEM_WEIGHT_INSN(b1,  "ubit", 3, fMX_UNPACK_1BIT_FROM_BYTE)
 MXMEM_WEIGHT_INSN(sb1, "sbit", 3, fMX_UNPACK_1SBIT_FROM_BYTE)
 
 
+// Qranium FP16
+MXMEM_WEIGHT_FP16(M8_mxmem_wei_hf,    "weight.hf=mxmem(Rs32,Rt32)",          HMX_FP16,  0, fMX_UNPACK_NONE,   fMX_NO_SHIFT_ACC, HMX_WEI_NORMAL)
+MXMEM_WEIGHT_FP16(M8_mxmems_wei_hf,   "weight.hf=mxmem(Rs32,Rt32):single",   HMX_FP16,  0, fMX_UNPACK_NONE,   fMX_NO_SHIFT_ACC, HMX_WEI_SINGLE)
+MXMEM_WEIGHT_FP16(M8_mxmemdr_wei_hf,  "weight.hf=mxmem(Rs32,Rt32):drop",     HMX_FP16,  0, fMX_UNPACK_NONE,   fMX_NO_SHIFT_ACC, HMX_WEI_DROP)
+MXMEM_WEIGHT_FP16(M8_mxmemdp_wei_hf,  "weight.hf=mxmem(Rs32,Rt32):deep",     HMX_FP16,  0, fMX_UNPACK_NONE,   fMX_NO_SHIFT_ACC, HMX_WEI_DEEP)
+MXMEM_WEIGHT_FP16(M8_mxmema_wei_hf,   "weight.hf=mxmem(Rs32,Rt32):after",    HMX_FP16,  0, fMX_UNPACK_NONE,   fMX_NO_SHIFT_ACC, HMX_WEI_AFTER)
+MXMEM_WEIGHT_FP16(M8_mxmemdi_wei_hf,  "weight.hf=mxmem(Rs32,Rt32):dilate",   HMX_FP16,  0, fMX_UNPACK_NONE,   fMX_NO_SHIFT_ACC, HMX_WEI_DILATE)
 
 
 
@@ -271,6 +298,31 @@ EXTINSN(TAG, OPCODE,  ATTRIBS(A_SHARED_EXTENSION,A_RESTRICT_SLOT0ONLY,A_HMX,A_ME
 	CLEAR_ACC();\
 })
 
+#define MXMEMCONVERT_FP16(TAG,OPCODE,SAT,RSV,RTV,DIRECTION,CLEAR_ACC,CVT_TYPE) \
+EXTINSN(TAG, OPCODE,  ATTRIBS(A_SHARED_EXTENSION,A_RESTRICT_SLOT0ONLY,A_HMX,A_MEMLIKE,A_HMX_BLOCK_ALIGN,A_STORE,A_VTCM_ALLBANK_ACCESS,A_HMX_FLT,A_EA_PAGECROSS),"Matrix Convert",  \
+{   \
+	fEA_REG(RSV);\
+	fALIGN_CVT(EA, FORMAT_SM);\
+	fHIDE(hmx_convert_init(thread,insn->slot, EA, RSV, RTV, FORMAT_SM, DIRECTION,HMX_FP16);)\
+	fHIDE(if (EXCEPTION_DETECTED) return;)\
+	fHIDE(if (thread->bq_on) return;)\
+	fHIDE(int spatial_size = 1<<thread->processor_ptr->arch_proc_options->hmx_spatial_size;)\
+	fHIDE(int output_depth = thread->processor_ptr->arch_proc_options->hmx_output_depth;)\
+	fHIDE(int acc_select = THREAD2STRUCT->current_acc_flt;)\
+	for(int spatial_idx = 0; spatial_idx < spatial_size; spatial_idx+=2) { \
+		for(int output_idx = 0; output_idx < output_depth; output_idx++) { \
+			fHIDE(size16s_t acc={0};)\
+			fHIDE(hmx_bias_t bias = fMX_SELECT_BIAS(output_idx);)\
+			fHIDE(size2u_t hf=0;)\
+			fHIDE(size1u_t ovf=0;)\
+			fMX_SELECT_ACCUMULATOR_FLT(acc, ovf, spatial_idx, output_idx, acc_select);\
+			fMX_RNDSAT_ACC(hf, acc, ovf, bias.flt.bias, bias.flt.exp_delta, bias.flt.sat_exp, SAT, CVT_TYPE, spatial_idx, output_idx, acc_select);\
+			fMX_CONVERTED_ACCUMULATOR_FLT(spatial_idx, output_idx, hf);\
+		}\
+	}\
+	fHIDE(fMX_UPDATE_CVT_ARRAY_PMU(1);)\
+	CLEAR_ACC();\
+})
 #define HMX_NOSAT 0
 #define HMX_SAT 1
 
@@ -308,6 +360,22 @@ MXMEMCONVERT_16x16(M8_mxcvta_sat_uh2x2,   "mxmem(Rs32,Rt32):after:sat.uh=acc:2x2
 MXMEMCONVERT_16x16(M8_mxcvta_uh2x2,       "mxmem(Rs32,Rt32):after.uh=acc:2x2",             HMX_NOSAT, RsV, RtV, HMX_CVT_AFTER,  fMX_CLEAR_ACC_FXP)
 MXMEMCONVERT_16x16(M8_mxcvta_sat_uh2x2_r, "mxmem(Rs32,Rt32):after:retain:sat.uh=acc:2x2",  HMX_SAT,   RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC)
 MXMEMCONVERT_16x16(M8_mxcvta_uh2x2_r,     "mxmem(Rs32,Rt32):after:retain.uh=acc:2x2",      HMX_NOSAT, RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC)
+MXMEMCONVERT_FP16(M8_mxcvtl_sat_hf,       "mxmem(Rs32,Rt32):before.hf=acc",                HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_CLEAR_ACC_FLT, HMX_FP_CVT_NORMAL)
+MXMEMCONVERT_FP16(M8_mxcvtl_sat_pos_hf,   "mxmem(Rs32,Rt32):before:pos.hf=acc",            HMX_SAT,   RsV, RtV, HMX_CVT_BEFORE, fMX_CLEAR_ACC_FLT, HMX_FP_CVT_NORMAL)
+MXMEMCONVERT_FP16(M8_mxcvtl_sat_hf_r,     "mxmem(Rs32,Rt32):before:retain.hf=acc",         HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_NOCLEAR_ACC,   HMX_FP_CVT_NORMAL)
+MXMEMCONVERT_FP16(M8_mxcvtl_sat_pos_hf_r, "mxmem(Rs32,Rt32):before:retain:pos.hf=acc",     HMX_SAT,   RsV, RtV, HMX_CVT_BEFORE, fMX_NOCLEAR_ACC,   HMX_FP_CVT_NORMAL)
+MXMEMCONVERT_FP16(M8_mxcvtr_sat_hf,       "mxmem(Rs32,Rt32):after.hf=acc",                 HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_CLEAR_ACC_FLT, HMX_FP_CVT_NORMAL)
+MXMEMCONVERT_FP16(M8_mxcvtr_sat_pos_hf,   "mxmem(Rs32,Rt32):after:pos.hf=acc",             HMX_SAT,   RsV, RtV, HMX_CVT_AFTER,  fMX_CLEAR_ACC_FLT, HMX_FP_CVT_NORMAL)
+MXMEMCONVERT_FP16(M8_mxcvtr_sat_hf_r,     "mxmem(Rs32,Rt32):after:retain.hf=acc",          HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC,   HMX_FP_CVT_NORMAL)
+MXMEMCONVERT_FP16(M8_mxcvtr_sat_pos_hf_r, "mxmem(Rs32,Rt32):after:retain:pos.hf=acc",      HMX_SAT,   RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC,   HMX_FP_CVT_NORMAL)
+//MXMEMCONVERT_FP16(M8_mxcvtl_sat_hi_hf,    "mxmem(Rs32,Rt32):before:hi.hf=acc",         HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_CLEAR_ACC_FLT, HMX_FP_CVT_HI)
+//MXMEMCONVERT_FP16(M8_mxcvtl_sat_lo_hf,    "mxmem(Rs32,Rt32):before:lo.hf=acc",         HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_CLEAR_ACC_FLT, HMX_FP_CVT_LO)
+//MXMEMCONVERT_FP16(M8_mxcvtl_sat_hi_hf_r,  "mxmem(Rs32,Rt32):before:retain:hi.hf=acc",  HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_NOCLEAR_ACC,   HMX_FP_CVT_HI)
+//MXMEMCONVERT_FP16(M8_mxcvtl_sat_lo_hf_r,  "mxmem(Rs32,Rt32):before:retain:lo.hf=acc",  HMX_NOSAT,  RsV, RtV, HMX_CVT_BEFORE, fMX_NOCLEAR_ACC,   HMX_FP_CVT_LO)
+//MXMEMCONVERT_FP16(M8_mxcvtr_sat_hi_hf,    "mxmem(Rs32,Rt32):after:hi.hf=acc",          HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_CLEAR_ACC_FLT, HMX_FP_CVT_HI)
+//MXMEMCONVERT_FP16(M8_mxcvtr_sat_lo_hf,    "mxmem(Rs32,Rt32):after:lo.hf=acc",          HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_CLEAR_ACC_FLT, HMX_FP_CVT_LO)
+//MXMEMCONVERT_FP16(M8_mxcvtr_sat_hi_hf_r,  "mxmem(Rs32,Rt32):after:retain:hi.hf=acc",   HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC,   HMX_FP_CVT_HI)
+//MXMEMCONVERT_FP16(M8_mxcvtr_sat_lo_hf_r,  "mxmem(Rs32,Rt32):after:retain:lo.hf=acc",   HMX_NOSAT,  RsV, RtV, HMX_CVT_AFTER,  fMX_NOCLEAR_ACC,   HMX_FP_CVT_HI)
 
 
 
@@ -365,7 +433,9 @@ EXTINSN(M8_mxmem2_st_bias,    "mxmem2(Rs32)=bias", ATTRIBS(A_SHARED_EXTENSION,A_
 
 
 EXTINSN(M8_mxclracc,    "mxclracc",     ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_MEMLIKE_PACKET_RULES,A_RESTRICT_SLOT0ONLY), "Clear both fxp accumulators", {	fMX_CLEAR_BOTH_ACC_FXP(); })
+EXTINSN(M8_mxclracc_hf, "mxclracc.hf",  ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_HMX_FLT,A_MEMLIKE_PACKET_RULES,A_RESTRICT_SLOT0ONLY), "Clear both flt accumulators", {	fMX_CLEAR_BOTH_ACC_FLT(); })
 EXTINSN(M8_mxswap,      "mxswapacc",     ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_HMX_ACC,A_MEMLIKE_PACKET_RULES,A_RESTRICT_SLOT0ONLY), "Swap fxp accumulators", {	fMX_SWAP_ACC_FXP(); })
+EXTINSN(M8_mxswap_hf,   "mxswapacc.hf",  ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_HMX_ACC,A_HMX_FLT,A_MEMLIKE_PACKET_RULES,A_RESTRICT_SLOT0ONLY), "Swap flt accumulators", {	fMX_SWAP_ACC_FLT(); })
 
 
 EXTINSN(M8_mxaccshl,    "acc=mxshl(acc,#16)",     ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_MEMLIKE_PACKET_RULES,A_RESTRICT_SLOT0ONLY,A_NOTE_NOLAHAINAV1), "Left shift accumulator",

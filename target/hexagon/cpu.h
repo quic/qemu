@@ -91,10 +91,15 @@ typedef struct SystemState system_t;
 typedef void (*hmx_mac_fxp_callback_t) (void * sys, processor_t * proc,
     int pktid, int row_idx, int col_idx, int acc_idx, int in_idx, int wgt,
     int act, int acc, int x_tap, int y_tap, int block_idx, int deep_block_idx);
+typedef void (*hmx_mac_flt_callback_t) (void * sys, processor_t * proc,
+    int pktid, int row_idx, int col_idx, int acc_idx, int in_idx, int wgt,
+    int act, size8u_t acc_hi, size8u_t acc_lo, int ovf, int x_tap, int y_tap,
+    int block_idx, int deep_block_idx);
 
 typedef struct {
     paddr_t l2tcm_base;
     hmx_mac_fxp_callback_t hmx_mac_fxp_callback;
+    hmx_mac_flt_callback_t hmx_mac_flt_callback;
 } options_struct;
 
 typedef struct arch_proc_opt {
@@ -121,6 +126,11 @@ typedef struct arch_proc_opt {
     int QDSP6_MX_CVT_MPY_SZ;          /* 10 */
     int QDSP6_MX_ROWS;                /* 64 */
     int QDSP6_MX_COLS;                /* 32 */
+    int QDSP6_MX_FP_PRESENT;          /* 1 */
+    int QDSP6_MX_FP_ACC_INT;          /* 18 */
+    int QDSP6_MX_FP_ACC_FRAC;         /* 46 */
+    int QDSP6_MX_FP_RATE;             /* 2 */
+    int QDSP6_MX_FP_ROWS;             /* 32 */
 } arch_proc_opt_t;
 
 enum phmx_e {
@@ -131,6 +141,11 @@ enum phmx_e {
   phmx_array_fxp_mpy2,
   phmx_array_fxp_mpy3,
   phmx_array_fxp_acc,
+  phmx_array_flt_mpy0,
+  phmx_array_flt_mpy1,
+  phmx_array_flt_mpy2,
+  phmx_array_flt_mpy3,
+  phmx_array_flt_acc,
 };
 
 struct ProcessorState {
@@ -199,7 +214,7 @@ typedef struct hmx_mem_access_info {
     size1u_t format:2;
     size1u_t acc_select:1;
     size1u_t acc_range:1;
-    size1u_t fxp2:1;
+    size1u_t flt:1;
     size1u_t x_dilate:1;
     size1u_t y_dilate:1;
     size1u_t deep:1;

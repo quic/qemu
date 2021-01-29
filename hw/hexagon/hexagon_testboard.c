@@ -48,6 +48,7 @@ const rev_features_t rev_features_v68 = {
 const options_struct options_struct_v68 = {
     .l2tcm_base  = 0,  /* FIXME - Should be l2tcm_base ?? */
     .hmx_mac_fxp_callback = (void *)0,
+    .hmx_mac_flt_callback = (void *)0,
 };
 
 const arch_proc_opt_t arch_proc_opt_v68 = {
@@ -72,6 +73,11 @@ const arch_proc_opt_t arch_proc_opt_v68 = {
     .QDSP6_MX_CVT_MPY_SZ   = 10,
     .QDSP6_MX_ROWS         = 64,
     .QDSP6_MX_COLS         = 32,
+    .QDSP6_MX_FP_PRESENT   = 1,
+    .QDSP6_MX_FP_ACC_INT   = 18,
+    .QDSP6_MX_FP_ACC_FRAC  = 46,
+    .QDSP6_MX_FP_RATE      = 2,
+    .QDSP6_MX_FP_ROWS      = 32,
 };
 
 struct ProcessorState ProcessorStateV68 = {

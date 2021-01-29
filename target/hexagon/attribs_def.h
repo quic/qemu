@@ -142,6 +142,7 @@ DEF_ATTRIB(CVI_SLOT23, "Can execute in slot 2 or slot 3 (HVX)", "", "")
 DEF_ATTRIB(HMX, "This a matrix multiply instruction.", "", "")
 DEF_ATTRIB(HMX_ACC, "This a matrix multiply instruction accessing only accumulator(s).", "", "")
 
+DEF_ATTRIB(HMX_FLT, "This a matrix multiply instruction with FP16.", "", "")
 DEF_ATTRIB(HVX_FLT, "This a floating point HVX instruction.", "", "")
 
 DEF_ATTRIB(VTCM_ALLBANK_ACCESS, "This instruction allocates in all VTCM schedulers due to a region access.", "", "")
