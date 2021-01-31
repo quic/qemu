@@ -196,12 +196,35 @@ static Property sifive_clint_properties[] = {
     DEFINE_PROP_UINT32("time-base", SiFiveCLINTState, time_base, 0),
     DEFINE_PROP_UINT32("aperture-size", SiFiveCLINTState, aperture_size, 0),
     DEFINE_PROP_UINT32("timebase-freq", SiFiveCLINTState, timebase_freq, 0),
+    DEFINE_PROP_BOOL("provide-rdtime", SiFiveCLINTState, provide_rdtime, false),
     DEFINE_PROP_END_OF_LIST(),
 };
 
 static void sifive_clint_realize(DeviceState *dev, Error **errp)
 {
     SiFiveCLINTState *s = SIFIVE_CLINT(dev);
+    int i;
+
+    for (i = 0; i < s->num_harts; i++) {
+        CPUState *cpu = qemu_get_cpu(i);
+        CPURISCVState *env = cpu ? cpu->env_ptr : NULL;
+        if (!env) {
+            continue;
+        }
+
+        if (env->timer) {
+            continue;
+        }
+
+        if (s->provide_rdtime) {
+            riscv_cpu_set_rdtime_fn(env, cpu_riscv_read_rtc, s->timebase_freq);
+        }
+
+        env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
+                                  &sifive_clint_timer_cb, cpu);
+        env->timecmp = 0;
+    }
+
     memory_region_init_io(&s->mmio, OBJECT(dev), &sifive_clint_ops, s,
                           TYPE_SIFIVE_CLINT, s->aperture_size);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->mmio);
@@ -237,21 +260,6 @@ DeviceState *sifive_clint_create(hwaddr addr, hwaddr size,
     uint32_t timecmp_base, uint32_t time_base, uint32_t timebase_freq,
     bool provide_rdtime)
 {
-    int i;
-    for (i = 0; i < num_harts; i++) {
-        CPUState *cpu = qemu_get_cpu(hartid_base + i);
-        CPURISCVState *env = cpu ? cpu->env_ptr : NULL;
-        if (!env) {
-            continue;
-        }
-        if (provide_rdtime) {
-            riscv_cpu_set_rdtime_fn(env, cpu_riscv_read_rtc, timebase_freq);
-        }
-        env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
-                                  &sifive_clint_timer_cb, cpu);
-        env->timecmp = 0;
-    }
-
     DeviceState *dev = qdev_new(TYPE_SIFIVE_CLINT);
     qdev_prop_set_uint32(dev, "hartid-base", hartid_base);
     qdev_prop_set_uint32(dev, "num-harts", num_harts);
@@ -260,6 +268,7 @@ DeviceState *sifive_clint_create(hwaddr addr, hwaddr size,
     qdev_prop_set_uint32(dev, "time-base", time_base);
     qdev_prop_set_uint32(dev, "aperture-size", size);
     qdev_prop_set_uint32(dev, "timebase-freq", timebase_freq);
+    qdev_prop_set_bit(dev, "provide-rdtime", provide_rdtime);
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, addr);
     return dev;
