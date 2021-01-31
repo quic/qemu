@@ -425,6 +425,7 @@ struct RISCVCPUConfig {
     bool aia;
     bool debug;
     uint64_t resetvec;
+    uint64_t hartid;
 };
 
 typedef struct RISCVCPUConfig RISCVCPUConfig;
