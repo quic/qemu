@@ -307,6 +307,7 @@ struct RISCVCPU {
         bool pmp;
         bool epmp;
         uint64_t resetvec;
+        uint64_t hartid;
     } cfg;
 };
 
