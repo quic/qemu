@@ -569,6 +569,10 @@ static void riscv_cpu_realize(DeviceState *dev, Error **errp)
         set_misa(env, env->misa_mxl, ext);
     }
 
+    if (cpu->cfg.hartid != -1) {
+        env->mhartid = cpu->cfg.hartid;
+    }
+
     riscv_cpu_register_gdb_regs_for_features(cs);
 
     qemu_init_vcpu(cs);
@@ -649,6 +653,7 @@ static Property riscv_cpu_properties[] = {
     DEFINE_PROP_BOOL("x-epmp", RISCVCPU, cfg.epmp, false),
 
     DEFINE_PROP_UINT64("resetvec", RISCVCPU, cfg.resetvec, DEFAULT_RSTVEC),
+    DEFINE_PROP_UINT64("hartid", RISCVCPU, cfg.hartid, -1),
     DEFINE_PROP_END_OF_LIST(),
 };
 
