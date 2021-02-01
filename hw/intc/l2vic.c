@@ -227,7 +227,6 @@ static void l2vic_write(void *opaque, hwaddr offset,
         L2VICA(s->int_pending, offset - L2VIC_INT_PENDINGn) = val;
     } else if (offset >= L2VIC_SOFT_INTn &&
                offset < L2VIC_INT_PENDINGn) {
-        L2VICA(s->int_enable, offset - L2VIC_SOFT_INTn) |= val;
         /*
          *  Need to reverse engineer the actual irq number.
          */
