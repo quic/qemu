@@ -139,6 +139,11 @@ static bool need_slot_cancelled(Packet *pkt)
     return check_for_attrib(pkt, A_CONDEXEC);
 }
 
+static bool need_pred_written(Packet *pkt)
+{
+    return check_for_attrib(pkt, A_WRITES_PRED_REG);
+}
+
 
 static void gen_start_packet(DisasContext *ctx, Packet *pkt)
 {
@@ -175,7 +180,9 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
         tcg_gen_movi_tl(hex_branch_taken, 0);
         tcg_gen_movi_tl(hex_next_PC, next_PC);
     }
-    tcg_gen_movi_tl(hex_pred_written, 0);
+    if (need_pred_written(pkt)) {
+        tcg_gen_movi_tl(hex_pred_written, 0);
+    }
 
     if (pkt->pkt_has_hvx) {
         tcg_gen_movi_tl(hex_VRegs_updated_tmp, 0);

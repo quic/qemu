@@ -97,6 +97,7 @@ DEF_ATTRIB(IMPLICIT_WRITES_IPENDAD_IAD, "May write", "", "MREG.IPENDAD.IAD")
 DEF_ATTRIB(IMPLICIT_WRITES_IMASK_ANYTHREAD, "May write", "", "MREG.IMASK")
 DEF_ATTRIB(IMPLICIT_WRITES_SYSCFG_GCA, "May write", "", "MREG.SYSCFG.GCA")
 DEF_ATTRIB(IMPLICIT_READS_PC, "Reads the PC register", "", "")
+DEF_ATTRIB(WRITES_PRED_REG, "Writes a predicate register", "", "")
 
 DEF_ATTRIB(CRSLOT23, "Can execute in slot 2 or slot 3 (CR)", "", "")
 DEF_ATTRIB(IT_NOP, "nop instruction", "", "")
