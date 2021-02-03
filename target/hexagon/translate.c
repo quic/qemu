@@ -653,14 +653,13 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
     }
 }
 
-static void gen_exec_counters(Packet *pkt)
+static void update_exec_counters(DisasContext *ctx, Packet *pkt)
 {
     int num_insns = pkt->num_insns;
     int num_real_insns = 0;
     int num_hvx_insns = 0;
-    int i;
 
-    for (i = 0; i < num_insns; i++) {
+    for (int i = 0; i < num_insns; i++) {
         if (!pkt->insn[i].is_endloop &&
             !pkt->insn[i].part1 &&
             !GET_ATTRIB(pkt->insn[i].opcode, A_IT_NOP)) {
@@ -671,12 +670,19 @@ static void gen_exec_counters(Packet *pkt)
         }
     }
 
+    ctx->num_packets++;
+    ctx->num_insns += num_real_insns;
+    ctx->num_hvx_insns += num_hvx_insns;
+}
+
+static void gen_exec_counters(DisasContext *ctx)
+{
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],
-                    hex_gpr[HEX_REG_QEMU_PKT_CNT], 1);
+                    hex_gpr[HEX_REG_QEMU_PKT_CNT], ctx->num_packets);
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_INSN_CNT],
-                    hex_gpr[HEX_REG_QEMU_INSN_CNT], num_real_insns);
+                    hex_gpr[HEX_REG_QEMU_INSN_CNT], ctx->num_insns);
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HVX_CNT],
-                    hex_gpr[HEX_REG_QEMU_HVX_CNT], num_hvx_insns);
+                    hex_gpr[HEX_REG_QEMU_HVX_CNT], ctx->num_hvx_insns);
 }
 
 static void gen_commit_packet(DisasContext *ctx, Packet *pkt)
@@ -688,7 +694,7 @@ static void gen_commit_packet(DisasContext *ctx, Packet *pkt)
     if (pkt->pkt_has_hvx) {
         gen_commit_hvx(ctx, pkt);
     }
-    gen_exec_counters(pkt);
+    update_exec_counters(ctx, pkt);
 #if HEX_DEBUG
     {
         TCGv has_st0 =
@@ -743,6 +749,9 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
 
     ctx->mem_idx = MMU_USER_IDX;
+    ctx->num_packets = 0;
+    ctx->num_insns = 0;
+    ctx->num_hvx_insns = 0;
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
@@ -827,6 +836,7 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 
     switch (ctx->base.is_jmp) {
     case DISAS_TOO_MANY:
+        gen_exec_counters(ctx);
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
         if (ctx->base.singlestep_enabled) {
             gen_exception_debug();
@@ -835,6 +845,7 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         }
         break;
     case DISAS_NORETURN:
+        gen_exec_counters(ctx);
         tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
         if (ctx->base.singlestep_enabled) {
             gen_exception_debug();

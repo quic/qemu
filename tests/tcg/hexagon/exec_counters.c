@@ -33,31 +33,116 @@ static void check(const char *name, int val, int expect)
 
 int main()
 {
-  int pkt, insn, hvx;
+    int pkt_old, pkt_new;
+    int insn_old, insn_new;
+    int hvx_old, hvx_new;
 
-  asm volatile("r2 = #0\n\t"
-               "c23 = r2\n\t"
-               "c22 = r2\n\t"
-               "c21 = r2\n\t"
-               "c20 = r2\n\t"
-               "r2 = #7\n\t"
-               "loop0(1f, #3)\n\t"
-               "1:\n\t"
-               "    v0.b = vadd(v0.b, v0.b)\n\t"
-               "    { p0 = cmp.eq(r2,#5); if (p0.new) jump:nt 2f }\n\t"
-               "    {r0 = r1; r1 = r0 }:endloop0\n\t"
-               "2:\n\t"
-               "%[pkt] = c20\n\t"
-               "%[insn] = c21\n\t"
-               "%[hvx] = c22\n\t"
-               : [pkt] "=r"(pkt), [insn] "=r"(insn), [hvx] "=r"(hvx)
-               : : "r0", "r1", "r2", "sa0", "lc0", "v0", "p0");
+    /* Test reading from individual control regs */
+    asm volatile("%[pkt_old] = c20\n\t"
+                 "%[insn_old] = c21\n\t"
+                 "%[hvx_old] = c22\n\t"
+                 "r2 = #7\n\t"
+                 "loop0(1f, #3)\n\t"
+                 "1:\n\t"
+                 "    v0.b = vadd(v0.b, v0.b)\n\t"
+                 "    { p0 = cmp.eq(r2,#5); if (p0.new) jump:nt 2f }\n\t"
+                 "    { r0 = r1; r1 = r0 }:endloop0\n\t"
+                 "2:\n\t"
+                 "%[pkt_new] = c20\n\t"
+                 "%[insn_new] = c21\n\t"
+                 "%[hvx_new] = c22\n\t"
+                 : [pkt_old] "=r"(pkt_old),
+                   [insn_old] "=r"(insn_old),
+                   [hvx_old] "=r"(hvx_old),
+                   [pkt_new] "=r"(pkt_new),
+                   [insn_new] "=r"(insn_new),
+                   [hvx_new] "=r"(hvx_new)
+                 : : "r0", "r1", "r2", "sa0", "lc0", "v0", "p0");
 
-  check("Packet", pkt, 12);
-  check("Instruction", insn, 17);
-  check("HVX", hvx, 3);
-  puts(err ? "FAIL" : "PASS");
-  return err;
+    check("Packet", pkt_new - pkt_old, 14);
+    check("Instruction", insn_new - insn_old, 17);
+    check("HVX", hvx_new - hvx_old, 3);
+
+    /* Test reading from control reg pairs */
+    asm volatile("r1:0 = c21:20\n\t"
+                 "%[pkt_old] = r0\n\t"
+                 "%[insn_old] = r1\n\t"
+                 "r1:0 = c23:22\n\t"
+                 "%[hvx_old] = r0\n\t"
+                 "r2 = #7\n\t"
+                 "loop0(1f, #5)\n\t"
+                 "1:\n\t"
+                 "    v0.b = vadd(v0.b, v0.b)\n\t"
+                 "    { p0 = cmp.eq(r2,#5); if (p0.new) jump:nt 2f }\n\t"
+                 "    { r0 = r1; r1 = r0 }:endloop0\n\t"
+                 "2:\n\t"
+                 "r1:0 = c21:20\n\t"
+                 "%[pkt_new] = r0\n\t"
+                 "%[insn_new] = r1\n\t"
+                 "r1:0 = c23:22\n\t"
+                 "%[hvx_new] = r0\n\t"
+                 : [pkt_old] "=r"(pkt_old),
+                   [insn_old] "=r"(insn_old),
+                   [hvx_old] "=r"(hvx_old),
+                   [pkt_new] "=r"(pkt_new),
+                   [insn_new] "=r"(insn_new),
+                   [hvx_new] "=r"(hvx_new)
+                 : : "r0", "r1", "r2", "sa0", "lc0", "v0", "p0");
+
+    check("Packet", pkt_new - pkt_old, 22);
+    check("Instruction", insn_new - insn_old, 27);
+    check("HVX", hvx_new - hvx_old, 5);
+
+    /* Test writing to individual control regs */
+    asm volatile("r2 = #0\n\t"
+                 "c20 = r2\n\t"
+                 "c21 = r2\n\t"
+                 "c22 = r2\n\t"
+                 "r2 = #7\n\t"
+                 "loop0(1f, #3)\n\t"
+                 "1:\n\t"
+                 "    v0.b = vadd(v0.b, v0.b)\n\t"
+                 "    { p0 = cmp.eq(r2,#5); if (p0.new) jump:nt 2f }\n\t"
+                 "    { r0 = r1; r1 = r0 }:endloop0\n\t"
+                 "2:\n\t"
+                 "%[pkt_new] = c20\n\t"
+                 "%[insn_new] = c21\n\t"
+                 "%[hvx_new] = c22\n\t"
+                 : [pkt_new] "=r"(pkt_new),
+                   [insn_new] "=r"(insn_new),
+                   [hvx_new] "=r"(hvx_new)
+                 : : "r0", "r1", "r2", "sa0", "lc0", "v0", "p0");
+
+    check("Packet", pkt_new, 14);
+    check("Instruction", insn_new, 17);
+    check("HVX", hvx_new, 3);
+
+    /* Test writing to control reg pairs */
+    asm volatile("r0 = #0\n\t"
+                 "r1 = #0\n\t"
+                 "c21:20 = r1:0\n\t"
+                 "c23:22 = r1:0\n\t"
+                 "r2 = #7\n\t"
+                 "loop0(1f, #3)\n\t"
+                 "1:\n\t"
+                 "    v0.b = vadd(v0.b, v0.b)\n\t"
+                 "    { p0 = cmp.eq(r2,#5); if (p0.new) jump:nt 2f }\n\t"
+                 "    { r0 = r1; r1 = r0 }:endloop0\n\t"
+                 "2:\n\t"
+                 "%[pkt_new] = c20\n\t"
+                 "%[insn_new] = c21\n\t"
+                 "%[hvx_new] = c22\n\t"
+                 : [pkt_new] "=r"(pkt_new),
+                   [insn_new] "=r"(insn_new),
+                   [hvx_new] "=r"(hvx_new)
+                 : : "r0", "r1", "r2", "sa0", "lc0", "v0", "p0");
+
+    check("Packet", pkt_new, 13);
+    check("Instruction", insn_new, 17);
+    check("HVX", hvx_new, 3);
+
+    puts(err ? "FAIL" : "PASS");
+    return err;
 }
 #else
 int main () {puts ("NOT RUN"); return 0;}

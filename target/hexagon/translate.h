@@ -27,6 +27,9 @@
 typedef struct DisasContext {
     DisasContextBase base;
     uint32_t mem_idx;
+    uint32_t num_packets;
+    uint32_t num_insns;
+    uint32_t num_hvx_insns;
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
     DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);

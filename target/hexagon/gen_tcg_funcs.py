@@ -298,46 +298,11 @@ def genptr_src_read(f,regtype,regid):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "C"):
         if (regid == "ss"):
-            f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
-                                 (regtype, regid))
-            f.write("        TCGv p3_0 = tcg_temp_new();\n")
-            f.write("        gen_read_p3_0(p3_0);\n")
-            f.write("        tcg_gen_concat_i32_i64(%s%sV,\n" % \
-                                 (regtype, regid))
-            f.write("            p3_0,\n")
-            f.write("            hex_gpr[%s%sN + 1]);\n" % \
-                                 (regtype, regid))
-            f.write("        tcg_temp_free(p3_0);\n")
-            f.write("    } else if (%s%sN == HEX_REG_PC - 1) {\n" % \
-                                  (regtype, regid))
-            f.write("        TCGv pc = tcg_const_tl(ctx->base.pc_next);\n")
-            f.write("        tcg_gen_concat_i32_i64(%s%sV,\n" % \
-                                 (regtype, regid))
-            f.write("            hex_gpr[%s%sN],\n" % \
-                                 (regtype, regid))
-            f.write("            pc);\n")
-            f.write("        tcg_temp_free(pc);\n")
-            f.write("    } else {\n")
-            f.write("        tcg_gen_concat_i32_i64(%s%sV,\n" % \
-                                 (regtype, regid))
-            f.write("            hex_gpr[%s%sN],\n" % \
-                                 (regtype, regid))
-            f.write("            hex_gpr[%s%sN + 1]);\n" % \
-                                 (regtype, regid))
-            f.write("    }\n")
+            f.write("    gen_read_ctrl_reg_pair(ctx, %s%sN, %s%sV);\n" % \
+                             (regtype, regid, regtype, regid))
         elif (regid == "s"):
-            f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
-                                 (regtype, regid))
-            f.write("        gen_read_p3_0(%s%sV);\n" % \
-                                 (regtype, regid))
-            f.write("    } else if (%s%sN == HEX_REG_PC) {\n" % \
-                                 (regtype, regid))
-            f.write("        tcg_gen_movi_tl(%s%sV, ctx->base.pc_next);\n" % \
-                                 (regtype, regid))
-            f.write("    } else {\n")
-            f.write("        tcg_gen_mov_tl(%s%sV, hex_gpr[%s%sN]);\n" % \
-                                 (regtype, regid, regtype, regid))
-            f.write("    }\n")
+            f.write("    gen_read_ctrl_reg(ctx, %s%sN, %s%sV);\n" % \
+                             (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "M"):
@@ -455,36 +420,11 @@ def genptr_dst_write(f, tag, regtype, regid):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "C"):
         if (regid == "dd"):
-            f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
-                                 (regtype, regid))
-            f.write("        TCGv val32 = tcg_temp_new();\n")
-            f.write("        tcg_gen_extrl_i64_i32(val32, %s%sV);\n" % \
-                                 (regtype, regid))
-            f.write("        gen_write_p3_0(val32);\n")
-            f.write("        tcg_gen_extrh_i64_i32(val32, %s%sV);\n" % \
-                                 (regtype, regid))
-            f.write("        gen_log_reg_write(%s%sN + 1, val32);\n" % \
-                                 (regtype, regid))
-            f.write("        tcg_temp_free(val32);\n")
-            f.write("        ctx_log_reg_write(ctx, %s%sN + 1);\n" % \
-                                 (regtype, regid))
-            f.write("    } else {\n")
-            f.write("        gen_log_reg_write_pair(%s%sN, %s%sV);\n" % \
-                                 (regtype, regid, regtype, regid))
-            f.write("        ctx_log_reg_write_pair(ctx, %s%sN);\n" % \
-                                 (regtype, regid))
-            f.write("    }\n")
+            f.write("    gen_write_ctrl_reg_pair(ctx, %s%sN, %s%sV);\n" % \
+                             (regtype, regid, regtype, regid))
         elif (regid == "d"):
-            f.write("    if (%s%sN == HEX_REG_P3_0) {\n" % \
-                                 (regtype, regid))
-            f.write("        gen_write_p3_0(%s%sV);\n" % \
-                                 (regtype, regid))
-            f.write("    } else {\n")
-            f.write("        gen_log_reg_write(%s%sN, %s%sV);\n" % \
-                                 (regtype, regid, regtype, regid))
-            f.write("        ctx_log_reg_write(ctx, %s%sN);\n" % \
-                                 (regtype, regid))
-            f.write("    }\n")
+            f.write("    gen_write_ctrl_reg(ctx, %s%sN, %s%sV);\n" % \
+                             (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
