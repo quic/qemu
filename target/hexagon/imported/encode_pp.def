@@ -1813,7 +1813,6 @@ SH_RRI5_ENC(A4_round_ri_sat,         "1100","111",            "11-","ddddd")
 DEF_ENC32(S2_setbit_i,   ICLASS_S2op" 1100   110sssss PP0iiiii 000ddddd")
 DEF_ENC32(S2_clrbit_i,   ICLASS_S2op" 1100   110sssss PP0iiiii 001ddddd")
 DEF_ENC32(S2_togglebit_i,ICLASS_S2op" 1100   110sssss PP0iiiii 010ddddd")
-DEF_ENC32(S4_lsli       ,ICLASS_S2op" 1100   110sssss PPiiiiii 011ddddd")
 
 DEF_ENC32(S4_clbaddi    ,ICLASS_S2op" 1100   001sssss PPiiiiii 000ddddd")
 
