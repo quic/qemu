@@ -38,8 +38,9 @@
 #include "include/sysemu/sysemu.h"
 #include "internal.h"
 
-hexagon_config_table cfgTable;
-hexagon_config_extensions cfgExtensions;
+static hexagon_config_table cfgTable;
+static hexagon_config_extensions cfgExtensions;
+static bool syscfg_is_linux = false;
 
 const rev_features_t rev_features_v68 = {
 };
@@ -181,8 +182,9 @@ static void hexagon_common_init(MachineState *machine)
      */
     sysbus_create_varargs("qutimer", 0xfab20000,
                           NULL);
+    unsigned QTMR0_IRQ = syscfg_is_linux ? 2 : 3;
     sysbus_create_varargs("hextimer", cfgExtensions.qtmr_rg0,
-                          qdev_get_gpio_in(dev, 3), NULL);
+                          qdev_get_gpio_in(dev, QTMR0_IRQ), NULL);
     sysbus_create_varargs("hextimer", cfgExtensions.qtmr_rg1,
                           qdev_get_gpio_in(dev, 4), NULL);
 
@@ -427,6 +429,16 @@ static void v66g_1024_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 4 * GiB;
 }
 
+static void v66g_linux_init(ObjectClass *oc, void *data)
+{
+    v66g_1024_init(oc, data);
+
+    MachineClass *mc = MACHINE_CLASS(oc);
+    mc->desc = "Hexagon Linux V66G_1024";
+
+    syscfg_is_linux = true;
+}
+
 
 static void v68n_1024_config_init(MachineState *machine)
 
@@ -484,6 +496,10 @@ static const TypeInfo hexagon_machine_types[] = {
         .name = MACHINE_TYPE_NAME("V69NA_1024"),
         .parent = TYPE_MACHINE,
         .class_init = v69na_1024_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("V66_Linux"),
+        .parent = TYPE_MACHINE,
+        .class_init = v66g_linux_init,
     },
 };
 
