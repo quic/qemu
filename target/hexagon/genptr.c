@@ -1220,5 +1220,5 @@ static inline void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
     }
 }
 
-#include "tcg_funcs_generated.h"
-#include "tcg_func_table_generated.h"
+#include "tcg_funcs_generated.c.inc"
+#include "tcg_func_table_generated.c.inc"

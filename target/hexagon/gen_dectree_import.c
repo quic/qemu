@@ -29,7 +29,7 @@
 
 const char * const opcode_names[] = {
 #define OPCODE(IID) STRINGIZE(IID)
-#include "opcodes_def_generated.h"
+#include "opcodes_def_generated.h.inc"
     NULL
 #undef OPCODE
 };
@@ -59,7 +59,7 @@ const char * const opcode_syntax[XX_LAST_OPCODE] = {
 const char * const opcode_rregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
@@ -68,7 +68,7 @@ const char * const opcode_rregs[] = {
 const char * const opcode_wregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO

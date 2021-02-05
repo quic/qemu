@@ -23,7 +23,7 @@
 
 enum {
 #define DEF_ATTRIB(NAME, ...) A_##NAME,
-#include "attribs_def.h"
+#include "attribs_def.h.inc"
 #undef DEF_ATTRIB
 };
 

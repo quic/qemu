@@ -42,7 +42,7 @@ typedef struct {
 
 HelperCount helper_counts[] = {
 #define OPCODE(TAG)    { 0, #TAG }
-#include "opcodes_def_generated.h"
+#include "opcodes_def_generated.h.inc"
 #undef OPCODE
     { 0, NULL }
 };
@@ -1224,4 +1224,4 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 #define BOGUS_HELPER(tag) \
     printf("ERROR: bogus helper: " #tag "\n")
 
-#include "helper_funcs_generated.h"
+#include "helper_funcs_generated.c.inc"

@@ -20,7 +20,7 @@
 
 typedef enum {
 #define OPCODE(IID) IID
-#include "opcodes_def_generated.h"
+#include "opcodes_def_generated.h.inc"
     XX_LAST_OPCODE
 #undef OPCODE
 } Opcode;

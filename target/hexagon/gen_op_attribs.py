@@ -28,8 +28,7 @@ def main():
     hex_common.calculate_attribs()
 
     ##
-    ## Generate the op_attribs_generated.h file
-    ##     Lists all the attributes associated with each instruction
+    ##     Generate all the attributes associated with each instruction
     ##
     with open(sys.argv[3], 'w') as f:
         for tag in hex_common.tags:

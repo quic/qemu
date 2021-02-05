@@ -23,8 +23,7 @@ import string
 import hex_common
 
 ##
-## Generate the op_regs_generated.h file
-##     Lists the register and immediate operands for each instruction
+##     Generate the register and immediate operands for each instruction
 ##
 def calculate_regid_reg(tag):
     def letter_inc(x): return chr(ord(x)+1)

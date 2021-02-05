@@ -32,9 +32,6 @@ def main():
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    ##
-    ## Generate the shortcode_generated.h file
-    ##
     with open(sys.argv[3], 'w') as f:
         f.write("#ifndef DEF_SHORTCODE\n")
         f.write("#define DEF_SHORTCODE(TAG,SHORTCODE)    /* Nothing */\n")

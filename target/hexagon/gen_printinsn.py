@@ -23,8 +23,7 @@ import string
 import hex_common
 
 ##
-## Generate the printinsn_generated.h file
-##     Data for printing each instruction (format string + operands)
+##     Generate data for printing each instruction (format string + operands)
 ##
 def regprinter(m):
     str = m.group(1)

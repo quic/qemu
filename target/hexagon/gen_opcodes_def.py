@@ -26,8 +26,7 @@ def main():
     hex_common.read_semantics_file(sys.argv[1])
 
     ##
-    ## Generate the opcodes_def_generated.h file
-    ##     Gives a list of all the opcodes
+    ##     Generate a list of all the opcodes
     ##
     with open(sys.argv[3], 'w') as f:
         for tag in hex_common.tags:

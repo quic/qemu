@@ -16,6 +16,7 @@
  */
 
 #include "internal.h"
+#include "helper_protos_generated.h.inc"
 
 DEF_HELPER_FLAGS_2(raise_exception, TCG_CALL_NO_RETURN, noreturn, env, i32)
 #if HEX_DEBUG
@@ -92,5 +93,3 @@ DEF_HELPER_4(sffms_lib, f32, env, f32, f32, f32)
 
 DEF_HELPER_3(dfmpyfix, f64, env, f64, f64)
 DEF_HELPER_4(dfmpyhh, f64, env, f64, f64, f64)
-
-#include "helper_protos_generated.h"

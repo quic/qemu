@@ -31,7 +31,7 @@
 
 const char * const opcode_names[] = {
 #define OPCODE(IID) DONAME(IID)
-#include "opcodes_def_generated.h"
+#include "opcodes_def_generated.h.inc"
     NULL
 #undef OPCODE
 };
@@ -39,7 +39,7 @@ const char * const opcode_names[] = {
 const char * const opcode_reginfo[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) REGINFO,
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
@@ -49,7 +49,7 @@ const char * const opcode_reginfo[] = {
 const char * const opcode_rregs[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
@@ -59,7 +59,7 @@ const char * const opcode_rregs[] = {
 const char * const opcode_wregs[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
@@ -67,7 +67,7 @@ const char * const opcode_wregs[] = {
 
 const char * const opcode_short_semantics[] = {
 #define DEF_SHORTCODE(TAG, SHORTCODE)              [TAG] = #SHORTCODE,
-#include "shortcode_generated.h"
+#include "shortcode_generated.h.inc"
 #undef DEF_SHORTCODE
     NULL
 };
@@ -107,7 +107,7 @@ void opcode_init(void)
 
 #define ATTRIBS(...) , ## __VA_ARGS__, 0
 #define OP_ATTRIB(TAG, ARGS) init_attribs(TAG ARGS);
-#include "op_attribs_generated.h"
+#include "op_attribs_generated.h.inc"
 #undef OP_ATTRIB
 #undef ATTRIBS
 

@@ -21,7 +21,7 @@
 const RegField reg_field_info[] = {
 #define DEF_REG_FIELD(TAG, START, WIDTH)    \
       { START, WIDTH },
-#include "reg_fields_def.h"
+#include "reg_fields_def.h.inc"
       { 0, 0 }
 #undef DEF_REG_FIELD
 };

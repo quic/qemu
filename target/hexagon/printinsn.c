@@ -44,7 +44,7 @@ static void snprintinsn(GString *buf, Insn *insn)
     case TAG: \
         g_string_append_printf(buf, FMT, __VA_ARGS__); \
         break;
-#include "printinsn_generated.h"
+#include "printinsn_generated.h.inc"
 #undef DEF_VECX_PRINTINFO
 #undef DEF_PRINTINFO
     }
