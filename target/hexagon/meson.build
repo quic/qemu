@@ -27,7 +27,10 @@ gen_tcg_h = meson.current_source_dir() / 'gen_tcg.h'
 #  Step 1
 #  We use a C program to create semantics_generated.pyinc
 #
-gen_semantics = executable('gen_semantics', 'gen_semantics.c', native: true)
+gen_semantics = executable(
+    'gen_semantics',
+    'gen_semantics.c',
+    native: true, build_by_default: false)
 
 semantics = custom_target(
     'semantics_generated.pyinc',
@@ -145,7 +148,10 @@ hexagon_ss.add(opcodes_def_h)
 # We use a C program to create iset.py which is imported into dectree.py
 # to create the decode tree
 #
-gen_dectree_import = executable('gen_dectree_import', 'gen_dectree_import.c', opcodes_def_h, op_regs_h, native: true)
+gen_dectree_import = executable(
+    'gen_dectree_import',
+    'gen_dectree_import.c', opcodes_def_h, op_regs_h,
+    native: true, build_by_default: false)
 
 iset_py = custom_target(
     'iset.py',
