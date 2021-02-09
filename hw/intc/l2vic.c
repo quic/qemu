@@ -235,8 +235,11 @@ static void l2vic_write(void *opaque, hwaddr offset,
         g_assert(irq != 32);
         irq += wordoffset * 8;
 
-        qemu_mutex_unlock(&s->active);
-        return l2vic_set_irq(opaque, irq, 1);
+        /* The soft-int interface only works with edge-triggered interrupts */
+        if (test_bit(irq, (unsigned long *)s->int_type)) {
+            qemu_mutex_unlock(&s->active);
+            return l2vic_set_irq(opaque, irq, 1);
+        }
     } else if (offset >= L2VIC_INT_GRPn_0 &&
                offset < L2VIC_INT_GRPn_1) {
         L2VICA(s->int_group_n0, offset - L2VIC_INT_GRPn_0) = val;
