@@ -339,20 +339,22 @@ static void fastl2vic_write(void *opaque, hwaddr offset,
             const hwaddr addr = cfgExtensions.l2vic_base
                                 + L2VIC_INT_ENABLE_SETn;
             cpu_physical_memory_write(addr + slice, &val, size);
-            return;
-        } else if (cmd == 0x1) {
+        }
+        else if (cmd == 0x1) {
             const hwaddr addr = cfgExtensions.l2vic_base
                                 + L2VIC_INT_ENABLE_CLEARn;
-            return cpu_physical_memory_write(addr + slice, &val, size);
-        } else if (cmd == 2) {
+            cpu_physical_memory_write(addr + slice, &val, size);
+        }
+        else if (cmd == 0x2) {
             const hwaddr addr = cfgExtensions.l2vic_base
                                 + L2VIC_SOFT_INTn;
-            return cpu_physical_memory_write(addr + slice, &val, size);
+            cpu_physical_memory_write(addr + slice, &val, size);
         }
         /* RESERVED */
-        else if ((val & 0xff0000) == 0x110000) {
+        else if (cmd == 0x3) {
             g_assert(0);
         }
+        return;
     }
     /* Address zero is the only legal spot to write */
     g_assert(0);
@@ -436,7 +438,8 @@ static void v66g_linux_init(ObjectClass *oc, void *data)
     MachineClass *mc = MACHINE_CLASS(oc);
     mc->desc = "Hexagon Linux V66G_1024";
 
-    syscfg_is_linux = true;
+    /* NOTE: qurt_isr_t1 will fail if this is true. */
+    /*syscfg_is_linux = true; */
 }
 
 
