@@ -938,7 +938,9 @@ int dma_adapter_pop_desc_queue_done(dma_t *dma) {
 		int idx = queue_peek(proc, dma->num, &dma_info->desc_queue);
 		int pop = 0;
 		pop = (idx>=0);
-		pop &= (dma_info->desc_entries[idx]->desc.state == DMA_DESC_DONE) || (dma_info->desc_entries[idx]->desc.state ==  DMA_DESC_EXCEPT_ERROR);
+		if ( pop ) {
+		  pop &= (dma_info->desc_entries[idx]->desc.state == DMA_DESC_DONE) || (dma_info->desc_entries[idx]->desc.state ==  DMA_DESC_EXCEPT_ERROR);
+    }
 		// If it's exception running, we're going to keep that descriptor
 		if ( pop ) {
 			idx = queue_pop(proc, dma->num, &dma_info->desc_queue);
