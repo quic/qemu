@@ -490,17 +490,22 @@ static void v66g_1024_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 4 * GiB;
 }
 
+
+static void v66g_1024_linux_init(MachineState *machine)
+{
+    syscfg_is_linux = true;
+
+    v66g_1024_config_init(machine);
+}
+
 static void v66g_linux_init(ObjectClass *oc, void *data)
 {
     v66g_1024_init(oc, data);
 
     MachineClass *mc = MACHINE_CLASS(oc);
+    mc->init = v66g_1024_linux_init;
     mc->desc = "Hexagon Linux V66G_1024";
-
-    /* NOTE: qurt_isr_t1 will fail if this is true. */
-    /*syscfg_is_linux = true; */
 }
-
 
 static void v68n_1024_config_init(MachineState *machine)
 
