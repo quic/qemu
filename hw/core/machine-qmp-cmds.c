@@ -138,6 +138,9 @@ static CpuInfoArch sysemu_target_to_cpuinfo_arch(SysEmuTarget target)
     case SYS_EMU_TARGET_RISCV64:
         return CPU_INFO_ARCH_RISCV;
 
+    case SYS_EMU_TARGET_HEXAGON:
+        return CPU_INFO_ARCH_HEXAGON;
+
     default:
         return CPU_INFO_ARCH_OTHER;
     }

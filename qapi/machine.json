@@ -32,7 +32,7 @@
              'mips64el', 'mipsel', 'moxie', 'nios2', 'or1k', 'ppc',
              'ppc64', 'riscv32', 'riscv64', 'rx', 's390x', 'sh4',
              'sh4eb', 'sparc', 'sparc64', 'tricore', 'unicore32',
-             'x86_64', 'xtensa', 'xtensaeb' ] }
+             'x86_64', 'xtensa', 'xtensaeb', 'hexagon' ] }
 
 ##
 # @CpuInfoArch:
@@ -47,7 +47,7 @@
 # Since: 2.6
 ##
 { 'enum': 'CpuInfoArch',
-  'data': ['x86', 'sparc', 'ppc', 'mips', 'tricore', 's390', 'riscv', 'other' ] }
+  'data': ['x86', 'sparc', 'ppc', 'mips', 'tricore', 's390', 'riscv', 'hexagon', 'other' ] }
 
 ##
 # @CpuInfo:
@@ -87,7 +87,8 @@
             'mips': 'CpuInfoMIPS',
             'tricore': 'CpuInfoTricore',
             's390': 'CpuInfoS390',
-            'riscv': 'CpuInfoRISCV' } }
+            'riscv': 'CpuInfoRISCV',
+            'hexagon': 'CpuInfoHexagon' } }
 
 ##
 # @CpuInfoX86:
@@ -156,6 +157,16 @@
 # Since 2.12
 ##
 { 'struct': 'CpuInfoRISCV', 'data': { 'pc': 'int' } }
+
+##
+# @CpuInfoHexagon:
+#
+# Additional information about a virtual Hexagon CPU
+#
+# @pc: the instruction pointer
+#
+##
+{ 'struct': 'CpuInfoHexagon', 'data': { 'pc': 'int' } }
 
 ##
 # @CpuS390State:

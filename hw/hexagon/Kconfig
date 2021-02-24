@@ -1,0 +1,4 @@
+config HEXAGON
+    bool
+    imply PTIMER
+    select L2VIC  # Vector PIC

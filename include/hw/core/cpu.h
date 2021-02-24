@@ -125,6 +125,8 @@ struct AccelCPUClass;
  * @vmsd: State description for migration.
  * @gdb_num_core_regs: Number of core registers accessible to GDB.
  * @gdb_core_xml_file: File name for core registers GDB XML description.
+ * @gdb_qreg_info_lines: Array of lines of registers qRegisterInfo description.
+ * @gdb_qreg_info_line_count: Count of lines for @gdb_qreg_info_lines.
  * @gdb_stop_before_watchpoint: Indicates whether GDB expects the CPU to stop
  *           before the insn which triggers a watchpoint rather than after it.
  * @gdb_arch_name: Optional callback that returns the architecture name known
@@ -179,6 +181,8 @@ struct CPUClass {
 
     const VMStateDescription *vmsd;
     const char *gdb_core_xml_file;
+    const char **gdb_qreg_info_lines;
+    int gdb_qreg_info_line_count;
     gchar * (*gdb_arch_name)(CPUState *cpu);
     const char * (*gdb_get_dynamic_xml)(CPUState *cpu, const char *xmlname);
 

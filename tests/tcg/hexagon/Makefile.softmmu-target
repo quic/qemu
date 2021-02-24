@@ -1,0 +1,118 @@
+# -*- Mode: makefile -*-
+#
+# Hexagon SoftMMU tests - included from tests/tcg/Makefile
+#
+
+HEXAGON_SYSTEM_SRC=$(SRC_PATH)/tests/tcg/hexagon/system
+
+# Set search path for all sources
+VPATH 		+= $(HEXAGON_SYSTEM_SRC)
+
+TESTS += \
+	standalone_hw \
+	standalone_vec \
+	mmu_test \
+	badva \
+	tlblock \
+	k0lock \
+	invalid_opcode \
+	sys_atomics \
+	timer_reg \
+	qtimer_test \
+	bestwait \
+	ciad-siad \
+	fastl2vic \
+	fastint \
+	swi \
+	udma \
+	hmx \
+	hmx_conv \
+	pcycle \
+	framelimit \
+	float_excp \
+	hvx_nocoproc \
+	pendalot \
+	vid-group \
+	levelint \
+	$()
+
+ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
+
+LDFLAGS+=$(ISDB_FLAGS)
+CFLAGS+=-G0 -O2
+
+CRT_OBJS=boot.o
+
+LDFLAGS+= -static
+
+# Build and link the tests
+%.o: %.S
+	$(CC) $(ASFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+%.o: %.c
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+%.o: %.cpp
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+
+standalone_hw: standalone_hw.o monitor_insts.o
+standalone_vec: standalone_vec.o
+mmu_test: mmu_test.o dummy_mutex.o
+badva: badva.o
+tlblock: tlblock.o
+k0lock: k0lock.o
+invalid_opcode: invalid_opcode.o
+sys_atomics: sys_atomics.o
+timer_reg: timer_reg.o
+qtimer_test: qtimer_test.o
+bestwait: bestwait.o
+ciad-siad: ciad-siad.o
+fastl2vic: fastl2vic.o
+fastint: fastint.o
+swi: swi.o
+udma: udma.o
+hmx: hmx.o
+hmx_conv: hmx_conv.o hmx_conv_asm.o util.o
+wait: wait.o
+pcycle: pcycle.o
+framelimit: framelimit.o
+float_excp: float_excp.o
+hvx_nocoproc: hvx_nocoproc.o
+pendalot: pendalot.o
+vid-group: vid-group.o
+levelint: levelint.o
+
+$(TESTS):
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
+
+
+# Specific Test Rules
+
+memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
+
+# TODO: We should see if we can find a way to avoid this:
+standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
+
+standalone_vec.o: CFLAGS+= -mv69 -O2 -mhvx  -fvectorize
+hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
+hmx.o: CFLAGS+= -mhmx
+hmx_conv.o: CFLAGS+= -mhmx
+hmx_conv_asm.o: ASFLAGS+= -mhmx
+
+timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
+qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
+qtimer_test: LDFLAGS+= -lhexagon
+
+QEMU_BASE_MACHINE=-M V68N_1024 -cpu v67,count-gcycle-xt=on
+QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel
+
+run-framelimit: framelimit
+run-hvx_nocoproc: hvx_nocoproc
+run-float_excp: float_excp
+
+# These tests raise an exception and return 255 to the shell
+run-framelimit run-hvx_nocoproc run-float_excp:
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)"); \
+	if [ $$? -eq 255 ] ; then \
+		return 0; \
+	else \
+		return -1; \
+	fi
