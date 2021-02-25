@@ -933,7 +933,7 @@ static inline void gen_ashiftr_4_4s(TCGv dst, TCGv src, int32_t shift_amt)
 
 static inline void gen_ashiftl_4_4s(TCGv dst, TCGv src, int32_t shift_amt)
 {
-    if (shift_amt >= 64) {
+    if (shift_amt >= 32) {
         tcg_gen_movi_tl(dst, 0);
     } else {
         tcg_gen_shli_tl(dst, src, shift_amt);
@@ -1001,7 +1001,7 @@ static inline void gen_asl_r_r_or(TCGv RxV, TCGv RsV, TCGv RtV)
 
 static inline void gen_lshiftr_4_4u(TCGv dst, TCGv src, int32_t shift_amt)
 {
-    if (shift_amt >= 64) {
+    if (shift_amt >= 32) {
         tcg_gen_movi_tl(dst, 0);
     } else {
         tcg_gen_shri_tl(dst, src, shift_amt);

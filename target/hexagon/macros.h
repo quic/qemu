@@ -664,7 +664,7 @@ static inline void gen_fbrev(TCGv result, TCGv src)
 #else
 #define fASHIFTR(SRC, SHAMT, REGSTYPE) (fCAST##REGSTYPE##s(SRC) >> (SHAMT))
 #define fLSHIFTR(SRC, SHAMT, REGSTYPE) \
-    (((SHAMT) >= 64) ? 0 : (fCAST##REGSTYPE##u(SRC) >> (SHAMT)))
+    (((SHAMT) >= (sizeof(SRC) * 8)) ? 0 : (fCAST##REGSTYPE##u(SRC) >> (SHAMT)))
 #endif
 #define fROTL(SRC, SHAMT, REGSTYPE) \
     (((SHAMT) == 0) ? (SRC) : ((fCAST##REGSTYPE##u(SRC) << (SHAMT)) | \
@@ -679,7 +679,7 @@ static inline void gen_fbrev(TCGv result, TCGv src)
     gen_ashiftl_##REGSTYPE##s(DST, SRC, SHAMT)
 #else
 #define fASHIFTL(SRC, SHAMT, REGSTYPE) \
-    (((SHAMT) >= 64) ? 0 : (fCAST##REGSTYPE##s(SRC) << (SHAMT)))
+    (((SHAMT) >= (sizeof(SRC) * 8)) ? 0 : (fCAST##REGSTYPE##s(SRC) << (SHAMT)))
 #endif
 
 #ifdef QEMU_GENERATE
