@@ -68,11 +68,6 @@ void cpu_loop(CPUHexagonState *env)
                 env->gpr[0] = ret;
             }
             break;
-        case HEX_EXCP_TRAP1:
-            EXCP_DUMP(env, "\nqemu: trap1 exception %#x - aborting\n",
-                     trapnr);
-            exit(EXIT_FAILURE);
-            break;
         case HEX_EXCP_FETCH_NO_UPAGE:
         case HEX_EXCP_PRIV_NO_UREAD:
         case HEX_EXCP_PRIV_NO_UWRITE:
