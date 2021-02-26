@@ -833,7 +833,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     } while (0)
 
 #ifdef QEMU_GENERATE
-#define fSETBIT(N, DST, VAL) gen_set_bit((N), (DST), (VAL));
+#define fSETBIT(N, DST, VAL) tcg_gen_deposit_tl(DST, DST, VAL, N, 1)
 #else
 #define fSETBIT(N, DST, VAL) \
     do { \
