@@ -367,7 +367,7 @@ static float32 build_float32(uint8_t sign, uint32_t exp, uint32_t mant)
 }
 
 /*
- * Hexagon FP operations return ~0 insteat of NaN
+ * Hexagon FP operations return ~0 instead of NaN
  * The hex_check_sfnan/hex_check_dfnan functions perform this check
  */
 static float32 hex_check_sfnan(float32 x)

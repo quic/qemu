@@ -1762,7 +1762,7 @@
 
 /*
  * Compare each of the 8 unsigned bytes
- * The minimum is places in each byte of the destination.
+ * The minimum is placed in each byte of the destination.
  * Each bit of the predicate is set true if the bit from the first operand
  * is greater than the bit from the second operand.
  * r5:4,p1 = vminub(r1:0, r3:2)
