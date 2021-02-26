@@ -39,4 +39,3 @@ DEF_REG_FIELD(USR_FPDBZE,        26, 1)
 DEF_REG_FIELD(USR_FPOVFE,        27, 1)
 DEF_REG_FIELD(USR_FPUNFE,        28, 1)
 DEF_REG_FIELD(USR_FPINPE,        29, 1)
-DEF_REG_FIELD(USR_PFA,           31, 1) /* read-only */
