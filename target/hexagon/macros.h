@@ -213,7 +213,7 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 #define fMAX(A, B) (((A) > (B)) ? (A) : (B))
 
 #ifdef QEMU_GENERATE
-#define fMIN(DST, A, B) tcg_gen_movcond_i32(TCG_COND_GT, DST, A, B, A, B)
+#define fMIN(DST, A, B) tcg_gen_movcond_i32(TCG_COND_LT, DST, A, B, A, B)
 #else
 #define fMIN(A, B) (((A) < (B)) ? (A) : (B))
 #endif

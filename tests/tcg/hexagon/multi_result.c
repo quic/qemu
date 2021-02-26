@@ -60,6 +60,21 @@ static long long vacsh(long long Rxx, long long Rss, long long Rtt,
   return result;
 }
 
+static long long vminub(long long Rtt, long long Rss,
+                        int *pred_result)
+{
+  long long result;
+  int predval;
+
+  asm volatile("%0,p0 = vminub(%2, %3)\n\t"
+               "%1 = p0\n\t"
+               : "=r"(result), "=r"(predval)
+               : "r"(Rtt), "r"(Rss)
+               : "p0");
+  *pred_result = predval;
+  return result;
+}
+
 static long long add_carry(long long Rss, long long Rtt,
                            int pred_in, int *pred_result)
 {
@@ -154,6 +169,24 @@ static void test_vacsh()
     check_p(pred_result, 0xf0);
 }
 
+static void test_vminub()
+{
+    long long res64;
+    int pred_result;
+
+    res64 = vminub(0x0807060504030201LL,
+                   0x0102030405060708LL,
+                   &pred_result);
+    check_ll(res64, 0x0102030404030201LL);
+    check_p(pred_result, 0xf0);
+
+    res64 = vminub(0x0802060405030701LL,
+                   0x0107030504060208LL,
+                   &pred_result);
+    check_ll(res64, 0x0102030404030201LL);
+    check_p(pred_result, 0xaa);
+}
+
 static void test_add_carry()
 {
     long long res64;
@@ -207,6 +240,7 @@ int main()
     test_sfrecipa();
     test_sfinvsqrta();
     test_vacsh();
+    test_vminub();
     test_add_carry();
     test_sub_carry();
 
