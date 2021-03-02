@@ -529,6 +529,7 @@ struct CPUHexagonState {
     hex_lock_state_t k0_lock_state;
     uint16_t nmi_threads;
     uint32_t last_cpu;
+    GList *dir_list;
 #endif
 };
 #define mmvecx_t CPUHexagonState

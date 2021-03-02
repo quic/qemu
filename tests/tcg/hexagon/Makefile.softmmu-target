@@ -34,6 +34,7 @@ TESTS += \
 	pendalot \
 	vid-group \
 	levelint \
+	swi_fs \
 	$()
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
@@ -79,6 +80,7 @@ hvx_nocoproc: hvx_nocoproc.o
 pendalot: pendalot.o
 vid-group: vid-group.o
 levelint: levelint.o
+swi_fs: swi_fs.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)

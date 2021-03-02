@@ -99,6 +99,8 @@
 #define SYS_MKDIR           0x183
 #define SYS_RMDIR           0x184
 
+static const int DIR_INDEX_OFFSET = 0x0b000;
+
 static int MapError(int ERR)
 {
     errno = ERR;
@@ -404,7 +406,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, fd);
 
         if (fd == -1) {
-            printf("ERROR: fopen failed, errno = %d\n", errno);
             ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
         }
     }
@@ -492,6 +493,92 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, len);
     }
     break;
+
+  case SYS_OPENDIR:
+    {
+        DIR *dir;
+        char buf[BUFSIZ];
+        int dir_index = 0;
+
+        i = 0;
+        do {
+            DEBUG_MEMORY_READ(swi_info + i, 1, &buf[i]);
+            i++;
+        } while (buf[i - 1]);
+
+        dir = opendir(buf);
+        if (dir != NULL) {
+            env->dir_list = g_list_append(env->dir_list, dir);
+            dir_index = g_list_index(env->dir_list, dir) + DIR_INDEX_OFFSET;
+        }
+        else
+            ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
+
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00, dir_index);
+        break;
+    }
+  case SYS_READDIR:
+    {
+        DIR *dir;
+        struct dirent *host_dir_entry = NULL;
+        vaddr_t guest_dir_entry;
+        int dir_index = swi_info - DIR_INDEX_OFFSET;
+        int i;
+
+        dir = g_list_nth_data(env->dir_list, dir_index);
+
+        if (dir) {
+            errno = 0;
+            host_dir_entry = readdir(dir);
+            if (host_dir_entry == NULL && errno != 0) {
+                ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
+            }
+        }
+        else
+            ARCH_SET_THREAD_REG(env, HEX_REG_R01, EBADF);
+
+        guest_dir_entry = ARCH_GET_THREAD_REG(env, HEX_REG_R02) +
+            sizeof(int32_t) /* Index entry */ ;
+        if (host_dir_entry) {
+            vaddr_t guest_dir_ptr = guest_dir_entry;
+#if 0
+            DEBUG_MEMORY_WRITE(guest_dir_ptr,
+                sizeof(host_dir_entry->d_ino),
+                host_dir_entry->d_ino);
+            guest_dir_ptr += sizeof(host_dir_entry->d_ino);
+#endif
+
+            for (i = 0; i < sizeof(host_dir_entry->d_name); i++) {
+                DEBUG_MEMORY_WRITE(guest_dir_ptr + i, 1,
+                    host_dir_entry->d_name[i]);
+                if (! host_dir_entry->d_name[i])
+                    break;
+            }
+            ARCH_SET_THREAD_REG(env, HEX_REG_R00, guest_dir_entry - sizeof(int32_t));
+        }
+        else
+            ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0 /* NULL */);
+        break;
+        fprintf(stderr, "> readdir done\n");
+    }
+    break;
+  case SYS_CLOSEDIR:
+  {
+        DIR *dir;
+        int ret = 0;
+
+        dir = g_list_nth_data(env->dir_list, swi_info);
+        if (dir != NULL) {
+            ret = closedir(dir);
+            if (ret != 0) {
+                ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
+            }
+        }
+        else
+            ARCH_SET_THREAD_REG(env, HEX_REG_R01, EBADF);
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00, ret);
+        break;
+  }
 
   case SYS_COREDUMP:
       printf("CRASH!\n");

@@ -226,6 +226,7 @@ static void hexagon_common_init(MachineState *machine)
     g_string_append(argv, " ");
     g_string_append(argv, machine->kernel_cmdline);
     env->cmdline = g_string_free(argv, false);
+    env->dir_list = NULL;
 
     if (machine->kernel_filename) {
         hexagon_load_kernel(env);
