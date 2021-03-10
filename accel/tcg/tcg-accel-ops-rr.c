@@ -155,9 +155,9 @@ static void *rr_cpu_thread_fn(void *arg)
     if (!coroutine_tcg) {
         rcu_register_thread();
         tcg_register_thread();
+        qemu_mutex_lock_iothread();
     }
 
-    qemu_mutex_lock_iothread();
     qemu_thread_get_self(cpu->thread);
 
     cpu->thread_id = qemu_get_thread_id();
