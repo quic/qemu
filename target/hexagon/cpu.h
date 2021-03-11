@@ -168,10 +168,8 @@ typedef struct HexagonCPU {
     target_ulong lldb_stack_adjust;
 } HexagonCPU;
 
-static inline HexagonCPU *hexagon_env_get_cpu(CPUHexagonState *env)
-{
-    return container_of(env, HexagonCPU, env);
-}
+#define HEXAGONCPU_FROM_ENV(env)    container_of((env), HexagonCPU, env)
+#define CPUSTATE_FROM_ENV(env)      CPU(HEXAGONCPU_FROM_ENV(env))
 
 #include "cpu_bits.h"
 

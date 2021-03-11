@@ -512,7 +512,7 @@ void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n)
     tcg_temp_free_ptr(s);
 }
 
-static inline void gen_vec_copy(intptr_t dstoff, intptr_t srcoff, size_t size)
+static void gen_vec_copy(intptr_t dstoff, intptr_t srcoff, size_t size)
 {
     TCGv_ptr src = tcg_temp_new_ptr();
     TCGv_ptr dst = tcg_temp_new_ptr();
@@ -523,7 +523,7 @@ static inline void gen_vec_copy(intptr_t dstoff, intptr_t srcoff, size_t size)
     tcg_temp_free_ptr(dst);
 }
 
-static inline bool pkt_has_hvx_store(Packet *pkt)
+static bool pkt_has_hvx_store(Packet *pkt)
 {
     int i;
     for (i = 0; i < pkt->num_insns; i++) {
@@ -815,7 +815,7 @@ static void hexagon_tr_translate_packet(DisasContextBase *dcbase, CPUState *cpu)
          * The CPU log is used to compare against LLDB single stepping,
          * so end the TLB after every packet.
          */
-        HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
+        HexagonCPU *hex_cpu = HEXAGONCPU_FROM_ENV(env);
         if (hex_cpu->lldb_compat && qemu_loglevel_mask(CPU_LOG_TB_CPU)) {
             ctx->base.is_jmp = DISAS_TOO_MANY;
         }

@@ -72,7 +72,7 @@ static void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
                                                  uint32_t exception,
                                                  uintptr_t pc)
 {
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    CPUState *cs = CPUSTATE_FROM_ENV(env);
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
@@ -83,8 +83,8 @@ void QEMU_NORETURN HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
     do_raise_exception_err(env, excp, 0);
 }
 
-static inline void log_reg_write(CPUHexagonState *env, int rnum,
-                                 target_ulong val, uint32_t slot)
+static void log_reg_write(CPUHexagonState *env, int rnum,
+                          target_ulong val, uint32_t slot)
 {
     HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
                   rnum, val, val);
@@ -100,8 +100,7 @@ static inline void log_reg_write(CPUHexagonState *env, int rnum,
 #endif
 }
 
-static inline void log_pred_write(CPUHexagonState *env, int pnum,
-                                  target_ulong val)
+static void log_pred_write(CPUHexagonState *env, int pnum, target_ulong val)
 {
     HEX_DEBUG_LOG("log_pred_write[%d] = " TARGET_FMT_ld
                   " (0x" TARGET_FMT_lx ")\n",
@@ -116,7 +115,7 @@ static inline void log_pred_write(CPUHexagonState *env, int pnum,
     }
 }
 
-static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
+static void write_new_pc(CPUHexagonState *env, target_ulong addr)
 {
     HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
 
@@ -147,7 +146,7 @@ void HELPER(debug_start_packet)(CPUHexagonState *env)
 }
 #endif
 
-static inline int32_t new_pred_value(CPUHexagonState *env, int pnum)
+static int32_t new_pred_value(CPUHexagonState *env, int pnum)
 {
     return env->new_pred_value[pnum];
 }
@@ -1079,7 +1078,7 @@ float32 HELPER(sffms)(CPUHexagonState *env, float32 RxV,
     return RxV;
 }
 
-static inline bool is_inf_prod(int32_t a, int32_t b)
+static bool is_inf_prod(int32_t a, int32_t b)
 {
     return (float32_is_infinity(a) && float32_is_infinity(b)) ||
            (float32_is_infinity(a) && is_finite(b) && !float32_is_zero(b)) ||
@@ -1189,8 +1188,8 @@ float64 HELPER(dfmpyhh)(CPUHexagonState *env, float64 RxxV,
 }
 
 /* Log a write to HVX vector */
-static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
-                                      int vnew, uint32_t slot)
+static void log_vreg_write(CPUHexagonState *env, int num, void *var,
+                           int vnew, uint32_t slot)
 {
     VRegMask regnum_mask = ((VRegMask)1) << num;
 
@@ -1205,8 +1204,8 @@ static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
     }
 }
 
-static inline void log_mmvector_write(CPUHexagonState *env, int num,
-                                      MMVector var, int vnew, uint32_t slot)
+static void log_mmvector_write(CPUHexagonState *env, int num,
+                               MMVector var, int vnew, uint32_t slot)
 {
     log_vreg_write(env, num, &var, vnew, slot);
 }

@@ -83,7 +83,7 @@ typedef enum {
     NUM_EXT_ACCESS_TYPES
 } ExtMemAccessType;
 
-static inline
+static
 target_ulong mem_init_access(CPUHexagonState *env, int slot, uint32_t vaddr,
                              int width, ExtMemAccessType mtype,
                              int type_for_xlate)
@@ -96,7 +96,7 @@ target_ulong mem_init_access(CPUHexagonState *env, int slot, uint32_t vaddr,
 #endif
 }
 
-static inline int check_gather_store(CPUHexagonState *env)
+static int check_gather_store(CPUHexagonState *env)
 {
     /* First check to see if temp vreg has been updated */
     int check  = env->gather_issued;
