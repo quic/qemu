@@ -25,6 +25,7 @@
 #include "tcg/tcg-op.h"
 #include "trace.h"
 #include "semihosting/common-semi.h"
+#include "libqemu/wrappers/target/riscv-callbacks.h"
 
 int riscv_cpu_mmu_index(CPURISCVState *env, bool ifetch)
 {
@@ -618,6 +619,10 @@ uint64_t riscv_cpu_update_mip(RISCVCPU *cpu, uint64_t mask, uint64_t value)
     }
 
     env->mip = (env->mip & ~mask) | (value & mask);
+
+#ifdef CONFIG_LIBQEMU
+    libqemu_cpu_riscv_mip_update_cb(CPU(cpu), env->mip);
+#endif
 
     if (env->mip | vsgein) {
         cpu_interrupt(cs, CPU_INTERRUPT_HARD);
