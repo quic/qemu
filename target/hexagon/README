@@ -142,10 +142,9 @@ pointer (r29)
 In gen_tcg.h you'll see
     #define fGEN_TCG_SL2_loadrd_sp(SHORTCODE)      fGEN_TCG_tmp(SHORTCODE)
 
-There are also cases where we brute force the TCG code generation.  The
-allocframe and deallocframe instructions are examples.  Other examples are
-instructions with multiple definitions.  These require special handling
-because qemu helpers can only return a single value.
+There are also cases where we brute force the TCG code generation.
+Instructions with multiple definitions are examples.  These require special
+handling because qemu helpers can only return a single value.
 
 In addition to instruction semantics, we use a generator to create the decode
 tree.  This generation is also a two step process.  The first step is to run
@@ -228,7 +227,6 @@ During runtime, the following fields in CPUHexagonState (see cpu.h) are used
     mem_log_stores        record of the stores (indexed by slot)
 
 For Hexagon Vector eXtensions (HVX), the following fields are used
-
     future_VRegs
     tmp_VRegs
     future_ZRegs
@@ -267,4 +265,3 @@ Here are some handy places to set breakpoints
             br helper_debug_start_packet if env->gpr[41] == 0xdeadbeef
         At the end of execution of a packet for a given PC
             br helper_debug_commit_end if env->this_PC == 0xdeadbeef
-

@@ -284,7 +284,6 @@ def main():
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-
     with open(sys.argv[4], 'w') as f:
         for tag in hex_common.tags:
             ## Skip the priv instructions

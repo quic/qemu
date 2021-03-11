@@ -17,8 +17,6 @@
 
 hexagon_ss = ss.source_set()
 
-prog_python = import('python').find_installation('python3')
-
 hex_common_py = 'hex_common.py'
 attribs_def = meson.current_source_dir() / 'attribs_def.h.inc'
 gen_tcg_h = meson.current_source_dir() / 'gen_tcg.h'
@@ -59,7 +57,7 @@ shortcode_generated = custom_target(
     input: 'gen_shortcode.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
 )
 hexagon_ss.add(shortcode_generated)
 
@@ -69,7 +67,7 @@ helper_protos_generated = custom_target(
     input: 'gen_helper_protos.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def, gen_tcg_h],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
 )
 hexagon_ss.add(helper_protos_generated)
 
@@ -79,7 +77,7 @@ tcg_funcs_generated = custom_target(
     input: 'gen_tcg_funcs.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def, gen_tcg_h],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
 )
 hexagon_ss.add(tcg_funcs_generated)
 
@@ -89,7 +87,7 @@ tcg_func_table_generated = custom_target(
     input: 'gen_tcg_func_table.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
 )
 hexagon_ss.add(tcg_func_table_generated)
 
@@ -99,7 +97,7 @@ helper_funcs_generated = custom_target(
     input: 'gen_helper_funcs.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def, gen_tcg_h],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
 )
 hexagon_ss.add(helper_funcs_generated)
 
@@ -109,7 +107,7 @@ printinsn_generated = custom_target(
     input: 'gen_printinsn.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
 )
 hexagon_ss.add(printinsn_generated)
 
@@ -119,7 +117,7 @@ op_regs_generated = custom_target(
     input: 'gen_op_regs.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
 )
 hexagon_ss.add(op_regs_generated)
 
@@ -129,7 +127,7 @@ op_attribs_generated = custom_target(
     input: 'gen_op_attribs.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
 )
 hexagon_ss.add(op_attribs_generated)
 
@@ -139,7 +137,7 @@ opcodes_def_generated = custom_target(
     input: 'gen_opcodes_def.py',
     depends: [semantics_generated],
     depend_files: [hex_common_py, attribs_def],
-    command: [prog_python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, '@OUTPUT@'],
 )
 hexagon_ss.add(opcodes_def_generated)
 

@@ -118,12 +118,6 @@ const uint8_t AC_next_state_LPS_64[64] = {
     37, 38, 38, 63
 };
 
-uint32_t fbrevaddr(uint32_t pointer)
-{
-    uint32_t offset = pointer & 0xffff;
-    return (pointer & 0xffff0000) | revbit16(offset);
-}
-
 uint32_t count_leading_ones_2(uint16_t src)
 {
     int ret;

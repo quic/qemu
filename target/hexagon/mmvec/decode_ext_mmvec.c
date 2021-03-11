@@ -621,4 +621,3 @@ void mmvec_ext_decode_checks(Packet *packet)
     decode_shuffle_for_execution_vops(packet);
     decode_hvx_packet_contents(packet);
 }
-

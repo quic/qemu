@@ -520,4 +520,5 @@ static inline MMVector mmvec_vtmp_data(CPUHexagonState *env)
 #define fUARCH_NOTE_PUMP_2X()
 #endif
 
+#define IV1DEAD()
 #endif

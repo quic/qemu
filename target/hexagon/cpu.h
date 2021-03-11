@@ -106,7 +106,6 @@ struct CPUHexagonState {
     target_ulong pred_written;
 
     MemLog mem_log_stores[STORES_MAX];
-
     target_ulong dczero_addr;
 
     float_status fp_status;

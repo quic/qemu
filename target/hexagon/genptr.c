@@ -684,7 +684,8 @@ static inline void gen_cmpnd_cmp_jmp(Insn *insn, int pnum, TCGCond cond,
         }
 
         /* If there are multiple branches in a packet, ignore the second one */
-        tcg_gen_movcond_tl(TCG_COND_NE, pred, hex_branch_taken, zero, zero, pred);
+        tcg_gen_movcond_tl(TCG_COND_NE, pred, hex_branch_taken, zero,
+                           zero, pred);
 
         tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, pred, zero,
                            new_pc, hex_next_PC);

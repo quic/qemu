@@ -496,7 +496,6 @@ DEF_MACRO(
     (A_COF)
 )
 
-
 DEF_MACRO(
     fBRANCH,
     fWRITE_NPC(LOC); fCOF_CALLBACK(LOC,TYPE),
@@ -1165,18 +1164,6 @@ DEF_MACRO(
 )
 
 DEF_MACRO(
-    fSF_RECIP_LOOKUP,
-    arch_recip_lookup(IDX),
-    ()
-)
-
-DEF_MACRO(
-    fSF_INVSQRT_LOOKUP,
-    arch_invsqrt_lookup(IDX),
-    ()
-)
-
-DEF_MACRO(
     fSF_MUL_POW2,
     (fUNFLOAT(fFLOAT(A) * fFLOAT((fSF_BIAS() + (B)) << fSF_MANTBITS()))),
     ()
@@ -1377,17 +1364,6 @@ DEF_MACRO(
 /*************************************/
 /* Load/Store support                */
 /*************************************/
-
-DEF_MACRO(fcirc_add,
-    (REG=fcircadd(thread, REG,INCR,IMMED, fREAD_CSREG(MuN))),
-    ()
-)
-
-DEF_MACRO(fbrev,
-    (fbrevaddr(REG)),
-    ()
-)
-
 
 DEF_MACRO(fLOAD,
     { DST = (size##SIZE##SIGN##_t)MEM_LOAD##SIZE(thread,EA,insn); },

@@ -824,7 +824,7 @@
 #define fGEN_TCG_S2_storerbnew_pi(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerbnew_ap(SHORTCODE) \
-    fGEN_TCG_STORE_ap(fSTORE(1, 1, EA, fGETBYTE(0, fNEWREG_ST(NtN))))
+    fGEN_TCG_STORE_ap(fSTORE(1, 1, EA, fGETBYTE(0, NtN)))
 #define fGEN_TCG_S2_storerbnew_pr(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerbnew_ur(SHORTCODE) \
@@ -834,7 +834,7 @@
 #define fGEN_TCG_S2_storerbnew_pci(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storerbnew_pcr(SHORTCODE) \
-    fGEN_TCG_STORE_pcr(0, fSTORE(1, 1, EA, fGETBYTE(0, fNEWREG_ST(NtN))))
+    fGEN_TCG_STORE_pcr(0, fSTORE(1, 1, EA, fGETBYTE(0, NtN)))
 #define fGEN_TCG_S2_storerbnewgp(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 
@@ -843,7 +843,7 @@
 #define fGEN_TCG_S2_storerhnew_pi(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerhnew_ap(SHORTCODE) \
-    fGEN_TCG_STORE_ap(fSTORE(1, 2, EA, fGETHALF(0, fNEWREG_ST(NtN))))
+    fGEN_TCG_STORE_ap(fSTORE(1, 2, EA, fGETHALF(0, NtN)))
 #define fGEN_TCG_S2_storerhnew_pr(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerhnew_ur(SHORTCODE) \
@@ -855,7 +855,7 @@
 #define fGEN_TCG_S2_storerhnew_pci(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storerhnew_pcr(SHORTCODE) \
-    fGEN_TCG_STORE_pcr(1, fSTORE(1, 2, EA, fGETHALF(0, fNEWREG_ST(NtN))))
+    fGEN_TCG_STORE_pcr(1, fSTORE(1, 2, EA, fGETHALF(0, NtN)))
 #define fGEN_TCG_S2_storerhnewgp(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 
@@ -864,7 +864,7 @@
 #define fGEN_TCG_S2_storerinew_pi(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerinew_ap(SHORTCODE) \
-    fGEN_TCG_STORE_ap(fSTORE(1, 4, EA, fNEWREG_ST(NtN)))
+    fGEN_TCG_STORE_ap(fSTORE(1, 4, EA, NtN))
 #define fGEN_TCG_S2_storerinew_pr(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerinew_ur(SHORTCODE) \
@@ -874,7 +874,7 @@
 #define fGEN_TCG_S2_storerinew_pci(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storerinew_pcr(SHORTCODE) \
-    fGEN_TCG_STORE_pcr(2, fSTORE(1, 4, EA, fNEWREG_ST(NtN)))
+    fGEN_TCG_STORE_pcr(2, fSTORE(1, 4, EA, NtN))
 #define fGEN_TCG_S2_storerinewgp(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 
@@ -1684,6 +1684,12 @@
  * Mathematical operations with more than one definition require
  * special handling
  */
+#define fGEN_TCG_A5_ACS(SHORTCODE) \
+    do { \
+        gen_helper_vacsh_val(RxxV, cpu_env, RxxV, RssV, RttV); \
+        gen_helper_vacsh_pred(PeV, cpu_env, RxxV, RssV, RttV); \
+    } while (0)
+
 /*
  * Approximate reciprocal
  * r3,p1 = sfrecipa(r0, r1)
@@ -1703,17 +1709,6 @@
         gen_helper_sfinvsqrta_val(RdV, cpu_env, RsV); \
         gen_helper_sfinvsqrta_pred(PeV, cpu_env, RsV); \
     } while (0)
-
-#define fGEN_TCG_A5_ACS(SHORTCODE) \
-    do { \
-        gen_helper_vacsh_val(RxxV, cpu_env, RxxV, RssV, RttV); \
-        gen_helper_vacsh_pred(PeV, cpu_env, RxxV, RssV, RttV); \
-    } while (0)
-
-/*
- * The following fGEN_TCG macros are to speed up qemu
- * We can add more over time
- */
 
 /*
  * Add or subtract with carry.
