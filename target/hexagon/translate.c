@@ -154,6 +154,7 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     ctx->reg_log_idx = 0;
     bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
     ctx->preg_log_idx = 0;
+    bitmap_zero(ctx->pregs_written, NUM_PREGS);
     ctx->temp_vregs_idx = 0;
     ctx->temp_qregs_idx = 0;
     ctx->vreg_log_idx = 0;
@@ -227,7 +228,7 @@ static void mark_implicit_pred_write(DisasContext *ctx, Insn *insn,
     }
 }
 
-static void mark_implicit_writes(DisasContext *ctx, Insn *insn)
+static void mark_implicit_reg_writes(DisasContext *ctx, Insn *insn)
 {
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_FP,  HEX_REG_FP);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_SP,  HEX_REG_SP);
@@ -236,7 +237,10 @@ static void mark_implicit_writes(DisasContext *ctx, Insn *insn)
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_SA0, HEX_REG_SA0);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_LC1, HEX_REG_LC1);
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_SA1, HEX_REG_SA1);
+}
 
+static void mark_implicit_pred_writes(DisasContext *ctx, Insn *insn)
+{
     mark_implicit_pred_write(ctx, insn, A_IMPLICIT_WRITES_P0, 0);
     mark_implicit_pred_write(ctx, insn, A_IMPLICIT_WRITES_P1, 1);
     mark_implicit_pred_write(ctx, insn, A_IMPLICIT_WRITES_P2, 2);
@@ -251,8 +255,9 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
         if (is_gather_store) {
             tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
         }
-        mark_implicit_writes(ctx, insn);
+        mark_implicit_reg_writes(ctx, insn);
         insn->generate(env, ctx, insn, pkt);
+        mark_implicit_pred_writes(ctx, insn);
         if (is_gather_store) {
             tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         }

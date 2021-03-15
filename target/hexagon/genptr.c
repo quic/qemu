@@ -134,20 +134,28 @@ static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
 #endif
 }
 
-static inline void gen_log_pred_write(int pnum, TCGv val)
+static inline void gen_log_pred_write(DisasContext *ctx, int pnum, TCGv val)
 {
     TCGv zero = tcg_const_tl(0);
     TCGv base_val = tcg_temp_new();
     TCGv and_val = tcg_temp_new();
     TCGv pred_written = tcg_temp_new();
 
-    /* Multiple writes to the same preg are and'ed together */
     tcg_gen_andi_tl(base_val, val, 0xff);
-    tcg_gen_and_tl(and_val, base_val, hex_new_pred_value[pnum]);
-    tcg_gen_andi_tl(pred_written, hex_pred_written, 1 << pnum);
-    tcg_gen_movcond_tl(TCG_COND_NE, hex_new_pred_value[pnum],
-                       pred_written, zero,
-                       and_val, base_val);
+
+    /*
+     * Section 6.1.3 of the Hexagon V67 Programmer's Reference Manual
+     *
+     * Multiple writes to the same preg are and'ed together
+     * If this is the first predicate write in the packet, do a
+     * straight assignment.  Otherwise, do an and.
+     */
+    if (!test_bit(pnum, ctx->pregs_written)) {
+        tcg_gen_mov_tl(hex_new_pred_value[pnum], base_val);
+    } else {
+        tcg_gen_and_tl(hex_new_pred_value[pnum],
+                       hex_new_pred_value[pnum], base_val);
+    }
     tcg_gen_ori_tl(hex_pred_written, hex_pred_written, 1 << pnum);
 
     tcg_temp_free(zero);
@@ -668,14 +676,15 @@ static inline void gen_compare_i64(TCGCond cond, TCGv res,
     tcg_temp_free_i64(temp);
 }
 
-static inline void gen_cmpnd_cmp_jmp(Insn *insn, int pnum, TCGCond cond,
+static inline void gen_cmpnd_cmp_jmp(DisasContext *ctx, Insn *insn,
+                                     int pnum, TCGCond cond,
                                      bool sense, TCGv arg1, TCGv arg2,
                                      int pc_off)
 {
     if (insn->part1) {
         TCGv pred = tcg_temp_new();
         gen_compare(cond, pred, arg1, arg2);
-        gen_log_pred_write(pnum, pred);
+        gen_log_pred_write(ctx, pnum, pred);
         tcg_temp_free(pred);
     } else {
         TCGv new_pc = tcg_temp_new();
@@ -705,20 +714,22 @@ static inline void gen_cmpnd_cmp_jmp(Insn *insn, int pnum, TCGCond cond,
     }
 }
 
-static inline void gen_cmpnd_cmpi_jmp(Insn *insn, int pnum, TCGCond cond,
+static inline void gen_cmpnd_cmpi_jmp(DisasContext *ctx, Insn *insn,
+                                      int pnum, TCGCond cond,
                                       bool sense, TCGv arg1, int arg2,
                                       int pc_off)
 {
     TCGv tmp = tcg_const_tl(arg2);
-    gen_cmpnd_cmp_jmp(insn, pnum, cond, sense, arg1, tmp, pc_off);
+    gen_cmpnd_cmp_jmp(ctx, insn, pnum, cond, sense, arg1, tmp, pc_off);
     tcg_temp_free(tmp);
 
 }
 
-static inline void gen_cmpnd_cmp_n1_jmp(Insn *insn, int pnum, TCGCond cond,
+static inline void gen_cmpnd_cmp_n1_jmp(DisasContext *ctx, Insn *insn,
+                                        int pnum, TCGCond cond,
                                         bool sense, TCGv arg, int pc_off)
 {
-    gen_cmpnd_cmpi_jmp(insn, pnum, cond, sense, arg, -1, pc_off);
+    gen_cmpnd_cmpi_jmp(ctx, insn, pnum, cond, sense, arg, -1, pc_off);
 }
 
 

@@ -282,6 +282,22 @@ static long long decbin(long long x, long long y, int *pred)
     return retval;
 }
 
+/* Check that predicates are auto-and'ed in a packet */
+static int auto_and(void)
+{
+    int retval;
+    asm ("r5 = #1\n\t"
+         "{\n\t"
+         "    p0 = cmp.eq(r1, #1)\n\t"
+         "    p0 = cmp.eq(r1, #2)\n\t"
+         "}\n\t"
+         "%0 = p0\n\t"
+         : "=r"(retval)
+         :
+         : "r5", "p0");
+    return retval;
+}
+
 int main()
 {
     long long res64;
@@ -402,6 +418,9 @@ int main()
     res64 = decbin(0xfLL, 0x1bLL, &pred);
     check64(res64, 0x78000100LL);
     check(pred, 1);
+
+    res = auto_and();
+    check(res, 0);
 
     puts(err ? "FAIL" : "PASS");
     return err;
