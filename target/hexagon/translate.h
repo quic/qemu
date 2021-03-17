@@ -37,7 +37,7 @@ typedef struct DisasContext {
     int preg_log_idx;
     DECLARE_BITMAP(pregs_written, NUM_PREGS);
     uint8_t store_width[STORES_MAX];
-    uint8_t s1_store_processed;
+    bool s1_store_processed;
     int temp_vregs_idx;
     int temp_qregs_idx;
     int vreg_log[NUM_VREGS];

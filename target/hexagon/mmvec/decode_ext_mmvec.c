@@ -586,7 +586,7 @@ static void
 decode_hvx_packet_contents(Packet *pkt)
 {
     for (int i = 0; i < pkt->num_insns; i++) {
-        pkt->pkt_has_hvx |= pkt->insn[i].hvx_resource ? 1 : 0;
+        pkt->pkt_has_hvx |= pkt->insn[i].hvx_resource ? true : false;
     }
 }
 

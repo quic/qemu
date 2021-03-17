@@ -188,7 +188,7 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     for (i = 0; i < STORES_MAX; i++) {
         ctx->store_width[i] = 0;
     }
-    ctx->s1_store_processed = 0;
+    ctx->s1_store_processed = false;
 
 #if HEX_DEBUG
     /* Handy place to set a breakpoint before the packet executes */
@@ -221,9 +221,9 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     }
 }
 
-static int is_gather_store_insn(Insn *insn)
+static bool is_gather_store_insn(Insn *insn)
 {
-    int check = GET_ATTRIB(insn->opcode, A_CVI_NEW);
+    bool check = GET_ATTRIB(insn->opcode, A_CVI_NEW);
     check &= (insn->new_value_producer_slot == 1);
     return check;
 }
@@ -237,7 +237,7 @@ static void mark_implicit_reg_write(DisasContext *ctx, Insn *insn,
                                     int attrib, int rnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
-        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC);
+        bool is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC);
         if (is_predicated && !is_preloaded(ctx, rnum)) {
             tcg_gen_mov_tl(hex_new_value[rnum], hex_gpr[rnum]);
         }
@@ -388,7 +388,7 @@ void process_store(DisasContext *ctx, Packet *pkt, int slot_num)
     if (slot_num == 1 && ctx->s1_store_processed) {
         return;
     }
-    ctx->s1_store_processed = 1;
+    ctx->s1_store_processed = true;
 
     if (is_predicated) {
         TCGv cancelled = tcg_temp_new();
@@ -618,7 +618,7 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
      */
     for (i = 0; i < ctx->vreg_log_idx; i++) {
         int rnum = ctx->vreg_log[i];
-        int is_predicated = ctx->vreg_is_predicated[i];
+        bool is_predicated = ctx->vreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, VRegs[rnum]);
         intptr_t srcoff = offsetof(CPUHexagonState, future_VRegs[rnum]);
         size_t size = sizeof(MMVector);
@@ -653,7 +653,7 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
      */
     for (i = 0; i < ctx->qreg_log_idx; i++) {
         int rnum = ctx->qreg_log[i];
-        int is_predicated = ctx->qreg_is_predicated[i];
+        bool is_predicated = ctx->qreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, QRegs[rnum]);
         intptr_t srcoff = offsetof(CPUHexagonState, future_QRegs[rnum]);
         size_t size = sizeof(MMQReg);
