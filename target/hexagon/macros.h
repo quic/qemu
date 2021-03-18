@@ -442,12 +442,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fWRITE_LC0(VAL) WRITE_RREG(HEX_REG_LC0, VAL)
 #define fWRITE_LC1(VAL) WRITE_RREG(HEX_REG_LC1, VAL)
 
-#ifdef QEMU_GENERATE
-#define fCARRY_FROM_ADD(RES, A, B, C) gen_carry_from_add64(RES, A, B, C)
-#else
-#define fCARRY_FROM_ADD(A, B, C) carry_from_add64(A, B, C)
-#endif
-
 #define fSET_OVERFLOW() SET_USR_FIELD(USR_OVF, 1)
 #define fSET_LPCFG(VAL) SET_USR_FIELD(USR_LPCFG, (VAL))
 #define fGET_LPCFG (GET_USR_FIELD(USR_LPCFG))
