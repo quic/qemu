@@ -353,7 +353,7 @@ int arch_sf_invsqrt_common(float32 *Rs, float32 *Rd, int *adjust,
     int r_exp;
     int ret = 0;
     RsV = *Rs;
-    if (float32_is_infinity(RsV)) {
+    if (float32_is_any_nan(RsV)) {
         if (extract32(RsV, 22, 1) == 0) {
             float_raise(float_flag_invalid, fp_status);
         }
