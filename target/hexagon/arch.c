@@ -287,12 +287,13 @@ int arch_sf_recip_common(float32 *Rs, float32 *Rt, float32 *Rd, int *adjust,
         /* or put Inf in num fixup? */
         uint8_t RsV_sign = float32_is_neg(RsV);
         uint8_t RtV_sign = float32_is_neg(RtV);
+        /* Check that RsV is NOT infinite before we overwrite it */
+        if (!float32_is_infinity(RsV)) {
+            float_raise(float_flag_divbyzero, fp_status);
+        }
         RsV = infinite_float32(RsV_sign ^ RtV_sign);
         RtV = float32_one;
         RdV = float32_one;
-        if (float32_is_infinity(RsV)) {
-            float_raise(float_flag_divbyzero, fp_status);
-        }
     } else if (float32_is_infinity(RtV)) {
         RsV = make_float32(0x80000000 & (RsV ^ RtV));
         RtV = float32_one;

@@ -308,6 +308,25 @@ static void check_recip_exception(void)
          : "r2", "p0", "usr");
     check32(result, SF_HEX_NAN);
     check_fpstatus(usr, FPINVF);
+
+    /*
+     * Check that sfrecipa properly sets divid-by-zero
+     */
+        asm (CLEAR_FPSTATUS
+         "%0,p0 = sfrecipa(%2, %3)\n\t"
+         "%1 = usr\n\t"
+         : "=r"(result), "=r"(usr) : "r"(0x885dc960), "r"(0x80000000)
+         : "r2", "p0", "usr");
+    check32(result, 0x3f800000);
+    check_fpstatus(usr, FPDBZF);
+
+    asm (CLEAR_FPSTATUS
+         "%0,p0 = sfrecipa(%2, %3)\n\t"
+         "%1 = usr\n\t"
+         : "=r"(result), "=r"(usr) : "r"(0x7f800000), "r"(SF_ZERO)
+         : "r2", "p0", "usr");
+    check32(result, 0x3f800000);
+    check_fpstatus(usr, 0);
 }
 
 static void check_canonical_NaN(void)
