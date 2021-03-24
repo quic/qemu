@@ -37,10 +37,12 @@ const int SF_NaN =                        0x7fc00000;
 const int SF_NaN_special =                0x7f800001;
 const int SF_ANY =                        0x3f800000;
 const int SF_HEX_NAN =                    0xffffffff;
+const int SF_small_neg =                  0xab98fba8;
 
 const long long DF_NaN =                  0x7ff8000000000000ULL;
 const long long DF_ANY =                  0x3f80000000000000ULL;
 const long long DF_HEX_NAN =              0xffffffffffffffffULL;
+const long long DF_small_neg =            0xbd731f7500000000ULL;
 
 int err;
 
@@ -453,6 +455,148 @@ static void check_invsqrta(void)
     check32(predval, 0x0);
 }
 
+static void check_float2int_convs()
+{
+    int res32;
+    long long res64;
+    int usr;
+
+    /*
+     * Check that the various forms of float-to-unsigned
+     *  check sign before rounding
+     */
+        asm(CLEAR_FPSTATUS
+        "%0 = convert_sf2uw(%2)\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res32), "=r"(usr) : "r"(SF_small_neg)
+        : "r2", "usr");
+    check32(res32, 0);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_sf2uw(%2):chop\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res32), "=r"(usr) : "r"(SF_small_neg)
+        : "r2", "usr");
+    check32(res32, 0);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_sf2ud(%2)\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res64), "=r"(usr) : "r"(SF_small_neg)
+        : "r2", "usr");
+    check64(res64, 0);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_sf2ud(%2):chop\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res64), "=r"(usr) : "r"(SF_small_neg)
+        : "r2", "usr");
+    check64(res64, 0);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_df2uw(%2)\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res32), "=r"(usr) : "r"(DF_small_neg)
+        : "r2", "usr");
+    check32(res32, 0);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_df2uw(%2):chop\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res32), "=r"(usr) : "r"(DF_small_neg)
+        : "r2", "usr");
+    check32(res32, 0);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_df2ud(%2)\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res64), "=r"(usr) : "r"(DF_small_neg)
+        : "r2", "usr");
+    check64(res64, 0);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_df2ud(%2):chop\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res64), "=r"(usr) : "r"(DF_small_neg)
+        : "r2", "usr");
+    check64(res64, 0);
+    check_fpstatus(usr, FPINVF);
+
+    /*
+     * Check that the various forms of float-to-signed return -1 for NaN
+     */
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_sf2w(%2)\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res32), "=r"(usr) : "r"(SF_NaN)
+        : "r2", "usr");
+    check32(res32, -1);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_sf2w(%2):chop\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res32), "=r"(usr) : "r"(SF_NaN)
+        : "r2", "usr");
+    check32(res32, -1);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_sf2d(%2)\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res64), "=r"(usr) : "r"(SF_NaN)
+        : "r2", "usr");
+    check64(res64, -1);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_sf2d(%2):chop\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res64), "=r"(usr) : "r"(SF_NaN)
+        : "r2", "usr");
+    check64(res64, -1);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_df2w(%2)\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res32), "=r"(usr) : "r"(DF_NaN)
+        : "r2", "usr");
+    check32(res32, -1);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_df2w(%2):chop\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res32), "=r"(usr) : "r"(DF_NaN)
+        : "r2", "usr");
+    check32(res32, -1);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_df2d(%2)\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res64), "=r"(usr) : "r"(DF_NaN)
+        : "r2", "usr");
+    check64(res64, -1);
+    check_fpstatus(usr, FPINVF);
+
+    asm(CLEAR_FPSTATUS
+        "%0 = convert_df2d(%2):chop\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res64), "=r"(usr) : "r"(DF_NaN)
+        : "r2", "usr");
+    check64(res64, -1);
+    check_fpstatus(usr, FPINVF);
+}
+
 int main()
 {
     check_compare_exception();
@@ -461,6 +605,7 @@ int main()
     check_recip_exception();
     check_canonical_NaN();
     check_invsqrta();
+    check_float2int_convs();
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;
