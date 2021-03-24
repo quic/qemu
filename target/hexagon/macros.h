@@ -343,22 +343,27 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
 static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 {
     /*
-     *  #define fREAD_IREG(VAL) \
-     *      (fSXTN(11, 64, (((VAL) & 0xf0000000) >> 21) | ((VAL >> 17) & 0x7f)))
+     * Section 2.2.4 of the Hexagon V67 Programmer's Reference Manual
+     *
+     *  The "I" value from a modifier register is divided into two pieces
+     *      LSB         bits 23:17
+     *      MSB         bits 31:28
+     * At the end we shift the result according to the shift argument
      */
-    TCGv tmp1 = tcg_temp_new();
-    TCGv tmp2 = tcg_temp_new();
-    tcg_gen_andi_tl(tmp1, val, 0xf0000000);
-    tcg_gen_sari_tl(tmp1, tmp1, 21);
-    tcg_gen_sextract_tl(tmp1, tmp1, 0, 11);
+    TCGv msb = tcg_temp_new();
+    TCGv lsb = tcg_temp_new();
 
-    tcg_gen_sari_tl(tmp2, val, 17);
-    tcg_gen_andi_tl(tmp2, tmp2, 0x7f);
-    tcg_gen_or_tl(tmp1, tmp1, tmp2);
+    tcg_gen_extract_tl(lsb, val, 17, 7);
+    tcg_gen_extract_tl(msb, val, 28, 4);
+    tcg_gen_movi_tl(result, 0);
+    tcg_gen_deposit_tl(result, result, lsb, 0, 7);
+    tcg_gen_deposit_tl(result, result, msb, 7, 4);
 
-    tcg_gen_shli_tl(result, tmp1, shift);
-    tcg_temp_free(tmp1);
-    tcg_temp_free(tmp2);
+    tcg_gen_shli_tl(result, result, shift);
+
+    tcg_temp_free(msb);
+    tcg_temp_free(lsb);
+
     return result;
 }
 #define fREAD_IREG(VAL, SHIFT) gen_read_ireg(ireg, (VAL), (SHIFT))
