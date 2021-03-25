@@ -66,13 +66,19 @@
     } while (0)
 #define GET_EA_pci \
     do { \
-        fEA_REG(RxV); \
-        fPM_CIRI(RxV, siV, MuV); \
+        TCGv tcgv_siV = tcg_const_tl(siV); \
+        tcg_gen_mov_tl(EA, RxV); \
+        gen_helper_fcircadd(RxV, RxV, tcgv_siV, MuV, \
+                            hex_gpr[HEX_REG_CS0 + MuN]); \
+        tcg_temp_free(tcgv_siV); \
     } while (0)
 #define GET_EA_pcr(SHIFT) \
     do { \
-        fEA_REG(RxV); \
-        fPM_CIRR(RxV, fREAD_IREG(MuV, (SHIFT)), MuV); \
+        TCGv ireg = tcg_temp_new(); \
+        tcg_gen_mov_tl(EA, RxV); \
+        gen_read_ireg(ireg, MuV, (SHIFT)); \
+        gen_helper_fcircadd(RxV, RxV, ireg, MuV, hex_gpr[HEX_REG_CS0 + MuN]); \
+        tcg_temp_free(ireg); \
     } while (0)
 
 /* Byte load instructions */
@@ -143,28 +149,28 @@
 #define fGEN_TCG_L2_loadri_pci(SHORTCODE)     SHORTCODE
 #define fGEN_TCG_L2_loadrd_pci(SHORTCODE)     SHORTCODE
 
-#define fGEN_TCG_PCR(SHIFT, LOAD) \
+#define fGEN_TCG_LOAD_pcr(SHIFT, LOAD) \
     do { \
         TCGv ireg = tcg_temp_new(); \
-        fEA_REG(RxV); \
-        fREAD_IREG(MuV, SHIFT); \
+        tcg_gen_mov_tl(EA, RxV); \
+        gen_read_ireg(ireg, MuV, SHIFT); \
         gen_helper_fcircadd(RxV, RxV, ireg, MuV, hex_gpr[HEX_REG_CS0 + MuN]); \
         LOAD; \
         tcg_temp_free(ireg); \
     } while (0)
 
 #define fGEN_TCG_L2_loadrub_pcr(SHORTCODE) \
-      fGEN_TCG_PCR(0, fLOAD(1, 1, u, EA, RdV))
+      fGEN_TCG_LOAD_pcr(0, fLOAD(1, 1, u, EA, RdV))
 #define fGEN_TCG_L2_loadrb_pcr(SHORTCODE) \
-      fGEN_TCG_PCR(0, fLOAD(1, 1, s, EA, RdV))
+      fGEN_TCG_LOAD_pcr(0, fLOAD(1, 1, s, EA, RdV))
 #define fGEN_TCG_L2_loadruh_pcr(SHORTCODE) \
-      fGEN_TCG_PCR(1, fLOAD(1, 2, u, EA, RdV))
+      fGEN_TCG_LOAD_pcr(1, fLOAD(1, 2, u, EA, RdV))
 #define fGEN_TCG_L2_loadrh_pcr(SHORTCODE) \
-      fGEN_TCG_PCR(1, fLOAD(1, 2, s, EA, RdV))
+      fGEN_TCG_LOAD_pcr(1, fLOAD(1, 2, s, EA, RdV))
 #define fGEN_TCG_L2_loadri_pcr(SHORTCODE) \
-      fGEN_TCG_PCR(2, fLOAD(1, 4, u, EA, RdV))
+      fGEN_TCG_LOAD_pcr(2, fLOAD(1, 4, u, EA, RdV))
 #define fGEN_TCG_L2_loadrd_pcr(SHORTCODE) \
-      fGEN_TCG_PCR(3, fLOAD(1, 8, u, EA, RddV))
+      fGEN_TCG_LOAD_pcr(3, fLOAD(1, 8, u, EA, RddV))
 
 #define fGEN_TCG_L2_loadrub_pr(SHORTCODE)      SHORTCODE
 #define fGEN_TCG_L2_loadrub_pbr(SHORTCODE)     SHORTCODE
@@ -194,7 +200,6 @@
  */
 #define fGEN_TCG_loadbXw2(GET_EA, fGB) \
     do { \
-        TCGv ireg = tcg_temp_new(); \
         TCGv tmpV = tcg_temp_new(); \
         TCGv BYTE = tcg_temp_new(); \
         GET_EA; \
@@ -203,7 +208,6 @@
         for (int i = 0; i < 2; i++) { \
             fSETHALF(i, RdV, fGB(i, tmpV)); \
         } \
-        tcg_temp_free(ireg); \
         tcg_temp_free(tmpV); \
         tcg_temp_free(BYTE); \
     } while (0)
@@ -304,7 +308,6 @@
  */
 #define fGEN_TCG_loadalignh(GET_EA) \
     do { \
-        TCGv ireg = tcg_temp_new(); \
         TCGv tmp = tcg_temp_new(); \
         TCGv tmpV = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
@@ -312,10 +315,8 @@
         GET_EA;  \
         fLOAD(1, 2, u, EA, tmpV);  \
         tcg_gen_extu_i32_i64(tmp_i64, tmpV); \
-        tcg_gen_shli_i64(tmp_i64, tmp_i64, 48); \
         tcg_gen_shri_i64(RyyV, RyyV, 16); \
-        tcg_gen_or_i64(RyyV, RyyV, tmp_i64); \
-        tcg_temp_free(ireg); \
+        tcg_gen_deposit_i64(RyyV, RyyV, tmp_i64, 48, 16); \
         tcg_temp_free(tmp); \
         tcg_temp_free(tmpV); \
         tcg_temp_free_i64(tmp_i64); \
@@ -341,7 +342,6 @@
 /* Same as above, but loads a byte instead of half word */
 #define fGEN_TCG_loadalignb(GET_EA) \
     do { \
-        TCGv ireg = tcg_temp_new(); \
         TCGv tmp = tcg_temp_new(); \
         TCGv tmpV = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
@@ -349,10 +349,8 @@
         GET_EA;  \
         fLOAD(1, 1, u, EA, tmpV);  \
         tcg_gen_extu_i32_i64(tmp_i64, tmpV); \
-        tcg_gen_shli_i64(tmp_i64, tmp_i64, 56); \
         tcg_gen_shri_i64(RyyV, RyyV, 8); \
-        tcg_gen_or_i64(RyyV, RyyV, tmp_i64); \
-        tcg_temp_free(ireg); \
+        tcg_gen_deposit_i64(RyyV, RyyV, tmp_i64, 56, 8); \
         tcg_temp_free(tmp); \
         tcg_temp_free(tmpV); \
         tcg_temp_free_i64(tmp_i64); \
@@ -648,8 +646,9 @@
         TCGv ireg = tcg_temp_new(); \
         TCGv HALF = tcg_temp_new(); \
         TCGv BYTE = tcg_temp_new(); \
-        fEA_REG(RxV); \
-        fPM_CIRR(RxV, fREAD_IREG(MuV, SHIFT), MuV); \
+        tcg_gen_mov_tl(EA, RxV); \
+        gen_read_ireg(ireg, MuV, SHIFT); \
+        gen_helper_fcircadd(RxV, RxV, ireg, MuV, hex_gpr[HEX_REG_CS0 + MuN]); \
         STORE; \
         tcg_temp_free(ireg); \
         tcg_temp_free(HALF); \

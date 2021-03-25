@@ -571,8 +571,6 @@ static inline void gen_fbrev(TCGv result, TCGv src)
                             hex_gpr[HEX_REG_CS0 + MuN]); \
         tcg_temp_free(tcgv_siV); \
     } while (0)
-#define fPM_CIRR(REG, VAL, MVAL) \
-    gen_helper_fcircadd(REG, REG, VAL, MuV, hex_gpr[HEX_REG_CS0 + MuN])
 #else
 #define fEA_IMM(IMM)        do { EA = (IMM); } while (0)
 #define fEA_REG(REG)        do { EA = (REG); } while (0)
