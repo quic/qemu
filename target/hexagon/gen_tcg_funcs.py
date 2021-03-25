@@ -35,6 +35,15 @@ def gen_decl_ea_tcg(f, tag):
 def gen_free_ea_tcg(f):
     f.write("    tcg_temp_free(EA);\n")
 
+def need_sp(tag):
+    return re.compile(r"fREAD_SP()").search(hex_common.semdict[tag])
+
+def gen_decl_sp_tcg(f):
+    f.write("    TCGv SP = tcg_temp_new();\n")
+
+def gen_free_sp_tcg(f):
+    f.write("    tcg_temp_free(SP);\n")
+
 def genptr_decl_pair_writeble(f, tag, regtype, regid, regno):
     regN="%s%sN" % (regtype,regid)
     f.write("    TCGv_i64 %s%sV = tcg_temp_local_new_i64();\n" % \
@@ -538,6 +547,7 @@ def gen_tcg_func(f, tag, regs, imms):
     f.write("                Packet *pkt)\n")
     f.write('{\n')
     if hex_common.need_ea(tag): gen_decl_ea_tcg(f, tag)
+    if need_sp(tag): gen_decl_sp_tcg(f)
     i=0
     ## Declare all the operands (regs and immediates)
     for regtype,regid,toss,numregs in regs:
@@ -611,6 +621,7 @@ def gen_tcg_func(f, tag, regs, imms):
 
     ## Free all the operands (regs and immediates)
     if hex_common.need_ea(tag): gen_free_ea_tcg(f)
+    if need_sp(tag): gen_free_sp_tcg(f)
     for regtype,regid,toss,numregs in regs:
         genptr_free_opn(f,regtype,regid,i,tag)
         i += 1

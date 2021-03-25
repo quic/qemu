@@ -75,18 +75,6 @@
         fPM_CIRR(RxV, fREAD_IREG(MuV, (SHIFT)), MuV); \
     } while (0)
 
-/*
- * Many instructions will work with just macro redefinitions
- * with the caveat that they need a tmp variable to carry a
- * value between them.
- */
-#define fGEN_TCG_tmp(SHORTCODE) \
-    do { \
-        TCGv tmp = tcg_temp_new(); \
-        SHORTCODE; \
-        tcg_temp_free(tmp); \
-    } while (0)
-
 /* Byte load instructions */
 #define fGEN_TCG_L2_loadrub_io(SHORTCODE)      SHORTCODE
 #define fGEN_TCG_L2_loadrb_io(SHORTCODE)       SHORTCODE
@@ -94,8 +82,8 @@
 #define fGEN_TCG_L4_loadrb_ur(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L4_loadrub_rr(SHORTCODE)      SHORTCODE
 #define fGEN_TCG_L4_loadrb_rr(SHORTCODE)       SHORTCODE
-#define fGEN_TCG_L2_loadrubgp(SHORTCODE)       fGEN_TCG_tmp(SHORTCODE)
-#define fGEN_TCG_L2_loadrbgp(SHORTCODE)        fGEN_TCG_tmp(SHORTCODE)
+#define fGEN_TCG_L2_loadrubgp(SHORTCODE)       SHORTCODE
+#define fGEN_TCG_L2_loadrbgp(SHORTCODE)        SHORTCODE
 #define fGEN_TCG_SL1_loadrub_io(SHORTCODE)     SHORTCODE
 #define fGEN_TCG_SL2_loadrb_io(SHORTCODE)      SHORTCODE
 
@@ -106,8 +94,8 @@
 #define fGEN_TCG_L4_loadrh_ur(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L4_loadruh_rr(SHORTCODE)      SHORTCODE
 #define fGEN_TCG_L4_loadrh_rr(SHORTCODE)       SHORTCODE
-#define fGEN_TCG_L2_loadruhgp(SHORTCODE)       fGEN_TCG_tmp(SHORTCODE)
-#define fGEN_TCG_L2_loadrhgp(SHORTCODE)        fGEN_TCG_tmp(SHORTCODE)
+#define fGEN_TCG_L2_loadruhgp(SHORTCODE)       SHORTCODE
+#define fGEN_TCG_L2_loadrhgp(SHORTCODE)        SHORTCODE
 #define fGEN_TCG_SL2_loadruh_io(SHORTCODE)     SHORTCODE
 #define fGEN_TCG_SL2_loadrh_io(SHORTCODE)      SHORTCODE
 
@@ -115,16 +103,16 @@
 #define fGEN_TCG_L2_loadri_io(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L4_loadri_ur(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L4_loadri_rr(SHORTCODE)       SHORTCODE
-#define fGEN_TCG_L2_loadrigp(SHORTCODE)        fGEN_TCG_tmp(SHORTCODE)
+#define fGEN_TCG_L2_loadrigp(SHORTCODE)        SHORTCODE
 #define fGEN_TCG_SL1_loadri_io(SHORTCODE)      SHORTCODE
-#define fGEN_TCG_SL2_loadri_sp(SHORTCODE)      fGEN_TCG_tmp(SHORTCODE)
+#define fGEN_TCG_SL2_loadri_sp(SHORTCODE)      SHORTCODE
 
 /* Double word load instructions */
 #define fGEN_TCG_L2_loadrd_io(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L4_loadrd_ur(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L4_loadrd_rr(SHORTCODE)       SHORTCODE
-#define fGEN_TCG_L2_loadrdgp(SHORTCODE)        fGEN_TCG_tmp(SHORTCODE)
-#define fGEN_TCG_SL2_loadrd_sp(SHORTCODE)      fGEN_TCG_tmp(SHORTCODE)
+#define fGEN_TCG_L2_loadrdgp(SHORTCODE)        SHORTCODE
+#define fGEN_TCG_SL2_loadrd_sp(SHORTCODE)      SHORTCODE
 
 /* Instructions with multiple definitions */
 #define fGEN_TCG_LOAD_AP(RES, SIZE, SIGN) \
@@ -148,28 +136,20 @@
 #define fGEN_TCG_L4_loadrd_ap(SHORTCODE) \
     fGEN_TCG_LOAD_AP(RddV, 8, u)
 
-#define fGEN_TCG_L2_loadrub_pci(SHORTCODE) \
-      fGEN_TCG_tmp(SHORTCODE)
-#define fGEN_TCG_L2_loadrb_pci(SHORTCODE) \
-      fGEN_TCG_tmp(SHORTCODE)
-#define fGEN_TCG_L2_loadruh_pci(SHORTCODE) \
-      fGEN_TCG_tmp(SHORTCODE)
-#define fGEN_TCG_L2_loadrh_pci(SHORTCODE) \
-      fGEN_TCG_tmp(SHORTCODE)
-#define fGEN_TCG_L2_loadri_pci(SHORTCODE) \
-      fGEN_TCG_tmp(SHORTCODE)
-#define fGEN_TCG_L2_loadrd_pci(SHORTCODE) \
-      fGEN_TCG_tmp(SHORTCODE)
+#define fGEN_TCG_L2_loadrub_pci(SHORTCODE)    SHORTCODE
+#define fGEN_TCG_L2_loadrb_pci(SHORTCODE)     SHORTCODE
+#define fGEN_TCG_L2_loadruh_pci(SHORTCODE)    SHORTCODE
+#define fGEN_TCG_L2_loadrh_pci(SHORTCODE)     SHORTCODE
+#define fGEN_TCG_L2_loadri_pci(SHORTCODE)     SHORTCODE
+#define fGEN_TCG_L2_loadrd_pci(SHORTCODE)     SHORTCODE
 
 #define fGEN_TCG_PCR(SHIFT, LOAD) \
     do { \
         TCGv ireg = tcg_temp_new(); \
-        TCGv tmp = tcg_temp_new(); \
         fEA_REG(RxV); \
         fREAD_IREG(MuV, SHIFT); \
-        gen_helper_fcircadd(RxV, RxV, ireg, MuV, fREAD_CSREG(MuN)); \
+        gen_helper_fcircadd(RxV, RxV, ireg, MuV, hex_gpr[HEX_REG_CS0 + MuN]); \
         LOAD; \
-        tcg_temp_free(tmp); \
         tcg_temp_free(ireg); \
     } while (0)
 
@@ -215,18 +195,15 @@
 #define fGEN_TCG_loadbXw2(GET_EA, fGB) \
     do { \
         TCGv ireg = tcg_temp_new(); \
-        TCGv tmp = tcg_temp_new(); \
         TCGv tmpV = tcg_temp_new(); \
         TCGv BYTE = tcg_temp_new(); \
-        int i; \
         GET_EA; \
         fLOAD(1, 2, u, EA, tmpV); \
         tcg_gen_movi_tl(RdV, 0); \
-        for (i = 0; i < 2; i++) { \
+        for (int i = 0; i < 2; i++) { \
             fSETHALF(i, RdV, fGB(i, tmpV)); \
         } \
         tcg_temp_free(ireg); \
-        tcg_temp_free(tmp); \
         tcg_temp_free(tmpV); \
         tcg_temp_free(BYTE); \
     } while (0)
@@ -274,18 +251,15 @@
 #define fGEN_TCG_loadbXw4(GET_EA, fGB) \
     do { \
         TCGv ireg = tcg_temp_new(); \
-        TCGv tmp = tcg_temp_new(); \
         TCGv tmpV = tcg_temp_new(); \
         TCGv BYTE = tcg_temp_new(); \
-        int i; \
         GET_EA; \
         fLOAD(1, 4, u, EA, tmpV);  \
         tcg_gen_movi_i64(RddV, 0); \
-        for (i = 0; i < 4; i++) { \
+        for (int i = 0; i < 4; i++) { \
             fSETHALF(i, RddV, fGB(i, tmpV));  \
         }  \
         tcg_temp_free(ireg); \
-        tcg_temp_free(tmp); \
         tcg_temp_free(tmpV); \
         tcg_temp_free(BYTE); \
     } while (0)
@@ -651,11 +625,9 @@
     do { \
         TCGv HALF = tcg_temp_new(); \
         TCGv BYTE = tcg_temp_new(); \
-        TCGv tmp = tcg_temp_new(); \
         SHORTCODE; \
         tcg_temp_free(HALF); \
         tcg_temp_free(BYTE); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 #define fGEN_TCG_STORE_ap(STORE) \
@@ -676,14 +648,12 @@
         TCGv ireg = tcg_temp_new(); \
         TCGv HALF = tcg_temp_new(); \
         TCGv BYTE = tcg_temp_new(); \
-        TCGv tmp = tcg_temp_new(); \
         fEA_REG(RxV); \
         fPM_CIRR(RxV, fREAD_IREG(MuV, SHIFT), MuV); \
         STORE; \
         tcg_temp_free(ireg); \
         tcg_temp_free(HALF); \
         tcg_temp_free(BYTE); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 #define fGEN_TCG_S2_storerb_io(SHORTCODE) \
@@ -1462,7 +1432,6 @@
 #define fGEN_TCG_S2_allocframe(SHORTCODE) \
     do { \
         TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
-        TCGv tmp = tcg_temp_new(); \
         { fEA_RI(RxV, -8); \
           fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
                                            fCAST4_4u(fREAD_FP()))); \
@@ -1472,7 +1441,6 @@
           tcg_gen_subi_tl(RxV, EA, uiV); \
         } \
         tcg_temp_free_i64(scramble_tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 #define fGEN_TCG_SS2_allocframe(SHORTCODE) \

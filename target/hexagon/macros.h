@@ -382,11 +382,10 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fWRITE_GOSP(A) WRITE_RREG(HEX_REG_GOSP, A)
 
 #ifdef QEMU_GENERATE
-#define fREAD_SP() (READ_REG(tmp, HEX_REG_SP))
+#define fREAD_SP() (READ_REG(SP, HEX_REG_SP))
 #define fREAD_GOSP() (READ_REG(tmp, HEX_REG_GOSP))
 #define fREAD_GELR() (READ_REG(tmp, HEX_REG_GELR))
 #define fREAD_GEVB() (READ_REG(tmp, HEX_REG_GEVB))
-#define fREAD_CSREG(N) (READ_REG(tmp, HEX_REG_CS0 + N))
 #define fREAD_FP() (READ_REG(tmp, HEX_REG_FP))
 #define fREAD_GP() \
     (insn->extension_valid ? gen_zero(tmp) : READ_REG(tmp, HEX_REG_GP))
@@ -555,17 +554,25 @@ static inline void gen_fbrev(TCGv result, TCGv src)
 }
 
 #define fEA_BREVR(REG)      gen_fbrev(EA, REG)
-#define fEA_GPI(IMM)        tcg_gen_addi_tl(EA, fREAD_GP(), IMM)
+#define fEA_GPI(IMM) \
+    do { \
+        if (insn->extension_valid) { \
+            tcg_gen_movi_tl(EA, IMM); \
+        } else { \
+            tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_GP], IMM); \
+        } \
+    } while (0)
 #define fPM_I(REG, IMM)     tcg_gen_addi_tl(REG, REG, IMM)
 #define fPM_M(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
 #define fPM_CIRI(REG, IMM, MVAL) \
     do { \
         TCGv tcgv_siV = tcg_const_tl(siV); \
-        gen_helper_fcircadd(REG, REG, tcgv_siV, MuV, fREAD_CSREG(MuN)); \
+        gen_helper_fcircadd(REG, REG, tcgv_siV, MuV, \
+                            hex_gpr[HEX_REG_CS0 + MuN]); \
         tcg_temp_free(tcgv_siV); \
     } while (0)
 #define fPM_CIRR(REG, VAL, MVAL) \
-    gen_helper_fcircadd(REG, REG, VAL, MuV, fREAD_CSREG(MuN))
+    gen_helper_fcircadd(REG, REG, VAL, MuV, hex_gpr[HEX_REG_CS0 + MuN])
 #else
 #define fEA_IMM(IMM)        do { EA = (IMM); } while (0)
 #define fEA_REG(REG)        do { EA = (REG); } while (0)

@@ -124,24 +124,6 @@ In gen_tcg.h, we use the shortcode
 #define fGEN_TCG_L2_loadw_locked(SHORTCODE) \
     SHORTCODE
 
-In other cases, just a little bit of wrapper code needs to be written.
-    #define fGEN_TCG_tmp(SHORTCODE) \
-    { \
-        TCGv tmp = tcg_temp_new(); \
-        SHORTCODE; \
-        tcg_temp_free(tmp); \
-    }
-
-For example, some load instructions use a temporary for address computation.
-The SL2_loadrd_sp instruction needs a temporary to hold the value of the stack
-pointer (r29)
-    Instruction tag        SL2_loadrd_sp
-    Assembly syntax        "Rdd8=memd(r29+#u5:3)"
-    Instruction semantics  "{fEA_RI(fREAD_SP(),uiV); fLOAD(1,8,u,EA,RddV);}"
-
-In gen_tcg.h you'll see
-    #define fGEN_TCG_SL2_loadrd_sp(SHORTCODE)      fGEN_TCG_tmp(SHORTCODE)
-
 There are also cases where we brute force the TCG code generation.
 Instructions with multiple definitions are examples.  These require special
 handling because qemu helpers can only return a single value.
