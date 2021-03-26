@@ -56,8 +56,8 @@
     } while (0)
 #define GET_EA_pbr \
     do { \
-        fEA_BREVR(RxV); \
-        fPM_M(RxV, MuV); \
+        gen_helper_fbrev(EA, RxV); \
+        tcg_gen_add_tl(RxV, RxV, MuV); \
     } while (0)
 #define GET_EA_pi \
     do { \

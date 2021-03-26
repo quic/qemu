@@ -539,21 +539,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #ifdef QEMU_GENERATE
 #define fEA_IMM(IMM) tcg_gen_movi_tl(EA, IMM)
 #define fEA_REG(REG) tcg_gen_mov_tl(EA, REG)
-static inline void gen_fbrev(TCGv result, TCGv src)
-{
-    /*
-     *  Bit reverse the low 16 bits of the address
-     */
-    TCGv tmp = tcg_temp_new();
-    tcg_gen_andi_tl(result, src, 0xffff0000);
-    for (int i = 0; i < 16; i++) {
-        tcg_gen_extract_tl(tmp, src, i, 1);
-        tcg_gen_deposit_tl(result, result, tmp, 15 - i, 1);
-    }
-    tcg_temp_free(tmp);
-}
-
-#define fEA_BREVR(REG)      gen_fbrev(EA, REG)
+#define fEA_BREVR(REG)      gen_helper_fbrev(EA, REG)
 #define fEA_GPI(IMM) \
     do { \
         if (insn->extension_valid) { \
