@@ -254,7 +254,6 @@
  */
 #define fGEN_TCG_loadbXw4(GET_EA, fGB) \
     do { \
-        TCGv ireg = tcg_temp_new(); \
         TCGv tmpV = tcg_temp_new(); \
         TCGv BYTE = tcg_temp_new(); \
         GET_EA; \
@@ -263,7 +262,6 @@
         for (int i = 0; i < 4; i++) { \
             fSETHALF(i, RddV, fGB(i, tmpV));  \
         }  \
-        tcg_temp_free(ireg); \
         tcg_temp_free(tmpV); \
         tcg_temp_free(BYTE); \
     } while (0)
