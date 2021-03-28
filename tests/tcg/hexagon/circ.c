@@ -63,12 +63,12 @@ INIT(dbuf, NDOBLS)
  */
 #define CIRC_LOAD_IMM(SIZE, RES, ADDR, START, LEN, INC) \
     __asm__( \
-        "r4 = %4\n\t" \
+        "r4 = %3\n\t" \
         "m0 = r4\n\t" \
-        "cs0 = %3\n\t" \
+        "cs0 = %2\n\t" \
         "%0 = mem" #SIZE "(%1++#" #INC ":circ(M0))\n\t" \
-        : "=r"(RES), "=r"(ADDR) \
-        : "1"(ADDR), "r"(START), "r"(LEN) \
+        : "=r"(RES), "+r"(ADDR) \
+        : "r"(START), "r"(LEN) \
         : "r4", "m0", "cs0")
 #define CIRC_LOAD_IMM_b(RES, ADDR, START, LEN, INC) \
     CIRC_LOAD_IMM(b, RES, ADDR, START, LEN, INC)
@@ -85,12 +85,12 @@ INIT(dbuf, NDOBLS)
 
 #define CIRC_LOAD_REG(SIZE, RES, ADDR, START, LEN, INC) \
     __asm__( \
-        "r4 = %3\n\t" \
+        "r4 = %2\n\t" \
         "m1 = r4\n\t" \
-        "cs1 = %4\n\t" \
+        "cs1 = %3\n\t" \
         "%0 = mem" #SIZE "(%1++I:circ(M1))\n\t" \
-        : "=r"(RES), "=r"(ADDR) \
-        : "1"(ADDR), "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
+        : "=r"(RES), "+r"(ADDR) \
+        : "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
           "r"(START) \
         : "r4", "m1", "cs1")
 #define CIRC_LOAD_REG_b(RES, ADDR, START, LEN, INC) \
@@ -116,12 +116,12 @@ INIT(dbuf, NDOBLS)
  */
 #define CIRC_STORE_IMM(SIZE, PART, VAL, ADDR, START, LEN, INC) \
     __asm__( \
-        "r4 = %4\n\t" \
+        "r4 = %3\n\t" \
         "m0 = r4\n\t" \
-        "cs0 = %2\n\t" \
-        "mem" #SIZE "(%0++#" #INC ":circ(M0)) = %3" PART "\n\t" \
-        : "=r"(ADDR) \
-        : "0"(ADDR), "r"(START), "r"(VAL), "r"(LEN) \
+        "cs0 = %1\n\t" \
+        "mem" #SIZE "(%0++#" #INC ":circ(M0)) = %2" PART "\n\t" \
+        : "+r"(ADDR) \
+        : "r"(START), "r"(VAL), "r"(LEN) \
         : "r4", "m0", "cs0", "memory")
 #define CIRC_STORE_IMM_b(VAL, ADDR, START, LEN, INC) \
     CIRC_STORE_IMM(b, "", VAL, ADDR, START, LEN, INC)
@@ -136,15 +136,15 @@ INIT(dbuf, NDOBLS)
 
 #define CIRC_STORE_NEW_IMM(SIZE, VAL, ADDR, START, LEN, INC) \
     __asm__( \
-        "r4 = %4\n\t" \
+        "r4 = %3\n\t" \
         "m0 = r4\n\t" \
-        "cs0 = %2\n\t" \
+        "cs0 = %1\n\t" \
         "{\n\t" \
-        "    r5 = %3\n\t" \
+        "    r5 = %2\n\t" \
         "    mem" #SIZE "(%0++#" #INC ":circ(M0)) = r5.new\n\t" \
         "}\n\t" \
-        : "=r"(ADDR) \
-        : "0"(ADDR), "r"(START), "r"(VAL), "r"(LEN) \
+        : "+r"(ADDR) \
+        : "r"(START), "r"(VAL), "r"(LEN) \
         : "r4", "r5", "m0", "cs0", "memory")
 #define CIRC_STORE_IMM_bnew(VAL, ADDR, START, LEN, INC) \
     CIRC_STORE_NEW_IMM(b, VAL, ADDR, START, LEN, INC)
@@ -155,13 +155,12 @@ INIT(dbuf, NDOBLS)
 
 #define CIRC_STORE_REG(SIZE, PART, VAL, ADDR, START, LEN, INC) \
     __asm__( \
-        "r4 = %2\n\t" \
+        "r4 = %1\n\t" \
         "m1 = r4\n\t" \
-        "cs1 = %3\n\t" \
-        "mem" #SIZE "(%0++I:circ(M1)) = %4" PART "\n\t" \
-        : "=r"(ADDR) \
-        : "0"(ADDR), \
-          "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
+        "cs1 = %2\n\t" \
+        "mem" #SIZE "(%0++I:circ(M1)) = %3" PART "\n\t" \
+        : "+r"(ADDR) \
+        : "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
           "r"(START), \
           "r"(VAL) \
         : "r4", "m1", "cs1", "memory")
@@ -178,16 +177,15 @@ INIT(dbuf, NDOBLS)
 
 #define CIRC_STORE_NEW_REG(SIZE, VAL, ADDR, START, LEN, INC) \
     __asm__( \
-        "r4 = %2\n\t" \
+        "r4 = %1\n\t" \
         "m1 = r4\n\t" \
-        "cs1 = %3\n\t" \
+        "cs1 = %2\n\t" \
         "{\n\t" \
-        "    r5 = %4\n\t" \
+        "    r5 = %3\n\t" \
         "    mem" #SIZE "(%0++I:circ(M1)) = r5.new\n\t" \
         "}\n\t" \
-        : "=r"(ADDR) \
-        : "0"(ADDR), \
-          "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
+        : "+r"(ADDR) \
+        : "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
           "r"(START), \
           "r"(VAL) \
         : "r4", "r5", "m1", "cs1", "memory")
