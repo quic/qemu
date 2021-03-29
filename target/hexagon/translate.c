@@ -59,7 +59,7 @@ static const char * const hexagon_prednames[] = {
   "p0", "p1", "p2", "p3"
 };
 
-static void gen_exception(int excp)
+static void gen_exception_raw(int excp)
 {
     TCGv_i32 helper_tmp = tcg_const_i32(excp);
     gen_helper_raise_exception(cpu_env, helper_tmp);
@@ -81,7 +81,7 @@ static void gen_end_tb(DisasContext *ctx)
     gen_exec_counters(ctx);
     tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
     if (ctx->base.singlestep_enabled) {
-        gen_exception(EXCP_DEBUG);
+        gen_exception_raw(EXCP_DEBUG);
     } else {
         tcg_gen_exit_tb(NULL, 0);
     }
@@ -92,8 +92,7 @@ static void gen_exception_end_tb(DisasContext *ctx, int excp)
 {
     gen_exec_counters(ctx);
     tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
-    gen_exception(excp);
-    tcg_gen_exit_tb(NULL, 0);
+    gen_exception_raw(excp);
     ctx->base.is_jmp = DISAS_NORETURN;
 
 }
@@ -784,7 +783,6 @@ static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase, CPUState *cpu,
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
 
-    tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
     gen_exception_end_tb(ctx, EXCP_DEBUG);
     /*
      * The address covered by the breakpoint must be included in
@@ -848,7 +846,7 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         gen_exec_counters(ctx);
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
         if (ctx->base.singlestep_enabled) {
-            gen_exception(EXCP_DEBUG);
+            gen_exception_raw(EXCP_DEBUG);
         } else {
             tcg_gen_exit_tb(NULL, 0);
         }
