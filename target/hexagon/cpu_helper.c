@@ -333,7 +333,7 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
                 cpu, htid, env);
             env->system_ptr = 0;
             env->threadId = htid;
-            env->cmdline = machine->kernel_cmdline;
+            env->cmdline = current_env->cmdline;
             env->hex_tlb = current_env->hex_tlb;
             env->processor_ptr = current_env->processor_ptr;
             env->processor_ptr->thread[env->threadId] = env;
