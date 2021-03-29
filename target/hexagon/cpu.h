@@ -168,9 +168,6 @@ typedef struct HexagonCPU {
     target_ulong lldb_stack_adjust;
 } HexagonCPU;
 
-#define HEXAGONCPU_FROM_ENV(env)    container_of((env), HexagonCPU, env)
-#define CPUSTATE_FROM_ENV(env)      CPU(HEXAGONCPU_FROM_ENV(env))
-
 #include "cpu_bits.h"
 
 #define cpu_signal_handler cpu_hexagon_signal_handler

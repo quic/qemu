@@ -72,7 +72,7 @@ const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
  */
 static target_ulong adjust_stack_ptrs(CPUHexagonState *env, target_ulong addr)
 {
-    HexagonCPU *cpu = HEXAGONCPU_FROM_ENV(env);
+    HexagonCPU *cpu = env_archcpu(env);
     target_ulong stack_adjust = cpu->lldb_stack_adjust;
     target_ulong stack_start = env->stack_start;
     target_ulong stack_size = 0x10000;
@@ -149,7 +149,7 @@ void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
 
 static void hexagon_dump(CPUHexagonState *env, FILE *f)
 {
-    HexagonCPU *cpu = HEXAGONCPU_FROM_ENV(env);
+    HexagonCPU *cpu = env_archcpu(env);
 
     if (cpu->lldb_compat) {
         /*
