@@ -382,7 +382,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fWRITE_GOSP(A) WRITE_RREG(HEX_REG_GOSP, A)
 
 #ifdef QEMU_GENERATE
-#define fREAD_SP() (READ_REG(SP, HEX_REG_SP))
 #define fREAD_GOSP() (READ_REG(tmp, HEX_REG_GOSP))
 #define fREAD_GELR() (READ_REG(tmp, HEX_REG_GELR))
 #define fREAD_GEVB() (READ_REG(tmp, HEX_REG_GEVB))

@@ -111,14 +111,22 @@
 #define fGEN_TCG_L4_loadri_rr(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L2_loadrigp(SHORTCODE)        SHORTCODE
 #define fGEN_TCG_SL1_loadri_io(SHORTCODE)      SHORTCODE
-#define fGEN_TCG_SL2_loadri_sp(SHORTCODE)      SHORTCODE
+#define fGEN_TCG_SL2_loadri_sp(SHORTCODE) \
+    do { \
+        tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_SP], uiV); \
+        fLOAD(1, 4, u, EA, RdV); \
+    } while (0)
 
 /* Double word load instructions */
 #define fGEN_TCG_L2_loadrd_io(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L4_loadrd_ur(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L4_loadrd_rr(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L2_loadrdgp(SHORTCODE)        SHORTCODE
-#define fGEN_TCG_SL2_loadrd_sp(SHORTCODE)      SHORTCODE
+#define fGEN_TCG_SL2_loadrd_sp(SHORTCODE) \
+    do { \
+        tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_SP], uiV); \
+        fLOAD(1, 8, u, EA, RddV); \
+    } while (0)
 
 /* Instructions with multiple definitions */
 #define fGEN_TCG_LOAD_AP(RES, SIZE, SIGN) \
@@ -757,7 +765,10 @@
 #define fGEN_TCG_SS1_storew_io(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_SS2_storew_sp(SHORTCODE) \
-    fGEN_TCG_STORE(SHORTCODE)
+    do { \
+        tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_SP], uiV); \
+        fSTORE(1, 4, EA, RtV); \
+    } while (0)
 #define fGEN_TCG_SS2_storewi0(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_SS2_storewi1(SHORTCODE) \
@@ -784,7 +795,10 @@
 #define fGEN_TCG_S2_storerdgp(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_SS2_stored_sp(SHORTCODE) \
-    fGEN_TCG_STORE(SHORTCODE)
+    do { \
+        tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_SP], siV); \
+        fSTORE(1, 8, EA, RttV); \
+    } while (0)
 
 #define fGEN_TCG_S2_storerbnew_io(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
@@ -1444,7 +1458,7 @@
     do { \
         TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
         TCGv tmp = tcg_temp_new(); \
-        { fEA_RI(fREAD_SP(), -8); \
+        { tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_SP], -8); \
           fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
                                            fCAST4_4u(fREAD_FP()))); \
           gen_log_reg_write(HEX_REG_FP, EA); \
