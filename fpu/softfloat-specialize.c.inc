@@ -183,8 +183,6 @@ static FloatParts parts_silence_nan(FloatParts a, float_status *status)
 #if defined(TARGET_HPPA)
     a.frac &= ~(1ULL << (DECOMPOSED_BINARY_POINT - 1));
     a.frac |= 1ULL << (DECOMPOSED_BINARY_POINT - 2);
-#elif defined(TARGET_HEXAGON)
-    return parts_default_nan(status);
 #else
     if (snan_bit_is_one(status)) {
         return parts_default_nan(status);
