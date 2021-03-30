@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <string.h>
 
+int err;
+
 #define NBITS          8
 #define SIZE           (1 << NBITS)
 
@@ -29,8 +31,6 @@ unsigned char bbuf[SIZE] __attribute__((aligned(1 << 16))) = {0};
 /*
  * We use the C preporcessor to deal with the combinations of types
  */
-
-int err;
 
 #define BREV_LOAD(SZ, RES, ADDR, INC) \
     __asm__( \
@@ -81,7 +81,7 @@ int err;
         "}\n\t" \
         : "+r"(ADDR) \
         : "r"(VAL), "r"(INC) \
-        : "m0", "memory")
+        : "r5", "m0", "memory")
 
 #define BREV_STORE_bnew(ADDR, VAL, INC) \
     BREV_STORE_NEW(b, ADDR, VAL, INC)
@@ -89,8 +89,6 @@ int err;
     BREV_STORE_NEW(h, ADDR, VAL, INC)
 #define BREV_STORE_wnew(ADDR, VAL, INC) \
     BREV_STORE_NEW(w, ADDR, VAL, INC)
-#define BREV_STORE_dnew(ADDR, VAL, INC) \
-    BREV_STORE_NEW(d, ADDR, VAL, INC)
 
 int bitreverse(int x)
 {
@@ -127,29 +125,35 @@ void check(int i, long long result, long long expect)
         } \
     } while (0)
 
-#define TEST_BREV_STORE(SZ, TYPE, BUF, SH, SHIFT) \
+#define TEST_BREV_STORE(SZ, TYPE, BUF, VAL, SHIFT) \
     do { \
         p = BUF; \
         memset(BUF, 0xff, sizeof(BUF)); \
         for (i = 0; i < SIZE; i++) { \
-            BREV_STORE_##SZ(p, (TYPE)i << SH, 1 << (SHIFT - NBITS)); \
+            BREV_STORE_##SZ(p, (TYPE)(VAL), 1 << (SHIFT - NBITS)); \
         } \
         for (i = 0; i < SIZE; i++) { \
             check(i, BUF[i], bitreverse(i)); \
         } \
     } while (0)
 
-#define TEST_BREV_STORE_NEW(SZ, TYPE, BUF, SHIFT) \
+#define TEST_BREV_STORE_NEW(SZ, BUF, SHIFT) \
     do { \
         p = BUF; \
         memset(BUF, 0xff, sizeof(BUF)); \
         for (i = 0; i < SIZE; i++) { \
-            BREV_STORE_##SZ(p, (TYPE)i, 1 << (SHIFT - NBITS)); \
+            BREV_STORE_##SZ(p, i, 1 << (SHIFT - NBITS)); \
         } \
         for (i = 0; i < SIZE; i++) { \
             check(i, BUF[i], bitreverse(i)); \
         } \
     } while (0)
+
+/*
+ * We'll set high_half[i] = i << 16 for use in the .H form of store
+ * which stores from the high half of the word.
+ */
+int high_half[SIZE];
 
 int main()
 {
@@ -161,24 +165,25 @@ int main()
         hbuf[i] = bitreverse(i);
         wbuf[i] = bitreverse(i);
         dbuf[i] = bitreverse(i);
+        high_half[i] = i << 16;
     }
 
-    TEST_BREV_LOAD(b,  signed char,    bbuf, 16, sext8(i));
-    TEST_BREV_LOAD(ub, unsigned char,  bbuf, 16, i);
-    TEST_BREV_LOAD(h,  short,          hbuf, 15, i);
-    TEST_BREV_LOAD(uh, unsigned short, hbuf, 15, i);
-    TEST_BREV_LOAD(w,  int,            wbuf, 14, i);
-    TEST_BREV_LOAD(d,  long long,      dbuf, 13, i);
+    TEST_BREV_LOAD(b,  int,       bbuf, 16, sext8(i));
+    TEST_BREV_LOAD(ub, int,       bbuf, 16, i);
+    TEST_BREV_LOAD(h,  int,       hbuf, 15, i);
+    TEST_BREV_LOAD(uh, int,       hbuf, 15, i);
+    TEST_BREV_LOAD(w,  int,       wbuf, 14, i);
+    TEST_BREV_LOAD(d,  long long, dbuf, 13, i);
 
-    TEST_BREV_STORE(b, char,      bbuf, 0,  16);
-    TEST_BREV_STORE(h, short,     hbuf, 0,  15);
-    TEST_BREV_STORE(f, short,     hbuf, 16, 15);
-    TEST_BREV_STORE(w, int,       wbuf, 0,  14);
-    TEST_BREV_STORE(d, long long, dbuf, 0,  13);
+    TEST_BREV_STORE(b, int,       bbuf, i,            16);
+    TEST_BREV_STORE(h, int,       hbuf, i,            15);
+    TEST_BREV_STORE(f, int,       hbuf, high_half[i], 15);
+    TEST_BREV_STORE(w, int,       wbuf, i,            14);
+    TEST_BREV_STORE(d, long long, dbuf, i,            13);
 
-    TEST_BREV_STORE_NEW(bnew, char,      bbuf, 16);
-    TEST_BREV_STORE_NEW(hnew, short,     hbuf, 15);
-    TEST_BREV_STORE_NEW(wnew, int,       wbuf, 14);
+    TEST_BREV_STORE_NEW(bnew, bbuf, 16);
+    TEST_BREV_STORE_NEW(hnew, hbuf, 15);
+    TEST_BREV_STORE_NEW(wnew, wbuf, 14);
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;
