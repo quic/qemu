@@ -704,18 +704,10 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #ifdef QEMU_GENERATE
 #define fGETHALF(N, SRC)  gen_get_half(HALF, N, SRC, true)
 #define fGETUHALF(N, SRC) gen_get_half(HALF, N, SRC, false)
-
-#define SETHALF_FUNC(X) \
-    __builtin_choose_expr(TYPE_TCGV(X), \
-        gen_set_half, \
-        __builtin_choose_expr(TYPE_TCGV_I64(X), \
-            gen_set_half_i64, (void)0))
-#define fSETHALF(N, DST, VAL) SETHALF_FUNC(DST)(N, DST, VAL)
-#define fSETHALFw(N, DST, VAL) gen_set_half(N, DST, VAL)
-#define fSETHALFd(N, DST, VAL) gen_set_half_i64(N, DST, VAL)
 #else
 #define fGETHALF(N, SRC) ((int16_t)((SRC >> ((N) * 16)) & 0xffff))
 #define fGETUHALF(N, SRC) ((uint16_t)((SRC >> ((N) * 16)) & 0xffff))
+#endif
 #define fSETHALF(N, DST, VAL) \
     do { \
         DST = (DST & ~(0x0ffffLL << ((N) * 16))) | \
@@ -723,7 +715,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     } while (0)
 #define fSETHALFw fSETHALF
 #define fSETHALFd fSETHALF
-#endif
 
 #ifdef QEMU_GENERATE
 #define GETWORD_FUNC(X) \
