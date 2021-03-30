@@ -1735,24 +1735,19 @@
  */
 #define fGEN_TCG_A6_vminub_RdP(SHORTCODE) \
     do { \
-        TCGv BYTE = tcg_temp_new(); \
         TCGv left = tcg_temp_new(); \
         TCGv right = tcg_temp_new(); \
         TCGv tmp = tcg_temp_new(); \
-        int i; \
         tcg_gen_movi_tl(PeV, 0); \
         tcg_gen_movi_i64(RddV, 0); \
-        for (i = 0; i < 8; i++) { \
-            fGETUBYTE(i, RttV); \
-            tcg_gen_mov_tl(left, BYTE); \
-            fGETUBYTE(i, RssV); \
-            tcg_gen_mov_tl(right, BYTE); \
+        for (int i = 0; i < 8; i++) { \
+            gen_get_byte_i64(left, i, RttV, false); \
+            gen_get_byte_i64(right, i, RssV, false); \
             tcg_gen_setcond_tl(TCG_COND_GT, tmp, left, right); \
-            fSETBIT(i, PeV, tmp); \
-            fMIN(tmp, left, right); \
-            fSETBYTE(i, RddV, tmp); \
+            tcg_gen_deposit_tl(PeV, PeV, tmp, i, 1); \
+            tcg_gen_umin_tl(tmp, left, right); \
+            gen_set_byte_i64(i, RddV, tmp); \
         } \
-        tcg_temp_free(BYTE); \
         tcg_temp_free(left); \
         tcg_temp_free(right); \
         tcg_temp_free(tmp); \

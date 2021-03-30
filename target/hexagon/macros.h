@@ -198,11 +198,7 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 
 #define fMAX(A, B) (((A) > (B)) ? (A) : (B))
 
-#ifdef QEMU_GENERATE
-#define fMIN(DST, A, B) tcg_gen_movcond_i32(TCG_COND_LT, DST, A, B, A, B)
-#else
 #define fMIN(A, B) (((A) < (B)) ? (A) : (B))
-#endif
 
 #define fABS(A) (((A) < 0) ? (-(A)) : (A))
 #define fINSERT_BITS(REG, WIDTH, OFFSET, INVAL) \
@@ -220,11 +216,7 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
         deposit64((INREG), (LOWBIT), ((HIBIT) - (LOWBIT) + 1), (INVAL)) : \
         INREG)
 
-#ifdef QEMU_GENERATE
-#define f8BITSOF(RES, VAL) gen_8bitsof(RES, VAL)
-#else
 #define f8BITSOF(VAL) ((VAL) ? 0xff : 0x00)
-#endif
 
 #ifdef QEMU_GENERATE
 #define fLSBOLD(VAL) tcg_gen_andi_tl(LSB, (VAL), 1)
@@ -700,20 +692,11 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fGETUBYTE(N, SRC) ((uint8_t)((SRC >> ((N) * 8)) & 0xff))
 #endif
 
-#ifdef QEMU_GENERATE
-#define SETBYTE_FUNC(X) \
-    __builtin_choose_expr(TYPE_TCGV(X), \
-        gen_set_byte, \
-        __builtin_choose_expr(TYPE_TCGV_I64(X), \
-            gen_set_byte_i64, (void)0))
-#define fSETBYTE(N, DST, VAL) SETBYTE_FUNC(DST)(N, DST, VAL)
-#else
 #define fSETBYTE(N, DST, VAL) \
     do { \
         DST = (DST & ~(0x0ffLL << ((N) * 8))) | \
         (((uint64_t)((VAL) & 0x0ffLL)) << ((N) * 8)); \
     } while (0)
-#endif
 
 #ifdef QEMU_GENERATE
 #define fGETHALF(N, SRC)  gen_get_half(HALF, N, SRC, true)
@@ -760,14 +743,10 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
               (((VAL) & 0x0ffffffffLL) << ((N) * 32)); \
     } while (0)
 
-#ifdef QEMU_GENERATE
-#define fSETBIT(N, DST, VAL) tcg_gen_deposit_tl(DST, DST, VAL, N, 1)
-#else
 #define fSETBIT(N, DST, VAL) \
     do { \
         DST = (DST & ~(1ULL << (N))) | (((uint64_t)(VAL)) << (N)); \
     } while (0)
-#endif
 
 #define fGETBIT(N, SRC) (((SRC) >> N) & 1)
 #define fSETBITS(HI, LO, DST, VAL) \

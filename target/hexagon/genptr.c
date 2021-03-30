@@ -308,7 +308,7 @@ static bool readonly_ok(Insn *insn)
     return true;
 }
 
-static inline TCGv gen_get_byte(TCGv result, int N, TCGv src, bool sign)
+static TCGv gen_get_byte(TCGv result, int N, TCGv src, bool sign)
 {
     if (sign) {
         tcg_gen_sextract_tl(result, src, N * 8, 8);
@@ -318,7 +318,7 @@ static inline TCGv gen_get_byte(TCGv result, int N, TCGv src, bool sign)
     return result;
 }
 
-static inline TCGv gen_get_byte_i64(TCGv result, int N, TCGv_i64 src, bool sign)
+static TCGv gen_get_byte_i64(TCGv result, int N, TCGv_i64 src, bool sign)
 {
     TCGv_i64 res64 = tcg_temp_new_i64();
     if (sign) {
@@ -360,7 +360,7 @@ static inline void gen_set_byte(int N, TCGv result, TCGv src)
     tcg_gen_deposit_tl(result, result, src, N * 8, 8);
 }
 
-static inline void gen_set_byte_i64(int N, TCGv_i64 result, TCGv src)
+static void gen_set_byte_i64(int N, TCGv_i64 result, TCGv src)
 {
     TCGv_i64 src64 = tcg_temp_new_i64();
     tcg_gen_extu_i32_i64(src64, src);
@@ -368,7 +368,7 @@ static inline void gen_set_byte_i64(int N, TCGv_i64 result, TCGv src)
     tcg_temp_free_i64(src64);
 }
 
-static inline TCGv gen_get_word(TCGv result, int N, TCGv_i64 src, bool sign)
+static TCGv gen_get_word(TCGv result, int N, TCGv_i64 src, bool sign)
 {
     if (N == 0) {
         tcg_gen_extrl_i64_i32(result, src);
@@ -380,7 +380,7 @@ static inline TCGv gen_get_word(TCGv result, int N, TCGv_i64 src, bool sign)
     return result;
 }
 
-static inline TCGv_i64 gen_get_word_i64(TCGv_i64 result, int N, TCGv_i64 src,
+static TCGv_i64 gen_get_word_i64(TCGv_i64 result, int N, TCGv_i64 src,
                                         bool sign)
 {
     TCGv word = tcg_temp_new();
@@ -536,7 +536,7 @@ static inline void gen_store8i(TCGv_env cpu_env, TCGv vaddr, int64_t src,
     tcg_temp_free_i64(tmp);
 }
 
-static inline TCGv gen_8bitsof(TCGv result, TCGv value)
+static TCGv gen_8bitsof(TCGv result, TCGv value)
 {
     TCGv zero = tcg_const_tl(0);
     TCGv ones = tcg_const_tl(0xff);
