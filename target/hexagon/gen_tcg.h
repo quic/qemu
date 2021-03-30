@@ -315,16 +315,13 @@
 #define fGEN_TCG_loadalignh(GET_EA) \
     do { \
         TCGv tmp = tcg_temp_new(); \
-        TCGv tmpV = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
-        tcg_gen_concat_i32_i64(RyyV, hex_gpr[RyyN], hex_gpr[RyyN + 1]); \
         GET_EA;  \
-        fLOAD(1, 2, u, EA, tmpV);  \
-        tcg_gen_extu_i32_i64(tmp_i64, tmpV); \
+        fLOAD(1, 2, u, EA, tmp);  \
+        tcg_gen_extu_i32_i64(tmp_i64, tmp); \
         tcg_gen_shri_i64(RyyV, RyyV, 16); \
         tcg_gen_deposit_i64(RyyV, RyyV, tmp_i64, 48, 16); \
         tcg_temp_free(tmp); \
-        tcg_temp_free(tmpV); \
         tcg_temp_free_i64(tmp_i64); \
     } while (0)
 
@@ -349,16 +346,13 @@
 #define fGEN_TCG_loadalignb(GET_EA) \
     do { \
         TCGv tmp = tcg_temp_new(); \
-        TCGv tmpV = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
-        tcg_gen_concat_i32_i64(RyyV, hex_gpr[RyyN], hex_gpr[RyyN + 1]); \
         GET_EA;  \
-        fLOAD(1, 1, u, EA, tmpV);  \
-        tcg_gen_extu_i32_i64(tmp_i64, tmpV); \
+        fLOAD(1, 1, u, EA, tmp);  \
+        tcg_gen_extu_i32_i64(tmp_i64, tmp); \
         tcg_gen_shri_i64(RyyV, RyyV, 8); \
         tcg_gen_deposit_i64(RyyV, RyyV, tmp_i64, 56, 8); \
         tcg_temp_free(tmp); \
-        tcg_temp_free(tmpV); \
         tcg_temp_free_i64(tmp_i64); \
     } while (0)
 
