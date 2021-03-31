@@ -1676,11 +1676,17 @@
 /*
  * Approximation of the reciprocal square root
  * r1,p0 = sfinvsqrta(r0)
+ *
+ * The helper packs the 2 32-bit results into a 64-bit value,
+ * so unpack them into the proper results.
  */
 #define fGEN_TCG_F2_sfinvsqrta(SHORTCODE) \
     do { \
-        gen_helper_sfinvsqrta_val(RdV, cpu_env, RsV); \
-        gen_helper_sfinvsqrta_pred(PeV, cpu_env, RsV); \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        gen_helper_sfinvsqrta(tmp, cpu_env, RsV); \
+        tcg_gen_extrh_i64_i32(RdV, tmp); \
+        tcg_gen_extrl_i64_i32(PeV, tmp); \
+        tcg_temp_free_i64(tmp); \
     } while (0)
 
 /*
