@@ -373,18 +373,16 @@ static float32 build_float32(uint8_t sign, uint32_t exp, uint32_t mant)
 }
 
 /*
- * sfrecipa, sfinvsqrta, vacsh have two results
+ * sfrecipa, sfinvsqrta have two 32-bit results
  *     r0,p0=sfrecipa(r1,r2)
  *     r0,p0=sfinvsqrta(r1)
- *     r1:0,p0=vacsh(r3:2,r5:4)
- * Since helpers can only return a single value, we have two helpers
- * for each of these. They each contain basically the same code (copy/pasted
- * from the arch library), but one returns the register and the other
- * returns the predicate.
+ *
+ * Since helpers can only return a single value, we pack the two results
+ * into a 64-bit value.
  */
-float32 HELPER(sfrecipa_val)(CPUHexagonState *env, float32 RsV, float32 RtV)
+uint64_t HELPER(sfrecipa)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
-    /* int32_t PeV; Not needed to compute value */
+    int32_t PeV = 0;
     float32 RdV;
     int idx;
     int adjust;
@@ -393,28 +391,14 @@ float32 HELPER(sfrecipa_val)(CPUHexagonState *env, float32 RsV, float32 RtV)
 
     arch_fpop_start(env);
     if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
-        /* PeV = adjust; Not needed to compute value */
+        PeV = adjust;
         idx = (RtV >> 16) & 0x7f;
         mant = (arch_recip_lookup(idx) << 15) | 1;
         exp = SF_BIAS - (float32_getexp(RtV) - SF_BIAS) - 1;
         RdV = build_float32(extract32(RtV, 31, 1), exp, mant);
     }
     arch_fpop_end(env);
-    return RdV;
-}
-
-int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, float32 RsV, float32 RtV)
-{
-    int32_t PeV = 0;
-    float32 RdV;
-    int adjust;
-
-    arch_fpop_start(env);
-    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
-        PeV = adjust;
-    }
-    arch_fpop_end(env);
-    return PeV;
+    return ((uint64_t)RdV << 32) | PeV;
 }
 
 uint64_t HELPER(sfinvsqrta)(CPUHexagonState *env, float32 RsV)

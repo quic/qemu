@@ -1666,11 +1666,17 @@
 /*
  * Approximate reciprocal
  * r3,p1 = sfrecipa(r0, r1)
+ *
+ * The helper packs the 2 32-bit results into a 64-bit value,
+ * so unpack them into the proper results.
  */
 #define fGEN_TCG_F2_sfrecipa(SHORTCODE) \
     do { \
-        gen_helper_sfrecipa_val(RdV, cpu_env, RsV, RtV);  \
-        gen_helper_sfrecipa_pred(PeV, cpu_env, RsV, RtV);  \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        gen_helper_sfrecipa(tmp, cpu_env, RsV, RtV);  \
+        tcg_gen_extrh_i64_i32(RdV, tmp); \
+        tcg_gen_extrl_i64_i32(PeV, tmp); \
+        tcg_temp_free_i64(tmp); \
     } while (0)
 
 /*
