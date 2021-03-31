@@ -46,17 +46,27 @@ static int sfinvsqrta(int Rs, int *pred_result)
 }
 
 static long long vacsh(long long Rxx, long long Rss, long long Rtt,
-                       int *pred_result)
+                       int *pred_result, int *ovf_result)
 {
   long long result = Rxx;
   int predval;
+  int usr;
 
-  asm volatile("%0,p0 = vacsh(%2, %3)\n\t"
+  /*
+   * This instruction can set bit 0 (OVF/overflow) in usr
+   * Clear the bit first, then return that bit to the caller
+   */
+  asm volatile("r2 = usr\n\t"
+               "r2 = clrbit(r2, #0)\n\t"        /* clear overflow bit */
+               "usr = r2\n\t"
+               "%0,p0 = vacsh(%3, %4)\n\t"
                "%1 = p0\n\t"
-               : "+r"(result), "=r"(predval)
+               "%2 = usr\n\t"
+               : "+r"(result), "=r"(predval), "=r"(usr)
                : "r"(Rss), "r"(Rtt)
-               : "p0");
+               : "r2", "p0", "usr");
   *pred_result = predval;
+  *ovf_result = (usr & 1);
   return result;
 }
 
@@ -161,12 +171,28 @@ static void test_vacsh()
 {
     long long res64;
     int pred_result;
+    int ovf_result;
 
-    res64 = vacsh(0x0807060504030201LL,
-                  0x0102030405060708LL,
-                  0x0LL, &pred_result);
-    check_ll(res64, 0x807060505060708LL);
+    res64 = vacsh(0x0004000300020001LL,
+                  0x0001000200030004LL,
+                  0x0000000000000000LL, &pred_result, &ovf_result);
+    check_ll(res64, 0x0004000300030004LL);
     check_p(pred_result, 0xf0);
+    check(ovf_result, 0);
+
+    res64 = vacsh(0x0004000300020001LL,
+                  0x0001000200030004LL,
+                  0x000affff000d0000LL, &pred_result, &ovf_result);
+    check_ll(res64, 0x000e0003000f0004LL);
+    check_p(pred_result, 0xcc);
+    check(ovf_result, 0);
+
+    res64 = vacsh(0x00047fff00020001LL,
+                  0x00017fff00030004LL,
+                  0x000a0fff000d0000LL, &pred_result, &ovf_result);
+    check_ll(res64, 0x000e7fff000f0004LL);
+    check_p(pred_result, 0xfc);
+    check(ovf_result, 1);
 }
 
 static void test_vminub()
