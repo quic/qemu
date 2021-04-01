@@ -2282,6 +2282,60 @@
 #define fGEN_TCG_SL2_jumpr31_tnew(SHORTCODE) \
     gen_cond_jumpr(hex_new_pred_value[0], hex_gpr[HEX_REG_LR])
 
+/*
+ * r5:4 = valignb(r1:0, r3:2, p0)
+ *
+ * Predicate register contains the shift amount in bytes
+ * Shift RssV right
+ * Shift RttV left
+ * Combine the parts into RddV
+ *
+ * Note the special handling when the shift amount is zero
+ *     Just copy RssV into Rddv
+ */
+
+#define fGEN_TCG_S2_valignrb(SHORTCODE) \
+    do { \
+        TCGv shift = tcg_temp_local_new(); \
+        TCGv_i64 shift_i64 = tcg_temp_new_i64(); \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        TCGLabel *skip = gen_new_label(); \
+        tcg_gen_andi_tl(shift, PuV, 0x7); \
+        tcg_gen_mov_i64(RddV, RssV); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, shift, 0, skip); \
+        tcg_gen_muli_i32(shift, shift, 8); \
+        tcg_gen_extu_i32_i64(shift_i64, shift); \
+        tcg_gen_shr_i64(RddV, RssV, shift_i64); \
+        tcg_gen_subfi_i64(shift_i64, 64, shift_i64); \
+        tcg_gen_shl_i64(tmp, RttV, shift_i64); \
+        tcg_gen_or_i64(RddV, RddV, tmp); \
+        gen_set_label(skip); \
+        tcg_temp_free(shift); \
+        tcg_temp_free_i64(shift_i64); \
+        tcg_temp_free_i64(tmp); \
+    } while (0)
+
+#define Y2_dcfetchbo(SHORTCODE)   do { } while (0)  /* Not modelled in qemu */
+
+/*
+ * Add vector of words
+ * r5:4 = vaddw(r1:0, r3:2, p0)
+ */
+#define fGEN_TCG_A2_vaddw(SHORTCODE) \
+    do { \
+        TCGv_i64 left = tcg_temp_new_i64(); \
+        TCGv_i64 right = tcg_temp_new_i64(); \
+        tcg_gen_movi_i64(RddV, 0); \
+        for (int i = 0; i < 2; i++) { \
+            tcg_gen_sextract_i64(left, RssV, i * 32, 32); \
+            tcg_gen_sextract_i64(right, RttV, i * 32, 32); \
+            tcg_gen_add_i64(left, left, right); \
+            tcg_gen_deposit_i64(RddV, RddV, left, i * 32, 32); \
+        } \
+        tcg_temp_free_i64(left); \
+        tcg_temp_free_i64(right); \
+    } while (0)
+
 /* Floating point */
 #define fGEN_TCG_F2_conv_sf2df(SHORTCODE) \
     gen_helper_conv_sf2df(RddV, cpu_env, RsV)
