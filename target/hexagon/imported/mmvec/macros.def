@@ -46,6 +46,12 @@ DEF_MACRO(fRT8NOTE, (),
 	(A_NOTE_RT8)
 )
 
+DEF_MACRO(fCVI_VX_NO_TMP_LD, (),
+    "",
+    "",
+    ,
+    (A_CVI_VX_NO_TMP_LD)
+)
 DEF_MACRO(fNOTQ,(VAL),
 	"~VAL",
 	"~VAL",
@@ -385,7 +391,7 @@ DEF_MACRO(fSCATTER_INIT, ( REGION_START, LENGTH, ELEMENT_SIZE),
     mem_vector_scatter_init(thread, insn,   REGION_START, LENGTH, ELEMENT_SIZE);
 	if (EXCEPTION_DETECTED) return;
     },
-    (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_RESTRICT_SLOT0ONLY)
+    (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_RESTRICT_SLOT0ONLY,A_NOTE_NO_ECC)
 )
 
 DEF_MACRO(fGATHER_INIT, ( REGION_START, LENGTH, ELEMENT_SIZE),
@@ -395,7 +401,7 @@ DEF_MACRO(fGATHER_INIT, ( REGION_START, LENGTH, ELEMENT_SIZE),
     mem_vector_gather_init(thread, insn,   REGION_START, LENGTH, ELEMENT_SIZE);
 	if (EXCEPTION_DETECTED) return;
     },
-    (A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
+    (A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_NOTE_NO_ECC)
 )
 
 DEF_MACRO(fSCATTER_FINISH, (OP),
@@ -531,9 +537,6 @@ DEF_MACRO(GATHER_FUNCTION, (EA,OFFSET,IDX, LEN, ELEMENT_SIZE, BANK_IDX, QVAL),
             log_byte =  ((OFFSET>=0)&&((pa+i0)<=pa_high)) && QVAL;
             log_bank |= (log_byte<<i0);
             size1u_t B  = sim_mem_read1(thread->system_ptr, thread->threadId, thread->mem_access[slot].paddr+OFFSET+i0);
-#ifdef VERIFICATION
-			warn("Gather[%d] sim_mem_read1 pa:%llx val: %x", ELEMENT_SIZE*IDX+i0, thread->mem_access[slot].paddr+OFFSET+i0, B);
-#endif
             THREAD2STRUCT->tmp_VRegs[0].ub[ELEMENT_SIZE*IDX+i0] = B;
             LOG_VTCM_BYTE(pa+i0,log_byte,B,ELEMENT_SIZE*IDX+i0);
         }
@@ -1149,7 +1152,11 @@ DEF_MACRO(fVUADDSAT,(WIDTH,U,V),
 DEF_MACRO(fVSADDSAT,(WIDTH,U,V),
 	"sat_##WIDTH(U+V)",
 	"Add WIDTH-bit values U and V with saturation",
-	fVSATN(  WIDTH, fSXTN(WIDTH, 2*WIDTH, U)  + fSXTN(WIDTH, 2*WIDTH, V)),
+	({size8s_t tmp5 = fSXTN(WIDTH, 2*WIDTH, U);
+	  size8s_t tmp6 = fSXTN(WIDTH, 2*WIDTH, V);
+      size8s_t tmp7 = tmp5 + tmp6;
+	  fVSATN(  WIDTH, tmp7);
+	 }),
 	/* attribs */
 )
 
@@ -1437,6 +1444,13 @@ DEF_MACRO(fCMPGT_HF,(A,B),
   "(A > B)",
   "Vector compare of HF format",
   cmpgt_hf(A,B),
+	(A_HVX_FLT)
+)
+
+DEF_MACRO(fCMPGT_BF,(A,B),
+	"(A > B)",
+	"Vector compare of BF format",
+	cmpgt_sf(((int)A) << 16,((int)B) << 16),
   (A_HVX_FLT)
 )
 

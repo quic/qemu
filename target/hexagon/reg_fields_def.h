@@ -78,7 +78,7 @@ DEF_REG_FIELD(USR_HFI,
     "00: No prefetching, "
     "01: Allow prefetching of at most 1 additional cache line, "
     "10: Allow prefetching of at most 2 additional cache lines.")
-
+DEF_REG_FIELD(USR_FPCOPROC, "fpcoproc", 20, 2, "Coprocessor FP bits.")
 DEF_REG_FIELD(USR_FPRND,
     "fprnd", 22, 2,
     "Rounding Mode for Floating-Point Instructions: "

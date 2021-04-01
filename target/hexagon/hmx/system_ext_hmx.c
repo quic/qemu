@@ -1,4 +1,19 @@
-/* Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved. */
+/*
+ *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <stdio.h>
 #include <stdint.h>
@@ -20,11 +35,13 @@
 #include "insn.h"
 //#include "pmu.h"
 #include "hmx/system_ext_hmx.h"
-#include "hmx/mpy_hmx.h"
+#include "hmx/mpy_fp16.h"
 #include "arch_options_calc.h"
+#include "hmx/macros_auto.h"
 
+#define env thread
 #define thread_t         CPUHexagonState
-#define THREAD2STRUCT ((hmx_state_t*)env->processor_ptr->shared_extptr)
+#define THREAD2STRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
 
 // Get Arch option through thread
 #define ARCH_OPT_TH(OPTION) (thread->processor_ptr->arch_proc_options->OPTION)
@@ -34,64 +51,50 @@
 #define warn(...)
 #define register_coproc_ldst_exception(...) {}
 
+static int check_mxmem_page_cross(thread_t* thread, vaddr_t base, int length, int page_size)
+{
+	vaddr_t page_mask = (1ULL<<page_size)-1;
+	if (((base+length) & ~page_mask) != (base & ~page_mask)) {
+		warn("HMX Op crossed page: start =%x end=%x Page Size=%x Page Mask=%x", base, base+length, page_size,page_mask);
+		return 1;
+	}
+    return 0;
+}
 
-#define check_mxmem_page_cross(thread, base, length, page_size)   0
-
-#ifdef FIXME
 #define MX_EXCEPTION_CHECK(VA,LEN,LEN2,TYPE1, TYPE2)\
 	mem_init_access_unaligned(thread, slot, VA, VA, LEN, TYPE1, TYPE2);\
     if (EXCEPTION_DETECTED) return;\
 	paddr = maptr->paddr;\
 	int mxmem_exception = (maptr->xlate_info.memtype.device && !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;\
     mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);\
-    mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr+LEN, SHOW_WARNING);\
+    CHECK_ACCESS_RANGE(mxmem_exception, paddr, LEN);\
     mxmem_exception |= check_mxmem_page_cross(thread,VA,LEN2, thread->mem_access[slot].xlate_info.size);\
     if (mxmem_exception) {\
-        register_coproc_ldst_exception(thread,slot,VA);\
+	        register_coproc_ldst_exception(thread,slot,VA);\
 	}\
 	if (EXCEPTION_DETECTED) return;
-#else
-
-#define check_mxmem_page_cross(thread, base, length, page_size)   0
-
-#define MX_EXCEPTION_CHECK(VA,LEN,LEN2,TYPE1, TYPE2)\
-	  mem_init_access_unaligned(thread, slot, VA, VA, LEN, TYPE1, TYPE2);\
-    {\
-        if (EXCEPTION_DETECTED) return;\
-	      paddr = maptr->paddr;\
-	      int mxmem_exception = (maptr->xlate_info.memtype.device && !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;\
-        mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);\
-        mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr+LEN, SHOW_WARNING);\
-        mxmem_exception |= check_mxmem_page_cross(thread,VA,LEN2, thread->mem_access[slot].xlate_info.size);\
-        if (mxmem_exception) {\
-            register_coproc_ldst_exception(thread,slot,VA);\
-	      }\
-	      if (EXCEPTION_DETECTED) return;\
-    }
-
-
-#endif
 
 
 
 void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, int size)
 {
-  thread_t *env = thread;
 	paddr_t paddr;
-	mem_access_info_t *maptr = &thread->mem_access[slot = 0];
+	mem_access_info_t *maptr = &thread->mem_access[slot];
 	hmx_mem_access_info_t * hmx_maptr = &maptr->hmx_ma;
 
 	int type = (access_type == access_type_hmx_load_bias) ? TYPE_LOAD : TYPE_STORE;
 
 	if(size / thread->processor_ptr->arch_proc_options->hmx_output_depth == 8)
+	{
 		hmx_maptr->bias_32bit = 1;
+		//temprarily use bias load as bias load2 for Netrani before the correct modeling
+		if(thread->processor_ptr->arch_proc_options->QDSP6_MX_RATE == 1)
+			hmx_maptr->bias_32bit = 0;
+	}
 	else if (size / thread->processor_ptr->arch_proc_options->hmx_output_depth == 4)
 		hmx_maptr->bias_32bit = 0;
-	else {
-		warn(":unknown bias data type, neither 16bit nor 32bit ");
-  }
 
-	mem_init_access_unaligned(thread, slot, vaddr, vaddr, size, access_type, type);
+	mem_init_access_unaligned(thread, slot, vaddr, vaddr, size, access_type, type);\
 
     if (EXCEPTION_DETECTED) return;
 	maptr->paddr = paddr = maptr->paddr & ~(size-1);
@@ -100,16 +103,12 @@ void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, i
 
 	int mxmem_exception = (maptr->xlate_info.memtype.device && !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;
 	mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);
-	mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr + size-1, SHOW_WARNING);
+	CHECK_ACCESS_RANGE(mxmem_exception, paddr, size-1);
     if (mxmem_exception) {
         register_coproc_ldst_exception(thread,slot,vaddr);
 	}
 	if (EXCEPTION_DETECTED) return;
 
-#ifdef VERIFICATION
-    int slot_tmp = thread->ver_cur_slot;
-    thread->ver_cur_slot = slot;
-#endif
 	if(!thread->bq_on) {
 		if (access_type == access_type_hmx_load_bias) {
 			memwrap_memtrace_ld(thread, thread->Regs[REG_PC], vaddr, paddr, 1);
@@ -117,20 +116,16 @@ void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, i
 			memwrap_memtrace_st(thread, thread->Regs[REG_PC], vaddr, paddr, 1);
 		}
 	}
-#ifdef VERIFICATION
-    thread->ver_cur_slot = slot_tmp;
-#endif
 
 }
 
-//static const char * hmx_act_type_str[] = {"BLOCK", "DEEP", "ABOVE", "SINGLE", "DILATE", "BATCH"};
-//static const char * hmx_wei_type_str[] = {"NORMAL", "DEEP", "AFTER", "SINGLE", "DILATE", "DROP"};
+const char * hmx_act_type_str[] = {"BLOCK", "DEEP", "ABOVE", "SINGLE", "DILATE", "BATCH"};
+const char * hmx_wei_type_str[] = {"NORMAL", "DEEP", "AFTER", "SINGLE", "DILATE", "DROP"};
 
 void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int type, int format, int block_type)
 {
-  thread_t *env = thread;
     paddr_t paddr;
-    mem_access_info_t *maptr = &thread->mem_access[slot=1]; // MGL: slot must be set to 1
+    mem_access_info_t *maptr = &thread->mem_access[slot];
 	hmx_mem_access_info_t * hmx_maptr = &maptr->hmx_ma;
 
 	vaddr_t addr_mask = fMX_GETADDRMASK(thread->processor_ptr);
@@ -138,9 +133,12 @@ void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slo
 
 	MX_EXCEPTION_CHECK(start, dY, dY, access_type_hmx_load_act, TYPE_LOAD);
 
+
 	maptr->vaddr = start;
 
 	memset(hmx_maptr, 0, sizeof(hmx_mem_access_info_t));
+
+	hmx_maptr->flt = (type == HMX_FP16);
 
 
 	maptr->range = range;
@@ -150,11 +148,14 @@ void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slo
 	maptr->width = 2048;
 
 	size4u_t mask = ((1 << fMX_GETCHANNELSIZE(thread->processor_ptr))-1) << format;
-	hmx_maptr->ch_start = ((start & mask) >> format) & ~0x3;
-	hmx_maptr->ch_stop = (((range & mask) >> format) | 0x3)+1;
+	//hmx_maptr->ch_start = ((start & mask) >> format) & ~0x3;
+	//hmx_maptr->ch_stop = ((range & mask) >> format) & ~0x3;
+
+	hmx_maptr->ch_start = ((start & mask) >> format);
+	hmx_maptr->ch_stop  = ((range & mask) >> format);
+
 
 	hmx_maptr->dY = dY;
-	hmx_maptr->flt = (type == HMX_FP16);
 
 	fMX_GETMASK(THREAD2STRUCT->tile_x_mask, ~range, format, 0);
 	fMX_GETMASK(THREAD2STRUCT->tile_y_mask,  range, format, 0);
@@ -164,6 +165,7 @@ void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slo
 		THREAD2STRUCT->tile_y_mask &= ~1;
 	}
 
+
 	fMX_MASKED_INC(THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_x_mask);
 	fMX_MASKED_INC(THREAD2STRUCT->tile_y_inc, THREAD2STRUCT->tile_y_mask);
 
@@ -171,7 +173,7 @@ void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slo
 	hmx_maptr->fx = start & THREAD2STRUCT->tile_x_mask;
 	hmx_maptr->fy = start & THREAD2STRUCT->tile_y_mask;
 	hmx_maptr->acc_select = (hmx_maptr->flt) ? THREAD2STRUCT->current_acc_flt : THREAD2STRUCT->current_acc_fxp;
-
+	hmx_maptr->act_reuse = 0;
 
 	if (block_type == HMX_ACT_DEEP) {
 		if (hmx_maptr->dY < 0) {
@@ -197,7 +199,7 @@ void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slo
 	} else if (block_type == HMX_ACT_ABOVE) {
 		hmx_maptr->y_start = hmx_maptr->fy;
 		hmx_maptr->y_stop  = THREAD2STRUCT->tile_y_mask;
-		if (THREAD2STRUCT->tile_y_mask!=0) {
+		if (THREAD2STRUCT->tile_y_mask != 0) {
 			fMX_COMPUTER_FILTER_SIZE_ABOVE(hmx_maptr->y_tap, hmx_maptr->fy, THREAD2STRUCT->tile_y_mask, THREAD2STRUCT->tile_y_inc);
 			if (hmx_maptr->y_tap == 0)
 				hmx_maptr->y_tap = 1;
@@ -209,6 +211,55 @@ void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slo
 		hmx_maptr->y_stop = hmx_maptr->fy;// fMX_INC_MASKED(hmx_maptr->fy, THREAD2STRUCT->tile_y_inc, (THREAD2STRUCT->tile_y_mask | (1<<31)));
 		hmx_maptr->y_tap = 1;
 	}
+
+	// if start > stop, we are in grouped convolution mode. we will process all 32 input channels so overwrite the start/stop values
+	// leading 1s  | group size
+	// 0 | 32
+	// 1 | 16
+	// 2 | 8
+	// 3 | 4
+	// no group conv when in deep mode
+
+	size4u_t grouped_convolution = (hmx_maptr->ch_start > hmx_maptr->ch_stop) && (block_type != HMX_ACT_DEEP) && thread->processor_ptr->arch_proc_options->hmx_group_conv_mode;
+	THREAD2STRUCT->group_convolution = grouped_convolution;
+
+	size4u_t cl1 = fCL1_1(((hmx_maptr->ch_stop - hmx_maptr->ch_start) ^ hmx_maptr->ch_start ^ hmx_maptr->ch_stop) << 2); //count of leading ones
+
+	hmx_maptr->group_size =  grouped_convolution ? (32 >> cl1) : 32; // maybe just 32>>clz
+	hmx_maptr->group_count = 32 / hmx_maptr->group_size;
+
+	fMX_DEBUG_LOG(5, "\nDEBUG!!!  start=0x%x stop=0x%x grouped_convolution=%d group size=%d count=%d %x %d\n", hmx_maptr->ch_start, hmx_maptr->ch_stop, grouped_convolution, hmx_maptr->group_size, hmx_maptr->group_count, ((hmx_maptr->ch_stop - hmx_maptr->ch_start) ^ hmx_maptr->ch_start ^ hmx_maptr->ch_stop) << 2, cl1);
+
+	int group_ch_start = hmx_maptr->ch_start & (0x1F >> cl1);
+	int group_ch_stop = hmx_maptr->ch_stop & (0x1F >> cl1);
+
+	if(hmx_maptr->group_count == 16)
+	{
+		group_ch_start = (hmx_maptr->ch_start & ~0x1) & (0x1F >> cl1);
+		group_ch_stop = (hmx_maptr->ch_stop | 0x1) & (0x1F >> cl1);
+	}
+	else if(hmx_maptr->group_count <= 8)
+	{
+		group_ch_start = (hmx_maptr->ch_start & ~0x3) & (0x1F >> cl1);
+		group_ch_stop = (hmx_maptr->ch_stop | 0x3) & (0x1F >> cl1);
+	}
+
+	fMX_DEBUG_LOG(5, "\nDEBUG!!! group_ch_start = %d, group_ch_stop = %d, group_size = %d\n", group_ch_start, group_ch_stop, hmx_maptr->group_size);
+
+	hmx_maptr->ch_start = grouped_convolution ? group_ch_start : (hmx_maptr->ch_start & ~0x3);
+	hmx_maptr->ch_stop = grouped_convolution ? (group_ch_stop + 1) : ((hmx_maptr->ch_stop | 0x3)+1);
+	fMX_DEBUG_LOG(5, "\nDEBUG!!!  actual start=%x stop=%x grouped_convolution=%d group size=%d count=%d count_ratio=%d\n", hmx_maptr->ch_start, hmx_maptr->ch_stop, grouped_convolution, hmx_maptr->group_size, hmx_maptr->group_count, hmx_maptr->group_count_ratio);
+
+	if ((hmx_maptr->ch_start >= hmx_maptr->ch_stop) && (hmx_maptr->blocks==1))  {
+		hmx_maptr->blocks = 0;
+	}
+
+	/*if(hmx_maptr->flt && (hmx_maptr->group_size <= 4)) {
+		hmx_maptr->blocks = 0;
+		hmx_maptr->ch_start = 8;
+		hmx_maptr->ch_stop = 3;
+		fMX_DEBUG_LOG(0, "\nDEBUG!!! This is not supported: flt = %d, ch_start = %d, ch_stop = %d, group_size = %d\n", hmx_maptr->flt, hmx_maptr->ch_start, hmx_maptr->ch_stop, hmx_maptr->group_size);
+	}*/
 
 	if (THREAD2STRUCT->tile_x_mask!=0) {
 		fMX_COMPUTER_FILTER_SIZE(hmx_maptr->x_tap, hmx_maptr->fx, THREAD2STRUCT->tile_x_mask, THREAD2STRUCT->tile_x_inc);
@@ -231,36 +282,22 @@ void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slo
 	THREAD2STRUCT->fxp_commit_state.acc_update = 0;
 	THREAD2STRUCT->flt_commit_state.acc_update = 0;
 
+	//int fxp_limit = thread->processor_ptr->arch_proc_options->QDSP6_MX_ROWS *  thread->processor_ptr->arch_proc_options->QDSP6_MX_COLS / thread->processor_ptr->arch_proc_options->QDSP6_MX_RATE;
+	//int flt_limit = thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ROWS *  thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_COLS / thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_RATE;
 	THREAD2STRUCT->mac_cycle_limit = (hmx_maptr->flt) ? 256 : 512;
-
-
-
 	THREAD2STRUCT->operand_ready |= (hmx_maptr->blocks>0)<<slot;
 
-#ifdef VERIFICATION
-    int slot_tmp = thread->ver_cur_slot;
-    thread->ver_cur_slot = slot;
-#endif
 	if(!thread->bq_on) { MEMTRACE_LD(thread, thread->Regs[REG_PC], start, paddr, 0, DREAD, 0xfeedfacedeadbeefULL); }
-#ifdef VERIFICATION
-    thread->ver_cur_slot = slot_tmp;
-	warn("MXMEM Debug %s Activations pktid=%x pktid=%d: Start=%x (PA=%llx) Range: %x dY: %x block_type=%s", (hmx_maptr->flt) ? "FLT" : "FXP", thread->pktid,thread->pktid, start, maptr->paddr, range, hmx_maptr->dY,  hmx_act_type_str[block_type]);
-	warn("Spatial: tile_x_mask: 0x%x tile_x_inc: 0x%x tile_y_mask: 0x%x tile_y_inc: 0x%x", THREAD2STRUCT->tile_x_mask, THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_y_mask, THREAD2STRUCT->tile_y_inc);
-	warn("block count in loop %x channel start=%d stop=%d", hmx_maptr->blocks,  hmx_maptr->ch_start, hmx_maptr->ch_stop);
-	warn("mac_cycle_limit: %d", THREAD2STRUCT->mac_cycle_limit);
-	fMX_VERIF_DEBUG_LOG(1, "MXMEM Debug %s Mult pktid:%08x: Start=%x (PA=%llx) Range: %x dY: %x block_Type=%s", (hmx_maptr->flt) ? "FLT" : "FXP", thread->pktid, start, maptr->paddr, range, hmx_maptr->dY, hmx_act_type_str[block_type]);
-	fMX_VERIF_DEBUG_LOG(1, "\tTile: x_mask: 0x%x x_inc: 0x%x y_mask: 0x%x y_inc: 0x%x", THREAD2STRUCT->tile_x_mask, THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_y_mask, THREAD2STRUCT->tile_y_inc);
-	fMX_VERIF_DEBUG_LOG(1, "\tBlock count in loop %x Channel start=%d stop=%d y start=%x y_stop = %x", hmx_maptr->blocks,  hmx_maptr->ch_start, hmx_maptr->ch_stop, hmx_maptr->y_start, hmx_maptr->y_stop);
-	fMX_VERIF_DEBUG_LOG(1, "\tmac_cycle_limit: %d", THREAD2STRUCT->mac_cycle_limit);
-	if (hmx_maptr->blocks == 0) {
-			warn("!Number of blocks is zero so packet dropped!");
-			fMX_VERIF_DEBUG_LOG(1, "\tNumber of blocks is zero so packet dropped");
-		}
-#endif
-	fMX_DEBUG_LOG(0, "MXMEM Debug %s Mult: Start=%x (PA=%llx) Range: %x dY: %x block_Type=%s", (hmx_maptr->flt) ? "FLT" : "FXP", start, maptr->paddr, range, hmx_maptr->dY, hmx_act_type_str[block_type]);
+	fMX_DEBUG_LOG(0, "MXMEM Debug %s Mult pktid:%08x: Start=%x (PA=%llx) Range: %x dY: %x block_Type=%s", (hmx_maptr->flt) ? "FLT" : "FXP", thread->pktid, start, maptr->paddr, range, hmx_maptr->dY, hmx_act_type_str[block_type]);
 	fMX_DEBUG_LOG(0, "\tTile: x_mask: 0x%x x_inc: 0x%x y_mask: 0x%x y_inc: 0x%x", THREAD2STRUCT->tile_x_mask, THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_y_mask, THREAD2STRUCT->tile_y_inc);
-	fMX_DEBUG_LOG(0, "\tBlock count in loop %x Channel start=%d stop=%d y start=%x y_stop = %x", hmx_maptr->blocks,  hmx_maptr->ch_start, hmx_maptr->ch_stop, hmx_maptr->y_start, hmx_maptr->y_stop);
-	fMX_DEBUG_LOG(0, "\tmac_cycle_limit: %d", THREAD2STRUCT->mac_cycle_limit);
+	fMX_DEBUG_LOG(0, "\tBlock count in loop %x Channel start=%d stop=%d group_size=%d grouped_convolution=%d y_start=%d y_stop = %x", hmx_maptr->blocks,  hmx_maptr->ch_start, hmx_maptr->ch_stop, hmx_maptr->group_size, grouped_convolution, hmx_maptr->y_start, hmx_maptr->y_stop);
+	fMX_DEBUG_LOG(1, "\tmac_cycle_limit: %d RATE=%d FP_RATE=%d FP_ACC_INT=%d FP_ACC_FRAC=%d FP_ACC_EXP=%d", THREAD2STRUCT->mac_cycle_limit,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_RATE,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_RATE,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_INT,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_FRAC,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP);
+
 	if (hmx_maptr->blocks == 0) {
 		fMX_DEBUG_LOG(0, "\tNumber of blocks is zero so packet dropped");
 	}
@@ -268,34 +305,57 @@ void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slo
 
 }
 
-
-int get_fp_behavior(thread_t* thread)  {
-  return 0;
+static uint32_t get_fp_behavior(thread_t* thread)  {
+	return GET_FIELD(USR_FPCOPROC, thread->gpr[HEX_REG_USR]) ;
 }
 
-void hmx_weight_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int type, int block_type, int weight_count)
+void hmx_weight_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int type, int block_type, int weight_count, int output_ch_scale)
 {
-  thread_t *env = thread;
-    paddr_t paddr;
-    mem_access_info_t *maptr = &thread->mem_access[slot=0]; // MGL: weights must be in slot 0
+	paddr_t paddr;
+    mem_access_info_t *maptr = &thread->mem_access[slot];
 	hmx_mem_access_info_t * hmx_maptr = &maptr->hmx_ma;
+
+
+	// bfloat
+	THREAD2STRUCT->is_bf16 = (start >> 6) & 0x1;
+	THREAD2STRUCT->is_bf16 &= (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP >= 8);
+
+	hmx_maptr->flt = (type == HMX_FP16);
+
+	//processing fields for weight decompression
+	int wgtc_start_offset_mask = 0xf;
+	int wgtc_mode_mask = 0x10;
+	int wgtc_total_bytes_mask = 0x7f;
+
+	THREAD2STRUCT->wgtc_mode = (start & wgtc_mode_mask) >> 4;
+	fMX_DEBUG_LOG(3, "HMX weight decompression mode: %d", THREAD2STRUCT->wgtc_mode);
+
+	if(THREAD2STRUCT->wgtc_mode != 0)
+	{
+		THREAD2STRUCT->wgtc_start_offset = start & wgtc_start_offset_mask;
+		THREAD2STRUCT->wgtc_total_bytes = range & wgtc_total_bytes_mask;
+		//global density only falls on the compression lane boundary
+		THREAD2STRUCT->wgtc_total_bytes |= 0xF;
+		if(THREAD2STRUCT->wgtc_total_bytes >= 0x7F)
+			THREAD2STRUCT->wgtc_total_bytes = 0x7F;
+		fMX_DEBUG_LOG(3, "HMX is in weight decompression mode, start offset: %x, global density: %x ", THREAD2STRUCT->wgtc_start_offset, THREAD2STRUCT->wgtc_total_bytes);
+	}
+
+	//temporarily ignore weight decompression offset
+	THREAD2STRUCT->wgtc_start_offset = 0;
+
+
 	int length = (int)range;
-
-	paddr_t last_wgt_mask = (thread->processor_ptr->arch_proc_options->hmx_output_depth * 4)-1;
-	paddr_t wgt_align_mask = ~last_wgt_mask;
-
-
-
 	mem_init_access_unaligned(thread, slot, start, start, length, access_type_hmx_load_wei, TYPE_LOAD);
 
-    if (EXCEPTION_DETECTED) return;
-  paddr = maptr->paddr;
+	if (EXCEPTION_DETECTED) return;
+	paddr = maptr->paddr;
 	int mxmem_exception = (maptr->xlate_info.memtype.device && !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;
-    mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);
-    mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr + length, SHOW_WARNING);
-    mxmem_exception |= check_mxmem_page_cross(thread, start , length, thread->mem_access[slot].xlate_info.size);
-    if (mxmem_exception) {
-        register_coproc_ldst_exception(thread,slot,start);
+	mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);
+	CHECK_ACCESS_RANGE(mxmem_exception, paddr, length);
+	mxmem_exception |= check_mxmem_page_cross(thread, start , length, thread->mem_access[slot].xlate_info.size);
+	if (mxmem_exception) {
+        	register_coproc_ldst_exception(thread,slot,start);
 	}
 	if (EXCEPTION_DETECTED) return;
 
@@ -306,24 +366,43 @@ void hmx_weight_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, i
 	maptr->hmx_ma = *hmx_act_maptr; // Copy Parameters from Activations
 
 	maptr->range = range;
-	hmx_maptr->flt = (type == HMX_FP16);
 
 	hmx_maptr->weight_count = weight_count;
 
-	hmx_maptr->weight_bits = THREAD2STRUCT->weight_bits;
+	hmx_maptr->weight_bits = 8 / pow(2, weight_count);
+
+	paddr_t last_wgt_mask = (thread->processor_ptr->arch_proc_options->hmx_output_depth * 4);
+	last_wgt_mask -= 1;
+	paddr_t wgt_align_mask = ~last_wgt_mask;
+
+
+	//printf("last_wgt_mask=%llx\n", last_wgt_mask);
+
 
 	paddr = paddr & wgt_align_mask;
 	maptr->paddr = paddr;
+	paddr_t wgt_pa_at_mac_limit = paddr;
 	THREAD2STRUCT->max_weight_pa = (paddr + range) | last_wgt_mask;
 	THREAD2STRUCT->limit_execeeded = 0;
 	THREAD2STRUCT->force_zero = 0;
 	THREAD2STRUCT->weight_bits = 8;
+
+	THREAD2STRUCT->negate_flt_wgt = (hmx_maptr->flt) &&  ((start & (0x20)) > 0);
+
+	weight_count = (output_ch_scale==2) ? (weight_count-1) :  weight_count;	// Move Elsewhere?
+
+
 	paddr_t limit = thread->processor_ptr->arch_proc_options->QDSP6_MX_ROWS * thread->processor_ptr->arch_proc_options->QDSP6_MX_COLS;
 	limit = limit * (1 << fMX_GETCHANNELSIZE(thread->processor_ptr));
 
-	if ( (range | last_wgt_mask) & ~(limit-1)) {
-		//printf("Weight size limit exceeded: %llx limit: %llx %x %llx", (range | last_wgt_mask), limit, range, last_wgt_mask);
-		warn("Weight size limit exceeded: %llx limit: %llx ", (range | last_wgt_mask), limit);
+	//for density=127 weight decompression case, we need to increase the limit to 576 vectors
+	limit = limit * 9 / 8;
+
+	if(THREAD2STRUCT->wgtc_mode == 0)
+	limit >>= weight_count;
+
+	if ( (range | last_wgt_mask) >= limit) {
+		fMX_DEBUG_LOG(0, "Weight size limit exceeded: %llx limit: %llx ", (range | last_wgt_mask), limit);
 		THREAD2STRUCT->max_weight_pa = paddr + limit - 1 ;
 	}
 
@@ -364,7 +443,17 @@ void hmx_weight_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, i
 	}
 
 
-	THREAD2STRUCT->usr_fp = get_fp_behavior(thread);
+	int32_t fxp_max_wgt = 4 * thread->processor_ptr->arch_proc_options->QDSP6_MX_COLS;
+	int32_t flt_max_wgt = 8 * thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_COLS;
+	wgt_pa_at_mac_limit += (THREAD2STRUCT->mac_cycle_limit * ((hmx_maptr->flt) ? flt_max_wgt  : fxp_max_wgt )) >>  weight_count;
+	wgt_pa_at_mac_limit -= 1;
+	if ((wgt_pa_at_mac_limit < THREAD2STRUCT->max_weight_pa) && (THREAD2STRUCT->wgtc_mode != 1)) {
+		fMX_DEBUG_LOG(0, "Needed wgt less than wgt range pa so lowering limit. needed pa=%llx max=%llx weight_scaling=%d", wgt_pa_at_mac_limit,  THREAD2STRUCT->max_weight_pa, weight_count);
+		THREAD2STRUCT->max_weight_pa = wgt_pa_at_mac_limit ;
+	}
+
+
+	THREAD2STRUCT->usr_fp.raw = get_fp_behavior(thread);
 
 	THREAD2STRUCT->paddr[slot] = paddr;
 	THREAD2STRUCT->type[slot] = type;
@@ -373,10 +462,12 @@ void hmx_weight_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, i
 	THREAD2STRUCT->flt_commit_state.acc_update = 0;
 	THREAD2STRUCT->operand_ready |= ((int)range>=0)<<slot;
 
-	fMX_DEBUG_LOG(0, "MXMEM Debug Weights: Start=%x Range: %x Type=%s max pa=%llx", start, range, hmx_wei_type_str[block_type], THREAD2STRUCT->max_weight_pa);
+
+
+	fMX_DEBUG_LOG(0, "MXMEM DEBUG WGT OPCODE pktid=%8x Rs32=%x Rt32=%x Type=%s max pa=%llx starting pa=%llx limit=%llx wgt needed=%llx, decompression=%d", thread->pktid, start, range, hmx_wei_type_str[block_type], THREAD2STRUCT->max_weight_pa, paddr, limit, wgt_pa_at_mac_limit, THREAD2STRUCT->wgtc_mode);
 	fMX_DEBUG_LOG(0, "\tFilter: fx: %d fy: %d Actual Size: %d by %d", hmx_maptr->fx, hmx_maptr->fy, hmx_maptr->x_tap, hmx_maptr->y_tap);
 	fMX_DEBUG_LOG(0, "\tAccumulator Start: %d  Range: %d", hmx_maptr->acc_select, hmx_maptr->acc_range);
-	fMX_DEBUG_LOG(0, "\tFlags dilate: %d %d deep: %d drop: %d IEEE FP RND: %x", hmx_maptr->x_dilate, hmx_maptr->y_dilate, hmx_maptr->deep, hmx_maptr->drop, THREAD2STRUCT->usr_fp);
+	fMX_DEBUG_LOG(0, "\tFlags dilate: %d %d deep: %d drop: %d IEEE FP RND: %x negate_flt: %x bf16:%d ", hmx_maptr->x_dilate, hmx_maptr->y_dilate, hmx_maptr->deep, hmx_maptr->drop, THREAD2STRUCT->usr_fp.raw, THREAD2STRUCT->negate_flt_wgt, THREAD2STRUCT->is_bf16);
 
 	if (((int)range<0)) {
 		hmx_maptr->blocks = 0;
@@ -384,43 +475,23 @@ void hmx_weight_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, i
 	}
 
 
-#ifdef VERIFICATION
-    int slot_tmp = thread->ver_cur_slot;
-    thread->ver_cur_slot = slot;
-	warn("MXMEM Debug Weights pktid=%8x (%d): Start=%x Range: %x Type=%s max pa=%llx", thread->pktid,thread->pktid, start, range, hmx_wei_type_str[block_type], THREAD2STRUCT->max_weight_pa);
-	warn("Filter: fx: %d fy: %d Actual Size: %d by %d", hmx_maptr->fx, hmx_maptr->fy, hmx_maptr->x_tap, hmx_maptr->y_tap);
-	warn("Accumulator Start: %d  Range: %d", hmx_maptr->acc_select, hmx_maptr->acc_range);
-	warn("Flags dilate: %d %d deep: %d drop: %d", hmx_maptr->x_dilate, hmx_maptr->y_dilate, hmx_maptr->deep, hmx_maptr->drop);
-	fMX_VERIF_DEBUG_LOG(1, "MXMEM Debug Weights pktid:%08x: Start=%x Range: %x Type=%s max pa=%llx", thread->pktid, start, range, hmx_wei_type_str[block_type], THREAD2STRUCT->max_weight_pa);
-	fMX_VERIF_DEBUG_LOG(1, "\tFilter: fx: %d fy: %d Actual Size: %d by %d", hmx_maptr->fx, hmx_maptr->fy, hmx_maptr->x_tap, hmx_maptr->y_tap);
-	fMX_VERIF_DEBUG_LOG(1, "\tAccumulator Start: %d  Range: %d", hmx_maptr->acc_select, hmx_maptr->acc_range);
-	fMX_VERIF_DEBUG_LOG(1, "\tFlags dilate: %d %d deep: %d drop: %d IEEE FP RND: %x", hmx_maptr->x_dilate, hmx_maptr->y_dilate, hmx_maptr->deep, hmx_maptr->drop, THREAD2STRUCT->usr_fp);
-
-	if (((int)range<0)) {
-			warn("!Range Negative so packet dropped!");
-		fMX_VERIF_DEBUG_LOG(1, "\tRange Negative so packet dropped");
-		}
-#endif
 	if(!thread->bq_on) { MEMTRACE_LD(thread, thread->Regs[REG_PC], start, paddr, 0, DREAD, 0xfeedfacedeadbeefULL); }
-#ifdef VERIFICATION
-    thread->ver_cur_slot = slot_tmp;
-#endif
 
 }
 
 
 
-void hmx_convert_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int format, int direction, int type)
+void hmx_legacy_convert_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int format, int direction, int type)
 {
-  thread_t *env= thread;
     paddr_t paddr;
     paddr_t tile_mask = (1 << (thread->processor_ptr->arch_proc_options->hmx_spatial_size + fMX_GETCHANNELSIZE(thread->processor_ptr)))-1;
-	mem_access_info_t *maptr = &thread->mem_access[slot = 0];
+	mem_access_info_t *maptr = &thread->mem_access[slot];
 	hmx_mem_access_info_t * hmx_maptr = &maptr->hmx_ma;
 	hmx_maptr->dY =  range & ~tile_mask;
 
 	// Exception Checking
 	MX_EXCEPTION_CHECK(start, hmx_maptr->dY, hmx_maptr->dY, access_type_hmx_store, TYPE_STORE);
+
 	paddr = paddr & ~tile_mask;
 
 
@@ -429,13 +500,17 @@ void hmx_convert_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vad
 	maptr->width = 2048;
 	hmx_maptr->format = format;
 
-	hmx_maptr->flt = (type == HMX_FP16);
+	hmx_maptr->flt = type == HMX_FP16;
 	hmx_maptr->acc_select = (hmx_maptr->flt) ? THREAD2STRUCT->current_acc_flt : THREAD2STRUCT->current_acc_fxp;
 
 	if (hmx_maptr->flt) {
+		THREAD2STRUCT->flt_commit_state.cvt_update = 1;
+		THREAD2STRUCT->flt_commit_state.cvt_advance = 0;
 		THREAD2STRUCT->flt_commit_state.cvt_write = 1;
 		THREAD2STRUCT->flt_commit_state.acc_clear = 0;
 	} else {
+		THREAD2STRUCT->fxp_commit_state.cvt_update = 1;
+		THREAD2STRUCT->fxp_commit_state.cvt_advance = 0;
 		THREAD2STRUCT->fxp_commit_state.cvt_write = 1;
 		THREAD2STRUCT->fxp_commit_state.acc_clear = 0;
 	}
@@ -453,6 +528,7 @@ void hmx_convert_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vad
 
 	fMX_GETMASK(THREAD2STRUCT->tile_x_mask, ~range, format, 0);
 	fMX_GETMASK(THREAD2STRUCT->tile_y_mask,  range, format, 0);
+
 	if(hmx_maptr->flt) {
 		THREAD2STRUCT->tile_x_mask &= ~1;
 		THREAD2STRUCT->tile_y_mask &= ~1;
@@ -482,34 +558,129 @@ void hmx_convert_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vad
 		THREAD2STRUCT->x_acc_offset = x_acc_offset;
 	}
 
-	THREAD2STRUCT->usr_fp = get_fp_behavior(thread);
+	THREAD2STRUCT->usr_fp.raw = get_fp_behavior(thread);
 
 	fMX_DEBUG_LOG(0, "MXMEM Debug %s CVT: Start=%x (PA=%llx) Range: %x %s Major", (hmx_maptr->flt) ? "FLT" : "FXP", start, paddr, range, (format) ? "Spatial" : "Channel");
 	fMX_DEBUG_LOG(0, "\tTile: x_mask: 0x%x x_inc: 0x%x y_mask: 0x%x y_inc: 0x%x", THREAD2STRUCT->tile_x_mask, THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_y_mask, THREAD2STRUCT->tile_y_inc );
 	fMX_DEBUG_LOG(0, "\tVA offset x: 0x%x y: 0x%x", hmx_maptr->x_offset, hmx_maptr->y_offset);
-	fMX_DEBUG_LOG(0, "\tCurrent Accumulator: 0x%x offset: 0x%x IEEE RND mode=%x",hmx_maptr->acc_select, THREAD2STRUCT->x_acc_offset, THREAD2STRUCT->usr_fp);
+	fMX_DEBUG_LOG(0, "\tCurrent Accumulator: 0x%x offset: 0x%x IEEE RND mode=%x",hmx_maptr->acc_select, THREAD2STRUCT->x_acc_offset, THREAD2STRUCT->usr_fp.raw);
+	fMX_DEBUG_LOG(0, "RATE=%d FP_RATE=%d FP_ACC_INT=%d FP_ACC_FRAC=%d FP_ACC_EXP=%d",
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_RATE,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_RATE,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_INT,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_FRAC,
+	thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP);
 
-
-#ifdef VERIFICATION
-	warn("MXMEM Debug %s Cvt pktid=%x (%d): Start=%x (PA=%llx) Range: %x %s Major", (hmx_maptr->flt) ? "FLT" : "FXP", thread->pktid,thread->pktid, start, paddr, range, (format) ? "Spatial" : "Channel");
-	warn("Tile: tile_x_mask: 0x%x tile_x_inc: 0x%x tile_y_mask: 0x%x tile_y_inc: 0x%x", THREAD2STRUCT->tile_x_mask, THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_y_mask, THREAD2STRUCT->tile_y_inc);
-	warn("va x_offset: %x y_offset: %x", hmx_maptr->x_offset, hmx_maptr->y_offset);
-	warn("Accumulator a0: 0x%x offset: 0x%x", hmx_maptr->acc_select, THREAD2STRUCT->x_acc_offset);
-	fMX_VERIF_DEBUG_LOG(1, "MXMEM Debug %s CVT pktid:%08x: Start=%x (PA=%llx) Range: %x %s Major", (hmx_maptr->flt) ? "FLT" : "FXP", thread->pktid, start, paddr, range, (format) ? "Spatial" : "Channel");
-	fMX_VERIF_DEBUG_LOG(1, "\tTile: x_mask: 0x%x x_inc: 0x%x y_mask: 0x%x y_inc: 0x%x", THREAD2STRUCT->tile_x_mask, THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_y_mask, THREAD2STRUCT->tile_y_inc );
-	fMX_VERIF_DEBUG_LOG(1, "\tVA offset x: 0x%x y: 0x%x", hmx_maptr->x_offset, hmx_maptr->y_offset);
-	fMX_VERIF_DEBUG_LOG(1, "\tCurrent Accumulator: 0x%x offset: 0x%x",hmx_maptr->acc_select, THREAD2STRUCT->x_acc_offset);
-
-    int slot_tmp = thread->ver_cur_slot;
-    thread->ver_cur_slot = slot;
-#endif
 	if(!thread->bq_on) { memwrap_memtrace_st(thread, thread->Regs[REG_PC], start, paddr, 1); }
-#ifdef VERIFICATION
-    thread->ver_cur_slot = slot_tmp;
-#endif
+
 }
 
-#ifdef FIXME
+void hmx_convert_init(thread_t* thread, int slot, int type, int feedback)
+{
+	mem_access_info_t *maptr = &thread->mem_access[slot];
+	hmx_mem_access_info_t * hmx_maptr = &maptr->hmx_ma;
+
+	hmx_maptr->flt = (type == HMX_FP16);
+	hmx_maptr->acc_select = (hmx_maptr->flt) ? THREAD2STRUCT->current_acc_flt : THREAD2STRUCT->current_acc_fxp;
+	int rmw = 0;
+	if(feedback && (type != HMX_UH)){
+		rmw = 1;
+	}
+	if (hmx_maptr->flt) {
+		THREAD2STRUCT->flt_commit_state.cvt_update = 1;
+		THREAD2STRUCT->flt_commit_state.cvt_advance = rmw;
+		THREAD2STRUCT->flt_commit_state.acc_clear = 0;
+	} else {
+		THREAD2STRUCT->fxp_commit_state.cvt_update = 1;
+		THREAD2STRUCT->fxp_commit_state.cvt_advance = rmw;
+		THREAD2STRUCT->fxp_commit_state.acc_clear = 0;
+	}
+
+	THREAD2STRUCT->usr_fp.raw = get_fp_behavior(thread);
+}
+
+void hmx_convert_store_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int format, int type)
+{
+    paddr_t paddr;
+    paddr_t tile_mask = (1 << (thread->processor_ptr->arch_proc_options->hmx_spatial_size + fMX_GETCHANNELSIZE(thread->processor_ptr)))-1;
+	mem_access_info_t *maptr = &thread->mem_access[slot];
+	hmx_mem_access_info_t * hmx_maptr = &maptr->hmx_ma;
+	hmx_maptr->dY =  range & ~tile_mask;
+
+	// Exception Checking
+	MX_EXCEPTION_CHECK(start, hmx_maptr->dY, hmx_maptr->dY, access_type_hmx_store_cvt_state, TYPE_STORE);
+
+	paddr = paddr & ~tile_mask;
+
+
+	// MAPTR stuff needed by timing model
+	maptr->paddr = paddr;
+	maptr->width = 2048;
+	hmx_maptr->format = format;
+
+	hmx_maptr->flt = (type == HMX_FP16);
+	hmx_maptr->acc_select = (hmx_maptr->flt) ? THREAD2STRUCT->current_acc_flt : THREAD2STRUCT->current_acc_fxp;
+
+	if (hmx_maptr->flt) {
+		THREAD2STRUCT->flt_commit_state.cvt_write = 1;
+	} else {
+		THREAD2STRUCT->fxp_commit_state.cvt_write = 1;
+	}
+
+
+	hmx_maptr->enable16x16 = (type == HMX_UH_UH);
+	hmx_maptr->outputselect16x16 = start & 0x40; //using channel bits to select 16x16 upper or lower
+
+
+	THREAD2STRUCT->cvt_type = HMX_CVT_BOTH;
+
+	fVDOCHKPAGECROSS(start, start+hmx_maptr->dY);
+
+
+
+	fMX_GETMASK(THREAD2STRUCT->tile_x_mask, ~range, format, 0);
+	fMX_GETMASK(THREAD2STRUCT->tile_y_mask,  range, format, 0);
+
+	if(hmx_maptr->flt) {
+		THREAD2STRUCT->tile_x_mask &= ~1;
+		THREAD2STRUCT->tile_y_mask &= ~1;
+	}
+
+
+
+	fMX_MASKED_INC(THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_x_mask);
+	fMX_MASKED_INC(THREAD2STRUCT->tile_y_inc, THREAD2STRUCT->tile_y_mask);
+
+
+	hmx_maptr->x_offset = start & THREAD2STRUCT->tile_x_mask;
+	hmx_maptr->y_offset = start & THREAD2STRUCT->tile_y_mask;
+
+
+	THREAD2STRUCT->x_acc_offset = 0;
+	if(THREAD2STRUCT->tile_x_mask){
+		int x_count = hmx_maptr->x_offset;
+		int x_acc_offset = 0;
+		int mask = THREAD2STRUCT->tile_x_mask | (1 << 31);
+		while (x_count>=0) {
+			if (x_count>=0) {
+				x_acc_offset = fMX_INC_MASKED(x_acc_offset, THREAD2STRUCT->tile_x_inc, mask);
+			}
+			x_count = fMX_INC_MASKED(x_count, THREAD2STRUCT->tile_x_inc, mask);
+		}
+		THREAD2STRUCT->x_acc_offset = x_acc_offset;
+	}
+
+	THREAD2STRUCT->usr_fp.raw = get_fp_behavior(thread);
+
+	fMX_DEBUG_LOG(0, "MXMEM Debug %s CVT: Start=%x (PA=%llx) Range: %x %s Major", (hmx_maptr->flt) ? "FLT" : "FXP", start, paddr, range, (format) ? "Spatial" : "Channel");
+	fMX_DEBUG_LOG(0, "\tTile: x_mask: 0x%x x_inc: 0x%x y_mask: 0x%x y_inc: 0x%x", THREAD2STRUCT->tile_x_mask, THREAD2STRUCT->tile_x_inc, THREAD2STRUCT->tile_y_mask, THREAD2STRUCT->tile_y_inc );
+	fMX_DEBUG_LOG(0, "\tVA offset x: 0x%x y: 0x%x", hmx_maptr->x_offset, hmx_maptr->y_offset);
+	fMX_DEBUG_LOG(0, "\tCurrent Accumulator: 0x%x offset: 0x%x IEEE RND mode=%x",hmx_maptr->acc_select, THREAD2STRUCT->x_acc_offset, THREAD2STRUCT->usr_fp.raw);
+
+
+	if(!thread->bq_on) { memwrap_memtrace_st(thread, thread->Regs[REG_PC], start, paddr, 1); }
+}
+
 void hmx_debug_file_log(thread_t* thread, int lvl, char * buf) {
 	if (thread->processor_ptr->arch_proc_options->hmxdebugfile && (thread->processor_ptr->arch_proc_options->hmxdebuglvl >= lvl) && !thread->bq_on) {
 		fprintf(thread->processor_ptr->arch_proc_options->hmxdebugfile, "%s\n", buf);
@@ -519,124 +690,8 @@ void hmx_debug_file_log(thread_t* thread, int lvl, char * buf) {
 
 
 void hmx_debug_print_acc(thread_t* thread, int hex, int type, int flt ) {
-
-	int i, j;
-	if (!flt) {
-		for(int a = 0; a < 2; a++) {
-			fprintf(stdout,"ACC[%d]:\n", a);
-			fprintf(stdout, "    \t");
-			for (j=0;j<32/2; j++) {
-				fprintf(stdout, "%11d ", j);
-			}
-			fprintf(stdout, "\n    \t");
-			for (;j<32; j++) {
-				fprintf(stdout, "%11d ", j);
-			}
-			fprintf(stdout, "\n");
-			for (i=0;i<MAX_ACCUMULATORS_SPATIAL;i++) {
-				fprintf(stdout, "%4d\t", i);
-				for (j=0;j<32/2; j++) {
-					size4s_t v = THREAD2STRUCT->accum_fxp[i][j].w[a];
-					if (hex) {
-						fprintf(stdout, "   %08x ", v);
-					} else {
-						fprintf(stdout, "%11d ", v);
-					}
-				}
-				fprintf(stdout, "\n%4d\t", i);
-				for (;j<32; j++) {
-					size4s_t v = THREAD2STRUCT->accum_fxp[i][j].w[a];
-					if (hex) {
-						fprintf(stdout, "   %08x ", v);
-					} else {
-						fprintf(stdout, "%11d ", v);
-					}
-				}
-				fprintf(stdout,"\n");
-			}
-			fprintf(stdout,"\n");
-		}
-	} else {
-		if (!hex) {
-			for(int a = 0; a < 2; a++)
-			{
-				{
-					fprintf(stdout,"ACC[%d]:\n", a);
-					const int L = 4;
-					const int K = 64/L;
-					for(int l = 0; l < L/2; l++) {
-						fprintf(stdout, "  \t");
-						for (j=K*l; j < K*l+K; j++) {
-							fprintf(stdout, "  %16d", j);
-						}
-						fprintf(stdout,"\n");
-					}
-					fprintf(stdout, "\n");
-				}
-				for (i=0;i<MAX_ACCUMULATORS_SPATIAL;i+=2) {
-					const int L =4;
-					const int K = MAX_ACCUMULATORS_DEPTH/L;
-					for(int l = 0; l < L/2; l++) {
-						fprintf(stdout, "%4d\t", i);
-						for (j=K*l; j < K*l+K; j++) {
-							fprintf(stdout, "%06.12f ", hmx_acc_double(THREAD2STRUCT->accum_flt[i][j].val[a]));
-						}
-						fprintf(stdout,"\n");
-					}
-					fprintf(stdout,"\n");
-				}
-				fprintf(stdout,"\n");
-			}
-		} else {
-			for(int a = 0; a < 2; a++) {
-				{
-					fprintf(stdout,"ACC[%d]:\n", a);
-					const int L = 8;
-					const int K = 64/L;
-					for(int l = 0; l < L/2; l++) {
-						fprintf(stdout, "  \t");
-						for (j=K*l; j < K*l+K; j++) {
-							fprintf(stdout, "  %32d", j);
-						}
-						fprintf(stdout,"\n");
-					}
-					fprintf(stdout, "\n");
-				}
-				for (i=0;i<MAX_ACCUMULATORS_SPATIAL;i+=2) {
-					const int L = 8;
-					const int K = MAX_ACCUMULATORS_DEPTH/L;
-					for(int l = 0; l < L/2; l++) {
-						fprintf(stdout, "%4d\t", i);
-						for (j=K*l; j < K*l+K; j++) {
-							size8s_t v = THREAD2STRUCT->accum_flt[i][j].val[a].hi;
-							size8s_t u = THREAD2STRUCT->accum_flt[i][j].val[a].lo;
-							fprintf(stdout, "%016llx.%016llx ", v, u);
-						}
-						fprintf(stdout,"\n");
-					}
-					fprintf(stdout,"\n");
-				}
-				fprintf(stdout,"\n");
-			}
-		}
-	}
-	fflush(stdout);
 }
 
 void hmx_preload_file(thread_t* thread) {
 
-	if (thread->processor_ptr->arch_proc_options->hmxaccpreloadfile && !thread->bq_on) {
-		FILE *fp = thread->processor_ptr->arch_proc_options->hmxaccpreloadfile;
-		while (!feof(fp)) {
-
-			unsigned int row;
-			unsigned int col;
-			unsigned int sel;
-			unsigned int val;
-			fscanf(fp, "%d %d %d %x", &row, &col, &sel, &val);
-			THREAD2STRUCT->accum_fxp[row][col].w[sel] = val;
-			fMX_DEBUG_LOG(1, "TB HMX WRITE: FXP ACC[%02d][%02d][%02d]=%08x", row, col, sel, val);
-		}
-	}
 }
-#endif

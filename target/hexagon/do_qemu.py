@@ -164,8 +164,8 @@ add_qemu_macro_attrib('fCLEAR_RTE_EX', 'A_IMPLICIT_WRITES_SSR')
 calculate_attribs()
 
 
-attribre = re.compile(r'DEF_ATTRIB\(([A-Za-z0-9_]+), ([^,]*), ' +
-        r'"([A-Za-z0-9_\.]*)", "([A-Za-z0-9_\.]*)"\)')
+attribre = re.compile(r'DEF_ATTRIB\(([A-Za-z0-9_]+),\s*([^,]*),\s*' +
+        r'"([A-Za-z0-9_\.]*)",\s*"([A-Za-z0-9_\.]*)"\)')
 for line in open(sys.argv[3], 'rt').readlines():
     if not attribre.match(line):
         continue
@@ -261,6 +261,12 @@ def is_hmx_act(attrs):
 
 def is_hmx(attrs):
     return ('A_HMX' in attrs)
+
+def is_scatter_gather(attrs):
+    return ('A_CVI_SCATTER' in attrs or 'A_CVI_SCATTER_RELEASE' in attrs or 'A_CVI_GATHER' in attrs);
+
+def is_gather(attrs):
+    return ('A_CVI_GATHER' in attrs);
 
 def imm_name(immlett):
     return "%siV" % immlett
@@ -431,7 +437,7 @@ def genptr_free_new(f,regtype,regid,regno):
     macro = "FREE_NEW_%sREG_%s" % (regtype, regid)
     f.write("%s(%s%sN);\n" % (macro, regtype, regid))
 
-def genptr_free_opn(f,regtype,regid,i):
+def genptr_free_opn(tag,f,regtype,regid,i):
     if (is_pair(regid)):
         genptr_free(f,regtype,regid,i)
     elif (is_single(regid)):
@@ -442,6 +448,7 @@ def genptr_free_opn(f,regtype,regid,i):
         else:
             print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
+        print("Bad register parse: ",tag,i)
         print("Bad register parse: ",regtype,regid,toss,numregs)
 
 def genptr_free_imm(f,immlett):
@@ -636,7 +643,7 @@ def gen_tcg_func(f, tag, regs, imms):
     ## Free all the operands (regs and immediates)
     if need_ea(tag): gen_free_ea_tcg(f)
     for regtype,regid,toss,numregs in regs:
-        genptr_free_opn(f,regtype,regid,i)
+        genptr_free_opn(tag,f,regtype,regid,i)
         i += 1
     for immlett,bits,immshift in imms:
         genptr_free_imm(f,immlett)
@@ -654,9 +661,9 @@ def gen_decl_ea(tag,f):
     f.write("size4u_t EA;\n")
 
 def gen_decl_insn(tag,f,slot):
-    str = 'tmp_insn_t tmp_insn = { .slot = %d };\n' % (slot);
+    str = 'insn_t tmp_insn = { .slot = %d };\n' % (slot);
     f.write(str);
-    f.write('tmp_insn_t *insn = &tmp_insn;\n');
+    f.write('insn_t *insn = &tmp_insn;\n');
 
 def gen_helper_return_type(f,regtype,regid,regno):
     if regno > 1 : f.write(", ")
@@ -876,6 +883,11 @@ def gen_helper_definition(f, tag, regs, imms):
         f.write(")\n{\n")
         if (not need_slot(tag)): f.write("uint32_t slot = 4; slot = slot;\n" )
         if need_ea(tag): gen_decl_ea(tag,f)
+        if is_scatter_gather(attribdict[tag]):
+            if is_gather(attribdict[tag]):
+                gen_decl_insn(tag,f,1)
+            else:
+                gen_decl_insn(tag,f,0)
         if is_hmx(attribdict[tag]):
             if is_hmx_act(attribdict[tag]):
                 gen_decl_insn(tag,f,1)

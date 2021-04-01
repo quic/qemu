@@ -1144,7 +1144,6 @@ size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new, size4u_t dummy,
   // Obtain a current DMA instance from a thread ID.
   dma_t *dma = thread->processor_ptr->dma[thread->threadId];
 	dma->pc = thread->gpr[HEX_REG_PC];
-  // mgl
 	PRINTF(dma, "DMA %d: Tick %d: ADAPTER dma_start thread=%u new=0x%08x\n", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), thread->threadId, new);
 
   // Call the DMA engine.

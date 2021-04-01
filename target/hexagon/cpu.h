@@ -42,9 +42,6 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #include "qemu-common.h"
 #include "exec/cpu-defs.h"
 #include "hex_regs.h"
-#include "mmvec/mmvec.h"
-#include "hmx/hmx.h"
-#include "dma.h"
 
 #ifndef CONFIG_USER_ONLY
 #include "cpu_helper.h"
@@ -71,6 +68,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 
 #define TYPE_HEXAGON_CPU "hexagon-cpu"
 
+#define HMX_MAX_EGY_CYCLE      512
 #define HMX_OUTPUT_DEPTH       32
 #define HMX_BLOCK_SIZE         2048
 #define HMX_V1                 0
@@ -82,55 +80,105 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define VTCM_SIZE              0x40000LL
 #define VTCM_OFFSET            0x200000LL
 
+/*
+ * Represents the maximum number of consecutive
+ * translation blocks to execute on a CPU before yielding
+ * to another CPU.
+ */
+#define HEXAGON_TB_EXEC_PER_CPU_MAX 2000
+
+#define HEXAGON_CPU_TYPE_SUFFIX "-" TYPE_HEXAGON_CPU
+#define HEXAGON_CPU_TYPE_NAME(name) (name HEXAGON_CPU_TYPE_SUFFIX)
+#define CPU_RESOLVING_TYPE TYPE_HEXAGON_CPU
+
+#define TYPE_HEXAGON_CPU_V67 HEXAGON_CPU_TYPE_NAME("v67")
+
+
 typedef struct {
   int unused;
 } rev_features_t;
 
 typedef struct ProcessorState processor_t;
 typedef struct SystemState system_t;
+
 typedef void (*hmx_mac_fxp_callback_t) (void * sys, processor_t * proc,
     int pktid, int row_idx, int col_idx, int acc_idx, int in_idx, int wgt,
     int act, int acc, int x_tap, int y_tap, int block_idx, int deep_block_idx);
-typedef void (*hmx_mac_flt_callback_t) (void * sys, processor_t * proc,
-    int pktid, int row_idx, int col_idx, int acc_idx, int in_idx, int wgt,
-    int act, size8u_t acc_hi, size8u_t acc_lo, int ovf, int x_tap, int y_tap,
-    int block_idx, int deep_block_idx);
+typedef void (*hmx_mac_flt_callback_t) (void *, ...);
+//typedef void (*hmx_mac_flt_callback_t) (system_t * sys, processor_t * proc,
+//								   int pktid, int row_idx, int col_idx, int acc_idx,
+//                                   int in_idx, int wgt, int act, size4s_t exponent,
+//                                   size8s_t significand_hi, size8u_t significand_lo,
+//                                   int ovf, int x_tap, int y_tap, int block_idx, int deep_block_idx);
+typedef void (*hmx_cvt_fxp_state_callback_t) (system_t * sys, processor_t * proc, size4u_t pktid, size4u_t row_idx, size4u_t col_idx, size4u_t acc_idx, size4u_t val);
+typedef void (*hmx_cvt_state_transfer_callback_t) (void *, ...);
+//typedef void (*hmx_cvt_state_transfer_callback_t) (system_t * sys, processor_t * proc,
+//                                                   size4u_t pktid, size4u_t age, size4u_t row_idx,
+//                                                   size4u_t col_idx, size4u_t acc_idx, size4u_t val);
+typedef void (*hmx_cvt_state_write_callback_t)    (system_t * sys, processor_t * proc,
+                                                   size4u_t pktid, size4u_t age, size4u_t row_idx,
+                                                   size4u_t col_idx, size4u_t acc_idx, size4u_t val);
+
+typedef void (*hmx_wgt_decomp_callback_t) (system_t * sys, processor_t * proc,
+					   int block_idx, int pktid, int lane_idx, int vector_idx, paddr_t metadata_addr, int meta_addr_valid,
+                                   	   size2u_t meta_16bits, size8u_t val_hi_8_bytes, size8u_t val_lo_8_bytes);
 
 typedef struct {
     paddr_t l2tcm_base;
     hmx_mac_fxp_callback_t hmx_mac_fxp_callback;
     hmx_mac_flt_callback_t hmx_mac_flt_callback;
+	  hmx_cvt_fxp_state_callback_t hmx_cvt_fxp_state_callback;
+    hmx_cvt_state_transfer_callback_t hmx_cvt_state_transfer_callback;
+    hmx_cvt_state_write_callback_t hmx_cvt_state_write_callback;
+    hmx_wgt_decomp_callback_t hmx_wgt_decomp_callback;
 } options_struct;
 
 typedef struct arch_proc_opt {
+    int hmxdebuglvl;
     int hmx_output_depth;
-    int hmx_block_size;
-    int hmxarray_new;                 /* 0 */
-    int hmx_v1;
-    int hmx_power_config;             /* 0 */
-    int dmadebug_verbosity;
     int hmx_spatial_size;
     int hmx_channel_size;
-    int hmx_addr_mask;
-    int hmx_block_bit;
-    int hmxdebuglvl;
-    FILE *hmxaccpreloadfile;
-    FILE *hmxdebugfile;
+    int hmx_block_size;
+    int hmx_mxmem_debug_acc_preload;
+    int hmx_mac_channels;
     int pmu_enable;
+    FILE *hmxmpytrace;
+    FILE *hmxdebugfile;
+    FILE *dmadebugfile;
+    int hmx_mxmem_debug;
+    FILE *hmxaccpreloadfile;
+    int hmxarray_new;
+    int hmx_v1;
+    int hmx_power_config;
+    int hmx_8x4_mpy_mode;
+    int hmx_group_conv_mode;
+    int dmadebug_verbosity;
+    int xfp_inexact_enable;
+    int xfp_cvt_frac;
+    int xfp_cvt_int;
     paddr_t vtcm_size;
     paddr_t vtcm_offset;
-    FILE *dmadebugfile;
-    int QDSP6_MX_CHANNELS;            /* 32 */
-    int QDSP6_MX_RATE;                /* 4 */
-    int QDSP6_DMA_PRESENT;            /* 1 */
-    int QDSP6_MX_CVT_MPY_SZ;          /* 10 */
-    int QDSP6_MX_ROWS;                /* 64 */
-    int QDSP6_MX_COLS;                /* 32 */
-    int QDSP6_MX_FP_PRESENT;          /* 1 */
-    int QDSP6_MX_FP_ACC_INT;          /* 18 */
-    int QDSP6_MX_FP_ACC_FRAC;         /* 46 */
-    int QDSP6_MX_FP_RATE;             /* 2 */
-    int QDSP6_MX_FP_ROWS;             /* 32 */
+    int QDSP6_DMA_PRESENT;
+    int QDSP6_MX_FP_PRESENT;
+    int QDSP6_MX_RATE;
+    int QDSP6_MX_FP_RATE;
+    int QDSP6_MX_FP_ACC_INT;
+    int QDSP6_MX_FP_ACC_FRAC;
+    int QDSP6_MX_FP_ACC_EXP;
+    int QDSP6_MX_CHANNELS;
+    int QDSP6_MX_ROWS;
+    int QDSP6_MX_COLS;
+    int QDSP6_MX_FP_ROWS;
+    int QDSP6_MX_FP_COLS;
+    int QDSP6_MX_CVT_MPY_SZ;
+    int QDSP6_MX_SUB_COLS;
+    int QDSP6_MX_ACCUM_WIDTH;
+    int QDSP6_MX_CVT_WIDTH;
+    int QDSP6_MX_FP_ACC_NORM;
+    int QDSP6_DMA_EXTENDED_VA_PRESENT;
+    int QDSP6_MX_PARALLEL_GRPS;
+    int QDSP6_VX_PRESENT;
+    int QDSP6_VX_CONTEXTS;
 } arch_proc_opt_t;
 
 enum phmx_e {
@@ -146,7 +194,94 @@ enum phmx_e {
   phmx_array_flt_mpy2,
   phmx_array_flt_mpy3,
   phmx_array_flt_acc,
+  phmx_array_fxp_cvt,
+  phmx_array_flt_cvt,
 };
+
+enum mem_access_types {
+	access_type_INVALID = 0,
+	access_type_unknown = 1,
+	access_type_load = 2,
+	access_type_store = 3,
+	access_type_fetch = 4,
+	access_type_dczeroa = 5,
+	access_type_dccleana = 6,
+	access_type_dcinva = 7,
+	access_type_dccleaninva = 8,
+	access_type_icinva = 9,
+	access_type_ictagr = 10,
+	access_type_ictagw = 11,
+	access_type_icdatar = 12,
+	access_type_dcfetch = 13,
+	access_type_l2fetch = 14,
+	access_type_l2cleanidx = 15,
+	access_type_l2cleaninvidx = 16,
+	access_type_l2tagr = 17,
+	access_type_l2tagw = 18,
+	access_type_dccleanidx = 19,
+	access_type_dcinvidx = 20,
+	access_type_dccleaninvidx = 21,
+	access_type_dctagr = 22,
+	access_type_dctagw = 23,
+	access_type_k0unlock = 24,
+	access_type_l2locka = 25,
+	access_type_l2unlocka = 26,
+	access_type_l2kill = 27,
+	access_type_l2gclean = 28,
+	access_type_l2gcleaninv = 29,
+	access_type_l2gunlock = 30,
+	access_type_synch = 31,
+	access_type_isync = 32,
+	access_type_pause = 33,
+	access_type_load_phys = 34,
+	access_type_load_locked = 35,
+	access_type_store_conditional = 36,
+	access_type_barrier = 37,
+#ifdef CLADE
+	access_type_clade = 38,
+#endif
+	access_type_memcpy_load = 39,
+	access_type_memcpy_store = 40,
+#ifdef CLADE2
+	access_type_clade2 = 41,
+#endif
+  access_type_hmx_load_act = 42,
+  access_type_hmx_load_wei = 43,
+  access_type_hmx_load_bias = 44,
+  access_type_hmx_store = 45,
+  access_type_hmx_store_bias = 46,
+  access_type_hmx_swap_acc = 47,
+  access_type_hmx_acc_cvt = 48,
+  access_type_hmx_store_cvt_state = 49,
+  access_type_hmx_poly_cvt = 50,
+  access_type_udma_load = 51,
+  access_type_udma_store = 52,
+  access_type_unpause = 53,
+	NUM_CORE_ACCESS_TYPES
+};
+
+struct MemLog {
+    target_ulong va;
+    uint8_t width;
+    uint32_t data32;
+    uint64_t data64;
+};
+
+#include "max.h"
+#include "mmvec/mmvec.h"
+
+typedef struct {
+    target_ulong va;
+    int size;
+    mmvector_t mask;
+    mmvector_t data;
+} vstorelog_t;
+
+struct dma_state;
+typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *);
+
+#include "hmx/hmx.h"
+#include "dma.h"
 
 struct ProcessorState {
     const rev_features_t *features;
@@ -160,40 +295,15 @@ struct ProcessorState {
     struct dma_adapter_engine_info * dma_engine_info[THREADS_MAX];
     struct dma_state *dma[DMA_MAX]; // same as dma_t
     dma_insn_checker_ptr dma_insn_checker[DMA_MAX];
+	  size8u_t monotonic_pcycles;	/* never reset */
 
     /* one hmx unit shared among all threads */
     hmx_state_t *shared_extptr;
 };
 
-/*
- * Represents the maximum number of consecutive
- * translation blocks to execute on a CPU before yielding
- * to another CPU.
- */
-#define HEXAGON_TB_EXEC_PER_CPU_MAX 2000
+typedef struct CPUHexagonState CPUArchState;
+typedef struct HexagonCPU ArchCPU;
 
-#define HEXAGON_CPU_TYPE_SUFFIX "-" TYPE_HEXAGON_CPU
-#define HEXAGON_CPU_TYPE_NAME(name) (name HEXAGON_CPU_TYPE_SUFFIX)
-#define CPU_RESOLVING_TYPE TYPE_HEXAGON_CPU
-
-#define TYPE_HEXAGON_CPU_V67 HEXAGON_CPU_TYPE_NAME("v67")
-
-struct MemLog {
-    target_ulong va;
-    uint8_t width;
-    uint32_t data32;
-    uint64_t data64;
-};
-
-typedef struct {
-    target_ulong va;
-    int size;
-    mmvector_t mask;
-    mmvector_t data;
-} vstorelog_t;
-
-struct dma_state;
-typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *);
 
 typedef struct hmx_mem_access_info {
     size4s_t dY;
@@ -210,6 +320,9 @@ typedef struct hmx_mem_access_info {
     size1u_t x_tap;
     size1u_t ch_start;
     size1u_t ch_stop;
+	  size1u_t group_size;
+	  size1u_t group_count;
+	  size1u_t group_count_ratio;
     size1u_t block_type:3;
     size1u_t format:2;
     size1u_t acc_select:1;
@@ -227,6 +340,8 @@ typedef struct hmx_mem_access_info {
     size1u_t enable16x16;
     size1u_t outputselect16x16;
     size1u_t act_reuse;
+	  size2u_t egy_mpy_acc[HMX_MAX_EGY_CYCLE];
+	  size1u_t egy_cvt;
 } hmx_mem_access_info_t;
 
 #include "xlate_info.h"
@@ -416,6 +531,7 @@ struct CPUHexagonState {
     uint32_t last_cpu;
 #endif
 };
+#define mmvecx_t CPUHexagonState
 
 #define HEXAGON_CPU_CLASS(klass) \
     OBJECT_CLASS_CHECK(HexagonCPUClass, (klass), TYPE_HEXAGON_CPU)
@@ -543,8 +659,6 @@ void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
 uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg);
 #endif
 
-typedef struct CPUHexagonState CPUArchState;
-typedef HexagonCPU ArchCPU;
 
 void hexagon_translate_init(void);
 

@@ -35,7 +35,7 @@
 #include "fma_emu.h"
 #include "conv_emu.h"
 #include "mmvec/mmvec.h"
-#include "mmvec/macros.h"
+#include "mmvec/macros_auto.h"
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
 #endif

@@ -45,6 +45,8 @@ Q6INSN(J2_jump,"jump #r22:2",ATTRIBS(A_JDIR,A_RELAX_UNC), "direct unconditional 
 Q6INSN(J2_jumpr,"jumpr Rs32",ATTRIBS(A_JINDIR), "indirect unconditional jump",
 {fJUMPR(RsN,RsV,COF_TYPE_JUMPR);})
 
+Q6INSN(J2_jumprh,"jumprh Rs32",ATTRIBS(A_JINDIR, A_HINTED_COF), "indirect unconditional jump",
+{fJUMPR(RsN,RsV,COF_TYPE_JUMPR);})
 #if 0
 Q6INSN(J2_jumpt,"if (Pu4) jump #r15:2",ATTRIBS(A_CJOLDDIR,A_NOTE_CONDITIONAL,A_RELAX_COND,A_PRED_BIT_12),"direct conditional jump if true",
 {fIMMEXT(riV); fPCALIGN(riV); fBRANCH_SPECULATE_STALL(fLSBOLD(PuV),, SPECULATE_NOT_TAKEN,12,0); if (fLSBOLD(PuV)) { fBRANCH(fREAD_PC()+riV,COF_TYPE_JUMP);}})
@@ -238,6 +240,8 @@ Q6INSN(J2_callrt,"if (Pu4) callr Rs32",ATTRIBS(CINDIR_STD,A_NOTE_CONDITIONAL,A_P
 Q6INSN(J2_callrf,"if (!Pu4) callr Rs32",ATTRIBS(CINDIR_STD,A_NOTE_CONDITIONAL,A_PRED_BIT_12),"indirect conditional call if false",
 {fBRANCH_SPECULATE_STALL(fLSBOLDNOT(PuV),,SPECULATE_NOT_TAKEN,12,0);if (fLSBOLDNOT(PuV)) { fCALLR(RsV); }})
 
+Q6INSN(J2_callrh,"callrh Rs32",ATTRIBS(CINDIR_STD, A_HINTED_COF), "hinted indirect unconditional call",
+{ fCALLR(RsV); })
 
 
 

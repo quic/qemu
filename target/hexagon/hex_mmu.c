@@ -471,7 +471,7 @@ static bool hex_tlb_is_match(CPUHexagonState *env,
  * -1                        multiple matches
  * -2                        no match
  */
-int hex_tlb_check_overlap(CPUHexagonState *env, uint64_t entry)
+int hex_tlb_check_overlap(CPUHexagonState *env, uint64_t entry, uint64_t index)
 {
     int matches = 0;
     int last_match = 0;

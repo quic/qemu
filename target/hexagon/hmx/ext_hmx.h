@@ -17,12 +17,10 @@
 
 #ifndef HMX_NOEXT_H
 #define HMX_NOEXT_H 1
-
 #include "cpu.h"
 #include "insn.h"
 
 #define thread_t CPUHexagonState
-
 
 void *hmx_ext_palloc(processor_t *proc, int slots);
 void *hmx_ext_talloc(processor_t *proc, int slots);
@@ -51,6 +49,21 @@ void hmx_ext_dump_regs(FILE *fp, processor_t *proc, int e);
 int hmx_ext_load_vreg(processor_t *proc, int extno, size4u_t regno, size4u_t wordno, size4u_t val);
 int hmx_ext_load_qreg(processor_t *proc, int extno, size4u_t regno, size4u_t wordno, size4u_t val);
 
+int hmx_ext_get_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_idx, size8s_t * integer, size8u_t * fractional, size4u_t * ovf);
+int hmx_ext_set_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_idx, size8s_t integer, size8u_t fractional, size4u_t ovf);
+
+int	hmx_ext_set_fp_acc(thread_t *thread,  int spatial_index, int channel_index, int acc_index, size4s_t exponent, size8s_t significand_hi, size8u_t significand_lo, size4u_t ovf);
+int hmx_ext_get_fp_acc(thread_t *thread,  int spatial_index, int channel_index, int acc_index, size4s_t * exponent, size8s_t * significand_hi, size8u_t * significand_lo, size4u_t * ovf);
+
+size4u_t hmx_ext_set_cvt_state(thread_t *thread, size4u_t age, size4u_t spatial_idx, size4u_t channel_idx, size4u_t state_index, size4u_t val);
+size4u_t hmx_ext_get_cvt_state(thread_t *thread, size4u_t age, size4u_t spatial_idx, size4u_t channel_idx, size4u_t state_index);
+
+int hmx_read_flt_acc_idx(thread_t *thread);
+int hmx_read_fxp_acc_idx(thread_t *thread);
+
+void hmx_age_cvt_state(thread_t *thread);
+
+
 semantic_insn_t hmx_ext_bq_exec(int opcode); /* BQ */
 
 
@@ -71,6 +84,8 @@ int hmx_ext_set_bias(thread_t *thread, int arrayno, size4u_t channel_index, size
 
 int hmx_ext_get_ovf(thread_t *thread, int extno, size4u_t regno, size4u_t wordno, size4u_t *result);
 int hmx_ext_set_ovf(thread_t *thread, int extno, size4u_t regno, size4u_t wordno, size4u_t val);
+
+void hmx_reset(processor_t *proc, thread_t *thread);
 
 void hmx_ext_analyze_packet(thread_t * thread, packet_t *pkt);
 

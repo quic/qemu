@@ -79,7 +79,7 @@ DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_MPY_SLOT_ACC_FWD(WIDTH,TAG, SYNTAX,DESCR,CODE) \
 EXTINSN(V6_##TAG, SYNTAX, \
-ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_VX_ACC_FWD,A_NOTE_MPY_RESOURCE),  \
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_VX_ACC_FWD,A_NOTE_MPY_RESOURCE,A_CVI_VX_NO_TMP_LD),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_MPY_SLOT_LATE(WIDTH,TAG, SYNTAX,DESCR,CODE) \
@@ -98,7 +98,7 @@ EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RES
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_VX_FWD(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RESOURCE,A_NOTE_VX_ACC_FWD,A_CVI_VX_ACC_FWD),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RESOURCE,A_NOTE_VX_ACC_FWD,A_CVI_VX_ACC_FWD,A_CVI_VX_NO_TMP_LD),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_SLOT2_DOUBLE_VEC(WIDTH,TAG,SYNTAX,DESCR,CODE) \
@@ -155,35 +155,6 @@ DEF_CVI_MAPPING(V6_stup0,  "if (Pv4) vmemu(Rt32)=Vs32",  "if (Pv4) vmemu(Rt32+#0
 DEF_CVI_MAPPING(V6_stunp0, "if (!Pv4) vmemu(Rt32)=Vs32",  "if (!Pv4) vmemu(Rt32+#0)=Vs32")
 
 
-
-#define ZMEM(OP) \
-{\
-	fHIDE(size4s_t stride;)\
-	fHIDE(size4s_t N;)\
-	fHIDE(size4s_t ZN;)\
-	fHIDE(size4s_t win;)\
-	fHIDE(size4s_t width;)\
-	fHIDE(size4s_t EAU=EA;)\
-	N = fVECSIZE();\
-	ZN = 2*N; \
-	stride = (1+(EA&1)) * (N/4);\
-	win = 3*stride;\
-	width = ZN-win;\
-	if (width>N) {\
-		width = N;\
-	}\
-	EA &= ~3;\
-	fHIDE(mmvector_t TMP;)\
-	fHIDE(fLOADZ_LOAD(EA,EAU,width,TMP);)\
-	if ((EA % width) ==0) {\
-		OP(EA,width,ZN,N,TMP);\
-	}\
-	fHIDE(fELSE_CANCELZ();)\
-}\
-
-
-
-
 /****************************************************************
 * MAPPING FOR VMEMs
 ****************************************************************/
@@ -214,7 +185,7 @@ MMVEC_COND_EACH_EA(vS32Ub,"Unaligned Vector Store",ATTRIBS(ATTR_VMEMU,A_STORE,A_
 MMVEC_EACH_EA(vS32b_new,"Aligned Vector Store New",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_NEW,A_RESTRICT_SINGLE_MEM_FIRST,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),,"vmem","=Os8.new",fSTOREMMV(EA,fNEWVREG(OsN)))
 
 // V65 store relase, zero byte store
-MMVEC_EACH_EA(vS32b_srls,"Aligned Vector Scatter Release",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_SCATTER_RELEASE,A_CVI_NEW,A_RESTRICT_SLOT0ONLY,A_VTCM_ALLBANK_ACCESS),,"vmem",":scatter_release",fSTORERELEASE(EA,0))
+MMVEC_EACH_EA(vS32b_srls,"Aligned Vector Scatter Release",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_SCATTER_RELEASE,A_CVI_NEW,A_RESTRICT_SLOT0ONLY,A_VTCM_ALLBANK_ACCESS,A_NO_XML),,"vmem",":scatter_release",fSTORERELEASE(EA,0))
 
 
 
@@ -1558,6 +1529,22 @@ ITERATOR_INSN_SHIFT_SLOT(32,vconv_hf_qf32,"Vd32.hf=Vuu32.qf32","Vector conversio
     VdV.hf[2*i] = fRNDSATHF(u0.exp, u0.sig);
     VdV.hf[2*i+1] = fRNDSATHF(u1.exp, u1.sig))
 
+// FP Convert IEEE FP32 to int word
+ITERATOR_INSN_SHIFT_SLOT(32, vconv_w_sf,"Vd32.w=Vu32.sf","Vector conversion of sf32 format to int w",
+    VdV.w[i] = conv_w_sf(VuV.sf[i]))
+
+// FP Convert IEEE FP16 to int halfword
+ITERATOR_INSN_SHIFT_SLOT(16, vconv_h_hf,"Vd32.h=Vu32.hf","Vector conversion of hf16 format to int hw",
+    VdV.h[i] = conv_h_hf(VuV.hf[i]))
+
+// Int Convert word to IEEE FP32
+ITERATOR_INSN_SHIFT_SLOT(32, vconv_sf_w,"Vd32.sf=Vu32.w","Vector conversion of int w format to sf32",
+    VdV.sf[i] = conv_sf_w(VuV.w[i]))
+
+// Int Convert halfword to EEE FP16
+ITERATOR_INSN_SHIFT_SLOT(16, vconv_hf_h,"Vd32.hf=Vu32.h","Vector conversion of int hw format to hf16",
+    VdV.hf[i] = conv_hf_h(VuV.h[i]))
+
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpyih,     "Vd32.h=vmpyi(Vu32.h,Vv32.h)",  "Vector by Vector Halfword Multiply", VdV.h[i]  = fMPY16SS(VuV.h[i], VvV.h[i]))
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpyih_acc, "Vx32.h+=vmpyi(Vu32.h,Vv32.h)", "Vector by Vector Halfword Multiply", VxV.h[i] += fMPY16SS(VuV.h[i], VvV.h[i]))
 
@@ -1824,6 +1811,15 @@ MMVEC_CMPEQMAP(ub,"ub","b")
     } \
 }
 
+#define VCMPGT_BF(DEST, ASRC, ASRCOP, CMP, N, SRC, MASK, WIDTH)        \
+{ \
+    fBFLOAT(); \
+    for(fHIDE(int) i = 0; i < fVBYTES(); i += WIDTH) { \
+        fHIDE(int) VAL = fCMPGT_BF(VuV.SRC[i/WIDTH],VvV.SRC[i/WIDTH]) ? MASK : 0 ;\
+		fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
+    } \
+}
+// TODO: Collapse these
 /* Vector QF32 compare */
 #define MMVEC_CMPGT_QF32(TYPE,TYPE2,DESCR,N,MASK,WIDTH,SRC) \
 EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-and", \
@@ -3036,62 +3032,6 @@ EXTINSN(V6_vprefixqw,"Vd32.w=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
 
 
 
-
-#define ZMULT(VDST,RT,MULT,BYTE1,ZELEMENT,WDEST,ELEMENT_COUNT,POST_INC,ZERODEST) \
-	fHIDE(size4s_t N;)\
-	fHIDE(size4s_t p;)\
-	fHIDE(size4s_t offset;)\
-	fHIDE(size4s_t ZN;)\
-	fHIDE(size4s_t stride;)\
-	N = fVBYTES();\
-	ZN = 2*N; \
-	stride = (1+(RT&1)) * (N/4);\
-	offset = ((RT&~(ELEMENT_COUNT-1)) - ELEMENT_COUNT);\
-	fHIDE(size1u_t ZREG[256] = {0}; /* FIXME: Not scalable */) \
-	fHIDE(fREAD_ZVEC_ALL(ZREG,N,ZN);) \
-	for(p=3; p >= 0; --p) {\
-		fHIDE(size4s_t i;)\
-		fVFOREACH(32, i) {\
-			fHIDE(size4s_t zv;)\
-			fHIDE(size4s_t b;)\
-			fHIDE(size4s_t z;)\
-			ZERODEST;\
-			b = ELEMENT_COUNT/4;\
-			for(z=0; z < ELEMENT_COUNT; z++) {\
-				zv = (z & 0x3)*b + ((z>>2) & (b-1));\
-				VDST.v[p].WDEST[i] += MULT((BYTE1(zv,VuV.uw[i])), ZELEMENT(ZREG,(offset+z)& (ZN-1)));\
-			}\
-		}\
-		offset = (offset-stride);\
-	}\
-	POST_INC;\
-
-
-
-
-#define ZMULT_BH(VDST,RT,BYTE1,POST_INC) \
-	fHIDE(size4s_t N;)\
-	fHIDE(size4s_t p;)\
-	fHIDE(size4s_t offset;)\
-	fHIDE(size4s_t ZN;)\
-	fHIDE(size4s_t stride;)\
-	N = fVBYTES();\
-	ZN = 2*N; \
-	stride = (1+(RT&1)) * 2*N;\
-	offset = (RT&~7);\
-	fHIDE(size2s_t ZREG[128] = {0}; /* FIXME: Not scalable */) \
-	fHIDE(fREAD_ZVEC_ALL(ZREG,N,ZN);) \
-	for(p=1; p >= 0; --p) {\
-		fHIDE(size4s_t i;)\
-		fVFOREACH(32, i) {\
-			fHIDE(size4s_t z;)\
-			for(z=-8; z < 0; z+=2) {\
-				VDST.v[p].w[i] += fMPY16SS(BYTE1(z,VuV.uw[i]), fZREGH(ZREG,((offset+z)/2) & (ZN-1)));\
-			}\
-		}\
-		offset = (offset-stride);\
-	}\
-	POST_INC;\
 
 /******************************************************************************
  DEBUG Vector/Register Printing

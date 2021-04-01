@@ -24,6 +24,7 @@ DEF_ATTRIB(MAPPING, "Not real -- asm mapped", "", "")
 DEF_ATTRIB(CONDMAPPING, "Not real -- mapped based on values", "", "")
 DEF_ATTRIB(EXTENSION, "Extension instruction", "", "")
 DEF_ATTRIB(SHARED_EXTENSION, "Shared extension instruction", "", "")
+DEF_ATTRIB(CABAC,"Cabac Instruction. Used in conjuction with QDSP6_CABAC_PRESENT","","")
 
 DEF_ATTRIB(PRIV, "Not available in user or guest mode", "", "")
 DEF_ATTRIB(GUEST, "Not available in user mode", "", "")
@@ -59,6 +60,10 @@ DEF_ATTRIB(MEMSIZE_1B, "Memory width is 1 byte", "", "")
 DEF_ATTRIB(MEMSIZE_2B, "Memory width is 2 bytes", "", "")
 DEF_ATTRIB(MEMSIZE_4B, "Memory width is 4 bytes", "", "")
 DEF_ATTRIB(MEMSIZE_8B, "Memory width is 8 bytes", "", "")
+DEF_ATTRIB(REGWRSIZE_1B, "ETM Memory width is 1 byte", "", "")
+DEF_ATTRIB(REGWRSIZE_2B, "ETM Memory width is 2 bytes", "", "")
+DEF_ATTRIB(REGWRSIZE_4B, "ETM Memory width is 4 bytes", "", "")
+DEF_ATTRIB(REGWRSIZE_8B, "ETM Memory width is 8 bytes", "", "")
 DEF_ATTRIB(MEMLIKE, "Memory-like instruction", "", "")
 DEF_ATTRIB(MEMLIKE_PACKET_RULES, "follows Memory-like packet rules", "", "")
 DEF_ATTRIB(CACHEOP, "Cache operation", "", "")
@@ -132,6 +137,8 @@ DEF_ATTRIB(CVI_VX_VSRC0_IS_DST, "For the assembler to handle the special case of
 
 DEF_ATTRIB(CVI_VX_ACC_FWD, "VX Accumulator Forwarding", "", "")
 
+DEF_ATTRIB(CVI_VX_NO_TMP_LD,"VX Accumulator renaming not allowed from tmp load instruction","","")
+
 DEF_ATTRIB(CVI_GATHER_ADDR_2B, "CVI Scatter/Gather address is halfword", "", "")
 DEF_ATTRIB(CVI_GATHER_ADDR_4B, "CVI Scatter/Gather address is word", "", "")
 
@@ -141,6 +148,10 @@ DEF_ATTRIB(CVI_SLOT23, "Can execute in slot 2 or slot 3 (HVX)", "", "")
 
 DEF_ATTRIB(HMX, "This a matrix multiply instruction.", "", "")
 DEF_ATTRIB(HMX_ACC, "This a matrix multiply instruction accessing only accumulator(s).", "", "")
+DEF_ATTRIB(HMX_CVT,"This a matrix convert instruction.","","")
+DEF_ATTRIB(HMX_POLY,"This a matrix polynomial convert instruction.","","")
+
+DEF_ATTRIB(HMX_CU_SCALAR,"This a matrix instruction that uses the cu scalar bus.","","")
 
 DEF_ATTRIB(HMX_FLT, "This a matrix multiply instruction with FP16.", "", "")
 DEF_ATTRIB(HVX_FLT, "This a floating point HVX instruction.", "", "")
@@ -160,6 +171,7 @@ DEF_ATTRIB(CALL, "Function call instruction", "", "")
 DEF_ATTRIB(RET, "Function return instruction", "", "")
 DEF_ATTRIB(PERM, "Permute instruction", "", "")
 DEF_ATTRIB(COF, "Change-of-flow instruction", "", "")
+DEF_ATTRIB(HINTED_COF,"This instruction is a hinted change-of-flow", "", "")
 DEF_ATTRIB(CONDEXEC, "May be cancelled by a predicate", "", "")
 DEF_ATTRIB(DOTOLD, "Uses a predicate generated in a previous packet", "", "")
 DEF_ATTRIB(DOTNEW, "Uses a predicate generated in the same packet", "", "")
@@ -355,6 +367,7 @@ DEF_ATTRIB(NOTE_MX, "This is in-memory matrix multiply instruction.", "", "")
 DEF_ATTRIB(NOTE_VX_ACC_FWD, "The accumulator (Vxx) source of this instruction must be generate in the previous packet to avoid a stall. The accumulator cannot come from a .tmp operation.", "", "")
 DEF_ATTRIB(NOTE_TMP_NO_VX, "The tmp load instruction destination register cannot be an accumulator register.", "", "")
 
+DEF_ATTRIB(NOTE_NO_ECC,"ECC is not supported for scatter and gather instructions. Enabling ECC with unprotected access instructions result in undetermined behavior.", "","")
 
 /* Restrictions to make note of */
 DEF_ATTRIB(RESTRICT_LOOP_LA, "Cannot be in the last packet of a loop", "", "")

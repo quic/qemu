@@ -411,7 +411,7 @@ static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
     }
 
     if (pkt->pkt_has_extension) {
-        errors += mmvec_ext_decode_checks(pkt);
+        errors += MMVEC_EXT_DECODE_CHECKS(pkt);
     }
 
     for (i = 0; i < num_insns; i++) {

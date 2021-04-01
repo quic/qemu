@@ -15,7 +15,6 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #define CONCAT(A,B) A##B
 #define EXTEXTNAME(X) CONCAT(EXT_,X)
 #define DEF_ENC(TAG,STR) DEF_EXT_ENC(TAG,EXTEXTNAME(EXTNAME),STR)
@@ -35,7 +34,6 @@
 
     NT (non-temporal) is bit 22
     VMEMU decodes as bit[2:1] = 11
-
 
 
 	CLASS_CJ '1 - ALL VX OPS
@@ -95,7 +93,7 @@ DEF_FIELD32(ICLASS_NCJ" 1--- -!------ PP------ --------",NT,"NonTemporal")
 
 
 
-DEF_FIELDROW_DESC32(                ICLASS_NCJ" 1 000 --- ----- PP i --iii ----- ---","[#0] vmem(Rt+#s4)[:nt]")
+DEF_HVX_FIELDROW_DESC32(                ICLASS_NCJ" 1 000 --- ----- PP i --iii ----- ---","[#0] vmem(Rt+#s4)[:nt]")
 
 // EJP: XXX: FIXME: needs macros so we do not screw up bit meanings.  I think bit 22 is ":nt" maybe?
 
@@ -225,7 +223,7 @@ LDST_PREDST(LDST_BO,V6_vS32Ub,0,11)
 
 
 
-DEF_FIELDROW_DESC32(            	ICLASS_NCJ" 1 001 --- ----- PP - ----- ddddd ---","[#1] vmem(Rx++#s3)[:nt]")
+DEF_HVX_FIELDROW_DESC32(            	ICLASS_NCJ" 1 001 --- ----- PP - ----- ddddd ---","[#1] vmem(Rx++#s3)[:nt]")
 
 // Loads
 LDST_BASICLD(LDST_PI,V6_vL32b)
@@ -279,7 +277,7 @@ LDST_PREDST(LDST_PI,V6_vS32Ub,0,11)
 
 
 
-DEF_FIELDROW_DESC32(            ICLASS_NCJ" 1 011 --- ----- PP - ----- ----- ---","[#3] vmem(Rx++#M)[:nt]")
+DEF_HVX_FIELDROW_DESC32(            ICLASS_NCJ" 1 011 --- ----- PP - ----- ----- ---","[#3] vmem(Rx++#M)[:nt]")
 
 // Loads
 LDST_BASICLD(LDST_PM,V6_vL32b)
@@ -338,15 +336,19 @@ LDST_PREDST(LDST_PM,V6_vS32Ub,0,11)
 
 
 
+DEF_HVX_FIELDROW_DESC32(   		ICLASS_NCJ" 1 10- 0-- ----- PP - ----- ----- ---","[#4] Z=vmem")
 
-// Move these in the text file with the rest of the CJ
+
+
+// Move these in the text file with the rest of the CJ's
 DEF_ENC(V6_vaddcarrysat,    ICLASS_CJ" 1 101 100 vvvvv PP 1 uuuuu 0ss ddddd") //
 DEF_ENC(V6_vaddcarryo,	    ICLASS_CJ" 1 101 101 vvvvv PP 1 uuuuu 0ee ddddd") //
 DEF_ENC(V6_vsubcarryo,	    ICLASS_CJ" 1 101 101 vvvvv PP 1 uuuuu 1ee ddddd") //
 DEF_ENC(V6_vsatdw,          ICLASS_CJ" 1 101 100 vvvvv PP 1 uuuuu 111 ddddd") //
 
+DEF_HVX_FIELDROW_DESC32(   		ICLASS_NCJ" 1 10- 1-- ----- PP - ----- ----- ---","[#5] if (Pv) Z=Vmem")
 
-DEF_FIELDROW_DESC32(   		ICLASS_NCJ" 1 111 --- ----- PP - ----- ----- ---","[#6] vgather,vscatter")
+DEF_HVX_FIELDROW_DESC32(   		ICLASS_NCJ" 1 111 --- ----- PP - ----- ----- ---","[#6] vgather,vscatter")
 DEF_ENC(V6_vgathermw, 	    ICLASS_NCJ" 1 111 000 ttttt PP u --000 --- vvvvv")	// vtmp.w=vmem(Rt32,Mu2,Vv32.w).w
 DEF_ENC(V6_vgathermh, 	    ICLASS_NCJ" 1 111 000 ttttt PP u --001 --- vvvvv")	// vtmp.h=vmem(Rt32,Mu2,Vv32.h).h
 DEF_ENC(V6_vgathermhw, 	    ICLASS_NCJ" 1 111 000 ttttt PP u --010 --- vvvvv")	// vtmp.h=vmem(Rt32,Mu2,Vvv32.w).h
@@ -378,7 +380,7 @@ DEF_ENC(V6_vscattermhwq, 	ICLASS_NCJ" 1 111 101 ttttt PP u vvvvv 0ss wwwww")	// 
 
 
 
-//DEF_FIELDROW_DESC32(   		ICLASS_NCJ" 1 111 111 ----- PP - ----- ----- ---","[#6] Deprecated to be Removed")
+//DEF_HVX_FIELDROW_DESC32(   		ICLASS_NCJ" 1 111 111 ----- PP - ----- ----- ---","[#6] Deprecated to be Removed")
 
 
 DEF_CLASS32(ICLASS_CJ" 1--- -------- PP------ --------",COPROC_VX)
@@ -391,7 +393,7 @@ DEF_CLASS32(ICLASS_CJ" 1--- -------- PP------ --------",COPROC_VX)
 *
 ****************************************************************/
 
-DEF_FIELDROW_DESC32(			ICLASS_CJ" 1 000 --- ----- PP - ----- ----- ---","[#1] Vd32=(Vu32, Vv32, Rt8)")
+DEF_HVX_FIELDROW_DESC32(			ICLASS_CJ" 1 000 --- ----- PP - ----- ----- ---","[#1] Vd32=(Vu32, Vv32, Rt8)")
 DEF_ENC(V6_vasrhbsat, 			ICLASS_CJ" 1 000 vvv vvttt PP 0 uuuuu 000 ddddd") //
 DEF_ENC(V6_vasruwuhrndsat, 		ICLASS_CJ" 1 000 vvv vvttt PP 0 uuuuu 001 ddddd") //
 DEF_ENC(V6_vasrwuhrndsat, 		ICLASS_CJ" 1 000 vvv vvttt PP 0 uuuuu 010 ddddd") //
@@ -409,7 +411,7 @@ DEF_ENC(V6_vasruhubsat,		    ICLASS_CJ" 1 000 vvv vvttt PP 1 uuuuu 101 ddddd") /
 *
 ****************************************************************/
 
-DEF_FIELDROW_DESC32(        ICLASS_CJ" 1 001 --- ----- PP - ----- ----- ---","[#1] Vd32=(Vu32, Rt32)")
+DEF_HVX_FIELDROW_DESC32(        ICLASS_CJ" 1 001 --- ----- PP - ----- ----- ---","[#1] Vd32=(Vu32, Rt32)")
 DEF_ENC(V6_vtmpyb, 			ICLASS_CJ" 1 001 000 ttttt PP 0 uuuuu 000 ddddd") //
 DEF_ENC(V6_vtmpybus, 		ICLASS_CJ" 1 001 000 ttttt PP 0 uuuuu 001 ddddd") //
 DEF_ENC(V6_vdmpyhb, 		ICLASS_CJ" 1 001 000 ttttt PP 0 uuuuu 010 ddddd") //
@@ -476,7 +478,7 @@ DEF_ENC(V6_lvsplatb, 		ICLASS_CJ" 1 001 110 ttttt PP 0 ----- 010 ddddd") //
 
 
 
-DEF_FIELDROW_DESC32(        ICLASS_CJ" 1 001 --- ----- PP - ----- ----- ---","[#1] Vx32=(Vu32, Rt32)")
+DEF_HVX_FIELDROW_DESC32(        ICLASS_CJ" 1 001 --- ----- PP - ----- ----- ---","[#1] Vx32=(Vu32, Rt32)")
 DEF_ENC(V6_vtmpyb_acc, 		ICLASS_CJ" 1 001 000 ttttt PP 1 uuuuu 000 xxxxx") //
 DEF_ENC(V6_vtmpybus_acc, 	ICLASS_CJ" 1 001 000 ttttt PP 1 uuuuu 001 xxxxx") //
 DEF_ENC(V6_vtmpyhb_acc, 	ICLASS_CJ" 1 001 000 ttttt PP 1 uuuuu 010 xxxxx") //
@@ -530,7 +532,8 @@ DEF_ENC(V6_vmpyh_acc,	    ICLASS_CJ" 1 001 101 ttttt PP 1 uuuuu 110 xxxxx") //5/
 
 
 
-DEF_FIELDROW_DESC32(        ICLASS_CJ" 1 001 --- ----- PP - ----- ----- ---","[#1] (Vx32, Vy32, Rt32)")
+
+DEF_HVX_FIELDROW_DESC32(        ICLASS_CJ" 1 001 --- ----- PP - ----- ----- ---","[#1] (Vx32, Vy32, Rt32)")
 DEF_ENC(V6_vshuff, 			ICLASS_CJ" 1 001 111 ttttt PP 1 yyyyy 001 xxxxx") //
 DEF_ENC(V6_vdeal, 			ICLASS_CJ" 1 001 111 ttttt PP 1 yyyyy 010 xxxxx") //
 
@@ -545,7 +548,7 @@ DEF_ENC(V6_vdeal, 			ICLASS_CJ" 1 001 111 ttttt PP 1 yyyyy 010 xxxxx") //
 ****************************************************************/
 
 
-DEF_FIELDROW_DESC32(    ICLASS_CJ" 1 010 --- ----- PP - ----- ----- ---","[#2] if (Ps) Vd=Vu")
+DEF_HVX_FIELDROW_DESC32(    ICLASS_CJ" 1 010 --- ----- PP - ----- ----- ---","[#2] if (Ps) Vd=Vu")
 DEF_ENC(V6_vcmov, 		ICLASS_CJ" 1 010 000 ----- PP - uuuuu -ss ddddd")
 DEF_ENC(V6_vncmov, 		ICLASS_CJ" 1 010 001 ----- PP - uuuuu -ss ddddd")
 DEF_ENC(V6_vnccombine, 	ICLASS_CJ" 1 010 010 vvvvv PP - uuuuu -ss ddddd")
@@ -560,7 +563,7 @@ DEF_ENC(V6_vasr_into,   ICLASS_CJ" 1 010 101 vvvvv PP 1 uuuuu 111 xxxxx")
 *
 ****************************************************************/
 
-DEF_FIELDROW_DESC32(        ICLASS_CJ" 1 011 --- ----- PP - ----- ----- ---","[#3] Vd32=(Vu32, Vv32, Rt8)")
+DEF_HVX_FIELDROW_DESC32(        ICLASS_CJ" 1 011 --- ----- PP - ----- ----- ---","[#3] Vd32=(Vu32, Vv32, Rt8)")
 DEF_ENC(V6_valignb, 		ICLASS_CJ" 1 011 vvv vvttt PP 0 uuuuu 000 ddddd") //
 DEF_ENC(V6_vlalignb, 		ICLASS_CJ" 1 011 vvv vvttt PP 0 uuuuu 001 ddddd") //
 DEF_ENC(V6_vasrwh, 		    ICLASS_CJ" 1 011 vvv vvttt PP 0 uuuuu 010 ddddd") //
@@ -587,7 +590,7 @@ DEF_ENC(V6_vlutvwh_oracc,	ICLASS_CJ" 1 011 vvv vvttt PP 1 uuuuu 111 xxxxx")
 *
 ****************************************************************/
 
-DEF_FIELDROW_DESC32(    ICLASS_CJ" 1 100 --- ----- PP 0 ----- ----- ---","[#4] Vd32=(Vu32, Vv32)")
+DEF_HVX_FIELDROW_DESC32(    ICLASS_CJ" 1 100 --- ----- PP 0 ----- ----- ---","[#4] Vd32=(Vu32, Vv32)")
 DEF_ENC(V6_vrmpyubv, 	ICLASS_CJ" 1 100 000 vvvvv PP 0 uuuuu 000 ddddd") //
 DEF_ENC(V6_vrmpybv, 	ICLASS_CJ" 1 100 000 vvvvv PP 0 uuuuu 001 ddddd") //
 DEF_ENC(V6_vrmpybusv, 	ICLASS_CJ" 1 100 000 vvvvv PP 0 uuuuu 010 ddddd") //
@@ -660,7 +663,7 @@ DEF_ENC(V6_vavghrnd, 	ICLASS_CJ" 1 100 111 vvvvv PP 0 uuuuu 101 ddddd") //
 DEF_ENC(V6_vavgwrnd,	ICLASS_CJ" 1 100 111 vvvvv PP 0 uuuuu 110 ddddd") //
 DEF_ENC(V6_vmpabuuv,	ICLASS_CJ" 1 100 111 vvvvv PP 0 uuuuu 111 ddddd") //
 
-DEF_FIELDROW_DESC32(        ICLASS_CJ" 1 100 --- ----- PP 1 ----- ----- ---","[#4] Vx32=(Vu32, Vv32)")
+DEF_HVX_FIELDROW_DESC32(        ICLASS_CJ" 1 100 --- ----- PP 1 ----- ----- ---","[#4] Vx32=(Vu32, Vv32)")
 DEF_ENC(V6_vrmpyubv_acc,  	ICLASS_CJ" 1 100 000 vvvvv PP 1 uuuuu 000 xxxxx") //
 DEF_ENC(V6_vrmpybv_acc,   	ICLASS_CJ" 1 100 000 vvvvv PP 1 uuuuu 001 xxxxx") //
 DEF_ENC(V6_vrmpybusv_acc,	ICLASS_CJ" 1 100 000 vvvvv PP 1 uuuuu 010 xxxxx") //
@@ -691,7 +694,7 @@ DEF_ENC(V6_vaddubh_acc,		  ICLASS_CJ" 1 100 010 vvvvv PP 1 uuuuu 101 xxxxx") //
 
 
 
-DEF_FIELDROW_DESC32(    ICLASS_CJ" 1 100 100 ----- PP 1 ----- ----- ---","[#4] Qx4=(Vu32, Vv32)")
+DEF_HVX_FIELDROW_DESC32(    ICLASS_CJ" 1 100 100 ----- PP 1 ----- ----- ---","[#4] Qx4=(Vu32, Vv32)")
 // Grouped by element size (lsbs), operation (next-lsbs) and operation (next-lsbs)
 DEF_ENC(V6_veqb_and, 	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 000 000xx") //
 DEF_ENC(V6_veqh_and, 	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 000 001xx") //
@@ -731,11 +734,11 @@ DEF_ENC(V6_vgtuw_xor,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 101 010xx") //
 
 
 
-DEF_FIELDROW_DESC32(    ICLASS_CJ" 1 100 101 ----- PP 1 ----- ----- ---","[#4] Qx4,Vd32=(Vu32, Vv32)")
+DEF_HVX_FIELDROW_DESC32(    ICLASS_CJ" 1 100 101 ----- PP 1 ----- ----- ---","[#4] Qx4,Vd32=(Vu32, Vv32)")
 DEF_ENC(V6_vaddcarry,	ICLASS_CJ" 1 100 101 vvvvv PP 1 uuuuu 0xx ddddd") //
 DEF_ENC(V6_vsubcarry,	ICLASS_CJ" 1 100 101 vvvvv PP 1 uuuuu 1xx ddddd") //
 
-DEF_FIELDROW_DESC32(    	ICLASS_CJ" 1 100 11- ----- PP 1 ----- ----- ---","[#4] Vx32|=(Vu32, Vv32,#)")
+DEF_HVX_FIELDROW_DESC32(    	ICLASS_CJ" 1 100 11- ----- PP 1 ----- ----- ---","[#4] Vx32|=(Vu32, Vv32,#)")
 DEF_ENC(V6_vlutvvb_oracci,	ICLASS_CJ" 1 100 110 vvvvv PP 1 uuuuu iii xxxxx") //
 DEF_ENC(V6_vlutvwh_oracci,	ICLASS_CJ" 1 100 111 vvvvv PP 1 uuuuu iii xxxxx") //
 
@@ -746,19 +749,17 @@ DEF_ENC(V6_vlutvwh_oracci,	ICLASS_CJ" 1 100 111 vvvvv PP 1 uuuuu iii xxxxx") //
 *  Group #5,
 *
 ****************************************************************/
-DEF_FIELDROW_DESC32(        ICLASS_CJ" 1 101 000 ----- PP 0 ----- --- -----","[#5] Vd32=(Vu32, Vv32)")
+DEF_HVX_FIELDROW_DESC32(        ICLASS_CJ" 1 101 000 ----- PP 0 ----- --- -----","[#5] Vd32=(Vu32, Vv32)")
 DEF_ENC(V6_vasrvwuhsat,     ICLASS_CJ" 1 101 000 vvvvv PP 0 uuuuu 000 ddddd")
 DEF_ENC(V6_vasrvwuhrndsat,  ICLASS_CJ" 1 101 000 vvvvv PP 0 uuuuu 001 ddddd")
 DEF_ENC(V6_vasrvuhubsat,    ICLASS_CJ" 1 101 000 vvvvv PP 0 uuuuu 010 ddddd")
 DEF_ENC(V6_vasrvuhubrndsat, ICLASS_CJ" 1 101 000 vvvvv PP 0 uuuuu 011 ddddd")
 
-//DEF_ENC(V6_v10mpyubs10,         ICLASS_CJ" 1 101 111 vvvvv PP 0 uuuuu 00i ddddd")
-//DEF_ENC(V6_v10mpyubs10_vxx,     ICLASS_CJ" 1 101 111 vvvvv PP 0 uuuuu 01i xxxxx")
 
 
 
 /************** Not Real Instructions for Debug Only  ************************/
-DEF_FIELDROW_DESC32(    		ICLASS_CJ" 1 101 111 11111 PP 1 ----- ----- ---","DEBUG")
+DEF_HVX_FIELDROW_DESC32(    		ICLASS_CJ" 1 101 111 11111 PP 1 ----- ----- ---","DEBUG")
 
 
 
@@ -788,7 +789,7 @@ DEF_ENC(V6_pz, 	            	ICLASS_CJ" 1 101 111 11111 PP 1----1 111 --00u")
 *
 ****************************************************************/
 
-DEF_FIELDROW_DESC32(    ICLASS_CJ" 1 110 --0 ----- PP 0 ----- ----- ---","[#6] Vd32=Vu32")
+DEF_HVX_FIELDROW_DESC32(    ICLASS_CJ" 1 110 --0 ----- PP 0 ----- ----- ---","[#6] Vd32=Vu32")
 DEF_ENC(V6_vabsh, 		ICLASS_CJ" 1 110 --0 ---00 PP 0 uuuuu 000 ddddd") //
 DEF_ENC(V6_vabsh_sat, 	ICLASS_CJ" 1 110 --0 ---00 PP 0 uuuuu 001 ddddd") //
 DEF_ENC(V6_vabsw, 		ICLASS_CJ" 1 110 --0 ---00 PP 0 uuuuu 010 ddddd") //
@@ -818,7 +819,7 @@ DEF_ENC(V6_vcl0h, 		ICLASS_CJ" 1 110 --0 ---10 PP 0 uuuuu 111 ddddd") //
 
 
 
-DEF_FIELDROW_DESC32(    ICLASS_CJ" 1 110 --0 ---11 PP 0 ----- ----- ---","[#6] Qd4=Qt4, Qs4")
+DEF_HVX_FIELDROW_DESC32(    ICLASS_CJ" 1 110 --0 ---11 PP 0 ----- ----- ---","[#6] Qd4=Qt4, Qs4")
 DEF_ENC(V6_pred_and, 	ICLASS_CJ" 1 110 tt0 ---11 PP 0 ---ss 000 000dd") //
 DEF_ENC(V6_pred_or, 	ICLASS_CJ" 1 110 tt0 ---11 PP 0 ---ss 000 001dd") //
 DEF_ENC(V6_pred_not, 	ICLASS_CJ" 1 110 --0 ---11 PP 0 ---ss 000 010dd") //
@@ -833,7 +834,7 @@ DEF_ENC(V6_shuffeqw, 	ICLASS_CJ" 1 110 tt0 ---11 PP 0 ---ss 000 111dd") //
 DEF_ENC(V6_vnormamtw, 	   ICLASS_CJ" 1 110 --0 ---11 PP 0 uuuuu 100 ddddd") //
 DEF_ENC(V6_vnormamth, 	   ICLASS_CJ" 1 110 --0 ---11 PP 0 uuuuu 101 ddddd") //
 
-DEF_FIELDROW_DESC32(    	ICLASS_CJ" 1 110 --1 ----- PP 0 ----- ----- ---","[#6] Vd32=Vu32,Vv32")
+DEF_HVX_FIELDROW_DESC32(    	ICLASS_CJ" 1 110 --1 ----- PP 0 ----- ----- ---","[#6] Vd32=Vu32,Vv32")
 DEF_ENC(V6_vlutvvbi,		ICLASS_CJ" 1 110 001 vvvvv PP 0 uuuuu iii ddddd")
 DEF_ENC(V6_vlutvwhi,		ICLASS_CJ" 1 110 011 vvvvv PP 0 uuuuu iii ddddd")
 
@@ -846,7 +847,7 @@ DEF_ENC(V6_vsubububb_sat,	ICLASS_CJ" 1 110 101 vvvvv PP 0 uuuuu 101 ddddd")
 DEF_ENC(V6_vmpyewuh_64,		ICLASS_CJ" 1 110 101 vvvvv PP 0 uuuuu 110 ddddd")
 DEF_ENC(V6_vcombine_tmp,    ICLASS_CJ" 1 110 101 vvvvv PP 0 uuuuu 111 ddddd")
 
-DEF_FIELDROW_DESC32(    	ICLASS_CJ" 1 110 --0 ----- PP 1 ----- ----- ---","Vx32=Vu32")
+DEF_HVX_FIELDROW_DESC32(    	ICLASS_CJ" 1 110 --0 ----- PP 1 ----- ----- ---","Vx32=Vu32")
 DEF_ENC(V6_vunpackob, 		ICLASS_CJ" 1 110 --0 --000 PP 1 uuuuu 000 xxxxx") //
 DEF_ENC(V6_vunpackoh, 		ICLASS_CJ" 1 110 --0 --000 PP 1 uuuuu 001 xxxxx") //
 //DEF_ENC(V6_vunpackow, 	ICLASS_CJ" 1 110 --0 --000 PP 1 uuuuu 010 xxxxx") //
@@ -859,7 +860,7 @@ DEF_ENC(V6_vwhist128m,		ICLASS_CJ" 1 110 --0 --000 PP 1 -011i 100 -----")
 
 //DEF_ENC(V6_vkill,			ICLASS_CJ" 1 110 --0 --000 PP 1 -1--- 100 -----")
 
-DEF_FIELDROW_DESC32(		ICLASS_CJ" 1 110 --0 ----- PP 1 ----- ----- ---","if (Qv4) Vx32=Vu32")
+DEF_HVX_FIELDROW_DESC32(		ICLASS_CJ" 1 110 --0 ----- PP 1 ----- ----- ---","if (Qv4) Vx32=Vu32")
 DEF_ENC(V6_vaddbq, 			ICLASS_CJ" 1 110 vv0 --001 PP 1 uuuuu 000 xxxxx") //
 DEF_ENC(V6_vaddhq, 			ICLASS_CJ" 1 110 vv0 --001 PP 1 uuuuu 001 xxxxx") //
 DEF_ENC(V6_vaddwq, 			ICLASS_CJ" 1 110 vv0 --001 PP 1 uuuuu 010 xxxxx") //
@@ -907,7 +908,7 @@ DEF_ENC(V6_vmux, 			ICLASS_CJ" 1 110 111 vvvvv PP 1 uuuuu -tt ddddd") //
 *
 ****************************************************************/
 
-DEF_FIELDROW_DESC32(    ICLASS_CJ" 1 111 --- ----- PP 0 ----- ----- ---","[#7] Vd32=(Vu32, Vv32)")
+DEF_HVX_FIELDROW_DESC32(    ICLASS_CJ" 1 111 --- ----- PP 0 ----- ----- ---","[#7] Vd32=(Vu32, Vv32)")
 DEF_ENC(V6_vaddbsat,	ICLASS_CJ" 1 111 000 vvvvv PP 0 uuuuu 000 ddddd") //
 DEF_ENC(V6_vminub, 		ICLASS_CJ" 1 111 000 vvvvv PP 0 uuuuu 001 ddddd") //
 DEF_ENC(V6_vminuh, 		ICLASS_CJ" 1 111 000 vvvvv PP 0 uuuuu 010 ddddd") //
@@ -970,7 +971,7 @@ DEF_ENC(V6_vroundhub,	ICLASS_CJ" 1 111 011 vvvvv PP 0 uuuuu 111 ddddd")
 
 
 
-DEF_FIELDROW_DESC32(    ICLASS_CJ" 1 111 100 ----- PP - ----- ----- ---","[#7] Qd4=(Vu32, Vv32)")
+DEF_HVX_FIELDROW_DESC32(    ICLASS_CJ" 1 111 100 ----- PP - ----- ----- ---","[#7] Qd4=(Vu32, Vv32)")
 DEF_ENC(V6_veqb, 		ICLASS_CJ" 1 111 100 vvvvv PP 0 uuuuu 000 000dd") //
 DEF_ENC(V6_veqh, 		ICLASS_CJ" 1 111 100 vvvvv PP 0 uuuuu 000 001dd") //
 DEF_ENC(V6_veqw, 		ICLASS_CJ" 1 111 100 vvvvv PP 0 uuuuu 000 010dd") //
@@ -1030,7 +1031,6 @@ DEF_ENC(V6_vsub_qf32, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 011 ddddd")
 DEF_ENC(V6_vsub_sf, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 100 ddddd")
 DEF_ENC(V6_vsub_qf32_mix, 	ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 101 ddddd")
 
-
 DEF_ENC(V6_vadd_qf16, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 010 ddddd")
 DEF_ENC(V6_vadd_hf, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 011 ddddd")
 DEF_ENC(V6_vadd_qf16_mix, 	ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 100 ddddd")
@@ -1038,27 +1038,50 @@ DEF_ENC(V6_vsub_qf16, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 101 ddddd")
 DEF_ENC(V6_vsub_hf, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 110 ddddd")
 DEF_ENC(V6_vsub_qf16_mix, 	ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 111 ddddd")
 
-
 //Vconvert FP
 DEF_ENC(V6_vconv_sf_qf32, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 000 ddddd")
 DEF_ENC(V6_vconv_hf_qf16, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 011 ddddd")
 DEF_ENC(V6_vconv_hf_qf32, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 110 ddddd")
+DEF_ENC(V6_vconv_w_sf,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 001 ddddd")
+DEF_ENC(V6_vconv_h_hf,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 010 ddddd")
+DEF_ENC(V6_vconv_sf_w,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 011 ddddd")
+DEF_ENC(V6_vconv_hf_h,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 100 ddddd")
+
+
 
 //Vcmp for FP
+//DEF_ENC(V6_vgtqf32_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 000xx") //
+//DEF_ENC(V6_vgtqf16_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 001xx") //
 DEF_ENC(V6_vgtsf_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 010xx") //
 DEF_ENC(V6_vgthf_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 011xx") //
+//DEF_ENC(V6_vgtqf16hf_and,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 101xx") //
+
+//DEF_ENC(V6_vgtqf32_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 000xx") //
+//DEF_ENC(V6_vgtqf16_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 001xx") //
 DEF_ENC(V6_vgtsf_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 010xx") //
 DEF_ENC(V6_vgthf_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 011xx") //
+//DEF_ENC(V6_vgtqf16hf_xor,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 101xx") //
+
+//DEF_ENC(V6_vgtqf32_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 000 111xx") //
+//DEF_ENC(V6_vgtqf16_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 011xx") //
 DEF_ENC(V6_vgtsf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 100xx") //
 DEF_ENC(V6_vgthf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 101xx") //
+//DEF_ENC(V6_vgtqf16hf_or,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 111xx") //
+
+//In V1, IEEE compares only, SW will do QF subtract -> int compare
+//DEF_ENC(V6_vgtqf32,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 010 111dd") //
+//DEF_ENC(V6_vgtqf16,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 011dd") //
 DEF_ENC(V6_vgtsf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 100dd") //
 DEF_ENC(V6_vgthf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 101dd") //
+//DEF_ENC(V6_vgtqf16hf,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 111dd") //
 
-DEF_ENC(V6_vgtsf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 100dd") //
+
+
 DEF_ENC(V6_vmax_sf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 001 ddddd") //
 DEF_ENC(V6_vmin_sf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 010 ddddd") //
 DEF_ENC(V6_vmax_hf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 011 ddddd") //
 DEF_ENC(V6_vmin_hf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 100 ddddd") //
+DEF_ENC(V6_vmpyuhvs, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 111 ddddd") //
 
 
 

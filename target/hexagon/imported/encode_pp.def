@@ -658,6 +658,7 @@ DEF_FIELD32(ICLASS_J" 110- -------- PP-!---- --------",J_PT,"Predict-taken")
 
 DEF_FIELDROW_DESC32(ICLASS_J" 0000 -------- PP------ --------","[#0] PC=(Rs), R31=return")
 DEF_ENC32(J2_callr,     ICLASS_J" 0000  101sssss  PP------  --------")
+DEF_ENC32(J2_callrh,    ICLASS_J" 0000  110sssss  PP------  --------")
 
 DEF_FIELDROW_DESC32(ICLASS_J" 0001 -------- PP------ --------","[#1] if (Pu) PC=(Rs), R31=return")
 DEF_ENC32(J2_callrt,    ICLASS_J" 0001  000sssss  PP----uu  --------")
@@ -665,6 +666,7 @@ DEF_ENC32(J2_callrf,    ICLASS_J" 0001  001sssss  PP----uu  --------")
 
 DEF_FIELDROW_DESC32(ICLASS_J" 0010 -------- PP------ --------","[#2] PC=(Rs); ")
 DEF_ENC32(J2_jumpr,      ICLASS_J" 0010  100sssss  PP------  --------")
+DEF_ENC32(J2_jumprh,     ICLASS_J" 0010  110sssss  PP------  --------")
 DEF_ENC32(J4_hintjumpr,  ICLASS_J" 0010  101sssss  PP------  --------")
 
 DEF_FIELDROW_DESC32(ICLASS_J" 0011 -------- PP------ --------","[#3] if (Pu) PC=(Rs) ")
@@ -680,7 +682,7 @@ DEF_ENC32(J2_jumprfnewpt, ICLASS_J" 0011  011sssss  PP-11-uu  --------")
 DEF_FIELDROW_DESC32(ICLASS_J" 0100 -------- PP------ --------","[#4] (#u8) ")
 DEF_ENC32(J2_trap0,     ICLASS_J" 0100  00------  PP-iiiii  ---iii--")
 DEF_ENC32(J2_trap1,     ICLASS_J" 0100  10-xxxxx  PP-iiiii  ---iii--")
-DEF_ENC32(J2_pause,     ICLASS_J" 0100  01------  PP-iiiii  ---iii--")
+DEF_ENC32(J2_pause,     ICLASS_J" 0100  01----ii  PP-iiiii  ---iii--")
 
 DEF_FIELDROW_DESC32(ICLASS_J" 0101 -------- PP------ --------","[#5] Rd=(Rs) ")
 DEF_ENC32(Y2_icdatar,   ICLASS_J" 0101  101sssss  PP------  ---ddddd")
@@ -698,6 +700,7 @@ DEF_ENC32(Y2_ickill,    ICLASS_J" 0110  110-----  PP010---  --------")
 DEF_FIELDROW_DESC32(ICLASS_J" 0111 -------- PP------ --------","[#7] () ")
 DEF_ENC32(Y2_isync,     ICLASS_J" 0111  11000000  PP0---00  00000010")
 DEF_ENC32(J2_rte,       ICLASS_J" 0111  111-----  PP00----  000-----")
+DEF_ENC32(J2_unpause,   ICLASS_J" 0111  111-----  PP01----  000-----")
 //DEF_ENC32(J2_rteunlock, ICLASS_J" 0111  111-----  PP01----  000-----")
 
 /* JUMP */

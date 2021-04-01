@@ -37,12 +37,12 @@
 #include "fma_emu.h"
 #include "conv_emu.h"
 #include "mmvec/mmvec.h"
-#include "mmvec/macros.h"
+#include "mmvec/macros_auto.h"
 #include "arch_options_calc.h"
 #include "hmx/hmx.h"
-#include "hmx/macros.h"
+#include "hmx/macros_auto.h"
 #include "hmx/ext_hmx.h"
-#include "hmx/mpy_hmx.h"
+#include "hmx/mpy_fp16.h"
 #include "system.h"
 #include "dma_adapter.h"
 #include "fma_emu.h"
@@ -1572,6 +1572,16 @@ static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
     get_user_u32(retval, paddr);
 #else
     hexagon_tools_memory_read(env, paddr, 4, &retval);
+#endif
+    return retval;
+}
+static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
+{
+    size8u_t retval;
+#ifdef CONFIG_USER_ONLY
+    get_user_u64(retval, paddr);
+#else
+    hexagon_tools_memory_read(env, paddr, 8, &retval);
 #endif
     return retval;
 }

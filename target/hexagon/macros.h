@@ -1275,6 +1275,7 @@ static inline void gen_fbrev(TCGv result, TCGv src)
 #define fEA_GPI(IMM)        tcg_gen_addi_tl(EA, fREAD_GP(), IMM)
 #define fPM_I(REG, IMM)     tcg_gen_addi_tl(REG, REG, IMM)
 #define fPM_M(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
+#define fPM_M_BREV(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
 #else
 #define fEA_IMM(IMM) EA = IMM
 #define fEA_REG(REG) EA = REG
@@ -1288,6 +1289,10 @@ static inline void gen_fbrev(TCGv result, TCGv src)
         REG = REG + IMM; \
     } while (0)
 #define fPM_M(REG, MVAL) \
+    do { \
+        REG = REG + MVAL; \
+    } while (0)
+#define fPM_M_BREV(REG, MVAL) \
     do { \
         REG = REG + MVAL; \
     } while (0)
@@ -1692,6 +1697,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fGP_DOCHKPAGECROSS(BASE, SUM)
 #define fDOCHKPAGECROSS(BASE, SUM)
 #define fPAUSE(IMM)
+#define fUNPAUSE()
 
 #ifdef CONFIG_USER_ONLY
 #define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EVENT_TRAP0)
@@ -1835,11 +1841,15 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #define fTLBW(INDEX, VALUE) \
     hex_tlbw(env, (INDEX), (VALUE))
-#define fTLB_ENTRY_OVERLAP(VALUE) \
-    (hex_tlb_check_overlap(env, VALUE) != -2)
-#define fTLB_ENTRY_OVERLAP_IDX(VALUE) \
-    hex_tlb_check_overlap(env, VALUE)
+#define fTLBW_EXTENDED(INDEX, VALUE) \
+    hex_tlbw(env, (INDEX), (VALUE))
+#define fTLB_ENTRY_OVERLAP(VALUE,INDEX) \
+    (hex_tlb_check_overlap(env, VALUE, INDEX) != -2)
+#define fTLB_ENTRY_OVERLAP_IDX(VALUE,INDEX) \
+    hex_tlb_check_overlap(env, VALUE, INDEX)
 #define fTLBR(INDEX) \
+    (env->hex_tlb->entries[fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX))])
+#define fTLBR_EXTENDED(INDEX) \
     (env->hex_tlb->entries[fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX))])
 #define fTLBP(TLBHI) \
     hex_tlb_lookup(env, ((TLBHI) >> 12), ((TLBHI) << 12))

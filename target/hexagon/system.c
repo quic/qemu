@@ -1,11 +1,20 @@
-/* Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved. */
-
 /*
-* system architecture
+ *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
- * $Id: system.c,v
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
+
 
 //#include "thread.h"
 //#include "arch.h"
@@ -29,10 +38,6 @@
 
 #define thread_t CPUHexagonState
 
-#ifdef VERIFICATION
-#include "ver_external_api.h"
-#include "ver_exec.h"
-#endif
 
 #ifdef ZEBU_CHECKSUM_TRACE
 #include "zebu_external_api.h"
@@ -287,9 +292,6 @@ register_exception_info(thread_t * thread, size4u_t type, size4u_t cause,
 						size4u_t bv0, size4u_t bv1, size4u_t elr,
 						size4u_t diag, size4u_t de_slotmask)
 {
-#ifdef VERIFICATION
-	warn("Oldtype=%d oldcause=0x%x newtype=%d newcause=%x de_slotmask=%x diag=%x", thread->einfo.type, thread->einfo.cause, type, cause, de_slotmask, diag);
-#endif
 	if ((EXCEPTION_DETECTED)
 		&& (thread->einfo.type == EXCEPT_TYPE_TLB_MISS_RW)
 		&& ((type == EXCEPT_TYPE_PRECISE)
@@ -446,12 +448,6 @@ static inline int commit_guest_event(thread_t *thread)
 	fWRITE_REG_FIELD(CCR,CCR_GIE,0);
 	thread->Regs[REG_PC] = fREAD_GEVB()|(thread->einfo.type << 2);
 
-#ifdef VERIFICATION
-    warn("commit_guest_event einfo.cause=%x gsr=%x gelr=%x", thread->einfo.type, thread->Regs[REG_GSR], thread->einfo.elr);
-	if (thread->processor_ptr->options->exception_callback)
-          thread->processor_ptr->options->exception_callback(NULL,NULL,0,0,0,0,0);
-        rewind_exception_info(thread);
-#endif
 	return 1;
 }
 
@@ -506,10 +502,6 @@ static inline int try_commit_debug_to_guest(thread_t *thread)
 
 static inline int try_commit_exception_to_guest(thread_t *thread)
 {
-#ifdef VERIFICATION
-    warn("try_commit_exception_to_guest. einfo.cause=%x CCR=%x", thread->einfo.type, thread->Regs[REG_CCR]);
-#endif
-
 	if (sys_in_monitor_mode(thread)) return 0;
 	switch (thread->einfo.type) {
 	case EXCEPT_TYPE_RESET: return 0;
@@ -579,12 +571,6 @@ void commit_exception_info(thread_t * thread)
 	/* Clear out exception info for the next packet */
 	memset(&thread->einfo, 0, sizeof(thread->einfo));
 
-#if defined(VERIFICATION) || defined(ZEBU_CHECKSUM_TRACE)
-	ver_rewind_shadow(thread);
-#endif
-#ifdef VERIFICATION
-	isdb_check(thread->processor_ptr, thread->threadId);
-#endif
 
 	if(thread->timing_on && !is_trap_exception) {
 		uarch_update_iss_interrupt(thread->processor_ptr, thread->threadId, thread->Regs[REG_PC]);
@@ -988,9 +974,6 @@ register_virtvic_interrupt(processor_t *proc, thread_t *thread, int tnum, int in
 	SET_SSR_FIELD(SSR_SS,0);
 	SET_SSR_FIELD(SSR_CAUSE, (INTERRUPT_CAUSE_INTERRUPT0 + intnum));
 
-#ifdef VERIFICATION
-    warn("register_virtvic_interrupt interupt=%d whichvic=%d vidval=%x REG_GSR=%x",  intnum, whichvic, vidval, thread->Regs[REG_GSR]);
-#endif
 
 	/* SET PC to GEVB + whatever */
 	thread->Regs[REG_PC] = thread->Regs[REG_GEVB] + (0x10 << 2);
@@ -1002,17 +985,11 @@ register_virtvic_interrupt(processor_t *proc, thread_t *thread, int tnum, int in
 static inline int sys_is_virtvic_interrupt(processor_t *proc, int tnum, int intno)
 {
 	unsigned int ccr_or = 0;
-#ifdef VERIFICATION
-	thread_t * thread =  proc->thread[tnum];
-	warn("TB told me to take interrupt: %d on tnum: %d, so only looking at that threads CCR=%x",  intno, tnum, thread->Regs[REG_CCR]);
-	ccr_or = thread->Regs[REG_CCR];
-#else
 	for (int i = 0; i < proc->runnable_threads_max; i++) {
 		if (THREAD_IS_ON(proc, i)) {
 			ccr_or |= proc->thread[i]->Regs[REG_CCR];
 		}
 	}
-#endif
 
 	if ((intno == 3) && fGET_FIELD(ccr_or,CCR_VV1)) return 1;
 	if ((intno == 4) && fGET_FIELD(ccr_or,CCR_VV2)) return 1;
@@ -1079,9 +1056,6 @@ sys_reschedule_interrupt(processor_t * proc)
         fSET_FIELD(proc->global_regs[REG_BESTWAIT], BESTWAIT_PRIO, 0x1FF); // Reset best priority
         // OOPS: clobbers other pending interrupts fSET_FIELD(proc->global_regs[REG_IPENDAD], IPENDAD_IPEND, 1<<intnum); // Set interrupt on ipend
         arch_trigger_interrupt(proc,intnum);
-#ifdef VERIFICATION
-        warn("Setting Reschedule Interrupt to pending and resetting BESTWAIT - set IPENDAD=%x for interrupt=%d", proc->global_regs[REG_IPENDAD], intnum);
-#endif
     } else {
         warn("Tryinging reschedule interrupt but no enabled");
     }
@@ -1360,9 +1334,6 @@ void sys_write_local_creg(thread_t * thread, int rnum, size4u_t data)
 		/* Shadow the single-step bit so we can check this quickly */
 		thread->single_step_set = GET_FIELD(SSR_SS, data);
 
-#ifdef VERIFICATION
-    warn("sys_write_local_creg updating SSR=%x thread->single_step_set=%d\n",data, thread->single_step_set);
-#endif
 
 		thread->t_mmvecx = set_thread_mmvecx_val(thread, data);
 		thread->t_veclogsize = set_thread_veclogsize(thread);
@@ -1707,9 +1678,6 @@ void sys_write_global_creg(thread_t * thread, int rnum, size4u_t data)
 		if (old_waiting != new_waiting) sys_global_creg_change_waiting(thread,old_waiting,new_waiting);
 		/* Write early for sys_recalc_num_running_threads */
 
-#ifdef VERIFICATION
-    warn("sys_write_global_creg updating MODECTL=%x (old=%x)\n",data, thread->processor_ptr->global_regs[rnum]);
-#endif
 
 		thread->processor_ptr->global_regs[rnum] = data;
 		sys_recalc_num_running_threads(thread->processor_ptr);
@@ -1741,12 +1709,10 @@ size4u_t sys_read_creg(processor_t * proc, int rnum)
 	size4u_t retval = proc->global_regs[rnum];
 /* FIXME NOW VERIFICATION: Remove if ifndef verification */
 	switch (rnum) {
-#ifndef VERIFICATION
 	case REG_PCYCLELO:
 	case REG_PCYCLEHI:
 		retval = GET_FIELD(SYSCFG_PCYCLEEN,proc->global_regs[REG_SYSCONF]) ? retval : 0;
 		break;
-#endif
 	case REG_ISDBMBXIN:
 		fWRITE_GLOBAL_REG_FIELD(ISDBST, ISDBST_MBXINSTATUS, 0);
 		break;
@@ -1786,9 +1752,6 @@ size4u_t sys_read_sreg(const thread_t * thread, int rnum)
 void sys_check_privs(thread_t * thread)
 {
 	if (!sys_in_monitor_mode(thread)) {
-#ifdef VERIFICATION
-	SYSVERWARN("privilege checked and failed");
-#endif
 		register_error_exception(thread, PRECISE_CAUSE_PRIV_USER_NO_SINSN,
 								 thread->Regs[REG_BADVA0],
 								 thread->Regs[REG_BADVA1],
@@ -1923,14 +1886,7 @@ int tlb_match_idx(processor_t * P, int i, size4u_t asid, size4u_t VA)
 	size4u_t entry_ASID, entry_VALID;
 	size8u_t entry;
 
-#ifdef VERIFICATION
-	if (P->tlbptr == NULL)
-		entry = P->TLB_regs[i];
-	else
-		entry = P->tlbptr[i];
-#else
 	entry = P->TLB_regs[i];
-#endif
 
 	entry_VALID = GET_FIELD(PTE_V, entry);
 	/* It's a valid entry */
@@ -1970,66 +1926,30 @@ size4u_t tlb_lookup_by_asid(thread_t * thread, size4u_t asid, size4u_t VA, int i
 	size4u_t idx;
 	int max_tlb_reg;
 	processor_t *proc = thread->processor_ptr;
-#ifdef VERIFICATION
-	int saw_once = 0;
-#endif
 	guessidx = TLBGUESSIDX(VA);
 	guess = 0;
 	max_tlb_reg = NUM_TLB_REGS(proc);
 
 /* FIXME NOW VERIFICATION:  Remove this ifndef so we always do the guess thing. Put the warning in the
    inside guess */
-#ifndef VERIFICATION
 	if ((guess = proc->VA_to_idx_guess[guessidx]) >= 0) {  // is valid
 		guess &= max_tlb_reg - 1;
 		if (tlb_match_idx(thread->processor_ptr, guess, asid, VA)) {
 			return (guess);
 		}
 	}
-#endif
 
 	/* Guess failed, do a search */
 	idx = (int) (0x80000000);
 	for (i = 0; i < max_tlb_reg; i++) {
 		if (tlb_match_idx(thread->processor_ptr, i, asid, VA)) {
-#ifdef VERIFICATION
-			//warn("match: VA=%x tlbptr=%s idx=%d thread=%d", VA, (thread->processor_ptr->tlbptr == NULL) ? "null" : "valid", i, thread->threadId);
-#endif
 			if (idx != 0x80000000) {
-/* FIXME NOW VERIFICATION: Talk to the verif team to remove inhibit_multi_tlbmatch */
-#ifdef VERIFICATION
-				if (thread->processor_ptr->inhibit_multi_tlbmatch) {
-					size8u_t entry;
-					if (!saw_once) {
-						if (thread->processor_ptr->tlbptr == NULL)
-							entry = thread->processor_ptr->TLB_regs[idx];
-						else
-							entry = thread->processor_ptr->tlbptr[idx];
-						warn("Access @ 0x%08x would cause imprecise exception: Multi TLB Match.  Matching TLB Entries:", VA);
-						warn(" >>> %d: 0x%016llx", idx, entry);
-						saw_once = 1;
-					}
-					if (thread->processor_ptr->tlbptr == NULL)
-						entry = thread->processor_ptr->TLB_regs[i];
-					else
-						entry = thread->processor_ptr->tlbptr[i];
-					warn(" >>> %d: 0x%016llx", i, entry);
-				} else {
-					/* Raise TLB Double Hit Exception */
-					warn("Access @ 0x%08x: imprecise exception: Multi TLB Match.  Entry %d vs. %d", VA, idx, i);
-					register_imprecise_exception(thread,
-												 IMPRECISE_CAUSE_MULTI_TLB_MATCH,
-												 0x40 | thread->threadId);
-					return idx;
-				}
-#else
 				/* Raise TLB Double Hit Exception */
 				warn("Access @ 0x%08x: imprecise exception: Multi TLB Match.  Entry %d vs. %d", VA, idx, i);
 				register_imprecise_exception(thread,
 											 IMPRECISE_CAUSE_MULTI_TLB_MATCH,
 											 0x40 | thread->threadId);
 				return idx;
-#endif
 			} else {
 				/* Hit return the idx that hit */
 				idx = i;
@@ -2039,16 +1959,6 @@ size4u_t tlb_lookup_by_asid(thread_t * thread, size4u_t asid, size4u_t VA, int i
 		}
 	}
 
-#ifdef VERIFICATION
-    if (thread->processor_ptr->inhibit_multi_tlbmatch) {
-        if (saw_once && (thread->processor_ptr->tlbmatch_hint>-1)) {
-
-            idx = thread->processor_ptr->tlbmatch_hint;
-            thread->processor_ptr->tlbmatch_hint = -1;
-            warn(" TLB Multihit using hint for idx=%d", idx);
-        }
-    }
-#endif
 
 	return (idx);
 
@@ -2157,10 +2067,6 @@ static void fill_einfo_fetch(thread_t *thread, exception_info *einfo,
 		einfo->bv0 = 1;
 		einfo->bv1 = 0;
 	}
-
-#ifdef VERIFICATION
-	SYSVERWARN("fill_einfo_fetch type=%d cause=%d va=%x", type, cause, va);
-#endif
 
 
 }
@@ -2489,12 +2395,6 @@ static int sys_xlate_nowalk(thread_t *thread, size4u_t va, int access_type, int 
 	xinfo->outer.write_allocate = xinfo->outer.write_back;
 	if (fREAD_GLOBAL_REG_FIELD(SYSCONF,SYSCFG_L2NWA)) xinfo->outer.write_allocate = 0;
 	if (fREAD_GLOBAL_REG_FIELD(SYSCONF,SYSCFG_L2NRA)) xinfo->outer.read_allocate = 0;
-#ifdef VERIFICATION
-	if (!thread->verif_dma_xlate) {
-		SYSVERWARN("xlate success: type=%c VA=0x%08x PA=0x%016llx tlbidx=%d cccc=0x%x size=%d tlbentry=0x%016llx",
-			access_type,va,xinfo->pa,idx,cccc,xinfo->size,entry);
-	}
-#endif
 
 	return 1;
 }
@@ -2581,9 +2481,6 @@ static inline int sys_xlate_cached(thread_t *thread, size4u_t va, int access_typ
 {
 	size4u_t tag;
 	int i;
-#ifdef VERIFICATION
-	return 0;					// verif always xlate prints & callbacks
-#endif
 	if (va & align_mask) return 0;
 	tag = (va & -UTLB_MINPAGE_SIZE) ^ access_type;
 	for (i = 0; i < NUM_MEM_UTLB_ENTRIES; i++) {
@@ -2793,18 +2690,6 @@ mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 
 
 
-// HW-Issue 3528
-#ifdef VERIFICATION
-    if (C_DEVICE(maptr->xlate_info.memtype.device) && (type_for_xlate == TYPE_LOAD)) {
-        thread->has_devtype_ld |= (1<<slot);
-    }
-    if (C_DEVICE(maptr->xlate_info.memtype.device) && (type_for_xlate == TYPE_STORE)) {
-        thread->has_devtype_st |= (1<<slot);
-    }
-
-#endif
-
-
 #ifdef FIXME
 	if((EXCEPTION_DETECTED) && ((thread->einfo.type == EXCEPT_TYPE_TLB_MISS_RW) ||
 		(thread->einfo.type == EXCEPT_TYPE_TLB_MISS_X)) ) {
@@ -2917,12 +2802,6 @@ static inline size8u_t sys_mem_merge_inflight_store(thread_t *thread,
 		i++;
 		j++;
 	}
-#ifdef VERIFICATION
-	if (data != retdata.data) {
-		warn("merged inflight data: old=0x%llx merge=0x%llx new=%llx\n",
-			data,mergedata.data,retdata.data);
-	}
-#endif
 	return retdata.data;
 }
 
@@ -2983,9 +2862,6 @@ int check_release(thread_t * thread, size4u_t vaddr, paddr_t paddr, size1u_t dat
 		} else if(GET_FIELD(SYSCFG_DCEN, GLOBAL_REG_READ(REG_SYSCONF)) == 0) {
 			MMU_check = 1;
 		}
-#ifdef VERIFICATION
-		warn("paddr: %llx vaddr: %x in_ahb: %d in_tcm: %d in_vtcm: %d in_axi2: %d in_l2itcm: %d MMU_check: %d MMU_en: %d cccc: %d dcache_en: %d", paddr, vaddr, in_ahb, in_tcm, in_vtcm, in_axi2, in_l2itcm, MMU_check, GET_FIELD(SYSCFG_MMUEN, GLOBAL_REG_READ(REG_SYSCONF)),cccc, GET_FIELD(SYSCFG_DCEN, GLOBAL_REG_READ(REG_SYSCONF)));
-#endif
 		if((in_ahb || in_axi2 || MMU_check) && !in_tcm && !in_vtcm && !in_l2itcm) {
 			register_error_exception(thread,PRECISE_CAUSE_BIU_PRECISE,
 				thread->Regs[REG_BADVA0],thread->Regs[REG_BADVA1],
@@ -3164,7 +3040,7 @@ mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, i
 
 	maptr->paddr = maptr->xlate_info.pa;
 #else
-  maptr->paddr = vaddr; // mgl should be xlate
+  maptr->paddr = vaddr;
 #endif
 
 	thread->mem_access[slot].stdata = data;
@@ -3267,12 +3143,6 @@ mem_store_conditional(thread_t * thread, size4u_t vaddr, size8u_t data, int widt
 		LOG_MEM_STORE(vaddr,paddr,width,data,slot);
 	}
 
-// HW-Issue 3528
-#ifdef VERIFICATION
-    if (!maptr->xlate_info.memtype.arch_cacheable) {
-		thread->has_ucsc |=  (1<<slot);
-	}
-#endif
 
 	if(retval) {
 		/* Currently, do the store ONLY when the lock is set. */
@@ -3486,12 +3356,6 @@ void mem_vtcm_memcpy(thread_t *thread, insn_t *insn, vaddr_t dst, vaddr_t src, s
 	src_maptr->width = 1;
 	dst_maptr->width = 1;
 
-#ifdef VERIFICATION
-	if (thread->processor_ptr->options->testgen_mode) {
-		MEMTRACE_LD(thread, thread->Regs[REG_PC], src_aligned, src_maptr->paddr, bytes_save, DREAD, 0xfeedfacedeadbeefULL);
-		MEMTRACE_ST(thread, thread->Regs[REG_PC], dst_aligned, dst_maptr->paddr, bytes_save, DWRITE, 0x0);
-	}
-#endif
 }
 
 void sys_dcinva(thread_t * thread, size4u_t vaddr)
@@ -3847,14 +3711,6 @@ sys_l2locka(thread_t * thread, vaddr_t vaddr, int slot, int pregno)
 	thread->mem_access[slot].log_as_tag = 1;
 	thread->mem_access[slot].sys_reg_update_callback = sys_l2_global_tagop_update_state;
 
-#ifdef VERIFICATION
-	if (!thread->bq_on) {
-		warn("l2locka using hint: %d",thread->l2locka_hint_val);
-		data = thread->shadow_data[slot] = thread->l2locka_hint_val;
-		// HW-Issue 3528
-		thread->has_l2locka |= (1<<slot);
-	}
-#endif
 
 	data = (data == 0) ? 0 : 0xff;
 	return data;
@@ -3937,13 +3793,6 @@ void sys_dcfetch(thread_t *thread, size4u_t vaddr, int slot)
 	/* Do address translation and bail if we are not able to translate */
 	paddr = mem_init_access_silent(thread, slot, vaddr, 1, access_type_dcfetch, TYPE_LOAD, 0);
 
-#ifdef VERIFICATION
-	thread->mem_access[slot].width = 0;
-    thread->mem_access[slot].pc_va = thread->Regs[REG_PC];
-	thread->mem_access[slot].bp = GET_SSR_FIELD(SSR_BP);
-	MEMTRACE_LD(thread, thread->Regs[REG_PC], vaddr, paddr, 0, DPREFETCH, 0);
-	//LOG_MEM_LOAD(vaddr,paddr,32,0,0);
-#endif
 
 
 	/* Remember this is done in the shadow in case this packet gets restarted due to another slot */
@@ -4018,10 +3867,6 @@ void sys_icinva(thread_t * thread, size4u_t vaddr, int slot)
     mem_access_info_t *maptr = &(thread->mem_access[slot]);
 
     FATAL_REPLAY;
-
-#ifdef VERIFICATION
-	ver_pick_itlb(thread->processor_ptr, thread->threadId, thread->Regs[REG_PC], vaddr, 1);
-#endif
 
     if(sys_xlate(thread,vaddr,TYPE_ICINVA,access_type_icinva,slot,0,&xinfo,&einfo) == 0) {
 		register_einfo(thread,&einfo);
@@ -4424,11 +4269,6 @@ size4s_t mem_load_phys(thread_t * thread, size4u_t src1, size4u_t src2, insn_t *
 	SET_CBITS(maptr->page_attribs, 0x6);	/* True UC */
 #endif
 
-#ifdef VERIFICATION
-        if (! (fREAD_GLOBAL_REG_FIELD(SYSCONF,SYSCFG_DCEN)||
-               fREAD_GLOBAL_REG_FIELD(SYSCONF,SYSCFG_MMUEN)) )
-          thread->has_devtype_ld |= 1;
-#endif
 
 	/* Force alignment and mask away bits greater than 36 */
 	maptr->paddr &= 0x0000000FFFFFFFFCLL;
@@ -4657,10 +4497,6 @@ sys_dctagr(thread_t * thread, size4u_t indexway, int slot, int regno)
 {
 	int tnum = thread->threadId;
     mem_access_info_t *maptr = &(thread->mem_access[slot]);
-
-#ifdef VERIFICATION
-	return thread->dctagr_hint_val;
-#endif
 
     FATAL_REPLAY;
 

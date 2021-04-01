@@ -15,10 +15,12 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HEXAGON_DECODE_EXT_MMVEC_H
-#define HEXAGON_DECODE_EXT_MMVEC_H
+#ifndef HEXAGON__EXT_MMVEC_DECODE__
+#define HEXAGON__EXT_MMVEC_DECODE__
 
-extern int mmvec_ext_decode_checks(packet_t *pkt);
-extern const char *mmvec_ext_decode_find_iclass_slots(int opcode);
+#define MMVEC_EXT_DECODE_CHECKS(PKT)  mmvec_ext_decode_checks((thread_t *)0, (PKT), (exception_info *)0);
+int mmvec_ext_decode_checks(thread_t * thread, packet_t *pkt, exception_info *einfo);
+const char * mmvec_ext_decode_find_iclass_slots(int opcode);
+
 
 #endif

@@ -38,6 +38,10 @@
 #define BIAS_HF 15
 #define FRAC_HF 10
 #define FRAC_SF 23
+#define isNaNF32( a ) (((~(a) & 0x7F800000) == 0) && ((a) & 0x007FFFFF))
+#define isInfF32( a ) (((~(a) & 0x7F800000) == 0) && (((a) & 0x007FFFFF) == 0))
+#define isNaNF16( a ) (((~(a) & 0x7C00) == 0) && ((a) & 0x03FF))
+#define isInfF16( a ) (((~(a) & 0x7C00) == 0) && (((a) & 0x03FF) == 0))
 
 //#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 //#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -83,6 +87,15 @@ typedef enum float_type{
   HF
 } f_type;
 
+typedef union {
+	float f;
+	size4u_t i;
+	struct {
+		size4u_t mant:23;
+		size4u_t exp:8;
+		size4u_t sign:1;
+	} x;
+} sf_union;
 
 //MPY
 size4s_t mpy_qf32(size4s_t a, size4s_t b);
@@ -149,6 +162,11 @@ size4s_t conv_h_qf32(size8s_t a);
 size4u_t conv_uh_qf32(size8s_t a);
 size2s_t conv_b_qf16(size4s_t a);
 size2u_t conv_ub_qf16(size4s_t a);
+
+size4s_t conv_w_sf(size4s_t a);
+// size4u_t conv_uw_sf(size4s_t a);
+size2s_t conv_h_hf(size2s_t a);
+// size2u_t conv_uh_sf(size2s_t a);
 
 //Neg/Abs
 size4s_t neg_qf32(size4s_t a);

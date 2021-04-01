@@ -44,6 +44,11 @@
 #define DEF_FIELDROW_DESC32(...) /* nothing */
 #endif
 
+#ifndef DEF_HVX_FIELDROW_DESC32
+#define __SELF_DEF_HVX_FIELDROW_DESC32
+#define DEF_HVX_FIELDROW_DESC32(...) /* nothing */
+#endif
+
 #ifndef DEF_ENC32
 #define __SELF_DEF_ENC32
 #define DEF_ENC32(...) /* nothing */
@@ -105,6 +110,12 @@
 #ifdef __SELF_DEF_FIELDROW_DESC32
 #undef __SELF_DEF_FIELDROW_DESC32
 #undef DEF_FIELDROW_DESC32
+#endif
+
+
+#ifdef __SELF_DEF_HVX_FIELDROW_DESC32
+#undef __SELF_DEF_HVX_FIELDROW_DESC32
+#undef DEF_HVX_FIELDROW_DESC32
 #endif
 
 #ifdef __SELF_DEF_ENC32

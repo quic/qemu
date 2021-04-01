@@ -98,6 +98,13 @@ struct Packet {
     size8u_t pkt_has_duplex:1;
     size8u_t pkt_has_payload:1;      /* Contains a constant extender */
     size8u_t pkt_has_dealloc_return:1;
+	size8u_t pkt_has_jumpr_return:1;  /* indirect jump that is a return */
+  size8u_t pkt_has_hinted_cof:1;    /* CallRH/JumpRH */
+	/* Pre-decodes about SLOTS (4 bits, one per slot) */
+    size1u_t valid_slots:4;
+    size1u_t valid_slots_ld:4;
+    size1u_t valid_slots_st:4;
+    size1u_t valid_slots_non_mem:4;
 
     /* Pre-decodes about SLOTS */
     size8u_t slot0_valid:1;
@@ -128,28 +135,59 @@ struct Packet {
 
     /* Misc */
     size8u_t num_rops:4;            /* Num risc ops in the packet */
+	size8u_t pkt_has_long_latency_insn:1;
+	size8u_t pkt_page_is_stable:1;	/* If this PA is 'stable' from the host */
+	size8u_t pkt_has_vecx:1;
+	size8u_t pkt_has_l1s_scalar:1; /* Is there a scalar load store going to l1s */
     size8u_t pkt_has_vtcm_access:1; /* Is a vmem access going to VTCM */
+    size8u_t pkt_has_vmemu_access:1; /* VMEMU access, different from double access */
     size8u_t pkt_access_count:2;    /* Is a vmem access going to VTCM */
     size8u_t pkt_ldaccess_l2:2;     /* vmem ld access to l2 */
     size8u_t pkt_ldaccess_vtcm:2;   /* vmem ld access to vtcm */
+    size8u_t double_access_vec:1; /* double vector access for v and z load */
+  	size8u_t pkt_vmem_ld_ct:2; /* pkt has how many vmem loads */
+  	size8u_t pkt_vmem_st_ct:2; /* pkt has how many vmem stores */
+	size8u_t pkt_zmem_ld_ct:2; /* pkt has how many zmem loads */
+	size8u_t pkt_has_scatgath:1; /* pkt has scatter gather */
+	size8u_t pkt_has_vmemu:1; /* pkt has unaligned vmem, this is different from pkt_has_vmemu_access which is runtime  */
+    size8u_t pkt_nonvmem_st_ct:2; /* pkt has how many non vmem stores */
+    size8u_t pkt_nonvmem_nonzmem_ld_ct:2; /* pkt has how many non vmem and non zmem loads */
+    size8u_t pkt_hmx_st_ct:2; /* pkt has how many non vmem stores */
+    size8u_t pkt_hmx_ld_ct:2; /* pkt has how many non vmem and non zmem loads */
+    size1u_t pkt_memport_ct:2; /*pkt use number of mem ports*/
+    size1u_t pkt_memport_s0:1; /*pkt use mem port by instruction on slot 0*/
+    size1u_t pkt_memport_s1:1; /*pkt use mem port by instruction on slot 1*/
+	size1u_t invalid_new_target:1; /* Packet loads a new value from invalid instr (likely .tmp) */
 
-    /* Count the types of HVX instructions */
+    size1u_t pkt_has_dword_store:1;
+    size1u_t pkt_has_dword_load:1;
     size8u_t pkt_hvx_va:4;
     size8u_t pkt_hvx_vx:4;
     size8u_t pkt_hvx_vp:4;
     size8u_t pkt_hvx_vs:4;
     size8u_t pkt_hvx_all:4;
     size8u_t pkt_hvx_none:4;
+	size8u_t pkt_hvx_insn:4;
+	size8u_t pkt_hvx_vs_3src:1;
+	size8u_t pkt_hvx_va_2src:1;
 
     size8u_t pkt_has_hvx:1;
     size8u_t pkt_has_hmx:1;
     size8u_t pkt_has_extension:1;
 
-    insn_t insn[INSTRUCTIONS_MAX];
+
+	size4u_t native_pkt:1;
+	size4u_t total_memop:2;
+	struct Packet *taken_ptr;	/* predicted next packet */
+	struct Packet *fallthrough_ptr;	/* predicted fall-through */
 
 #ifndef CONFIG_USER_ONLY
     uint32_t pkt_has_sys_visibility:1;
 #endif
+    size8u_t num_insns1; // part1 and loop end are excluded
+	/* This MUST be the last thing in this structure */
+	insn_t insn[INSTRUCTIONS_MAX];
+
 };
 
 typedef struct Packet packet_t;

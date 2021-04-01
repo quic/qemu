@@ -41,6 +41,15 @@ int get_hmx_block_bit(processor_t *proc) {
 	return get_hmx_channel_size(proc) + proc->arch_proc_options->hmx_spatial_size;
 }
 
+/* Number of extension register/execution contexts available */
+int get_ext_contexts(processor_t *proc) {
+	int ext_contexts = 0;
+        if(proc->arch_proc_options->QDSP6_VX_PRESENT) {
+                ext_contexts = proc->arch_proc_options->QDSP6_VX_CONTEXTS;
+        }
+	return ext_contexts;
+}
+
 //int get_hmx_act_buf(processor_t *proc) {
 //	return (proc->arch_proc_options->QDSP6_VX_VTCM_ILVS != 0 ) ? proc->arch_proc_options->QDSP6_MX_ACT_BUF*16/proc->arch_proc_options->QDSP6_VX_VTCM_ILVS : 8;
 //}

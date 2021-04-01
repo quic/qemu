@@ -62,8 +62,11 @@ Q6INSN(J2_trap1,"trap1(Rx32,#u8)",ATTRIBS(A_COF,A_NOTE_NOPACKET,A_RESTRICT_NOPAC
 
 DEF_MAPPING(J2_trap1_noregmap,"trap1(#u8)","trap1(R0,#u8)")
 
-Q6INSN(J2_pause,"pause(#u8)",ATTRIBS(A_COF,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
-"Enter low-power state for #u8 cycles",{fPAUSE(uiV);})
+Q6INSN(J2_pause,"pause(#u10)",ATTRIBS(A_COF,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
+"Enter low-power state for #u10 cycles",{fPAUSE(uiV);})
+
+Q6INSN(J2_unpause,"unpause",ATTRIBS(A_COF,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
+"Resume paused threads",{fUNPAUSE();})
 
 Q6INSN(J2_rte,  "rte", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NO_TIMING_LOG),
 "Return from Exception",
@@ -115,15 +118,15 @@ Q6INSN(Y2_setimask,"setimask(Pt4,Rs32)",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_AXOK,A
 /********************************************/
 
 Q6INSN(Y2_tlbw,"tlbw(Rss32,Rt32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
-"Write TLB entry", {fTLBW(RtV,RssV);})
+"Write TLB entry", {fTLBW_EXTENDED(RtV,RssV);})
 
 Q6INSN(Y5_ctlbw,"Rd32=ctlbw(Rss32,Rt32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
 "Conditional Write TLB entry",
 {
-  if (fTLB_ENTRY_OVERLAP( (1LL<<63) | RssV )) {
-        RdV=fTLB_ENTRY_OVERLAP_IDX( (1LL<<63) | RssV);
+  if (fTLB_ENTRY_OVERLAP( (1LL<<63) | RssV, RtV )) {
+        RdV=fTLB_ENTRY_OVERLAP_IDX( (1LL<<63) | RssV, RtV);
      } else {
-        fTLBW(RtV,RssV);
+        fTLBW_EXTENDED(RtV,RssV);
         RdV=0x80000000;
      }
 })
@@ -131,15 +134,15 @@ Q6INSN(Y5_ctlbw,"Rd32=ctlbw(Rss32,Rt32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPA
 Q6INSN(Y5_tlboc,"Rd32=tlboc(Rss32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
 "TLB overlap check",
 {
-  if (fTLB_ENTRY_OVERLAP( (1LL<<63) | RssV )) {
-        RdV=fTLB_ENTRY_OVERLAP_IDX( (1LL<<63) | RssV);
+  if (fTLB_ENTRY_OVERLAP( (1LL<<63) | RssV, 0 )) {
+        RdV=fTLB_ENTRY_OVERLAP_IDX( (1LL<<63) | RssV, 0);
      } else {
         RdV=0x80000000;
      }
 })
 
 Q6INSN(Y2_tlbr,"Rdd32=tlbr(Rs32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET), "Read TLB entry",
-{RddV = fTLBR(RsV);})
+{RddV = fTLBR_EXTENDED(RsV);})
 
 Q6INSN(Y2_tlbp,"Rd32=tlbp(Rs32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET), "Probe TLB", {RdV=fTLBP(RsV);})
 
@@ -147,15 +150,13 @@ Q6INSN(Y5_tlbasidi,"tlbinvasid(Rs32)",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET
 {
 	fHIDE(int i;)
     fHIDE(unsigned int num_tlb_entries = NUM_TLB_REGS(thread->processor_ptr);)
-
 	for (i = 0; i < num_tlb_entries; i++) {
-		//warn("TLB[%d] tlbinvasid for Target ASID=%x PTE_G=%d PTE_ASID=%x", i, fEXTRACTU_RANGE(RsV,26,20), fGET_FIELD(fTLBR(i),PTE_G), fGET_FIELD(fTLBR(i),PTE_ASID));
 		if ((fGET_FIELD(fTLBR(i),PTE_G) == 0) &&
 			(fGET_FIELD(fTLBR(i),PTE_ASID) == fEXTRACTU_RANGE(RsV,26,20))) {
 			fTLBW(i,fTLBR(i) & ~(1ULL << 63));
 		}
 	}
-	fHIDE(iic_flush_cache(thread->processor_ptr);) // Flush iic regardless if we invalidated or now
+	fHIDE(iic_flush_cache(thread->processor_ptr);) // Flush iic regardless if we invalidated or no
 })
 
 Q6INSN(Y2_tlblock,"tlblock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_NO_TIMING_LOG), "Lock TLB",
@@ -313,14 +314,15 @@ Q6INSN(Y6_dmstart,"dmstart(Rs32)",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_
 })
 
 Q6INSN(Y6_dmlink,"dmlink(Rs32,Rt32)",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_VERIF_DMATICK,A_RESTRICT_SLOT0ONLY,A_SYNC_MARKER,A_NO_TIMING_LOG),"DMA Link", {
- fHIDE( fEA_REG(RsV));
- fHIDE( if (RsV != 0) {  fSTORE_DMA(1,4,EA,RtV); warn("DMLINK EA=%x RtV=%x",EA, RtV);  }  else {warn("Not storeing RsV=%x RtV=%x",RsV, RtV);});
+ fHIDE( fEA_REG(RsV); )
+ fHIDE( fSTORE_DMA(1,4,EA,RtV); warn("DMLINK EA=%x RtV=%x",EA, RtV); )
  fDMLINK(RsV, RtV);
  fHIDE( thread->mem_access[1].vaddr = RtV;)  /* For Disassembly in uarchtrace and pctrace */
 })
 
 Q6INSN(Y6_dmpoll,"Rd32=dmpoll",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_NO_TIMING_LOG),"DMA Poll", {
 	fDMPOLL(RdV);
+	fHIDE( thread->mem_access[0].vaddr = RdV;)  /* For Disassembly in uarchtrace and pctrace */
 })
 
 Q6INSN(Y6_dmwait,"Rd32=dmwait",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_VERIF_DMASTEP,A_NO_TIMING_LOG),"DMA Wait", {
@@ -348,6 +350,7 @@ Q6INSN(Y6_dmcfgwr,"dmcfgwr(Rs32,Rt32)",ATTRIBS(A_NOTE_PRIV,A_PRIV,A_NOTE_NOPACKE
 
 Q6INSN(Y6_dmpause,"Rd32=dmpause",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_RESTRICT_SLOT0ONLY,A_VERIF_DMASTEP,A_NO_TIMING_LOG),"DMA Pause",{
 	fDMPAUSE(RdV);
+	fHIDE( thread->mem_access[0].vaddr = RdV;)  /* For Disassembly in uarchtrace and pctrace */
 })
 
 Q6INSN(Y6_dmresume,"dmresume(Rs32)",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_DMA,A_VERIF_DMATICK,A_RESTRICT_SLOT0ONLY,A_SYNC_MARKER,A_NO_TIMING_LOG),"DMA Resume",{

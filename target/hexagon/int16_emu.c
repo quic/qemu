@@ -4,18 +4,8 @@
 #include <assert.h>
 
 #include "int16_emu.h"
+//#pragma GCC diagnostic ignored "-Wmissing-prototypes"
 
-#ifdef STANDALONE
-
-size4u_t count_leading_ones_8(size8u_t src)
-{
-	int ret;
-	for (ret = 0; src & 0x8000000000000000LL; src <<= 1) {
-		ret++;
-	}
-	return ret;
-}
-#endif
 
 size16s_t cast8s_to_16s(size8s_t a)
 {

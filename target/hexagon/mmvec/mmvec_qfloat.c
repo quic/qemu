@@ -15,11 +15,13 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "mmvec_qfloat.h"
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+
+#include "mmvec_qfloat.h"
+
+
 //Take one's complement of the mantissa for QF32
 size4s_t negate32(size4s_t in)
 {
@@ -171,7 +173,6 @@ unfloat parse_sf(size4s_t in)
 }
 
 
-//size4u_t rnd_sat_qf_sig(int sign, int* exp_in, double sig, double sig_low, f_type ft)
 size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft);
 size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
 {
@@ -2051,6 +2052,63 @@ size4s_t conv_w_qf32(size4s_t a)
     return result;
 }
 
+size4s_t conv_w_sf(size4s_t op1)
+{
+    sf_union input;
+    size4s_t W_MAX = 0x7fffffff;
+    size4s_t W_MIN = 0x80000000;
+    input.i = op1;
+    size4s_t  result;
+
+    if(isNaNF32(op1) || isInfF32(op1) || (input.f >= (float)W_MAX) || (input.f <= (float)W_MIN))
+    {
+        if(input.x.sign == 1){
+            result = W_MIN;
+        }
+        else{
+            result = W_MAX;
+        }
+    }
+    else{
+        //convert and round to the zero
+        result = (int)input.f;
+    }
+
+#ifdef DEBUG_MMVEC_QF
+    printf("Debug : result =0x%08x\n",result);
+#endif
+    return result;
+}
+
+size2s_t conv_h_hf(size2s_t op1)
+{
+    sf_union input;
+    size4s_t op1_ext = op1;
+    size2s_t HW_MAX = 0x7fff;
+    size2s_t HW_MIN = 0x8000;
+    input.i = ((op1_ext & 0x8000) << 16) + (((op1_ext & 0x7c00) + 0x1c000) << 13) + ((op1_ext & 0x03ff) << 13); //grabbing sign, exp, and significand and ocnverting to sf32 format
+    size2s_t  result;
+
+    if(isNaNF16(op1) || isInfF16(op1) || (input.f >= (float)HW_MAX) || (input.f <= (float)HW_MIN))
+    {
+        if(input.x.sign == 1){
+            result = HW_MIN;
+        }
+        else{
+            result = HW_MAX;
+        }
+    }
+    else{
+        //convert and round to the zero
+        result = (short)input.f;
+    }
+
+#ifdef DEBUG_MMVEC_QF
+    printf("Debug : result =0x%08x\n",result);
+#endif
+    return result;
+}
+
 //FP conversion QF32 to 32bit UW
 size4u_t conv_uw_qf32(size4s_t a)
 {
@@ -2505,4 +2563,3 @@ size2s_t min_qf16_hf(size2s_t in_a, size2s_t in_b)
 #endif
     return result;
 }
-#pragma GCC diagnostic pop
