@@ -387,7 +387,7 @@ uint64_t HELPER(sfrecipa)(CPUHexagonState *env, float32 RsV, float32 RtV)
     if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
         PeV = adjust;
         idx = (RtV >> 16) & 0x7f;
-        mant = (arch_recip_lookup(idx) << 15) | 1;
+        mant = (recip_lookup_table[idx] << 15) | 1;
         exp = SF_BIAS - (float32_getexp(RtV) - SF_BIAS) - 1;
         RdV = build_float32(extract32(RtV, 31, 1), exp, mant);
     }
