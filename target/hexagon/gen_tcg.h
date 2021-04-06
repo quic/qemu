@@ -1659,8 +1659,8 @@
  */
 #define fGEN_TCG_A5_ACS(SHORTCODE) \
     do { \
-        gen_helper_vacsh_val(RxxV, cpu_env, RxxV, RssV, RttV); \
         gen_helper_vacsh_pred(PeV, cpu_env, RxxV, RssV, RttV); \
+        gen_helper_vacsh_val(RxxV, cpu_env, RxxV, RssV, RttV); \
     } while (0)
 
 /*

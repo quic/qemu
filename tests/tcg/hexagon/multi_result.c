@@ -193,6 +193,13 @@ static void test_vacsh()
     check_ll(res64, 0x000e7fff000f0004LL);
     check_p(pred_result, 0xfc);
     check(ovf_result, 1);
+
+    res64 = vacsh(0x0004000300020001LL,
+                  0x0001000200030009LL,
+                  0x000affff000d0001LL, &pred_result, &ovf_result);
+    check_ll(res64, 0x000e0003000f0008LL);
+    check_p(pred_result, 0xcc);
+    check(ovf_result, 0);
 }
 
 static void test_vminub()
