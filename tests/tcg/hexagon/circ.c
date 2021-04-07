@@ -18,11 +18,12 @@
 #include <stdio.h>
 
 #define DEBUG          0
-#if DEBUG
-#define DEBUG_PRINTF(...) printf(__VA_ARGS__)
-#else
-#define DEBUG_PRINTF(...) do { } while (0)
-#endif
+#define DEBUG_PRINTF(...) \
+    do { \
+        if (DEBUG) { \
+            printf(__VA_ARGS__); \
+        } \
+    } while (0)
 
 
 #define NBYTES         (1 << 8)
@@ -83,6 +84,21 @@ INIT(dbuf, NDOBLS)
 #define CIRC_LOAD_IMM_d(RES, ADDR, START, LEN, INC) \
     CIRC_LOAD_IMM(d, RES, ADDR, START, LEN, INC)
 
+/*
+ * The mreg has the following pieces
+ *     mreg[31:28]              increment[10:7]
+ *     mreg[27:24]              K value (used Hexagon v3 and earlier)
+ *     mreg[23:17]              increment[6:0]
+ *     mreg[16:0]               circular buffer length
+ */
+static int build_mreg(int inc, int K, int len)
+{
+    return ((inc & 0x780) << 21) |
+           ((K & 0xf) << 24) |
+           ((inc & 0x7f) << 17) |
+           (len & 0x1ffff);
+}
+
 #define CIRC_LOAD_REG(SIZE, RES, ADDR, START, LEN, INC) \
     __asm__( \
         "r4 = %2\n\t" \
@@ -90,7 +106,7 @@ INIT(dbuf, NDOBLS)
         "cs1 = %3\n\t" \
         "%0 = mem" #SIZE "(%1++I:circ(M1))\n\t" \
         : "=r"(RES), "+r"(ADDR) \
-        : "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
+        : "r"(build_mreg((INC), 0, (LEN))), \
           "r"(START) \
         : "r4", "m1", "cs1")
 #define CIRC_LOAD_REG_b(RES, ADDR, START, LEN, INC) \
@@ -160,7 +176,7 @@ INIT(dbuf, NDOBLS)
         "cs1 = %2\n\t" \
         "mem" #SIZE "(%0++I:circ(M1)) = %3" PART "\n\t" \
         : "+r"(ADDR) \
-        : "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
+        : "r"(build_mreg((INC), 0, (LEN))), \
           "r"(START), \
           "r"(VAL) \
         : "r4", "m1", "cs1", "memory")
@@ -185,7 +201,7 @@ INIT(dbuf, NDOBLS)
         "    mem" #SIZE "(%0++I:circ(M1)) = r5.new\n\t" \
         "}\n\t" \
         : "+r"(ADDR) \
-        : "r"((((INC) & 0x7f) << 17) | ((LEN) & 0x1ffff)), \
+        : "r"(build_mreg((INC), 0, (LEN))), \
           "r"(START), \
           "r"(VAL) \
         : "r4", "r5", "m1", "cs1", "memory")
@@ -199,10 +215,18 @@ INIT(dbuf, NDOBLS)
 
 int err;
 
-void check_load(int i, long long result, int mod)
+/* We'll test increments +1 and -1 */
+void check_load(int i, long long result, int inc, int size)
 {
-    if (result != (i % mod)) {
-        printf("ERROR(%d): %lld != %d\n", i, result, i % mod);
+    int expect = (i * inc);
+    while (expect >= size) {
+        expect -= size;
+    }
+    while (expect < 0) {
+        expect += size;
+    }
+    if (result != expect) {
+        printf("ERROR(%d): %lld != %d\n", i, result, expect);
         err++;
     }
 }
@@ -215,10 +239,18 @@ void circ_test_load_imm_##SZ(void) \
     int i; \
     for (i = 0; i < BUFSIZE; i++) { \
         TYPE element; \
-        CIRC_LOAD_IMM_##SZ(element, p, BUF, size * sizeof(TYPE), INC); \
+        CIRC_LOAD_IMM_##SZ(element, p, BUF, size * sizeof(TYPE), (INC)); \
         DEBUG_PRINTF("i = %2d, p = 0x%p, element = %2" #FMT "\n", \
                      i, p, element); \
-        check_load(i, element, size); \
+        check_load(i, element, ((INC) / (int)sizeof(TYPE)), size); \
+    } \
+    p = (TYPE *)BUF; \
+    for (i = 0; i < BUFSIZE; i++) { \
+        TYPE element; \
+        CIRC_LOAD_IMM_##SZ(element, p, BUF, size * sizeof(TYPE), -(INC)); \
+        DEBUG_PRINTF("i = %2d, p = 0x%p, element = %2" #FMT "\n", \
+                     i, p, element); \
+        check_load(i, element, (-(INC) / (int)sizeof(TYPE)), size); \
     } \
 }
 
@@ -240,7 +272,15 @@ void circ_test_load_reg_##SZ(void) \
         CIRC_LOAD_REG_##SZ(element, p, BUF, size * sizeof(TYPE), 1); \
         DEBUG_PRINTF("i = %2d, p = 0x%p, element = %2" #FMT "\n", \
                      i, p, element); \
-        check_load(i, element, size); \
+        check_load(i, element, 1, size); \
+    } \
+    p = (TYPE *)BUF; \
+    for (i = 0; i < BUFSIZE; i++) { \
+        TYPE element; \
+        CIRC_LOAD_REG_##SZ(element, p, BUF, size * sizeof(TYPE), -1); \
+        DEBUG_PRINTF("i = %2d, p = 0x%p, element = %2" #FMT "\n", \
+                     i, p, element); \
+        check_load(i, element, -1, size); \
     } \
 }
 
@@ -251,14 +291,22 @@ TEST_LOAD_REG(uh, unsigned short, hbuf, NHALFS, d)
 TEST_LOAD_REG(w,  int,            wbuf, NWORDS, d)
 TEST_LOAD_REG(d,  long long,      dbuf, NDOBLS, lld)
 
+/* The circular stores will wrap around somewhere inside the buffer */
 #define CIRC_VAL(SZ, TYPE, BUFSIZE) \
-TYPE circ_val_##SZ(int i, int size) \
+TYPE circ_val_##SZ(int i, int inc, int size) \
 { \
     int mod = BUFSIZE % size; \
-    if (i < mod) { \
-        return (i + BUFSIZE - mod); \
+    int elem = i * inc; \
+    if (elem < 0) { \
+        if (-elem <= size - mod) { \
+            return (elem + BUFSIZE - mod); \
+        } else { \
+            return (elem + BUFSIZE + size - mod); \
+        } \
+    } else if (elem < mod) {\
+        return (elem + BUFSIZE - mod); \
     } else { \
-        return (i + BUFSIZE - size - mod); \
+        return (elem + BUFSIZE - size - mod); \
     } \
 }
 
@@ -267,16 +315,20 @@ CIRC_VAL(h, short,         NHALFS)
 CIRC_VAL(w, int,           NWORDS)
 CIRC_VAL(d, long long,     NDOBLS)
 
+/*
+ * Circular stores should only write to the first "size" elements of the buffer
+ * the remainder of the elements should have BUF[i] == i
+ */
 #define CHECK_STORE(SZ, BUF, BUFSIZE, FMT) \
-void check_store_##SZ(int size) \
+void check_store_##SZ(int inc, int size) \
 { \
     int i; \
     for (i = 0; i < size; i++) { \
         DEBUG_PRINTF(#BUF "[%3d] = 0x%02" #FMT ", guess = 0x%02" #FMT "\n", \
-                     i, BUF[i], circ_val_##SZ(i, size)); \
-        if (BUF[i] != circ_val_##SZ(i, size)) { \
+                     i, BUF[i], circ_val_##SZ(i, inc, size)); \
+        if (BUF[i] != circ_val_##SZ(i, inc, size)) { \
             printf("ERROR(%3d): 0x%02" #FMT " != 0x%02" #FMT "\n", \
-                   i, BUF[i], circ_val_##SZ(i, size)); \
+                   i, BUF[i], circ_val_##SZ(i, inc, size)); \
             err++; \
         } \
     } \
@@ -305,7 +357,16 @@ void circ_test_store_imm_##SZ(void) \
         CIRC_STORE_IMM_##SZ(val << SHIFT, p, BUF, size * sizeof(TYPE), INC); \
         val++; \
     } \
-    check_store_##CHK(size); \
+    check_store_##CHK(((INC) / (int)sizeof(TYPE)), size); \
+    p = BUF; \
+    val = 0; \
+    init_##BUF(); \
+    for (i = 0; i < BUFSIZE; i++) { \
+        CIRC_STORE_IMM_##SZ(val << SHIFT, p, BUF, size * sizeof(TYPE), \
+                            -(INC)); \
+        val++; \
+    } \
+    check_store_##CHK((-(INC) / (int)sizeof(TYPE)), size); \
 }
 
 CIRC_TEST_STORE_IMM(b,    b, unsigned char, bbuf, NBYTES, 0,  1)
@@ -329,7 +390,15 @@ void circ_test_store_reg_##SZ(void) \
         CIRC_STORE_REG_##SZ(val << SHIFT, p, BUF, size * sizeof(TYPE), 1); \
         val++; \
     } \
-    check_store_##CHK(size); \
+    check_store_##CHK(1, size); \
+    p = BUF; \
+    val = 0; \
+    init_##BUF(); \
+    for (i = 0; i < BUFSIZE; i++) { \
+        CIRC_STORE_REG_##SZ(val << SHIFT, p, BUF, size * sizeof(TYPE), -1); \
+        val++; \
+    } \
+    check_store_##CHK(-1, size); \
 }
 
 CIRC_TEST_STORE_REG(b,    b, unsigned char, bbuf, NBYTES, 0)
@@ -340,6 +409,30 @@ CIRC_TEST_STORE_REG(d,    d, long long,     dbuf, NDOBLS, 0)
 CIRC_TEST_STORE_REG(bnew, b, unsigned char, bbuf, NBYTES, 0)
 CIRC_TEST_STORE_REG(hnew, h, short,         hbuf, NHALFS, 0)
 CIRC_TEST_STORE_REG(wnew, w, int,           wbuf, NWORDS, 0)
+
+/* Test the old scheme used in Hexagon V3 */
+static void circ_test_v3(void)
+{
+    int *p = wbuf;
+    int size = 15;
+    int K = 4;      /* 64 bytes */
+    int element;
+    int i;
+
+    init_wbuf();
+
+    for (i = 0; i < NWORDS; i++) {
+        __asm__(
+            "r4 = %2\n\t"
+            "m1 = r4\n\t"
+            "%0 = memw(%1++I:circ(M1))\n\t"
+            : "=r"(element), "+r"(p)
+            : "r"(build_mreg(1, K, size * sizeof(int)))
+            : "r4", "m1");
+        DEBUG_PRINTF("i = %2d, p = 0x%p, element = %2d\n", i, p, element);
+        check_load(i, element, 1, size);
+    }
+}
 
 int main()
 {
@@ -385,6 +478,8 @@ int main()
     circ_test_store_reg_bnew();
     circ_test_store_reg_hnew();
     circ_test_store_reg_wnew();
+
+    circ_test_v3();
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;
