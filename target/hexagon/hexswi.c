@@ -725,10 +725,19 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         break;
     }
 
-    case SYS_READ_PCYCLES:
+    case SYS_READ_ICOUNT:
     {
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
         ARCH_SET_THREAD_REG(env, HEX_REG_R01, 0);
+        break;
+    }
+
+    case SYS_READ_PCYCLES:
+    {
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00,
+            ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO));
+        ARCH_SET_THREAD_REG(env, HEX_REG_R01,
+            ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI));
         break;
     }
 
