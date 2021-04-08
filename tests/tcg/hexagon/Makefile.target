@@ -29,7 +29,6 @@ endif
 
 CFLAGS += -Wno-incompatible-pointer-types -Wno-undefined-internal
 CFLAGS += -fno-unroll-loops
-CFLAGS += -mhvx -fvectorize
 
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
 VPATH += $(HEX_SRC)
@@ -56,3 +55,7 @@ HEX_TESTS += atomics
 HEX_TESTS += fpstuff
 
 TESTS += $(HEX_TESTS)
+
+exec_counters: CFLAGS += -mhvx
+scatter_gather: CFLAGS += -mhvx
+vector_add_int: CFLAGS += -mhvx -fvectorize
