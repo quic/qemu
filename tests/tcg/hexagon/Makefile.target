@@ -28,6 +28,7 @@ endif
 
 
 CFLAGS += -Wno-incompatible-pointer-types -Wno-undefined-internal
+CFLAGS += -fno-unroll-loops
 CFLAGS += -mhvx -fvectorize
 
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
