@@ -343,7 +343,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
      *  The "I" value from a modifier register is divided into two pieces
      *      LSB         bits 23:17
      *      MSB         bits 31:28
-     * The value is signed, so we do a sign extension
+     * The value is signed
      *
      * At the end we shift the result according to the shift argument
      */
@@ -351,12 +351,8 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
     TCGv lsb = tcg_temp_new();
 
     tcg_gen_extract_tl(lsb, val, 17, 7);
-    tcg_gen_extract_tl(msb, val, 28, 4);
-    tcg_gen_movi_tl(result, 0);
-    tcg_gen_deposit_tl(result, result, lsb, 0, 7);
-    tcg_gen_deposit_tl(result, result, msb, 7, 4);
-    tcg_gen_shli_tl(result, result, 21);
-    tcg_gen_sari_tl(result, result, 21);
+    tcg_gen_sari_tl(msb, val, 21);
+    tcg_gen_deposit_tl(result, msb, lsb, 0, 7);
 
     tcg_gen_shli_tl(result, result, shift);
 
