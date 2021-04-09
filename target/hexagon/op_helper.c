@@ -136,7 +136,7 @@ void QEMU_NORETURN HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
 }
 
 
-static inline void log_pred_write(CPUHexagonState *env, int pnum,
+static void log_pred_write(CPUHexagonState *env, int pnum,
                                   target_ulong val)
 {
     HEX_DEBUG_LOG("log_pred_write[%d] = " TARGET_FMT_ld
@@ -152,7 +152,7 @@ static inline void log_pred_write(CPUHexagonState *env, int pnum,
     }
 }
 
-static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
+static void write_new_pc(CPUHexagonState *env, target_ulong addr)
 {
     HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
 
@@ -1215,7 +1215,7 @@ void HELPER(raise_stack_overflow)(CPUHexagonState *env, uint32_t slot,
 }
 #endif
 
-static inline void log_reg_write(CPUHexagonState *env, int rnum,
+static void log_reg_write(CPUHexagonState *env, int rnum,
                                  target_ulong val, uint32_t slot)
 {
     HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld
@@ -1247,7 +1247,7 @@ inline void log_reg_write_pair(CPUHexagonState *env, int rnum,
 }
 
 #ifndef CONFIG_USER_ONLY
-static inline void log_sreg_write(CPUHexagonState *env, int rnum,
+static void log_sreg_write(CPUHexagonState *env, int rnum,
                                  target_ulong val, uint32_t slot)
 {
     HEX_DEBUG_LOG("log_sreg_write[%s/%d] = " TARGET_FMT_ld
@@ -1672,7 +1672,7 @@ void HELPER(probe_pkt_stores)(CPUHexagonState *env, int mask, int mmu_idx)
 
 #ifndef CONFIG_USER_ONLY
 #if HEX_DEBUG
-static inline void print_thread(const char *str, CPUState *cs)
+static void print_thread(const char *str, CPUState *cs)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *thread = &cpu->env;
@@ -1694,7 +1694,7 @@ static inline void print_thread(const char *str, CPUState *cs)
            "unknown");
 }
 
-static inline void print_thread_states(const char *str)
+static void print_thread_states(const char *str)
 {
     CPUState *cs;
     CPU_FOREACH(cs) {
@@ -1702,10 +1702,10 @@ static inline void print_thread_states(const char *str)
     }
 }
 #else
-static inline void print_thread(const char *str, CPUState *cs)
+static void print_thread(const char *str, CPUState *cs)
 {
 }
-static inline void print_thread_states(const char *str)
+static void print_thread_states(const char *str)
 {
 }
 #endif
@@ -1826,7 +1826,7 @@ void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
 }
 
 /* Log a write to HVX vector */
-static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
+static void log_vreg_write(CPUHexagonState *env, int num, void *var,
                                       int vnew, uint32_t slot)
 {
     HEX_DEBUG_LOG("log_vreg_write[%d]", num);
@@ -1847,7 +1847,7 @@ static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
     }
 }
 
-static inline void log_mmvector_write(CPUHexagonState *env, int num,
+static void log_mmvector_write(CPUHexagonState *env, int num,
                                       mmvector_t var, int vnew, uint32_t slot)
 {
     log_vreg_write(env, num, &var, vnew, slot);
@@ -2033,7 +2033,7 @@ uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
            (((uint64_t)ARCH_GET_SYSTEM_REG(env, reg+1)) << 32);
 }
 
-static inline void modify_syscfg(CPUHexagonState *env, uint32_t val)
+static void modify_syscfg(CPUHexagonState *env, uint32_t val)
 {
     /* Check for change in MMU enable */
     target_ulong old_mmu_enable =

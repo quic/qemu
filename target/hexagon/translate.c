@@ -311,6 +311,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     tcg_temp_free(syscfg_pcycleen);
 
     HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
+
     if (hex_cpu->count_gcycle_xt) {
         gen_helper_inc_gcycle_xt(cpu_env);
     }
@@ -519,7 +520,7 @@ static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
     tcg_temp_free(pval);
 }
 
-static inline void gen_check_store_width(DisasContext *ctx, int slot_num)
+static void gen_check_store_width(DisasContext *ctx, int slot_num)
 {
     if (HEX_DEBUG) {
         TCGv slot = tcg_const_tl(slot_num);
@@ -707,7 +708,7 @@ void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n)
     tcg_temp_free_ptr(s);
 }
 
-static inline void gen_vec_copy(intptr_t dstoff, intptr_t srcoff, size_t size)
+static void gen_vec_copy(intptr_t dstoff, intptr_t srcoff, size_t size)
 {
     TCGv_ptr src = tcg_temp_new_ptr();
     TCGv_ptr dst = tcg_temp_new_ptr();
@@ -718,7 +719,7 @@ static inline void gen_vec_copy(intptr_t dstoff, intptr_t srcoff, size_t size)
     tcg_temp_free_ptr(dst);
 }
 
-static inline bool pkt_has_hvx_store(Packet *pkt)
+static bool pkt_has_hvx_store(Packet *pkt)
 {
     int i;
     for (i = 0; i < pkt->num_insns; i++) {

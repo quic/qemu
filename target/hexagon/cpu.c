@@ -131,6 +131,7 @@ const char * const hexagon_gregnames[] = {
 static target_ulong adjust_stack_ptrs(CPUHexagonState *env, target_ulong addr)
 {
     HexagonCPU *cpu = env_archcpu(env);
+
     target_ulong stack_adjust = cpu->lldb_stack_adjust;
     target_ulong stack_start = env->stack_start;
     target_ulong stack_size = 0x10000;
@@ -149,7 +150,7 @@ static target_ulong adjust_stack_ptrs(CPUHexagonState *env, target_ulong addr)
 }
 
 /* HEX_REG_P3_0 (aka C4) is an alias for the predicate registers */
-static inline target_ulong read_p3_0(CPUHexagonState *env)
+static target_ulong read_p3_0(CPUHexagonState *env)
 {
     int32_t control_reg = 0;
     int i;
@@ -970,7 +971,7 @@ static bool get_physical_address(CPUHexagonState *env, hwaddr *phys,
 }
 
 /* qemu seems to only want to know about TARGET_PAGE_SIZE pages */
-static inline void find_qemu_subpage(vaddr *addr, hwaddr *phys,
+static void find_qemu_subpage(vaddr *addr, hwaddr *phys,
                                      int page_size)
 {
     vaddr page_start = *addr & ~((vaddr)(page_size - 1));
