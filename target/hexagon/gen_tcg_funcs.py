@@ -135,11 +135,6 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid))
             f.write("    const int %s%sN = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
-            f.write("    if (!readonly_ok(insn)) {\n")
-            f.write("        const int offset = new_temp_vreg_offset(ctx, 1);\n")
-            f.write("        tcg_gen_addi_ptr(%s%sV, cpu_env, offset);\n" % \
-                                 (regtype, regid))
-            f.write("    }\n")
         elif (regid in {"d", "x", "y"}):
             f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                 (regtype, regid))
@@ -313,13 +308,8 @@ def genptr_src_read(f,regtype,regid):
             f.write("    gen_read_vreg_pair(%s%sV, %s%sN, 0);\n" % \
                 (regtype, regid, regtype, regid))
         elif (regid in {"s", "u", "v", "w"}):
-            f.write("    if (readonly_ok(insn)) {\n")
-            f.write("        gen_read_vreg_readonly(%s%sV, %s%sN, 0);\n" % \
-                                 (regtype, regid, regtype, regid))
-            f.write("    } else {\n")
-            f.write("        gen_read_vreg(%s%sV, %s%sN, 0);\n" % \
-                                 (regtype, regid, regtype, regid))
-            f.write("    }\n")
+            f.write("    gen_read_vreg_readonly(%s%sV, %s%sN, 0);\n" % \
+                             (regtype, regid, regtype, regid))
         elif (regid in {"x", "y"}):
             f.write("    gen_read_vreg(%s%sV, %s%sN, 0);\n" % \
                 (regtype, regid, regtype, regid))

@@ -293,21 +293,6 @@ static inline void gen_write_ctrl_reg_pair(DisasContext *ctx, int reg_num,
     }
 }
 
-/*
- * Certain instructions appear to have readonly operands, but
- * in reality they do not.
- *     vdelta instructions overwrite their VuV operand
- */
-static bool readonly_ok(Insn *insn)
-{
-    uint32_t opcode = insn->opcode;
-    if (opcode == V6_vdelta ||
-        opcode == V6_vrdelta) {
-        return false;
-    }
-    return true;
-}
-
 static TCGv gen_get_byte(TCGv result, int N, TCGv src, bool sign)
 {
     if (sign) {
