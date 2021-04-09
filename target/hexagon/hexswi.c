@@ -176,7 +176,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         HEX_DEBUG_LOG("%s: swi_info 0x%x, ret %d/0x%x\n",
             __FUNCTION__, swi_info, ret, ret);
 
-        HexagonCPU *cpu = hexagon_env_get_cpu(env);
+        HexagonCPU *cpu = env_archcpu(env);
         if (!cpu->vp_mode) {
             exit(ret);
         }
@@ -415,7 +415,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, fd);
 
         if (fd == -1) {
-            HexagonCPU *cpu = hexagon_env_get_cpu(env);
+            HexagonCPU *cpu = env_archcpu(env);
             if (cpu->usefs && g_strrstr(filename, ".so") != NULL
                 && errno == ENOENT) {
                 /* Didn't find it, so now we also try to open in the

@@ -364,7 +364,7 @@ static target_ulong get_thread0_r2(void)
 void hexagon_stop_thread(CPUHexagonState *env)
 
 {
-    HexagonCPU *cpu = hexagon_env_get_cpu(env);
+    HexagonCPU *cpu = env_archcpu(env);
     #if HEX_DEBUG
     HEX_DEBUG_LOG("%s: htid %d, cpu %p\n",
         __FUNCTION__, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID), cpu);
@@ -580,7 +580,7 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
     uint8_t old_asid = GET_SSR_FIELD(SSR_ASID, old);
     uint8_t new_asid = GET_SSR_FIELD(SSR_ASID, new);
     if (new_asid != old_asid) {
-        CPUState *cs = CPU(hexagon_env_get_cpu(env));
+        CPUState *cs = env_cpu(env);
         tlb_flush(cs);
     }
 }

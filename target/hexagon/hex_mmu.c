@@ -243,7 +243,8 @@ void hex_tlbw(CPUHexagonState *env, uint32_t index, uint64_t value)
     bool old_entry_valid = GET_TLB_FIELD(env->hex_tlb->entries[myidx], PTE_V);
     if (old_entry_valid && hexagon_cpu_mmu_enabled(env)) {
         /* FIXME - Do we have to invalidate everything here? */
-        CPUState *cs = CPU(hexagon_env_get_cpu(env));
+        CPUState *cs = env_cpu(env);
+
         tlb_flush(cs);
     }
     env->hex_tlb->entries[myidx] = (value);
@@ -257,7 +258,7 @@ void hex_mmu_init(CPUHexagonState *env)
 
 void hex_mmu_on(CPUHexagonState *env)
 {
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    CPUState *cs = env_cpu(env);
     qemu_log_mask(CPU_LOG_MMU, "Hexagon MMU turned on!\n");
     tlb_flush(cs);
 
@@ -268,7 +269,7 @@ void hex_mmu_on(CPUHexagonState *env)
 
 void hex_mmu_off(CPUHexagonState *env)
 {
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    CPUState *cs = env_cpu(env);
     qemu_log_mask(CPU_LOG_MMU, "Hexagon MMU turned off!\n");
     tlb_flush(cs);
 }
@@ -276,7 +277,7 @@ void hex_mmu_off(CPUHexagonState *env)
 void hex_mmu_mode_change(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "Hexagon mode change!\n");
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    CPUState *cs = env_cpu(env);
     tlb_flush(cs);
 }
 
@@ -611,7 +612,7 @@ void hex_tlb_unlock(CPUHexagonState *env)
         }
     }
     if (unlock_thread) {
-        cs = CPU(hexagon_env_get_cpu(unlock_thread));
+        cs = env_cpu(unlock_thread);
         print_thread("\tWaiting thread found", cs);
         unlock_thread->tlb_lock_state = HEX_LOCK_OWNER;
         SET_SYSCFG_FIELD(unlock_thread, SYSCFG_TLBLOCK, 1);

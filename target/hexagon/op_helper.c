@@ -98,7 +98,8 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
                                           uint32_t exception,
                                           uintptr_t pc)
 {
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    CPUState *cs = env_cpu(env);
+
     qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08lx, tbl =%d\n", __func__, exception,
             env->gpr[HEX_REG_PC],
         pc, env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
@@ -1795,7 +1796,8 @@ static void hex_k0_unlock(CPUHexagonState *env)
         }
     }
     if (unlock_thread) {
-        cs = CPU(hexagon_env_get_cpu(unlock_thread));
+        cs = CPU(container_of(unlock_thread, HexagonCPU, env));
+
         print_thread("\tWaiting thread found", cs);
         unlock_thread->k0_lock_state = HEX_LOCK_OWNER;
         SET_SYSCFG_FIELD(unlock_thread, SYSCFG_K0LOCK, 1);
@@ -2218,7 +2220,7 @@ void HELPER(resched)(CPUHexagonState *env)
     const uint32_t schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
     const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
     const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    CPUState *cs = env_cpu(env);
     if (!schedcfg_en || hexagon_int_disabled(env, int_number)) {
         return;
     }
@@ -2308,7 +2310,7 @@ uint32_t HELPER(get_ready_count)(CPUHexagonState *env)
 
 void HELPER(pending_interrupt)(CPUHexagonState *env)
 {
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
+    CPUState *cs = env_cpu(env);
     const target_ulong pend_mask = hexagon_get_interrupts(env);
     int intnum;
 
