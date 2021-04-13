@@ -30,17 +30,6 @@
 #include "qemu/module.h"
 #include "l2vic.h"
 
-#define HEX_L2VIC_DEBUG 0
-#define HEX_L2VIC_LOG(...) \
-    do { \
-        if (HEX_L2VIC_DEBUG) { \
-            rcu_read_lock(); \
-            fprintf(stderr, __VA_ARGS__); \
-            rcu_read_unlock(); \
-        } \
-    } while (0)
-
-
 #define L2VICA(s, n) \
     (s[(n)>>2])
 
@@ -57,18 +46,19 @@ typedef struct L2VICState {
     MemoryRegion iomem;
     uint32_t level;
     uint32_t vid_group[4]; /* offset 0:vid group 0 etc, 10 bits in each group are used. */
-    uint32_t int_clear[SLICE_MAX];  /* Clear Status of Active Edge interrupt, not used*/
-    uint32_t int_enable[SLICE_MAX]; /* Enable interrupt source */
+    uint32_t int_clear[SLICE_MAX] QEMU_ALIGNED(16);  /* Clear Status of Active Edge interrupt, not used*/
+    uint32_t int_enable[SLICE_MAX] QEMU_ALIGNED(16); /* Enable interrupt source */
     uint32_t int_enable_clear;    /* Clear (set to 0) corresponding bit in int_enable */
     uint32_t int_enable_set;      /* Set (to 1) corresponding bit in int_enable */
-    uint32_t int_pending[SLICE_MAX]; /* Present for debugging, not used */
+    uint32_t int_pending[SLICE_MAX] QEMU_ALIGNED(16); /* Present for debugging, not used */
     uint32_t int_soft;   /* Generate an interrupt */
-    uint32_t int_status[SLICE_MAX]; /* Which enabled interrupt is active */
-    uint32_t int_type[SLICE_MAX];  /* Edge or Level interrupt */
-    uint32_t int_group_n0[SLICE_MAX];  /* L2 interrupt group 0 0x600-0x680 */
-    uint32_t int_group_n1[SLICE_MAX];  /* L2 interrupt group 1 0x680-0x6FF */
-    uint32_t int_group_n2[SLICE_MAX];  /* L2 interrupt group 2 0x700-0x77F */
-    uint32_t int_group_n3[SLICE_MAX];  /* L2 interrupt group 3 0x780-0x7FF */
+    uint32_t int_status[SLICE_MAX] QEMU_ALIGNED(16); /* Which enabled interrupt is active */
+    uint32_t int_type[SLICE_MAX] QEMU_ALIGNED(16);  /* Edge or Level interrupt */
+    /* L2 interrupt group 0-3 0x600-0x7FF */
+    uint32_t int_group_n0[SLICE_MAX] QEMU_ALIGNED(16);
+    uint32_t int_group_n1[SLICE_MAX] QEMU_ALIGNED(16);
+    uint32_t int_group_n2[SLICE_MAX] QEMU_ALIGNED(16);
+    uint32_t int_group_n3[SLICE_MAX] QEMU_ALIGNED(16);
     qemu_irq irq[8];
 } L2VICState;
 
@@ -121,32 +111,35 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
     s->level = level;
 
     if (level && test_bit(irq, (unsigned long *)s->int_enable)) {
-        HEX_L2VIC_LOG("ACK, irq:level = %d, %d\n", irq, level);
-        HEX_L2VIC_LOG("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
+#if 0
+        printf("ACK, irq:level = %d, %d\n", irq, level);
+        printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
                 L2VICA(s->int_enable, 4 * (irq / 32)));
-        HEX_L2VIC_LOG("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
-
-        qemu_mutex_lock(&s->active);
-        set_bit(irq, (unsigned long *) s->int_status);
-        set_bit(irq, (unsigned long *) s->int_pending);
+        printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
+#endif
+        set_bit(irq, (unsigned long *)s->int_status);
+        set_bit(irq, (unsigned long *)s->int_pending);
 
         /* Interrupts are automatically cleared and disabled, the ISR must
          * re-enable it by writing to L2VIC_INT_ENABLE_SETn area
         */
-        clear_bit(irq, (unsigned long *) s->int_enable);
+        clear_bit(irq, (unsigned long *)s->int_enable);
         /* Use the irq number as "level" so that hexagon_cpu_set_irq
          * can update the VID register*/
+        l2vic_update (s, irq);
         s->vid_group[get_vid(s, irq)] = irq;
-        qemu_mutex_unlock(&s->active);
-        return l2vic_update(s, irq);
+        return;
+
+    } else {
+#if 0
+        printf("NACK, irq:level = %d, %d\n", irq, level);
+        printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
+                L2VICA(s->int_enable, 4 * (irq / 32)));
+        printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
+#endif
+
+        return l2vic_update (s, 0);
     }
-
-    HEX_L2VIC_LOG("NACK, irq:level = %d, %d\n", irq, level);
-    HEX_L2VIC_LOG("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
-            L2VICA(s->int_enable, 4 * (irq / 32)));
-    HEX_L2VIC_LOG("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
-
-    return l2vic_update (s, 0);
 }
 
 static uint64_t l2vic_read(void *opaque, hwaddr offset,
@@ -215,17 +208,7 @@ static void l2vic_write(void *opaque, hwaddr offset,
         qemu_log_mask(LOG_UNIMP, "%s: offset %x\n", __func__, (int) offset);
     } else if (offset >= L2VIC_INT_ENABLE_CLEARn &&
                offset < L2VIC_INT_ENABLE_SETn) {
-        if (L2VICA(s->int_pending, offset - L2VIC_INT_ENABLE_CLEARn) & val) {
-            HEX_L2VIC_LOG("clearing active interrupt\n");
-            int irq = find_first_bit(&val, 32);
-            hwaddr wordoffset = offset - L2VIC_INT_ENABLE_CLEARn;
-            g_assert(irq != 32);
-            irq += wordoffset * 8;
-            printf ("QEMU WARNING: Clearing active interrupt: ACTIVECLEAR IRQ: %d, firstbit: %ld, val: 0x%lx\n", irq, find_first_bit(&val, 8), val);
-        }
         L2VICA(s->int_enable, offset - L2VIC_INT_ENABLE_CLEARn) &= ~val;
-
-
     } else if (offset >= L2VIC_INT_ENABLE_SETn &&
                offset < L2VIC_INT_TYPEn) {
         L2VICA(s->int_status, offset - L2VIC_INT_ENABLE_SETn) &= ~val;
@@ -245,6 +228,7 @@ static void l2vic_write(void *opaque, hwaddr offset,
         L2VICA(s->int_pending, offset - L2VIC_INT_PENDINGn) = val;
     } else if (offset >= L2VIC_SOFT_INTn &&
                offset < L2VIC_INT_PENDINGn) {
+        L2VICA(s->int_enable, offset - L2VIC_SOFT_INTn) |= val;
         /*
          *  Need to reverse engineer the actual irq number.
          */
