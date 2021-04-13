@@ -77,10 +77,10 @@ typedef struct {
 
 
 /* Types of vector register assignment */
-enum {
+typedef enum {
     EXT_DFL,      /* Default */
     EXT_NEW,      /* New - value used in the same packet */
     EXT_TMP       /* Temp - value used but not stored to register */
-};
+} VRegWriteType;
 
 #endif

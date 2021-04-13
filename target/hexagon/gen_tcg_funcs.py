@@ -148,7 +148,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "Q"):
-        if (regid in {"d", "e", "s", "t", "u", "v", "x"}):
+        if (regid in {"d", "e", "x"}):
             f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                 (regtype, regid))
             f.write("    const int %s%sN = insn->regno[%d];\n" % \
@@ -158,6 +158,11 @@ def genptr_decl(f, tag, regtype, regid, regno):
             f.write("        tcg_gen_addi_ptr(%s%sV, cpu_env, offset);\n" % \
                                  (regtype, regid))
             f.write("    } while (0);\n")
+        elif (regid in {"s", "t", "u", "v"}):
+            f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                (regtype, regid))
+            f.write("    const int %s%sN = insn->regno[%d];\n" % \
+                (regtype, regid, regno))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
@@ -305,19 +310,22 @@ def genptr_src_read(f,regtype,regid):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "V"):
         if (regid in {"uu", "vv", "xx"}):
-            f.write("    gen_read_vreg_pair(%s%sV, %s%sN, 0);\n" % \
+            f.write("    gen_read_vreg_pair(%s%sV, %s%sN);\n" % \
                 (regtype, regid, regtype, regid))
         elif (regid in {"s", "u", "v", "w"}):
-            f.write("    gen_read_vreg_readonly(%s%sV, %s%sN, 0);\n" % \
+            f.write("    gen_read_vreg_readonly(%s%sV, %s%sN);\n" % \
                              (regtype, regid, regtype, regid))
         elif (regid in {"x", "y"}):
-            f.write("    gen_read_vreg(%s%sV, %s%sN, 0);\n" % \
+            f.write("    gen_read_vreg(%s%sV, %s%sN);\n" % \
                 (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype== "Q"):
-        if (regid in {"s", "t", "u", "v", "x"}):
-            f.write("    gen_read_qreg(%s%sV, %s%sN, 0);\n" % \
+        if (regid in {"s", "t", "u", "v"}):
+            f.write("    gen_read_qreg_readonly(%s%sV, %s%sN);\n" % \
+                (regtype, regid, regtype, regid))
+        elif (regid in {"x"}):
+            f.write("    gen_read_qreg(%s%sV, %s%sN);\n" % \
                 (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)

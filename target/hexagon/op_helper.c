@@ -1184,25 +1184,25 @@ float64 HELPER(dfmpyhh)(CPUHexagonState *env, float64 RxxV,
 
 /* Log a write to HVX vector */
 static void log_vreg_write(CPUHexagonState *env, int num, void *var,
-                           int vnew, uint32_t slot)
+                           VRegWriteType type, uint32_t slot)
 {
     VRegMask regnum_mask = ((VRegMask)1) << num;
 
     HEX_DEBUG_LOG("log_vreg_write[%d]\n", num);
 
-    env->VRegs_updated      |= (vnew != EXT_TMP) ? regnum_mask : 0;
-    env->VRegs_select       |= (vnew == EXT_NEW) ? regnum_mask : 0;
-    env->VRegs_updated_tmp  |= (vnew == EXT_TMP) ? regnum_mask : 0;
+    env->VRegs_updated      |= (type != EXT_TMP) ? regnum_mask : 0;
+    env->VRegs_select       |= (type == EXT_NEW) ? regnum_mask : 0;
+    env->VRegs_updated_tmp  |= (type == EXT_TMP) ? regnum_mask : 0;
     env->future_VRegs[num] = *(MMVector *)var;
-    if (vnew == EXT_TMP) {
+    if (type == EXT_TMP) {
         env->tmp_VRegs[num] = env->future_VRegs[num];
     }
 }
 
 static void log_mmvector_write(CPUHexagonState *env, int num,
-                               MMVector var, int vnew, uint32_t slot)
+                               MMVector var, VRegWriteType type, uint32_t slot)
 {
-    log_vreg_write(env, num, &var, vnew, slot);
+    log_vreg_write(env, num, &var, type, slot);
 }
 
 static void cancel_slot(CPUHexagonState *env, uint32_t slot)
