@@ -179,8 +179,6 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
     ctx->preg_log_idx = 0;
     bitmap_zero(ctx->pregs_written, NUM_PREGS);
-    ctx->temp_vregs_idx = 0;
-    ctx->temp_qregs_idx = 0;
     ctx->vreg_log_idx = 0;
     ctx->qreg_log_idx = 0;
     for (i = 0; i < STORES_MAX; i++) {

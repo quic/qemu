@@ -79,9 +79,6 @@ typedef struct {
 #define CLEAR_EXCEPTION         (env->status &= (~EXEC_STATUS_EXCEPTION))
 #define SET_EXCEPTION           (env->status |= EXEC_STATUS_EXCEPTION)
 
-/* This needs to be large enough for all the reads and writes in a packet */
-#define TEMP_VECTORS_MAX        25
-
 struct CPUHexagonState {
     target_ulong gpr[TOTAL_PER_THREAD_REGS];
     target_ulong pred[NUM_PREGS];
@@ -129,6 +126,11 @@ struct CPUHexagonState {
     MMQReg future_QRegs[NUM_QREGS];
     QRegMask QRegs_updated;
 
+    /* Temporaries used within instructions */
+    MMVector VdV, VxV, VyV;
+    MMVectorPair VddV, VuuV, VvvV, VxxV;
+    MMQReg QdV, QeV, QxV;
+
     VStoreLog vstore[VSTORES_MAX];
     uint8_t store_pending[VSTORES_MAX];
     uint8_t vstore_pending[VSTORES_MAX];
@@ -137,9 +139,6 @@ struct CPUHexagonState {
     MemAccessInfo mem_access[SLOTS_MAX];
 
     int status;
-
-    MMVector temp_vregs[TEMP_VECTORS_MAX];
-    MMQReg temp_qregs[TEMP_VECTORS_MAX];
 };
 
 #define HEXAGON_CPU_CLASS(klass) \

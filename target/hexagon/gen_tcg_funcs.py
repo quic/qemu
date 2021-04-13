@@ -125,11 +125,10 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid))
             f.write("    const int %s%sN = insn->regno[%d];\n" %\
                 (regtype, regid, regno))
-            f.write("    do {\n")
-            f.write("        const int offset = new_temp_vreg_offset(ctx, 2);\n")
-            f.write("        tcg_gen_addi_ptr(%s%sV, cpu_env, offset);\n" % \
-                                 (regtype, regid))
-            f.write("    } while (0);\n")
+            f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env,\n" % \
+                (regtype, regid))
+            f.write("        offsetof(CPUHexagonState, %s%sV));\n" % \
+                (regtype, regid))
         elif (regid in {"s","u", "v", "w"}):
             f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                 (regtype, regid))
@@ -140,11 +139,10 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid))
             f.write("    const int %s%sN = insn->regno[%d];\n" %\
                 (regtype, regid, regno))
-            f.write("    do {\n")
-            f.write("        const int offset = new_temp_vreg_offset(ctx, 1);\n")
-            f.write("        tcg_gen_addi_ptr(%s%sV, cpu_env, offset);\n" % \
-                                 (regtype, regid))
-            f.write("    } while (0);\n")
+            f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env,\n" % \
+                (regtype, regid))
+            f.write("        offsetof(CPUHexagonState, %s%sV));\n" % \
+                (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "Q"):
@@ -153,11 +151,10 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid))
             f.write("    const int %s%sN = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
-            f.write("    do {\n")
-            f.write("        const int offset = new_temp_qreg_offset(ctx);\n")
-            f.write("        tcg_gen_addi_ptr(%s%sV, cpu_env, offset);\n" % \
-                                 (regtype, regid))
-            f.write("    } while (0);\n")
+            f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env,\n" % \
+                (regtype, regid))
+            f.write("        offsetof(CPUHexagonState, %s%sV));\n" % \
+                (regtype, regid))
         elif (regid in {"s", "t", "u", "v"}):
             f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                 (regtype, regid))

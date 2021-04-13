@@ -889,28 +889,6 @@ static inline void gen_lshiftr_4_4u(TCGv dst, TCGv src, int32_t shift_amt)
     }
 }
 
-static uint32_t new_temp_vreg_offset(DisasContext *ctx, int num)
-{
-    uint32_t offset =
-        offsetof(CPUHexagonState, temp_vregs[ctx->temp_vregs_idx]);
-
-    HEX_DEBUG_LOG("new_temp_vreg_offset: %d\n", ctx->temp_vregs_idx);
-    g_assert(ctx->temp_vregs_idx + num - 1 < TEMP_VECTORS_MAX);
-    ctx->temp_vregs_idx += num;
-    return offset;
-}
-
-static uint32_t new_temp_qreg_offset(DisasContext *ctx)
-{
-    uint32_t offset =
-        offsetof(CPUHexagonState, temp_qregs[ctx->temp_qregs_idx]);
-
-    HEX_DEBUG_LOG("new_temp_qreg_offset: %d\n", ctx->temp_qregs_idx);
-    g_assert(ctx->temp_qregs_idx < TEMP_VECTORS_MAX);
-    ctx->temp_qregs_idx++;
-    return offset;
-}
-
 static void gen_read_qreg_readonly(TCGv_ptr var, int num)
 {
     uint32_t offset = offsetof(CPUHexagonState, QRegs[(num)]);
