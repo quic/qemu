@@ -52,6 +52,7 @@
 #include "hex_mmu.h"
 #endif
 #include "op_helper.h"
+#include "hw/intc/l2vic.h"
 
 #if COUNT_HEX_HELPERS
 #include "opcodes.h"
@@ -1088,6 +1089,16 @@ uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
     }
     return dest_reg;
 }
+void HELPER(ciad)(CPUHexagonState *env, uint32_t src)
+{
+    HEX_DEBUG_LOG("%s: tid %d, src 0x%x\n",
+        __FUNCTION__, env->threadId, src);
+    uint32_t ipend = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    ipend &= ~(src << 16);
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipend);
+    hexagon_clear_last_irq(L2VIC_VID_0);
+    return;
+}
 
 uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
 {
@@ -1137,6 +1148,11 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 {
+    if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
+        uint32_t vid = hexagon_find_last_irq(reg);
+        ARCH_SET_SYSTEM_REG(env, reg, vid);
+    }
+
     if ((reg == HEX_SREG_TIMERLO) || (reg == HEX_SREG_TIMERHI)) {
         uint32_t low = 0;
         uint32_t high = 0;

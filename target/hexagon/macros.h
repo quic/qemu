@@ -1876,22 +1876,11 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
         gen_helper_iassignw(cpu_env, RS); \
     } while (0)
 
-
 #define DO_SIAD(RS) \
     do { \
         TCGv tmp = tcg_temp_new(); \
         gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp); \
         tcg_gen_ori_tl(tmp, tmp, not_rs); \
-        gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp);  \
-    } while (0)
-
-#define DO_CIAD(RS) \
-    do { \
-        TCGv tmp = tcg_temp_new(); \
-        TCGv not_rs = tcg_temp_new(); \
-        tcg_gen_not_i32(not_rs, (RS)); \
-        gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp); \
-        tcg_gen_andi_tl(tmp, tmp, not_rs); \
         gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp);  \
     } while (0)
 
@@ -1916,6 +1905,11 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
         helper_iassignw(env, RS); \
     } while (0)
 
+#define DO_CIAD(RS)                   \
+    do {                                  \
+        helper_ciad(env, RS); \
+    } while (0)
+
 #define DO_SIAD(RS) \
     do { \
         uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
@@ -1924,13 +1918,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
         WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
     } while (0)
 
-#define DO_CIAD(RS) \
-    do { \
-        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
-        uint32_t iad = fGET_FIELD(tmp, IPENDAD_IAD); \
-        fSET_FIELD(tmp, IPENDAD_IAD, tmp & ~iad); \
-        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
-    } while (0)
 #define DO_CSWI(RS) \
     do { \
         uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \

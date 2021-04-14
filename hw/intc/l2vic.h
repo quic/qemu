@@ -20,6 +20,13 @@
  * THE SOFTWARE.
  */
 
+#define L2VIC_VID_GRP_0         0x0     /* Read */
+#define L2VIC_VID_GRP_1         0x4     /* Read */
+#define L2VIC_VID_GRP_2         0x8     /* Read */
+#define L2VIC_VID_GRP_3         0xC     /* Read */
+#define L2VIC_VID_0             0x10    /* Read SOFTWARE DEFINED */
+#define L2VIC_VID_1             0x14    /* Read SOFTWARE DEFINED NOT YET USED */
+#define L2VIC_INT_ENABLEn       0x100   /* Read/Write */
 #define L2VIC_INT_ENABLEn       0x100   /* Read/Write */
 #define L2VIC_INT_ENABLE_CLEARn 0x180   /* Write */
 #define L2VIC_INT_ENABLE_SETn   0x200   /* Write */

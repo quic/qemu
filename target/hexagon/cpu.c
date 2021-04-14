@@ -477,8 +477,6 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
              * must pend it and assert it later.
              */
            hexagon_set_interrupts(env, 1 << irq);
-           hexagon_set_l2vic_pending(level);
-
            /*
             * FIXME: or should we make this method the general method
             * and not one that's only used when threads are occupied?
@@ -505,21 +503,10 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
             * FIXME: or should we make this method the general method
             * and not one that's only used when threads are occupied?
             */
-
            return;
         }
-
-        /* NOTE: when level is not zero it is equal to the external IRQ # */
-        ARCH_SET_SYSTEM_REG(env, HEX_SREG_VID, level);
-
         env->cause_code = HEX_CAUSE_INT0 + irq;
     }
-
-    /*
-     * XXX_SM: The VID must match the IRQ number must match the one
-     *         in hexagon_testboard.c when setting up the "qutimer"
-     */
-
     switch (irq) {
     case HEXAGON_CPU_IRQ_0 ... HEXAGON_CPU_IRQ_7:
         HEX_DEBUG_LOG("%s: IRQ irq:%d, level:%d\n", __func__, irq, level);

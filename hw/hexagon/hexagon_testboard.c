@@ -251,26 +251,23 @@ void hexagon_read_timer(uint32_t *low, uint32_t *high)
     cpu_physical_memory_read(high_addr, high, sizeof(*high));
 }
 
-void hexagon_set_l2vic_pending(uint32_t int_num)
+uint32_t hexagon_find_last_irq(uint32_t vid)
 {
-    uint64_t val;
-    uint32_t slice = (int_num / 32) * 4;
-    val = 1 << (int_num % 32);
-    target_ulong vidval, origval;
+    int offset = (vid ==  HEX_SREG_VID) ? L2VIC_VID_0 : L2VIC_VID_1;
 
-    const hwaddr addr = cfgExtensions.l2vic_base + L2VIC_INT_PENDINGn;
-    cpu_physical_memory_read(addr + slice, &vidval, 4);
-    origval = vidval;
-    vidval |= val;
-    if (origval == vidval) {
-        HEX_DEBUG_LOG("%s, slice = %d, int_num = %d\n",
-                      __func__, slice / 4, int_num);
-        HEX_DEBUG_LOG("val = 0x%lx, vidval = 0x%x\n", val, vidval);
-        HEX_DEBUG_LOG("Double pend of int#:%ld\n", find_first_bit(&val, 32));
-    }
-    cpu_physical_memory_write(addr + slice, &vidval, 4);
+    const hwaddr pend_mem = cfgExtensions.l2vic_base + offset;
+    uint32_t irq;
+    cpu_physical_memory_read(pend_mem, &irq, sizeof(irq));
+    return irq;
 }
-
+void hexagon_clear_last_irq(uint32_t offset) {
+    /* currently only l2vic is the only attached it uses vid0, remove
+     * the assert below if anther is added */
+    assert (offset == L2VIC_VID_0);
+    const hwaddr pend_mem = cfgExtensions.l2vic_base + offset;
+    uint32_t val = 0;
+    cpu_physical_memory_write(pend_mem, &val, sizeof(val));
+}
 
 void hexagon_clear_l2vic_pending(uint32_t int_num)
 {
@@ -279,9 +276,9 @@ void hexagon_clear_l2vic_pending(uint32_t int_num)
     uint32_t slice = (int_num / 32) * 4;
     val = 1 << (int_num % 32);
     const hwaddr addr = cfgExtensions.l2vic_base + L2VIC_INT_PENDINGn;
-    cpu_physical_memory_read(addr + slice, &vidval, 4);
+    cpu_physical_memory_read(addr + slice, &vidval, sizeof(vidval));
     vidval &= ~val;
-    cpu_physical_memory_write(addr + slice, &vidval, 4);
+    cpu_physical_memory_write(addr + slice, &vidval, sizeof(vidval));
 }
 
 
@@ -289,11 +286,11 @@ uint32_t hexagon_find_l2vic_pending(void)
 {
     const hwaddr pend = cfgExtensions.l2vic_base + L2VIC_INT_PENDINGn;
     uint64_t val;
-    cpu_physical_memory_read(pend, &val, 8);
+    cpu_physical_memory_read(pend, &val, sizeof(val));
     uint32_t inum = find_first_bit(&val, 64);
 
     if (inum == 64) {
-        cpu_physical_memory_read(pend + 8, &val, 8);
+        cpu_physical_memory_read(pend + 8, &val, sizeof(val));
         inum = find_first_bit(&val, 64);
         if (inum == 64) {
             inum = 0;
@@ -304,10 +301,10 @@ uint32_t hexagon_find_l2vic_pending(void)
     /* Verify that stat matches which indicates a truly pending interrupt */
     if (inum != 64) {
         const hwaddr stat = cfgExtensions.l2vic_base + L2VIC_INT_STATUSn;
-        cpu_physical_memory_read(stat, &val, 8);
+        cpu_physical_memory_read(stat, &val, sizeof(val));
         uint32_t stat_num = find_first_bit(&val, 64);
         if (stat_num == 64) {
-            cpu_physical_memory_read(stat + 8, &val, 8);
+            cpu_physical_memory_read(stat + 8, &val, sizeof(val));
             stat_num = find_first_bit(&val, 64);
             if (stat_num == 64) {
                 inum = 0;
@@ -333,6 +330,9 @@ uint32_t hexagon_find_l2vic_pending(void)
 
 #define TYPE_FASTL2VIC "fastl2vic"
 #define FASTL2VIC(obj) OBJECT_CHECK(FastL2VICState, (obj), TYPE_FASTL2VIC)
+#define FASTL2VIC_ENABLE 0x0
+#define FASTL2VIC_DISABLE 0x1
+#define FASTL2VIC_INT 0x2
 
 typedef struct FastL2VICState {
     SysBusDevice parent_obj;
@@ -352,17 +352,15 @@ static void fastl2vic_write(void *opaque, hwaddr offset,
         uint32_t slice = (irq / 32) * 4;
         val = 1 << (irq % 32);
 
-        if (cmd == 0x0) {
+        if (cmd == FASTL2VIC_ENABLE) {
             const hwaddr addr = cfgExtensions.l2vic_base
                                 + L2VIC_INT_ENABLE_SETn;
             cpu_physical_memory_write(addr + slice, &val, size);
-        }
-        else if (cmd == 0x1) {
+        } else if (cmd == FASTL2VIC_DISABLE) {
             const hwaddr addr = cfgExtensions.l2vic_base
                                 + L2VIC_INT_ENABLE_CLEARn;
             cpu_physical_memory_write(addr + slice, &val, size);
-        }
-        else if (cmd == 0x2) {
+        } else if (cmd == FASTL2VIC_INT) {
             const hwaddr addr = cfgExtensions.l2vic_base
                                 + L2VIC_SOFT_INTn;
             cpu_physical_memory_write(addr + slice, &val, size);
