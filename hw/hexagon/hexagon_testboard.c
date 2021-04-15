@@ -110,6 +110,26 @@ struct ProcessorState ProcessorStateV68 = {
 
 /* Board init.  */
 static struct hexagon_board_boot_info hexagon_binfo;
+static int ELF_FLAG_ARCH_MASK = 0x0ff;
+
+static GString *get_exe_dir(GString *exe_dir) {
+#ifdef __linux__
+    char exe_name[1024];
+    ssize_t exe_length;
+
+    exe_length = readlink("/proc/self/exe", exe_name, sizeof(exe_name));
+    if (exe_length == -1)
+    {
+        return NULL;
+    }
+    exe_name[sizeof(exe_name)-1] = '\0';
+    char *exe_dir_ = dirname(exe_name);
+    return g_string_assign(exe_dir, exe_dir_);
+#else
+#error "No host implementation for get_exe_dir() provided"
+#endif
+}
+
 
 static void hexagon_load_kernel(CPUHexagonState *env)
 
@@ -126,6 +146,22 @@ static void hexagon_load_kernel(CPUHexagonState *env)
             hexagon_binfo.kernel_filename);
         exit(1);
     }
+
+    GString *exe_dir_str = g_string_new("");
+    env->exe_arch = (hexagon_binfo.kernel_elf_flags & ELF_FLAG_ARCH_MASK);
+    GString *lib_search_dir = g_string_new("");
+
+    exe_dir_str = get_exe_dir(exe_dir_str);
+    gchar *exe_dir = g_string_free(exe_dir_str, false);
+
+    /* $exe_dir/../target/hexagon/lib/v$exe_elf_machine_flags/G0/pic/ */
+    g_string_printf(lib_search_dir,
+        "%s/../target/hexagon/lib/v%x/G0/pic", exe_dir,
+        env->exe_arch);
+
+    env->lib_search_dir = g_string_free(lib_search_dir, false);
+    g_free(exe_dir);
+
     env->gpr[HEX_REG_PC] = pentry;
 }
 

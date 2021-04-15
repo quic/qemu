@@ -334,6 +334,7 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
             env->system_ptr = 0;
             env->threadId = htid;
             env->cmdline = current_env->cmdline;
+            env->lib_search_dir = current_env->lib_search_dir;
             env->hex_tlb = current_env->hex_tlb;
             env->processor_ptr = current_env->processor_ptr;
             env->processor_ptr->thread[env->threadId] = env;

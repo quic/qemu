@@ -103,6 +103,7 @@ extern int daemon(int, int);
  * because it is redefined there. */
 #include <setjmp.h>
 #include <signal.h>
+#include <libgen.h>
 
 #ifndef _WIN32
 #include <sys/wait.h>
