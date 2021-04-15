@@ -7,21 +7,21 @@ attribs_def = meson.current_source_dir() / 'attribs_def.h'
 # We use the do_qemu.py script to generate the following files
 #
 
-semantics_gen = executable('gen_semantics', ['gen_semantics.c'],
+gen_semantics = executable('gen_semantics', ['gen_semantics.c'],
     native: true, build_by_default: false)
 
 semantics_generated = custom_target(
     'semantics_generated.pyinc',
     output: 'semantics_generated.pyinc',
-    input: semantics_gen,
-    command: [semantics_gen, '@OUTPUT@'],
+    command: [gen_semantics, '@OUTPUT@'],
 )
+
+gen_type = (config_target.has_key('CONFIG_USER_ONLY') ? ['USER'] : ['SYSTEM'])
 
 opcodes = custom_target(
     'opcodes.c',
     output : ['qemu_def_generated.h', 'qemu_wrap_generated.h', 'opcodes_def_generated.h', 'op_attribs_generated.h', 'op_regs_generated.h', 'printinsn_generated.h',],
-    input : 'do_qemu.py',
-    command : [python, '@INPUT@', 'SYSTEM', semantics_generated, attribs_def, ],
+    command: [python, files('do_qemu.py'), gen_type, semantics_generated, attribs_def, ],
     depends: [semantics_generated],
 )
 hexagon_ss.add(opcodes)
@@ -32,16 +32,15 @@ gen_dectree_import = executable('gen_dectree_import',
 
 iset = custom_target(
     'gen_dectree_import',
-    output : ['iset.py',],
-    command : [gen_dectree_import, '@OUTPUT@'],
-    depends: gen_dectree_import)
+    output: ['iset.py',],
+    command: [gen_dectree_import, '@OUTPUT@'])
+
 hexagon_ss.add(iset)
 
 dectree = custom_target(
     'dectree_generated.h',
-    output : ['dectree_generated.h',],
-    input : 'dectree.py',
-    command : ['PYTHONPATH=' + meson.current_build_dir(), python, '@INPUT@', '@OUTPUT@'],
+    output: ['dectree_generated.h',],
+    command: ['env', 'PYTHONPATH=' + meson.current_build_dir(), python, files('dectree.py'), '@OUTPUT@'],
     depends: iset,
 )
 hexagon_softmmu_ss = ss.source_set()

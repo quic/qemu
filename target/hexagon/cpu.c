@@ -1058,12 +1058,12 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
     cc->disas_set_info = hexagon_cpu_disas_set_info;
 #if !defined(CONFIG_USER_ONLY)
     cc->get_phys_page_debug = hexagon_cpu_get_phys_page_debug;
+    /* For now, mark unmigratable: */
+    cc->vmsd = &vmstate_hexagon_cpu;
 #endif
 #ifdef CONFIG_TCG
     cc->tcg_ops = &hexagon_tcg_ops;
 #endif
-    /* For now, mark unmigratable: */
-    cc->vmsd = &vmstate_hexagon_cpu;
 }
 
 #ifndef CONFIG_USER_ONLY

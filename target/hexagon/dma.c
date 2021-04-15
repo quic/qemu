@@ -1079,10 +1079,14 @@ dma_instruction_latency(dma_t *dma, dma_cmd_report_t *report, uint32_t latency, 
 static void load_dma_descriptor(thread_t *env, uint32_t desc_addr, dma_descriptor_type0_t *desc)
 
 {
+#if !defined(CONFIG_USER_ONLY)
     uint8_t *store_ptr = (uint8_t *)desc;
     for (uint32_t i = 0; i < sizeof(dma_descriptor_type0_t); i += 4) {
         DEBUG_MEMORY_READ(desc_addr + i, 4, store_ptr + i);
     }
+#else
+    g_assert_not_reached();
+#endif
 }
 
 static void preload_buffers(dma_t *dma, uint32_t new)

@@ -15,20 +15,15 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HEXAGON_TARGET_SYSCALL_H
-#define HEXAGON_TARGET_SYSCALL_H
+#ifndef HEXAGON_INTERNAL_HELPERS_H
+#define HEXAGON_INTERNAL_HELPERS_H
 
-struct target_pt_regs {
-    abi_long sepc;
-    abi_long sp;
-};
-
-#define UNAME_MACHINE "hexagon"
-#define UNAME_MINIMUM_RELEASE "4.15.0"
-
-#define TARGET_MCL_CURRENT 1
-#define TARGET_MCL_FUTURE  2
-#define TARGET_MCL_ONFAULT 4
+/*
+ * Change COUNT_HEX_HELPERS to 1 to count how many times each helper
+ * is called.  This is useful to figure out which helpers would benefit
+ * from writing an fWRAP macro.
+ */
+#define COUNT_HEX_HELPERS 0
 
 
-#endif
+#endif /* HEXAGON_INTERNAL_HELPERS_H */

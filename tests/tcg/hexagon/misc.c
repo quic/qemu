@@ -223,7 +223,7 @@ uint32_t early_exit;
  * Write this as a function because we can't guarantee the compiler will
  * allocate a frame with just the SL2_return_tnew packet.
  */
-static void SL2_return_tnew(int x);
+void SL2_return_tnew(int x);
 asm ("SL2_return_tnew:\n\t"
      "   allocframe(#0)\n\t"
      "   r1 = #1\n\t"
