@@ -20,6 +20,7 @@
 #include "cpu.h"
 #include "internal.h"
 #include "tcg/tcg-op.h"
+#include "tcg/tcg-op-gvec.h"
 #include "insn.h"
 #include "opcodes.h"
 #include "translate.h"
@@ -889,95 +890,24 @@ static inline void gen_lshiftr_4_4u(TCGv dst, TCGv src, int32_t shift_amt)
     }
 }
 
-static void gen_read_qreg_readonly(TCGv_ptr var, int num)
+static intptr_t vreg_src_off(DisasContext *ctx, int num)
 {
-    uint32_t offset = offsetof(CPUHexagonState, QRegs[(num)]);
-    tcg_gen_addi_ptr(var, cpu_env, offset);
+    intptr_t offset = offsetof(CPUHexagonState, VRegs[num]);
+
+    if (test_bit(num, ctx->vregs_select)) {
+        offset = offsetof(CPUHexagonState, future_VRegs[num]);
+    }
+    if (test_bit(num, ctx->vregs_updated_tmp)) {
+        offset = offsetof(CPUHexagonState, tmp_VRegs[num]);
+    }
+    return offset;
 }
 
-static void gen_read_qreg(TCGv_ptr var, int num)
-{
-    uint32_t offset = offsetof(CPUHexagonState, QRegs[(num)]);
-    TCGv_ptr src = tcg_temp_new_ptr();
-    tcg_gen_addi_ptr(src, cpu_env, offset);
-    gen_memcpy(var, src, sizeof(MMQReg));
-    tcg_temp_free_ptr(src);
-}
-
-static void gen_read_vreg_ptr_src(TCGv_ptr ptr_src, int num)
-{
-    TCGv zero = tcg_const_tl(0);
-    TCGv offset_default =
-        tcg_const_tl(offsetof(CPUHexagonState, VRegs[num]));
-    TCGv offset_future =
-        tcg_const_tl(offsetof(CPUHexagonState, future_VRegs[num]));
-    TCGv offset_tmp =
-        tcg_const_tl(offsetof(CPUHexagonState, tmp_VRegs[num]));
-    TCGv offset = tcg_temp_new();
-    TCGv_ptr offset_ptr = tcg_temp_new_ptr();
-    TCGv written = tcg_temp_new();
-
-    /*
-     *  written = hex_VRegs_select & (1 << num);
-     *  offset = written ? offset_future, offset_vregs;
-     */
-    tcg_gen_andi_tl(written, hex_VRegs_select, 1 << num);
-    tcg_gen_movcond_tl(TCG_COND_NE, offset, written, zero,
-                       offset_future, offset_default);
-
-    /*
-     * written = hex_VRegs_updated_tmp & (1 << num);
-     * if (written) offset = offset_tmp_vregs;
-     */
-    tcg_gen_andi_tl(written, hex_VRegs_updated_tmp, 1 << num);
-    tcg_gen_movcond_tl(TCG_COND_NE, offset, written, zero, offset_tmp, offset);
-
-    tcg_gen_ext_i32_ptr(offset_ptr, offset);
-    tcg_gen_add_ptr(ptr_src, cpu_env, offset_ptr);
-
-    tcg_temp_free(zero);
-    tcg_temp_free(offset_default);
-    tcg_temp_free(offset_future);
-    tcg_temp_free(offset_tmp);
-    tcg_temp_free(offset);
-    tcg_temp_free_ptr(offset_ptr);
-    tcg_temp_free(written);
-}
-
-static void gen_read_vreg_readonly(TCGv_ptr var, int num)
-{
-    TCGv_ptr ptr_src = tcg_temp_new_ptr();
-    gen_read_vreg_ptr_src(ptr_src, num);
-    tcg_gen_addi_ptr(var, ptr_src, 0);
-    tcg_temp_free_ptr(ptr_src);
-}
-
-static void gen_read_vreg(TCGv_ptr var, int num)
-{
-    TCGv_ptr ptr_src = tcg_temp_new_ptr();
-    gen_read_vreg_ptr_src(ptr_src, num);
-    gen_memcpy(var, ptr_src, sizeof(MMVector));
-    tcg_temp_free_ptr(ptr_src);
-}
-
-static void gen_read_vreg_pair(TCGv_ptr var, int num)
-{
-    TCGv_ptr v0 = tcg_temp_new_ptr();
-    TCGv_ptr v1 = tcg_temp_new_ptr();
-    tcg_gen_addi_ptr(v0, var, offsetof(MMVectorPair, v[0]));
-    gen_read_vreg(v0, num ^ 0);
-    tcg_gen_addi_ptr(v1, var, offsetof(MMVectorPair, v[1]));
-    gen_read_vreg(v1, num ^ 1);
-    tcg_temp_free_ptr(v0);
-    tcg_temp_free_ptr(v1);
-}
-
-static void gen_log_vreg_write(TCGv_ptr var, int num, VRegWriteType type,
+static void gen_log_vreg_write(intptr_t srcoff, int num, VRegWriteType type,
                                int slot_num, bool is_predicated)
 {
     TCGLabel *label_end = NULL;
-    TCGv mask;
-    TCGv_ptr dst;
+    intptr_t dstoff;
 
     if (is_predicated) {
         TCGv cancelled = tcg_temp_local_new();
@@ -989,55 +919,44 @@ static void gen_log_vreg_write(TCGv_ptr var, int num, VRegWriteType type,
         tcg_temp_free(cancelled);
     }
 
-    mask = tcg_const_tl(1 << num);
-    dst = tcg_temp_new_ptr();
     if (type != EXT_TMP) {
-        tcg_gen_or_tl(hex_VRegs_updated, hex_VRegs_updated, mask);
+        tcg_gen_ori_tl(hex_VRegs_updated, hex_VRegs_updated, 1 << num);
     }
     if (type == EXT_NEW) {
-        tcg_gen_or_tl(hex_VRegs_select, hex_VRegs_select, mask);
+        tcg_gen_ori_tl(hex_VRegs_select, hex_VRegs_select, 1 << num);
     }
     if (type == EXT_TMP) {
-        tcg_gen_or_tl(hex_VRegs_updated_tmp, hex_VRegs_updated_tmp, mask);
+        tcg_gen_ori_tl(hex_VRegs_updated_tmp, hex_VRegs_updated_tmp, 1 << num);
     }
-    tcg_gen_addi_ptr(dst, cpu_env,
-                     offsetof(CPUHexagonState, future_VRegs[num]));
-    gen_memcpy(dst, var, sizeof(MMVector));
+
+    dstoff = offsetof(CPUHexagonState, future_VRegs[num]);
+    tcg_gen_gvec_mov(MO_32, dstoff, srcoff, sizeof(MMVector), sizeof(MMVector));
+
     if (type == EXT_TMP) {
-        TCGv_ptr src = tcg_temp_new_ptr();
-        tcg_gen_addi_ptr(dst, cpu_env,
-                         offsetof(CPUHexagonState, tmp_VRegs[num]));
-        tcg_gen_addi_ptr(src, cpu_env,
-                         offsetof(CPUHexagonState, future_VRegs[num]));
-        gen_memcpy(dst, src, sizeof(MMVector));
-        tcg_temp_free_ptr(src);
+        dstoff = offsetof(CPUHexagonState, tmp_VRegs[num]);
+        tcg_gen_gvec_mov(MO_32, dstoff, srcoff,
+                         sizeof(MMVector), sizeof(MMVector));
     }
-    tcg_temp_free(mask);
-    tcg_temp_free_ptr(dst);
 
     if (is_predicated) {
         gen_set_label(label_end);
     }
 }
 
-static void gen_log_vreg_write_pair(TCGv_ptr var, int num, VRegWriteType type,
-                                    int slot_num, bool is_predicated)
+static void gen_log_vreg_write_pair(intptr_t srcoff, int num,
+                                    VRegWriteType type, int slot_num,
+                                    bool is_predicated)
 {
-    TCGv_ptr v0 = tcg_temp_local_new_ptr();
-    TCGv_ptr v1 = tcg_temp_local_new_ptr();
-    tcg_gen_addi_ptr(v0, var, offsetof(MMVectorPair, v[0]));
-    gen_log_vreg_write(v0, num ^ 0, type, slot_num, is_predicated);
-    tcg_gen_addi_ptr(v1, var, offsetof(MMVectorPair, v[1]));
-    gen_log_vreg_write(v1, num ^ 1, type, slot_num, is_predicated);
-    tcg_temp_free_ptr(v0);
-    tcg_temp_free_ptr(v1);
+    gen_log_vreg_write(srcoff, num ^ 0, type, slot_num, is_predicated);
+    srcoff += sizeof(MMVector);
+    gen_log_vreg_write(srcoff, num ^ 1, type, slot_num, is_predicated);
 }
 
-static void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
+static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
                                int slot_num, bool is_predicated)
 {
     TCGLabel *label_end = NULL;
-    TCGv_ptr dst;
+    intptr_t dstoff;
 
     if (is_predicated) {
         TCGv cancelled = tcg_temp_local_new();
@@ -1049,14 +968,11 @@ static void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
         tcg_temp_free(cancelled);
     }
 
-    dst = tcg_temp_new_ptr();
-    tcg_gen_addi_ptr(dst, cpu_env,
-                     offsetof(CPUHexagonState, future_QRegs[num]));
-    gen_memcpy(dst, var, sizeof(MMQReg));
-    tcg_gen_ori_tl(hex_QRegs_updated, hex_QRegs_updated, 1 << num);
-    tcg_temp_free_ptr(dst);
+    dstoff = offsetof(CPUHexagonState, future_QRegs[num]);
+    tcg_gen_gvec_mov(MO_32, dstoff, srcoff, sizeof(MMQReg), sizeof(MMQReg));
 
     if (is_predicated) {
+        tcg_gen_ori_tl(hex_QRegs_updated, hex_QRegs_updated, 1 << num);
         gen_set_label(label_end);
     }
 }

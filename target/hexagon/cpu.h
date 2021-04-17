@@ -114,22 +114,29 @@ struct CPUHexagonState {
     target_ulong is_gather_store_insn;
     target_ulong gather_issued;
 
-    MMVector VRegs[NUM_VREGS];
-    MMVector future_VRegs[NUM_VREGS];
-    MMVector tmp_VRegs[NUM_VREGS];
+    MMVector VRegs[NUM_VREGS] QEMU_ALIGNED(16);
+    MMVector future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
+    MMVector tmp_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
 
     VRegMask VRegs_updated_tmp;
     VRegMask VRegs_updated;
     VRegMask VRegs_select;
 
-    MMQReg QRegs[NUM_QREGS];
-    MMQReg future_QRegs[NUM_QREGS];
+    MMQReg QRegs[NUM_QREGS] QEMU_ALIGNED(16);
+    MMQReg future_QRegs[NUM_QREGS] QEMU_ALIGNED(16);
     QRegMask QRegs_updated;
 
     /* Temporaries used within instructions */
-    MMVector VdV, VxV, VyV;
-    MMVectorPair VddV, VuuV, VvvV, VxxV;
-    MMQReg QdV, QeV, QxV;
+    MMVector VdV QEMU_ALIGNED(16),
+             VxV QEMU_ALIGNED(16),
+             VyV QEMU_ALIGNED(16);
+    MMVectorPair VddV QEMU_ALIGNED(16),
+                 VuuV QEMU_ALIGNED(16),
+                 VvvV QEMU_ALIGNED(16),
+                 VxxV QEMU_ALIGNED(16);
+    MMQReg QdV QEMU_ALIGNED(16),
+           QeV QEMU_ALIGNED(16),
+           QxV QEMU_ALIGNED(16);
 
     VStoreLog vstore[VSTORES_MAX];
     uint8_t store_pending[VSTORES_MAX];

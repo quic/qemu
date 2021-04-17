@@ -41,6 +41,9 @@ typedef struct DisasContext {
     int vreg_log[NUM_VREGS];
     bool vreg_is_predicated[NUM_VREGS];
     int vreg_log_idx;
+    DECLARE_BITMAP(vregs_updated_tmp, NUM_VREGS);
+    DECLARE_BITMAP(vregs_updated, NUM_VREGS);
+    DECLARE_BITMAP(vregs_select, NUM_VREGS);
     int qreg_log[NUM_QREGS];
     bool qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
@@ -75,18 +78,30 @@ static inline bool is_preloaded(DisasContext *ctx, int num)
 }
 
 static inline void ctx_log_vreg_write(DisasContext *ctx,
-                                      int rnum, bool is_predicated)
+                                      int rnum, VRegWriteType type,
+                                      bool is_predicated)
 {
     ctx->vreg_log[ctx->vreg_log_idx] = rnum;
     ctx->vreg_is_predicated[ctx->vreg_log_idx] = is_predicated;
     ctx->vreg_log_idx++;
+
+    if (type != EXT_TMP) {
+        set_bit(rnum, ctx->vregs_updated);
+    }
+    if (type == EXT_NEW) {
+        set_bit(rnum, ctx->vregs_select);
+    }
+    if (type == EXT_TMP) {
+        set_bit(rnum, ctx->vregs_updated_tmp);
+    }
 }
 
 static inline void ctx_log_vreg_write_pair(DisasContext *ctx,
-                                           int rnum, bool is_predicated)
+                                           int rnum, VRegWriteType type,
+                                           bool is_predicated)
 {
-    ctx_log_vreg_write(ctx, rnum ^ 0, is_predicated);
-    ctx_log_vreg_write(ctx, rnum ^ 1, is_predicated);
+    ctx_log_vreg_write(ctx, rnum ^ 0, type, is_predicated);
+    ctx_log_vreg_write(ctx, rnum ^ 1, type, is_predicated);
 }
 
 static inline void ctx_log_qreg_write(DisasContext *ctx,
@@ -122,6 +137,5 @@ extern TCGv hex_VRegs_updated;
 extern TCGv hex_VRegs_select;
 extern TCGv hex_QRegs_updated;
 
-void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n);
 void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif

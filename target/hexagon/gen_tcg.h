@@ -2336,6 +2336,10 @@
         tcg_temp_free_i64(right); \
     } while (0)
 
+#define fGEN_TCG_V6_vaddw(SHORTCODE) \
+    tcg_gen_gvec_add(MO_32, VdV_off, VuV_off, VvV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
 /* Floating point */
 #define fGEN_TCG_F2_conv_sf2df(SHORTCODE) \
     gen_helper_conv_sf2df(RddV, cpu_env, RsV)

@@ -120,46 +120,77 @@ def genptr_decl(f, tag, regtype, regid, regno):
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "V"):
-        if (regid in {"dd", "uu", "vv", "xx"}):
-            f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
-                (regtype, regid))
+        if (regid in {"dd"}):
             f.write("    const int %s%sN = insn->regno[%d];\n" %\
                 (regtype, regid, regno))
-            f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env,\n" % \
-                (regtype, regid))
-            f.write("        offsetof(CPUHexagonState, %s%sV));\n" % \
-                (regtype, regid))
-        elif (regid in {"s","u", "v", "w"}):
-            f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
-                (regtype, regid))
+            f.write("    const intptr_t %s%sV_off =\n" %\
+                 (regtype, regid))
+            f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
+                 (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                    (regtype, regid))
+                f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
+                    (regtype, regid, regtype, regid))
+        elif (regid in {"uu", "vv", "xx"}):
+            f.write("    const int %s%sN = insn->regno[%d];\n" %\
+                (regtype, regid, regno))
+            f.write("    const intptr_t %s%sV_off =\n" % \
+                 (regtype, regid))
+            f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
+                 (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                    (regtype, regid))
+                f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
+                    (regtype, regid, regtype, regid))
+        elif (regid in {"s", "u", "v", "w"}):
             f.write("    const int %s%sN = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
+            f.write("    const intptr_t %s%sV_off =\n" % \
+                              (regtype, regid))
+            f.write("        vreg_src_off(ctx, %s%sN);\n" % \
+                              (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                    (regtype, regid))
         elif (regid in {"d", "x", "y"}):
-            f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
-                (regtype, regid))
             f.write("    const int %s%sN = insn->regno[%d];\n" %\
                 (regtype, regid, regno))
-            f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env,\n" % \
+            f.write("    const intptr_t %s%sV_off =\n" %\
                 (regtype, regid))
-            f.write("        offsetof(CPUHexagonState, %s%sV));\n" % \
+            f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
                 (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                    (regtype, regid))
+                f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
+                    (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "Q"):
         if (regid in {"d", "e", "x"}):
-            f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
-                (regtype, regid))
             f.write("    const int %s%sN = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
-            f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env,\n" % \
+            f.write("    const intptr_t %s%sV_off =\n" % \
                 (regtype, regid))
-            f.write("        offsetof(CPUHexagonState, %s%sV));\n" % \
+            f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
                 (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                    (regtype, regid))
+                f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
+                    (regtype, regid, regtype, regid))
         elif (regid in {"s", "t", "u", "v"}):
-            f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
-                (regtype, regid))
             f.write("    const int %s%sN = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
+            f.write("    const intptr_t %s%sV_off =\n" %\
+                (regtype, regid))
+            f.write("        offsetof(CPUHexagonState, QRegs[%s%sN]);\n" % \
+                (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                    (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
@@ -208,7 +239,7 @@ def genptr_decl_imm(f,immlett):
     f.write("    int %s = insn->immed[%d];\n" % \
         (hex_common.imm_name(immlett), i))
 
-def genptr_free(f,regtype,regid,regno):
+def genptr_free(f, tag, regtype, regid, regno):
     if (regtype == "R"):
         if (regid in {"dd", "ss", "tt", "xx", "yy"}):
             f.write("    tcg_temp_free_i64(%s%sV);\n" % (regtype, regid))
@@ -233,14 +264,16 @@ def genptr_free(f,regtype,regid,regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "V"):
         if (regid in {"dd", "uu", "vv", "xx", "d", "s", "u", "v", "w", "x", "y"}):
-            f.write("    tcg_temp_free_ptr(%s%sV);\n" % \
-                (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    tcg_temp_free_ptr(%s%sV);\n" % \
+                    (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "Q"):
         if (regid in {"d", "e", "s", "t", "u", "v", "x"}):
-            f.write("    tcg_temp_free_ptr(%s%sV);\n" % \
-                (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    tcg_temp_free_ptr(%s%sV);\n" % \
+                    (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
@@ -264,10 +297,10 @@ def genptr_free_new(f,regtype,regid,regno):
 
 def genptr_free_opn(f,regtype,regid,i,tag):
     if (hex_common.is_pair(regid)):
-        genptr_free(f,regtype,regid,i)
+        genptr_free(f, tag, regtype, regid, i)
     elif (hex_common.is_single(regid)):
         if hex_common.is_old_val(regtype, regid, tag):
-            genptr_free(f,regtype,regid,i)
+            genptr_free(f, tag, regtype, regid, i)
         elif hex_common.is_new_val(regtype, regid, tag):
             genptr_free_new(f,regtype,regid,i)
         else:
@@ -275,7 +308,7 @@ def genptr_free_opn(f,regtype,regid,i,tag):
     else:
         print("Bad register parse: ",regtype,regid,toss,numregs)
 
-def genptr_src_read(f,regtype,regid):
+def genptr_src_read(f, tag, regtype, regid):
     if (regtype == "R"):
         if (regid in {"ss", "tt", "xx", "yy"}):
             f.write("    tcg_gen_concat_i32_i64(%s%sV, hex_gpr[%s%sN],\n" % \
@@ -307,23 +340,43 @@ def genptr_src_read(f,regtype,regid):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "V"):
         if (regid in {"uu", "vv", "xx"}):
-            f.write("    gen_read_vreg_pair(%s%sV, %s%sN);\n" % \
-                (regtype, regid, regtype, regid))
+            f.write("    tcg_gen_gvec_mov(MO_32, %s%sV_off,\n" % \
+                (regtype, regid))
+            f.write("        vreg_src_off(ctx, %s%sN),\n" % \
+                (regtype, regid))
+            f.write("        sizeof(MMVector), sizeof(MMVector));\n")
+            f.write("    tcg_gen_gvec_mov(MO_32,\n")
+            f.write("        %s%sV_off + sizeof(MMVector),\n" % \
+                (regtype, regid))
+            f.write("        vreg_src_off(ctx, %s%sN ^ 1),\n" % \
+                (regtype, regid))
+            f.write("        sizeof(MMVector), sizeof(MMVector));\n")
         elif (regid in {"s", "u", "v", "w"}):
-            f.write("    gen_read_vreg_readonly(%s%sV, %s%sN);\n" % \
-                             (regtype, regid, regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
+                                 (regtype, regid, regtype, regid))
         elif (regid in {"x", "y"}):
-            f.write("    gen_read_vreg(%s%sV, %s%sN);\n" % \
-                (regtype, regid, regtype, regid))
+            f.write("    tcg_gen_gvec_mov(MO_32, %s%sV_off,\n" % \
+                             (regtype, regid))
+            f.write("        vreg_src_off(ctx, %s%sN),\n" % \
+                             (regtype, regid))
+            f.write("        sizeof(MMVector), sizeof(MMVector));\n")
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
+                                 (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
-    elif (regtype== "Q"):
+    elif (regtype == "Q"):
         if (regid in {"s", "t", "u", "v"}):
-            f.write("    gen_read_qreg_readonly(%s%sV, %s%sN);\n" % \
-                (regtype, regid, regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
+                    (regtype, regid, regtype, regid))
         elif (regid in {"x"}):
-            f.write("    gen_read_qreg(%s%sV, %s%sN);\n" % \
-                (regtype, regid, regtype, regid))
+            f.write("    tcg_gen_gvec_mov(MO_32, %s%sV_off,\n" % \
+                (regtype, regid))
+            f.write("        offsetof(CPUHexagonState, QRegs[%s%sN]),\n" % \
+                (regtype, regid))
+            f.write("        sizeof(MMQReg), sizeof(MMQReg));\n")
         else:
             print("Bad register parse: ", regtype, regid)
     else:
@@ -344,10 +397,10 @@ def genptr_src_read_new(f,regtype,regid):
 
 def genptr_src_read_opn(f,regtype,regid,tag):
     if (hex_common.is_pair(regid)):
-        genptr_src_read(f,regtype,regid)
+        genptr_src_read(f, tag, regtype, regid)
     elif (hex_common.is_single(regid)):
         if hex_common.is_old_val(regtype, regid, tag):
-            genptr_src_read(f,regtype,regid)
+            genptr_src_read(f, tag, regtype, regid)
         elif hex_common.is_new_val(regtype, regid, tag):
             genptr_src_read_new(f,regtype,regid)
         else:
@@ -429,42 +482,44 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
     if (regtype == "V"):
         if (regid in {"dd", "xx", "yy"}):
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    gen_log_vreg_write_pair(%s%sV, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid,newv))
+                f.write("    gen_log_vreg_write_pair(%s%sV_off, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid, newv))
                 f.write("insn->slot, true);\n")
-                f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, true);\n" % \
-                    (regtype, regid))
+                f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
+                    (regtype, regid, newv))
+                f.write("        true);\n")
             else:
-                f.write("    gen_log_vreg_write_pair(%s%sV, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid,newv))
+                f.write("    gen_log_vreg_write_pair(%s%sV_off, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid, newv))
                 f.write("insn->slot, false);\n")
-                f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, false);\n" % \
-                    (regtype, regid))
+                f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
+                    (regtype, regid, newv))
+                f.write("        false);\n")
         elif (regid in {"d", "x", "y"}):
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    gen_log_vreg_write(%s%sV, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid,newv))
+                f.write("    gen_log_vreg_write(%s%sV_off, %s%sN, %s, " % \
+                    (regtype, regid, regtype, regid, newv))
                 f.write("insn->slot, true);\n")
-                f.write("    ctx_log_vreg_write(ctx, %s%sN, true);\n" % \
-                    (regtype, regid))
+                f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, true);\n" % \
+                    (regtype, regid, newv))
             else:
-                f.write("    gen_log_vreg_write(%s%sV, %s%sN, %s, " % \
+                f.write("    gen_log_vreg_write(%s%sV_off, %s%sN, %s, " % \
                     (regtype, regid, regtype, regid,newv))
                 f.write("insn->slot, false);\n")
-                f.write("    ctx_log_vreg_write(ctx, %s%sN, false);\n" % \
-                    (regtype, regid))
+                f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, false);\n" % \
+                    (regtype, regid, newv))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "Q"):
         if (regid in {"d", "e", "x"}):
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    gen_log_qreg_write(%s%sV, %s%sN, %s, " % \
+                f.write("    gen_log_qreg_write(%s%sV_off, %s%sN, %s, " % \
                     (regtype, regid, regtype, regid, newv))
                 f.write("insn->slot, true);\n")
                 f.write("    ctx_log_qreg_write(ctx, %s%sN, 1);\n" % \
                     (regtype, regid))
             else:
-                f.write("    gen_log_qreg_write(%s%sV, %s%sN, %s, " % \
+                f.write("    gen_log_qreg_write(%s%sV_off, %s%sN, %s, " % \
                     (regtype, regid, regtype, regid, newv))
                 f.write("insn->slot, false);\n")
                 f.write("    ctx_log_qreg_write(ctx, %s%sN, 0);\n" % \
