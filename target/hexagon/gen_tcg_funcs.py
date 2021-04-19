@@ -155,11 +155,12 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                     (regtype, regid))
         elif (regid in {"d", "x", "y"}):
-            f.write("    const int %s%sN = insn->regno[%d];\n" %\
+            f.write("    const int %s%sN = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
-            f.write("    const intptr_t %s%sV_off =\n" %\
+            f.write("    const intptr_t %s%sV_off =\n" % \
                 (regtype, regid))
-            f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
+            f.write("        offsetof(CPUHexagonState,\n")
+            f.write("                 future_VRegs[%s%sN]);\n" % \
                 (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
@@ -174,7 +175,8 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid, regno))
             f.write("    const intptr_t %s%sV_off =\n" % \
                 (regtype, regid))
-            f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
+            f.write("        offsetof(CPUHexagonState,\n")
+            f.write("                 future_QRegs[%s%sN]);\n" % \
                 (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
@@ -482,48 +484,38 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
     if (regtype == "V"):
         if (regid in {"dd", "xx", "yy"}):
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    gen_log_vreg_write_pair(%s%sV_off, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid, newv))
-                f.write("insn->slot, true);\n")
-                f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
-                    (regtype, regid, newv))
-                f.write("        true);\n")
+                is_predicated = "true"
             else:
-                f.write("    gen_log_vreg_write_pair(%s%sV_off, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid, newv))
-                f.write("insn->slot, false);\n")
-                f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
-                    (regtype, regid, newv))
-                f.write("        false);\n")
+                is_predicated = "false"
+            f.write("    gen_log_vreg_write_pair(%s%sV_off, %s%sN, %s, " % \
+                (regtype, regid, regtype, regid, newv))
+            f.write("insn->slot, %s);\n" % (is_predicated))
+            f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
+                (regtype, regid, newv))
+            f.write("        %s);\n" % (is_predicated))
         elif (regid in {"d", "x", "y"}):
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    gen_log_vreg_write(%s%sV_off, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid, newv))
-                f.write("insn->slot, true);\n")
-                f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, true);\n" % \
-                    (regtype, regid, newv))
+                is_predicated = "true"
             else:
-                f.write("    gen_log_vreg_write(%s%sV_off, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid,newv))
-                f.write("insn->slot, false);\n")
-                f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, false);\n" % \
-                    (regtype, regid, newv))
+                is_predicated = "false"
+            f.write("    gen_log_vreg_write(%s%sV_off, %s%sN, %s, " % \
+                (regtype, regid, regtype, regid, newv))
+            f.write("insn->slot, %s);\n" % (is_predicated))
+            f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, %s);\n" % \
+                (regtype, regid, newv, is_predicated))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "Q"):
         if (regid in {"d", "e", "x"}):
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    gen_log_qreg_write(%s%sV_off, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid, newv))
-                f.write("insn->slot, true);\n")
-                f.write("    ctx_log_qreg_write(ctx, %s%sN, 1);\n" % \
-                    (regtype, regid))
+                is_predicated = "true"
             else:
-                f.write("    gen_log_qreg_write(%s%sV_off, %s%sN, %s, " % \
-                    (regtype, regid, regtype, regid, newv))
-                f.write("insn->slot, false);\n")
-                f.write("    ctx_log_qreg_write(ctx, %s%sN, 0);\n" % \
-                    (regtype, regid))
+                is_predicated = "false"
+            f.write("    gen_log_qreg_write(%s%sV_off, %s%sN, %s, " % \
+                (regtype, regid, regtype, regid, newv))
+            f.write("insn->slot, %s);\n" % (is_predicated))
+            f.write("    ctx_log_qreg_write(ctx, %s%sN, %s);\n" % \
+                (regtype, regid, is_predicated))
         else:
             print("Bad register parse: ", regtype, regid)
     else:

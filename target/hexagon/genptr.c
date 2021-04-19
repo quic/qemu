@@ -930,7 +930,10 @@ static void gen_log_vreg_write(intptr_t srcoff, int num, VRegWriteType type,
     }
 
     dstoff = offsetof(CPUHexagonState, future_VRegs[num]);
-    tcg_gen_gvec_mov(MO_32, dstoff, srcoff, sizeof(MMVector), sizeof(MMVector));
+    if (dstoff != srcoff) {
+        tcg_gen_gvec_mov(MO_32, dstoff, srcoff,
+                         sizeof(MMVector), sizeof(MMVector));
+    }
 
     if (type == EXT_TMP) {
         dstoff = offsetof(CPUHexagonState, tmp_VRegs[num]);
@@ -969,7 +972,9 @@ static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
     }
 
     dstoff = offsetof(CPUHexagonState, future_QRegs[num]);
-    tcg_gen_gvec_mov(MO_32, dstoff, srcoff, sizeof(MMQReg), sizeof(MMQReg));
+    if (dstoff != srcoff) {
+        tcg_gen_gvec_mov(MO_32, dstoff, srcoff, sizeof(MMQReg), sizeof(MMQReg));
+    }
 
     if (is_predicated) {
         tcg_gen_ori_tl(hex_QRegs_updated, hex_QRegs_updated, 1 << num);
