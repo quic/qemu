@@ -1184,7 +1184,7 @@ float64 HELPER(dfmpyhh)(CPUHexagonState *env, float64 RxxV,
 
 /* Log a write to HVX vector */
 static void log_vreg_write(CPUHexagonState *env, int num, void *var,
-                           VRegWriteType type, uint32_t slot)
+                           VRegWriteType type)
 {
     VRegMask regnum_mask = ((VRegMask)1) << num;
 
@@ -1200,9 +1200,9 @@ static void log_vreg_write(CPUHexagonState *env, int num, void *var,
 }
 
 static void log_mmvector_write(CPUHexagonState *env, int num,
-                               MMVector var, VRegWriteType type, uint32_t slot)
+                               MMVector var, VRegWriteType type)
 {
-    log_vreg_write(env, num, &var, type, slot);
+    log_vreg_write(env, num, &var, type);
 }
 
 static void cancel_slot(CPUHexagonState *env, uint32_t slot)

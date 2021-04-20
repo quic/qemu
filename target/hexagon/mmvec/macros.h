@@ -57,7 +57,7 @@
         __builtin_choose_expr(TYPE_MMVECTOR(X), \
             log_mmvector_write, (void)0))
 #define LOG_VREG_WRITE(NUM, VAR, VNEW) \
-    LOG_VREG_WRITE_FUNC(VAR)(env, NUM, VAR, VNEW, slot)
+    LOG_VREG_WRITE_FUNC(VAR)(env, NUM, VAR, VNEW)
 
 #define READ_EXT_VREG(NUM, VAR, VTMP) \
     do { \
