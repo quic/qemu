@@ -116,13 +116,22 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
 
 static void print_vreg(FILE *f, CPUHexagonState *env, int regnum)
 {
+    bool nonzero_found = false;
     int i;
-    qemu_fprintf(f, "  v%d = (", regnum);
+    qemu_fprintf(f, "  v%d = ( ", regnum);
     qemu_fprintf(f, "0x%02x", env->VRegs[regnum].ub[MAX_VEC_SIZE_BYTES - 1]);
     for (i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
-        qemu_fprintf(f, ", 0x%02x", env->VRegs[regnum].ub[i]);
+        if (env->VRegs[regnum].ub[i] != 0) {
+            nonzero_found = true;
+            break;
+        }
     }
-    qemu_fprintf(f, ")\n");
+    if (nonzero_found) {
+        for (i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
+            qemu_fprintf(f, ", 0x%02x", env->VRegs[regnum].ub[i]);
+        }
+    }
+    qemu_fprintf(f, " )\n");
 }
 
 void hexagon_debug_vreg(CPUHexagonState *env, int regnum)
@@ -132,14 +141,23 @@ void hexagon_debug_vreg(CPUHexagonState *env, int regnum)
 
 static void print_qreg(FILE *f, CPUHexagonState *env, int regnum)
 {
+    bool nonzero_found = false;
     int i;
-    qemu_fprintf(f, "  q%d = (", regnum);
-    qemu_fprintf(f, ", 0x%02x",
+    qemu_fprintf(f, "  q%d = ( ", regnum);
+    qemu_fprintf(f, "0x%02x",
                  env->QRegs[regnum].ub[MAX_VEC_SIZE_BYTES / 8 - 1]);
     for (i = MAX_VEC_SIZE_BYTES / 8 - 2; i >= 0; i--) {
-        qemu_fprintf(f, ", 0x%02x", env->QRegs[regnum].ub[i]);
+        if (env->QRegs[regnum].ub[i] != 0) {
+            nonzero_found = true;
+            break;
+        }
     }
-    qemu_fprintf(f, ")\n");
+    if (nonzero_found) {
+        for (i = MAX_VEC_SIZE_BYTES / 8 - 2; i >= 0; i--) {
+            qemu_fprintf(f, ", 0x%02x", env->QRegs[regnum].ub[i]);
+        }
+    }
+    qemu_fprintf(f, " )\n");
 }
 
 void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
