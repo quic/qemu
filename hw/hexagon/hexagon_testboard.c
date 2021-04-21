@@ -38,8 +38,15 @@
 #include "include/sysemu/sysemu.h"
 #include "target/hexagon/internal.h"
 
-static hexagon_config_table cfgTable;
-static hexagon_config_extensions cfgExtensions;
+typedef enum {
+  v66_rev = 0xa666,
+  v68_rev = 0x8d68,
+  v69_rev = 0x8c69,
+  v73_rev = 0x8c73,
+} Rev_t;
+
+static hexagon_config_table *cfgTable;
+static hexagon_config_extensions *cfgExtensions;
 static bool syscfg_is_linux = false;
 
 const rev_features_t rev_features_v68 = {
@@ -166,7 +173,7 @@ static void hexagon_load_kernel(CPUHexagonState *env)
 }
 
 extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
-static void hexagon_common_init(MachineState *machine)
+static void hexagon_common_init(MachineState *machine, Rev_t rev)
 {
     machine->enable_graphics = 0;
 
@@ -189,8 +196,8 @@ static void hexagon_common_init(MachineState *machine)
 
     MemoryRegion *config_table_rom = g_new(MemoryRegion, 1);
     memory_region_init_rom(config_table_rom, NULL, "config_table.rom",
-                           sizeof(cfgTable), &error_fatal);
-    memory_region_add_subregion(address_space, cfgExtensions.cfgbase,
+                           sizeof(*cfgTable), &error_fatal);
+    memory_region_add_subregion(address_space, cfgExtensions->cfgbase,
                                 config_table_rom);
 
     MemoryRegion *sram = g_new(MemoryRegion, 1);
@@ -199,9 +206,9 @@ static void hexagon_common_init(MachineState *machine)
     memory_region_add_subregion(address_space, 0x0, sram);
 
     MemoryRegion *vtcm = g_new(MemoryRegion, 1);
-    memory_region_init_ram(vtcm, NULL, "vtcm.ram", cfgTable.vtcm_size_kb * 1024,
+    memory_region_init_ram(vtcm, NULL, "vtcm.ram", cfgTable->vtcm_size_kb * 1024,
         &error_fatal);
-    memory_region_add_subregion(address_space, cfgTable.vtcm_base, vtcm);
+    memory_region_add_subregion(address_space, cfgTable->vtcm_base, vtcm);
 
     /* Test region for cpz addresses above 32-bits */
     MemoryRegion *cpz = g_new(MemoryRegion, 1);
@@ -209,14 +216,14 @@ static void hexagon_common_init(MachineState *machine)
     memory_region_add_subregion(address_space, 0x910000000, cpz);
 
     /* Skip if the core doesn't allocate space for TCM */
-    if (cfgExtensions.l2tcm_size) {
+    if (cfgExtensions->l2tcm_size) {
         MemoryRegion *tcm = g_new(MemoryRegion, 1);
-        memory_region_init_ram(tcm, NULL, "tcm.ram", cfgExtensions.l2tcm_size,
+        memory_region_init_ram(tcm, NULL, "tcm.ram", cfgExtensions->l2tcm_size,
             &error_fatal);
-        memory_region_add_subregion(address_space, cfgTable.l2tcm_base, tcm);
+        memory_region_add_subregion(address_space, cfgTable->l2tcm_base, tcm);
     }
 
-    dev = sysbus_create_varargs("l2vic", cfgExtensions.l2vic_base,
+    dev = sysbus_create_varargs("l2vic", cfgExtensions->l2vic_base,
                                              /* IRQ#, Evnt#,CauseCode */
         qdev_get_gpio_in(DEVICE(cpu), 0), /* IRQ 0, 16, 0xc0 */
         qdev_get_gpio_in(DEVICE(cpu), 1), /* IRQ 1, 17, 0xc1 */
@@ -228,7 +235,7 @@ static void hexagon_common_init(MachineState *machine)
         qdev_get_gpio_in(DEVICE(cpu), 7), /* IRQ 7, 23, 0xc7 */
         NULL);
 
-    sysbus_create_varargs("fastl2vic", cfgTable.fastl2vic_base, NULL);
+    sysbus_create_varargs("fastl2vic", cfgTable->fastl2vic_base, NULL);
 
     /* This is tightly with the IRQ selected must match the value below
      * or the interrupts will not be seen
@@ -236,24 +243,24 @@ static void hexagon_common_init(MachineState *machine)
     sysbus_create_varargs("qutimer", 0xfab20000,
                           NULL);
     unsigned QTMR0_IRQ = syscfg_is_linux ? 2 : 3;
-    sysbus_create_varargs("hextimer", cfgExtensions.qtmr_rg0,
+    sysbus_create_varargs("hextimer", cfgExtensions->qtmr_rg0,
                           qdev_get_gpio_in(dev, QTMR0_IRQ), NULL);
-    sysbus_create_varargs("hextimer", cfgExtensions.qtmr_rg1,
+    sysbus_create_varargs("hextimer", cfgExtensions->qtmr_rg1,
                           qdev_get_gpio_in(dev, 4), NULL);
 
-    hexagon_config_table config_table = cfgTable;
+    hexagon_config_table *config_table = cfgTable;
 
     machine->smp.max_cpus = THREADS_MAX;
 
-    config_table.l2tcm_base = HEXAGON_CFG_ADDR_BASE(cfgTable.l2tcm_base);
-    config_table.subsystem_base = HEXAGON_CFG_ADDR_BASE(cfgExtensions.csr_base);
-    config_table.vtcm_base = HEXAGON_CFG_ADDR_BASE(cfgTable.vtcm_base);
-    config_table.l2cfg_base = HEXAGON_CFG_ADDR_BASE(cfgTable.l2cfg_base);
-    config_table.fastl2vic_base =
-                             HEXAGON_CFG_ADDR_BASE(cfgTable.fastl2vic_base);
+    config_table->l2tcm_base = HEXAGON_CFG_ADDR_BASE(cfgTable->l2tcm_base);
+    config_table->subsystem_base = HEXAGON_CFG_ADDR_BASE(cfgExtensions->csr_base);
+    config_table->vtcm_base = HEXAGON_CFG_ADDR_BASE(cfgTable->vtcm_base);
+    config_table->l2cfg_base = HEXAGON_CFG_ADDR_BASE(cfgTable->l2cfg_base);
+    config_table->fastl2vic_base =
+                             HEXAGON_CFG_ADDR_BASE(cfgTable->fastl2vic_base);
 
-    rom_add_blob_fixed_as("config_table.rom", &config_table,
-        sizeof(config_table), cfgExtensions.cfgbase, &address_space_memory);
+    rom_add_blob_fixed_as("config_table.rom", config_table,
+        sizeof(*config_table), cfgExtensions->cfgbase, &address_space_memory);
 
     hexagon_binfo.ram_size = machine->ram_size;
     hexagon_binfo.kernel_filename = machine->kernel_filename;
@@ -270,8 +277,8 @@ static void hexagon_common_init(MachineState *machine)
 
     env->g_sreg[HEX_SREG_EVB] = 0x0;
     env->g_sreg[HEX_SREG_CFGBASE] =
-                                 HEXAGON_CFG_ADDR_BASE(cfgExtensions.cfgbase);
-    env->g_sreg[HEX_SREG_REV] = 0x8d68;
+                                 HEXAGON_CFG_ADDR_BASE(cfgExtensions->cfgbase);
+    env->g_sreg[HEX_SREG_REV] = rev;
     env->g_sreg[HEX_SREG_MODECTL] = 0x1;
 
     env->processor_ptr->dma[env->threadId] =
@@ -281,8 +288,8 @@ static void hexagon_common_init(MachineState *machine)
 
 void hexagon_read_timer(uint32_t *low, uint32_t *high)
 {
-    const hwaddr low_addr  = cfgExtensions.qtmr_rg0 + QTMR_CNTPCT_LO;
-    const hwaddr high_addr = cfgExtensions.qtmr_rg0 + QTMR_CNTPCT_HI;
+    const hwaddr low_addr  = cfgExtensions->qtmr_rg0 + QTMR_CNTPCT_LO;
+    const hwaddr high_addr = cfgExtensions->qtmr_rg0 + QTMR_CNTPCT_HI;
 
     cpu_physical_memory_read(low_addr, low, sizeof(*low));
     cpu_physical_memory_read(high_addr, high, sizeof(*high));
@@ -292,7 +299,7 @@ uint32_t hexagon_find_last_irq(uint32_t vid)
 {
     int offset = (vid ==  HEX_SREG_VID) ? L2VIC_VID_0 : L2VIC_VID_1;
 
-    const hwaddr pend_mem = cfgExtensions.l2vic_base + offset;
+    const hwaddr pend_mem = cfgExtensions->l2vic_base + offset;
     uint32_t irq;
     cpu_physical_memory_read(pend_mem, &irq, sizeof(irq));
     return irq;
@@ -301,7 +308,7 @@ void hexagon_clear_last_irq(uint32_t offset) {
     /* currently only l2vic is the only attached it uses vid0, remove
      * the assert below if anther is added */
     assert (offset == L2VIC_VID_0);
-    const hwaddr pend_mem = cfgExtensions.l2vic_base + offset;
+    const hwaddr pend_mem = cfgExtensions->l2vic_base + offset;
     uint32_t val = 0;
     cpu_physical_memory_write(pend_mem, &val, sizeof(val));
 }
@@ -312,7 +319,7 @@ void hexagon_clear_l2vic_pending(uint32_t int_num)
     target_ulong vidval;
     uint32_t slice = (int_num / 32) * 4;
     val = 1 << (int_num % 32);
-    const hwaddr addr = cfgExtensions.l2vic_base + L2VIC_INT_PENDINGn;
+    const hwaddr addr = cfgExtensions->l2vic_base + L2VIC_INT_PENDINGn;
     cpu_physical_memory_read(addr + slice, &vidval, sizeof(vidval));
     vidval &= ~val;
     cpu_physical_memory_write(addr + slice, &vidval, sizeof(vidval));
@@ -321,7 +328,7 @@ void hexagon_clear_l2vic_pending(uint32_t int_num)
 
 uint32_t hexagon_find_l2vic_pending(void)
 {
-    const hwaddr pend = cfgExtensions.l2vic_base + L2VIC_INT_PENDINGn;
+    const hwaddr pend = cfgExtensions->l2vic_base + L2VIC_INT_PENDINGn;
     uint64_t val;
     cpu_physical_memory_read(pend, &val, sizeof(val));
     uint32_t inum = find_first_bit(&val, 64);
@@ -337,7 +344,7 @@ uint32_t hexagon_find_l2vic_pending(void)
     }
     /* Verify that stat matches which indicates a truly pending interrupt */
     if (inum != 64) {
-        const hwaddr stat = cfgExtensions.l2vic_base + L2VIC_INT_STATUSn;
+        const hwaddr stat = cfgExtensions->l2vic_base + L2VIC_INT_STATUSn;
         cpu_physical_memory_read(stat, &val, sizeof(val));
         uint32_t stat_num = find_first_bit(&val, 64);
         if (stat_num == 64) {
@@ -390,15 +397,15 @@ static void fastl2vic_write(void *opaque, hwaddr offset,
         val = 1 << (irq % 32);
 
         if (cmd == FASTL2VIC_ENABLE) {
-            const hwaddr addr = cfgExtensions.l2vic_base
+            const hwaddr addr = cfgExtensions->l2vic_base
                                 + L2VIC_INT_ENABLE_SETn;
             cpu_physical_memory_write(addr + slice, &val, size);
         } else if (cmd == FASTL2VIC_DISABLE) {
-            const hwaddr addr = cfgExtensions.l2vic_base
+            const hwaddr addr = cfgExtensions->l2vic_base
                                 + L2VIC_INT_ENABLE_CLEARn;
             cpu_physical_memory_write(addr + slice, &val, size);
         } else if (cmd == FASTL2VIC_INT) {
-            const hwaddr addr = cfgExtensions.l2vic_base
+            const hwaddr addr = cfgExtensions->l2vic_base
                                 + L2VIC_SOFT_INTn;
             cpu_physical_memory_write(addr + slice, &val, size);
         }
@@ -465,9 +472,9 @@ type_init(fastl2vic_register_types)
 
 static void v66g_1024_config_init(MachineState *machine)
 {
-    memcpy(&cfgTable, v66g_1024_cfgtable, sizeof(cfgTable));
-    memcpy(&cfgExtensions, v66g_1024_extensions, sizeof(cfgExtensions));
-    hexagon_common_init(machine);
+    cfgTable = &v66g_1024_cfgtable;
+    cfgExtensions = &v66g_1024_extensions;
+    hexagon_common_init(machine, v66_rev);
 }
 
 static void v66g_1024_init(ObjectClass *oc, void *data)
@@ -498,9 +505,9 @@ static void v66g_linux_init(ObjectClass *oc, void *data)
 static void v68n_1024_config_init(MachineState *machine)
 
 {
-    memcpy(&cfgTable, v68n_1024_cfgtable, sizeof(cfgTable));
-    memcpy(&cfgExtensions, v68n_1024_extensions, sizeof(cfgExtensions));
-    hexagon_common_init(machine);
+    cfgTable = &v68n_1024_cfgtable;
+    cfgExtensions = &v68n_1024_extensions;
+    hexagon_common_init(machine, v68_rev);
 }
 
 static void v68n_1024_init(ObjectClass *oc, void *data)
@@ -519,9 +526,9 @@ static void v68n_1024_init(ObjectClass *oc, void *data)
 
 static void v69na_1024_config_init(MachineState *machine)
 {
-    memcpy(&cfgTable, v69na_1024_cfgtable, sizeof(cfgTable));
-    memcpy(&cfgExtensions, v69na_1024_extensions, sizeof(cfgExtensions));
-    hexagon_common_init(machine);
+    cfgTable = &v69na_1024_cfgtable;
+    cfgExtensions = &v69na_1024_extensions;
+    hexagon_common_init(machine, v69_rev);
 }
 
 static void v69na_1024_init(ObjectClass *oc, void *data)
@@ -537,6 +544,25 @@ static void v69na_1024_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 4 * GiB;
 }
 
+static void v73na_1024_config_init(MachineState *machine)
+{
+    cfgTable = &v73na_1024_cfgtable;
+    cfgExtensions = &v73na_1024_extensions;
+    hexagon_common_init(machine, v73_rev);
+}
+
+static void v73na_1024_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon V73NA_1024";
+    mc->init = v73na_1024_config_init;
+    mc->is_default = 0;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
+    mc->max_cpus = 6;
+    mc->default_ram_size = 4 * GiB;
+}
 
 static const TypeInfo hexagon_machine_types[] = {
     {
@@ -551,6 +577,10 @@ static const TypeInfo hexagon_machine_types[] = {
         .name = MACHINE_TYPE_NAME("V69NA_1024"),
         .parent = TYPE_MACHINE,
         .class_init = v69na_1024_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("V73NA_1024"),
+        .parent = TYPE_MACHINE,
+        .class_init = v73na_1024_init,
     }, {
         .name = MACHINE_TYPE_NAME("V66_Linux"),
         .parent = TYPE_MACHINE,

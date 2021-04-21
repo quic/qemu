@@ -114,28 +114,24 @@ typedef struct {
     uint32_t hvx_vec_log_length; /* Native HVX vector length in log of bytes */
     uint32_t core_id; /* Core ID of the multi-core */
     uint32_t core_count; /* Number of multi-core cores */
-
     uint32_t hmx_int8_spatial; /* FIXME: undocumented */
     uint32_t hmx_int8_depth; /* FIXME: undocumented */
-
     uint32_t v2x_mode; /* Supported HVX vector length, see HexagonVecLenSupported */
-
     uint32_t hmx_int8_rate; /* FIXME: undocumented */
     uint32_t hmx_fp16_spatial; /* FIXME: undocumented */
     uint32_t hmx_fp16_depth; /* FIXME: undocumented */
     uint32_t hmx_fp16_rate; /* FIXME: undocumented */
     uint32_t hmx_fp16_acc_frac; /* FIXME: undocumented */
     uint32_t hmx_fp16_acc_int; /* FIXME: undocumented */
-
     uint32_t acd_preset; /* Voltage droop mitigation technique parameter */
     uint32_t mnd_preset; /* Voltage droop mitigation technique parameter */
     uint32_t l1d_size_kb; /* L1 data cache size (in KB) */
     uint32_t l1i_size_kb; /* L1 instruction cache size in (KB) */
     uint32_t l1d_write_policy; /* L1 data cache write policy: see HexagonL1WritePolicy */
     uint32_t vtcm_bank_width; /* VTCM bank width  */
-    uint32_t
-        reserved3[3]; /* FIXME: undocumented 'ATOMICS VERSION', 'HVX IEEE',
-                         'VICTIM CACHE MODE' */
+    uint32_t reserved3;
+    uint32_t reserved4;
+    uint32_t reserved5;
     uint32_t hmx_cvt_mpy_size; /* FIXME: undocumented Size of the fractional multiplier in the HMX Covert */
     uint32_t axi3_lowaddr; /* FIXME: undocumented */
 } hexagon_config_table;
