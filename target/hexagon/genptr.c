@@ -903,8 +903,9 @@ static intptr_t vreg_src_off(DisasContext *ctx, int num)
     return offset;
 }
 
-static void gen_log_vreg_write(intptr_t srcoff, int num, VRegWriteType type,
-                               int slot_num, bool is_predicated)
+static void gen_log_vreg_write(intptr_t srcoff, int num,
+                               VRegWriteType type, int slot_num,
+                               bool is_predicated, bool has_vhist)
 {
     TCGLabel *label_end = NULL;
     intptr_t dstoff;
@@ -922,10 +923,10 @@ static void gen_log_vreg_write(intptr_t srcoff, int num, VRegWriteType type,
     if (type != EXT_TMP) {
         tcg_gen_ori_tl(hex_VRegs_updated, hex_VRegs_updated, 1 << num);
     }
-    if (type == EXT_NEW) {
+    if (has_vhist && type == EXT_NEW) {
         tcg_gen_ori_tl(hex_VRegs_select, hex_VRegs_select, 1 << num);
     }
-    if (type == EXT_TMP) {
+    if (has_vhist && type == EXT_TMP) {
         tcg_gen_ori_tl(hex_VRegs_updated_tmp, hex_VRegs_updated_tmp, 1 << num);
     }
 
@@ -948,11 +949,13 @@ static void gen_log_vreg_write(intptr_t srcoff, int num, VRegWriteType type,
 
 static void gen_log_vreg_write_pair(intptr_t srcoff, int num,
                                     VRegWriteType type, int slot_num,
-                                    bool is_predicated)
+                                    bool is_predicated, bool has_vhist)
 {
-    gen_log_vreg_write(srcoff, num ^ 0, type, slot_num, is_predicated);
+    gen_log_vreg_write(srcoff, num ^ 0, type, slot_num,
+                       is_predicated, has_vhist);
     srcoff += sizeof(MMVector);
-    gen_log_vreg_write(srcoff, num ^ 1, type, slot_num, is_predicated);
+    gen_log_vreg_write(srcoff, num ^ 1, type, slot_num,
+                       is_predicated, has_vhist);
 }
 
 static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,

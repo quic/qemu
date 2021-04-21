@@ -586,7 +586,11 @@ static void
 decode_hvx_packet_contents(Packet *pkt)
 {
     for (int i = 0; i < pkt->num_insns; i++) {
+        int opcode = pkt->insn[i].opcode;
         pkt->pkt_has_hvx |= pkt->insn[i].hvx_resource ? true : false;
+        if (GET_ATTRIB(opcode, A_CVI) && GET_ATTRIB(opcode, A_CVI_4SLOT)) {
+            pkt->pkt_has_vhist = true;
+        }
     }
 }
 

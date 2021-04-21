@@ -70,6 +70,7 @@ struct Packet {
 
     bool pkt_has_hvx;
     bool pkt_has_extension;
+    bool pkt_has_vhist;
 
     Insn insn[INSTRUCTIONS_MAX];
 };

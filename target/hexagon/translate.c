@@ -212,9 +212,11 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     }
 
     if (pkt->pkt_has_hvx) {
-        tcg_gen_movi_tl(hex_VRegs_updated_tmp, 0);
+        if (pkt->pkt_has_vhist) {
+            tcg_gen_movi_tl(hex_VRegs_updated_tmp, 0);
+            tcg_gen_movi_tl(hex_VRegs_select, 0);
+        }
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
-        tcg_gen_movi_tl(hex_VRegs_select, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
         tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         tcg_gen_movi_tl(hex_gather_issued, 0);
@@ -505,18 +507,6 @@ static bool pkt_has_hvx_store(Packet *pkt)
     return false;
 }
 
-static bool pkt_has_vhist(Packet *pkt)
-{
-    int i;
-    for (i = 0; i < pkt->num_insns; i++) {
-        int opcode = pkt->insn[i].opcode;
-        if (GET_ATTRIB(opcode, A_CVI) && GET_ATTRIB(opcode, A_CVI_4SLOT)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
 {
     int i;
@@ -525,7 +515,7 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
      * vhist instructions need special handling
      * They potentially write the entire vector register file
      */
-    if (pkt_has_vhist(pkt)) {
+    if (pkt->pkt_has_vhist) {
         TCGv cmp = tcg_temp_local_new();
         size_t size = sizeof(MMVector);
         for (i = 0; i < NUM_VREGS; i++) {
