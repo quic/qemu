@@ -157,9 +157,6 @@ LDST_PREDST(LDST_BO,V6_vS32Ub,0,11)
 DEF_FIELDROW_DESC32(                ICLASS_NCJ" 1 001 --- ----- PP - ----- ddddd ---","[#1] vmem(Rx++#s3)[:nt]")
 
 // Loads
-LDST_BASICLD(LDST_PI,V6_vL32b)
-
-
 LDST_PI(V6_vL32Ub,000,00,111,ddddd)
 
 //Stores
@@ -185,9 +182,6 @@ LDST_PREDST(LDST_PI,V6_vS32Ub,0,11)
 DEF_FIELDROW_DESC32(            ICLASS_NCJ" 1 011 --- ----- PP - ----- ----- ---","[#3] vmem(Rx++#M)[:nt]")
 
 // Loads
-LDST_BASICLD(LDST_PM,V6_vL32b)
-
-
 LDST_PM(V6_vL32Ub,000,00,111,ddddd)
 
 //Stores
