@@ -1918,6 +1918,9 @@
 #define fGEN_TCG_A2_xor(SHORTCODE) \
     tcg_gen_xor_tl(RdV, RsV, RtV)
 
+#define fGEN_TCG_A2_maxu(SHORTCODE) \
+    tcg_gen_umax_tl(RdV, RsV, RtV)
+
 /* Transfer instructions */
 #define fGEN_TCG_A2_tfr(SHORTCODE) \
     tcg_gen_mov_tl(RdV, RsV)
@@ -1958,6 +1961,13 @@
     gen_comparei(TCG_COND_GT, PdV, RsV, siV)
 #define fGEN_TCG_C2_cmpgtui(SHORTCODE) \
     gen_comparei(TCG_COND_GTU, PdV, RsV, uiV)
+#define fGEN_TCG_A4_cmpbgtui(SHORTCODE) \
+    do { \
+        TCGv byte = tcg_temp_new(); \
+        tcg_gen_extract_tl(byte, RsV, 0, 8); \
+        gen_comparei(TCG_COND_GTU, PdV, byte, uiV); \
+        tcg_temp_free(byte); \
+    } while (0)
 
 #define fGEN_TCG_SA1_zxtb(SHORTCODE) \
     tcg_gen_ext8u_tl(RdV, RsV)
@@ -2007,6 +2017,10 @@
     gen_cmp_jumpnv(TCG_COND_LE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeq_f_jumpnv_nt(SHORTCODE) \
     gen_cmp_jumpnv(TCG_COND_NE, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_t_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(TCG_COND_EQ, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmplt_f_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(TCG_COND_GE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgt_t_jumpnv_t(SHORTCODE) \
     gen_cmp_jumpnv(TCG_COND_GT, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeqi_t_jumpnv_nt(SHORTCODE) \
@@ -2116,6 +2130,11 @@
         tcg_temp_free(tmp_lo); \
         tcg_temp_free(tmp_hi); \
     } while (0)
+#define fGEN_TCG_A2_combine_ll(SHORTCODE) \
+    do { \
+        tcg_gen_mov_tl(RdV, RsV); \
+        tcg_gen_deposit_i32(RdV, RdV, RtV, 16, 16); \
+    } while (0)
 #define fGEN_TCG_A4_combineri(SHORTCODE) \
     do { \
         TCGv tmp_lo = tcg_const_tl(siV); \
@@ -2213,8 +2232,14 @@
     GEN_TCG_padd(fLSBOLD(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
 #define fGEN_TCG_A2_paddif(SHORTCODE) \
     GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
+#define fGEN_TCG_A2_paddtnew(SHORTCODE) \
+    GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
 #define fGEN_TCG_A2_padditnew(SHORTCODE) \
     GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_addi_tl(RdV, RsV, siV))
+#define fGEN_TCG_A2_psubtnew(SHORTCODE) \
+    GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_sub_tl(RdV, RtV, RsV))
+#define fGEN_TCG_A2_pxorf(SHORTCODE) \
+    GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_xor_tl(RdV, RsV, RtV))
 
 /* Conditional move instructions */
 #define fGEN_TCG_COND_MOVE(VAL, COND) \
@@ -2241,6 +2266,21 @@
 #define fGEN_TCG_C2_cmovenewif(SHORTCODE) \
     fGEN_TCG_COND_MOVE(fLSBNEWNOT(PuN), TCG_COND_NE)
 
+/* r0 = mux(p0, #3, #5) */
+#define fGEN_TCG_C2_muxii(SHORTCODE) \
+    do { \
+        TCGv zero = tcg_const_tl(0); \
+        TCGv tval = tcg_const_tl(siV); \
+        TCGv fval = tcg_const_tl(SiV); \
+        TCGv lsb = tcg_temp_new(); \
+        tcg_gen_andi_tl(lsb, PuV, 1); \
+        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, zero, tval, fval); \
+        tcg_temp_free(zero); \
+        tcg_temp_free(tval); \
+        tcg_temp_free(fval); \
+        tcg_temp_free(lsb); \
+    } while (0)
+
 /* p0 = tstbit(r0, #5) */
 #define fGEN_TCG_S2_tstbit_i(SHORTCODE) \
     do { \
@@ -2259,6 +2299,10 @@
 /* r0 = setbit(r1, #5) */
 #define fGEN_TCG_S2_setbit_i(SHORTCODE) \
     tcg_gen_ori_tl(RdV, RsV, 1 << uiV)
+
+/* r0 = togglebit(r1, #5) */
+#define fGEN_TCG_S2_togglebit_i(SHORTCODE) \
+    tcg_gen_xori_tl(RdV, RsV, 1 << uiV)
 
 /* r0 += add(r1, #8) */
 #define fGEN_TCG_M2_accii(SHORTCODE) \
@@ -2339,6 +2383,30 @@
         } \
         tcg_temp_free_i64(left); \
         tcg_temp_free_i64(right); \
+    } while (0)
+
+/* p2 = and(p0, !p1) */
+#define fGEN_TCG_C2_andn(SHORTCODE) \
+    tcg_gen_andc_tl(PdV, PtV, PsV)
+
+/*  r0 = mpyi(r1, r2) */
+#define fGEN_TCG_M2_mpyi(SHORTCODE) \
+    tcg_gen_mul_tl(RdV, RsV, RtV)
+
+/*  r0 += mpyi(r1, r2) */
+#define fGEN_TCG_M2_maci(SHORTCODE) \
+    do { \
+        TCGv tmp = tcg_temp_new(); \
+        tcg_gen_mul_tl(tmp, RsV, RtV); \
+        tcg_gen_add_tl(RxV, RxV, tmp); \
+        tcg_temp_free(tmp); \
+    } while (0)
+
+/* r0 += add(r1, r2) */
+#define fGEN_TCG_M2_acci(SHORTCODE) \
+    do { \
+        tcg_gen_add_tl(RxV, RxV, RsV); \
+        tcg_gen_add_tl(RxV, RxV, RtV); \
     } while (0)
 
 #define fGEN_TCG_V6_vaddw(SHORTCODE) \
