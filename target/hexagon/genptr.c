@@ -26,6 +26,7 @@
 #include "translate.h"
 #define QEMU_GENERATE       /* Used internally by macros.h */
 #include "macros.h"
+#include "mmvec/macros.h"
 #undef QEMU_GENERATE
 #include "gen_tcg.h"
 
@@ -978,6 +979,18 @@ static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
         tcg_gen_ori_tl(hex_QRegs_updated, hex_QRegs_updated, 1 << num);
         gen_set_label(label_end);
     }
+}
+
+static void gen_vreg_load(DisasContext *ctx, intptr_t dstoff, TCGv src)
+{
+    TCGv_i64 tmp = tcg_temp_new_i64();
+    tcg_gen_andi_tl(src, src, ~((int32_t)sizeof(MMVector) - 1));
+    for (int i = 0; i < sizeof(MMVector) / 8; i++) {
+        tcg_gen_qemu_ld64(tmp, src, ctx->mem_idx);
+        tcg_gen_addi_tl(src, src, 8);
+        tcg_gen_st_i64(tmp, cpu_env, dstoff + i * 8);
+    }
+    tcg_temp_free_i64(tmp);
 }
 
 #include "tcg_funcs_generated.c.inc"

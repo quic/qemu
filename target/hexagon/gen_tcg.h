@@ -2441,6 +2441,39 @@
     tcg_gen_gvec_or(MO_64, VdV_off, VuV_off, VvV_off, \
                     sizeof(MMVector), sizeof(MMVector))
 
+#define fGEN_TCG_V6_vL32b_cur_pi(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_nt_cur_pi(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_cur_pi(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_tmp_pi(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_pi(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_cur_ai(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_tmp_ai(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_ai(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_cur_ppu(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_tmp_ppu(SHORTCODE) \
+    SHORTCODE
+
+#define fGEN_TCG_V6_vL32b_ppu(SHORTCODE) \
+    SHORTCODE
+
 /* Floating point */
 #define fGEN_TCG_F2_conv_sf2df(SHORTCODE) \
     gen_helper_conv_sf2df(RddV, cpu_env, RsV)

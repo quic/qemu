@@ -44,6 +44,7 @@
 #define QuV      (*(MMQReg *)(QuV_void))
 #define QvV      (*(MMQReg *)(QvV_void))
 #define QxV      (*(MMQReg *)(QxV_void))
+#endif
 
 #define NEW_WRITTEN(NUM) ((env->VRegs_select >> (NUM)) & 1)
 #define TMP_WRITTEN(NUM) ((env->VRegs_updated_tmp >> (NUM)) & 1)
@@ -338,6 +339,9 @@ static inline MMVector mmvec_zero_vector(void)
     do { \
         fV_AL_CHECK(EA, fVECSIZE() - 1); \
     } while (0)
+#ifdef QEMU_GENERATE
+#define fLOADMMV(EA, DST) gen_vreg_load(ctx, DST##_off, EA)
+#else
 #define fLOADMMV_AL(EA, ALIGNMENT, LEN, DST) \
     do { \
         fV_AL_CHECK(EA, ALIGNMENT - 1); \
@@ -345,6 +349,7 @@ static inline MMVector mmvec_zero_vector(void)
                               &DST.ub[0], fUSE_LOOKUP_ADDRESS_BY_REV()); \
     } while (0)
 #define fLOADMMV(EA, DST) fLOADMMV_AL(EA, fVECSIZE(), fVECSIZE(), DST)
+#endif
 #define fLOADMMVU_AL(EA, ALIGNMENT, LEN, DST) \
     do { \
         uint32_t size2 = (EA) & (ALIGNMENT - 1); \
@@ -518,7 +523,6 @@ static inline MMVector mmvec_vtmp_data(CPUHexagonState *env)
     (((fZXTN(32, 64, A) + fZXTN(32, 64, B) + C) >> 32) & 1)
 #define fUARCH_NOTE_PUMP_4X()
 #define fUARCH_NOTE_PUMP_2X()
-#endif
 
 #define IV1DEAD()
 #endif
