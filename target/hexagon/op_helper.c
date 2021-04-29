@@ -95,9 +95,9 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
                                           uintptr_t pc)
 {
     CPUState *cs = CPU(hexagon_env_get_cpu(env));
-    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08lx\n", __func__, exception,
+    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08lx, tbl =%d\n", __func__, exception,
             env->gpr[HEX_REG_PC],
-        pc);
+        pc, env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
 
 #if 0
     if (cs->exception_index != HEX_EVENT_NONE)
