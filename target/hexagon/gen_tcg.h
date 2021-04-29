@@ -2315,7 +2315,12 @@
         tcg_temp_free_i64(tmp); \
     } while (0)
 
-#define Y2_dcfetchbo(SHORTCODE)   do { } while (0)  /* Not modelled in qemu */
+/* Not modelled in qemu, but need to suppress compiler warnings */
+#define fGEN_TCG_Y2_dcfetchbo(SHORTCODE) \
+    do { \
+        uiV = uiV; \
+        RsV = RsV; \
+    } while (0)
 
 /*
  * Add vector of words
