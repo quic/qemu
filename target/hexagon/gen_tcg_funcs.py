@@ -342,12 +342,12 @@ def genptr_src_read(f, tag, regtype, regid):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "V"):
         if (regid in {"uu", "vv", "xx"}):
-            f.write("    tcg_gen_gvec_mov(MO_32, %s%sV_off,\n" % \
+            f.write("    tcg_gen_gvec_mov(MO_64, %s%sV_off,\n" % \
                 (regtype, regid))
             f.write("        vreg_src_off(ctx, %s%sN),\n" % \
                 (regtype, regid))
             f.write("        sizeof(MMVector), sizeof(MMVector));\n")
-            f.write("    tcg_gen_gvec_mov(MO_32,\n")
+            f.write("    tcg_gen_gvec_mov(MO_64,\n")
             f.write("        %s%sV_off + sizeof(MMVector),\n" % \
                 (regtype, regid))
             f.write("        vreg_src_off(ctx, %s%sN ^ 1),\n" % \
@@ -358,7 +358,7 @@ def genptr_src_read(f, tag, regtype, regid):
                 f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
                                  (regtype, regid, regtype, regid))
         elif (regid in {"x", "y"}):
-            f.write("    tcg_gen_gvec_mov(MO_32, %s%sV_off,\n" % \
+            f.write("    tcg_gen_gvec_mov(MO_64, %s%sV_off,\n" % \
                              (regtype, regid))
             f.write("        vreg_src_off(ctx, %s%sN),\n" % \
                              (regtype, regid))
@@ -374,7 +374,7 @@ def genptr_src_read(f, tag, regtype, regid):
                 f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
                     (regtype, regid, regtype, regid))
         elif (regid in {"x"}):
-            f.write("    tcg_gen_gvec_mov(MO_32, %s%sV_off,\n" % \
+            f.write("    tcg_gen_gvec_mov(MO_64, %s%sV_off,\n" % \
                 (regtype, regid))
             f.write("        offsetof(CPUHexagonState, QRegs[%s%sN]),\n" % \
                 (regtype, regid))

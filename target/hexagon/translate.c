@@ -526,7 +526,7 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
             tcg_gen_andi_tl(cmp, hex_VRegs_updated, 1 << i);
             tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
             {
-                tcg_gen_gvec_mov(MO_32, dstoff, srcoff, size, size);
+                tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
             }
             gen_set_label(label_skip);
         }
@@ -560,12 +560,12 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
             tcg_gen_andi_tl(cmp, hex_VRegs_updated, 1 << rnum);
             tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
             {
-                tcg_gen_gvec_mov(MO_32, dstoff, srcoff, size, size);
+                tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
             }
             gen_set_label(label_skip);
             tcg_temp_free(cmp);
         } else {
-            tcg_gen_gvec_mov(MO_32, dstoff, srcoff, size, size);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
         }
     }
 
@@ -595,12 +595,12 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
             tcg_gen_andi_tl(cmp, hex_QRegs_updated, 1 << rnum);
             tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
             {
-                tcg_gen_gvec_mov(MO_32, dstoff, srcoff, size, size);
+                tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
             }
             gen_set_label(label_skip);
             tcg_temp_free(cmp);
         } else {
-            tcg_gen_gvec_mov(MO_32, dstoff, srcoff, size, size);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
         }
     }
 
