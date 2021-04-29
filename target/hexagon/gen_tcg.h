@@ -2409,9 +2409,37 @@
         tcg_gen_add_tl(RxV, RxV, RtV); \
     } while (0)
 
+#define fGEN_TCG_V6_vassign(SHORTCODE) \
+    tcg_gen_gvec_mov(MO_64, VdV_off, VuV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
 #define fGEN_TCG_V6_vaddw(SHORTCODE) \
     tcg_gen_gvec_add(MO_32, VdV_off, VuV_off, VvV_off, \
                      sizeof(MMVector), sizeof(MMVector))
+
+#define fGEN_TCG_V6_vsubw(SHORTCODE) \
+    tcg_gen_gvec_sub(MO_32, VdV_off, VuV_off, VvV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
+#define fGEN_TCG_V6_vmaxw(SHORTCODE) \
+    tcg_gen_gvec_smax(MO_32, VdV_off, VuV_off, VvV_off, \
+                      sizeof(MMVector), sizeof(MMVector))
+
+#define fGEN_TCG_V6_vminw(SHORTCODE) \
+    tcg_gen_gvec_smin(MO_32, VdV_off, VuV_off, VvV_off, \
+                      sizeof(MMVector), sizeof(MMVector))
+
+#define fGEN_TCG_V6_vxor(SHORTCODE) \
+    tcg_gen_gvec_xor(MO_64, VdV_off, VuV_off, VvV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
+#define fGEN_TCG_V6_vand(SHORTCODE) \
+    tcg_gen_gvec_and(MO_64, VdV_off, VuV_off, VvV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
+#define fGEN_TCG_V6_vor(SHORTCODE) \
+    tcg_gen_gvec_or(MO_64, VdV_off, VuV_off, VvV_off, \
+                    sizeof(MMVector), sizeof(MMVector))
 
 /* Floating point */
 #define fGEN_TCG_F2_conv_sf2df(SHORTCODE) \
