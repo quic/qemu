@@ -341,11 +341,6 @@ static inline void gen_set_half_i64(int N, TCGv_i64 result, TCGv src)
     tcg_temp_free_i64(src64);
 }
 
-static inline void gen_set_byte(int N, TCGv result, TCGv src)
-{
-    tcg_gen_deposit_tl(result, result, src, N * 8, 8);
-}
-
 static void gen_set_byte_i64(int N, TCGv_i64 result, TCGv src)
 {
     TCGv_i64 src64 = tcg_temp_new_i64();
