@@ -74,16 +74,16 @@ typedef struct L2VICState {
  */
 static unsigned int get_next_pending(L2VICState *s) {
     for (int i = 0; i < SLICE_MAX; i++) {
-        unsigned int pending = (s->int_status[i] ^ s->int_pending[i]);
-        unsigned int irq = find_first_bit((unsigned long *) &irq,
-                                          sizeof(irq)*CHAR_BIT);
+        unsigned long pending = (s->int_status[i] ^ s->int_pending[i]);
+        unsigned int irq = find_first_bit(&pending, sizeof(s->int_pending[0]) * CHAR_BIT);
         if (!test_bit(irq, (unsigned long *)s->int_enable)) {
             printf ("Disabled interrupt pending bit set, or nothing pending\n");
             printf ("Pending IRQ: %d\n",irq);
         }
         if (pending) {
             int pending_bit = ffs(pending) - 1;
-            pending_bit = pending_bit + (32 * i);
+            pending_bit = pending_bit +
+                    ((sizeof(s->int_pending[0]) * CHAR_BIT) * i);
             //printf("Service pending irq: %d, irqbit = 0x%x\n",
                    //pending_bit, IRQBIT(pending_bit));
             return pending_bit;
@@ -189,10 +189,10 @@ static void l2vic_write(void *opaque, hwaddr offset,
         if (s->vidpending) {
             s->vidpending = FALSE;
             if (memcmp(s->int_status, s->int_pending, sizeof(s->int_pending))) {
-                unsigned int irq = find_first_bit((unsigned long *) s->int_pending, 1024);
-                g_assert(irq != 1024);
+                unsigned int irq = find_first_bit((unsigned long *) s->int_pending, INTERRUPT_MAX);
+                g_assert(irq != INTERRUPT_MAX);
                 irq = get_next_pending(s);
-                if (irq < 1024) {
+                if (irq < INTERRUPT_MAX) {
                     l2vic_set_irq(s, irq, 1);
                 }
             }
@@ -231,10 +231,10 @@ static void l2vic_write(void *opaque, hwaddr offset,
         /*
          *  Need to reverse engineer the actual irq number.
          */
-        int irq = find_first_bit(&val, 32);
-        hwaddr wordoffset = offset - L2VIC_SOFT_INTn;
-        g_assert(irq != 32);
-        irq += wordoffset * 8;
+        int irq = find_first_bit(&val, sizeof(s->int_enable[0]) * CHAR_BIT);
+        hwaddr byteoffset = offset - L2VIC_SOFT_INTn;
+        g_assert(irq != sizeof(s->int_enable[0]) * CHAR_BIT);
+        irq += byteoffset * 8;
 
         /* The soft-int interface only works with edge-triggered interrupts */
         if (test_bit(irq, (unsigned long *)s->int_type)) {
@@ -359,7 +359,7 @@ static void l2vic_init(Object *obj)
 
     memory_region_init_io(&s->iomem, obj, &l2vic_ops, s, "l2vic", 0x1000);
     sysbus_init_mmio(sbd, &s->iomem);
-    qdev_init_gpio_in(dev, l2vic_set_irq, 1024);
+    qdev_init_gpio_in(dev, l2vic_set_irq, INTERRUPT_MAX);
     for (i=0; i<8; i++)
         sysbus_init_irq(sbd, &s->irq[i]);
     qemu_mutex_init(&s->active); /* TODO: Remove this is an experiment */
