@@ -381,8 +381,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fREAD_GELR() (READ_REG(tmp, HEX_REG_GELR))
 #define fREAD_GEVB() (READ_REG(tmp, HEX_REG_GEVB))
 #define fREAD_FP() (READ_REG(tmp, HEX_REG_FP))
-#define fREAD_GP() \
-    (insn->extension_valid ? gen_zero(tmp) : READ_REG(tmp, HEX_REG_GP))
 #else
 #define fREAD_SP() (READ_REG(HEX_REG_SP))
 #define fREAD_GOSP() (READ_REG(HEX_REG_GOSP))
