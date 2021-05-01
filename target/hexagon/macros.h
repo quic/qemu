@@ -1696,7 +1696,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fBREAK()
 #define fGP_DOCHKPAGECROSS(BASE, SUM)
 #define fDOCHKPAGECROSS(BASE, SUM)
-#define fPAUSE(IMM)
 #define fUNPAUSE()
 
 #ifdef CONFIG_USER_ONLY

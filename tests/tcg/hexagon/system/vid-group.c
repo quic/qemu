@@ -194,11 +194,16 @@ char __attribute__((aligned(16))) stack1[STACK_SIZE];
 char __attribute__((aligned(16))) stack2[STACK_SIZE];
 char __attribute__((aligned(16))) stack3[STACK_SIZE];
 
+void pause() {
+    __asm__ __volatile__("pause(#1)");
+}
+
 void thread1()
 {
     uint32_t pcyclo;
     for (;;) {
         __asm__ __volatile__("%0 = pcyclelo" : "=r"(pcyclo));
+        pause();
     }
     return;
 }
@@ -208,6 +213,7 @@ void thread2()
     uint32_t pcyclo;
     for (;;) {
         __asm__ __volatile__("%0 = pcyclelo" : "=r"(pcyclo));
+        pause();
     }
     return;
 }
@@ -217,6 +223,7 @@ void thread3()
     uint32_t pcyclo;
     for (;;) {
         __asm__ __volatile__("%0 = pcyclelo" : "=r"(pcyclo));
+        pause();
     }
     return;
 }

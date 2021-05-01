@@ -1025,16 +1025,6 @@ void HELPER(clear_run_mode)(CPUHexagonState *env, uint32_t mask)
     hexagon_stop_thread(env);
 }
 
-void HELPER(pause)(CPUHexagonState *env, uint32_t val)
-
-{
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
-
-    /* Just let another CPU run.  */
-    cs->exception_index = EXCP_INTERRUPT;
-    cpu_loop_exit(cs);
-}
-
 void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 
 {

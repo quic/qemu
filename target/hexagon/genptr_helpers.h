@@ -1198,4 +1198,9 @@ static inline void gen_log_qreg_write(TCGv_ptr var, int num, int vnew,
     tcg_temp_free(cancelled);
 }
 
+static inline void gen_pause(CPUHexagonState *env) {
+    tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+    gen_exception(EXCP_YIELD);
+}
+
 #endif

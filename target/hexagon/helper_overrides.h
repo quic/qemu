@@ -2310,4 +2310,5 @@
 #define fWRAP_SL2_jumpr31_tnew(GENHLPR, SHORTCODE) \
     gen_cond_jumpr(hex_new_pred_value[0], hex_gpr[HEX_REG_LR])
 
+#define fWRAP_J2_pause(GENHLPR, SHORTCODE) gen_pause(env)
 #endif

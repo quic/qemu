@@ -26,12 +26,14 @@ void handler(int intno)
     __asm__("ciad(%0)\n\t" ::"r"(bits));
 }
 
+void pause() {
+    __asm__ __volatile__("pause(#1)");
+}
 void die(int intno)
 {
     printf("%s: int=%d, tid=%d\n", __func__, intno, thread_get_tnum());
     printf("thread dead\n");
-    while (1)
-        ;
+    while (1) { pause(); }
 }
 
 #define STACK_SIZE 0x8000
@@ -57,8 +59,7 @@ int main()
 
     thread_create(thread1, (void *)&stack1[STACK_SIZE - 16], 1, (void *)&thcnt);
 
-    while (thcnt < 2)
-        ;
+    while (thcnt < 2) { pause(); }
     printf("\nTID 1 should be waiting, thcnt = %d\n", thcnt);
 
     printf("TID 0 sets bestwait to wake up TID 1\n");
