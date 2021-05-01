@@ -558,8 +558,9 @@ typedef struct HexagonCPU {
     CPUNegativeOffsetState neg;
     CPUHexagonState env;
 
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY)
     bool count_gcycle_xt;
+    bool sched_limit;
 #endif
 } HexagonCPU;
 

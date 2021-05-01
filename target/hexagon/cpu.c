@@ -55,9 +55,11 @@ static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
     return oc;
 }
 
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY)
 static Property hexagon_count_gcycle_xt_property =
     DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false);
+static Property hexagon_sched_limit_property =
+    DEFINE_PROP_BOOL("sched-limit", HexagonCPU, sched_limit, false);
 #endif
 
 const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
@@ -531,10 +533,10 @@ static void hexagon_cpu_init(Object *obj)
     HexagonCPU *cpu = HEXAGON_CPU(obj);
 
     cpu_set_cpustate_pointers(cpu);
-#ifndef CONFIG_USER_ONLY
-    // At he the moment only qtimer XXX_SM
+#if !defined(CONFIG_USER_ONLY)
     qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
     qdev_property_add_static(DEVICE(obj), &hexagon_count_gcycle_xt_property);
+    qdev_property_add_static(DEVICE(obj), &hexagon_sched_limit_property);
 #endif
 }
 

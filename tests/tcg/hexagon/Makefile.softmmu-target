@@ -118,3 +118,5 @@ run-framelimit run-hvx_nocoproc run-float_excp:
 	else \
 		return -1; \
 	fi
+
+run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on

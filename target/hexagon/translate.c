@@ -964,7 +964,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 {
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY)
     gen_cpu_limit_init();
     /* assert(cpu->exception_index == HEX_EVENT_NONE); */
 #endif
@@ -1067,7 +1067,10 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     }
 
 #ifndef CONFIG_USER_ONLY
-    gen_cpu_limit();
+    HexagonCPU *hex_cpu = HEXAGON_CPU(cpu);
+    if (hex_cpu->sched_limit) {
+        gen_cpu_limit();
+    }
 #endif
     if (ctx->base.singlestep_enabled) {
         gen_exception_debug();
