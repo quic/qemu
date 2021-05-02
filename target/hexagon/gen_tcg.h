@@ -1902,12 +1902,18 @@
 #define fGEN_TCG_A2_sub(SHORTCODE) \
     tcg_gen_sub_tl(RdV, RtV, RsV)
 
+#define fGEN_TCG_A2_addp(SHORTCODE) \
+    tcg_gen_add_i64(RddV, RssV, RttV)
+
 /* r0 = sub(#10, r1) */
 #define fGEN_TCG_A2_subri(SHORTCODE) \
     tcg_gen_subfi_tl(RdV, siV, RsV)
 
 #define fGEN_TCG_A2_addi(SHORTCODE) \
     tcg_gen_addi_tl(RdV, RsV, siV)
+
+#define fGEN_TCG_SA1_addi(SHORTCODE) \
+    tcg_gen_addi_tl(RxV, RxV, siV)
 
 #define fGEN_TCG_A2_and(SHORTCODE) \
     tcg_gen_and_tl(RdV, RsV, RtV)
@@ -2119,6 +2125,8 @@
 
 #define fGEN_TCG_S2_extractu(SHORTCODE) \
     tcg_gen_extract_i32(RdV, RsV, UiV, uiV)
+#define fGEN_TCG_S2_extractup(SHORTCODE) \
+    tcg_gen_extract_i64(RddV, RssV, UiV, uiV)
 
 #define fGEN_TCG_A2_combinew(SHORTCODE) \
     tcg_gen_concat_i32_i64(RddV, RtV, RsV)
@@ -2133,7 +2141,12 @@
 #define fGEN_TCG_A2_combine_ll(SHORTCODE) \
     do { \
         tcg_gen_mov_tl(RdV, RsV); \
-        tcg_gen_deposit_i32(RdV, RdV, RtV, 16, 16); \
+        tcg_gen_deposit_tl(RdV, RdV, RtV, 16, 16); \
+    } while (0)
+#define fGEN_TCG_A2_combine_lh(SHORTCODE) \
+    do { \
+        gen_get_half(RdV, 1, RsV, false); \
+        tcg_gen_deposit_tl(RdV, RdV, RtV, 16, 16); \
     } while (0)
 #define fGEN_TCG_A4_combineri(SHORTCODE) \
     do { \
@@ -2234,6 +2247,8 @@
     GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
 #define fGEN_TCG_A2_paddtnew(SHORTCODE) \
     GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_paddfnew(SHORTCODE) \
+    GEN_TCG_padd(fLSBNEWNOT(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
 #define fGEN_TCG_A2_padditnew(SHORTCODE) \
     GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_addi_tl(RdV, RsV, siV))
 #define fGEN_TCG_A2_psubtnew(SHORTCODE) \
@@ -2281,6 +2296,32 @@
         tcg_temp_free(lsb); \
     } while (0)
 
+/* r0 = mux(p0, r1, #5) */
+#define fGEN_TCG_C2_muxir(SHORTCODE) \
+    do { \
+        TCGv zero = tcg_const_tl(0); \
+        TCGv fval = tcg_const_tl(siV); \
+        TCGv lsb = tcg_temp_new(); \
+        tcg_gen_andi_tl(lsb, PuV, 1); \
+        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, zero, RsV, fval); \
+        tcg_temp_free(zero); \
+        tcg_temp_free(fval); \
+        tcg_temp_free(lsb); \
+    } while (0)
+
+/* r0 = mux(p0, #3, r1) */
+#define fGEN_TCG_C2_muxri(SHORTCODE) \
+    do { \
+        TCGv zero = tcg_const_tl(0); \
+        TCGv tval = tcg_const_tl(siV); \
+        TCGv lsb = tcg_temp_new(); \
+        tcg_gen_andi_tl(lsb, PuV, 1); \
+        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, zero, tval, RsV); \
+        tcg_temp_free(zero); \
+        tcg_temp_free(tval); \
+        tcg_temp_free(lsb); \
+    } while (0)
+
 /* p0 = tstbit(r0, #5) */
 #define fGEN_TCG_S2_tstbit_i(SHORTCODE) \
     do { \
@@ -2318,6 +2359,24 @@
         tcg_gen_andi_tl(PdV, RsV, uiV); \
         gen_compare(TCG_COND_EQ, PdV, PdV, zero); \
         tcg_temp_free(zero); \
+    } while (0)
+
+#define fGEN_TCG_S2_cl0(SHORTCODE) \
+    tcg_gen_clzi_tl(RdV, RsV, 32)
+
+#define fGEN_TCG_A2_abs(SHORTCODE) \
+    tcg_gen_abs_tl(RdV, RsV)
+
+/* r3:2 = bitsplit(r1, #5) */
+#define fGEN_TCG_A4_bitspliti(SHORTCODE) \
+    do { \
+        TCGv lo = tcg_temp_new(); \
+        TCGv hi = tcg_temp_new(); \
+        tcg_gen_extract_tl(lo, RsV, 0, uiV); \
+        tcg_gen_extract_tl(hi, RsV, uiV, 32 - uiV); \
+        tcg_gen_concat_i32_i64(RddV, lo, hi); \
+        tcg_temp_free(lo); \
+        tcg_temp_free(hi); \
     } while (0)
 
 #define fGEN_TCG_SL2_jumpr31(SHORTCODE) \
@@ -2408,71 +2467,6 @@
         tcg_gen_add_tl(RxV, RxV, RsV); \
         tcg_gen_add_tl(RxV, RxV, RtV); \
     } while (0)
-
-#define fGEN_TCG_V6_vassign(SHORTCODE) \
-    tcg_gen_gvec_mov(MO_64, VdV_off, VuV_off, \
-                     sizeof(MMVector), sizeof(MMVector))
-
-#define fGEN_TCG_V6_vaddw(SHORTCODE) \
-    tcg_gen_gvec_add(MO_32, VdV_off, VuV_off, VvV_off, \
-                     sizeof(MMVector), sizeof(MMVector))
-
-#define fGEN_TCG_V6_vsubw(SHORTCODE) \
-    tcg_gen_gvec_sub(MO_32, VdV_off, VuV_off, VvV_off, \
-                     sizeof(MMVector), sizeof(MMVector))
-
-#define fGEN_TCG_V6_vmaxw(SHORTCODE) \
-    tcg_gen_gvec_smax(MO_32, VdV_off, VuV_off, VvV_off, \
-                      sizeof(MMVector), sizeof(MMVector))
-
-#define fGEN_TCG_V6_vminw(SHORTCODE) \
-    tcg_gen_gvec_smin(MO_32, VdV_off, VuV_off, VvV_off, \
-                      sizeof(MMVector), sizeof(MMVector))
-
-#define fGEN_TCG_V6_vxor(SHORTCODE) \
-    tcg_gen_gvec_xor(MO_64, VdV_off, VuV_off, VvV_off, \
-                     sizeof(MMVector), sizeof(MMVector))
-
-#define fGEN_TCG_V6_vand(SHORTCODE) \
-    tcg_gen_gvec_and(MO_64, VdV_off, VuV_off, VvV_off, \
-                     sizeof(MMVector), sizeof(MMVector))
-
-#define fGEN_TCG_V6_vor(SHORTCODE) \
-    tcg_gen_gvec_or(MO_64, VdV_off, VuV_off, VvV_off, \
-                    sizeof(MMVector), sizeof(MMVector))
-
-#define fGEN_TCG_V6_vL32b_cur_pi(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_nt_cur_pi(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_cur_pi(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_tmp_pi(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_pi(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_cur_ai(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_tmp_ai(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_ai(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_cur_ppu(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_tmp_ppu(SHORTCODE) \
-    SHORTCODE
-
-#define fGEN_TCG_V6_vL32b_ppu(SHORTCODE) \
-    SHORTCODE
 
 /* Floating point */
 #define fGEN_TCG_F2_conv_sf2df(SHORTCODE) \

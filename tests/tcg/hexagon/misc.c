@@ -298,6 +298,13 @@ static int auto_and(void)
     return retval;
 }
 
+static int cl0(int x)
+{
+    int retval;
+    asm("%0 = cl0(%1)\n\t" : "=r"(retval) : "r"(x));
+    return retval;
+}
+
 int main()
 {
     long long res64;
@@ -421,6 +428,11 @@ int main()
 
     res = auto_and();
     check(res, 0);
+
+    res = cl0(0x7fff);
+    check(res, 17);
+    res = cl0(0);
+    check(res, 32);
 
     puts(err ? "FAIL" : "PASS");
     return err;
