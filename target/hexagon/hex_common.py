@@ -238,3 +238,7 @@ def read_overrides_file(name):
             continue
         tag = overridere.findall(line)[0]
         overrides[tag] = True
+
+def read_overrides_files(n1, n2):
+    read_overrides_file(n1)
+    read_overrides_file(n2)

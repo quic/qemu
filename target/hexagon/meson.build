@@ -20,6 +20,7 @@ hexagon_ss = ss.source_set()
 hex_common_py = 'hex_common.py'
 attribs_def = meson.current_source_dir() / 'attribs_def.h.inc'
 gen_tcg_h = meson.current_source_dir() / 'gen_tcg.h'
+gen_tcg_hvx_h = meson.current_source_dir() / 'gen_tcg_hvx.h'
 
 #
 #  Step 1
@@ -66,8 +67,8 @@ helper_protos_generated = custom_target(
     output: 'helper_protos_generated.h.inc',
     input: 'gen_helper_protos.py',
     depends: [semantics_generated],
-    depend_files: [hex_common_py, attribs_def, gen_tcg_h],
-    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
+    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, gen_tcg_hvx_h, '@OUTPUT@'],
 )
 hexagon_ss.add(helper_protos_generated)
 
@@ -76,8 +77,8 @@ tcg_funcs_generated = custom_target(
     output: 'tcg_funcs_generated.c.inc',
     input: 'gen_tcg_funcs.py',
     depends: [semantics_generated],
-    depend_files: [hex_common_py, attribs_def, gen_tcg_h],
-    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
+    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, gen_tcg_hvx_h, '@OUTPUT@'],
 )
 hexagon_ss.add(tcg_funcs_generated)
 
@@ -96,8 +97,8 @@ helper_funcs_generated = custom_target(
     output: 'helper_funcs_generated.c.inc',
     input: 'gen_helper_funcs.py',
     depends: [semantics_generated],
-    depend_files: [hex_common_py, attribs_def, gen_tcg_h],
-    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, '@OUTPUT@'],
+    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h],
+    command: [python, '@INPUT@', semantics_generated, attribs_def, gen_tcg_h, gen_tcg_hvx_h, '@OUTPUT@'],
 )
 hexagon_ss.add(helper_funcs_generated)
 

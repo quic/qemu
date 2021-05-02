@@ -279,12 +279,12 @@ def gen_helper_function(f, tag, tagregs, tagimms):
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
-    hex_common.read_overrides_file(sys.argv[3])
+    hex_common.read_overrides_files(sys.argv[3], sys.argv[4])
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    with open(sys.argv[4], 'w') as f:
+    with open(sys.argv[5], 'w') as f:
         for tag in hex_common.tags:
             ## Skip the priv instructions
             if ( "A_PRIV" in hex_common.attribdict[tag] ) :

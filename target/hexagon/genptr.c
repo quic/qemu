@@ -29,6 +29,7 @@
 #include "mmvec/macros.h"
 #undef QEMU_GENERATE
 #include "gen_tcg.h"
+#include "gen_tcg_hvx.h"
 
 static inline TCGv gen_read_reg(TCGv result, int num)
 {
