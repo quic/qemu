@@ -64,7 +64,7 @@ typedef struct {
 
 helper_count_t helper_counts[] = {
 #define OPCODE(TAG)    { 0, #TAG },
-#include "opcodes_def_generated.h"
+#include "opcodes_def_generated.h.inc"
 #undef OPCODE
     { 0, NULL }
 };
@@ -1617,6 +1617,6 @@ static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPFN
-#include "qemu_def_generated.h"
+#include "qemu_def_generated.h.inc"
 #undef DEF_QEMU
 #pragma GCC diagnostic pop

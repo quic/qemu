@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,14 +27,12 @@
 
 #define STRINGIZE(X)    #X
 
-const char *opcode_names[] = {
+const char *const opcode_names[] = {
 #define OPCODE(IID) STRINGIZE(IID)
-#include "opcodes_def_generated.h"
+#include "opcodes_def_generated.h.inc"
     NULL
 #undef OPCODE
 };
-
-const char *opcode_syntax[XX_LAST_OPCODE];
 
 /*
  * Process the instruction definitions
@@ -48,36 +46,36 @@ const char *opcode_syntax[XX_LAST_OPCODE];
  *         "Insert Word Scalar into Vector",
  *         VxV.uw[0] = RtV;)
  */
-void opcode_init(void)
-{
+const char *opcode_syntax[XX_LAST_OPCODE] =
+
 #define Q6INSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
-   opcode_syntax[TAG] = BEH;
+   [TAG] = BEH,
 #define EXTINSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
-   opcode_syntax[TAG] = BEH;
+   [TAG] = BEH,
 #include "imported/allidefs.def"
 #undef Q6INSN
 #undef EXTINSN
-}
+};
 
-const char *opcode_rregs[] = {
+const char *const opcode_rregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
 };
 
-const char *opcode_wregs[] = {
+const char *const opcode_wregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
 };
 
-opcode_encoding_t opcode_encodings[] = {
+const OpcodeEncoding opcode_encodings[] = {
 #define DEF_ENC32(TAG, ENCSTR) \
     [TAG] = { .encoding = ENCSTR },
 #define DEF_ENC_SUBINSN(TAG, CLASS, ENCSTR) \
@@ -185,16 +183,15 @@ int main(int argc, char *argv[])
     FILE *outfile;
 
     if (argc != 2) {
-        fprintf(stderr, "Usage: gen_dectree_import ouptputfile\n");
-        return -1;
+        fprintf(stderr, "Usage: gen_dectree_import outputfile\n");
+        return 1;
     }
     outfile = fopen(argv[1], "w");
     if (outfile == NULL) {
         fprintf(stderr, "Cannot open %s for writing\n", argv[1]);
-        return -1;
+        return 1;
     }
 
-    opcode_init();
     gen_iset_table(outfile);
     gen_tags_list(outfile);
     gen_enc_ext_spaces_table(outfile);

@@ -53,7 +53,7 @@ static void snprintinsn(char *buf, int n, insn_t * insn)
     case TAG: \
         snprintf(buf, n, FMT, __VA_ARGS__);\
         break;
-#include "printinsn_generated.h"
+#include "printinsn_generated.h.inc"
 #undef DEF_VECX_PRINTINFO
 #undef DEF_PRINTINFO
     }

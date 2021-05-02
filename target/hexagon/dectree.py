@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ##
-##  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@ import io
 import re
 
 import sys
-sys.path.insert(0, sys.argv[1])
 import iset
 
 encs = {tag : ''.join(reversed(iset.iset[tag]['enc'].replace(' ', '')))
@@ -339,15 +338,14 @@ def print_op_info(f):
         print(')', file=f)
 
 if __name__ == '__main__':
-    f = io.StringIO()
-    print_tree(f, dectree_normal)
-    print_tree(f, dectree_16bit)
-    if subinsn_groupings:
-        print_tree(f, dectree_subinsn_groupings)
-    for (name, dectree_subinsn) in sorted(dectree_subinsns.items()):
-        print_tree(f, dectree_subinsn)
-    for (name, dectree_ext) in sorted(dectree_extensions.items()):
-        print_tree(f, dectree_ext)
-    print_match_info(f)
-    print_op_info(f)
-    open('target/hexagon/dectree_generated.h', 'w').write(f.getvalue())
+    with open(sys.argv[1], 'w') as f:
+        print_tree(f, dectree_normal)
+        print_tree(f, dectree_16bit)
+        if subinsn_groupings:
+            print_tree(f, dectree_subinsn_groupings)
+        for (name, dectree_subinsn) in sorted(dectree_subinsns.items()):
+            print_tree(f, dectree_subinsn)
+        for (name, dectree_ext) in sorted(dectree_extensions.items()):
+            print_tree(f, dectree_ext)
+        print_match_info(f)
+        print_op_info(f)

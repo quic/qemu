@@ -23,58 +23,59 @@
  */
 
 #include "qemu/osdep.h"
-#include "opcodes.h"
+#include "attribs.h"
 #include "decode.h"
 
 #define VEC_DESCR(A, B, C) DESCR(A, B, C)
 #define DONAME(X) #X
 
-const char *opcode_names[] = {
+const char * const opcode_names[] = {
 #define OPCODE(IID) DONAME(IID)
-#include "opcodes_def_generated.h"
+#include "opcodes_def_generated.h.inc"
     NULL
 #undef OPCODE
 };
 
-const char *opcode_reginfo[] = {
+const char * const opcode_reginfo[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) REGINFO,
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
 };
 
 
-const char *opcode_rregs[] = {
+const char * const opcode_rregs[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
 };
 
 
-const char *opcode_wregs[] = {
+const char * const opcode_wregs[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
-#include "op_regs_generated.h"
+#include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
 };
 
-const char *opcode_short_semantics[] = {
-#define OPCODE(X)              NULL
-#include "opcodes_def_generated.h"
-#undef OPCODE
+const char * const opcode_short_semantics[] = {
+#define DEF_SHORTCODE(TAG, SHORTCODE)              [TAG] = #SHORTCODE,
+#include "shortcode_generated.h.inc"
+#undef DEF_SHORTCODE
+
     NULL
 };
 
 
-size4u_t
-    opcode_attribs[XX_LAST_OPCODE][(A_ZZ_LASTATTRIB / ATTRIB_WIDTH) + 1];
+DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
+
 
 static void init_attribs(int tag, ...)
 {
@@ -82,8 +83,9 @@ static void init_attribs(int tag, ...)
     int attr;
     va_start(ap, tag);
     while ((attr = va_arg(ap, int)) != 0) {
-        opcode_attribs[tag][attr / ATTRIB_WIDTH] |= 1 << (attr % ATTRIB_WIDTH);
+        set_bit(attr, opcode_attribs[tag]);
     }
+    va_end(ap);
 }
 
 static size4u_t str2val(const char *str)
@@ -127,7 +129,7 @@ static size1u_t has_ee(const char *str)
     return (strchr(str, 'E') != NULL);
 }
 
-opcode_encoding_t opcode_encodings[] = {
+const OpcodeEncoding opcode_encodings[] = {
 #define DEF_ENC32(OPCODE, ENCSTR) \
     [OPCODE] = { .encoding = ENCSTR },
 
@@ -147,61 +149,27 @@ opcode_encoding_t opcode_encodings[] = {
 void opcode_init(void)
 {
     init_attribs(0, 0);
-
-#define DEF_ENC32(OPCODE, ENCSTR) \
-    opcode_encodings[OPCODE].vals = str2val(ENCSTR); \
-    opcode_encodings[OPCODE].is_ee = has_ee(ENCSTR);
-
-#define DEF_ENC_SUBINSN(OPCODE, CLASS, ENCSTR) \
-    opcode_encodings[OPCODE].vals = str2val(ENCSTR);
-
-#define LEGACY_DEF_ENC32(OPCODE, ENCSTR) \
-    opcode_encodings[OPCODE].dep_vals = str2val(ENCSTR);
-
-#define DEF_EXT_ENC(OPCODE, CLASS, ENCSTR) \
-    opcode_encodings[OPCODE].vals = str2val(ENCSTR);
-
-#include "imported/encode.def"
-
-#undef LEGACY_DEF_ENC32
-#undef DEF_ENC32
-#undef DEF_ENC_SUBINSN
-#undef DEF_EXT_ENC
-
 #define ATTRIBS(...) , ## __VA_ARGS__, 0
 #define OP_ATTRIB(TAG, ARGS) init_attribs(TAG ARGS);
-#include "op_attribs_generated.h"
+#include "op_attribs_generated.h.inc"
 #undef OP_ATTRIB
 #undef ATTRIBS
 
     decode_init();
-
-#define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) \
-    opcode_short_semantics[TAG] = #SHORTCODE;
-#include "qemu_def_generated.h"
-#undef DEF_QEMU
 }
 
 
 #define NEEDLE "IMMEXT("
 
-int opcode_which_immediate_is_extended(opcode_t opcode)
+int opcode_which_immediate_is_extended(Opcode opcode)
 {
     const char *p;
-    if (opcode >= XX_LAST_OPCODE) {
-        g_assert_not_reached();
-        return 0;
-    }
-    if (!GET_ATTRIB(opcode, A_EXTENDABLE)) {
-        g_assert_not_reached();
-        return 0;
-    }
+    g_assert(opcode < XX_LAST_OPCODE);
+    g_assert(GET_ATTRIB(opcode, A_EXTENDABLE));
+
     p = opcode_short_semantics[opcode];
     p = strstr(p, NEEDLE);
-    if (p == NULL) {
-        g_assert_not_reached();
-        return 0;
-    }
+    g_assert(p);
     p += strlen(NEEDLE);
     while (isspace(*p)) {
         p++;

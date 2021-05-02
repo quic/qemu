@@ -73,9 +73,13 @@ DEF_HELPER_1(check_hmx, void, env)
 DEF_HELPER_2(ciad, void, env, i32)
 #endif
 DEF_HELPER_1(commit_hmx, void, env)
+
+#if 0
+/* FIXME CAIN */
 #define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPER
-#include "qemu_def_generated.h"
+#include "qemu_def_generated.h.inc"
 #undef DEF_QEMU
+#endif
 
 DEF_HELPER_2(debug_value, void, env, s32)
 DEF_HELPER_2(debug_value_i64, void, env, s64)

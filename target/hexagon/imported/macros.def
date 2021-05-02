@@ -17,90 +17,60 @@
 
 DEF_MACRO(
 	LIKELY,		/* NAME */
-	(X),		/* PARAMS */
-	"X",		/* sdescr */
-	"X",		/* ldescr */
 	__builtin_expect((X),1), /* BEH */
 	()		/* attribs */
 )
 
 DEF_MACRO(
 	UNLIKELY,	/* NAME */
-	(X),		/* PARAMS */
-	"X",		/* sdescr */
-	"X",		/* ldescr */
 	__builtin_expect((X),0), /* BEH */
 	()		/* attribs */
 )
 
 DEF_MACRO(
 	CANCEL, /* macro name */
-	, /* parameters */
-	"NOP", /* short description */
-	"NOP this instruction", /* long description */
 	{if (thread->last_pkt) thread->last_pkt->slot_cancelled |= (1<<insn->slot); return;} , /* behavior */
 	(A_CONDEXEC)
 )
 
 DEF_MACRO(
 	STORE_ZERO, /* macro name */
-	, /* parameters */
-	"Zero Store", /* short description */
-	"NOP this instruction", /* long description */
 	{if (thread->last_pkt) thread->last_pkt->slot_zero_byte_store |= (1<<insn->slot); } , /* behavior */
 	(A_CONDEXEC)
 )
 
 DEF_MACRO(
 	LOAD_CANCEL, /* macro name */
-	(EA), /* parameters */
-	"NOP", /* short description */
-	"NOP this instruction", /* long description */
 	{mem_general_load_cancelled(thread,EA,insn);CANCEL;} , /* behavior */
 	(A_CONDEXEC)
 )
 
 DEF_MACRO(
 	STORE_CANCEL, /* macro name */
-	(EA), /* parameters */
-	"NOP", /* short description */
-	"NOP this instruction", /* long description */
 	{mem_general_store_cancelled(thread,EA,insn);CANCEL;} , /* behavior */
 	(A_CONDEXEC)
 )
 
 DEF_MACRO(
 	IS_CANCELLED, /* macro name */
-	(SLOT), /* parameters */
-	"", /* short description */
-	"", /* long description */
 	((thread->last_pkt->slot_cancelled >> SLOT)&1) , /* behavior */
 	/* attrib */
 )
 
 DEF_MACRO(
 	fMAX, /* macro name */
-	(A,B), /* parameters */
-	"max(A,B)", /* short description */
-	"the larger of A and B", /* long description */
 	(((A) > (B)) ? (A) : (B)), /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fMIN, /* macro name */
-	(A,B), /* parameters */
-	"min(A,B)", /* short description */
-	"the smaller of A and B", /* long description */
 	(((A) < (B)) ? (A) : (B)), /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fABS, /* macro name */
-	(A), /* parameters */
-	"ABS(A)", /* short description */
-	"if A is less than zero then A=-A", /* long description */
 	(((A)<0)?(-(A)):(A)), /* behavior */
 	/* optional attributes */
 )
@@ -109,8 +79,6 @@ DEF_MACRO(
 /* Bit insert */
 DEF_MACRO(
 	fINSERT_BITS,(REG,WIDTH,OFFSET,INVAL),
-	"REG[(WIDTH-1+OFFSET):OFFSET]=INVAL",
-	"REG[(WIDTH-1+OFFSET):OFFSET]=INVAL",
         {
 	   REG = ((REG) & ~(((fCONSTLL(1)<<(WIDTH))-1)<<(OFFSET))) | (((INVAL) & ((fCONSTLL(1)<<(WIDTH))-1)) << (OFFSET));
         },
@@ -119,34 +87,26 @@ DEF_MACRO(
 
 /* Bit extract */
 DEF_MACRO(
-	fEXTRACTU_BITS,(INREG,WIDTH,OFFSET),
-	"INREG[(WIDTH+OFFSET-1):OFFSET]",
-	"INREG[(WIDTH+OFFSET-1):OFFSET]",
+	fEXTRACTU_BITS,
 	(fZXTN(WIDTH,32,(INREG >> OFFSET))),
 	/* attribs */
 )
 
 DEF_MACRO(
-	fEXTRACTU_BIDIR,(INREG,WIDTH,OFFSET),
-	"INREG[(WIDTH+OFFSET-1):OFFSET]",
-	"INREG[(WIDTH+OFFSET-1):OFFSET]",
+	fEXTRACTU_BIDIR,
 	(fZXTN(WIDTH,32,fBIDIR_LSHIFTR((INREG),(OFFSET),4_8))),
 	/* attribs */
 )
 
 DEF_MACRO(
-	fEXTRACTU_RANGE,(INREG,HIBIT,LOWBIT),
-	"INREG[HIBIT:LOWBIT]",
-	"INREG[HIBIT:LOWBIT]",
+	fEXTRACTU_RANGE,
 	(fZXTN((HIBIT-LOWBIT+1),32,(INREG >> LOWBIT))),
 	/* attribs */
 )
 
 
 DEF_MACRO(
-	fINSERT_RANGE,(INREG,HIBIT,LOWBIT,INVAL),
-	"INREG[HIBIT:LOWBIT]=INVAL",
-	"INREG[HIBIT:LOWBIT]=INVAL",
+	fINSERT_RANGE,
         {
           int offset=LOWBIT;
           int width=HIBIT-LOWBIT+1;
@@ -160,81 +120,61 @@ DEF_MACRO(
 
 
 DEF_MACRO(
-	f8BITSOF,(VAL),
-	"VAL ? 0xff : 0x00",
-	"VAL ? 0xff : 0x00",
+	f8BITSOF,
 	( (VAL) ? 0xff : 0x00),
 	/* attribs */
 )
 
 DEF_MACRO(
-	fLSBOLD,(VAL),
-	"VAL[0]",
-	"Least significant bit of VAL",
+	fLSBOLD,
 	((VAL) & 1),
 	(A_DOTOLD)
 )
 
 DEF_MACRO(
-	fLSBNEW,(PNUM),
-	"PNUM.new[0]",
-	"Least significant bit of new PNUM",
+	fLSBNEW,
 	predlog_read(thread,PNUM),
 	(A_DOTNEW)
 )
 
 DEF_MACRO(
-	fLSBNEW0,,
-	"P0.new[0]",
-	"Least significant bit of new P0",
+	fLSBNEW0,
 	predlog_read(thread,0),
 	(A_DOTNEW,A_IMPLICIT_READS_P0)
 )
 
 DEF_MACRO(
-	fLSBNEW1,,
-	"P1.new[0]",
-	"Least significant bit of new P1",
+	fLSBNEW1,
 	predlog_read(thread,1),
 	(A_DOTNEW,A_IMPLICIT_READS_P1)
 )
 
 DEF_MACRO(
-	fLSBOLDNOT,(VAL),
-	"!VAL[0]",
-	"!Least significant bit of VAL",
+	fLSBOLDNOT,
 	(!fLSBOLD(VAL)),
 	(A_DOTOLD,A_INVPRED)
 )
 
 DEF_MACRO(
-	fLSBNEWNOT,(PNUM),
-	"!PNUM.new[0]",
-	"!Least significant bit of new PNUM",
+	fLSBNEWNOT,
 	(!fLSBNEW(PNUM)),
 	(A_DOTNEW,A_INVPRED)
 )
 
 DEF_MACRO(
-	fLSBNEW0NOT,,
-	"!P0.new[0]",
-	"!Least significant bit of new P0",
+	fLSBNEW0NOT,
 	(!fLSBNEW0),
 	(A_DOTNEW,A_INVPRED,A_IMPLICIT_READS_P0)
 )
 
 DEF_MACRO(
-	fLSBNEW1NOT,,
-	"P1.new[0]",
-	"Least significant bit of new P1",
+	fLSBNEW1NOT,
 	(!fLSBNEW1),
 	(A_DOTNEW,A_INVPRED,A_IMPLICIT_READS_P1)
 )
 
 DEF_MACRO(
-	fNEWREG,(RNUM),
-	"RNUM.new",
-	"Register value produced in this packet",
+	fNEWREG,
 	({if (newvalue_missing(thread,RNUM) ||
       IS_CANCELLED(insn->new_value_producer_slot)) CANCEL; reglog_read(thread,RNUM);}),
 	(A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY)
@@ -242,102 +182,73 @@ DEF_MACRO(
 // Store new with a missing newvalue or cancelled goes out as a zero byte store in V65
 // take advantage of the fact that reglog_read returns zero for not valid rnum
 DEF_MACRO(
-	fNEWREG_ST,(RNUM),
-	"RNUM.new",
-	"Register value produced in this packet for store",
+	fNEWREG_ST,
 	({if (newvalue_missing(thread,RNUM) ||
       IS_CANCELLED(insn->new_value_producer_slot)) { STORE_ZERO; RNUM = -1; }; reglog_read(thread,RNUM);}),
 	(A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY)
 )
 
 DEF_MACRO(
-	fMEMZNEW,(RNUM),
-	"RNUM.new == 0",
-	"Newly loaded value is zero",
+	fMEMZNEW,
 	(RNUM == 0),
 	/* attribs */
 )
 
 DEF_MACRO(
-	fMEMNZNEW,(RNUM),
-	"RNUM.new != 0",
-	"Newly loaded value is non-zero",
+	fMEMNZNEW,
 	(RNUM != 0),
 	/* attribs */
 )
 
 DEF_MACRO(
-	fVSATUVALN,(N,VAL),
-	"N-Bit Unsigned Saturation Value for sign of VAL",
-	"N-Bit Unsigned Saturation Value for sign of VAL",
+	fVSATUVALN,
 	({ ((VAL) < 0) ? 0 : ((1LL<<(N))-1);}),
 	(A_USATURATE)
 )
 
 DEF_MACRO(
-	fSATUVALN,(N,VAL),
-	"N-Bit Unsigned Saturation Value for sign of VAL",
-	"N-Bit Unsigned Saturation Value for sign of VAL",
+	fSATUVALN,
 	({fSET_OVERFLOW(); ((VAL) < 0) ? 0 : ((1LL<<(N))-1);}),
 	(A_USATURATE)
 )
 
 DEF_MACRO(
-	fSATVALN,(N,VAL),
-	"N-Bit Saturation Value for sign of VAL",
-	"N-Bit Saturation Value for sign of VAL",
+	fSATVALN,
 	({fSET_OVERFLOW(); ((VAL) < 0) ? (-(1LL<<((N)-1))) : ((1LL<<((N)-1))-1);}),
 	(A_SATURATE)
 )
 
 DEF_MACRO(
-	fVSATVALN,(N,VAL),
-	"N-Bit Saturation Value for sign of VAL",
-	"N-Bit Saturation Value for sign of VAL",
+	fVSATVALN,
 	({((VAL) < 0) ? (-(1LL<<((N)-1))) : ((1LL<<((N)-1))-1);}),
 	(A_SATURATE)
 )
 
 DEF_MACRO(
 	fZXTN, /* macro name */
-	(N,M,VAL),
-	"zxt_{N->M}(VAL)", /* short descr */
-	"Zero extend N bits from VAL",
 	((VAL) & ((1LL<<(N))-1)),
 	/* attribs */
 )
 
 DEF_MACRO(
 	fSXTN, /* macro name */
-	(N,M,VAL),
-	"sxt_{N->M}(VAL)", /* short descr */
-	"Sign extend N bits from VAL",
 	((fZXTN(N,M,VAL) ^ (1LL<<((N)-1))) - (1LL<<((N)-1))),
 	/* attribs */
 )
 
 DEF_MACRO(
 	fSATN,
-	(N,VAL),
-	"sat_##N(VAL)", /* short descr */
-	"Saturate VAL to N bits",
 	((fSXTN(N,64,VAL) == (VAL)) ? (VAL) : fSATVALN(N,VAL)),
 	(A_SATURATE)
 )
 DEF_MACRO(
 	fVSATN,
-	(N,VAL),
-	"sat_##N(VAL)", /* short descr */
-	"Saturate VAL to N bits",
 	((fSXTN(N,64,VAL) == (VAL)) ? (VAL) : fVSATVALN(N,VAL)),
 	(A_SATURATE)
 )
 
 DEF_MACRO(
 	fADDSAT64,
-	(DST,A,B),
-	"DST=sat64(A+B)", /* short descr */
-	"DST=sat64(A+B)",
 	{
 	  size8u_t __a = fCAST8u(A);
 	  size8u_t __b = fCAST8u(B);
@@ -366,9 +277,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fVSATUN,
-	(N,VAL),
-	"usat_##N(VAL)", /* short descr */
-	"Saturate VAL to N bits",
 	({size8u_t tmp8=fZXTN(N,64,VAL);
       size4u_t tmp9=(tmp8==(VAL)) ? (VAL) : fVSATUVALN(N,VAL);
 	  tmp9; }),
@@ -377,18 +285,12 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fSATUN,
-	(N,VAL),
-	"usat_##N(VAL)", /* short descr */
-	"Saturate VAL to N bits",
 	((fZXTN(N,64,VAL) == (VAL)) ? (VAL) : fSATUVALN(N,VAL)),
 	(A_USATURATE)
 )
 
 DEF_MACRO(
 	fSATH,
-	(VAL),
-	"sat_16(VAL)", /* short descr */
-	"Saturate VAL to a signed half",
 	(fSATN(16,VAL)),
 	(A_SATURATE)
 )
@@ -396,27 +298,18 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fSATUH,
-	(VAL),
-	"usat_16(VAL)", /* short descr */
-	"Saturate VAL to an unsigned half",
 	(fSATUN(16,VAL)),
 	(A_USATURATE)
 )
 
 DEF_MACRO(
 	fVSATH,
-	(VAL),
-	"sat_16(VAL)", /* short descr */
-	"Saturate VAL to a signed half",
 	(fVSATN(16,VAL)),
 	(A_SATURATE)
 )
 
 DEF_MACRO(
 	fVSATUH,
-	(VAL),
-	"usat_16(VAL)", /* short descr */
-	"Saturate VAL to a signed half",
 	(fVSATUN(16,VAL)),
 	(A_USATURATE)
 )
@@ -424,17 +317,11 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fSATUB,
-	(VAL),
-	"usat_8(VAL)", /* short descr */
-	"Saturate VAL to an unsigned byte",
 	(fSATUN(8,VAL)),
 	(A_USATURATE)
 )
 DEF_MACRO(
 	fSATB,
-	(VAL),
-	"sat_8(VAL)", /* short descr */
-	"Saturate VAL to a signed byte",
 	(fSATN(8,VAL)),
 	(A_SATURATE)
 )
@@ -442,17 +329,11 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fVSATUB,
-	(VAL),
-	"usat_8(VAL)", /* short descr */
-	"Saturate VAL to a unsigned byte",
 	(fVSATUN(8,VAL)),
 	(A_USATURATE)
 )
 DEF_MACRO(
 	fVSATB,
-	(VAL),
-	"sat_8(VAL)", /* short descr */
-	"Saturate VAL to a signed byte",
 	(fVSATN(8,VAL)),
 	(A_SATURATE)
 )
@@ -466,36 +347,24 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fIMMEXT,
-	(IMM),
-	"apply_extension(IMM)",
-	"Apply extension to IMM",
 	(IMM = IMM /* (insn->extension_valid?(fGET_EXTENSION | fZXTN(6,32,(IMM))):(IMM)) */ ),
 	(A_EXTENDABLE)
 )
 
 DEF_MACRO(
 	fMUST_IMMEXT,
-	(IMM),
-	"apply_extension(IMM)",
-	"Apply extension to IMM",
-	fIMMEXT(IMM),
+	fIMMEXT
 	(A_EXTENDABLE,A_MUST_EXTEND)
 )
 
 DEF_MACRO(
 	fPCALIGN,
-	(IMM),
-	"IMM=IMM & ~PCALIGN_MASK",
-	"",
 	IMM=(IMM & ~PCALIGN_MASK),
 	(A_EXTENDABLE)
 )
 
 DEF_MACRO(
 	fGET_EXTENSION,
-	,
-	"extension",
-	"extension",
 	insn->extension,
 	/* attrs */
 )
@@ -505,9 +374,7 @@ DEF_MACRO(
 /*************************************/
 
 DEF_MACRO(
-	fVERIFICATION_REGWRITE_NOTE,(THREADID,REGNO),
-	"",
-	"",
+	fVERIFICATION_REGWRITE_NOTE,
 	/* NOTHING */,
 	()
 )
@@ -516,9 +383,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fREAD_IREG, /* read link register */
-	(VAL), /* parameters */
-	"I", /* short description */
-	"I", /* long description */
 	(fSXTN(11,64,(((VAL) & 0xf0000000)>>21) | ((VAL>>17)&0x7f) )),          /* behavior */
 	()
 )
@@ -526,162 +390,108 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fREAD_R0, /* read r0 */
-	(), /* parameters */
-	"R0", /* short description */
-	"R0", /* long description */
 	(READ_RREG(0)),          /* behavior */
 	(A_IMPLICIT_READS_R00)
 )
 
 DEF_MACRO(
 	fREAD_LR, /* read link register */
-	(), /* parameters */
-	"LR", /* short description */
-	"LR", /* long description */
 	(READ_RREG(REG_LR)),          /* behavior */
 	(A_IMPLICIT_READS_LR)
 )
 
 DEF_MACRO(
 	fREAD_SSR, /* read link register */
-	(), /* parameters */
-	"SSR", /* short description */
-	"SSR", /* long description */
 	(READ_RREG(REG_SSR)),          /* behavior */
 	()
 )
 
 DEF_MACRO(
 	fWRITE_R0, /* write r0 */
-	(A), /* parameters */
-	"R0=A", /* short description */
-	"R0=A", /* long description */
 	fVERIF_MARK_RREG_ACCESS(0,'-',1,A); WRITE_RREG(0,A),          /* behavior */
 	(A_IMPLICIT_WRITES_R00)
 )
 
 DEF_MACRO(
 	fWRITE_LR, /* write lr */
-	(A), /* parameters */
-	"LR=A", /* short description */
-	"LR=A", /* long description */
 	fVERIF_MARK_RREG_ACCESS(REG_LR,'-',1,A); WRITE_RREG(REG_LR,A),          /* behavior */
 	(A_IMPLICIT_WRITES_LR)
 )
 
 DEF_MACRO(
 	fWRITE_FP, /* write sp */
-	(A), /* parameters */
-	"FP=A", /* short description */
-	"FP=A", /* long description */
 	fVERIF_MARK_RREG_ACCESS(REG_FP,'-',1,A); WRITE_RREG(REG_FP,A),          /* behavior */
 	(A_IMPLICIT_WRITES_FP)
 )
 
 DEF_MACRO(
 	fWRITE_SP, /* write sp */
-	(A), /* parameters */
-	"SP=A", /* short description */
-	"SP=A", /* long description */
 	fVERIF_MARK_RREG_ACCESS(REG_SP,'-',1,A); WRITE_RREG(REG_SP,A),          /* behavior */
 	(A_IMPLICIT_WRITES_SP)
 )
 
 DEF_MACRO(
 	fWRITE_GOSP, /* write gosp */
-	(A), /* parameters */
-	"GOSP=A", /* short description */
-	"GOSP=A", /* long description */
 	fVERIF_MARK_RREG_ACCESS(REG_GOSP,'-',1,A); WRITE_RREG(REG_GOSP,A),          /* behavior */
 	(A_IMPLICIT_WRITES_GOSP)
 )
 
 DEF_MACRO(
 	fWRITE_GP, /* write gp */
-	(A), /* parameters */
-	"GP=A", /* short description */
-	"GP=A", /* long description */
 	WRITE_RREG(REG_GP,A),          /* behavior */
 	(A_IMPLICIT_WRITES_GP)
 )
 
 DEF_MACRO(
 	fREAD_SP, /* read stack pointer */
-	(), /* parameters */
-	"SP", /* short description */
-	"SP", /* long description */
 	(READ_RREG(REG_SP)),          /* behavior */
 	(A_IMPLICIT_READS_SP)
 )
 
 DEF_MACRO(
 	fREAD_GOSP, /* read guest other stack pointer */
-	(), /* parameters */
-	"GOSP", /* short description */
-	"GOSP", /* long description */
 	(READ_RREG(REG_GOSP)),          /* behavior */
 	(A_IMPLICIT_READS_GOSP)
 )
 
 DEF_MACRO(
 	fREAD_GELR, /* read guest other stack pointer */
-	(), /* parameters */
-	"GELR", /* short description */
-	"GELR", /* long description */
 	(READ_RREG(REG_GELR)),          /* behavior */
 	(A_IMPLICIT_READS_GELR)
 )
 
 DEF_MACRO(
 	fREAD_GEVB, /* read guest other stack pointer */
-	(), /* parameters */
-	"GEVB", /* short description */
-	"GEVB", /* long description */
 	(READ_RREG(REG_GEVB)),          /* behavior */
 	(A_IMPLICIT_READS_GEVB)
 )
 
 DEF_MACRO(
 	fREAD_CSREG, /* read stack pointer */
-	(N), /* parameters */
-	"CS N", /* short description */
-	"CS N", /* long description */
 	(READ_RREG(REG_CSA+N)),          /* behavior */
 	(A_IMPLICIT_READS_CS)
 )
 
 DEF_MACRO(
 	fREAD_LC0, /* read loop count */
-	, /* parameters */
-	"LC0", /* short description */
-	"LC0", /* long description */
 	(READ_RREG(REG_LC0)),          /* behavior */
 	(A_IMPLICIT_READS_LC0)
 )
 
 DEF_MACRO(
 	fREAD_LC1, /* read loop count */
-	, /* parameters */
-	"LC1", /* short description */
-	"LC1", /* long description */
 	(READ_RREG(REG_LC1)),          /* behavior */
 	(A_IMPLICIT_READS_LC1)
 )
 
 DEF_MACRO(
 	fREAD_SA0, /* read start addr */
-	, /* parameters */
-	"SA0", /* short description */
-	"SA0", /* long description */
 	(READ_RREG(REG_SA0)),          /* behavior */
 	(A_IMPLICIT_READS_SA0)
 )
 
 DEF_MACRO(
 	fREAD_SA1, /* read start addr */
-	, /* parameters */
-	"SA1", /* short description */
-	"SA1", /* long description */
 	(READ_RREG(REG_SA1)),          /* behavior */
 	(A_IMPLICIT_READS_SA1)
 )
@@ -689,79 +499,54 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fREAD_FP, /* read stack pointer */
-	(), /* parameters */
-	"FP", /* short description */
-	"FP", /* long description */
 	(READ_RREG(REG_FP)),          /* behavior */
 	(A_IMPLICIT_READS_FP)
 )
 
 DEF_MACRO(
 	fREAD_GP, /* read global pointer */
-	(), /* parameters */
-	"(Constant_extended ? (0) : GP)", /* short description */
-	"(Constant_extended ? (0) : GP)", /* long description */
 	(insn->extension_valid ? 0 : READ_RREG(REG_GP)),          /* behavior */
 	(A_IMPLICIT_READS_GP)
 )
 
 DEF_MACRO(
 	fREAD_PC, /* read PC */
-	(), /* parameters */
-	"PC", /* short description */
-	"PC", /* long description */
 	(READ_RREG(REG_PC)),          /* behavior */
 	(A_IMPLICIT_READS_PC)
 )
 
 DEF_MACRO(
 	fREAD_NPC, /* read PC */
-	(), /* parameters */
-	"NPC", /* short description */
-	"NPC", /* long description */
 	(thread->next_PC & (0xfffffffe)),          /* behavior */
 	()
 )
 
 DEF_MACRO(
 	fREAD_P0, /* read Predicate 0 */
-	(), /* parameters */
-	"P0", /* short description */
-	"P0", /* long description */
 	(READ_PREG(0)),          /* behavior */
 	(A_IMPLICIT_READS_P0)
 )
 
 DEF_MACRO(
 	fREAD_P3, /* read Predicate 0 */
-	(), /* parameters */
-	"P3", /* short description */
-	"P3", /* long description */
 	(READ_PREG(3)),          /* behavior */
 	(A_IMPLICIT_READS_P3)
 )
 
 DEF_MACRO(
 	fNOATTRIB_READ_P3, /* read Predicate 0 */
-	(), /* parameters */
-	"P3", /* short description */
-	"P3", /* long description */
 	(READ_PREG(3)),          /* behavior */
 	()
 )
 
 DEF_MACRO(
-	fINVALID,(),
-	"Invalid instruction!",
-	"Invalid instruction!",
+	fINVALID,
 	(register_error_exception(thread,PRECISE_CAUSE_INVALID_PACKET,thread->Regs[REG_BADVA0],thread->Regs[REG_BADVA1],GET_SSR_FIELD(SSR_BVS),GET_SSR_FIELD(SSR_V0),GET_SSR_FIELD(SSR_V1),0)),
 	()
 )
 
 DEF_MACRO(
-	fCHECK_PCALIGN, (A),
-	"",
-	"",
+	fCHECK_PCALIGN,
 	/* EJP: if exception already detected, do not trigger pc unaligned exception since we will be rewinding PC anyway. */
 	/* Maybe this will screw up prioritization logic... but probably it is ok?  Otherwise we can ditch out of dealloc_return early if EXCEPTION_DETECTED */
 	if (((A) & PCALIGN_MASK)) {
@@ -771,17 +556,13 @@ DEF_MACRO(
 )
 
 DEF_MACRO(
-	fCUREXT,(),
-	"",
-	"",
+	fCUREXT,
 	GET_SSR_FIELD(SSR_XA),
 	()
 )
 
 DEF_MACRO(
-	fEXT_WRAP,(EXT_NO),
-	"",
-	"",
+	fEXT_WRAP,
 	{
 		if (get_ext_contexts(thread->processor_ptr))
 			EXT_NO &= (get_ext_contexts(thread->processor_ptr)-1);
@@ -793,9 +574,7 @@ DEF_MACRO(
 )
 
 DEF_MACRO(
-	fCUREXT_WRAP,(EXT_NO),
-	"",
-	"",
+	fCUREXT_WRAP,
 	{
 		EXT_NO = fCUREXT();
 		fEXT_WRAP(EXT_NO);
@@ -806,9 +585,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fWRITE_NPC, /* write next PC */
-	(A), /* parameters */
-	"PC=A", /* short description */
-	"PC=A", /* long description */
 	if (!thread->branch_taken) {
            if (A != thread->next_PC) {
              thread->next_pkt_guess=thread->last_pkt->taken_ptr;
@@ -824,9 +600,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fLOOPSTATS,
-	(A),
-	"",
-	"",
 	/* INC_TSTAT(tloopends);
   	   INC_TSTATN(tloopend_same_line,(thread->Regs[REG_PC] & -32) == ((A) & -32));
 	   INC_TSTATN(tloopend_samepc,(thread->Regs[REG_PC]) == (A));*/ ,
@@ -836,9 +609,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fCOF_CALLBACK,
-	(LOC,TYPE),
-	"",
-	"",
   {
 // This might be same to always use, not just verif
     thread->cof_log_to_va = (LOC);
@@ -850,18 +620,12 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fBRANCH,
-	(LOC,TYPE),
-	"PC=LOC",
-	"PC=LOC",
 	fWRITE_NPC(LOC); fCOF_CALLBACK(LOC,TYPE),
 	()
 )
 
 DEF_MACRO(
 	fTIME_JUMPR,
-	(REGNO,TARGET,TYPE),
-	"",
-	"",
 #if 0
 	if (thread->timing_on) {be_log_ret(thread->processor_ptr,thread->threadId,TARGET,REGNO); } ,
 #else
@@ -873,26 +637,17 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fJUMPR,	/* A jumpr has executed */
-	(REGNO,TARGET,TYPE),
-	"PC=TARGET",
-	"PC=TARGET",
 	{ fTIME_JUMPR(REGNO,TARGET,TYPE); fBRANCH(TARGET,COF_TYPE_JUMPR);},
 	(A_INDIRECT)
 )
 
 DEF_MACRO(
 	fHINTJR,	/* A hintjr instruction has executed */
-	(TARGET),
-	"",
-	"",
 	{ sys_hintjr(thread, insn->slot, TARGET); },
 )
 
 DEF_MACRO(
 	fBP_RAS_CALL,
-	(A),
-	"",
-	"",
 #if 0
 	do { if (thread->timing_on) be_log_call(thread->processor_ptr,thread->threadId,A,fREAD_NPC()); } while (0),
 #else
@@ -902,27 +657,18 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fCALL,	/* Do a call */
-	(A),
-	"fWRITE_LR(fREAD_NPC()); fWRITE_NPC(A);",
-	"fWRITE_LR(fREAD_NPC()); fWRITE_NPC(A);",
 	if (!thread->branch_taken) {fBP_RAS_CALL(A); fWRITE_LR(fREAD_NPC()); fBRANCH(A,COF_TYPE_CALL);},
 	(A_IMPLICIT_WRITES_PC,A_COF,A_IMPLICIT_WRITES_LR,A_CALL)
 )
 
 DEF_MACRO(
 	fCALLR,	/* Do a call Register */
-	(A),
-	"fWRITE_LR(fREAD_NPC()); fWRITE_NPC(A);",
-	"fWRITE_LR(fREAD_NPC()); fWRITE_NPC(A);",
 	if (!thread->branch_taken) {fBP_RAS_CALL(A); fWRITE_LR(fREAD_NPC()); fBRANCH(A,COF_TYPE_CALLR);},
 	(A_IMPLICIT_WRITES_PC,A_COF,A_IMPLICIT_WRITES_LR,A_CALL)
 )
 
 DEF_MACRO(
 	fWRITE_LOOP_REGS0, /* write ln,sa,ea,lc */
-	(START,COUNT), /* parameters */
-	"SA0=START; LC0=COUNT", /* short description */
-	"SA0=START; LC0=COUNT", /* short description */
 	{WRITE_RREG(REG_LC0,COUNT);
          WRITE_RREG(REG_SA0,START);},
 	(A_IMPLICIT_WRITES_LC0,A_IMPLICIT_WRITES_SA0)
@@ -930,9 +676,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fWRITE_LOOP_REGS1, /* write ln,sa,ea,lc */
-	(START,COUNT), /* parameters */
-	"SA1=START; LC1=COUNT", /* short description */
-	"SA1=START; LC1=COUNT", /* short description */
 	{WRITE_RREG(REG_LC1,COUNT);
          WRITE_RREG(REG_SA1,START);},
 	(A_IMPLICIT_WRITES_LC1,A_IMPLICIT_WRITES_SA1)
@@ -940,36 +683,24 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fWRITE_LC0,
-	(VAL), /* parameters */
-	"LC0=VAL", /* short description */
-	"LC0=VAL",
 	WRITE_RREG(REG_LC0,VAL),
 	(A_IMPLICIT_WRITES_LC0)
 )
 
 DEF_MACRO(
 	fWRITE_LC1,
-	(VAL), /* parameters */
-	"LC1=VAL", /* short description */
-	"LC1=VAL",
 	WRITE_RREG(REG_LC1,VAL),
 	(A_IMPLICIT_WRITES_LC1)
 )
 
 DEF_MACRO(
 	fCARRY_FROM_ADD,
-	(A,B,C),
-	"carry_from_add(A,B,C)",
-	"carry_from_add(A,B,C)",
 	carry_from_add64(A,B,C),
 	/* NOTHING */
 )
 
 DEF_MACRO(
 	fSETCV_ADD,
-	(A,B,CARRY),
-	"SR[CV]=FLAGS(A+B)",
-	"SR[CV]=FLAGS(A+B)",
 	do {
 		SET_USR_FIELD(USR_C,gen_carry_add((A),(B),((A)+(B))));
 		SET_USR_FIELD(USR_V,gen_overflow_add((A),(B),((A)+(B))));
@@ -978,9 +709,6 @@ DEF_MACRO(
 )
 DEF_MACRO(
 	fSETCV_SUB,
-	(A,B,CARRY),
-	"SR[CV]=FLAGS(A-B)",
-	"SR[CV]=FLAGS(A-B)",
 	do {
 		SET_USR_FIELD(USR_C,gen_carry_add((A),(B),((A)-(B))));
 		SET_USR_FIELD(USR_V,gen_overflow_add((A),(B),((A)-(B))));
@@ -990,18 +718,12 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fSET_OVERFLOW,
-	(),
-	"USR.OVF=1",
-	"USR.OVF=1",
 	SET_USR_FIELD(USR_OVF,1),
 	(A_IMPLICIT_WRITES_SRBIT,A_NOTE_SR_OVF_WHEN_SATURATING,A_RESTRICT_NOSRMOVE)
 )
 
 DEF_MACRO(
 	fSET_LPCFG,
-	(VAL), /* parameters */
-	"USR.LPCFG=VAL",
-	"USR.LPCFG=VAL",
 	SET_USR_FIELD(USR_LPCFG,(VAL)),
 	(A_IMPLICIT_WRITES_LPCFG,A_RESTRICT_NOSRMOVE)
 )
@@ -1009,9 +731,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fGET_LPCFG,
-	, /* parameters */
-	"USR.LPCFG",
-	"USR.LPCFG",
 	(GET_USR_FIELD(USR_LPCFG)),
 	()
 )
@@ -1020,45 +739,30 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fWRITE_P0, /* write Predicate 0 */
-	(VAL), /* parameters */
-	"P0=VAL", /* short description */
-	"P0=VAL", /* long description */
 	WRITE_PREG(0,VAL),          /* behavior */
 	(A_IMPLICIT_WRITES_P0)
 )
 
 DEF_MACRO(
 	fWRITE_P1, /* write Predicate 0 */
-	(VAL), /* parameters */
-	"P1=VAL", /* short description */
-	"P1=VAL", /* long description */
 	WRITE_PREG(1,VAL),          /* behavior */
 	(A_IMPLICIT_WRITES_P1)
 )
 
 DEF_MACRO(
 	fWRITE_P2, /* write Predicate 0 */
-	(VAL), /* parameters */
-	"P2=VAL", /* short description */
-	"P2=VAL", /* long description */
 	WRITE_PREG(2,VAL),          /* behavior */
 	(A_IMPLICIT_WRITES_P2)
 )
 
 DEF_MACRO(
 	fWRITE_P3, /* write Predicate 0 */
-	(VAL), /* parameters */
-	"P3=VAL", /* short description */
-	"P3=VAL", /* long description */
 	WRITE_PREG(3,VAL),     /* behavior */
 	(A_IMPLICIT_WRITES_P3)
 )
 
 DEF_MACRO(
 	fWRITE_P3_LATE, /* write Predicate 0 */
-	(VAL), /* parameters */
-	"P3=VAL", /* short description */
-	"P3=VAL", /* long description */
 	{WRITE_PREG(3,VAL); fHIDE(MARK_LATE_PRED_WRITE(3))} ,          /* behavior */
 	(A_IMPLICIT_WRITES_P3,A_RESTRICT_LATEPRED)
 )
@@ -1066,9 +770,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fPART1, /* write Predicate 0 */
-	(WORK), /* parameters */
-	"WORK", /* short description */
-	"WORK", /* long description */
 	if (insn->part1) { WORK; return; },          /* behavior */
 	/* optional attributes */
 )
@@ -1080,36 +781,24 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fCAST4u, /* macro name */
-	(A), /* parameters */
-	"A.uw[0]", /* short description */
-	"unsigned 32-bit A", /* long description */
 	((size4u_t)(A)),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST4s, /* macro name */
-	(A), /* parameters */
-	"A.s32", /* short description */
-	"signed 32-bit A", /* long description */
 	((size4s_t)(A)),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST8u, /* macro name */
-	(A), /* parameters */
-	"A.u64", /* short description */
-	"unsigned 64-bit A", /* long description */
 	((size8u_t)(A)),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST8s, /* macro name */
-	(A), /* parameters */
-	"A.s64", /* short description */
-	"signed 64-bit A", /* long description */
 	((size8s_t)(A)),          /* behavior */
 	/* optional attributes */
 )
@@ -1117,35 +806,24 @@ DEF_MACRO(
 DEF_MACRO(
 	fCAST2_2s, /* macro name */
 	(A), /* params */
-	"A",
-	"signed 16-bit A",
 	((size2s_t)(A)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST2_2u, /* macro name */
-	(A), /* params */
-	"A",
-	"unsigned 16-bit A",
 	((size2u_t)(A)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST4_4s, /* macro name */
-	(A), /* params */
-	"A",
-	"signed 32-bit A",
 	((size4s_t)(A)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST4_4u, /* macro name */
-	(A), /* params */
-	"A",
-	"unsigned 32-bit A",
 	((size4u_t)(A)),
 	/* optional attributes */
 )
@@ -1153,9 +831,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fCAST4_8s, /* macro name */
-	(A), /* params */
-	"fSXTN(32,64,A)",
-	"32-bit A sign-extended to signed 64-bit",
 	((size8s_t)((size4s_t)(A))),
 	/* optional attributes */
 )
@@ -1163,44 +838,30 @@ DEF_MACRO(
 DEF_MACRO(
 	fCAST4_8u, /* macro name */
 	(A), /* params */
-	"fZXTN(32,64,A)",
-	"32-bit A zero-extended to unsigned 64-bit",
 	((size8u_t)((size4u_t)(A))),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST8_8s, /* macro name */
-	(A), /* params */
-	"A",
-	"signed 64-bit A",
 	((size8s_t)(A)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST8_8u, /* macro name */
-	(A), /* params */
-	"A",
-	"unsigned 64-bit A",
 	((size8u_t)(A)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST2_8s, /* macro name */
-	(A), /* params */
-	"fSXTN(16,64,A)",
-	"16-bit A sign-extended to signed 64-bit",
 	((size8s_t)((size2s_t)(A))),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST2_8u, /* macro name */
-	(A), /* params */
-	"fZXTN(16,64,A)",
-	"16-bit A zero-extended to unsigned 64-bit",
 	((size8u_t)((size2u_t)(A))),
 	/* optional attributes */
 )
@@ -1208,18 +869,12 @@ DEF_MACRO(
 #if 0
 DEF_MACRO(
 	fCAST5u, /* macro name */
-	(A), /* parameters */
-	"unsigned 40-bit A", /* short description */
-	"unsigned 40-bit A", /* long description */
 	fZXTN(40,64,((size8u_t)(A))),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST5s, /* macro name */
-	(A), /* parameters */
-	"signed 40-bit A", /* short description */
-	"signed 40-bit A", /* long description */
 	fSXTN(40,((size8s_t)(A))),          /* behavior */
 	/* optional attributes */
 )
@@ -1227,17 +882,11 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fZE8_16, /* zero-extend 8 to 16 */
-	(A),
-	"A",
-	"Unsigned low 8 bits of A",
 	((size2s_t)((size1u_t)(A))),
 	/* optional attributes */
 )
 DEF_MACRO(
 	fSE8_16, /* sign-extend 8 to 16 */
-	(A),
-	"A",
-	"Signed low 8 bits of A",
 	((size2s_t)((size1s_t)(A))),
 	/* optional attributes */
 )
@@ -1245,63 +894,42 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fSE16_32, /* sign-extend 16 to 32 */
-	(A), /* parameters */
-	"A", /* short description */
-	"signed low 16-bits of A", /* long description */
 	((size4s_t)((size2s_t)(A))),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fZE16_32, /* zero-extend 16 to 32 */
-	(A), /* parameters */
-	"A", /* short description */
-	"signed low 16-bits of A", /* long description */
 	((size4u_t)((size2u_t)(A))),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fSE32_64,
-	(A), /* parameters */
-	"A", /* short description */
-	"A", /* long description */
 	( (size8s_t)((size4s_t)(A)) ),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fSE64_128,
-	(A), /* parameters */
-	"A", /* short description */
-	"A", /* long description */
 	( (size16s_t) cast8s_to_16s((size8s_t)A)),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fZE32_64,
-	(A), /* parameters */
-	"A", /* short description */
-	"zero-extend A from 32 to 64", /* long description */
 	( (size8u_t)((size4u_t)(A)) ),          /* behavior */
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fSE8_32, /* sign-extend 8 to 32 */
-	(A),
-	"A",
-	"Signed low 8 bits of A",
 	((size4s_t)((size1s_t)(A))),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fZE8_32, /* zero-extend 8 to 32 */
-	(A),
-	"A",
-	"Unsigned low 8 bits of A",
 	((size4s_t)((size1u_t)(A))),
 	/* optional attributes */
 )
@@ -1311,133 +939,88 @@ DEF_MACRO(
 /************************************/
 DEF_MACRO(
 	fMPY8UU, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"unsigned 8-bit multiply of A by B", /* long description */
 	(int)(fZE8_16(A)*fZE8_16(B)),     /* behavior */
 	(A_MPY)
 )
 DEF_MACRO(
 	fMPY8US, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"unsigned 8-bit multiply of A by signed B", /* long description */
 	(int)(fZE8_16(A)*fSE8_16(B)),     /* behavior */
 	(A_MPY)
 )
 DEF_MACRO(
 	fMPY8SU, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"signed 8-bit multiply of A by unsigned B", /* long description */
 	(int)(fSE8_16(A)*fZE8_16(B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY8SS, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"signed 8-bit multiply of A by B", /* long description */
 	(int)((short)(A)*(short)(B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY16SS, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"signed 16-bit multiply of A by B", /* long description */
 	fSE32_64(fSE16_32(A)*fSE16_32(B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY16UU, /* multiply unsigned half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"multiply unsigned A by unsigned B", /* long description */
 	fZE32_64(fZE16_32(A)*fZE16_32(B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY16SU, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"signed 16-bit A times unsigned 16-bit B", /* long description */
 	fSE32_64(fSE16_32(A)*fZE16_32(B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY16US, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"unsigned 16-bit A times signed 16-bit B", /* long description */
 	fMPY16SU(B,A),
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY32SS, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"signed 32-bit multiply of A by B", /* long description */
 	(fSE32_64(A)*fSE32_64(B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY32UU, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"unsigned 32-bit multiply of A by B", /* long description */
 	(fZE32_64(A)*fZE32_64(B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY32SU, /* multiply half integer */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"32-bit multiply of signed A by unsigned B", /* long description */
 	(fSE32_64(A)*fZE32_64(B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY3216SS, /* multiply mixed precision */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"signed 16-bit multiply of A by B", /* long description */
 	(fSE32_64(A)*fSXTN(16,64,B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fMPY3216SU, /* multiply mixed precision */
-	(A,B), /* parameters */
-	"(A * B)", /* short description */
-	"signed 16-bit multiply of A by unsigned B", /* long description */
 	(fSE32_64(A)*fZXTN(16,64,B)),     /* behavior */
 	(A_MPY)
 )
 
 DEF_MACRO(
 	fROUND, /* optional rounding */
-	(A), /* parameters */
-	"round(A)", /* short description */
-	"round(A)", /* long description */
 	(A+0x8000),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCLIP, /* optional rounding */
-	(DST,SRC,U), /* parameters */
-	"DST=MIN((1<<U)-1,MAX(SRC,-(1<<U)))", /* short description */
-	"DST=IN((1<<U)-1,MAX(SRC,-(1<<U)))", /* long description */
 	{ size4s_t maxv = (1<<U)-1;
 	 size4s_t minv = -(1<<U);
 	 size4s_t tmp1 = (size4s_t)fMAX(((size4s_t)SRC),minv);
@@ -1448,103 +1031,67 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fCRND, /* optional rounding */
-	(A), /* parameters */
-	"convround(A)", /* short description */
-	"convround(A)", /* long description */
 	((((A)&0x3)==0x3)?((A)+1):((A))),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fRNDN, /* Rounding to a boundary */
-	(A,N), /* parameters */
-	"(N==0)?(A):round(A,2**(N-1))", /* short description */
-	"(N==0)?(A):round(A,2**(N-1))", /* long description */
 	((((N)==0)?(A):(((fSE32_64(A))+(1<<((N)-1)))))),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCRNDN, /* Rounding to a boundary */
-	(A,N), /* parameters */
-	"(N==0)?A:convround(A,2**(N-1))>>N", /* short description */
-	"(N==0)?A:convround(A,2**(N-1))>>N", /* long description */
 	(conv_round(A,N)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCRNDN64, /* Rounding to a boundary */
-	(A,N), /* parameters */
-	"(N==0)?A:convround(A,2**(N-1))>>N", /* short description */
-	"(N==0)?A:convround(A,2**(N-1))>>N", /* long description */
 	(conv_round64(A,N)),
 	/* optional attributes */
 )
 DEF_MACRO(
 	fADD128, /* Rounding to a boundary */
-	(A,B), /* parameters */
-	"A+B", /* short description */
-	"", /* long description */
 	(add128(A, B)),
 	/* optional attributes */
 )
 DEF_MACRO(
 	fSUB128, /* Rounding to a boundary */
-	(A,B), /* parameters */
-	"A-B", /* short description */
-	"", /* long description */
 	(sub128(A, B)),
 	/* optional attributes */
 )
 DEF_MACRO(
 	fSHIFTR128, /* Rounding to a boundary */
-	(A,B), /* parameters */
-	"(size8s_t) (A >> B)", /* short description */
-	"", /* long description */
 	(shiftr128(A, B)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fSHIFTL128, /* Rounding to a boundary */
-	(A,B), /* parameters */
-	"(A << B)", /* short description */
-	"", /* long description */
 	(shiftl128(A, B)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fAND128, /* Rounding to a boundary */
-	(A,B), /* parameters */
-	"(A & B)", /* short description */
-	"", /* long description */
 	(and128(A, B)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fCAST8S_16S, /* Rounding to a boundary */
-	(A), /* parameters */
-	"sxt_{64->128}(A)", /* short description */
-	"", /* long description */
 	(cast8s_to_16s(A)),
 	/* optional attributes */
 )
 DEF_MACRO(
 	fCAST16S_8S, /* Rounding to a boundary */
-	(A), /* parameters */
-	"sxt_{128->64}(A)", /* short description */
-	"", /* long description */
 	(cast16s_to_8s(A)),
 	/* optional attributes */
 )
 DEF_MACRO(
 	fCAST16S_4S, /* Rounding to a boundary */
-	(A), /* parameters */
-	"sxt_{128->32}(A)", /* short description */
-	"", /* long description */
 	(cast16s_to_4s(A)),
 	/* optional attributes */
 )
@@ -1553,117 +1100,78 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fEA_RI, /* Calculate EA with Register + Immediate Offset */
-	(REG,IMM),
-	"EA=REG+IMM",	/* short descr */
-	"EA=REG+IMM",	/* long descr */
 	do { EA=REG+IMM; fDOCHKPAGECROSS(REG,EA); } while (0),
 	(A_EA_REG_PLUS_IMM)
 )
 
 DEF_MACRO(
 	fEA_RRs, /* Calculate EA with Register + Registers scaled Offset */
-	(REG,REG2,SCALE),
-	"EA=REG+(REG2<<SCALE)",	/* short descr */
-	"EA=REG+(REG2<<SCALE)",	/* long descr */
 	do { EA=REG+(REG2<<SCALE); fDOCHKPAGECROSS(REG,EA); } while (0),
 	(A_EA_REG_PLUS_REGSCALED)
 )
 
 DEF_MACRO(
 	fEA_IRs, /* Calculate EA with Immediate + Registers scaled Offset */
-	(IMM,REG,SCALE),
-	"EA=IMM+(REG<<SCALE)",	/* short descr */
-	"EA=IMM+(REG<<SCALE)",	/* long descr */
 	do { EA=IMM+(REG<<SCALE); fDOCHKPAGECROSS(IMM,EA); } while (0),
 	(A_EA_IMM_PLUS_REGSCALED)
 )
 
 DEF_MACRO(
 	fEA_IMM, /* Calculate EA with Immediate */
-	(IMM),
-	"EA=IMM",	/* short descr */
-	"EA=IMM",	/* long descr */
 	EA=IMM,
 	(A_EA_IMM_ONLY)
 )
 
 DEF_MACRO(
 	fEA_REG, /* Calculate EA with REGISTER */
-	(REG),
-	"EA=REG",	/* short descr */
-	"EA=REG",	/* long descr */
 	EA=REG,
 	(A_EA_REG_ONLY)
 )
 
 DEF_MACRO(
 	fEA_BREVR, /* Calculate EA with bit reversed bottom of REGISTER */
-	(REG),
-	"EA=fbrev(REG)",	/* short descr */
-	"EA=fbrev(REG)",	/* long descr */
-	EA=fbrev(REG),
+	EA=fbrev
 	(A_EA_BREV_REG)
 )
 
 DEF_MACRO(
 	fEA_GPI, /* Calculate EA with Global Poitner + Immediate */
-	(IMM),
-	"EA=fREAD_GP()+IMM",	/* short descr */
-	"EA=fREAD_GP()+IMM",	/* long descr */
     do { EA=fREAD_GP()+IMM; fGP_DOCHKPAGECROSS(fREAD_GP(),EA); } while (0),
 	(A_EA_GP_IMM)
 )
 
 DEF_MACRO(
 	fPM_I, /* Post Modify Register by Immediate*/
-	(REG,IMM),
-	"REG=REG+IMM",	/* short descr */
-	"REG=REG+IMM",	/* long descr */
 	do { REG = REG + IMM; fTIMING_AIA(EA,REG); } while (0),
 	(A_PM_I)
 )
 
 DEF_MACRO(
 	fPM_M, /* Post Modify Register by M register */
-	(REG,MVAL),
-	"REG=REG+MVAL",	/* short descr */
-	"REG=REG+MVAL",	/* long descr */
 	do { REG = REG + MVAL; fTIMING_AIA(EA,REG); } while (0),
 	(A_PM_M)
 )
 
 DEF_MACRO(
 	fPM_M_BREV, /* Post Modify Register by M register */
-	(REG,MVAL),
-	"REG=REG+MVAL",	/* short descr */
-	"REG=REG+MVAL",	/* long descr */
 	do { REG = REG + MVAL; fTIMING_AIA(EA,fbrev(REG)); } while (0),
 	(A_PM_M)
 )
 
 DEF_MACRO(
 	fPM_M_BREV, /* Post Modify Register by M register */
-	(REG,MVAL),
-	"REG=REG+MVAL",	/* short descr */
-	"REG=REG+MVAL",	/* long descr */
 	do { REG = REG + MVAL; fTIMING_AIA(EA,fbrev(REG)); } while (0),
 	(A_PM_M)
 )
 
 DEF_MACRO(
 	fPM_CIRI, /* Post Modify Register using Circular arithmetic by Immediate */
-	(REG,IMM,MVAL),
-	"REG=fcirc_add(REG,IMM,MVAL)",	/* short descr */
-	"REG=fcirc_add(REG,IMM,MVAL)",	/* long descr */
 	do { fcirc_add(REG,siV,MuV); fTIMING_AIA(EA,REG); } while (0),
 	(A_PM_CIRI)
 )
 
 DEF_MACRO(
 	fPM_CIRR, /* Post Modify Register using Circular arithmetic by register */
-	(REG,VAL,MVAL),
-	"REG=fcirc_add(REG,VAL,MVAL)",	/* short descr */
-	"REG=fcirc_add(REG,VAL,MVAL)",	/* long descr */
 	do { fcirc_add(REG,VAL,MuV); fTIMING_AIA(EA,REG); } while (0),
 	(A_PM_CIRR)
 )
@@ -1672,71 +1180,47 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fMODCIRCU, /* modulo power of 2, positive output  */
-	(N,P), /* parameters */
-	"N modulo 2^P", /* short description */
-	"N modulo 2^P ", /* long description */
 	((N) & ((1<<(P))-1)),
 	/* optional attributes */
 )
 
 DEF_MACRO(
 	fSCALE, /* scale by N */
-	(N,A), /* parameters */
-	"A<<N", /* short description */
-	"A<<N", /* long description */
 	(((size8s_t)(A))<<N),
 	/* optional attributes */
 )
 DEF_MACRO(
 	fVSATW, /* saturating to 32-bits*/
-	(A), /* parameters */
-	"sat_32(A)", /* short description */
-	"saturate A to 32-bits", /* long description */
 	fVSATN(32,((long long)A)),
 	(A_SATURATE)
 )
 
 DEF_MACRO(
 	fVSATUW, /* saturating to 32-bits*/
-	(A), /* parameters */
-	"usat_32(A)", /* short description */
-	"saturate A to unsigned word", /* long description */
 	fVSATUN(32,((unsigned long long)A)),
 	(A_USATURATE)
 )
 
 DEF_MACRO(
 	fSATW, /* saturating to 32-bits*/
-	(A), /* parameters */
-	"sat_32(A)", /* short description */
-	"saturate A to 32-bits", /* long description */
 	fSATN(32,((long long)A)),
 	(A_SATURATE)
 )
 
 DEF_MACRO(
 	fVSAT, /* saturating to 32-bits*/
-	(A), /* parameters */
-	"sat_32(A)", /* short description */
-	"saturate A to 32-bits", /* long description */
 	fVSATN(32,(A)),
 	(A_SATURATE)
 )
 
 DEF_MACRO(
 	fSAT, /* saturating to 32-bits*/
-	(A), /* parameters */
-	"sat_32(A)", /* short description */
-	"saturate A to 32-bits", /* long description */
 	fSATN(32,(A)),
 	(A_SATURATE)
 )
 
 DEF_MACRO(
 	fSAT_ORIG_SHL, /* Saturating to 32-bits, with original value, for shift left */
-	(A,ORIG_REG), /* parameters */
-	"sat_32(A)", /* short description */
-	"saturate A to 32-bits for left shift", /* long description */
 	((((size4s_t)((fSAT(A)) ^ ((size4s_t)(ORIG_REG)))) < 0) ?
 		fSATVALN(32,((size4s_t)(ORIG_REG))) :
 		((((ORIG_REG) > 0) && ((A) == 0)) ?
@@ -1748,16 +1232,11 @@ DEF_MACRO(
 DEF_MACRO(
 	fPASS,
 	(A),
-	"A", /* short description */
-	"", /* long description */
 	A,
 )
 
 DEF_MACRO(
 	fRND, /* saturating to 32-bits*/
-	(A), /* parameters */
-	"((A)+1)>>1", /* short description */
-	"round(A)", /* long description */
 	(((A)+1)>>1),
 )
 
@@ -1765,9 +1244,6 @@ DEF_MACRO(
 #if 0
 DEF_MACRO(
 	fSSLH, /* signed shift left halfword */
-	(SRC,SHAMT), /* parameters */
-	"(SHAMT>0) ? (DEST=SRC<<SHAMT):(DEST=SRC>>-SHAMT)", /* short description */
-	"(SHAMT>0) ? (DEST=SRC<<SHAMT):(DEST=SRC>>-SHAMT)", /* short description */
         (((fSXTN(8,SHAMT) >= 0) ? (fSE16_32(SRC) << fSXTN(8,SHAMT)) : (fSE16_32(SRC) >> (-fSXTN(8,SHAMT))))),
 	/* optional attributes */
 )
@@ -1777,36 +1253,24 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fBIDIR_SHIFTL,
-	(SRC,SHAMT,REGSTYPE),
-	"bidir_shiftl(SRC,SHAMT)",
-	"bidir_shiftl(SRC,SHAMT)",
 	(((SHAMT) < 0) ? ((fCAST##REGSTYPE(SRC) >> ((-(SHAMT))-1)) >>1) : (fCAST##REGSTYPE(SRC) << (SHAMT))),
 	(A_BIDIRSHIFTL)
 )
 
 DEF_MACRO(
 	fBIDIR_ASHIFTL,
-	(SRC,SHAMT,REGSTYPE),
-	"(SHAMT>0)?(fCAST##REGSTYPE##s(SRC)<<SHAMT):(fCAST##REGSTYPE##s(SRC)>>SHAMT)",
-	"bidir_asl(fCAST##REGSTYPE##s(SRC),SHAMT)",
 	fBIDIR_SHIFTL(SRC,SHAMT,REGSTYPE##s),
 	(A_BIDIRSHIFTL)
 )
 
 DEF_MACRO(
 	fBIDIR_LSHIFTL,
-	(SRC,SHAMT,REGSTYPE),
-	"(SHAMT>0)?(fCAST##REGSTYPE##u(SRC)<<SHAMT):(fCAST##REGSTYPE##u(SRC)>>>SHAMT)",
-	"bidir_lsl(fCAST##REGSTYPE##u(SRC),SHAMT)",
 	fBIDIR_SHIFTL(SRC,SHAMT,REGSTYPE##u),
 	(A_BIDIRSHIFTL)
 )
 
 DEF_MACRO(
 	fBIDIR_ASHIFTL_SAT,
-	(SRC,SHAMT,REGSTYPE),
-	"bidir_shiftl(SRC,SHAMT)",
-	"bidir_shiftl(SRC,SHAMT)",
 	(((SHAMT) < 0) ? ((fCAST##REGSTYPE##s(SRC) >> ((-(SHAMT))-1)) >>1) : fSAT_ORIG_SHL(fCAST##REGSTYPE##s(SRC) << (SHAMT),(SRC))),
 	(A_BIDIRSHIFTL)
 )
@@ -1814,63 +1278,42 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fBIDIR_SHIFTR,
-	(SRC,SHAMT,REGSTYPE),
-	"bidir_shiftr(SRC,SHAMT)",
-	"bidir_shiftr(SRC,SHAMT)",
 	(((SHAMT) < 0) ? ((fCAST##REGSTYPE(SRC) << ((-(SHAMT))-1)) << 1) : (fCAST##REGSTYPE(SRC) >> (SHAMT))),
 	(A_BIDIRSHIFTR)
 )
 
 DEF_MACRO(
 	fBIDIR_ASHIFTR,
-	(SRC,SHAMT,REGSTYPE),
-	"(SHAMT>0)?(fCAST##REGSTYPE##s(SRC)>>SHAMT):(fCAST##REGSTYPE##s(SRC)<<SHAMT)",
-	"bidir_asr(fCAST##REGSTYPE##s(SRC),SHAMT)",
 	fBIDIR_SHIFTR(SRC,SHAMT,REGSTYPE##s),
 	(A_BIDIRSHIFTR)
 )
 
 DEF_MACRO(
 	fBIDIR_LSHIFTR,
-	(SRC,SHAMT,REGSTYPE),
-	"(SHAMT>0)?(fCAST##REGSTYPE##u(SRC)>>>SHAMT):(fCAST##REGSTYPE##u(SRC)<<SHAMT)",
-	"bidir_lsr(fCAST##REGSTYPE##u(SRC),SHAMT)",
 	fBIDIR_SHIFTR(SRC,SHAMT,REGSTYPE##u),
 	(A_BIDIRSHIFTR)
 )
 
 DEF_MACRO(
 	fBIDIR_ASHIFTR_SAT,
-	(SRC,SHAMT,REGSTYPE),
-	"bidir_shiftr(SRC,SHAMT)",
-	"bidir_shiftr(SRC,SHAMT)",
 	(((SHAMT) < 0) ? fSAT_ORIG_SHL((fCAST##REGSTYPE##s(SRC) << ((-(SHAMT))-1)) << 1,(SRC)) : (fCAST##REGSTYPE##s(SRC) >> (SHAMT))),
 	(A_BIDIRSHIFTR)
 )
 
 DEF_MACRO(
 	fASHIFTR,
-	(SRC,SHAMT,REGSTYPE),
-	"SRC >> SHAMT",
-	"asr(SRC,SHAMT)",
 	(fCAST##REGSTYPE##s(SRC) >> (SHAMT)),
 	/* */
 )
 
 DEF_MACRO(
 	fLSHIFTR,
-	(SRC,SHAMT,REGSTYPE),
-	"SRC >>> SHAMT",
-	"lsr(SRC,SHAMT)",
 	(((SHAMT) >= 64)?0:(fCAST##REGSTYPE##u(SRC) >> (SHAMT))),
 	/* */
 )
 
 DEF_MACRO(
 	fROTL,
-	(SRC,SHAMT,REGSTYPE),
-	"SRC <<_{R} SHAMT",
-	"rol(SRC,SHAMT)",
 	(((SHAMT)==0) ? (SRC) : ((fCAST##REGSTYPE##u(SRC) << (SHAMT)) | \
 		((fCAST##REGSTYPE##u(SRC) >> ((sizeof(SRC)*8)-(SHAMT)))))),
 	/* */
@@ -1878,9 +1321,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fROTR,
-	(SRC,SHAMT,REGSTYPE),
-	"SRC >>_{R} SHAMT",
-	"ror(SRC,SHAMT)",
 	(((SHAMT)==0) ? (SRC) : ((fCAST##REGSTYPE##u(SRC) >> (SHAMT)) | \
 		((fCAST##REGSTYPE##u(SRC) << ((sizeof(SRC)*8)-(SHAMT)))))),
 	/* */
@@ -1888,9 +1328,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fASHIFTL,
-	(SRC,SHAMT,REGSTYPE),
-	"fCAST##REGSTYPE##s(SRC) << SHAMT",
-	"asl(SRC,SHAMT)",
 	(((SHAMT) >= 64)?0:(fCAST##REGSTYPE##s(SRC) << (SHAMT))),
 	/* */
 )
@@ -1901,84 +1338,60 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fFLOAT, /* name */
-	(A), /* parameters */
-	"A", /* short description */
-	"A", /* long description */
 	({ union { float f; size4u_t i; } _fipun; _fipun.i = (A); _fipun.f; }),     /* behavior */
 	(A_FPOP,A_FPSINGLE,A_IMPLICIT_WRITES_FPFLAGS,A_IMPLICIT_READS_FPRND)
 )
 
 DEF_MACRO(
 	fUNFLOAT, /* multiply half integer */
-	(A), /* parameters */
-	"A", /* short description */
-	"A", /* long description */
 	({ union { float f; size4u_t i; } _fipun; _fipun.f = (A); isnan(_fipun.f) ? 0xFFFFFFFFU : _fipun.i; }),     /* behavior */
 	(A_FPOP,A_FPSINGLE,A_IMPLICIT_WRITES_FPFLAGS,A_IMPLICIT_READS_FPRND)
 )
 
 DEF_MACRO(
 	fHALF, /* name */
-	(A), /* parameters */
-	"A", /* short description */
-	"A", /* long description */
 	({ hf_t h; h.i = (A); h;}),     /* behavior */
 	(A_FPOP,A_FPSINGLE,A_IMPLICIT_WRITES_FPFLAGS,A_IMPLICIT_READS_FPRND)
 )
 
 DEF_MACRO(
 	fUNHALF, /* multiply half integer */
-	(A), /* parameters */
-	"A", /* short description */
-	"A", /* long description */
 	(A.i),     /* behavior */
 	(A_FPOP,A_FPSINGLE,A_IMPLICIT_WRITES_FPFLAGS,A_IMPLICIT_READS_FPRND)
 )
 
 DEF_MACRO(
-	fHF_BIAS,(),
-	"15",
-	"Half precision bias",
+	fHF_BIAS,
 	15,
 	()
 )
 
 DEF_MACRO(
-	fHF_MANTBITS,(),
-	"10",
-	"Half Precision mantissa bits",
+	fHF_MANTBITS,
 	10,
 	()
 )
 
 DEF_MACRO(
-	fSFNANVAL,(),
-	"NaN",
-	"NaN",
+	fSFNANVAL,
 	0xffffffff,
 	()
 )
 
 DEF_MACRO(
-	fSFINFVAL,(A),
-	"sign(A) * Inf",
-	"sign(A) * Inf",
+	fSFINFVAL,
 	(((A) & 0x80000000) | 0x7f800000),
 	()
 )
 
 DEF_MACRO(
-	fSFONEVAL,(A),
-	"sign(A) * 1.0",
-	"sign(A) * 1.0",
+	fSFONEVAL,
 	(((A) & 0x80000000) | fUNFLOAT(1.0)),
 	()
 )
 
 DEF_MACRO(
-	fCHECKSFNAN,(DST,A),
-	"if (isnan(A)) DST = NaN;",
-	"if (isnan(A)) DST = NaN;",
+	fCHECKSFNAN,
 	do {
 		if (isnan(fFLOAT(A))) {
 			if ((fGETBIT(22,A)) == 0) fRAISEFLAGS(FE_INVALID);
@@ -1989,9 +1402,7 @@ DEF_MACRO(
 )
 
 DEF_MACRO(
-	fCHECKSFNAN3,(DST,A,B,C),
-	"if (isnan(A) || isnan(B) || isnan(C)) DST = NaN;",
-	"if (isnan(A) || isnan(B) || isnan(C)) DST = NaN;",
+	fCHECKSFNAN3,
 	do {
 		fCHECKSFNAN(DST,A);
 		fCHECKSFNAN(DST,B);
@@ -2001,105 +1412,79 @@ DEF_MACRO(
 )
 
 DEF_MACRO(
-	fSF_BIAS,(),
-	"127",
-	"single precision bias",
+	fSF_BIAS,
 	127,
 	()
 )
 
 DEF_MACRO(
-	fSF_MANTBITS,(),
-	"23",
-	"single mantissa bits",
+	fSF_MANTBITS,
 	23,
 	()
 )
 
 DEF_MACRO(
-	fSF_RECIP_LOOKUP,(IDX),
-	"recip_lut[IDX]",
-	"Single Precision reciprocal Estimate",
+	fSF_RECIP_LOOKUP,
 	arch_recip_lookup(IDX),
 	()
 )
 
 DEF_MACRO(
-	fSF_INVSQRT_LOOKUP,(IDX),
-	"invsqrt_lut[IDX]",
-	"Single Precision reciprocal Estimate",
+	fSF_INVSQRT_LOOKUP,
 	arch_invsqrt_lookup(IDX),
 	()
 )
 
 DEF_MACRO(
-	fSF_MUL_POW2,(A,B),
-	"A * 2**B",
-	"A * 2**B",
+	fSF_MUL_POW2,
 	(fUNFLOAT(fFLOAT(A) * fFLOAT((fSF_BIAS() + (B)) << fSF_MANTBITS()))),
 	()
 )
 
 DEF_MACRO(
-	fSF_GETEXP,(A),
-	"exponent(A)",
-	"exponent(A)",
+	fSF_GETEXP,
 	(((A) >> fSF_MANTBITS()) & 0xff),
 	()
 )
 
 DEF_MACRO(
-	fSF_MAXEXP,(),
-	"254",
-	"SF maximum exponent",
+	fSF_MAXEXP,
 	(254),
 	()
 )
 
 DEF_MACRO(
-	fSF_RECIP_COMMON,(N,D,O,A),
-	"(N,D,O,A)=recip_common(N,D)",
-	"(N,D,O,A)=recip_common(N,D)",
+	fSF_RECIP_COMMON,
 	arch_sf_recip_common(&N,&D,&O,&A),
 	(A_FPOP,A_IMPLICIT_WRITES_FPFLAGS)
 )
 
 DEF_MACRO(
-	fSF_INVSQRT_COMMON,(N,O,A),
-	"(N,O,A)=invsqrt_common(N)",
-	"(N,O,A)=invsqrt_common(N)",
+	fSF_INVSQRT_COMMON,
 	arch_sf_invsqrt_common(&N,&O,&A),
 	(A_FPOP,A_IMPLICIT_WRITES_FPFLAGS)
 )
 
 DEF_MACRO(
-	fFMAFX,(A,B,C,ADJ),
-	"fmaf(A,B,C) * 2**(ADJ)",
-	"Fused Multiply Add w/ Scaling: (A*B+C)*2**ADJ",
+	fFMAFX,
 	internal_fmafx(A,B,C,fSXTN(8,64,ADJ)),
 	(A_MPY)
 )
 
 DEF_MACRO(
-	fFMAF,(A,B,C),
-	"fmaf(A,B,C)",
-	"Fused Multiply Add: (A*B+C)",
+	fFMAF,
 	internal_fmafx(A,B,C,0),
 	(A_MPY)
 )
 
 DEF_MACRO(
-	fSFMPY,(A,B),
-	"A*B",
-	"Multiply: A*B",
+	fSFMPY,
 	internal_mpyf(A,B),
 	(A_MPY)
 )
 
 DEF_MACRO(
-	fMAKESF,(SIGN,EXP,MANT),
-	"-1**SIGN * 1.MANT * 2**(EXP-BIAS)",
-	"-1**SIGN * 1.MANT * 2**(EXP-BIAS)",
+	fMAKESF,
 	((((SIGN) & 1) << 31) | (((EXP) & 0xff) << fSF_MANTBITS()) |
 		((MANT) & ((1<<fSF_MANTBITS())-1))),
 	()
@@ -2108,50 +1493,36 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fDOUBLE, /* multiply half integer */
-	(A), /* parameters */
-	"A", /* short description */
-	"A", /* long description */
 	({ union { double f; size8u_t i; } _fipun; _fipun.i = (A); _fipun.f; }),     /* behavior */
 	(A_FPOP,A_FPDOUBLE,A_IMPLICIT_WRITES_FPFLAGS,A_IMPLICIT_READS_FPRND)
 )
 
 DEF_MACRO(
 	fUNDOUBLE, /* multiply half integer */
-	(A), /* parameters */
-	"A", /* short description */
-	"A", /* long description */
 	({ union { double f; size8u_t i; } _fipun; _fipun.f = (A); isnan(_fipun.f) ? 0xFFFFFFFFFFFFFFFFULL : _fipun.i; }),     /* behavior */
 	(A_FPOP,A_FPDOUBLE,A_IMPLICIT_WRITES_FPFLAGS,A_IMPLICIT_READS_FPRND)
 )
 
 DEF_MACRO(
-	fDFNANVAL,(),
-	"NaN",
-	"NaN",
+	fDFNANVAL,
 	0xffffffffffffffffULL,
 	()
 )
 
 DEF_MACRO(
-	fDFINFVAL,(A),
-	"sign(A) * Inf",
-	"sign(A) * Inf",
+	fDFINFVAL,
 	(((A) & 0x8000000000000000ULL) | 0x7ff0000000000000ULL),
 	()
 )
 
 DEF_MACRO(
-	fDFONEVAL,(A),
-	"sign(A) * 1.0",
-	"sign(A) * 1.0",
+	fDFONEVAL,
 	(((A) & 0x8000000000000000ULL) | fUNDOUBLE(1.0)),
 	()
 )
 
 DEF_MACRO(
-	fCHECKDFNAN,(DST,A),
-	"if (isnan(A)) DST = NaN;",
-	"if (isnan(A)) DST = NaN;",
+	fCHECKDFNAN,
 	do {
 		if (isnan(fDOUBLE(A))) {
 			if ((fGETBIT(51,A)) == 0) fRAISEFLAGS(FE_INVALID);
@@ -2162,9 +1533,7 @@ DEF_MACRO(
 )
 
 DEF_MACRO(
-	fCHECKDFNAN3,(DST,A,B,C),
-	"if (isnan(A) || isnan(B) || isnan(C)) DST = NaN;",
-	"if (isnan(A) || isnan(B) || isnan(C)) DST = NaN;",
+	fCHECKDFNAN3,
 	do {
 		fCHECKDFNAN(DST,A);
 		fCHECKDFNAN(DST,B);
@@ -2174,137 +1543,103 @@ DEF_MACRO(
 )
 
 DEF_MACRO(
-	fDF_BIAS,(),
-	"1023",
-	"double precision bias",
+	fDF_BIAS,
 	1023,
 	()
 )
 
 DEF_MACRO(
-	fDF_ISNORMAL,(X),
-	"is_normal(X)",
-	"is X normal?",
+	fDF_ISNORMAL,
 	(fpclassify(fDOUBLE(X)) == FP_NORMAL),
 	()
 )
 
 DEF_MACRO(
-	fDF_ISDENORM,(X),
-	"is_denormal(X)",
-	"is X denormal?",
+	fDF_ISDENORM,
 	(fpclassify(fDOUBLE(X)) == FP_SUBNORMAL),
 	()
 )
 
 DEF_MACRO(
-	fDF_ISBIG,(X),
-	"(df_exponent(X) >= 512)",
-	"is X sufficiently large for mpyfix (exp >= 512)?",
+	fDF_ISBIG,
 	(fDF_GETEXP(X) >= 512),
 	()
 )
 
 DEF_MACRO(
-	fDF_MANTBITS,(),
-	"52",
-	"single mantissa bits",
+	fDF_MANTBITS,
 	52,
 	()
 )
 
 DEF_MACRO(
-	fDF_RECIP_LOOKUP,(IDX),
-	"recip_lut[IDX]",
-	"Single Precision reciprocal Estimate",
+	fDF_RECIP_LOOKUP,
 	(size8u_t)(arch_recip_lookup(IDX)),
 	()
 )
 
 DEF_MACRO(
-	fDF_INVSQRT_LOOKUP,(IDX),
-	"invsqrt_lut[IDX]",
-	"Single Precision reciprocal square root Estimate",
+	fDF_INVSQRT_LOOKUP,
 	(size8u_t)(arch_invsqrt_lookup(IDX)),
 	()
 )
 
 DEF_MACRO(
-	fDF_MUL_POW2,(A,B),
-	"A * 2**B",
-	"A * 2**B",
+	fDF_MUL_POW2,
 	(fUNDOUBLE(fDOUBLE(A) * fDOUBLE((0ULL + fDF_BIAS() + (B)) << fDF_MANTBITS()))),
 	()
 )
 
 DEF_MACRO(
-	fDF_GETEXP,(A),
-	"exponent(A)",
-	"exponent(A)",
+	fDF_GETEXP,
 	(((A) >> fDF_MANTBITS()) & 0x7ff),
 	()
 )
 
 DEF_MACRO(
-	fDF_MAXEXP,(),
-	"2046",
-	"SF maximum exponent",
+	fDF_MAXEXP,
 	(2046),
 	()
 )
 
 DEF_MACRO(
-	fDF_RECIP_COMMON,(N,D,O,A),
-	"(N,D,O,A)=recip_common(N,D)",
-	"(N,D,O,A)=recip_common(N,D)",
+	fDF_RECIP_COMMON,
 	arch_df_recip_common(&N,&D,&O,&A),
 	(A_FPOP)
 )
 
 DEF_MACRO(
-	fDF_INVSQRT_COMMON,(N,O,A),
-	"(N,O,A)=invsqrt_common(N)",
-	"(N,O,A)=invsqrt_common(N)",
+	fDF_INVSQRT_COMMON,
 	arch_df_invsqrt_common(&N,&O,&A),
 	(A_FPOP)
 )
 
 DEF_MACRO(
-	fFMA, (A,B,C),
-	"fma(A,B,C)",
-	"Fused Multiply Add: A*B+C",
+	fFMA,
 	internal_fma(A,B,C),
 	/* nothing */
 )
 
 DEF_MACRO(
-	fDFMPY, (A,B),
-	"A*B",
-	"Multiply: A*B",
+	fDFMPY,
 	internal_mpy(A,B),
 	/* nothing */
 )
 
 DEF_MACRO(
-	fDF_MPY_HH, (A,B,ACC),
-	"A*B with partial product ACC",
-	"Multiply: A*B with partial product ACC",
+	fDF_MPY_HH,
 	internal_mpyhh(A,B,ACC),
 	/* nothing */
 )
 
 DEF_MACRO(
-	fFMAX, (A,B,C,ADJ),
-	"fma(A,B,C)*2**(2*ADJ)",
-	"Fused Multiply Add: (A*B+C)*2**(2*ADJ)",
+	fFMAX,
 	internal_fmax(A,B,C,fSXTN(8,64,ADJ)*2),
 	/* nothing */
 )
 
 DEF_MACRO(
-	fMAKEDF,(SIGN,EXP,MANT),
-	"-1**SIGN * 1.MANT * 2**(EXP-BIAS)",
-	"-1**SIGN * 1.MANT * 2**(EXP-BIAS)",
+	fMAKEDF,
 	((((SIGN) & 1ULL) << 63) | (((EXP) & 0x7ffULL) << fDF_MANTBITS()) |
 		((MANT) & ((1ULL<<fDF_MANTBITS())-1))),
 	()
@@ -2312,54 +1647,36 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fFPOP_START,
-	(),
-	"fpop_start",
-	"Begin floating point operation",
 	arch_fpop_start(thread),
 	/* nothing */
 )
 
 DEF_MACRO(
 	fFPOP_END,
-	(),
-	"fpop_end",
-	"End floating point operation",
 	arch_fpop_end(thread),
 	/* nothing */
 )
 
 DEF_MACRO(
 	fFPSETROUND_NEAREST,
-	(),
-	"round_to_nearest()",
-	"Set rounding mode to Nearest",
 	fesetround(FE_TONEAREST),
 	/* nothing */
 )
 
 DEF_MACRO(
 	fFPSETROUND_CHOP,
-	(),
-	"round_to_zero()",
-	"Set rounding mode to Chop",
 	fesetround(FE_TOWARDZERO),
 	/* nothing */
 )
 
 DEF_MACRO(
 	fFPCANCELFLAGS,
-	(),
-	"cancel_flags()",
-	"Do not update Floating Point Flags",
 	feclearexcept(FE_ALL_EXCEPT),
 	/* nothing */
 )
 
 DEF_MACRO(
 	fISINFPROD,
-	(A,B),
-	"isinf(A*B)",
-	"True if the product of A and B is truly infinite",
 	((isinf(A) && isinf(B)) ||
 		(isinf(A) && isfinite(B) && ((B) != 0.0)) ||
 		(isinf(B) && isfinite(A) && ((A) != 0.0))),
@@ -2368,27 +1685,18 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fISZEROPROD,
-	(A,B),
-	"is_true_zero(A*B)",
-	"True if the product of A and B is truly zero",
 	((((A) == 0.0) && isfinite(B)) || (((B) == 0.0) && isfinite(A))),
 	/* nothing */
 )
 
 DEF_MACRO(
 	fRAISEFLAGS,
-	(A),
-	"fpflags |= A",
-	"Raise Floating Point Flags",
 	arch_raise_fpflag(A),
 	/* NOTHING */
 )
 
 DEF_MACRO(
 	fDF_MAX,
-	(A,B),
-	"fmax(A,B)",
-	"Floating Point Maximum",
 	(((A)==(B))
 		? fDOUBLE(fUNDOUBLE(A) & fUNDOUBLE(B))
 		: fmax(A,B)),
@@ -2397,9 +1705,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fDF_MIN,
-	(A,B),
-	"fmin(A,B)",
-	"Floating Point Maximum",
 	(((A)==(B))
 		? fDOUBLE(fUNDOUBLE(A) | fUNDOUBLE(B))
 		: fmin(A,B)),
@@ -2408,9 +1713,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fSF_MAX,
-	(A,B),
-	"fmaxf(A,B)",
-	"Floating Point Maximum",
 	(((A)==(B))
 		? fFLOAT(fUNFLOAT(A) & fUNFLOAT(B))
 		: fmaxf(A,B)),
@@ -2419,9 +1721,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fSF_MIN,
-	(A,B),
-	"fmin(A,B)",
-	"Floating Point Maximum",
 	(((A)==(B))
 		? fFLOAT(fUNFLOAT(A) | fUNFLOAT(B))
 		: fminf(A,B)),
@@ -2432,113 +1731,83 @@ DEF_MACRO(
 /* Load/Store support                */
 /*************************************/
 
-DEF_MACRO(fMMU,(ADDR),
-	"ADDR",
-	"ADDR",
+DEF_MACRO(fMMU,
 	/* mmu xlate */ ADDR,
 	(A_EXCEPTION_TLB,A_EXCEPTION_ACCESS)
 )
 
-DEF_MACRO(fcirc_add,(REG,INCR,IMMED),
-	"REG=circ_add(REG,INCR,IMMED)",
-	"REG=circ_add(REG,INCR,IMMED)",
+DEF_MACRO(fcirc_add,
 	(REG=fcircadd(thread, REG,INCR,IMMED, fREAD_CSREG(MuN))),
 	(A_CIRCADDR,A_IMPLICIT_READS_CS)
 )
 
-DEF_MACRO(fbrev,(REG),
-	"REG.h[1] | brev(REG.h[0])",
-	"REG.h[1] | brev(REG.h[0])",
+DEF_MACRO(fbrev,
 	(fbrevaddr(REG)),
 	(A_BREVADDR)
 )
 
 
-DEF_MACRO(fLOAD,(NUM,SIZE,SIGN,EA,DST),
-	"DST = *EA",
-	"Get SIZE bytes from memory at EA and save in DST.",
+DEF_MACRO(fLOAD,
 	{ DST = (size##SIZE##SIGN##_t)MEM_LOAD##SIZE(thread,EA,insn); },
 	(A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fMEMOP,(NUM,SIZE,SIGN,EA,FNTYPE,VALUE),
-	"DST = *EA",
-	"Get SIZE bytes from memory at EA and save in DST.",
+DEF_MACRO(fMEMOP,
 	{ memop##SIZE##_##FNTYPE(thread,EA,VALUE); },
 	(A_LOAD,A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fGET_FRAMEKEY,(),
-	"FRAMEKEY",
-	"FRAMEKEY",
+DEF_MACRO(fGET_FRAMEKEY,
 	READ_RREG(REG_FRAMEKEY),
 	(A_IMPLICIT_READS_FRAMEKEY)
 )
 
-DEF_MACRO(fFRAME_SCRAMBLE,(VAL),
-	"frame_scramble(VAL)",
-	"frame_scramble(VAL)",
+DEF_MACRO(fFRAME_SCRAMBLE,
 	((VAL) ^ (fCAST8u(fGET_FRAMEKEY()) << 32)),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fFRAME_UNSCRAMBLE,(VAL),
-	"frame_unscramble(VAL)",
-	"frame_unscramble(VAL)",
-	fFRAME_SCRAMBLE(VAL),
+DEF_MACRO(fFRAME_UNSCRAMBLE,
+	fFRAME_SCRAMBLE
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fFRAMECHECK,(ADDR,EA),
-	"frame_check_limit(ADDR)",
-	"frame_check_limit(ADDR)",
+DEF_MACRO(fFRAMECHECK,
 	sys_check_framelimit(thread,ADDR,EA),
 	(A_IMPLICIT_READS_FRAMELIMIT)
 )
 
-DEF_MACRO(fLOAD_LOCKED,(NUM,SIZE,SIGN,EA,DST),
-	"DST = *EA; ",
-	"Get SIZE bytes from memory at EA and save in DST.",
+DEF_MACRO(fLOAD_LOCKED,
 	{     DST = (size##SIZE##SIGN##_t)mem_load_locked(thread,EA,SIZE,insn);
   },
 	(A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fLOAD_PHYS,(NUM,SIZE,SIGN,SRC1,SRC2,DST),
-	"DST = *((SRC1&0x7ff) | (SRC2<<11))",
-	"Load from physical address",
+DEF_MACRO(fLOAD_PHYS,
 	{     DST = (size##SIZE##SIGN##_t)mem_load_phys(thread,SRC1,SRC2,insn);
   },
 	(A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
 
-DEF_MACRO(fSTORE,(NUM,SIZE,EA,SRC),
-	"*EA = SRC",
-	"Store SIZE bytes from SRC into memory at EA",
+DEF_MACRO(fSTORE,
 	{ MEM_STORE##SIZE(thread,EA,SRC,insn); },
 	(A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fSTORE_DMA,(NUM,SIZE,EA,SRC),
-	"*EA = SRC",
-	"Store SIZE bytes from SRC into memory at EA",
+DEF_MACRO(fSTORE_DMA,
 	{
 		mem_dmalink_store(thread, EA, SIZE, SRC, insn);
 	},
 	(A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fSTORE_LOCKED,(NUM,SIZE,EA,SRC,PRED),
-	"if (lock_valid) { *EA = SRC; PRED = 0xff; lock_valid = 0; } else { PRED = 0; }",
-	"if the lock is valid, Store SIZE bytes from SRC into memory at EA, and invalidate the lock.  PRED is set to all 1s if the write actually took place.",
+DEF_MACRO(fSTORE_LOCKED,
 	{ PRED = (mem_store_conditional(thread,EA,SRC,SIZE,insn) ? 0xff : 0); },
 	(A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fVTCM_MEMCPY,(DST,SRC,SIZE),
-	"for (i = 0; i <= SIZE; i++) { *(DST + i) = *(SRC + i); }",
-	"Copy SIZE+1 bytes from memory at SRC to memory at DST",
+DEF_MACRO(fVTCM_MEMCPY,
 	mem_vtcm_memcpy(thread, insn, DST, SRC, SIZE);,
 	/* ATTRIBS */
 )
@@ -2548,30 +1817,22 @@ DEF_MACRO(fVTCM_MEMCPY,(DST,SRC,SIZE),
 /* High/Low access support           */
 /*************************************/
 #if 0
-DEF_MACRO(fRDH_L,(REG),
-	"REG.h[0]",
-	"REG.h[0]",
+DEF_MACRO(fRDH_L,
 	(REG&0x0000ffff),
 	()
 )
 
-DEF_MACRO(fRDH_H,(REG),
-	"REG.h[1]",
-	"REG.h[1]",
+DEF_MACRO(fRDH_H,
 	((REG>>16)&0x0000ffff),
 	()
 )
 
-DEF_MACRO(fWRH_L,(REG,VAL),
-	"REG.h[0] = VAL",
-	"REG.h[0] = VAL",
+DEF_MACRO(fWRH_L,
 	(REG=(REG&0xffff0000)|(VAL)),
 	()
 )
 
-DEF_MACRO(fWRH_H,(REG,VAL),
-	"REG.h[1] = VAL",
-	"REG.h[1] = VAL",
+DEF_MACRO(fWRH_H,
 	(REG=(REG&0x0000ffff)|((VAL)<<16)),
 	()
 )
@@ -2581,16 +1842,12 @@ DEF_MACRO(fWRH_H,(REG,VAL),
 /* Permute Handler                   */
 /*************************************/
 
-DEF_MACRO(fPERMUTEH,(SRC0,SRC1,CTRL),
-	"permute(SRC0,SRC1,CTRL)",
-	"Permute SRC0 and SRC1 according to CTRL",
+DEF_MACRO(fPERMUTEH,
 	fpermuteh((SRC0),(SRC1),CTRL),
 	(A_PERM)
 )
 
-DEF_MACRO(fPERMUTEB,(SRC0,SRC1,CTRL),
-	"permute(SRC0,SRC1,CTRL)",
-	"Permute SRC0 and SRC1 according to CTRL",
+DEF_MACRO(fPERMUTEB,
 	fpermuteb((SRC0),(SRC1),CTRL),
 	(A_PERM)
 )
@@ -2599,46 +1856,34 @@ DEF_MACRO(fPERMUTEB,(SRC0,SRC1,CTRL),
 /* Functions to help with bytes      */
 /*************************************/
 
-DEF_MACRO(fGETBYTE,(N,SRC),
-	"SRC.b[N]",
-	"Byte N from SRC",
+DEF_MACRO(fGETBYTE,
          ((size1s_t)((SRC>>((N)*8))&0xff)),
 	/* nothing */
 )
 
-DEF_MACRO(fGETUBYTE,(N,SRC),
-	"SRC.ub[N]",
-	"Byte N from SRC",
+DEF_MACRO(fGETUBYTE,
          ((size1u_t)((SRC>>((N)*8))&0xff)),
 	/* nothing */
 )
 
-DEF_MACRO(fSETBYTE,(N,DST,VAL),
-	"DST.b[N]=VAL",
-	"Byte N from DST = VAL",
+DEF_MACRO(fSETBYTE,
 	{
 	DST = (DST & ~(0x0ffLL<<((N)*8))) | (((size8u_t)((VAL) & 0x0ffLL)) << ((N)*8));
 	},
 	/* nothing */
 )
 
-DEF_MACRO(fGETHALF,(N,SRC),
-	"SRC.h[N]",
-	"Halfword N from SRC",
+DEF_MACRO(fGETHALF,
          ((size2s_t)((SRC>>((N)*16))&0xffff)),
 	/* nothing */
 )
 
-DEF_MACRO(fGETUHALF,(N,SRC),
-	"SRC.uh[N]",
-	"Halfword N from SRC",
+DEF_MACRO(fGETUHALF,
          ((size2u_t)((SRC>>((N)*16))&0xffff)),
 	/* nothing */
 )
 
-DEF_MACRO(fSETHALF,(N,DST,VAL),
-	"DST.h[N]=VAL",
-	"Halfword N from DST = VAL",
+DEF_MACRO(fSETHALF,
 	{
 	DST = (DST & ~(0x0ffffLL<<((N)*16))) | (((size8u_t)((VAL) & 0x0ffff)) << ((N)*16));
 	},
@@ -2647,63 +1892,47 @@ DEF_MACRO(fSETHALF,(N,DST,VAL),
 
 
 
-DEF_MACRO(fGETWORD,(N,SRC),
-	"SRC.w[N]",
-	"Word N from SRC",
+DEF_MACRO(fGETWORD,
          ((size8s_t)((size4s_t)((SRC>>((N)*32))&0x0ffffffffLL))),
 	/* nothing */
 )
 
-DEF_MACRO(fGETUWORD,(N,SRC),
-	"SRC.uw[N]",
-	"Word N from SRC",
+DEF_MACRO(fGETUWORD,
          ((size8u_t)((size4u_t)((SRC>>((N)*32))&0x0ffffffffLL))),
 	/* nothing */
 )
 
-DEF_MACRO(fSETWORD,(N,DST,VAL),
-	"DST.w[N]=VAL",
-	"Word N from DST = VAL",
+DEF_MACRO(fSETWORD,
 	{
 	DST = (DST & ~(0x0ffffffffLL<<((N)*32))) | (((VAL) & 0x0ffffffffLL) << ((N)*32));
 	},
 	/* nothing */
 )
 
-DEF_MACRO(fACC,(),
-    "",
-    "",
+DEF_MACRO(fACC,
     ,
     (A_ACC)
 )
 
-DEF_MACRO(fEXTENSION_AUDIO,(A),
-    "A",
-    "A",
+DEF_MACRO(fEXTENSION_AUDIO,
     A,
     (A_EXTENSION_AUDIO,A_NOTE_EXTENSION_AUDIO)
 )
 
-DEF_MACRO(fSETBIT,(N,DST,VAL),
-	"DST.N = VAL",
-	"Set bit N in DST to VAL",
+DEF_MACRO(fSETBIT,
 	{
 	DST = (DST & ~(1ULL<<(N))) | (((size8u_t)(VAL))<<(N));
 	},
 	/* nothing */
 )
 
-DEF_MACRO(fGETBIT,(N,SRC),
-	"SRC.N",
-	"Get bit N from SRC",
+DEF_MACRO(fGETBIT,
 	(((SRC)>>N)&1),
 	/* nothing */
 )
 
 
-DEF_MACRO(fSETBITS,(HI,LO,DST,VAL),
-	"DST[HI:LO] = VAL",
-	"Set bits from HI to LO in DST to VAL",
+DEF_MACRO(fSETBITS,
 	do {
         int j;
         for (j=LO;j<=HI;j++) {
@@ -2713,9 +1942,7 @@ DEF_MACRO(fSETBITS,(HI,LO,DST,VAL),
 	/* nothing */
 )
 
-DEF_MACRO(fUNDEFINED,(),
-	"UNDEFINED",
-	"UNDEFINED",
+DEF_MACRO(fUNDEFINED,
 	warn("[UNDEFINED]: architecturally undefined"),
 	/* NOTHING */
 )
@@ -2723,151 +1950,109 @@ DEF_MACRO(fUNDEFINED,(),
 /*************************************/
 /* Used for parity, etc........      */
 /*************************************/
-DEF_MACRO(fCOUNTONES_2,(VAL),
-	"count_ones(VAL)",
-	"Count the number of bits set in VAL",
-	count_ones_2(VAL),
+DEF_MACRO(fCOUNTONES_2,
+	count_ones_2
 	/* nothing */
 )
 
-DEF_MACRO(fCOUNTONES_4,(VAL),
-	"count_ones(VAL)",
-	"Count the number of bits set in VAL",
-	count_ones_4(VAL),
+DEF_MACRO(fCOUNTONES_4,
+	count_ones_4
 	/* nothing */
 )
 
-DEF_MACRO(fCOUNTONES_8,(VAL),
-	"count_ones(VAL)",
-	"Count the number of bits set in VAL",
-	count_ones_8(VAL),
+DEF_MACRO(fCOUNTONES_8,
+	count_ones_8
 	/* nothing */
 )
 
-DEF_MACRO(fBREV_8,(VAL),
-	"reverse_bits(VAL)",
-	"Count the number of bits set in VAL",
-	reverse_bits_8(VAL),
+DEF_MACRO(fBREV_8,
+	reverse_bits_8
 	/* nothing */
 )
 
-DEF_MACRO(fBREV_4,(VAL),
-	"reverse_bits(VAL)",
-	"Count the number of bits set in VAL",
-	reverse_bits_4(VAL),
+DEF_MACRO(fBREV_4,
+	reverse_bits_4
 	/* nothing */
 )
 
-DEF_MACRO(fBREV_2,(VAL),
-	"reverse_bits(VAL)",
-	"Count the number of bits set in VAL",
-	reverse_bits_2(VAL),
+DEF_MACRO(fBREV_2,
+	reverse_bits_2
 	/* nothing */
 )
 
-DEF_MACRO(fBREV_1,(VAL),
-	"reverse_bits(VAL)",
-	"Count the number of bits set in VAL",
-	reverse_bits_1(VAL),
+DEF_MACRO(fBREV_1,
+	reverse_bits_1
 	/* nothing */
 )
 
-DEF_MACRO(fCL1_8,(VAL),
-	"count_leading_ones(VAL)",
-	"Count the number of bits set in VAL",
-	count_leading_ones_8(VAL),
+DEF_MACRO(fCL1_8,
+	count_leading_ones_8
 	/* nothing */
 )
 
-DEF_MACRO(fCL1_4,(VAL),
-	"count_leading_ones(VAL)",
-	"Count the number of bits set in VAL",
-	count_leading_ones_4(VAL),
+DEF_MACRO(fCL1_4,
+	count_leading_ones_4
 	/* nothing */
 )
 
-DEF_MACRO(fCL1_2,(VAL),
-	"count_leading_ones(VAL)",
-	"Count the number of bits set in VAL",
-	count_leading_ones_2(VAL),
+DEF_MACRO(fCL1_2,
+	count_leading_ones_2
 	/* nothing */
 )
 
-DEF_MACRO(fCL1_1,(VAL),
-	"count_leading_ones(VAL)",
-	"Count the number of bits set in VAL",
-	count_leading_ones_1(VAL),
+DEF_MACRO(fCL1_1,
+	count_leading_ones_1
 	/* nothing */
 )
 
-DEF_MACRO(fCLZ_16,(VAL),
-	"count_leading_zeros(VAL)",
-	"Count the number of bits set in VAL",
-	count_leading_zeros_16(VAL),
+DEF_MACRO(fCLZ_16,
+	count_leading_zeros_16
 	/* nothing */
 )
 
 
-DEF_MACRO(fINTERLEAVE,(ODD,EVEN),
-	"interleave(ODD,EVEN)",
-	"Interleave odd bits from ODD with even bits from EVEN",
+DEF_MACRO(fINTERLEAVE,
 	interleave(ODD,EVEN),
 	/* nothing */
 )
 
-DEF_MACRO(fDEINTERLEAVE,(MIXED),
-	"deinterleave(ODD,EVEN)",
-	"Deinterleave odd bits into high half even bits to low half",
+DEF_MACRO(fDEINTERLEAVE,
 	deinterleave(MIXED),
 	/* nothing */
 )
 
-DEF_MACRO(fNORM16,(VAL),
-	"get norm of 16bit value(VAL)",
-	"the number of leading sign bits in VAL",
+DEF_MACRO(fNORM16,
         ((VAL == 0) ? (31) : (fMAX(fCL1_2( VAL),fCL1_2(~VAL))-1)),
 	/* nothing */
 )
 
 
 
-DEF_MACRO(fHIDE,(A),
-	"",
-	"",
+DEF_MACRO(fHIDE,
 	A,
 	()
 )
 
-DEF_MACRO(fASM_MAP,(A,B),
-	"Assembler mapped to: B",
-	"Assembler mapped to: B",
+DEF_MACRO(fASM_MAP,
 	fatal("ASM_MAP instruction " A "->" B " executed.");,
 	()
 )
 
-DEF_MACRO(fCOND_ASM_MAP,(A,C,X,Y),
-	"if (C) {Assembler mapped to: X;} else {Assembler mapped to: Y;}@",
-	"if (C) {Assembler mapped to: Y;} else {Assembler mapped to: Y;}@",
+DEF_MACRO(fCOND_ASM_MAP,
 	fatal("ASM_MAP instruction " A "->" X "/" Y " executed.");,
 	()
 )
 
-DEF_MACRO(fCONSTLL,(A),
-	"A",
-	"A",
+DEF_MACRO(fCONSTLL,
 	A##LL,
 )
 
-DEF_MACRO(fCONSTULL,(A),
-	"A",
-	"A",
+DEF_MACRO(fCONSTULL,
 	A##ULL,
 )
 
 /* Do the things in the parens, but don't print the parens. */
-DEF_MACRO(fECHO,(A),
-	"A",
-	"A",
+DEF_MACRO(fECHO,
 	(A),
 	/* nothing */
 )
@@ -2877,47 +2062,35 @@ DEF_MACRO(fECHO,(A),
 /* OS interface and stop/wait               */
 /********************************************/
 
-DEF_MACRO(RUNNABLE_THREADS_MAX,,
-	"THREADS_MAX",
-	"THREADS_MAX",
+DEF_MACRO(RUNNABLE_THREADS_MAX,
 	(thread->processor_ptr->runnable_threads_max),
 	()
 )
 
-DEF_MACRO(THREAD_IS_ON,(PROC,TNUM),
-	"THREAD IS ENABLE",
-	"Thread is enabled in the revid",
+DEF_MACRO(THREAD_IS_ON,
 	((get_thread_en_mask(PROC)>>TNUM) & 0x1),
 	()
 )
 
-DEF_MACRO(THREAD_EN_MASK,(PROC),
-	"THREAD IS ENABLE MASK",
-	"Thread is enabled in the revid",
+DEF_MACRO(THREAD_EN_MASK,
 	(get_thread_en_mask(PROC)),
 	()
 )
 
 
 
-DEF_MACRO(READ_IMASK,(TH),
-	"IMASK[TH]",
-	"IMASK[TH]",
+DEF_MACRO(READ_IMASK,
          (((TH) >= (thread->processor_ptr->runnable_threads_max)) ? 0 : (thread->processor_ptr->thread[TH]->Regs[REG_IMASK])),
 	(A_IMPLICIT_READS_IMASK_ANYTHREAD)
 )
-DEF_MACRO(WRITE_IMASK,(TH,VAL),
-	"IMASK[TH]=VAL",
-	"IMASK[TH]=VAL",
+DEF_MACRO(WRITE_IMASK,
         /* if ((TH) < (thread->processor_ptr->runnable_threads_max)) { LOG_OTHER_THREAD_REG_WRITE(thread,REG_IMASK,VAL,TH); fVERIFICATION_REGWRITE_NOTE((TH),(REG_IMASK)); }, */
 	 if ((TH) < (thread->processor_ptr->runnable_threads_max)) { thread->processor_ptr->thread[TH]->Regs[REG_IMASK]=(VAL & reg_mutability[REG_IMASK] ); fVERIFICATION_REGWRITE_NOTE((TH),(REG_IMASK)) },
 	(A_IMPLICIT_WRITES_IMASK_ANYTHREAD)
 )
 
 
-DEF_MACRO(WRITE_PRIO,(TH,VAL),
-	"TID[TH].PRIO=VAL",
-	"TID[TH].PRIO=VAL",
+DEF_MACRO(WRITE_PRIO,
 	{
 		if ((TH) < (thread->processor_ptr->runnable_threads_max)) {
 			size4u_t tid_reg = thread->processor_ptr->thread[TH]->Regs[REG_TID];
@@ -2929,9 +2102,7 @@ DEF_MACRO(WRITE_PRIO,(TH,VAL),
 )
 
 
-DEF_MACRO(DO_IASSIGNW,(REG),
-	"IASSIGNW(REG)",
-	"IASSIGNW(REG)",
+DEF_MACRO(DO_IASSIGNW,
 	{
         int i;
         int intbitpos = ((REG>>16)&0xF);
@@ -2947,9 +2118,7 @@ DEF_MACRO(DO_IASSIGNW,(REG),
 
 
 
-DEF_MACRO(fDO_NMI,(SREG),
-	"Raise NMI on threads",
-	"Raise NMI on threads",
+DEF_MACRO(fDO_NMI,
 	{
 		int i;
 		for (i=0;i<RUNNABLE_THREADS_MAX;i++) {
@@ -2962,9 +2131,7 @@ DEF_MACRO(fDO_NMI,(SREG),
 	},
 )
 
-DEF_MACRO(fDO_TRACE,(SREG),
-	"Send value to ETM trace",
-	"Send value to ETM trace",
+DEF_MACRO(fDO_TRACE,
 	{
 		fHIDE(CALLBACK(thread->processor_ptr->options->trace_callback,
 			thread->system_ptr,thread->processor_ptr,
@@ -2972,9 +2139,7 @@ DEF_MACRO(fDO_TRACE,(SREG),
         },
 )
 
-DEF_MACRO(DO_IASSIGNR,(SREG,DREG),
-	"DREG=IASSIGNR(SREG)",
-	"DREG=IASSIGNR(SREG)",
+DEF_MACRO(DO_IASSIGNR,
 	{
 		int i;
 		int result=0;
@@ -2989,9 +2154,7 @@ DEF_MACRO(DO_IASSIGNR,(SREG,DREG),
 	(A_IMPLICIT_READS_IMASK_ANYTHREAD)
 )
 
-DEF_MACRO(DO_SWI,(REG),
-	"IPEND |= REG",
-	"IPEND |= REG",
+DEF_MACRO(DO_SWI,
         {fHIDE(CALLBACK(thread->processor_ptr->options->swi_callback,
          thread->system_ptr,thread->processor_ptr,
          thread->threadId,REG));
@@ -3000,48 +2163,36 @@ DEF_MACRO(DO_SWI,(REG),
 	(A_EXCEPTION_SWI,A_IMPLICIT_READS_IPENDAD_IPEND,A_IMPLICIT_WRITES_IPENDAD_IPEND)
 )
 
-DEF_MACRO(DO_CSWI,(REG),
-	"IPEND &= ~REG",
-	"IPEND &= ~REG",
+DEF_MACRO(DO_CSWI,
 	fLOG_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IPEND,fREAD_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IPEND) & ~(REG));,
 	(A_IMPLICIT_READS_IPENDAD_IPEND,A_IMPLICIT_WRITES_IPENDAD_IPEND)
 )
 
-DEF_MACRO(DO_CIAD,(VAL),
-	"IAD &= ~VAL",
-	"IAD &= ~VAL",
+DEF_MACRO(DO_CIAD,
 	sys_ciad(thread,VAL);
 	fLOG_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IAD,fREAD_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IAD) & ~(VAL));,
 	(A_EXCEPTION_SWI,A_IMPLICIT_READS_IPENDAD_IAD,A_IMPLICIT_WRITES_IPENDAD_IAD)
 )
 
-DEF_MACRO(DO_SIAD,(VAL),
-	"IAD |= VAL",
-	"IAD |= VAL",
+DEF_MACRO(DO_SIAD,
 	sys_siad(thread,VAL);
 	fLOG_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IAD,fREAD_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IAD) | (VAL));,
 	(A_EXCEPTION_SWI,A_IMPLICIT_READS_IPENDAD_IAD,A_IMPLICIT_WRITES_IPENDAD_IAD)
 )
 
-DEF_MACRO(fBREAK,(),
-	"Enter Debug mode",
-	"Enter Debug mode",
+DEF_MACRO(fBREAK,
         {isdb_brkpt_insn(thread->processor_ptr,thread->threadId);},
 	()
 )
 
-DEF_MACRO(fGP_DOCHKPAGECROSS,(BASE,SUM),
-	"",
-	"",
+DEF_MACRO(fGP_DOCHKPAGECROSS,
 	if (!(insn->extension_valid)) {
         fDOCHKPAGECROSS(BASE,SUM);
     },
 	(A_EA_PAGECROSS)
 )
 
-DEF_MACRO(fDOCHKPAGECROSS,(BASE,SUM),
-	"",
-	"",
+DEF_MACRO(fDOCHKPAGECROSS,
 	if (thread->bq_on) {
 		thread->mem_access[insn->slot].check_page_crosses = 1;
 		thread->mem_access[insn->slot].page_cross_base = BASE;
@@ -3050,9 +2201,7 @@ DEF_MACRO(fDOCHKPAGECROSS,(BASE,SUM),
 	(A_EA_PAGECROSS)
 )
 
-DEF_MACRO(fTIMING_AIA,(OLDVA,NEWVA),
-	"",
-	"",
+DEF_MACRO(fTIMING_AIA,
   if(thread->bq_on){
 	thread->mem_access[insn->slot].post_updated = 1;
 	thread->mem_access[insn->slot].post_updated_va = NEWVA;
@@ -3062,15 +2211,11 @@ DEF_MACRO(fTIMING_AIA,(OLDVA,NEWVA),
 )
 
 
-DEF_MACRO(fPAUSE,(IMM),
-	"Pause for IMM cycles",
-	"Pause for IMM cycles",
+DEF_MACRO(fPAUSE,
         {sys_pause(thread, insn->slot, IMM);},
 	()
 )
-DEF_MACRO(fUNPAUSE,(),
-	"Unpause threads currently in pause state",
-	"Unpause threads currently in pause state",
+DEF_MACRO(fUNPAUSE,
         {sys_unpause(thread, insn->slot);},
 	()
 )
@@ -3078,18 +2223,14 @@ DEF_MACRO(fUNPAUSE,(),
 
 #if 1
 /* The way it should be */
-DEF_MACRO(fTRAP,(TRAPTYPE,IMM),
-	"SSR.CAUSE = IMM; TRAP # TRAPTYPE",
-	"SSR.CAUSE = IMM; TRAP # TRAPTYPE",
+DEF_MACRO(fTRAP,
     warn("Trap NPC=%x ",fREAD_NPC());
 	warn("Trap exception, PCYCLE=%lld TYPE=%d NPC=%x IMM=0x%x",thread->processor_ptr->pstats[pcycles],TRAPTYPE,fREAD_NPC(),IMM);
 	register_trap_exception(thread,fREAD_NPC(),TRAPTYPE,IMM);,
 	(A_EXCEPTION_SWI)
 )
 #else
-DEF_MACRO(fTRAP,(TRAPTYPE,IMM),
-        "SSR.CAUSE = IMM; TRAP # TRAPTYPE",
-        "SSR.CAUSE = IMM; TRAP # TRAPTYPE",
+DEF_MACRO(fTRAP,
         if ((TRAPTYPE == 0) && (IMM == 0) &&
               (!thread->sandbox_execution) &&
               (!thread->processor_ptr->options->disable_angelswi)) {
@@ -3108,18 +2249,14 @@ DEF_MACRO(fTRAP,(TRAPTYPE,IMM),
 #endif
 
 DEF_MACRO(fINTERNAL_CLEAR_SAMEPAGE,
-	(),
-	"",
-	"",
+
 	/* force re-xlate at next fetch, refresh of in_user_mode, etc */
 	/* Permissions change too... */
 	sys_utlb_invalidate(thread->processor_ptr,thread),
 	/* NOTHING */
 )
 
-DEF_MACRO(fCLEAR_RTE_EX,(),
-      "SSR.SSR_EX = 0",
-      "SSR.SSR_EX = 0",
+DEF_MACRO(fCLEAR_RTE_EX,
       {
         fLOG_REG_FIELD(SSR,SSR_EX,0);
   	    fINTERNAL_CLEAR_SAMEPAGE();
@@ -3127,23 +2264,17 @@ DEF_MACRO(fCLEAR_RTE_EX,(),
       ()
 )
 
-DEF_MACRO(fTLB_LOCK_AVAILABLE,(),
-	"SYSCFG.TLBLOCK == 0",
-	"SYSCFG.TLBLOCK == 0",
+DEF_MACRO(fTLB_LOCK_AVAILABLE,
 	(fREAD_GLOBAL_REG_FIELD(SYSCONF,SYSCFG_TLBLOCK) == 0),
 	()
 )
 
-DEF_MACRO(fK0_LOCK_AVAILABLE,(),
-	"SYSCFG.K0LOCK == 0",
-	"SYSCFG.K0LOCK == 0",
+DEF_MACRO(fK0_LOCK_AVAILABLE,
 	(fREAD_GLOBAL_REG_FIELD(SYSCONF,SYSCFG_K0LOCK) == 0),
 	()
 )
 
-DEF_MACRO(fSET_TLB_LOCK,(),
-      "if (can_aquire_tlb_lock) {SYSCFG.TLBLOCK = 1;} else {sleep_until_available;}",
-      "if (can_aquire_tlb_lock) {SYSCFG.TLBLOCK = 1;} else {sleep_until_available;}",
+DEF_MACRO(fSET_TLB_LOCK,
       {
       if (fTLB_LOCK_AVAILABLE()) {
         fLOG_GLOBAL_REG_FIELD(SYSCONF,SYSCFG_TLBLOCK,1);
@@ -3154,9 +2285,7 @@ DEF_MACRO(fSET_TLB_LOCK,(),
       (A_IMPLICIT_READS_SYSCFG_TLBLOCK,A_IMPLICIT_WRITES_SYSCFG_TLBLOCK)
 )
 
-DEF_MACRO(fSET_K0_LOCK,(),
-      "if (can_aquire_k0_lock) {SYSCFG.K0LOCK = 1;} else {sleep_until_available;}",
-      "if (can_aquire_k0_lock) {SYSCFG.K0LOCK = 1;} else {sleep_until_available;}",
+DEF_MACRO(fSET_K0_LOCK,
       {
       if (fK0_LOCK_AVAILABLE() && sys_k0lock_queue_ready(thread)) {
 	warn("k0lock: T%d: PC=0x%x: PCycle=%lld",thread->threadId,thread->Regs[REG_PC],thread->processor_ptr->pstats[pcycles]);
@@ -3169,9 +2298,7 @@ DEF_MACRO(fSET_K0_LOCK,(),
       (A_IMPLICIT_READS_SYSCFG_K0LOCK,A_IMPLICIT_WRITES_SYSCFG_K0LOCK)
 )
 
-DEF_MACRO(fCLEAR_TLB_LOCK,(),
-      "SYSCFG.TLBLOCK = 0",
-      "SYSCFG.TLBLOCK = 0",
+DEF_MACRO(fCLEAR_TLB_LOCK,
       {
 		int i;
 		fLOG_GLOBAL_REG_FIELD(SYSCONF,SYSCFG_TLBLOCK,0);
@@ -3184,9 +2311,7 @@ DEF_MACRO(fCLEAR_TLB_LOCK,(),
       (A_IMPLICIT_READS_SYSCFG_TLBLOCK,A_IMPLICIT_WRITES_SYSCFG_TLBLOCK)
 )
 
-DEF_MACRO(fCLEAR_K0_LOCK,(),
-      "SYSCFG.K0LOCK = 0",
-      "SYSCFG.K0LOCK = 0",
+DEF_MACRO(fCLEAR_K0_LOCK,
       do {
       warn("k0unlock: T%d: PC=0x%x: Pcycle=%lld",thread->threadId,thread->Regs[REG_PC], thread->processor_ptr->pstats[pcycles]);
       sys_initiate_clear_k0_lock(thread);
@@ -3194,84 +2319,64 @@ DEF_MACRO(fCLEAR_K0_LOCK,(),
       (A_IMPLICIT_READS_SYSCFG_K0LOCK,A_IMPLICIT_WRITES_SYSCFG_K0LOCK)
 )
 
-DEF_MACRO(fWRITE_REG_FIELD,(REG,FIELD,VAL),
-	"REG.FIELD = VAL",
-	"REG.FIELD = VAL",
+DEF_MACRO(fWRITE_REG_FIELD,
 	fINSERT_BITS(thread->Regs[REG_##REG],
             reg_field_info[FIELD].width,
             reg_field_info[FIELD].offset,VAL),
 )
 
-DEF_MACRO(fALIGN_REG_FIELD_VALUE,(FIELD,VAL),
-	"VAL << FIELD.OFFSET",
-	"VAL << FIELD.OFFSET",
+DEF_MACRO(fALIGN_REG_FIELD_VALUE,
 	((VAL)<<reg_field_info[FIELD].offset),
 	/* */
 )
 
-DEF_MACRO(fGET_REG_FIELD_MASK,(FIELD),
-	"VAL << FIELD.OFFSET",
-	"VAL << FIELD.OFFSET",
+DEF_MACRO(fGET_REG_FIELD_MASK,
 	(((1<<reg_field_info[FIELD].width)-1)<<reg_field_info[FIELD].offset),
 	/* */
 )
 
-DEF_MACRO(fLOG_REG_FIELD,(REG,FIELD,VAL),
-	"REG.FIELD = VAL",
-	"REG.FIELD = VAL",
+DEF_MACRO(fLOG_REG_FIELD,
 	LOG_MASKED_REG_WRITE(thread,REG_##REG,
 		fALIGN_REG_FIELD_VALUE(FIELD,VAL),
 		fGET_REG_FIELD_MASK(FIELD)),
 	()
 )
 
-DEF_MACRO(fWRITE_GLOBAL_REG_FIELD,(REG,FIELD,VAL),
-	"REG.FIELD = VAL",
-	"REG.FIELD = VAL",
+DEF_MACRO(fWRITE_GLOBAL_REG_FIELD,
 	fINSERT_BITS(thread->processor_ptr->global_regs[REG_##REG],
             reg_field_info[FIELD].width,
             reg_field_info[FIELD].offset,VAL),
 )
 
-DEF_MACRO(fLOG_GLOBAL_REG_FIELD,(REG,FIELD,VAL),
-	"REG.FIELD = VAL",
-	"REG.FIELD = VAL",
+DEF_MACRO(fLOG_GLOBAL_REG_FIELD,
 	LOG_MASKED_GLOBAL_REG_WRITE(REG_##REG,
 		fALIGN_REG_FIELD_VALUE(FIELD,VAL),
 		fGET_REG_FIELD_MASK(FIELD)),
 	()
 )
 
-DEF_MACRO(fREAD_REG_FIELD,(REG,FIELD),
-	"REG.FIELD",
-	"REG.FIELD",
+DEF_MACRO(fREAD_REG_FIELD,
 	fEXTRACTU_BITS(thread->Regs[REG_##REG],
             reg_field_info[FIELD].width,
             reg_field_info[FIELD].offset),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fREAD_GLOBAL_REG_FIELD,(REG,FIELD),
-	"REG.FIELD",
-	"REG.FIELD",
+DEF_MACRO(fREAD_GLOBAL_REG_FIELD,
 	fEXTRACTU_BITS(thread->processor_ptr->global_regs[REG_##REG],
             reg_field_info[FIELD].width,
             reg_field_info[FIELD].offset),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fGET_FIELD,(VAL,FIELD),
-	"VAL.FIELD",
-	"VAL.FIELD",
+DEF_MACRO(fGET_FIELD,
 	fEXTRACTU_BITS(VAL,
 		reg_field_info[FIELD].width,
 		reg_field_info[FIELD].offset),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fSET_FIELD,(VAL,FIELD,NEWVAL),
-	"VAL.FIELD",
-	"VAL.FIELD",
+DEF_MACRO(fSET_FIELD,
 	fINSERT_BITS(VAL,
 		reg_field_info[FIELD].width,
 		reg_field_info[FIELD].offset,
@@ -3279,31 +2384,23 @@ DEF_MACRO(fSET_FIELD,(VAL,FIELD,NEWVAL),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fSET_RUN_MODE_NOW,(TNUM),
-	"modectl[TNUM] = 1",
-	"modectl[TNUM] = 1",
+DEF_MACRO(fSET_RUN_MODE_NOW,
         {thread->processor_ptr->global_regs[REG_MODECTL] |= (1<<TNUM);
          thread->last_commit_cycle = thread->processor_ptr->pcycle_counter;
          sys_recalc_num_running_threads(thread->processor_ptr);},
 )
 
-DEF_MACRO(fIN_DEBUG_MODE,(TNUM),
-	"in_debug_mode",
-	"in_debug_mode",
+DEF_MACRO(fIN_DEBUG_MODE,
 	(thread->debug_mode || (fREAD_GLOBAL_REG_FIELD(ISDBST,ISDBST_DEBUGMODE) & 1<<TNUM)),
 	()
 )
-DEF_MACRO(fIN_DEBUG_MODE_NO_ISDB,(TNUM),
-	"in_debug_mode",
-	"in_debug_mode",
+DEF_MACRO(fIN_DEBUG_MODE_NO_ISDB,
 	(thread->debug_mode),
 	()
 )
 
 
-DEF_MACRO(fIN_DEBUG_MODE_WARN,(TNUM),
-	"",
-	"",
+DEF_MACRO(fIN_DEBUG_MODE_WARN,
 	{
 		if (fREAD_GLOBAL_REG_FIELD(ISDBST,ISDBST_DEBUGMODE) & 1<<TNUM)
 			warn("In ISDB debug mode, but TB told me to step normally");
@@ -3311,9 +2408,7 @@ DEF_MACRO(fIN_DEBUG_MODE_WARN,(TNUM),
 	()
 )
 
-DEF_MACRO(fCLEAR_RUN_MODE,(TNUM),
-	"modectl[TNUM] = 0",
-	"modectl[TNUM] = 0",
+DEF_MACRO(fCLEAR_RUN_MODE,
 	{fLOG_GLOBAL_REG_FIELD(MODECTL,MODECTL_E,
     fREAD_GLOBAL_REG_FIELD(MODECTL,MODECTL_E) & ~(1<<(TNUM)))},
 #if 0
@@ -3324,9 +2419,7 @@ DEF_MACRO(fCLEAR_RUN_MODE,(TNUM),
 	/* NOTHING */
 )
 
-DEF_MACRO(fCLEAR_RUN_MODE_NOW,(TNUM),
-	"modectl[TNUM] = 0",
-	"modectl[TNUM] = 0",
+DEF_MACRO(fCLEAR_RUN_MODE_NOW,
 	do {
 		fWRITE_GLOBAL_REG_FIELD(MODECTL,MODECTL_E,
 			fREAD_GLOBAL_REG_FIELD(MODECTL,MODECTL_E) & ~(1<<(TNUM)));
@@ -3335,15 +2428,11 @@ DEF_MACRO(fCLEAR_RUN_MODE_NOW,(TNUM),
 	/* NOTHING */
 )
 
-DEF_MACRO(fGET_RUN_MODE,(TNUM),
-	"modectl[TNUM]",
-	"modectl[TNUM]",
+DEF_MACRO(fGET_RUN_MODE,
         ((thread->processor_ptr->global_regs[REG_MODECTL]>>TNUM)&0x1),
 )
 
-DEF_MACRO(fSET_WAIT_MODE,(TNUM),
-	"modectl[(TNUM+16)] = 1",
-	"modectl[(TNUM+16)] = 1",
+DEF_MACRO(fSET_WAIT_MODE,
 	{fLOG_GLOBAL_REG_FIELD(MODECTL,MODECTL_W,
     fREAD_GLOBAL_REG_FIELD(MODECTL,MODECTL_W) | 1<<(TNUM))
 	thread->isdb_delayed_wait_brkpt = 1;},
@@ -3354,78 +2443,56 @@ DEF_MACRO(fSET_WAIT_MODE,(TNUM),
 	/* NOTHING */
 )
 
-DEF_MACRO(fCLEAR_WAIT_MODE,(TNUM),
-	"modectl[(TNUM+16)] = 0",
-	"modectl[(TNUM+16)] = 0",
+DEF_MACRO(fCLEAR_WAIT_MODE,
         {thread->processor_ptr->global_regs[REG_MODECTL] &= ~(1<<(TNUM+16));
          thread->last_commit_cycle = thread->processor_ptr->pcycle_counter;
          sys_recalc_num_running_threads(thread->processor_ptr);},
 )
 
-DEF_MACRO(fGET_WAIT_MODE,(TNUM),
-	"modectl[(TNUM+16)]",
-	"modectl[(TNUM+16)]",
+DEF_MACRO(fGET_WAIT_MODE,
         ((thread->processor_ptr->global_regs[REG_MODECTL]>>(TNUM+16))&0x1),
 )
 
 
-DEF_MACRO(fRESET_THREAD,(T,NUM),
-	"reset_thread(NUM)",
-	"reset_thread(NUM)",
+DEF_MACRO(fRESET_THREAD,
         register_reset_interrupt(T,NUM),
 )
 
-DEF_MACRO(fREAD_CURRENT_EVB,(),
-	"EVB",
-	"EVB",
+DEF_MACRO(fREAD_CURRENT_EVB,
 	(GLOBAL_REG_READ(REG_EVB)),
 	/* nothing */
 )
 
-DEF_MACRO(fREAD_ELR,(),
-	"ELR",
-	"ELR",
+DEF_MACRO(fREAD_ELR,
 	READ_RREG(REG_ELR),
 	(A_IMPLICIT_READS_ELR)
 )
 
-DEF_MACRO(fPOW2_HELP_ROUNDUP,(VAL),
-	"helper for pow2_roundup",
-	"helper for pow2_roundup",
+DEF_MACRO(fPOW2_HELP_ROUNDUP,
 	((VAL) | ((VAL) >> 1) | ((VAL) >> 2) | ((VAL) >> 4) | ((VAL) >> 8) | ((VAL) >> 16)),
 	()
 )
 
-DEF_MACRO(fPOW2_ROUNDUP,(VAL),
-	"pow2_roundup(VAL)",
-	"pow2_roundup(VAL)",
+DEF_MACRO(fPOW2_ROUNDUP,
 	fPOW2_HELP_ROUNDUP((VAL)-1)+1,
 	()
 )
 
-DEF_MACRO(fTLB_IDXMASK,(INDEX),
-	"INDEX % TLBSIZE",
-	"INDEX % TLBSIZE",
+DEF_MACRO(fTLB_IDXMASK,
 	((INDEX) & (fPOW2_ROUNDUP(fCAST4u(thread->processor_ptr->arch_proc_options->QDSP6_JTLB_SZ)) - 1)),
 	()
 )
 
-DEF_MACRO(fDMATLB_IDXMASK,(INDEX),
-	"INDEX % DMATLBSIZE",
-	"INDEX % DMATLBSIZE",
+DEF_MACRO(fDMATLB_IDXMASK,
 	((INDEX) & (fPOW2_ROUNDUP(fCAST4u(thread->processor_ptr->arch_proc_options->QDSP6_DMAJTLB_SZ)) - 1)),
 	()
 )
-DEF_MACRO(fTLB_NONPOW2WRAP,(INDEX),
-	"INDEX % TLBSIZE",
-	"INDEX % TLBSIZE",
+DEF_MACRO(fTLB_NONPOW2WRAP,
 	(((INDEX) >= thread->processor_ptr->arch_proc_options->QDSP6_JTLB_SZ) ? ((INDEX) - thread->processor_ptr->arch_proc_options->QDSP6_JTLB_SZ) : (INDEX)),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fTLBW,(INDEX,VALUE),
-	"TLB[INDEX] = VALUE",
-	"TLB[INDEX] = VALUE",
+DEF_MACRO(fTLBW,
 	do {
 		size4u_t __myidx = fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX));
 		warn("TLB Write to index=%x entry=%llx wrapped index=%x", INDEX, VALUE, __myidx);
@@ -3438,9 +2505,7 @@ DEF_MACRO(fTLBW,(INDEX,VALUE),
 
 )
 
-DEF_MACRO(fTLBW_EXTENDED,(INDEX,VALUE),
-	"TLB[INDEX] = VALUE",
-	"TLB[INDEX] = VALUE",
+DEF_MACRO(fTLBW_EXTENDED,
 
 	do {
 		size4u_t __dma_tlb = ((INDEX & DMA_TLB_OFFSET) && (thread->processor_ptr->arch_proc_options->QDSP6_DMAJTLB_SZ>0))  ;
@@ -3454,110 +2519,80 @@ DEF_MACRO(fTLBW_EXTENDED,(INDEX,VALUE),
 	} while (0),
 
 )
-DEF_MACRO(fTLB_ENTRY_OVERLAP,(VALUE, INDEX),
-	"CHECK_TLB_OVERLAP(VALUE)",
-	"CHECK_TLB_OVERLAP(VALUE)",
+DEF_MACRO(fTLB_ENTRY_OVERLAP,
      fHIDE( (sys_check_overlap(thread,VALUE, INDEX)!=-2) ),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fTLB_ENTRY_OVERLAP_IDX,(VALUE, INDEX),
-	"GET_OVERLAPPING_IDX(VALUE)",
-	"GET_OVERLAPPING_IDX(VALUE)",
+DEF_MACRO(fTLB_ENTRY_OVERLAP_IDX,
      fHIDE(sys_check_overlap(thread,VALUE, INDEX)),
 	/* ATTRIBS */
 )
 
 
-DEF_MACRO(fTLBR,(INDEX),
-	"TLB[INDEX]",
-	"TLB[INDEX]",
+DEF_MACRO(fTLBR,
         TLB_REG_READ(fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX))),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fTLBR_EXTENDED,(INDEX),
-	"TLB[INDEX]",
-	"TLB[INDEX]",
+DEF_MACRO(fTLBR_EXTENDED,
     ((INDEX & DMA_TLB_OFFSET) && (thread->processor_ptr->arch_proc_options->QDSP6_DMAJTLB_SZ>0)) ? TLB_REG_READ(fTLB_NONPOW2WRAP(fDMATLB_IDXMASK(INDEX-DMA_TLB_OFFSET))+DMA_TLB_OFFSET) :  TLB_REG_READ(fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX))),
 	/* ATTRIBS */
 )
 
-DEF_MACRO(fTLBP,(TLBHI),
-	"search_TLB(TLBHI)",
-	"search_TLB(TLBHI)",
+DEF_MACRO(fTLBP,
         tlb_lookup(thread,((TLBHI)>>12),((TLBHI)<<12),1),
 	/* attribs */
 )
 
 
 
-DEF_MACRO(READ_SGP0,(),
-	"SGP0",
-	"SGP0",
+DEF_MACRO(READ_SGP0,
 	READ_RREG(REG_SGP),
 	(A_IMPLICIT_READS_SGP0)
 )
 
-DEF_MACRO(READ_SGP1,(),
-	"SGP1",
-	"SGP1",
+DEF_MACRO(READ_SGP1,
 	READ_RREG(REG_SGP+1),
 	(A_IMPLICIT_READS_SGP1)
 )
 
-DEF_MACRO(READ_SGP10,(),
-	"SGP",
-	"SGP",
+DEF_MACRO(READ_SGP10,
 	READ_RREG_PAIR(REG_SGP),
 	(A_IMPLICIT_READS_SGP0,A_IMPLICIT_READS_SGP1)
 )
 
-DEF_MACRO(READ_UGP,(),
-	"UGP",
-	"UGP",
+DEF_MACRO(READ_UGP,
 	READ_RREG(REG_UGP),
 )
 
-DEF_MACRO(WRITE_SGP0,(VAL),
-	"SGP0 = VAL",
-	"SGP0 = VAL",
+DEF_MACRO(WRITE_SGP0,
         WRITE_RREG(REG_SGP,VAL),
 	(A_IMPLICIT_WRITES_SGP0)
 )
 
-DEF_MACRO(WRITE_SGP1,(VAL),
-	"SGP1 = VAL",
-	"SGP1 = VAL",
+DEF_MACRO(WRITE_SGP1,
         WRITE_RREG(REG_SGP+1,VAL),
 	(A_IMPLICIT_WRITES_SGP1)
 )
 
-DEF_MACRO(WRITE_SGP10,(VAL),
-	"SGP = VAL",
-	"SGP = VAL",
+DEF_MACRO(WRITE_SGP10,
         WRITE_RREG_PAIR(REG_SGP,VAL),
 	(A_IMPLICIT_WRITES_SGP0,A_IMPLICIT_WRITES_SGP1)
 )
 
-DEF_MACRO(WRITE_UGP,(VAL),
-	"UGP = VAL",
-	"UGP = VAL",
+DEF_MACRO(WRITE_UGP,
         WRITE_RREG(REG_UGP,VAL),
 )
 
 #if 0
-DEF_MACRO(fSTOP,(REG),
-	"stop(REG)",
-	"stop(REG)",
+DEF_MACRO(fSTOP,
 	/* FIXME */,
 	()
 )
 #endif
 
-DEF_MACRO(fSTART,(REG),
-	"start(REG)",
-	"start(REG)",
+DEF_MACRO(fSTART,
 	fLOG_GLOBAL_REG_FIELD(MODECTL,MODECTL_E, fREAD_GLOBAL_REG_FIELD(MODECTL,MODECTL_E) | (((REG & ((1<<RUNNABLE_THREADS_MAX)-1))) & THREAD_EN_MASK(thread->processor_ptr))),
 #if 0
 	do {
@@ -3574,109 +2609,81 @@ DEF_MACRO(fSTART,(REG),
 )
 
 #if 0
-DEF_MACRO(fWAIT,(REG),
-	"wait(REG)",
-	"wait(REG)",
+DEF_MACRO(fWAIT,
 	/* FIXME */,
 	()
 )
 #endif
 
-DEF_MACRO(fRESUME,(REG),
-	"resume(REG)",
-	"resume(REG)",
+DEF_MACRO(fRESUME,
 	fLOG_GLOBAL_REG_FIELD(MODECTL,MODECTL_W,
 		fREAD_GLOBAL_REG_FIELD(MODECTL,MODECTL_W) & (~(REG))),
 	()
 )
 
-DEF_MACRO(fGET_TNUM,(),
-	"TNUM",
-	"TNUM",
+DEF_MACRO(fGET_TNUM,
 	thread->threadId,
 	()
 )
 
 
-DEF_MACRO(fVERIF_MARK_RREG_ACCESS,(...),
-	"",
-	"",
+DEF_MACRO(fVERIF_MARK_RREG_ACCESS,
 	/* Nothing */,
 	()
 )
 
 
-DEF_MACRO(fVERIF_MARK_RREGPAIR_ACCESS,(...),
-	"",
-	"",
+DEF_MACRO(fVERIF_MARK_RREGPAIR_ACCESS,
 	/* Nothing */,
 	()
 )
 
-DEF_MACRO(fVERIF_MARK_CREG_ACCESS,(...),
-	"",
-	"",
-	/* Nothing */,
-	()
-)
-
-
-DEF_MACRO(fVERIF_MARK_CREGPAIR_ACCESS,(...),
-	"",
-	"",
-	/* Nothing */,
-	()
-)
-
-DEF_MACRO(fVERIF_MARK_SREG_ACCESS,(...),
-	"",
-	"",
+DEF_MACRO(fVERIF_MARK_CREG_ACCESS,
 	/* Nothing */,
 	()
 )
 
 
-DEF_MACRO(fVERIF_MARK_SREGPAIR_ACCESS,(...),
-	"",
-	"",
+DEF_MACRO(fVERIF_MARK_CREGPAIR_ACCESS,
 	/* Nothing */,
 	()
 )
 
-DEF_MACRO(fVERIF_MARK_GREG_ACCESS,(...),
-	"",
-	"",
-	/* Nothing */,
-	()
-)
-
-
-DEF_MACRO(fVERIF_MARK_GREGPAIR_ACCESS,(...),
-	"",
-	"",
+DEF_MACRO(fVERIF_MARK_SREG_ACCESS,
 	/* Nothing */,
 	()
 )
 
 
-DEF_MACRO(fVERIF_MARK_VREG_ACCESS,(...),
-	"",
-	"",
+DEF_MACRO(fVERIF_MARK_SREGPAIR_ACCESS,
+	/* Nothing */,
+	()
+)
+
+DEF_MACRO(fVERIF_MARK_GREG_ACCESS,
 	/* Nothing */,
 	()
 )
 
 
-DEF_MACRO(fVERIF_MARK_VREGPAIR_ACCESS,(...),
-	"",
-	"",
+DEF_MACRO(fVERIF_MARK_GREGPAIR_ACCESS,
 	/* Nothing */,
 	()
 )
 
-DEF_MACRO(fVERIF_MARK_VREGQUAD_ACCESS,(...),
-	"",
-	"",
+
+DEF_MACRO(fVERIF_MARK_VREG_ACCESS,
+	/* Nothing */,
+	()
+)
+
+
+DEF_MACRO(fVERIF_MARK_VREGPAIR_ACCESS,
+	/* Nothing */,
+	()
+)
+
+DEF_MACRO(fVERIF_MARK_VREGQUAD_ACCESS,
 	/* Nothing */,
 	()
 )
@@ -3686,27 +2693,21 @@ DEF_MACRO(fVERIF_MARK_VREGQUAD_ACCESS,(...),
 /* Cache Management                         */
 /********************************************/
 
-DEF_MACRO(fBARRIER,(),
-	"memory_barrier",
-	"memory_barrier",
+DEF_MACRO(fBARRIER,
      {
         sys_barrier(thread, insn->slot);
      },
 	()
 )
 
-DEF_MACRO(fSYNCH,(),
-	"memory_synch",
-	"memory_synch",
+DEF_MACRO(fSYNCH,
   {
       sys_sync(thread, insn->slot);
   },
 	()
 )
 
-DEF_MACRO(fISYNC,(),
-	"instruction_sync",
-	"instruction_sync",
+DEF_MACRO(fISYNC,
   {
       sys_isync(thread, insn->slot);
   },
@@ -3714,23 +2715,17 @@ DEF_MACRO(fISYNC,(),
 )
 
 
-DEF_MACRO(fICFETCH,(REG),
-	"icache_fetch(REG)",
-	"icache_fetch(REG)",
+DEF_MACRO(fICFETCH,
 	/* Unimplemented for now in uarch... cache_nru_icache_fetch(thread->processor_ptr, thread->threadId, (REG)) */,
 	()
 )
 
-DEF_MACRO(fDCFETCH,(REG),
-	"dcache_fetch(REG)",
-	"dcache_fetch(REG)",
+DEF_MACRO(fDCFETCH,
 	sys_dcfetch(thread, (REG), insn->slot),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fICINVIDX,(REG),
-	"icache_inv_idx(REG)",
-	"icache_inv_idx(REG)",
+DEF_MACRO(fICINVIDX,
   {
   	arch_internal_flush(thread->processor_ptr,0,0xffffffff); /* FIXME */
   //    sys_icinvidx(thread, (REG));
@@ -3739,9 +2734,7 @@ DEF_MACRO(fICINVIDX,(REG),
 	()
 )
 
-DEF_MACRO(fICINVA,(REG),
-	"icache_inv_addr(REG)",
-	"icache_inv_addr(REG)",
+DEF_MACRO(fICINVA,
 	{
 	arch_internal_flush(thread->processor_ptr, 0, 0xffffffff);
    	sys_icinva(thread, (REG),insn->slot);
@@ -3749,326 +2742,236 @@ DEF_MACRO(fICINVA,(REG),
 	(A_ICINVA)
 )
 
-DEF_MACRO(fICKILL,(),
-	"icache_inv_all()",
-	"icache_inv_all()",
+DEF_MACRO(fICKILL,
         arch_internal_flush(thread->processor_ptr, 0, 0xffffffff);
         cache_kill_icache(thread->processor_ptr); ,
 	()
 )
 
-DEF_MACRO(fDCKILL,(),
-	"dcache_inv_all()",
-	"dcache_inv_all()",
+DEF_MACRO(fDCKILL,
         cache_kill_dcache(thread->processor_ptr); ,
 	()
 )
 
-DEF_MACRO(fL2KILL,(),
-	"l2cache_inv_all()",
-	"l2cache_inv_all()",
+DEF_MACRO(fL2KILL,
         cache_kill_l2cache(thread->processor_ptr); ,
 	(A_IMPLICIT_READS_SYSCFG_GCA,A_IMPLICIT_WRITES_SYSCFG_GCA)
 )
 
-DEF_MACRO(fL2UNLOCK,(),
-	"l2cache_global_unlock()",
-	"l2cache_global_unlock()",
+DEF_MACRO(fL2UNLOCK,
 	sys_l2gunlock(thread),
 	(A_IMPLICIT_READS_SYSCFG_GCA,A_IMPLICIT_WRITES_SYSCFG_GCA)
 )
 
-DEF_MACRO(fL2CLEAN,(),
-	"l2cache_global_clean()",
-	"l2cache_global_clean()",
+DEF_MACRO(fL2CLEAN,
 	sys_l2gclean(thread),
 	(A_IMPLICIT_READS_SYSCFG_GCA,A_IMPLICIT_WRITES_SYSCFG_GCA)
 )
 
-DEF_MACRO(fL2CLEANINV,(),
-	"l2cache_global_clean_inv()",
-	"l2cache_global_clean_inv()",
+DEF_MACRO(fL2CLEANINV,
 	sys_l2gcleaninv(thread),
 	(A_IMPLICIT_READS_SYSCFG_GCA,A_IMPLICIT_WRITES_SYSCFG_GCA)
 )
 
-DEF_MACRO(fL2CLEANPA,(REG),
-	"l2cache_global_clean_range(REG)",
-	"l2cache_global_clean_range(REG)",
+DEF_MACRO(fL2CLEANPA,
 	sys_l2gclean_pa(thread,REG),
 	(A_IMPLICIT_READS_SYSCFG_GCA,A_IMPLICIT_WRITES_SYSCFG_GCA)
 )
 
-DEF_MACRO(fL2CLEANINVPA,(REG),
-	"l2cache_global_clean_inv_range(REG)",
-	"l2cache_global_clean_inv_range(REG)",
+DEF_MACRO(fL2CLEANINVPA,
 	sys_l2gcleaninv_pa(thread,REG),
 	(A_IMPLICIT_READS_SYSCFG_GCA,A_IMPLICIT_WRITES_SYSCFG_GCA)
 )
 
 
-DEF_MACRO(fL2CLEANINVIDX,(REG),
-	"l2cache_clean_invalidate_idx(REG)",
-	"l2cache_clean_invalidate_idx(REG)",
+DEF_MACRO(fL2CLEANINVIDX,
 	sys_l2cleaninvidx(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fL2CLEANIDX,(REG),
-	"l2cache_clean_idx(REG)",
-	"l2cache_clean_idx(REG)",
+DEF_MACRO(fL2CLEANIDX,
 	sys_l2cleanidx(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fL2INVIDX,(REG),
-	"l2cache_inv_idx(REG)",
-	"l2cache_inv_idx(REG)",
+DEF_MACRO(fL2INVIDX,
 	sys_l2invidx(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fDCTAGR,(INDEX,DST,DSTREGNO),
-	"dcache_tag_read(INDEX)",
-	"dcache_tag_read(INDEX)",
+DEF_MACRO(fDCTAGR,
 	({DST=sys_dctagr(thread, INDEX, insn->slot,DSTREGNO);})/* FIXME */,
 	()
 )
 
-DEF_MACRO(fDCTAGW,(INDEX,PART2),
-	"dcache_tag_write(INDEX,PART2)",
-	"dcache_tag_write(INDEX,PART2)",
+DEF_MACRO(fDCTAGW,
 	(sys_dctagw(thread, INDEX, PART2, insn->slot)),
 	()
 )
-DEF_MACRO(fICTAGR,(INDEX,DST,REGNO),
-	"icache_tag_read(INDEX)",
-	"icache_tag_read(INDEX)",
+DEF_MACRO(fICTAGR,
 	({DST=sys_ictagr(thread, INDEX, insn->slot,REGNO);}),
 	()
 )
 
-DEF_MACRO(fICDATAR,(INDEX, DST),
-	"icache_data_read(INDEX)",
-	"icache_data_read(INDEX)",
+DEF_MACRO(fICDATAR,
 	({DST=sys_icdatar(thread, INDEX, insn->slot);}),
 	()
 )
 
-DEF_MACRO(fICTAGW,(INDEX,PART2),
-	"icache_tag_write(INDEX,PART2)",
-	"icache_tag_write(INDEX,PART2)",
+DEF_MACRO(fICTAGW,
 	(sys_ictagw(thread, INDEX, PART2, insn->slot)),
 	()
 )
-DEF_MACRO(fICDATAW,(INDEX,DATA),
-	"icache_data_write(INDEX,DATA)",
-	"icache_data_write(INDEX,DATA)",
+DEF_MACRO(fICDATAW,
 	({ fHIDE(); }),
 	()
 )
 
-DEF_MACRO(fL2FETCH,(ADDR,HEIGHT,WIDTH,STRIDE,FLAGS),
-	"l2fetch(ADDR,INFO)",
-	"l2fetch(ADDR,INFO)",
+DEF_MACRO(fL2FETCH,
 	sys_l2fetch(thread, ADDR,HEIGHT,WIDTH,STRIDE,FLAGS, insn->slot),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_L2FETCH)
 )
 
-DEF_MACRO(fDMSTART,(NEWPTR),
+DEF_MACRO(fDMSTART,
 	"DM0[31:4] = Rs[31:0];"
-	"DMA start",
-	"dma_start(NEW_DESCRIPTOR)",
 	dma_adapter_cmd(thread,DMA_CMD_START,NEWPTR,0),
 	()
 )
 
-DEF_MACRO(fDMLINK,(CURPTR, NEWPTR),
+DEF_MACRO(fDMLINK,
 	"CURPTR->Next = NEWPTR;"
 	"if (DM0 == 0);"
-	"  DMA Start",
-	"dma_link(CURRENT_DESCRIPTOR, NEW_DESCRIPTOR)",
 	dma_adapter_cmd(thread,DMA_CMD_LINK,CURPTR,NEWPTR),
 	()
 )
 
-DEF_MACRO(fDMPOLL,(DST),
-	"DST = DM0",
-	"dma_poll()",
+DEF_MACRO(fDMPOLL,
 	DST=dma_adapter_cmd(thread,DMA_CMD_POLL,0,0),
 	()
 )
 
-DEF_MACRO(fDMWAIT,(DST),
-	"DST = DM0",
-	"dma_wait()",
+DEF_MACRO(fDMWAIT,
 	DST=dma_adapter_cmd(thread,DMA_CMD_WAIT,0,0),
 	()
 )
 
-DEF_MACRO(fDMSYNCHT,(DST),
-	"DST = DM0",
-	"dma_syncht()",
+DEF_MACRO(fDMSYNCHT,
 	DST=dma_adapter_cmd(thread,DMA_CMD_SYNCHT,0,0),
 	()
 )
-DEF_MACRO(fDMTLBSYNCH,(DST),
-	"DST = DM0",
-	"dma_tlb_synch()",
+DEF_MACRO(fDMTLBSYNCH,
 	DST=dma_adapter_cmd(thread,DMA_CMD_TLBSYNCH,0,0),
 	()
 )
 
 
-DEF_MACRO(fDMPAUSE,(DST),
+DEF_MACRO(fDMPAUSE,
 	"DST = DM0;"
-	"DMA = Idle",
-	"dma_pause()",
 	DST=dma_adapter_cmd(thread,DMA_CMD_PAUSE,0,0),
 	()
 )
 
-DEF_MACRO(fDMRESUME,(PTR),
+DEF_MACRO(fDMRESUME,
 	"DST = DM0;"
-	"Restart DMA",
-	"dma_resume()",
 	dma_adapter_cmd(thread,DMA_CMD_RESUME,PTR,0),
 	()
 )
 
-DEF_MACRO(fDMWAITDESCRIPTOR,(SRC,DST),
-	"dma_waitdescriptor()",
-	"dma_waitdescriptor()",
+DEF_MACRO(fDMWAITDESCRIPTOR,
 	DST=dma_adapter_cmd(thread,DMA_CMD_WAITDESCRIPTOR,SRC,0),
 	()
 )
 
-DEF_MACRO(fDMCFGRD,(DMANUM,DST),
-	"DST = DM0",
-	"dma_cfgrd()",
+DEF_MACRO(fDMCFGRD,
 	DST=dma_adapter_cmd(thread,DMA_CMD_CFGRD,DMANUM,0),
 	()
 )
 
-DEF_MACRO(fDMCFGWR,(DMANUM,DATA),
-	"DM[DMANUM]=DATA",
-	"dma_cfgwr()",
+DEF_MACRO(fDMCFGWR,
 	dma_adapter_cmd(thread,DMA_CMD_CFGWR,DMANUM,DATA),
 	()
 )
 
-DEF_MACRO(fL2TAGR,(INDEX, DST, DSTREG),
-	"l2cache_tag_read(INDEX)",
-	"l2cache_tag_read(INDEX)",
+DEF_MACRO(fL2TAGR,
 	({DST=sys_l2tagr(thread, INDEX, insn->slot, DSTREG);}),
 	()
 )
 
-DEF_MACRO(fL2LOCKA,(VA,DST,PREGDST),
-	"DST=l2locka(VA)",
-	"DST=l2locka(VA)",
+DEF_MACRO(fL2LOCKA,
 	do {DST=sys_l2locka(thread, VA, insn->slot, PREGDST); } while (0),
 	()
 )
 
-DEF_MACRO(fL2UNLOCKA,(VA),
-	"l2unlocka(VA)",
-	"l2unlocka(VA)",
+DEF_MACRO(fL2UNLOCKA,
 	sys_l2unlocka(thread, VA, insn->slot),
 	()
 )
 
-DEF_MACRO(fL2TAGW,(INDEX,PART2),
-	"l2cache_tag_write(INDEX,PART2)",
-	"l2cache_tag_write(INDEX,PART2)",
+DEF_MACRO(fL2TAGW,
 	({sys_l2tagw(thread, INDEX, PART2, insn->slot);}),
 	()
 )
 
-DEF_MACRO(fDCCLEANIDX,(REG),
-	"dcache_clean_idx(REG)",
-	"dcache_clean_idx(REG)",
+DEF_MACRO(fDCCLEANIDX,
 	sys_dccleanidx(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fDCCLEANA,(REG),
-	"dcache_clean_addr(REG)",
-	"dcache_clean_addr(REG)",
+DEF_MACRO(fDCCLEANA,
 	sys_dccleana(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fDCCLEANINVIDX,(REG),
-	"dcache_cleaninv_idx(REG)",
-	"dcache_cleaninv_idx(REG)",
+DEF_MACRO(fDCCLEANINVIDX,
 	sys_dccleaninvidx(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fDCCLEANINVA,(REG),
-	"dcache_cleaninv_addr(REG)",
-	"dcache_cleaninv_addr(REG)",
+DEF_MACRO(fDCCLEANINVA,
 	sys_dccleaninva(thread, (REG), insn->slot),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_DCCLEANINVA)
 )
 
-DEF_MACRO(fDCZEROA,(REG),
-	"dcache_zero_addr(REG)",
-	"dcache_zero_addr(REG)",
+DEF_MACRO(fDCZEROA,
 	sys_dczeroa(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fDCINVIDX,(REG),
-	"dcache_inv_idx(REG)",
-	"dcache_inv_idx(REG)",
+DEF_MACRO(fDCINVIDX,
 	sys_dcinvidx(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
-DEF_MACRO(fDCINVA,(REG),
-	"dcache_inv_addr(REG)",
-	"dcache_inv_addr(REG)",
+DEF_MACRO(fDCINVA,
 	sys_dcinva(thread, (REG)),
 	(A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
 
-DEF_MACRO(fCHECKFORPRIV,(),
-	"priv_check();",
-	"priv_check();",
+DEF_MACRO(fCHECKFORPRIV,
 	{sys_check_privs(thread); if (EXCEPTION_DETECTED) return; },
 	()
 )
 
-DEF_MACRO(fCHECKFORGUEST,(),
-	"priv_check();",
-	"priv_check();",
+DEF_MACRO(fCHECKFORGUEST,
 	{sys_check_guest(thread); if (EXCEPTION_DETECTED) return; },
 	()
 )
 
-DEF_MACRO(fILLEGAL,(),
-	"illegal()",
-	"illegal()",
+DEF_MACRO(fILLEGAL,
 	do {sys_illegal(thread); if (EXCEPTION_DETECTED) return; } while (0),
 	()
 )
 
 #ifdef NEW_INTERRUPTS
 
-DEF_MACRO(fTAKEN_INTERRUPT_EDGECLEAR,(proc,intnum),
-	"clear_ipend(intnum)",
-	"If the interrupt is edge triggered, clear the interrupt from IPEND due to being taken",
+DEF_MACRO(fTAKEN_INTERRUPT_EDGECLEAR,
 	{ fWRITE_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IPEND,
 		fREAD_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IPEND) & ~(INT_NUMTOMASK(intnum))); },
 	()
 )
 
-DEF_MACRO(fSET_IAD,(thread,intnum),
-	"set_iad(intnum)",
-	"Set IAD bit corresponding to intnum",
+DEF_MACRO(fSET_IAD,
 	{ sys_siad(thread,INT_NUMTOMASK(intnum));
 	  fWRITE_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IAD,
 		fREAD_GLOBAL_REG_FIELD(IPENDAD,IPENDAD_IAD) | INT_NUMTOMASK(intnum)); },
@@ -4076,34 +2979,26 @@ DEF_MACRO(fSET_IAD,(thread,intnum),
 )
 #else
 
-DEF_MACRO(fTAKEN_INTERRUPT_EDGECLEAR,(proc,intnum),
-        "clear_ipend(intnum)",
-        "If the interrupt is edge triggered, clear the interrupt from IPEND due to being taken",
+DEF_MACRO(fTAKEN_INTERRUPT_EDGECLEAR,
         { proc->global_regs[REG_IPEND] &= ~(INT_NUMTOMASK(intnum) & proc->global_regs[REG_IEL]); },
         ()
 )
 
-DEF_MACRO(fSET_IAD,(thread,intnum),
-        "set_iad(intnum)",
-        "Set IAD bit corresponding to intnum",
+DEF_MACRO(fSET_IAD,
         { sys_siad(thread,INT_NUMTOMASK(intnum)); thread->processor_ptr->global_regs[REG_IAD] |= INT_NUMTOMASK(intnum); },
         ()
 )
 
 #endif
 
-DEF_MACRO(fBRANCH_SPECULATED_RIGHT,(JC,SD,DOTNEWVAL),
-	"branch_speculated_right(JC,SD,DOTNEWVAL)",
-	"branch_speculated_right(JC,SD,DOTNEWVAL)",
+DEF_MACRO(fBRANCH_SPECULATED_RIGHT,
 	(((JC) ^ (SD) ^ (DOTNEWVAL&1)) & 0x1),
 	()
 )
 
 
 
-DEF_MACRO(fBRANCH_SPECULATE_STALL,(DOTNEWVAL, JUMP_COND, SPEC_DIR, HINTBITNUM, STRBITNUM),
-	"",
-	"Check the .new predicate and stall if wrongly speculated.",
+DEF_MACRO(fBRANCH_SPECULATE_STALL,
 	{
 #if 0
 	if(thread->timing_on) {
@@ -4128,17 +3023,13 @@ sys_speculate_branch_stall(thread, insn->slot, JUMP_COND(JUMP_PRED_SET),
 )
 
 
-DEF_MACRO(CACHE_MODIFY, (A, B),
-  "cache_modify()",
-  "Assigns B to A if not sandbox execution",
+DEF_MACRO(CACHE_MODIFY,
   A=B
   ,
   ()
 )
 
-DEF_MACRO(SIM_BUSACCESS, (A,B,C,D,E,F,G,H,I),
-  "sim_busaccess_macro()",
-  "Sim bus access qualified with cache modify",
+DEF_MACRO(SIM_BUSACCESS,
    ({
 	sim_busaccess_t p = B->busaccess;
 	if (!p) p = sim_busaccess;
@@ -4148,9 +3039,7 @@ DEF_MACRO(SIM_BUSACCESS, (A,B,C,D,E,F,G,H,I),
   ()
 )
 
-DEF_MACRO(SIM_BUSACCESS_ACK, (A,B,C,D,E,F,G,H,I),
-  "sim_busaccess_macro()",
-  "Sim bus access with a return value and qualified with cache modify",
+DEF_MACRO(SIM_BUSACCESS_ACK,
 	/* EJP: implicit "status" is probably bad. */
   do {
 	sim_busaccess_t p = B->busaccess;
@@ -4161,17 +3050,13 @@ DEF_MACRO(SIM_BUSACCESS_ACK, (A,B,C,D,E,F,G,H,I),
   ()
 )
 
-DEF_MACRO(SET_PMU_EVENT_STATE, (_THREAD_, _PMU_EVENT_NUM_),
-  "set_pmu_state()",
-  "Sets the bit for an event in the PMU array in the thread",
+DEF_MACRO(SET_PMU_EVENT_STATE,
   (_THREAD_->processor_ptr->pmu_event_state[_PMU_EVENT_NUM_] = 1)
   ,
   ()
 )
 
-DEF_MACRO(CLEAR_PMU_EVENT_STATE, (_THREAD_, _PMU_EVENT_NUM_),
-  "clear_pmu_state()",
-  "Clears the bit for an event in the PMU array in the thread",
+DEF_MACRO(CLEAR_PMU_EVENT_STATE,
   (_THREAD_->processor_ptr->pmu_event_state[_PMU_EVENT_NUM_] = 0)
   ,
   ()
@@ -4179,24 +3064,18 @@ DEF_MACRO(CLEAR_PMU_EVENT_STATE, (_THREAD_, _PMU_EVENT_NUM_),
 
 DEF_MACRO(fNOP_EXECUTED,
 	,
-	"do nothing",
-	"some magic triggers for cache drive",
 	{ sys_nop_executed(thread);	},
 	()
 )
 
 DEF_MACRO(fSETMREG,
 	  (IDX, VAL),
-	  "fSETMREG(IDX,VAL)",   /* short desc */
-	  "SET MREG Vector IDX", /* long desc */
           (thread->Mregs[IDX] = (VAL)),
 	  ()
 )
 
 DEF_MACRO(fGETMREG,
 	  (IDX),
-	  "fGETMREG(IDX)",   /* short desc */
-	  "GET MREG Vector IDX", /* long desc */
           (thread->Mregs[IDX]),
 	  ()
 )
@@ -4208,9 +3087,7 @@ DEF_MACRO(fGETMREG,
 
 
 
-DEF_MACRO(fXORBITS,(SUM,VAR,VEC),
-      "SUM = xor bitsin(VEC)",
-      "XOR all bits together in a 32bit register",
+DEF_MACRO(fXORBITS,
       {
         for (SUM=0,VAR=0;VAR<32;VAR++) {
            SUM ^= VEC & 1;
@@ -4219,67 +3096,49 @@ DEF_MACRO(fXORBITS,(SUM,VAR,VEC),
       },
 )
 
-DEF_MACRO(fTIMING,(A),
-	"",
-	"",
+DEF_MACRO(fTIMING,
 	if (UNLIKELY(thread->timing_on)) {
 		A;
 	},
 	()
 )
 
-DEF_MACRO(IV1DEAD,(),
-	"",
-	"",
+DEF_MACRO(IV1DEAD,
 	,
 	() /*A_NOTE_NOISTARIV1*/
 )
 
-DEF_MACRO(FAKE,(),
-	"",
-	"",
+DEF_MACRO(FAKE,
 	,
 	(A_FAKEINSN)
 )
 
-DEF_MACRO(fIN_MONITOR_MODE,(),
-	"in_monitor_mode()",
-	"in_monitor_mode()",
+DEF_MACRO(fIN_MONITOR_MODE,
 	sys_in_monitor_mode(thread),
 	(A_IMPLICIT_READS_SSR)
 )
 
-DEF_MACRO(fIN_USER_MODE,(),
-	"in_user_mode()",
-	"in_user_mode()",
+DEF_MACRO(fIN_USER_MODE,
 	sys_in_user_mode(thread),
 	(A_IMPLICIT_READS_SSR)
 )
 
-DEF_MACRO(fIN_GUEST_MODE,(),
-	"in_guest_mode()",
-	"in_guest_mode()",
+DEF_MACRO(fIN_GUEST_MODE,
 	sys_in_guest_mode(thread),
 	(A_IMPLICIT_READS_SSR)
 )
 
-DEF_MACRO(fGRE_ENABLED,(),
-	"CCR.GRE",
-	"CCR.GRE",
+DEF_MACRO(fGRE_ENABLED,
 	fREAD_REG_FIELD(CCR,CCR_GRE),
 	(A_IMPLICIT_READS_CCR)
 )
 
-DEF_MACRO(fGTE_ENABLED,(),
-	"CCR.GRE",
-	"CCR.GRE",
+DEF_MACRO(fGTE_ENABLED,
 	fREAD_REG_FIELD(CCR,CCR_GRE),
 	(A_IMPLICIT_READS_CCR)
 )
 
-DEF_MACRO(fTRAP1_VIRTINSN,(IMM),
-	"can_handle_trap1_virtinsn(IMM)",
-	"can_handle_trap1_virtinsn(IMM)",
+DEF_MACRO(fTRAP1_VIRTINSN,
 	((fIN_GUEST_MODE())
 		&& (fGRE_ENABLED())
 		&& (	((IMM) == 1)
@@ -4289,17 +3148,13 @@ DEF_MACRO(fTRAP1_VIRTINSN,(IMM),
 	()
 )
 
-DEF_MACRO(fTRAP0_TO_GUEST,(),
-	"can_handle_trap0_to_guest(IMM)",
-	"can_handle_trap0_to_guest(IMM)",
+DEF_MACRO(fTRAP0_TO_GUEST,
 	((!fIN_MONITOR_MODE())
 		&& (fGTE_ENABLED())),
 	()
 )
 
-DEF_MACRO(fVIRTINSN_RTE,(IMM,REG),
-	"VMRTE",
-	"VMRTE",
+DEF_MACRO(fVIRTINSN_RTE,
 	do {
 		thread->trap1_info = TRAP1_VIRTINSN_RTE;
 		fLOG_REG_FIELD(SSR,SSR_SS,fREAD_REG_FIELD(GSR,GSR_SS));
@@ -4311,9 +3166,7 @@ DEF_MACRO(fVIRTINSN_RTE,(IMM,REG),
 	(A_IMPLICIT_READS_GSR,A_IMPLICIT_WRITES_PC,A_IMPLICIT_WRITES_CCR,A_IMPLICIT_WRITES_SSR)
 )
 
-DEF_MACRO(fVIRTINSN_SETIE,(IMM,REG),
-	"VMSETIE",
-	"VMSETIE",
+DEF_MACRO(fVIRTINSN_SETIE,
 	do { 	fLOG_REG_FIELD(CCR,CCR_GIE,(REG) & 1);
 		REG = fREAD_REG_FIELD(CCR,CCR_GIE);
 		thread->trap1_info = TRAP1_VIRTINSN_SETIE;
@@ -4321,9 +3174,7 @@ DEF_MACRO(fVIRTINSN_SETIE,(IMM,REG),
 	(A_IMPLICIT_READS_CCR,A_IMPLICIT_WRITES_CCR)
 )
 
-DEF_MACRO(fVIRTINSN_GETIE,(IMM,REG),
-	"VMGETIE",
-	"VMGETIE",
+DEF_MACRO(fVIRTINSN_GETIE,
 	{ 	thread->trap1_info = TRAP1_VIRTINSN_GETIE;
 		REG = fREAD_REG_FIELD(CCR,CCR_GIE);
 	},
@@ -4331,9 +3182,7 @@ DEF_MACRO(fVIRTINSN_GETIE,(IMM,REG),
 	(A_IMPLICIT_READS_CCR)
 )
 
-DEF_MACRO(fVIRTINSN_SPSWAP,(IMM,REG),
-	"VMSPSWAP",
-	"VMSPSWAP",
+DEF_MACRO(fVIRTINSN_SPSWAP,
 	do { if (fREAD_REG_FIELD(GSR,GSR_UM)) {
 		size4u_t TEMP = REG;
 		REG = fREAD_GOSP();
@@ -4343,9 +3192,7 @@ DEF_MACRO(fVIRTINSN_SPSWAP,(IMM,REG),
 	(A_IMPLICIT_READS_GSR,A_IMPLICIT_READS_GOSP,A_IMPLICIT_WRITES_GOSP)
 )
 
-DEF_MACRO(fGUESTTRAP,(TRAPTYPE,IMM),
-	"GSR.CAUSE = IMM; TRAP # TRAPTYPE",
-	"GSR.CAUSE = IMM; TRAP # TRAPTYPE",
+DEF_MACRO(fGUESTTRAP,
 	do {
 		if (TRAPTYPE == 0) {
 			CALLBACK(thread->processor_ptr->options->trap0_callback,
@@ -4365,16 +3212,12 @@ DEF_MACRO(fGUESTTRAP,(TRAPTYPE,IMM),
 	()
 )
 
-DEF_MACRO(fPREDUSE_TIMING,(),
-	"PREDUSE_TIMING",
-	"PREDUSE_TIMING",
+DEF_MACRO(fPREDUSE_TIMING,
 	,
 	(A_PREDUSE_BSB)
 )
 
-DEF_MACRO(CCR_CDID_MUTABILITY,(PROC),
-	"",
-	"",
+DEF_MACRO(CCR_CDID_MUTABILITY,
 	(PROC->arch_proc_options->QDSP6_CONSISTENCY_DMN_NUM < 2) ? 0x0 : generate_mutability(proc, 8 - log2(proc->arch_proc_options->QDSP6_CONSISTENCY_DMN_NUM), log2(proc->arch_proc_options->QDSP6_CONSISTENCY_DMN_NUM))
 	,
 	()

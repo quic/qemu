@@ -64,7 +64,7 @@ decode_op(insn_t *insn, opcode_t tag, size4u_t encoding)
     insn->opcode = tag;
 
     switch (tag) {
-#include "dectree_generated.h"
+#include "dectree_generated.h.inc"
     default:
         break;
     }

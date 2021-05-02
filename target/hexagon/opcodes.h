@@ -23,10 +23,10 @@
 
 typedef enum {
 #define OPCODE(IID) IID
-#include "opcodes_def_generated.h"
+#include "opcodes_def_generated.h.inc"
     XX_LAST_OPCODE
 #undef OPCODE
-} opcode_t;
+} Opcode;
 
 typedef enum {
     NORMAL,
@@ -39,29 +39,29 @@ typedef enum {
     EXT_noext,
     EXT_mmvec,
     XX_LAST_ENC_CLASS
-} enc_class_t;
+} EncClass;
 
-extern const char *opcode_names[];
+extern const char * const opcode_names[];
 
-extern const char *opcode_reginfo[];
-extern const char *opcode_rregs[];
-extern const char *opcode_wregs[];
+extern const char * const opcode_reginfo[];
+extern const char * const opcode_rregs[];
+extern const char * const opcode_wregs[];
 
 typedef struct {
     const char * const encoding;
     size4u_t vals;
     size4u_t dep_vals;
-    const enc_class_t enc_class;
+    const EncClass enc_class;
     size1u_t is_ee:1;
-} opcode_encoding_t;
+} OpcodeEncoding;
 
-extern opcode_encoding_t opcode_encodings[XX_LAST_OPCODE];
+const OpcodeEncoding opcode_encodings[XX_LAST_OPCODE];
 
 extern size4u_t
     opcode_attribs[XX_LAST_OPCODE][(A_ZZ_LASTATTRIB / ATTRIB_WIDTH) + 1];
 
-extern void opcode_init(void);
+void opcode_init(void);
 
-extern int opcode_which_immediate_is_extended(opcode_t opcode);
+int opcode_which_immediate_is_extended(Opcode opcode);
 
 #endif
