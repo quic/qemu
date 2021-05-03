@@ -1804,7 +1804,7 @@ int can_accept_interrupt(processor_t * proc, int tnum, int *intnum)
 		|| (GET_SSR_FIELD(SSR_EX) != 0) || (GET_SSR_FIELD(SSR_IE) == 0)) {
 		return 0;
 	}
-	for (i = 0; i < INTERRUPT_MAX; i++) {
+	for (i = 0; i < L2VIC_INTERRUPT_MAX; i++) {
 		if (sys_avoid_virtvic_interrupt(proc,tnum,i)) continue;
 		if (sys_avoid_steered_interrupt(proc,tnum,i)) continue;
 		if (ipend & INT_NUMTOMASK(i)) {
@@ -1831,7 +1831,7 @@ int can_accept_interrupt(processor_t * proc, int tnum, int *intnum)
                 || (GET_SSR_FIELD(SSR_EX) != 0) || (GET_SSR_FIELD(SSR_IE) == 0)) {
                 return 0;
         }
-        for (i = 0; i < INTERRUPT_MAX; i++) {
+        for (i = 0; i < L2VIC_INTERRUPT_MAX; i++) {
 		if (sys_avoid_virtvic_interrupt(proc,tnum,i)) continue;
 		if (sys_avoid_steered_interrupt(proc,tnum,i)) continue;
                 if (ipend & INT_NUMTOMASK(i)) {

@@ -36,8 +36,7 @@
 #define TYPE_L2VIC "l2vic"
 #define L2VIC(obj) OBJECT_CHECK(L2VICState, (obj), TYPE_L2VIC)
 
-#define INTERRUPT_MAX 1024
-#define SLICE_MAX (INTERRUPT_MAX / 32)
+#define SLICE_MAX (L2VIC_INTERRUPT_MAX / 32)
 #define IRQBIT(irq) (1 << (irq) % 32)
 
 
@@ -72,24 +71,19 @@ typedef struct L2VICState {
  * status bit be unset. If the matching enable bit is not set then somehow
  * a pending interrupt got disabled.
  */
-static unsigned int get_next_pending(L2VICState *s) {
-    for (int i = 0; i < SLICE_MAX; i++) {
-        unsigned long pending = (s->int_status[i] ^ s->int_pending[i]);
-        unsigned int irq = find_first_bit(&pending, sizeof(s->int_pending[0]) * CHAR_BIT);
-        if (!test_bit(irq, (unsigned long *)s->int_enable)) {
-            printf ("Disabled interrupt pending bit set, or nothing pending\n");
-            printf ("Pending IRQ: %d\n",irq);
+static int get_next_pending(L2VICState *s) {
+    unsigned int intnum;
+    uint64_t pending[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
+    memcpy(pending, s->int_pending, sizeof (pending));
+    do {
+        intnum = find_first_bit(pending, L2VIC_INTERRUPT_MAX);
+        if (intnum == L2VIC_INTERRUPT_MAX) {
+            return L2VIC_NO_PENDING; // Nothing pending.
         }
-        if (pending) {
-            int pending_bit = ffs(pending) - 1;
-            pending_bit = pending_bit +
-                    ((sizeof(s->int_pending[0]) * CHAR_BIT) * i);
-            //printf("Service pending irq: %d, irqbit = 0x%x\n",
-                   //pending_bit, IRQBIT(pending_bit));
-            return pending_bit;
-        }
-    }
-    return -1;
+        clear_bit(intnum, pending);
+    } while (test_bit(intnum, (unsigned long *)s->int_status));
+
+    return intnum;
 }
 
 
@@ -147,7 +141,7 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
         printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
 #endif
         if (s->vidpending) {
-            //printf("PENDING, irq:level = %d, %d\n", irq, level);
+            /* printf("PENDING, irq:level = %d, %d\n", irq, level); */
             set_bit(irq, (unsigned long *) s->int_pending);
             return;
         }
@@ -185,14 +179,15 @@ static void l2vic_write(void *opaque, hwaddr offset,
 
     if (offset == L2VIC_VID_0) {
         assert(val == 0); /* only valid write here is to clear it */
-        s->vid0 = val;
         if (s->vidpending) {
             s->vidpending = FALSE;
             if (memcmp(s->int_status, s->int_pending, sizeof(s->int_pending))) {
-                unsigned int irq = find_first_bit((unsigned long *) s->int_pending, INTERRUPT_MAX);
-                g_assert(irq != INTERRUPT_MAX);
+                /* Diag start -- something must be pending if we are here  */
+                int irq = find_first_bit((unsigned long *) s->int_pending, L2VIC_INTERRUPT_MAX);
+                g_assert(irq != L2VIC_INTERRUPT_MAX);
+                /* Diag end --  */
                 irq = get_next_pending(s);
-                if (irq < INTERRUPT_MAX) {
+                if (irq != L2VIC_NO_PENDING) {
                     l2vic_set_irq(s, irq, 1);
                 }
             }
@@ -359,7 +354,7 @@ static void l2vic_init(Object *obj)
 
     memory_region_init_io(&s->iomem, obj, &l2vic_ops, s, "l2vic", 0x1000);
     sysbus_init_mmio(sbd, &s->iomem);
-    qdev_init_gpio_in(dev, l2vic_set_irq, INTERRUPT_MAX);
+    qdev_init_gpio_in(dev, l2vic_set_irq, L2VIC_INTERRUPT_MAX);
     for (i=0; i<8; i++)
         sysbus_init_irq(sbd, &s->irq[i]);
     qemu_mutex_init(&s->active); /* TODO: Remove this is an experiment */

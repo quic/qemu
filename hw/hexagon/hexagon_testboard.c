@@ -313,7 +313,7 @@ void hexagon_clear_last_irq(uint32_t offset) {
     cpu_physical_memory_write(pend_mem, &val, sizeof(val));
 }
 
-void hexagon_clear_l2vic_pending(uint32_t int_num)
+void hexagon_clear_l2vic_pending(int int_num)
 {
     uint32_t val;
     target_ulong vidval;
@@ -326,49 +326,26 @@ void hexagon_clear_l2vic_pending(uint32_t int_num)
 }
 
 
-uint32_t hexagon_find_l2vic_pending(void)
+int hexagon_find_l2vic_pending(void)
 {
-    const hwaddr pend = cfgExtensions->l2vic_base + L2VIC_INT_PENDINGn;
-    uint64_t val;
-    cpu_physical_memory_read(pend, &val, sizeof(val));
-    uint32_t inum = find_first_bit(&val, 64);
+    int intnum;
+    const hwaddr pend = cfgExtensions->l2vic_base + L2VIC_INT_STATUSn;
+    uint64_t pending[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
+    cpu_physical_memory_read(pend, pending, sizeof(pending));
 
-    if (inum == 64) {
-        cpu_physical_memory_read(pend + 8, &val, sizeof(val));
-        inum = find_first_bit(&val, 64);
-        if (inum == 64) {
-            inum = 0;
-        } else {
-            inum += 64;
+    const hwaddr stat = cfgExtensions->l2vic_base + L2VIC_INT_STATUSn;
+    uint64_t status[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
+    cpu_physical_memory_read(stat, status, sizeof(status));
+
+    do {
+        intnum = find_first_bit(pending, L2VIC_INTERRUPT_MAX);
+        if (intnum == L2VIC_INTERRUPT_MAX) {
+            return L2VIC_NO_PENDING;
         }
-    }
-    /* Verify that stat matches which indicates a truly pending interrupt */
-    if (inum != 64) {
-        const hwaddr stat = cfgExtensions->l2vic_base + L2VIC_INT_STATUSn;
-        cpu_physical_memory_read(stat, &val, sizeof(val));
-        uint32_t stat_num = find_first_bit(&val, 64);
-        if (stat_num == 64) {
-            cpu_physical_memory_read(stat + 8, &val, sizeof(val));
-            stat_num = find_first_bit(&val, 64);
-            if (stat_num == 64) {
-                inum = 0;
-            } else {
-                stat_num += 64;
-            }
-        }
-        if (inum != stat_num) {
-            HEX_DEBUG_LOG("inum = %d\n", inum);
-            HEX_DEBUG_LOG("stat_num = %d\n", stat_num);
-           /*
-            * If stat and pending don't match it means,
-            * hexagon_clear_l2vic_pending has kicked off the pending
-            * interrupt but it has not finished.  In this case just
-            * return 0?
-            */
-            return 0;
-        }
-    }
-    return (inum == 64) ? 0 : inum;
+        clear_bit(intnum, pending);
+    } while (test_bit(intnum, status));
+
+    return intnum;
 }
 
 

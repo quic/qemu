@@ -30,6 +30,7 @@
 #include "hex_mmu.h"
 #include "hw/qdev-properties.h"
 #include "include/hw/hexagon/hexagon.h"
+#include "hw/intc/l2vic.h"
 
 #endif
 
@@ -554,13 +555,13 @@ void hexagon_set_interrupts(CPUHexagonState *env, uint32_t mask)
 }
 
 void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
-                             uint32_t int_num, uint32_t vid_int_pending)
+                             uint32_t int_num, int vid_int_pending)
 {
     hexagon_raise_interrupt_resume(env, thread, int_num, vid_int_pending, 0);
 }
 
 void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
-                                    uint32_t int_num, uint32_t vid_int_pending,
+                                    uint32_t int_num, int vid_int_pending,
                                     target_ulong resume_pc)
 {
     // This logic is for interrupt numbers 0-15 only
@@ -574,7 +575,7 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
     CPUState *cs = CPU(thread);
     cs->exception_index = HEX_EVENT_INT0 + int_num;
     thread_env->cause_code = HEX_CAUSE_INT0 + int_num;
-    if (vid_int_pending) {
+    if (vid_int_pending != L2VIC_NO_PENDING) {
         hexagon_clear_l2vic_pending(vid_int_pending);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_VID, vid_int_pending);
     }
