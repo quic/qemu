@@ -279,7 +279,8 @@ def gen_helper_function(f, tag, tagregs, tagimms):
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
-    hex_common.read_overrides_files(sys.argv[3], sys.argv[4])
+    hex_common.read_overrides_file(sys.argv[3])
+    hex_common.read_overrides_file(sys.argv[4])
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()

@@ -367,6 +367,9 @@ static inline MMVector mmvec_zero_vector(void)
             fLOADMMVU_AL(EA, fVECSIZE(), fVECSIZE(), DST); \
         } \
     } while (0)
+#ifdef QEMU_GENERATE
+#define fSTOREMMV(EA, SRC) gen_vreg_store(ctx, EA, SRC##_off, insn->slot)
+#else
 #define fSTOREMMV_AL(EA, ALIGNMENT, LEN, SRC) \
     do  { \
         fV_AL_CHECK(EA, ALIGNMENT - 1); \
@@ -375,6 +378,7 @@ static inline MMVector mmvec_zero_vector(void)
                                fUSE_LOOKUP_ADDRESS_BY_REV()); \
     } while (0)
 #define fSTOREMMV(EA, SRC) fSTOREMMV_AL(EA, fVECSIZE(), fVECSIZE(), SRC)
+#endif
 #define fSTOREMMVQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
         MMVector maskvec; \

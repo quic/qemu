@@ -198,7 +198,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
     else:
         print("Bad register parse: ", regtype, regid)
 
-def genptr_decl_new(f,regtype,regid,regno):
+def genptr_decl_new(f, tag, regtype, regid, regno):
     if (regtype == "N"):
         if (regid in {"s", "t"}):
             f.write("    TCGv %s%sN = hex_new_value[insn->regno[%d]];\n" % \
@@ -213,8 +213,21 @@ def genptr_decl_new(f,regtype,regid,regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "O"):
         if (regid == "s"):
-            f.write("    TCGv %s%sN = tcg_const_tl(insn->regno[%d]);\n" % \
+            f.write("    const intptr_t %s%sN_num = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
+            if (hex_common.skip_qemu_helper(tag)):
+                f.write("    const intptr_t %s%sN_off =\n" % \
+                    (regtype, regid))
+                f.write("        test_bit(%s%sN_num, ctx->vregs_updated)\n" % \
+                    (regtype, regid))
+                f.write("            ? offsetof(CPUHexagonState, ")
+                f.write("future_VRegs[%s%sN_num])\n" % \
+                    (regtype, regid))
+                f.write("            : offsetof(CPUHexagonState, ")
+                f.write("zero_vector);\n")
+            else:
+                f.write("    TCGv %s%sN = tcg_const_tl(%s%sN_num);\n" % \
+                    (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
@@ -227,7 +240,7 @@ def genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i):
         if hex_common.is_old_val(regtype, regid, tag):
             genptr_decl(f,tag, regtype, regid, i)
         elif hex_common.is_new_val(regtype, regid, tag):
-            genptr_decl_new(f,regtype,regid,i)
+            genptr_decl_new(f, tag, regtype, regid, i)
         else:
             print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
@@ -281,7 +294,7 @@ def genptr_free(f, tag, regtype, regid, regno):
     else:
         print("Bad register parse: ", regtype, regid)
 
-def genptr_free_new(f,regtype,regid,regno):
+def genptr_free_new(f, tag, regtype, regid, regno):
     if (regtype == "N"):
         if (regid not in {"s", "t"}):
             print("Bad register parse: ", regtype, regid)
@@ -290,8 +303,9 @@ def genptr_free_new(f,regtype,regid,regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "O"):
         if (regid == "s"):
-            f.write("    tcg_temp_free(%s%sN);\n" % \
-                (regtype, regid))
+            if (not hex_common.skip_qemu_helper(tag)):
+                f.write("    tcg_temp_free(%s%sN);\n" % \
+                    (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
@@ -304,7 +318,7 @@ def genptr_free_opn(f,regtype,regid,i,tag):
         if hex_common.is_old_val(regtype, regid, tag):
             genptr_free(f, tag, regtype, regid, i)
         elif hex_common.is_new_val(regtype, regid, tag):
-            genptr_free_new(f,regtype,regid,i)
+            genptr_free_new(f,tag, regtype, regid, i)
         else:
             print("Bad register parse: ",regtype,regid,toss,numregs)
     else:
@@ -668,7 +682,8 @@ def gen_def_tcg_func(f, tag, tagregs, tagimms):
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
-    hex_common.read_overrides_files(sys.argv[3], sys.argv[4])
+    hex_common.read_overrides_file(sys.argv[3])
+    hex_common.read_overrides_file(sys.argv[4])
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()

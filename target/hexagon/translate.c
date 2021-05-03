@@ -53,6 +53,9 @@ TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
 TCGv hex_VRegs_select;
 TCGv hex_QRegs_updated;
+TCGv hex_vstore_addr[VSTORES_MAX];
+TCGv hex_vstore_size[VSTORES_MAX];
+TCGv hex_vstore_pending[VSTORES_MAX];
 
 static const char * const hexagon_prednames[] = {
   "p0", "p1", "p2", "p3"
@@ -218,6 +221,7 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
         }
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
+        ctx->is_gather_store_insn = false;
         tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         tcg_gen_movi_tl(hex_gather_issued, 0);
     }
@@ -279,16 +283,13 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
                      Insn *insn, Packet *pkt)
 {
     if (insn->generate) {
-        bool is_gather_store = is_gather_store_insn(insn);
-        if (is_gather_store) {
+        if (is_gather_store_insn(insn)) {
+            ctx->is_gather_store_insn = true;
             tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
         }
         mark_implicit_reg_writes(ctx, insn);
         insn->generate(env, ctx, insn, pkt);
         mark_implicit_pred_writes(ctx, insn);
-        if (is_gather_store) {
-            tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
-        }
     } else {
         gen_exception_end_tb(ctx, HEX_EXCP_INVALID_OPCODE);
     }
@@ -819,6 +820,9 @@ static char store_addr_names[STORES_MAX][NAME_LEN];
 static char store_width_names[STORES_MAX][NAME_LEN];
 static char store_val32_names[STORES_MAX][NAME_LEN];
 static char store_val64_names[STORES_MAX][NAME_LEN];
+static char vstore_addr_names[VSTORES_MAX][NAME_LEN];
+static char vstore_size_names[VSTORES_MAX][NAME_LEN];
+static char vstore_pending_names[VSTORES_MAX][NAME_LEN];
 
 void hexagon_translate_init(void)
 {
@@ -912,5 +916,21 @@ void hexagon_translate_init(void)
         hex_store_val64[i] = tcg_global_mem_new_i64(cpu_env,
             offsetof(CPUHexagonState, mem_log_stores[i].data64),
             store_val64_names[i]);
+    }
+    for (int i = 0; i < VSTORES_MAX; i++) {
+        snprintf(vstore_addr_names[i], NAME_LEN, "vstore_addr_%d", i);
+        hex_vstore_addr[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPUHexagonState, vstore[i].va),
+            vstore_addr_names[i]);
+
+        snprintf(vstore_size_names[i], NAME_LEN, "vstore_size_%d", i);
+        hex_vstore_size[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPUHexagonState, vstore[i].size),
+            vstore_size_names[i]);
+
+        snprintf(vstore_pending_names[i], NAME_LEN, "vstore_pending_%d", i);
+        hex_vstore_pending[i] = tcg_global_mem_new(cpu_env,
+            offsetof(CPUHexagonState, vstore_pending[i]),
+            vstore_pending_names[i]);
     }
 }

@@ -988,5 +988,33 @@ static void gen_vreg_load(DisasContext *ctx, intptr_t dstoff, TCGv src)
     tcg_temp_free_i64(tmp);
 }
 
+static void gen_vreg_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
+                           int slot)
+{
+    intptr_t dstoff = offsetof(CPUHexagonState, vstore[slot].data);
+    intptr_t maskoff = offsetof(CPUHexagonState, vstore[slot].mask);
+
+    if (ctx->is_gather_store_insn) {
+        TCGv sl = tcg_const_tl(slot);
+        TCGv_ptr src = tcg_temp_new_ptr();
+        tcg_gen_addi_ptr(src, cpu_env, srcoff);
+        gen_helper_gather_store(cpu_env, EA, src, sl);
+        tcg_temp_free(sl);
+        tcg_temp_free_ptr(src);
+        return;
+    }
+
+    tcg_gen_movi_tl(hex_vstore_pending[slot], 1);
+    tcg_gen_andi_tl(hex_vstore_addr[slot], EA,
+                    ~((int32_t)sizeof(MMVector) - 1));
+    tcg_gen_movi_tl(hex_vstore_size[slot], sizeof(MMVector));
+
+    /* Copy the data to the vstore buffer */
+    tcg_gen_gvec_mov(MO_64, dstoff, srcoff, sizeof(MMVector), sizeof(MMVector));
+    /* Set the mask to all 1's */
+    tcg_gen_gvec_dup_imm(MO_64, maskoff, sizeof(MMVector), sizeof(MMVector),
+                         ~0LL);
+}
+
 #include "tcg_funcs_generated.c.inc"
 #include "tcg_func_table_generated.c.inc"

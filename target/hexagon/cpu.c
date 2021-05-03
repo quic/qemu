@@ -278,6 +278,7 @@ static void hexagon_cpu_reset(DeviceState *dev)
 
     set_default_nan_mode(1, &env->fp_status);
     set_float_detect_tininess(float_tininess_before_rounding, &env->fp_status);
+    memset(&env->zero_vector, 0, sizeof(MMVector));
 }
 
 static void hexagon_cpu_disas_set_info(CPUState *s, disassemble_info *info)

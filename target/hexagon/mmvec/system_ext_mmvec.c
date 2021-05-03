@@ -153,9 +153,6 @@ void mem_store_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
     if (is_gather_store) {
         memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
     }
-    for (i = 0; i < size; i++) {
-        env->mem_access[slot].cdata[i] = data[i];
-    }
 }
 
 void mem_load_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
@@ -187,12 +184,9 @@ void mem_vector_scatter_init(CPUHexagonState *env, int slot,
 
     /* Translation for Store Address on Slot 1 - maybe any slot? */
     mem_init_access(env, slot, base_vaddr, 1, access_type, TYPE_STORE);
-    MemAccessInfo *maptr = &env->mem_access[slot];
     if (EXCEPTION_DETECTED) {
         return;
     }
-
-    maptr->range = length;
 
     for (i = 0; i < fVECSIZE(); i++) {
         env->vtcm_log.offsets.ub[i] = 0; /* Mark invalid */
@@ -216,13 +210,10 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot,
     int i;
 
     mem_init_access(env, slot, base_vaddr, 1,  access_type, TYPE_LOAD);
-    MemAccessInfo *maptr = &env->mem_access[slot];
 
     if (EXCEPTION_DETECTED) {
         return;
     }
-
-    maptr->range = length;
 
     for (i = 0; i < 2 * fVECSIZE(); i++) {
         env->vtcm_log.offsets.ub[i] = 0x0;
@@ -251,14 +242,10 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot,
 
 void mem_vector_scatter_finish(CPUHexagonState *env, int slot, int op)
 {
-    env->store_pending[slot] = 0;
     env->vstore_pending[slot] = 0;
     env->vtcm_log.size = fVECSIZE();
-
-    memcpy(env->mem_access[slot].cdata, &env->vtcm_log.offsets.ub[0], 256);
 }
 
 void mem_vector_gather_finish(CPUHexagonState *env, int slot)
 {
-    memcpy(env->mem_access[slot].cdata, &env->vtcm_log.offsets.ub[0], 256);
 }

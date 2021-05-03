@@ -57,15 +57,9 @@ typedef struct {
 typedef struct {
     target_ulong va;
     int size;
-    MMVector mask;
-    MMVector data;
+    MMVector mask QEMU_ALIGNED(16);
+    MMVector data QEMU_ALIGNED(16);
 } VStoreLog;
-
-typedef struct {
-    unsigned char cdata[256];
-    uint32_t range;
-    uint8_t format;
-} MemAccessInfo;
 
 #define EXEC_STATUS_OK          0x0000
 #define EXEC_STATUS_STOP        0x0002
@@ -127,17 +121,16 @@ struct CPUHexagonState {
     QRegMask QRegs_updated;
 
     /* Temporaries used within instructions */
+    MMVector zero_vector QEMU_ALIGNED(16);
     MMVectorPair VddV QEMU_ALIGNED(16),
                  VuuV QEMU_ALIGNED(16),
                  VvvV QEMU_ALIGNED(16),
                  VxxV QEMU_ALIGNED(16);
 
     VStoreLog vstore[VSTORES_MAX];
-    uint8_t store_pending[VSTORES_MAX];
-    uint8_t vstore_pending[VSTORES_MAX];
+    uint32_t vstore_pending[VSTORES_MAX];
     uint8_t vtcm_pending;
     VTCMStoreLog vtcm_log;
-    MemAccessInfo mem_access[SLOTS_MAX];
 
     int status;
 };
