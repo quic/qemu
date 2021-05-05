@@ -992,7 +992,7 @@ static void gen_vreg_load(DisasContext *ctx, intptr_t dstoff, TCGv src,
 }
 
 static void gen_vreg_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
-                           int slot)
+                           int slot, bool aligned)
 {
     intptr_t dstoff = offsetof(CPUHexagonState, vstore[slot].data);
     intptr_t maskoff = offsetof(CPUHexagonState, vstore[slot].mask);
@@ -1008,8 +1008,12 @@ static void gen_vreg_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
     }
 
     tcg_gen_movi_tl(hex_vstore_pending[slot], 1);
-    tcg_gen_andi_tl(hex_vstore_addr[slot], EA,
-                    ~((int32_t)sizeof(MMVector) - 1));
+    if (aligned) {
+        tcg_gen_andi_tl(hex_vstore_addr[slot], EA,
+                        ~((int32_t)sizeof(MMVector) - 1));
+    } else {
+        tcg_gen_mov_tl(hex_vstore_addr[slot], EA);
+    }
     tcg_gen_movi_tl(hex_vstore_size[slot], sizeof(MMVector));
 
     /* Copy the data to the vstore buffer */

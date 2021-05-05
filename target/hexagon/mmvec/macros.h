@@ -372,7 +372,7 @@ static inline MMVector mmvec_zero_vector(void)
     } while (0)
 #endif
 #ifdef QEMU_GENERATE
-#define fSTOREMMV(EA, SRC) gen_vreg_store(ctx, EA, SRC##_off, insn->slot)
+#define fSTOREMMV(EA, SRC) gen_vreg_store(ctx, EA, SRC##_off, insn->slot, true)
 #else
 #define fSTOREMMV_AL(EA, ALIGNMENT, LEN, SRC) \
     do  { \
@@ -410,6 +410,10 @@ static inline MMVector mmvec_zero_vector(void)
     } while (0)
 #define fSTOREMMVNQ(EA, SRC, MASK) \
     fSTOREMMVNQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
+#ifdef QEMU_GENERATE
+#define fSTOREMMVU(EA, SRC) \
+    gen_vreg_store(ctx, EA, SRC##_off, insn->slot, false)
+#else
 #define fSTOREMMVU_AL(EA, ALIGNMENT, LEN, SRC) \
     do { \
         uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
@@ -432,6 +436,7 @@ static inline MMVector mmvec_zero_vector(void)
             fSTOREMMVU_AL(EA, fVECSIZE(), fVECSIZE(), SRC); \
         } \
     } while (0)
+#endif
 #define fSTOREMMVQU_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
         uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
