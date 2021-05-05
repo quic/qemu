@@ -175,18 +175,21 @@
 
 /* Vector loads */
 #define fGEN_TCG_V6_vL32b_pi(SHORTCODE)                    SHORTCODE
+#define fGEN_TCG_V6_vL32Ub_pi(SHORTCODE)                   SHORTCODE
 #define fGEN_TCG_V6_vL32b_cur_pi(SHORTCODE)                SHORTCODE
 #define fGEN_TCG_V6_vL32b_tmp_pi(SHORTCODE)                SHORTCODE
 #define fGEN_TCG_V6_vL32b_nt_pi(SHORTCODE)                 SHORTCODE
 #define fGEN_TCG_V6_vL32b_nt_cur_pi(SHORTCODE)             SHORTCODE
 #define fGEN_TCG_V6_vL32b_nt_tmp_pi(SHORTCODE)             SHORTCODE
 #define fGEN_TCG_V6_vL32b_ai(SHORTCODE)                    SHORTCODE
+#define fGEN_TCG_V6_vL32Ub_ai(SHORTCODE)                   SHORTCODE
 #define fGEN_TCG_V6_vL32b_cur_ai(SHORTCODE)                SHORTCODE
 #define fGEN_TCG_V6_vL32b_tmp_ai(SHORTCODE)                SHORTCODE
 #define fGEN_TCG_V6_vL32b_nt_ai(SHORTCODE)                 SHORTCODE
 #define fGEN_TCG_V6_vL32b_nt_cur_ai(SHORTCODE)             SHORTCODE
 #define fGEN_TCG_V6_vL32b_nt_tmp_ai(SHORTCODE)             SHORTCODE
 #define fGEN_TCG_V6_vL32b_ppu(SHORTCODE)                   SHORTCODE
+#define fGEN_TCG_V6_vL32Ub_ppu(SHORTCODE)                  SHORTCODE
 #define fGEN_TCG_V6_vL32b_cur_ppu(SHORTCODE)               SHORTCODE
 #define fGEN_TCG_V6_vL32b_tmp_ppu(SHORTCODE)               SHORTCODE
 #define fGEN_TCG_V6_vL32b_nt_ppu(SHORTCODE)                SHORTCODE
@@ -203,7 +206,7 @@
         gen_pred_cancel(LSB, insn->slot); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
         tcg_temp_free(LSB); \
-        gen_vreg_load(ctx, DSTOFF, EA); \
+        gen_vreg_load(ctx, DSTOFF, EA, true); \
         INC; \
         gen_set_label(label); \
     } while (0)

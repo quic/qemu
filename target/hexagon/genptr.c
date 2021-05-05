@@ -976,10 +976,13 @@ static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
     }
 }
 
-static void gen_vreg_load(DisasContext *ctx, intptr_t dstoff, TCGv src)
+static void gen_vreg_load(DisasContext *ctx, intptr_t dstoff, TCGv src,
+                          bool aligned)
 {
     TCGv_i64 tmp = tcg_temp_new_i64();
-    tcg_gen_andi_tl(src, src, ~((int32_t)sizeof(MMVector) - 1));
+    if (aligned) {
+        tcg_gen_andi_tl(src, src, ~((int32_t)sizeof(MMVector) - 1));
+    }
     for (int i = 0; i < sizeof(MMVector) / 8; i++) {
         tcg_gen_qemu_ld64(tmp, src, ctx->mem_idx);
         tcg_gen_addi_tl(src, src, 8);

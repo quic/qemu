@@ -340,7 +340,7 @@ static inline MMVector mmvec_zero_vector(void)
         fV_AL_CHECK(EA, fVECSIZE() - 1); \
     } while (0)
 #ifdef QEMU_GENERATE
-#define fLOADMMV(EA, DST) gen_vreg_load(ctx, DST##_off, EA)
+#define fLOADMMV(EA, DST) gen_vreg_load(ctx, DST##_off, EA, true)
 #else
 #define fLOADMMV_AL(EA, ALIGNMENT, LEN, DST) \
     do { \
@@ -350,6 +350,9 @@ static inline MMVector mmvec_zero_vector(void)
     } while (0)
 #define fLOADMMV(EA, DST) fLOADMMV_AL(EA, fVECSIZE(), fVECSIZE(), DST)
 #endif
+#ifdef QEMU_GENERATE
+#define fLOADMMVU(EA, DST) gen_vreg_load(ctx, DST##_off, EA, false)
+#else
 #define fLOADMMVU_AL(EA, ALIGNMENT, LEN, DST) \
     do { \
         uint32_t size2 = (EA) & (ALIGNMENT - 1); \
@@ -367,6 +370,7 @@ static inline MMVector mmvec_zero_vector(void)
             fLOADMMVU_AL(EA, fVECSIZE(), fVECSIZE(), DST); \
         } \
     } while (0)
+#endif
 #ifdef QEMU_GENERATE
 #define fSTOREMMV(EA, SRC) gen_vreg_store(ctx, EA, SRC##_off, insn->slot)
 #else
