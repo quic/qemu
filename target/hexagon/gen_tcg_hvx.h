@@ -239,6 +239,19 @@
     tcg_gen_gvec_dup_i32(MO_32, VdV_off, \
                          sizeof(MMVector), sizeof(MMVector), RtV)
 
+/* Vector absolute value - various forms */
+#define fGEN_TCG_V6_vabsb(SHORTCODE) \
+    tcg_gen_gvec_abs(MO_8, VdV_off, VuV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
+#define fGEN_TCG_V6_vabsh(SHORTCODE) \
+    tcg_gen_gvec_abs(MO_16, VdV_off, VuV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
+#define fGEN_TCG_V6_vabsw(SHORTCODE) \
+    tcg_gen_gvec_abs(MO_32, VdV_off, VuV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
 /* Vector loads */
 #define fGEN_TCG_V6_vL32b_pi(SHORTCODE)                    SHORTCODE
 #define fGEN_TCG_V6_vL32Ub_pi(SHORTCODE)                   SHORTCODE
