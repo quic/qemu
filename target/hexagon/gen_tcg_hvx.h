@@ -108,11 +108,35 @@
         tcg_temp_free(shift); \
     } while (0)
 
+#define fGEN_TCG_V6_vasrh_acc(SHORTCODE) \
+    do { \
+        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        TCGv shift = tcg_temp_new(); \
+        tcg_gen_andi_tl(shift, RtV, 15); \
+        tcg_gen_gvec_sars(MO_16, tmpoff, VuV_off, shift, \
+                          sizeof(MMVector), sizeof(MMVector)); \
+        tcg_gen_gvec_add(MO_16, VxV_off, VxV_off, tmpoff, \
+                         sizeof(MMVector), sizeof(MMVector)); \
+        tcg_temp_free(shift); \
+    } while (0)
+
 #define fGEN_TCG_V6_vasrw(SHORTCODE) \
     do { \
         TCGv shift = tcg_temp_new(); \
         tcg_gen_andi_tl(shift, RtV, 31); \
         tcg_gen_gvec_sars(MO_32, VdV_off, VuV_off, shift, \
+                          sizeof(MMVector), sizeof(MMVector)); \
+        tcg_temp_free(shift); \
+    } while (0)
+
+#define fGEN_TCG_V6_vasrw_acc(SHORTCODE) \
+    do { \
+        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        TCGv shift = tcg_temp_new(); \
+        tcg_gen_andi_tl(shift, RtV, 31); \
+        tcg_gen_gvec_sars(MO_32, tmpoff, VuV_off, shift, \
+                          sizeof(MMVector), sizeof(MMVector)); \
+        tcg_gen_gvec_add(MO_32, VxV_off, VxV_off, tmpoff, \
                           sizeof(MMVector), sizeof(MMVector)); \
         tcg_temp_free(shift); \
     } while (0)
@@ -136,12 +160,54 @@
     } while (0)
 
 /* Vector shift left - various forms */
+#define fGEN_TCG_V6_vaslb(SHORTCODE) \
+    do { \
+        TCGv shift = tcg_temp_new(); \
+        tcg_gen_andi_tl(shift, RtV, 7); \
+        tcg_gen_gvec_shls(MO_8, VdV_off, VuV_off, shift, \
+                          sizeof(MMVector), sizeof(MMVector)); \
+        tcg_temp_free(shift); \
+    } while (0)
+
+#define fGEN_TCG_V6_vaslh(SHORTCODE) \
+    do { \
+        TCGv shift = tcg_temp_new(); \
+        tcg_gen_andi_tl(shift, RtV, 15); \
+        tcg_gen_gvec_shls(MO_16, VdV_off, VuV_off, shift, \
+                          sizeof(MMVector), sizeof(MMVector)); \
+        tcg_temp_free(shift); \
+    } while (0)
+
+#define fGEN_TCG_V6_vaslh_acc(SHORTCODE) \
+    do { \
+        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        TCGv shift = tcg_temp_new(); \
+        tcg_gen_andi_tl(shift, RtV, 15); \
+        tcg_gen_gvec_shls(MO_16, tmpoff, VuV_off, shift, \
+                          sizeof(MMVector), sizeof(MMVector)); \
+        tcg_gen_gvec_add(MO_16, VxV_off, VxV_off, tmpoff, \
+                         sizeof(MMVector), sizeof(MMVector)); \
+        tcg_temp_free(shift); \
+    } while (0)
+
 #define fGEN_TCG_V6_vaslw(SHORTCODE) \
     do { \
         TCGv shift = tcg_temp_new(); \
         tcg_gen_andi_tl(shift, RtV, 31); \
         tcg_gen_gvec_shls(MO_32, VdV_off, VuV_off, shift, \
                           sizeof(MMVector), sizeof(MMVector)); \
+        tcg_temp_free(shift); \
+    } while (0)
+
+#define fGEN_TCG_V6_vaslw_acc(SHORTCODE) \
+    do { \
+        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        TCGv shift = tcg_temp_new(); \
+        tcg_gen_andi_tl(shift, RtV, 31); \
+        tcg_gen_gvec_shls(MO_32, tmpoff, VuV_off, shift, \
+                          sizeof(MMVector), sizeof(MMVector)); \
+        tcg_gen_gvec_add(MO_32, VxV_off, VxV_off, tmpoff, \
+                         sizeof(MMVector), sizeof(MMVector)); \
         tcg_temp_free(shift); \
     } while (0)
 
