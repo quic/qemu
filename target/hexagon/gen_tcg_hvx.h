@@ -324,10 +324,10 @@
 #define fGEN_TCG_V6_vS32Ub_pi(SHORTCODE)                   SHORTCODE
 #define fGEN_TCG_V6_vS32b_nt_pi(SHORTCODE)                 SHORTCODE
 #define fGEN_TCG_V6_vS32b_ai(SHORTCODE)                    SHORTCODE
-#define fGEN_TCG_V6_vS32Ub_ai(SHORTCODE)                    SHORTCODE
+#define fGEN_TCG_V6_vS32Ub_ai(SHORTCODE)                   SHORTCODE
 #define fGEN_TCG_V6_vS32b_nt_ai(SHORTCODE)                 SHORTCODE
 #define fGEN_TCG_V6_vS32b_ppu(SHORTCODE)                   SHORTCODE
-#define fGEN_TCG_V6_vS32Ub_ppu(SHORTCODE)                   SHORTCODE
+#define fGEN_TCG_V6_vS32Ub_ppu(SHORTCODE)                  SHORTCODE
 #define fGEN_TCG_V6_vS32b_nt_ppu(SHORTCODE)                SHORTCODE
 
 /* New value vector stores */
@@ -503,6 +503,20 @@
     fGEN_TCG_PRED_VEC_STORE_new_pred_ppu
 #define fGEN_TCG_V6_vS32b_nt_new_npred_ppu(SHORTCODE) \
     fGEN_TCG_PRED_VEC_STORE_new_npred_ppu
+
+/* Masked vector stores */
+#define fGEN_TCG_V6_vS32b_qpred_pi(SHORTCODE)              SHORTCODE
+#define fGEN_TCG_V6_vS32b_nt_qpred_pi(SHORTCODE)           SHORTCODE
+#define fGEN_TCG_V6_vS32b_qpred_ai(SHORTCODE)              SHORTCODE
+#define fGEN_TCG_V6_vS32b_nt_qpred_ai(SHORTCODE)           SHORTCODE
+#define fGEN_TCG_V6_vS32b_qpred_ppu(SHORTCODE)             SHORTCODE
+#define fGEN_TCG_V6_vS32b_nt_qpred_ppu(SHORTCODE)          SHORTCODE
+#define fGEN_TCG_V6_vS32b_nqpred_pi(SHORTCODE)             SHORTCODE
+#define fGEN_TCG_V6_vS32b_nt_nqpred_pi(SHORTCODE)          SHORTCODE
+#define fGEN_TCG_V6_vS32b_nqpred_ai(SHORTCODE)             SHORTCODE
+#define fGEN_TCG_V6_vS32b_nt_nqpred_ai(SHORTCODE)          SHORTCODE
+#define fGEN_TCG_V6_vS32b_nqpred_ppu(SHORTCODE)            SHORTCODE
+#define fGEN_TCG_V6_vS32b_nt_nqpred_ppu(SHORTCODE)         SHORTCODE
 
 /* Store release not modelled in qemu, but need to suppress compiler warnings */
 #define fGEN_TCG_V6_vS32b_srls_pi(SHORTCODE) \

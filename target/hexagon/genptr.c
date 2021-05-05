@@ -1023,5 +1023,40 @@ static void gen_vreg_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
                          ~0LL);
 }
 
+static void gen_vreg_masked_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
+                                  intptr_t bitsoff, int slot, bool invert)
+{
+    TCGv_i64 tmp = tcg_temp_new_i64();
+    TCGv_i64 bit = tcg_temp_new_i64();
+    TCGv_i64 mask = tcg_temp_new_i64();
+    intptr_t dstoff = offsetof(CPUHexagonState, vstore[slot].data);
+    intptr_t maskoff = offsetof(CPUHexagonState, vstore[slot].mask);
+
+    tcg_gen_movi_tl(hex_vstore_pending[slot], 1);
+    tcg_gen_andi_tl(hex_vstore_addr[slot], EA,
+                    ~((int32_t)sizeof(MMVector) - 1));
+    tcg_gen_movi_tl(hex_vstore_size[slot], sizeof(MMVector));
+
+    /* Copy the data to the vstore buffer */
+    tcg_gen_gvec_mov(MO_64, dstoff, srcoff, sizeof(MMVector), sizeof(MMVector));
+
+    /* Convert the array of bits to an array of bytes */
+    for (int i = 0; i < sizeof(MMVector) / 8; i++) {
+        tcg_gen_ld_i64(tmp, cpu_env, bitsoff + i);
+        tcg_gen_movi_i64(mask, 0);
+        for (int j = 0; j < 8; j++) {
+            tcg_gen_extract_i64(bit, tmp, j, 1);
+            if (invert) {
+                tcg_gen_xori_i64(bit, bit, 1);
+            }
+            tcg_gen_deposit_i64(mask, mask, bit, j * 8, 1);
+        }
+        tcg_gen_st_i64(mask, cpu_env, maskoff + i * 8);
+    }
+    tcg_temp_free_i64(tmp);
+    tcg_temp_free_i64(bit);
+    tcg_temp_free_i64(mask);
+}
+
 #include "tcg_funcs_generated.c.inc"
 #include "tcg_func_table_generated.c.inc"

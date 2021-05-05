@@ -383,6 +383,10 @@ static inline MMVector mmvec_zero_vector(void)
     } while (0)
 #define fSTOREMMV(EA, SRC) fSTOREMMV_AL(EA, fVECSIZE(), fVECSIZE(), SRC)
 #endif
+#ifdef QEMU_GENERATE
+#define fSTOREMMVQ(EA, SRC, MASK) \
+    gen_vreg_masked_store(ctx, EA, SRC##_off, MASK##_off, insn->slot, false)
+#else
 #define fSTOREMMVQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
         MMVector maskvec; \
@@ -396,6 +400,11 @@ static inline MMVector mmvec_zero_vector(void)
     } while (0)
 #define fSTOREMMVQ(EA, SRC, MASK) \
     fSTOREMMVQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
+#endif
+#ifdef QEMU_GENERATE
+#define fSTOREMMVNQ(EA, SRC, MASK) \
+    gen_vreg_masked_store(ctx, EA, SRC##_off, MASK##_off, insn->slot, true)
+#else
 #define fSTOREMMVNQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
         MMVector maskvec; \
@@ -410,6 +419,7 @@ static inline MMVector mmvec_zero_vector(void)
     } while (0)
 #define fSTOREMMVNQ(EA, SRC, MASK) \
     fSTOREMMVNQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
+#endif
 #ifdef QEMU_GENERATE
 #define fSTOREMMVU(EA, SRC) \
     gen_vreg_store(ctx, EA, SRC##_off, insn->slot, false)
