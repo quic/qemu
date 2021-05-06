@@ -1136,9 +1136,7 @@ uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
     if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
         uint32_t vid = hexagon_find_last_irq(reg);
         ARCH_SET_SYSTEM_REG(env, reg, vid);
-    }
-
-    if ((reg == HEX_SREG_TIMERLO) || (reg == HEX_SREG_TIMERHI)) {
+    } else if ((reg == HEX_SREG_TIMERLO) || (reg == HEX_SREG_TIMERHI)) {
         uint32_t low = 0;
         uint32_t high = 0;
         hexagon_read_timer(&low, &high);
@@ -1193,7 +1191,11 @@ static inline void modify_syscfg(CPUHexagonState *env, uint32_t val)
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
 
 {
-    if (reg == HEX_SREG_SYSCFG) {
+    if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
+        hexagon_set_vid((reg == HEX_SREG_VID) ? L2VIC_VID_0 : L2VIC_VID_1,
+                         val);
+        ARCH_SET_SYSTEM_REG(env, reg, val);
+    } else if (reg == HEX_SREG_SYSCFG) {
         modify_syscfg(env, val);
     } else if (reg == HEX_SREG_IMASK) {
         val = GET_FIELD(IMASK_MASK, val);

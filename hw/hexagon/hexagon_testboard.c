@@ -304,13 +304,17 @@ uint32_t hexagon_find_last_irq(uint32_t vid)
     cpu_physical_memory_read(pend_mem, &irq, sizeof(irq));
     return irq;
 }
+
+void hexagon_set_vid(uint32_t offset, int val) {
+    assert ((offset == L2VIC_VID_0) || (offset == L2VIC_VID_1));
+    const hwaddr pend_mem = cfgExtensions->l2vic_base + offset;
+    cpu_physical_memory_write(pend_mem, &val, sizeof(val));
+}
+
 void hexagon_clear_last_irq(uint32_t offset) {
     /* currently only l2vic is the only attached it uses vid0, remove
      * the assert below if anther is added */
-    assert (offset == L2VIC_VID_0);
-    const hwaddr pend_mem = cfgExtensions->l2vic_base + offset;
-    uint32_t val = 0;
-    cpu_physical_memory_write(pend_mem, &val, sizeof(val));
+    hexagon_set_vid(offset, L2VIC_NO_PENDING);
 }
 
 void hexagon_clear_l2vic_pending(int int_num)

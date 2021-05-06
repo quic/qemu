@@ -35,6 +35,7 @@ TESTS += \
 	vid-group \
 	levelint \
 	swi_fs \
+	vid_reg \
 	$()
 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
@@ -81,6 +82,7 @@ pendalot: pendalot.o
 vid-group: vid-group.o
 levelint: levelint.o
 swi_fs: swi_fs.o
+vid_reg: vid_reg.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)

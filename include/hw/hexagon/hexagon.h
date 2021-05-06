@@ -153,5 +153,6 @@ void hexagon_clear_l2vic_pending(int int_num);
 int hexagon_find_l2vic_pending(void);
 uint32_t hexagon_find_last_irq(uint32_t);
 void hexagon_clear_last_irq(uint32_t);
+void hexagon_set_vid(uint32_t offset, int val);
 
 #endif
