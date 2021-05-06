@@ -178,7 +178,9 @@ static void l2vic_write(void *opaque, hwaddr offset,
     qemu_mutex_lock(&s->active);
 
     if (offset == L2VIC_VID_0) {
-        assert(val == 0); /* only valid write here is to clear it */
+        if ((int)val != L2VIC_NO_PENDING) {
+            s->vid0 = val;
+        }
         if (s->vidpending) {
             s->vidpending = FALSE;
             if (memcmp(s->int_status, s->int_pending, sizeof(s->int_pending))) {
