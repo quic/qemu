@@ -180,8 +180,7 @@ void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
 void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, void *srcptr,
                           int slot)
 {
-    mem_store_vector_oddva(env, addr, addr, slot, sizeof(MMVector), srcptr,
-                           0, 0, true);
+    mem_gather_store(env, addr, slot, srcptr);
 }
 
 void HELPER(commit_hvx_stores)(CPUHexagonState *env)

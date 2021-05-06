@@ -21,6 +21,8 @@
 void mem_load_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
                            target_ulong lookup_vaddr, int slot, int size,
                            uint8_t *data, int use_full_va);
+void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
+                      int slot, uint8_t *data);
 void mem_store_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
                             target_ulong lookup_vaddr, int slot, int size,
                             uint8_t *data, uint8_t *mask, unsigned invert,
