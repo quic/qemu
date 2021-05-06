@@ -1058,5 +1058,33 @@ static void gen_vreg_masked_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
     tcg_temp_free_i64(mask);
 }
 
+static void vec_to_qvec(size_t size, intptr_t dstoff, intptr_t srcoff)
+{
+    TCGv_i64 tmp = tcg_temp_new_i64();
+    TCGv_i64 word = tcg_temp_new_i64();
+    TCGv_i64 bits = tcg_temp_new_i64();
+    TCGv_i64 mask = tcg_temp_new_i64();
+    TCGv_i64 zero = tcg_const_i64(0);
+    TCGv_i64 ones = tcg_const_i64(~0);
+
+    for (int i = 0; i < sizeof(MMVector) / 8; i++) {
+        tcg_gen_ld_i64(tmp, cpu_env, srcoff + i * 8);
+        tcg_gen_movi_i64(mask, 0);
+
+        for (int j = 0; j < 8; j += size) {
+            tcg_gen_extract_i64(word, tmp, j * 8, size * 8);
+            tcg_gen_movcond_i64(TCG_COND_NE, bits, word, zero, ones, zero);
+            tcg_gen_deposit_i64(mask, mask, bits, j, size);
+        }
+
+        tcg_gen_st8_i64(mask, cpu_env, dstoff + i);
+    }
+    tcg_temp_free_i64(tmp);
+    tcg_temp_free_i64(word);
+    tcg_temp_free_i64(bits);
+    tcg_temp_free_i64(mask);
+    tcg_temp_free_i64(zero);
+    tcg_temp_free_i64(ones);
+}
 #include "tcg_funcs_generated.c.inc"
 #include "tcg_func_table_generated.c.inc"

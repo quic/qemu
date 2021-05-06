@@ -234,6 +234,113 @@
     tcg_gen_gvec_or(MO_64, VdV_off, VuV_off, VvV_off, \
                     sizeof(MMVector), sizeof(MMVector))
 
+#define fGEN_TCG_V6_vnot(SHORTCODE) \
+    tcg_gen_gvec_not(MO_64, VdV_off, VuV_off, \
+                     sizeof(MMVector), sizeof(MMVector))
+
+/* Vector compares */
+#define fGEN_TCG_VEC_CMP(COND, TYPE, SIZE) \
+    do { \
+        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        tcg_gen_gvec_cmp(COND, TYPE, tmpoff, VuV_off, VvV_off, \
+                         sizeof(MMVector), sizeof(MMVector)); \
+        vec_to_qvec(SIZE, QdV_off, tmpoff); \
+    } while (0)
+
+#define fGEN_TCG_V6_vgtw(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_GT, MO_32, 4)
+#define fGEN_TCG_V6_vgth(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_GT, MO_16, 2)
+#define fGEN_TCG_V6_vgtb(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_GT, MO_8, 1)
+
+#define fGEN_TCG_V6_vgtuw(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_GTU, MO_32, 4)
+#define fGEN_TCG_V6_vgtuh(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_GTU, MO_16, 2)
+#define fGEN_TCG_V6_vgtub(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_GTU, MO_8, 1)
+
+#define fGEN_TCG_V6_veqw(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_EQ, MO_32, 4)
+#define fGEN_TCG_V6_veqh(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_EQ, MO_16, 2)
+#define fGEN_TCG_V6_veqb(SHORTCODE) \
+    fGEN_TCG_VEC_CMP(TCG_COND_EQ, MO_8, 1)
+
+#define fGEN_TCG_VEC_CMP_OP(COND, TYPE, SIZE, OP) \
+    do { \
+        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        intptr_t qoff = offsetof(CPUHexagonState, VuuV); \
+        tcg_gen_gvec_cmp(COND, TYPE, tmpoff, VuV_off, VvV_off, \
+                         sizeof(MMVector), sizeof(MMVector)); \
+        vec_to_qvec(SIZE, qoff, tmpoff); \
+        OP(MO_64, QxV_off, QxV_off, qoff, sizeof(MMQReg), sizeof(MMQReg)); \
+    } while (0)
+
+#define fGEN_TCG_V6_vgtw_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_32, 4, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_vgtw_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_32, 4, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_vgtw_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_32, 4, tcg_gen_gvec_xor)
+
+#define fGEN_TCG_V6_vgtuw_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_32, 4, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_vgtuw_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_32, 4, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_vgtuw_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_32, 4, tcg_gen_gvec_xor)
+
+#define fGEN_TCG_V6_vgth_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_16, 2, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_vgth_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_16, 2, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_vgth_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_16, 2, tcg_gen_gvec_xor)
+
+#define fGEN_TCG_V6_vgtuh_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_16, 2, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_vgtuh_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_16, 2, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_vgtuh_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_16, 2, tcg_gen_gvec_xor)
+
+#define fGEN_TCG_V6_vgtb_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_8, 1, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_vgtb_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_8, 1, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_vgtb_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GT, MO_8, 1, tcg_gen_gvec_xor)
+
+#define fGEN_TCG_V6_vgtub_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_8, 1, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_vgtub_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_8, 1, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_vgtub_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_GTU, MO_8, 1, tcg_gen_gvec_xor)
+
+#define fGEN_TCG_V6_veqw_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_32, 4, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_veqw_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_32, 4, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_veqw_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_32, 4, tcg_gen_gvec_xor)
+
+#define fGEN_TCG_V6_veqh_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_16, 2, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_veqh_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_16, 2, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_veqh_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_16, 2, tcg_gen_gvec_xor)
+
+#define fGEN_TCG_V6_veqb_and(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_8, 1, tcg_gen_gvec_and)
+#define fGEN_TCG_V6_veqb_or(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_8, 1, tcg_gen_gvec_or)
+#define fGEN_TCG_V6_veqb_xor(SHORTCODE) \
+    fGEN_TCG_VEC_CMP_OP(TCG_COND_EQ, MO_8, 1, tcg_gen_gvec_xor)
+
 /* Vector splat - various forms */
 #define fGEN_TCG_V6_lvsplatw(SHORTCODE) \
     tcg_gen_gvec_dup_i32(MO_32, VdV_off, \
