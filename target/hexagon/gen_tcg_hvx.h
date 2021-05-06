@@ -141,6 +141,15 @@
         tcg_temp_free(shift); \
     } while (0)
 
+#define fGEN_TCG_V6_vlsrb(SHORTCODE) \
+    do { \
+        TCGv shift = tcg_temp_new(); \
+        tcg_gen_andi_tl(shift, RtV, 7); \
+        tcg_gen_gvec_shrs(MO_8, VdV_off, VuV_off, shift, \
+                          sizeof(MMVector), sizeof(MMVector)); \
+        tcg_temp_free(shift); \
+    } while (0)
+
 #define fGEN_TCG_V6_vlsrh(SHORTCODE) \
     do { \
         TCGv shift = tcg_temp_new(); \
