@@ -53,7 +53,6 @@ HEX_TESTS += vector_add_int
 HEX_TESTS += scatter_gather
 HEX_TESTS += atomics
 HEX_TESTS += fpstuff
-HEX_TESTS += lsbnew
 
 TESTS += $(HEX_TESTS)
 

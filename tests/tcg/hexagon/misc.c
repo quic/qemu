@@ -298,6 +298,21 @@ static int auto_and(void)
     return retval;
 }
 
+void test_lsbnew(void)
+{
+    int result;
+
+    asm("r0 = #2\n\t"
+        "r1 = #5\n\t"
+        "{\n\t"
+        "    p0 = r0\n\t"
+        "    if (p0.new) r1 = #3\n\t"
+        "}\n\t"
+        "%0 = r1\n\t"
+        : "=r"(result) :: "r0", "r1", "p0");
+    check(result, 5);
+}
+
 static int cl0(int x)
 {
     int retval;
@@ -428,6 +443,8 @@ int main()
 
     res = auto_and();
     check(res, 0);
+
+    test_lsbnew();
 
     res = cl0(0x7fff);
     check(res, 17);
