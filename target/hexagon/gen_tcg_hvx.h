@@ -405,6 +405,14 @@
     tcg_gen_gvec_dup_i32(MO_32, VdV_off, \
                          sizeof(MMVector), sizeof(MMVector), RtV)
 
+#define fGEN_TCG_V6_lvsplath(SHORTCODE) \
+    tcg_gen_gvec_dup_i32(MO_16, VdV_off, \
+                         sizeof(MMVector), sizeof(MMVector), RtV)
+
+#define fGEN_TCG_V6_lvsplatb(SHORTCODE) \
+    tcg_gen_gvec_dup_i32(MO_8, VdV_off, \
+                         sizeof(MMVector), sizeof(MMVector), RtV)
+
 /* Vector absolute value - various forms */
 #define fGEN_TCG_V6_vabsb(SHORTCODE) \
     tcg_gen_gvec_abs(MO_8, VdV_off, VuV_off, \
