@@ -332,7 +332,7 @@ void hexagon_clear_l2vic_pending(int int_num)
 
 int hexagon_find_l2vic_pending(void)
 {
-    int intnum;
+    int intnum = 0;
     const hwaddr pend = cfgExtensions->l2vic_base + L2VIC_INT_STATUSn;
     uint64_t pending[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
     cpu_physical_memory_read(pend, pending, sizeof(pending));
@@ -341,15 +341,15 @@ int hexagon_find_l2vic_pending(void)
     uint64_t status[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
     cpu_physical_memory_read(stat, status, sizeof(status));
 
-    do {
-        intnum = find_first_bit(pending, L2VIC_INTERRUPT_MAX);
-        if (intnum == L2VIC_INTERRUPT_MAX) {
-            return L2VIC_NO_PENDING;
+    intnum = find_next_bit(pending, L2VIC_INTERRUPT_MAX, intnum);
+    while (intnum < L2VIC_INTERRUPT_MAX) {
+        /* Pending is set but status isn't the interrupt is pending */
+        if (!test_bit(intnum, status)) {
+            break;
         }
-        clear_bit(intnum, pending);
-    } while (test_bit(intnum, status));
-
-    return intnum;
+        intnum = find_next_bit(pending, L2VIC_INTERRUPT_MAX, intnum+1);
+    }
+    return (intnum < L2VIC_INTERRUPT_MAX) ? intnum : L2VIC_NO_PENDING;
 }
 
 

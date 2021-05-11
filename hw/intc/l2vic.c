@@ -65,25 +65,23 @@ typedef struct L2VICState {
     qemu_irq irq[8];
 } L2VICState;
 
-
 /* Find the next pending interrupt bit.
  * For an interrupt to be pending the pending but must be set while the matching
  * status bit be unset. If the matching enable bit is not set then somehow
  * a pending interrupt got disabled.
  */
 static int get_next_pending(L2VICState *s) {
-    unsigned int intnum;
-    uint64_t pending[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
-    memcpy(pending, s->int_pending, sizeof (pending));
-    do {
-        intnum = find_first_bit(pending, L2VIC_INTERRUPT_MAX);
-        if (intnum == L2VIC_INTERRUPT_MAX) {
-            return L2VIC_NO_PENDING; // Nothing pending.
+    unsigned int intnum=0;
+    intnum = find_next_bit((unsigned long *)s->int_pending,
+                           L2VIC_INTERRUPT_MAX, intnum);
+    while (intnum < L2VIC_INTERRUPT_MAX) {
+        if (!test_bit(intnum, (unsigned long *)s->int_status)) {
+            break;
         }
-        clear_bit(intnum, pending);
-    } while (test_bit(intnum, (unsigned long *)s->int_status));
-
-    return intnum;
+        intnum = find_next_bit((unsigned long *)s->int_pending,
+                               L2VIC_INTERRUPT_MAX, intnum+1);
+    }
+    return (intnum < L2VIC_INTERRUPT_MAX) ? intnum : L2VIC_NO_PENDING;
 }
 
 
