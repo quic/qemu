@@ -19,6 +19,8 @@
 #include "qemu/osdep.h"
 #include "tcg/tcg-op.h"
 #include "exec/cpu_ldst.h"
+#include "exec/exec-all.h"
+#include "exec/gen-icount.h"
 #include "exec/log.h"
 #include "internal.h"
 #include "attribs.h"
@@ -145,6 +147,16 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
 {
     target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
     int i;
+
+    const bool may_do_io = pkt->pkt_has_scalar_store_s0
+        || pkt->pkt_has_scalar_store_s1
+        || pkt->pkt_has_load_s0
+        || pkt->pkt_has_load_s1
+        || pkt->pkt_has_sys_visibility;
+
+    if (may_do_io && (tb_cflags(ctx->base.tb) & CF_USE_ICOUNT)) {
+        gen_io_start();
+    }
 
     /* Clear out the disassembly context */
     ctx->ctx_reg_log_idx = 0;
@@ -843,7 +855,7 @@ static void check_imprecise_exception(packet_t *pkt)
 static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     packet_t *pkt)
 {
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY)
     if (pkt->pkt_has_scalar_store_s0 ||
         pkt->pkt_has_scalar_store_s1 ||
         pkt->pkt_has_dczeroa ||
@@ -866,7 +878,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
 #endif
 
     gen_reg_writes(ctx);
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY)
     gen_greg_writes(ctx);
     gen_sreg_writes(env, ctx);
 #endif
@@ -896,14 +908,14 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
         tcg_temp_free(has_st1);
     }
 #endif
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY)
     check_imprecise_exception(pkt);
 #endif
 
     if (pkt->pkt_has_cof) {
         ctx->base.is_jmp = DISAS_NORETURN;
     }
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY)
     else if (pkt->pkt_has_sys_visibility) {
         ctx->base.is_jmp = DISAS_TOO_MANY;
     }

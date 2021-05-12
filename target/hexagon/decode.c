@@ -496,6 +496,17 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
         uint32_t could_halt = 0;
         uint32_t triggers_int = 0;
         uint32_t is_solo = 0;
+        uint32_t sys_reg_access = 0;
+        if (opcode == Y2_tfrscrr ||
+            opcode == Y2_tfrsrcr ||
+            opcode == Y4_tfrscpp ||
+            opcode == Y4_tfrspcp ||
+            opcode == A2_tfrcrr ||
+            opcode == A2_tfrrcr ||
+            opcode == A4_tfrcpp ||
+            opcode == A4_tfrpcp) {
+            sys_reg_access = 1;
+        }
         if (opcode == Y2_stop ||
             opcode == Y2_wait ||
             opcode == Y2_k0lock ||
@@ -583,6 +594,7 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
                              GET_ATTRIB(opcode, A_CACHEOP)))
              || could_halt
              || triggers_int
+             || sys_reg_access
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IPEND)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IAD)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_K0LOCK)

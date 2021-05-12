@@ -113,6 +113,9 @@ QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel
 run-framelimit: framelimit
 run-hvx_nocoproc: hvx_nocoproc
 run-float_excp: float_excp
+run-vid-group: vid-group
+run-timer_reg: timer_reg
+run-qtimer_test: qtimer_test
 
 # These tests raise an exception and return 255 to the shell
 run-framelimit run-hvx_nocoproc run-float_excp:
@@ -122,5 +125,10 @@ run-framelimit run-hvx_nocoproc run-float_excp:
 	else \
 		return -1; \
 	fi
+
+ICOUNT_OPTS=-icount auto
+run-vid-group run-timer_reg run-qtimer_test:
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
 run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
