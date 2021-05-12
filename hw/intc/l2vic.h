@@ -27,7 +27,6 @@
 #define L2VIC_VID_0             0x10    /* Read SOFTWARE DEFINED */
 #define L2VIC_VID_1             0x14    /* Read SOFTWARE DEFINED NOT YET USED */
 #define L2VIC_INT_ENABLEn       0x100   /* Read/Write */
-#define L2VIC_INT_ENABLEn       0x100   /* Read/Write */
 #define L2VIC_INT_ENABLE_CLEARn 0x180   /* Write */
 #define L2VIC_INT_ENABLE_SETn   0x200   /* Write */
 #define L2VIC_INT_TYPEn         0x280   /* Read/Write */

@@ -195,11 +195,8 @@ static void l2vic_write(void *opaque, hwaddr offset,
     } else if (offset == L2VIC_VID_1) {
         g_assert_not_reached(); /* No support of VID1 at the moment */
     } else if (offset >= L2VIC_INT_ENABLEn &&
-        offset < (L2VIC_INT_ENABLEn + ARRAY_SIZE(s->int_enable))) {
+        offset < (L2VIC_INT_ENABLE_CLEARn)) {
         L2VICA(s->int_enable, offset - L2VIC_INT_ENABLEn) = val;
-    } else if (offset >= (L2VIC_INT_ENABLEn + ARRAY_SIZE(s->int_enable)) &&
-               offset < L2VIC_INT_ENABLE_CLEARn) {
-        qemu_log_mask(LOG_UNIMP, "%s: offset %x\n", __func__, (int) offset);
     } else if (offset >= L2VIC_INT_ENABLE_CLEARn &&
                offset < L2VIC_INT_ENABLE_SETn) {
         L2VICA(s->int_enable, offset - L2VIC_INT_ENABLE_CLEARn) &= ~val;
@@ -249,7 +246,6 @@ static void l2vic_write(void *opaque, hwaddr offset,
                offset < L2VIC_INT_GRPn_3 + 0x80) {
         L2VICA(s->int_group_n3, offset - L2VIC_INT_GRPn_3) = val;
     } else {
-        g_assert(false);
         qemu_log_mask(LOG_UNIMP, "%s: offset %x\n", __func__, (int) offset);
     }
     qemu_mutex_unlock(&s->active);
@@ -272,11 +268,8 @@ static uint64_t l2vic_read(void *opaque, hwaddr offset,
     } else if (offset == L2VIC_VID_0) {
         return (s->vid0);
     } else if (offset >= L2VIC_INT_ENABLEn &&
-               offset < (L2VIC_INT_ENABLEn + sizeof(s->int_enable))) {
-        return L2VICA(s->int_enable, offset-L2VIC_INT_ENABLEn);
-    } else if (offset >= (L2VIC_INT_ENABLEn + sizeof(s->int_enable)) &&
                offset <  L2VIC_INT_ENABLE_CLEARn) {
-        qemu_log_mask(LOG_UNIMP, "%s: offset %x\n", __func__, (int) offset);
+        return L2VICA(s->int_enable, offset-L2VIC_INT_ENABLEn);
     } else if (offset >= L2VIC_INT_ENABLE_CLEARn &&
                offset < L2VIC_INT_ENABLE_SETn) {
         return 0;
