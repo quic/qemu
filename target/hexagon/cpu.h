@@ -37,6 +37,10 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define TARGET_LONG_BITS 32
 #define NUM_TLB_REGS(PROC) NUM_TLB_ENTRIES
 
+/* Hexagon processors have a strong memory model.
+*/
+#define TCG_GUEST_DEFAULT_MO      (TCG_MO_ALL)
+
 #include <time.h>
 #include "qemu/compiler.h"
 #include "qemu-common.h"
