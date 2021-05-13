@@ -1082,7 +1082,8 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 
 #ifndef CONFIG_USER_ONLY
     HexagonCPU *hex_cpu = HEXAGON_CPU(cpu);
-    if (hex_cpu->sched_limit) {
+    if (hex_cpu->sched_limit
+        && (!(tb_cflags(ctx->base.tb) & CF_PARALLEL))) {
         gen_cpu_limit();
     }
 #endif
