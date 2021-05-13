@@ -57,10 +57,11 @@ static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
 }
 
 #if !defined(CONFIG_USER_ONLY)
-static Property hexagon_count_gcycle_xt_property =
-    DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false);
-static Property hexagon_sched_limit_property =
-    DEFINE_PROP_BOOL("sched-limit", HexagonCPU, sched_limit, false);
+static Property hexagon_cpu_properties[] = {
+    DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false),
+    DEFINE_PROP_BOOL("sched-limit", HexagonCPU, sched_limit, false),
+    DEFINE_PROP_END_OF_LIST()
+};
 #endif
 
 const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
@@ -536,8 +537,6 @@ static void hexagon_cpu_init(Object *obj)
     cpu_set_cpustate_pointers(cpu);
 #if !defined(CONFIG_USER_ONLY)
     qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
-    qdev_property_add_static(DEVICE(obj), &hexagon_count_gcycle_xt_property);
-    qdev_property_add_static(DEVICE(obj), &hexagon_sched_limit_property);
 #endif
 }
 
@@ -1040,6 +1039,7 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
     device_class_set_parent_realize(dc, hexagon_cpu_realize,
                                     &mcc->parent_realize);
 
+    device_class_set_props(dc, hexagon_cpu_properties);
     device_class_set_parent_reset(dc, hexagon_cpu_reset, &mcc->parent_reset);
 
     cc->class_by_name = hexagon_cpu_class_by_name;
