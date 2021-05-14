@@ -148,6 +148,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
     int i;
 
+#if !defined(CONFIG_USER_ONLY)
     const bool may_do_io = pkt->pkt_has_scalar_store_s0
         || pkt->pkt_has_scalar_store_s1
         || pkt->pkt_has_load_s0
@@ -157,6 +158,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     if (may_do_io && (tb_cflags(ctx->base.tb) & CF_USE_ICOUNT)) {
         gen_io_start();
     }
+#endif
 
     /* Clear out the disassembly context */
     ctx->ctx_reg_log_idx = 0;
