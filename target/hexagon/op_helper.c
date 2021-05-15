@@ -203,7 +203,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 
     /* Scatter store */
     if (env->vtcm_pending) {
-        env->vtcm_pending = 0;
+        env->vtcm_pending = false;
         if (env->vtcm_log.op) {
             /* Need to perform the scatter read/modify/write at commit time */
             if (env->vtcm_log.op_size == 2) {
@@ -220,7 +220,6 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
                     put_user_u8(env->vtcm_log.data.ub[i], env->vtcm_log.va[i]);
                     env->vtcm_log.mask.ub[i] = 0;
                     env->vtcm_log.data.ub[i] = 0;
-                    env->vtcm_log.offsets.ub[i] = 0;
                 }
 
             }

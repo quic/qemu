@@ -48,7 +48,6 @@ TCGv hex_llsc_addr;
 TCGv hex_llsc_val;
 TCGv_i64 hex_llsc_val_i64;
 TCGv hex_is_gather_store_insn;
-TCGv hex_gather_issued;
 TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
 TCGv hex_VRegs_select;
@@ -223,7 +222,6 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
         ctx->is_gather_store_insn = false;
         tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
-        tcg_gen_movi_tl(hex_gather_issued, 0);
     }
 }
 
@@ -886,8 +884,6 @@ void hexagon_translate_init(void)
     hex_is_gather_store_insn = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, is_gather_store_insn),
         "is_gather_store_insn");
-    hex_gather_issued = tcg_global_mem_new(cpu_env,
-        offsetof(CPUHexagonState, gather_issued), "gather_issued");
     hex_VRegs_updated_tmp = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, VRegs_updated_tmp), "VRegs_updated_tmp");
     hex_VRegs_updated = tcg_global_mem_new(cpu_env,

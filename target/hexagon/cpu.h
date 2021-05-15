@@ -106,7 +106,7 @@ struct CPUHexagonState {
     uint64_t     llsc_val_i64;
 
     target_ulong is_gather_store_insn;
-    target_ulong gather_issued;
+    bool gather_issued;
 
     MMVector VRegs[NUM_VREGS] QEMU_ALIGNED(16);
     MMVector future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
@@ -128,11 +128,9 @@ struct CPUHexagonState {
                  VxxV QEMU_ALIGNED(16);
 
     VStoreLog vstore[VSTORES_MAX];
-    uint32_t vstore_pending[VSTORES_MAX];
-    uint8_t vtcm_pending;
+    target_ulong vstore_pending[VSTORES_MAX];
+    bool vtcm_pending;
     VTCMStoreLog vtcm_log;
-
-    int status;
 };
 
 #define HEXAGON_CPU_CLASS(klass) \

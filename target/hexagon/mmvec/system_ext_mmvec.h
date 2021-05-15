@@ -18,15 +18,13 @@
 #ifndef HEXAGON_SYSTEM_EXT_MMVEC_H
 #define HEXAGON_SYSTEM_EXT_MMVEC_H
 
-void mem_load_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
-                           target_ulong lookup_vaddr, int slot, int size,
-                           uint8_t *data, int use_full_va);
+void mem_load_vector(CPUHexagonState *env, target_ulong vaddr,
+                     int size, uint8_t *data);
 void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
                       int slot, uint8_t *data);
-void mem_store_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
-                            target_ulong lookup_vaddr, int slot, int size,
-                            uint8_t *data, uint8_t *mask, unsigned invert,
-                            int use_full_va);
+void mem_store_vector(CPUHexagonState *env, target_ulong vaddr,
+                      int slot, int size,
+                      uint8_t *data, uint8_t *mask, bool invert);
 void mem_vector_scatter_init(CPUHexagonState *env, int slot,
                              target_ulong base_vaddr, int length,
                              int element_size);

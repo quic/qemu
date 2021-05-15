@@ -66,12 +66,9 @@ typedef union {
 typedef struct {
     MMVector data;
     MMVector mask;
-    MMVectorPair offsets;
     int size;
-    target_ulong va_base;
     target_ulong va[MAX_VEC_SIZE_BYTES];
-    int oob_access;
-    int op;
+    bool op;
     int op_size;
 } VTCMStoreLog;
 

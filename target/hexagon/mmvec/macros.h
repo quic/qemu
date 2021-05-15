@@ -83,15 +83,6 @@
         env->vtcm_log.va[IDX] = (VA); \
     } while (0)
 
-/* VTCM Banks */
-#define LOG_VTCM_BANK(VAL, MASK, IDX) \
-    do { \
-        env->vtcm_log.offsets.uh[IDX]  = (VAL & 0xFFF); \
-        env->vtcm_log.offsets.uh[IDX] |= ((MASK & 0xF) << 12) ; \
-    } while (0)
-
-#define fUSE_LOOKUP_ADDRESS_BY_REV(PROC) true
-#define fUSE_LOOKUP_ADDRESS() 1
 #define fNOTQ(VAL) \
     ({ \
         MMQReg _ret;  \
@@ -156,36 +147,16 @@ static inline MMVector mmvec_zero_vector(void)
         warn("aligning misaligned vector. EA=%08x", (EA)); \
     }
 #define fSCATTER_INIT(REGION_START, LENGTH, ELEMENT_SIZE) \
-    do { \
-        mem_vector_scatter_init(env, slot, REGION_START, LENGTH, ELEMENT_SIZE);\
-        if (EXCEPTION_DETECTED) { \
-            return; \
-        } \
-    } while (0)
+    mem_vector_scatter_init(env, slot, REGION_START, LENGTH, ELEMENT_SIZE)
 #define fGATHER_INIT(REGION_START, LENGTH, ELEMENT_SIZE) \
-    do { \
-        mem_vector_gather_init(env, slot, REGION_START, LENGTH, ELEMENT_SIZE); \
-        if (EXCEPTION_DETECTED) { \
-            return; \
-        } \
-    } while (0)
+    mem_vector_gather_init(env, slot, REGION_START, LENGTH, ELEMENT_SIZE)
 #define fSCATTER_FINISH(OP) \
-    do { \
-        if (EXCEPTION_DETECTED) { \
-            return; \
-        } \
-        mem_vector_scatter_finish(env, slot, OP); \
-    } while (0);
+    mem_vector_scatter_finish(env, slot, OP);
 #define fGATHER_FINISH() \
-    do { \
-        if (EXCEPTION_DETECTED) { \
-            return; \
-        } \
-        mem_vector_gather_finish(env, slot); \
-    } while (0);
+    mem_vector_gather_finish(env, slot);
 #define fLOG_SCATTER_OP(SIZE) \
     do { \
-        env->vtcm_log.op = 1; \
+        env->vtcm_log.op = true; \
         env->vtcm_log.op_size = SIZE; \
     } while (0)
 #define fVLOG_VTCM_WORD_INCREMENT(EA, OFFSET, INC, IDX, ALIGNMENT, LEN) \
@@ -240,7 +211,6 @@ static inline MMVector mmvec_zero_vector(void)
             env->tmp_VRegs[0].ub[ELEMENT_SIZE * IDX + i0] = B; \
             LOG_VTCM_BYTE(va + i0, log_byte, B, ELEMENT_SIZE * IDX + i0); \
         } \
-        LOG_VTCM_BANK(va, log_bank, BANK_IDX); \
     } while (0)
 #define fVLOG_VTCM_GATHER_WORD(EA, OFFSET, IDX, LEN) \
     do { \
@@ -282,7 +252,6 @@ static inline MMVector mmvec_zero_vector(void)
                     inc |= env->vtcm_log.data.ub[j + i] << (8 * j); \
                     env->vtcm_log.mask.ub[j + i] = 0; \
                     env->vtcm_log.data.ub[j + i] = 0; \
-                    env->vtcm_log.offsets.ub[j + i] = 0; \
                 } \
                 dst += inc; \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
@@ -305,7 +274,6 @@ static inline MMVector mmvec_zero_vector(void)
             LOG_VTCM_BYTE(va + i0, log_byte, IN.ub[ELEM_SIZE * IDX + i0], \
                           ELEM_SIZE * IDX + i0); \
         } \
-        LOG_VTCM_BANK(va, log_bank, BANK_IDX); \
     } while (0)
 #define fVLOG_VTCM_HALFWORD(EA, OFFSET, IN, IDX, LEN) \
     do { \
@@ -345,8 +313,7 @@ static inline MMVector mmvec_zero_vector(void)
 #define fLOADMMV_AL(EA, ALIGNMENT, LEN, DST) \
     do { \
         fV_AL_CHECK(EA, ALIGNMENT - 1); \
-        mem_load_vector_oddva(env, EA & ~(ALIGNMENT - 1), EA, slot, LEN, \
-                              &DST.ub[0], fUSE_LOOKUP_ADDRESS_BY_REV()); \
+        mem_load_vector(env, EA & ~(ALIGNMENT - 1), LEN, &DST.ub[0]); \
     } while (0)
 #define fLOADMMV(EA, DST) fLOADMMV_AL(EA, fVECSIZE(), fVECSIZE(), DST)
 #endif
@@ -357,10 +324,8 @@ static inline MMVector mmvec_zero_vector(void)
     do { \
         uint32_t size2 = (EA) & (ALIGNMENT - 1); \
         uint32_t size1 = LEN - size2; \
-        mem_load_vector_oddva(env, EA + size1, EA + fVECSIZE(), 1, size2, \
-                              &DST.ub[size1], fUSE_LOOKUP_ADDRESS()); \
-        mem_load_vector_oddva(env, EA, EA, 0, size1, &DST.ub[0], \
-                              fUSE_LOOKUP_ADDRESS_BY_REV()); \
+        mem_load_vector(env, EA + size1, size2, &DST.ub[size1]); \
+        mem_load_vector(env, EA, size1, &DST.ub[0]); \
     } while (0)
 #define fLOADMMVU(EA, DST) \
     do { \
@@ -377,9 +342,8 @@ static inline MMVector mmvec_zero_vector(void)
 #define fSTOREMMV_AL(EA, ALIGNMENT, LEN, SRC) \
     do  { \
         fV_AL_CHECK(EA, ALIGNMENT - 1); \
-        mem_store_vector_oddva(env, EA & ~(ALIGNMENT - 1), EA, slot, LEN, \
-                               &SRC.ub[0], 0, 0, \
-                               fUSE_LOOKUP_ADDRESS_BY_REV()); \
+        mem_store_vector(env, EA & ~(ALIGNMENT - 1), slot, LEN, \
+                         &SRC.ub[0], NULL, false); \
     } while (0)
 #define fSTOREMMV(EA, SRC) fSTOREMMV_AL(EA, fVECSIZE(), fVECSIZE(), SRC)
 #endif
@@ -394,9 +358,8 @@ static inline MMVector mmvec_zero_vector(void)
         for (i = 0; i < fVECSIZE(); i++) { \
             maskvec.ub[i] = fGETQBIT(MASK, i); \
         } \
-        mem_store_vector_oddva(env, EA & ~(ALIGNMENT - 1), EA, slot, LEN, \
-                               &SRC.ub[0], &maskvec.ub[0], 0, \
-                               fUSE_LOOKUP_ADDRESS_BY_REV()); \
+        mem_store_vector(env, EA & ~(ALIGNMENT - 1), slot, LEN, \
+                         &SRC.ub[0], &maskvec.ub[0], false); \
     } while (0)
 #define fSTOREMMVQ(EA, SRC, MASK) \
     fSTOREMMVQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
@@ -413,9 +376,8 @@ static inline MMVector mmvec_zero_vector(void)
             maskvec.ub[i] = fGETQBIT(MASK, i); \
         } \
         fV_AL_CHECK(EA, ALIGNMENT - 1); \
-        mem_store_vector_oddva(env, EA & ~(ALIGNMENT - 1), EA, slot, LEN, \
-                               &SRC.ub[0], &maskvec.ub[0], 1, \
-                               fUSE_LOOKUP_ADDRESS_BY_REV()); \
+        mem_store_vector(env, EA & ~(ALIGNMENT - 1), slot, LEN, \
+                         &SRC.ub[0], &maskvec.ub[0], true); \
     } while (0)
 #define fSTOREMMVNQ(EA, SRC, MASK) \
     fSTOREMMVNQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
@@ -432,11 +394,9 @@ static inline MMVector mmvec_zero_vector(void)
             size1 = LEN; \
         } \
         size2 = LEN - size1; \
-        mem_store_vector_oddva(env, EA + size1, EA + fVECSIZE(), 1, size2, \
-                               &SRC.ub[size1], 0, 0, \
-                               fUSE_LOOKUP_ADDRESS()); \
-        mem_store_vector_oddva(env, EA, EA, 0, size1, &SRC.ub[0], 0, 0, \
-                               fUSE_LOOKUP_ADDRESS_BY_REV()); \
+        mem_store_vector(env, EA + size1, 1, size2, \
+                         &SRC.ub[size1], NULL, false); \
+        mem_store_vector(env, EA, 0, size1, &SRC.ub[0], NULL, false); \
     } while (0)
 #define fSTOREMMVU(EA, SRC) \
     do { \
@@ -460,11 +420,9 @@ static inline MMVector mmvec_zero_vector(void)
             size1 = LEN; \
         } \
         size2 = LEN - size1; \
-        mem_store_vector_oddva(env, EA + size1, EA + fVECSIZE(), 1, size2, \
-                               &SRC.ub[size1], &maskvec.ub[size1], 0, \
-                               fUSE_LOOKUP_ADDRESS()); \
-        mem_store_vector_oddva(env, EA, 0, size1, &SRC.ub[0], &maskvec.ub[0], \
-                               0, fUSE_LOOKUP_ADDRESS_BY_REV()); \
+        mem_store_vector(env, EA + size1, 1, size2, \
+                         &SRC.ub[size1], &maskvec.ub[size1], false); \
+        mem_store_vector(env, EA, size1, &SRC.ub[0], &maskvec.ub[0], false); \
     } while (0)
 #define fSTOREMMVNQU_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
     do { \
@@ -479,12 +437,10 @@ static inline MMVector mmvec_zero_vector(void)
             size1 = LEN; \
         } \
         size2 = LEN - size1; \
-        mem_store_vector_oddva(env, EA + size1, EA + fVECSIZE(), 1, size2, \
-                               &SRC.ub[size1], &maskvec.ub[size1], 1, \
-                               fUSE_LOOKUP_ADDRESS()); \
-        mem_store_vector_oddva(env, EA, EA, 0, size1, &SRC.ub[0], \
-                               &maskvec.ub[0], 1, \
-                               fUSE_LOOKUP_ADDRESS_BY_REV()); \
+        mem_store_vector(env, EA + size1, 1, size2, \
+                         &SRC.ub[size1], &maskvec.ub[size1], true); \
+        mem_store_vector(env, EA, 0, size1, &SRC.ub[0], \
+                         &maskvec.ub[0], true); \
     } while (0)
 #define fVFOREACH(WIDTH, VAR) for (VAR = 0; VAR < fVELEM(WIDTH); VAR++)
 #define fVARRAY_ELEMENT_ACCESS(ARRAY, TYPE, INDEX) \

@@ -22,65 +22,10 @@
 
 #define TYPE_LOAD 'L'
 #define TYPE_STORE 'S'
-#define TYPE_FETCH 'F'
-#define TYPE_ICINVA 'I'
-
-enum {
-    access_type_INVALID = 0,
-    access_type_unknown = 1,
-    access_type_load = 2,
-    access_type_store = 3,
-    access_type_fetch = 4,
-    access_type_dczeroa = 5,
-    access_type_dccleana = 6,
-    access_type_dcinva = 7,
-    access_type_dccleaninva = 8,
-    access_type_icinva = 9,
-    access_type_ictagr = 10,
-    access_type_ictagw = 11,
-    access_type_icdatar = 12,
-    access_type_dcfetch = 13,
-    access_type_l2fetch = 14,
-    access_type_l2cleanidx = 15,
-    access_type_l2cleaninvidx = 16,
-    access_type_l2tagr = 17,
-    access_type_l2tagw = 18,
-    access_type_dccleanidx = 19,
-    access_type_dcinvidx = 20,
-    access_type_dccleaninvidx = 21,
-    access_type_dctagr = 22,
-    access_type_dctagw = 23,
-    access_type_k0unlock = 24,
-    access_type_l2locka = 25,
-    access_type_l2unlocka = 26,
-    access_type_l2kill = 27,
-    access_type_l2gclean = 28,
-    access_type_l2gcleaninv = 29,
-    access_type_l2gunlock = 30,
-    access_type_synch = 31,
-    access_type_isync = 32,
-    access_type_pause = 33,
-    access_type_load_phys = 34,
-    access_type_load_locked = 35,
-    access_type_store_conditional = 36,
-    access_type_barrier = 37,
-    access_type_memcpy_load = 39,
-    access_type_memcpy_store = 40,
-
-    NUM_CORE_ACCESS_TYPES
-};
 
 typedef enum {
-    access_type_vload = NUM_CORE_ACCESS_TYPES,
-    access_type_vstore,
-    access_type_vload_nt,
-    access_type_vstore_nt,
     access_type_vgather_load,
     access_type_vscatter_store,
-    access_type_vscatter_release,
-    access_type_vgather_release,
-    access_type_vfetch,
-    NUM_EXT_ACCESS_TYPES
 } ExtMemAccessType;
 
 static
@@ -96,16 +41,16 @@ target_ulong mem_init_access(CPUHexagonState *env, int slot, uint32_t vaddr,
 #endif
 }
 
-static int check_gather_store(CPUHexagonState *env)
+static bool check_gather_store(CPUHexagonState *env)
 {
     /* First check to see if temp vreg has been updated */
-    int check  = env->gather_issued;
+    bool check  = env->gather_issued;
     check &= env->is_gather_store_insn;
 
     /* In case we don't have store, suppress gather */
     if (!check) {
-        env->gather_issued = 0;
-        env->vtcm_pending = 0;   /* Suppress any gather writes to memory */
+        env->gather_issued = false;
+        env->vtcm_pending = false;   /* Suppress any gather writes to memory */
     }
     return check;
 }
@@ -115,6 +60,7 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
 {
     size_t size = sizeof(MMVector);
 
+    /* Check if the gather was cancelled */
     int is_gather_store = check_gather_store(env);
     if (is_gather_store) {
         /*
@@ -123,7 +69,7 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
          */
         memcpy(data, &env->tmp_VRegs[0].ub[0], size);
         env->VRegs_updated_tmp = 0;
-        env->gather_issued = 0;
+        env->gather_issued = false;
     }
 
     env->vstore_pending[slot] = 1;
@@ -139,17 +85,9 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
     }
 }
 
-void mem_store_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
-                            target_ulong lookup_vaddr, int slot, int size,
-                            uint8_t *data, uint8_t *mask, unsigned invert,
-                            int use_full_va)
+void mem_store_vector(CPUHexagonState *env, target_ulong vaddr, int slot,
+                      int size, uint8_t *data, uint8_t *mask, bool invert)
 {
-    int i;
-
-    if (!use_full_va) {
-        lookup_vaddr = vaddr;
-    }
-
     if (!size) {
         return;
     }
@@ -162,7 +100,7 @@ void mem_store_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
          */
         memcpy(data, &env->tmp_VRegs[0].ub[0], size);
         env->VRegs_updated_tmp = 0;
-        env->gather_issued = 0;
+        env->gather_issued = false;
     }
 
     env->vstore_pending[slot] = 1;
@@ -172,33 +110,23 @@ void mem_store_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
     if (!mask) {
         memset(&env->vstore[slot].mask.ub[0], invert ? 0 : -1, size);
     } else if (invert) {
-        for (i = 0; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             env->vstore[slot].mask.ub[i] = !mask[i];
         }
     } else {
         memcpy(&env->vstore[slot].mask.ub[0], mask, size);
     }
+
     /* On a gather store, overwrite the store mask to emulate dropped gathers */
     if (is_gather_store) {
         memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
     }
 }
 
-void mem_load_vector_oddva(CPUHexagonState *env, target_ulong vaddr,
-                           target_ulong lookup_vaddr, int slot, int size,
-                           uint8_t *data, int use_full_va)
+void mem_load_vector(CPUHexagonState *env, target_ulong vaddr,
+                     int size, uint8_t *data)
 {
-    int i;
-
-    if (!use_full_va) {
-        lookup_vaddr = vaddr;
-    }
-
-    if (!size) {
-        return;
-    }
-
-    for (i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         get_user_u8(data[i], vaddr);
         vaddr++;
     }
@@ -213,22 +141,16 @@ void mem_vector_scatter_init(CPUHexagonState *env, int slot,
 
     /* Translation for Store Address on Slot 1 - maybe any slot? */
     mem_init_access(env, slot, base_vaddr, 1, access_type, TYPE_STORE);
-    if (EXCEPTION_DETECTED) {
-        return;
-    }
 
-    for (i = 0; i < fVECSIZE(); i++) {
-        env->vtcm_log.offsets.ub[i] = 0; /* Mark invalid */
+    for (i = 0; i < sizeof(MMVector); i++) {
         env->vtcm_log.data.ub[i] = 0;
         env->vtcm_log.mask.ub[i] = 0;
     }
-    env->vtcm_log.va_base = base_vaddr;
 
-    env->vtcm_pending = 1;
-    env->vtcm_log.oob_access = 0;
-    env->vtcm_log.op = 0;
+    env->vtcm_pending = true;
+    env->vtcm_log.op = false;
     env->vtcm_log.op_size = 0;
-    return;
+    env->vtcm_log.size = sizeof(MMVector);
 }
 
 void mem_vector_gather_init(CPUHexagonState *env, int slot,
@@ -240,39 +162,25 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot,
 
     mem_init_access(env, slot, base_vaddr, 1,  access_type, TYPE_LOAD);
 
-    if (EXCEPTION_DETECTED) {
-        return;
-    }
-
-    for (i = 0; i < 2 * fVECSIZE(); i++) {
-        env->vtcm_log.offsets.ub[i] = 0x0;
-    }
-    for (i = 0; i < fVECSIZE(); i++) {
+    for (i = 0; i < sizeof(MMVector); i++) {
         env->vtcm_log.data.ub[i] = 0;
         env->vtcm_log.mask.ub[i] = 0;
         env->vtcm_log.va[i] = 0;
         env->tmp_VRegs[0].ub[i] = 0;
     }
-    env->vtcm_log.oob_access = 0;
-    env->vtcm_log.op = 0;
+    env->vtcm_log.op = false;
     env->vtcm_log.op_size = 0;
 
-    env->vtcm_log.va_base = base_vaddr;
-
     /*
-     * Temp Reg gets updated
-     * This allows Store .new to grab the correct result
+     * Temp reg gets updated
+     * This allows store .new to grab the correct result
      */
     env->VRegs_updated_tmp = 1;
-    env->gather_issued = 1;
-
-    return;
+    env->gather_issued = true;
 }
 
 void mem_vector_scatter_finish(CPUHexagonState *env, int slot, int op)
 {
-    env->vstore_pending[slot] = 0;
-    env->vtcm_log.size = fVECSIZE();
 }
 
 void mem_vector_gather_finish(CPUHexagonState *env, int slot)
