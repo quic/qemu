@@ -181,6 +181,19 @@ static inline void S4_storeirifnew_io(void *p, int pred)
                : "p0", "memory");
 }
 
+static int L2_ploadrifnew_pi(void *p, int pred)
+{
+  int result;
+  asm volatile("%0 = #31\n\t"
+               "{\n\t"
+               "    p0 = cmp.eq(%1, #1)\n\t"
+               "    if (!p0.new) %0 = memw(%2++#4)\n\t"
+               "}\n\t"
+               : "=r"(result) : "r"(pred), "r"(p)
+               : "p0");
+  return result;
+}
+
 /*
  * Test that compound-compare-jump is executed in 2 parts
  * First we have to do all the compares in the packet and
@@ -245,8 +258,8 @@ uint32_t array[10];
 uint32_t early_exit;
 
 /*
- * Write this as a function because we can't guarantee the compiler will
- * allocate a frame with just the SL2_return_tnew packet.
+ * Write these as functions because we can't guarantee the compiler will
+ * allocate a frame with just the SL2_return_?new packet.
  */
 static void SL2_return_tnew(int x);
 asm ("SL2_return_tnew:\n\t"
@@ -256,6 +269,20 @@ asm ("SL2_return_tnew:\n\t"
      "   {\n\t"
      "       p0 = cmp.eq(r0, #1)\n\t"
      "       if (p0.new) dealloc_return:nt\n\t"    /* SL2_return_tnew */
+     "   }\n\t"
+     "   r1 = #0\n\t"
+     "   memw(##early_exit) = r1\n\t"
+     "   dealloc_return\n\t"
+    );
+
+static void SL2_return_fnew(int x);
+asm ("SL2_return_fnew:\n\t"
+     "   allocframe(#0)\n\t"
+     "   r1 = #1\n\t"
+     "   memw(##early_exit) = r1\n\t"
+     "   {\n\t"
+     "       p0 = cmp.eq(r0, #1)\n\t"
+     "       if (!p0.new) dealloc_return:nt\n\t"    /* SL2_return_fnew */
      "   }\n\t"
      "   r1 = #0\n\t"
      "   memw(##early_exit) = r1\n\t"
@@ -329,6 +356,7 @@ static int cl0(int x)
 
 int main()
 {
+    int res;
     long long res64;
     int pred;
 
@@ -423,6 +451,12 @@ int main()
     S4_storeirifnew_io(&array[8], 1);
     check(array[9], 9);
 
+    memcpy(array, init, sizeof(array));
+    res = L2_ploadrifnew_pi(&array[6], 0);
+    check(res, 6);
+    res = L2_ploadrifnew_pi(&array[7], 1);
+    check(res, 31);
+
     int x = cmpnd_cmp_jump();
     check(x, 12);
 
@@ -431,11 +465,16 @@ int main()
     SL2_return_tnew(1);
     check(early_exit, 1);
 
+    SL2_return_fnew(0);
+    check(early_exit, 1);
+    SL2_return_fnew(1);
+    check(early_exit, 0);
+
     long long pair = creg_pair(5, 7);
     check((int)pair, 5);
     check((int)(pair >> 32), 7);
 
-    int res = test_clrtnew(1, 7);
+    res = test_clrtnew(1, 7);
     check(res, 0);
     res = test_clrtnew(2, 7);
     check(res, 7);
