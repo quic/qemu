@@ -150,10 +150,8 @@ static inline MMVector mmvec_zero_vector(void)
     mem_vector_scatter_init(env, slot, REGION_START, LENGTH, ELEMENT_SIZE)
 #define fGATHER_INIT(REGION_START, LENGTH, ELEMENT_SIZE) \
     mem_vector_gather_init(env, slot, REGION_START, LENGTH, ELEMENT_SIZE)
-#define fSCATTER_FINISH(OP) \
-    mem_vector_scatter_finish(env, slot, OP);
-#define fGATHER_FINISH() \
-    mem_vector_gather_finish(env, slot);
+#define fSCATTER_FINISH(OP)
+#define fGATHER_FINISH()
 #define fLOG_SCATTER_OP(SIZE) \
     do { \
         env->vtcm_log.op = true; \

@@ -18,28 +18,7 @@
 #include "qemu/osdep.h"
 #include "qemu.h"
 #include "cpu.h"
-#include "mmvec/macros.h"
-
-#define TYPE_LOAD 'L'
-#define TYPE_STORE 'S'
-
-typedef enum {
-    access_type_vgather_load,
-    access_type_vscatter_store,
-} ExtMemAccessType;
-
-static
-target_ulong mem_init_access(CPUHexagonState *env, int slot, uint32_t vaddr,
-                             int width, ExtMemAccessType mtype,
-                             int type_for_xlate)
-{
-#ifdef CONFIG_USER_ONLY
-    /* Nothing to do for Linux user mode in qemu */
-    return vaddr;
-#else
-#error System mode not yet implemented for Hexagon
-#endif
-}
+#include "mmvec/system_ext_mmvec.h"
 
 static bool check_gather_store(CPUHexagonState *env)
 {
@@ -65,7 +44,7 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
     if (is_gather_store) {
         /*
          * If it's a gather store update store data from temporary register
-         * And clear flag
+         * and clear flag
          */
         memcpy(data, &env->tmp_VRegs[0].ub[0], size);
         env->VRegs_updated_tmp = 0;
@@ -136,11 +115,7 @@ void mem_vector_scatter_init(CPUHexagonState *env, int slot,
                              target_ulong base_vaddr,
                              int length, int element_size)
 {
-    ExtMemAccessType access_type = access_type_vscatter_store;
     int i;
-
-    /* Translation for Store Address on Slot 1 - maybe any slot? */
-    mem_init_access(env, slot, base_vaddr, 1, access_type, TYPE_STORE);
 
     for (i = 0; i < sizeof(MMVector); i++) {
         env->vtcm_log.data.ub[i] = 0;
@@ -157,10 +132,7 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot,
                             target_ulong base_vaddr,
                             int length, int element_size)
 {
-    ExtMemAccessType access_type = access_type_vgather_load;
     int i;
-
-    mem_init_access(env, slot, base_vaddr, 1,  access_type, TYPE_LOAD);
 
     for (i = 0; i < sizeof(MMVector); i++) {
         env->vtcm_log.data.ub[i] = 0;
@@ -177,12 +149,4 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot,
      */
     env->VRegs_updated_tmp = 1;
     env->gather_issued = true;
-}
-
-void mem_vector_scatter_finish(CPUHexagonState *env, int slot, int op)
-{
-}
-
-void mem_vector_gather_finish(CPUHexagonState *env, int slot)
-{
 }

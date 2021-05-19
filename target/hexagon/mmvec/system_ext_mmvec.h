@@ -28,8 +28,6 @@ void mem_store_vector(CPUHexagonState *env, target_ulong vaddr,
 void mem_vector_scatter_init(CPUHexagonState *env, int slot,
                              target_ulong base_vaddr, int length,
                              int element_size);
-void mem_vector_scatter_finish(CPUHexagonState *env, int slot, int op);
-void mem_vector_gather_finish(CPUHexagonState *env, int slot);
 void mem_vector_gather_init(CPUHexagonState *env, int slot,
                             target_ulong base_vaddr, int length,
                             int element_size);
