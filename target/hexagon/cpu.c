@@ -25,13 +25,13 @@
 #include "cpu_helper.h"
 #include "internal.h"
 #include "gdb_qreginfo.h"
-#ifndef CONFIG_USER_ONLY
+#include "hw/qdev-properties.h"
+
+#if !defined(CONFIG_USER_ONLY)
 #include "macros.h"
 #include "hex_mmu.h"
-#include "hw/qdev-properties.h"
 #include "include/hw/hexagon/hexagon.h"
 #include "hw/intc/l2vic.h"
-
 #endif
 
 static void hexagon_common_cpu_init(Object *obj)
@@ -56,13 +56,13 @@ static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
     return oc;
 }
 
-#if !defined(CONFIG_USER_ONLY)
 static Property hexagon_cpu_properties[] = {
+#if !defined(CONFIG_USER_ONLY)
     DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false),
     DEFINE_PROP_BOOL("sched-limit", HexagonCPU, sched_limit, false),
+#endif
     DEFINE_PROP_END_OF_LIST()
 };
-#endif
 
 const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
 #ifdef CONFIG_USER_ONLY
