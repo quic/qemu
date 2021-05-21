@@ -468,7 +468,7 @@ static void v66g_1024_init(ObjectClass *oc, void *data)
     mc->is_default = 0;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->max_cpus = 4;
+    mc->default_cpus = mc->max_cpus = 4;
     mc->default_ram_size = 4 * GiB;
 }
 
@@ -506,7 +506,7 @@ static void v68n_1024_init(ObjectClass *oc, void *data)
     mc->is_default = 1;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->max_cpus = 6;
+    mc->default_cpus = mc->max_cpus = 6;
     mc->default_ram_size = 4 * GiB;
 }
 
@@ -527,7 +527,7 @@ static void v69na_1024_init(ObjectClass *oc, void *data)
     mc->is_default = 0;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->max_cpus = 6;
+    mc->default_cpus = mc->max_cpus = 6;
     mc->default_ram_size = 4 * GiB;
 }
 
@@ -547,7 +547,7 @@ static void v73na_1024_init(ObjectClass *oc, void *data)
     mc->is_default = 0;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->max_cpus = 6;
+    mc->default_cpus = mc->max_cpus = 6;
     mc->default_ram_size = 4 * GiB;
 }
 
