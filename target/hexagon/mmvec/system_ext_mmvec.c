@@ -42,42 +42,6 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
     memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
 }
 
-void mem_store_vector(CPUHexagonState *env, target_ulong vaddr, int slot,
-                      int size, uint8_t *data, uint8_t *mask, bool invert)
-{
-    if (!size) {
-        return;
-    }
-
-    if (env->is_gather_store_insn) {
-        mem_gather_store(env, vaddr, slot, data);
-        return;
-    }
-
-    env->vstore_pending[slot] = 1;
-    env->vstore[slot].va   = vaddr;
-    env->vstore[slot].size = size;
-    memcpy(&env->vstore[slot].data.ub[0], data, size);
-    if (!mask) {
-        memset(&env->vstore[slot].mask.ub[0], invert ? 0 : -1, size);
-    } else if (invert) {
-        for (int i = 0; i < size; i++) {
-            env->vstore[slot].mask.ub[i] = !mask[i];
-        }
-    } else {
-        memcpy(&env->vstore[slot].mask.ub[0], mask, size);
-    }
-}
-
-void mem_load_vector(CPUHexagonState *env, target_ulong vaddr,
-                     int size, uint8_t *data)
-{
-    for (int i = 0; i < size; i++) {
-        get_user_u8(data[i], vaddr);
-        vaddr++;
-    }
-}
-
 void mem_vector_scatter_init(CPUHexagonState *env, int slot,
                              target_ulong base_vaddr,
                              int length, int element_size)

@@ -307,139 +307,25 @@ static inline MMVector mmvec_zero_vector(void)
     } while (0)
 #ifdef QEMU_GENERATE
 #define fLOADMMV(EA, DST) gen_vreg_load(ctx, DST##_off, EA, true)
-#else
-#define fLOADMMV_AL(EA, ALIGNMENT, LEN, DST) \
-    do { \
-        fV_AL_CHECK(EA, ALIGNMENT - 1); \
-        mem_load_vector(env, EA & ~(ALIGNMENT - 1), LEN, &DST.ub[0]); \
-    } while (0)
-#define fLOADMMV(EA, DST) fLOADMMV_AL(EA, fVECSIZE(), fVECSIZE(), DST)
 #endif
 #ifdef QEMU_GENERATE
 #define fLOADMMVU(EA, DST) gen_vreg_load(ctx, DST##_off, EA, false)
-#else
-#define fLOADMMVU_AL(EA, ALIGNMENT, LEN, DST) \
-    do { \
-        uint32_t size2 = (EA) & (ALIGNMENT - 1); \
-        uint32_t size1 = LEN - size2; \
-        mem_load_vector(env, EA + size1, size2, &DST.ub[size1]); \
-        mem_load_vector(env, EA, size1, &DST.ub[0]); \
-    } while (0)
-#define fLOADMMVU(EA, DST) \
-    do { \
-        if ((EA & (fVECSIZE() - 1)) == 0) { \
-            fLOADMMV_AL(EA, fVECSIZE(), fVECSIZE(), DST); \
-        } else { \
-            fLOADMMVU_AL(EA, fVECSIZE(), fVECSIZE(), DST); \
-        } \
-    } while (0)
 #endif
 #ifdef QEMU_GENERATE
 #define fSTOREMMV(EA, SRC) gen_vreg_store(ctx, EA, SRC##_off, insn->slot, true)
-#else
-#define fSTOREMMV_AL(EA, ALIGNMENT, LEN, SRC) \
-    do  { \
-        fV_AL_CHECK(EA, ALIGNMENT - 1); \
-        mem_store_vector(env, EA & ~(ALIGNMENT - 1), slot, LEN, \
-                         &SRC.ub[0], NULL, false); \
-    } while (0)
-#define fSTOREMMV(EA, SRC) fSTOREMMV_AL(EA, fVECSIZE(), fVECSIZE(), SRC)
 #endif
 #ifdef QEMU_GENERATE
 #define fSTOREMMVQ(EA, SRC, MASK) \
     gen_vreg_masked_store(ctx, EA, SRC##_off, MASK##_off, insn->slot, false)
-#else
-#define fSTOREMMVQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
-    do { \
-        MMVector maskvec; \
-        int i; \
-        for (i = 0; i < fVECSIZE(); i++) { \
-            maskvec.ub[i] = fGETQBIT(MASK, i); \
-        } \
-        mem_store_vector(env, EA & ~(ALIGNMENT - 1), slot, LEN, \
-                         &SRC.ub[0], &maskvec.ub[0], false); \
-    } while (0)
-#define fSTOREMMVQ(EA, SRC, MASK) \
-    fSTOREMMVQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
 #endif
 #ifdef QEMU_GENERATE
 #define fSTOREMMVNQ(EA, SRC, MASK) \
     gen_vreg_masked_store(ctx, EA, SRC##_off, MASK##_off, insn->slot, true)
-#else
-#define fSTOREMMVNQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
-    do { \
-        MMVector maskvec; \
-        int i; \
-        for (i = 0; i < fVECSIZE(); i++) { \
-            maskvec.ub[i] = fGETQBIT(MASK, i); \
-        } \
-        fV_AL_CHECK(EA, ALIGNMENT - 1); \
-        mem_store_vector(env, EA & ~(ALIGNMENT - 1), slot, LEN, \
-                         &SRC.ub[0], &maskvec.ub[0], true); \
-    } while (0)
-#define fSTOREMMVNQ(EA, SRC, MASK) \
-    fSTOREMMVNQ_AL(EA, fVECSIZE(), fVECSIZE(), SRC, MASK)
 #endif
 #ifdef QEMU_GENERATE
 #define fSTOREMMVU(EA, SRC) \
     gen_vreg_store(ctx, EA, SRC##_off, insn->slot, false)
-#else
-#define fSTOREMMVU_AL(EA, ALIGNMENT, LEN, SRC) \
-    do { \
-        uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
-        uint32_t size2; \
-        if (size1 > LEN) { \
-            size1 = LEN; \
-        } \
-        size2 = LEN - size1; \
-        mem_store_vector(env, EA + size1, 1, size2, \
-                         &SRC.ub[size1], NULL, false); \
-        mem_store_vector(env, EA, 0, size1, &SRC.ub[0], NULL, false); \
-    } while (0)
-#define fSTOREMMVU(EA, SRC) \
-    do { \
-        if ((EA & (fVECSIZE() - 1)) == 0) { \
-            fSTOREMMV_AL(EA, fVECSIZE(), fVECSIZE(), SRC); \
-        } else { \
-            fSTOREMMVU_AL(EA, fVECSIZE(), fVECSIZE(), SRC); \
-        } \
-    } while (0)
 #endif
-#define fSTOREMMVQU_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
-    do { \
-        uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
-        uint32_t size2; \
-        MMVector maskvec; \
-        int i; \
-        for (i = 0; i < fVECSIZE(); i++) { \
-            maskvec.ub[i] = fGETQBIT(MASK, i); \
-        } \
-        if (size1 > LEN) { \
-            size1 = LEN; \
-        } \
-        size2 = LEN - size1; \
-        mem_store_vector(env, EA + size1, 1, size2, \
-                         &SRC.ub[size1], &maskvec.ub[size1], false); \
-        mem_store_vector(env, EA, size1, &SRC.ub[0], &maskvec.ub[0], false); \
-    } while (0)
-#define fSTOREMMVNQU_AL(EA, ALIGNMENT, LEN, SRC, MASK) \
-    do { \
-        uint32_t size1 = ALIGNMENT - ((EA) & (ALIGNMENT - 1)); \
-        uint32_t size2; \
-        MMVector maskvec; \
-        int i; \
-        for (i = 0; i < fVECSIZE(); i++) { \
-            maskvec.ub[i] = fGETQBIT(MASK, i); \
-        } \
-        if (size1 > LEN) { \
-            size1 = LEN; \
-        } \
-        size2 = LEN - size1; \
-        mem_store_vector(env, EA + size1, 1, size2, \
-                         &SRC.ub[size1], &maskvec.ub[size1], true); \
-        mem_store_vector(env, EA, 0, size1, &SRC.ub[0], \
-                         &maskvec.ub[0], true); \
-    } while (0)
 #define fVFOREACH(WIDTH, VAR) for (VAR = 0; VAR < fVELEM(WIDTH); VAR++)
 #define fVARRAY_ELEMENT_ACCESS(ARRAY, TYPE, INDEX) \
     ARRAY.v[(INDEX) / (fVECSIZE() / (sizeof(ARRAY.TYPE[0])))].TYPE[(INDEX) % \
