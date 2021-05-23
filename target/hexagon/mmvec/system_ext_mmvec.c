@@ -20,36 +20,18 @@
 #include "cpu.h"
 #include "mmvec/system_ext_mmvec.h"
 
-static bool check_gather_store(CPUHexagonState *env)
-{
-    /* First check to see if temp vreg has been updated */
-    bool check  = env->gather_issued;
-    check &= env->is_gather_store_insn;
-
-    /* In case we don't have store, suppress gather */
-    if (!check) {
-        env->gather_issued = false;
-        env->vtcm_pending = false;   /* Suppress any gather writes to memory */
-    }
-    return check;
-}
-
 void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
                       int slot, uint8_t *data)
 {
     size_t size = sizeof(MMVector);
 
-    /* Check if the gather was cancelled */
-    int is_gather_store = check_gather_store(env);
-    if (is_gather_store) {
-        /*
-         * If it's a gather store update store data from temporary register
-         * and clear flag
-         */
-        memcpy(data, &env->tmp_VRegs[0].ub[0], size);
-        env->VRegs_updated_tmp = 0;
-        env->gather_issued = false;
-    }
+    /*
+     * If it's a gather store update store data from temporary register
+     * and clear flag
+     */
+    memcpy(data, &env->tmp_VRegs[0].ub[0], size);
+    env->VRegs_updated_tmp = 0;
+    env->gather_issued = false;
 
     env->vstore_pending[slot] = 1;
     env->vstore[slot].va   = vaddr;
@@ -57,11 +39,7 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
     memcpy(&env->vstore[slot].data.ub[0], data, size);
 
     /* On a gather store, overwrite the store mask to emulate dropped gathers */
-    if (is_gather_store) {
-        memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
-    } else {
-        memset(&env->vstore[slot].mask.ub[0], -1, size);
-    }
+    memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
 }
 
 void mem_store_vector(CPUHexagonState *env, target_ulong vaddr, int slot,
@@ -71,15 +49,9 @@ void mem_store_vector(CPUHexagonState *env, target_ulong vaddr, int slot,
         return;
     }
 
-    int is_gather_store = check_gather_store(env);
-    if (is_gather_store) {
-        /*
-         * If it's a gather store update store data from temporary register
-         * And clear flag
-         */
-        memcpy(data, &env->tmp_VRegs[0].ub[0], size);
-        env->VRegs_updated_tmp = 0;
-        env->gather_issued = false;
+    if (env->is_gather_store_insn) {
+        mem_gather_store(env, vaddr, slot, data);
+        return;
     }
 
     env->vstore_pending[slot] = 1;
@@ -94,11 +66,6 @@ void mem_store_vector(CPUHexagonState *env, target_ulong vaddr, int slot,
         }
     } else {
         memcpy(&env->vstore[slot].mask.ub[0], mask, size);
-    }
-
-    /* On a gather store, overwrite the store mask to emulate dropped gathers */
-    if (is_gather_store) {
-        memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
     }
 }
 
