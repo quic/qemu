@@ -1114,8 +1114,15 @@ uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
 }
 uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 {
-    uint32_t low, high;
-    if (reg == HEX_REG_PKTCNTLO) {
+    uint32_t low = 0, high = 0;
+    if (reg == HEX_REG_UPCYCLELO) {
+        target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+        if (GET_SSR_FIELD(SSR_CE, ssr)) {
+          low = ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO);
+          high = ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI);
+        }
+        return low | (uint64_t)high << 32;
+    } else if (reg == HEX_REG_PKTCNTLO) {
         low = ARCH_GET_THREAD_REG(env, HEX_REG_QEMU_PKT_CNT);
         high = 0;
         ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTLO, low);

@@ -473,6 +473,10 @@
             tcg_gen_concat_i32_i64(tmp, p3_0, \
                                         hex_gpr[(NUM) + HEX_REG_SA0 + 1]); \
             tcg_temp_free(p3_0); \
+        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UPCYCLELO) { \
+            TCGv_i32 num = tcg_const_i32(HEX_REG_UPCYCLELO); \
+            gen_helper_creg_read_pair(tmp, cpu_env, num); \
+            tcg_temp_free_i32(num); \
         } else if ((NUM) + HEX_REG_SA0 == HEX_REG_PKTCNTLO) { \
             TCGv_i32 num = tcg_const_i32(HEX_REG_PKTCNTLO); \
             gen_helper_creg_read_pair(tmp, cpu_env, num); \

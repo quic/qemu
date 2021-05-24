@@ -987,7 +987,7 @@ supported_privs = [
     'Y2_getimask', 'Y2_setimask',
     'Y4_nmi',
 
-    'Y6_dmcfgrd', 'Y6_dmcfgwr',
+    'Y6_dmcfgrd', 'Y6_dmcfgwr', 'Y6_dmsyncht', 'Y6_dmtlbsynch'
 ]
 
 # Sanity check for typos:
