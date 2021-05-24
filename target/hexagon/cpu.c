@@ -30,8 +30,10 @@
 #if !defined(CONFIG_USER_ONLY)
 #include "macros.h"
 #include "hex_mmu.h"
+#include "hmx/ext_hmx.h"
 #include "include/hw/hexagon/hexagon.h"
 #include "hw/intc/l2vic.h"
+#include "sysemu/cpus.h"
 #endif
 
 static void hexagon_common_cpu_init(Object *obj)
@@ -394,7 +396,27 @@ static void hexagon_cpu_reset(DeviceState *dev)
 
 #ifndef CONFIG_USER_ONLY
     CPUHexagonState *env = &cpu->env;
+
     SET_SSR_FIELD(env, SSR_EX, 1);
+    SET_SSR_FIELD(env, SSR_CAUSE, 0);
+
+    clear_wait_mode(env);
+    cs->halted = 1;
+
+    env->tlb_lock_state = HEX_LOCK_UNLOCKED;
+    env->k0_lock_state = HEX_LOCK_UNLOCKED;
+
+    target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
+#if HEX_DEBUG
+    target_ulong reset_inst;
+    DEBUG_MEMORY_READ_ENV(env, evb, 4, &reset_inst);
+    HEX_DEBUG_LOG("\ttid = %u, evb = 0x%x, reset = 0x%x, new PC = 0x%x\n",
+            env->threadId, evb, reset_inst, evb);
+#endif
+    //fCHECK_PCALIGN(addr);
+    env->branch_taken = 1;
+    env->next_PC = evb;
+    ARCH_SET_THREAD_REG(env, HEX_REG_PC, env->next_PC);
 #endif
 }
 
@@ -403,6 +425,8 @@ static void hexagon_cpu_disas_set_info(CPUState *s, disassemble_info *info)
     info->print_insn = print_insn_hexagon;
 }
 
+dma_t *dma_adapter_init(processor_t *proc, int dmanum);
+extern struct ProcessorState ProcessorStateV68;
 static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 {
     CPUState *cs = CPU(dev);
@@ -416,7 +440,54 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     }
 
     qemu_init_vcpu(cs);
+
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+    env->threadId = cs->cpu_index;
+    env->processor_ptr = &ProcessorStateV68;
+    env->processor_ptr->thread[env->threadId] = env;
+    env->processor_ptr->dma[env->threadId] = dma_adapter_init(
+        env->processor_ptr,
+        env->threadId);
+    env->system_ptr = NULL;
+
+    if (cs->cpu_index == 0) {
+        env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
+        env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
+        hex_mmu_init(env);
+    }
+    else {
+        CPUState *cpu0_s = NULL;
+        CPUHexagonState *env0 = NULL;
+        CPU_FOREACH (cpu0_s) {
+            assert(cpu0_s->cpu_index == 0);
+            env0 = &(HEXAGON_CPU(cpu0_s)->env);
+
+            break;
+        }
+        env->g_sreg = env0->g_sreg;
+        env->hex_tlb = env0->hex_tlb;
+        env->cmdline = env0->cmdline;
+        env->lib_search_dir = env0->lib_search_dir;
+        env->processor_ptr->shared_extptr = env0->processor_ptr->shared_extptr;
+
+        dma_t *dma_ptr = env->processor_ptr->dma[env->threadId];
+        udma_ctx_t *udma_ctx = (udma_ctx_t *)dma_ptr->udma_ctx;
+
+        dma_t *dma0_ptr = env->processor_ptr->dma[env0->threadId];
+        udma_ctx_t *udma0_ctx = (udma_ctx_t *)dma0_ptr->udma_ctx;
+
+        /* init dm2 of new thread to env_0 thread */
+        udma_ctx->dm2.val = udma0_ctx->dm2.val;
+
+        clear_wait_mode(env);
+    }
+
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
     cpu_reset(cs);
+    if (cs->cpu_index == 0) {
+        cs->halted = 0;
+    }
 
     mcc->parent_realize(dev, errp);
 }
@@ -428,9 +499,21 @@ uint32_t hexagon_get_interrupts(CPUHexagonState *env)
     return GET_FIELD(IPENDAD_IPEND, ipendad);
 }
 
+bool hexagon_thread_is_enabled(CPUHexagonState *env) {
+    target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
+    bool E_bit = thread_enabled_mask & (0x1 << env->threadId);
+
+    return E_bit;
+}
+
 static bool hexagon_cpu_has_work(CPUState *cs)
 {
-    return cs->interrupt_request & CPU_INTERRUPT_HARD;
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+
+    return hexagon_thread_is_enabled(env) &&
+        (cs->interrupt_request & CPU_INTERRUPT_HARD);
 }
 
 static void hexagon_cpu_set_irq(void *opaque, int irq, int level)

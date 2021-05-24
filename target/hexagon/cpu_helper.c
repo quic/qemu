@@ -302,97 +302,35 @@ void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
     }
 }
 
+static void do_start_thread(CPUState *cs, run_on_cpu_data tbd)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+    cpu_reset(cs);
+
+    uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
+    thread_enabled_mask |= 0x1 << env->threadId;
+    SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_E,thread_enabled_mask);
+
+    cs->halted = 0;
+    clear_wait_mode(env);
+    cs->exception_index = HEX_EVENT_NONE;
+    cpu_resume(cs);
+}
+
 extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
 void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
-
 {
-    int htid;
-
-    for (htid = 0 ; htid < THREADS_MAX ; ++htid) {
-        if (!(mask & (0x1 << htid))) {
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *env = &cpu->env;
+        if (!(mask & (0x1 << env->threadId))) {
             continue;
         }
 
-        HexagonCPU *cpu;
-        CPUHexagonState *env;
-        CPUState *cs = env_cpu(current_env);
-        bool found = false;
-        CPU_FOREACH(cs) {
-            cpu = HEXAGON_CPU(cs);
-            env = &cpu->env;
-            if (env->threadId == htid) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            MachineState *machine = MACHINE(qdev_get_machine());
-            cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
-            env = &cpu->env;
-            HEX_DEBUG_LOG("creating new cpu %p, tid %d, env %p\n",
-                cpu, htid, env);
-            env->system_ptr = 0;
-            env->threadId = htid;
-            env->cmdline = current_env->cmdline;
-            env->lib_search_dir = current_env->lib_search_dir;
-            env->hex_tlb = current_env->hex_tlb;
-            env->processor_ptr = current_env->processor_ptr;
-            env->processor_ptr->thread[env->threadId] = env;
-            env->g_sreg = current_env->g_sreg;
-
-            /* get dm2 from currently running thread */
-            dma_t *dma_ptr = current_env->processor_ptr->dma[current_env->threadId];
-            udma_ctx_t *udma_ctx = (udma_ctx_t *)dma_ptr->udma_ctx;
-            uint32_t dm2_val = udma_ctx->dm2.val;
-
-            /* init dma for new cpu */
-            env->processor_ptr->dma[env->threadId] = dma_adapter_init(env->processor_ptr, env->threadId);
-            dma_ptr = env->processor_ptr->dma[current_env->threadId];
-            udma_ctx = (udma_ctx_t *)dma_ptr->udma_ctx;
-            udma_ctx->dm2.val = dm2_val;  /* init dm2 of new thread to current thread */
-
-            ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, htid);
-            HEX_DEBUG_LOG("%s: mask 0x%x, cpu %p, g_sreg at %p\n",
-                __FUNCTION__, mask, cpu, env->g_sreg);
-        } else {
-            HEX_DEBUG_LOG("%s: cpu %p/%d found\n",
-                __FUNCTION__, cpu, env->threadId);
-        }
-
-        const uint32_t old = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-        ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR, 0);
-        SET_SYSTEM_FIELD(env, HEX_SREG_SSR, SSR_EX, 1);
-        SET_SYSTEM_FIELD(env, HEX_SREG_SSR, SSR_CAUSE, 0);
-        const uint32_t new = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-        if (found) {
-            hexagon_modify_ssr(env, new, old);
-        }
-        env->tlb_lock_state = HEX_LOCK_UNLOCKED;
-        env->k0_lock_state = HEX_LOCK_UNLOCKED;
-
-        target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-        #if HEX_DEBUG
-        target_ulong reset_inst;
-        DEBUG_MEMORY_READ_ENV(env, evb, 4, &reset_inst);
-        HEX_DEBUG_LOG("\ttid = %u, evb = 0x%x, reset = 0x%x, new PC = 0x%x\n",
-            env->threadId, evb, reset_inst, evb);
-        #endif
-
-        //fCHECK_PCALIGN(addr);
-        env->branch_taken = 1;
-        env->next_PC = evb;
-
-        ARCH_SET_THREAD_REG(env, HEX_REG_PC, env->next_PC);
-        uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-        uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
-        thread_enabled_mask |= 0x1 << env->threadId;
-        SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_E,thread_enabled_mask);
-
-        cs = env_cpu(env);
-        cs->exception_index = HEX_EVENT_NONE;
-        if (found) {
-            cpu_resume(cs);
-        }
+        async_safe_run_on_cpu(cs, do_start_thread, RUN_ON_CPU_NULL);
     }
 }
 
@@ -541,19 +479,13 @@ const char *get_exe_mode_str(CPUHexagonState *env)
 int get_exe_mode(CPUHexagonState *env)
 {
     target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-#if 1
     uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
     bool E_bit = thread_enabled_mask & (0x1 << env->threadId);
     uint32_t thread_wait_mask = GET_FIELD(MODECTL_W, modectl);
     bool W_bit = thread_wait_mask & (0x1 << env->threadId);
-#else
-    bool E_bit = (modectl >> env->threadId) & 0x1;
-    bool W_bit = (modectl >> (env->threadId + 16)) & 0x1;
-#endif
     target_ulong isdbst = ARCH_GET_SYSTEM_REG(env, HEX_SREG_ISDBST);
     uint32_t debugmode = GET_FIELD(ISDBST_DEBUGMODE, isdbst);
     bool D_bit = debugmode & (0x1 << env->threadId);
-//    bool D_bit = (isdbst >> (env->threadId + 8)) & 0x1;
 
     /* Figure 4-2 */
     if (!D_bit && !W_bit && !E_bit) {

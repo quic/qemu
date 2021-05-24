@@ -172,25 +172,49 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     env->gpr[HEX_REG_PC] = pentry;
 }
 
-extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
 static void hexagon_common_init(MachineState *machine, Rev_t rev)
 {
-    machine->enable_graphics = 0;
-
     DeviceState *dev;
+    int i;
 
-    HexagonCPU *cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
-    CPUHexagonState *env = &cpu->env;
-    HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
-        __FUNCTION__, cpu, env);
+    machine->smp.cpus = THREADS_MAX;
+    memset(&hexagon_binfo, 0, sizeof(hexagon_binfo));
+    if (machine->kernel_filename) {
+        hexagon_binfo.ram_size = machine->ram_size;
+        hexagon_binfo.kernel_filename = machine->kernel_filename;
+    }
 
-    env->processor_ptr = (processor_t *)&ProcessorStateV68;
-    env->processor_ptr->thread[env->threadId = 0] = env;
-    //env->processor_ptr = g_malloc(sizeof(Processor));
-//    env->processor_ptr->runnable_threads_max = 4;
-//    env->processor_ptr->thread_system_mask = 0xf;
-    env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
-    hex_mmu_init(env);
+    HexagonCPU *cpu_0 = NULL;
+    CPUHexagonState *env_0 = NULL;
+    for (i = 0; i < machine->smp.cpus; i++) {
+        HexagonCPU *cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
+        CPUHexagonState *env = &cpu->env;
+
+        HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
+                __FUNCTION__, cpu, env);
+
+        if (i == 0) {
+            cpu_0 = cpu;
+            env_0 = env;
+
+            GString *argv = g_string_new(machine->kernel_filename);
+            g_string_append(argv, " ");
+            g_string_append(argv, machine->kernel_cmdline);
+            env->cmdline = g_string_free(argv, false);
+            env->dir_list = NULL;
+
+            env->g_sreg[HEX_SREG_EVB] = 0x0;
+            env->g_sreg[HEX_SREG_CFGBASE] =
+                HEXAGON_CFG_ADDR_BASE(cfgExtensions->cfgbase);
+            env->g_sreg[HEX_SREG_REV] = rev;
+            env->g_sreg[HEX_SREG_MODECTL] = 0x1;
+        }
+
+    }
+
+    HexagonCPU *cpu = cpu_0;
+
+    machine->enable_graphics = 0;
 
     MemoryRegion *address_space = get_system_memory();
 
@@ -251,8 +275,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     hexagon_config_table *config_table = cfgTable;
 
-    machine->smp.max_cpus = THREADS_MAX;
-
     config_table->l2tcm_base = HEXAGON_CFG_ADDR_BASE(cfgTable->l2tcm_base);
     config_table->subsystem_base = HEXAGON_CFG_ADDR_BASE(cfgExtensions->csr_base);
     config_table->vtcm_base = HEXAGON_CFG_ADDR_BASE(cfgTable->vtcm_base);
@@ -263,28 +285,9 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
     rom_add_blob_fixed_as("config_table.rom", config_table,
         sizeof(*config_table), cfgExtensions->cfgbase, &address_space_memory);
 
-    hexagon_binfo.ram_size = machine->ram_size;
-    hexagon_binfo.kernel_filename = machine->kernel_filename;
-
-    GString *argv = g_string_new(machine->kernel_filename);
-    g_string_append(argv, " ");
-    g_string_append(argv, machine->kernel_cmdline);
-    env->cmdline = g_string_free(argv, false);
-    env->dir_list = NULL;
-
     if (machine->kernel_filename) {
-        hexagon_load_kernel(env);
+        hexagon_load_kernel(env_0);
     }
-
-    env->g_sreg[HEX_SREG_EVB] = 0x0;
-    env->g_sreg[HEX_SREG_CFGBASE] =
-                                 HEXAGON_CFG_ADDR_BASE(cfgExtensions->cfgbase);
-    env->g_sreg[HEX_SREG_REV] = rev;
-    env->g_sreg[HEX_SREG_MODECTL] = 0x1;
-
-    env->processor_ptr->dma[env->threadId] =
-                          dma_adapter_init(env->processor_ptr, env->threadId);
-    env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
 }
 
 void hexagon_read_timer(uint32_t *low, uint32_t *high)

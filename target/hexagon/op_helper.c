@@ -1421,13 +1421,7 @@ void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
  */
 void HELPER(inc_gcycle_xt)(CPUHexagonState *env)
 {
-    uint32_t num_threads = 0;
-    CPUState *cs;
-    CPU_FOREACH(cs) {
-        if (!cpu_is_stopped(cs)) {
-            num_threads++;
-        }
-    }
+    uint32_t num_threads = HELPER(get_ready_count)(env);
     if (1 <= num_threads && num_threads <= 6) {
         env->g_sreg[HEX_SREG_GCYCLE_1T + num_threads - 1]++;
     }

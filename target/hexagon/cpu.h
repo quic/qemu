@@ -515,13 +515,13 @@ struct CPUHexagonState {
     target_ulong cache_tags[CACHE_TAGS_MAX];
     unsigned int timing_on;
 
-    systemstate_t systemstate;
-    systemstate_t *system_ptr;
     insn_t insn_env;
     size8u_t pktid;
+#ifndef CONFIG_USER_ONLY
+    systemstate_t systemstate;
+    systemstate_t *system_ptr;
     unsigned int threadId;
     processor_t *processor_ptr;
-#ifndef CONFIG_USER_ONLY
     const char *cmdline;
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;
@@ -618,6 +618,11 @@ bool hexagon_thread_is_interruptible(CPUHexagonState *thread_env, uint32_t int_n
  */
 bool hexagon_thread_ints_enabled(CPUHexagonState *thread_env);
 
+/*
+ * @return true if the @a thread_env hardware thread is
+ * not stopped.
+ */
+bool hexagon_thread_is_enabled(CPUHexagonState *thread_env);
 /*
  * @return true if interrupt number @a int_num is disabled.
  */
