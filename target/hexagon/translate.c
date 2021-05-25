@@ -628,7 +628,7 @@ static void update_exec_counters(DisasContext *ctx, Packet *pkt)
             !GET_ATTRIB(pkt->insn[i].opcode, A_IT_NOP)) {
             num_real_insns++;
         }
-        if (pkt->insn[i].hvx_resource) {
+        if (GET_ATTRIB(pkt->insn[i].opcode, A_CVI)) {
             num_hvx_insns++;
         }
     }

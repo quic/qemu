@@ -42,7 +42,6 @@ struct Instruction {
     uint32_t slot:3;
     uint32_t which_extended:1;    /* If has an extender, which immediate */
     uint32_t new_value_producer_slot:4;
-    uint32_t hvx_resource:8;
 
     bool part1;              /*
                               * cmp-jumps are split into two insns.
@@ -69,7 +68,6 @@ struct Packet {
     bool pkt_has_store_s1;
 
     bool pkt_has_hvx;
-    bool pkt_has_extension;
     bool pkt_has_vhist;
 
     Insn insn[INSTRUCTIONS_MAX];

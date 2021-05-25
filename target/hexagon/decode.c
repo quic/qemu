@@ -929,10 +929,10 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         return 0;
     }
     pkt->encod_pkt_size_in_bytes = words_read * 4;
-    pkt->pkt_has_extension = false;
+    pkt->pkt_has_hvx = false;
     for (i = 0; i < num_insns; i++) {
-        pkt->pkt_has_extension |=
-            GET_ATTRIB(pkt->insn[i].opcode, A_EXTENSION);
+        pkt->pkt_has_hvx |=
+            GET_ATTRIB(pkt->insn[i].opcode, A_CVI);
     }
 
     /*
@@ -964,8 +964,8 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     decode_set_slot_number(pkt);
     decode_fill_newvalue_regno(pkt);
 
-    if (pkt->pkt_has_extension) {
-        mmvec_ext_decode_checks(pkt);
+    if (pkt->pkt_has_hvx) {
+        mmvec_ext_decode_checks(pkt, disas_only);
     }
 
     if (!disas_only) {
