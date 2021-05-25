@@ -38,7 +38,7 @@ TESTS += \
 	vid_reg \
 	int_range \
 	$()
-
+ 
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 
 LDFLAGS+=$(ISDB_FLAGS)

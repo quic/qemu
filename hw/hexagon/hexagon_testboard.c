@@ -194,6 +194,7 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     MemoryRegion *address_space = get_system_memory();
 
+    cfgTable->raw[HEXAGON_CFGSPACE_ENTRIES-1] = 0x12341234;
     MemoryRegion *config_table_rom = g_new(MemoryRegion, 1);
     memory_region_init_rom(config_table_rom, NULL, "config_table.rom",
                            sizeof(*cfgTable), &error_fatal);

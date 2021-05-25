@@ -842,23 +842,30 @@ void test_multi_tlb(void)
     tlbw(entry, 1);
     tlbw(entry, 2);
 }
+static inline uint32_t *getevb()
+{
+    uint32_t reg;
+    asm volatile ("%0=evb;"
+		  :"=r"(reg));
+    return (uint32_t *)reg;
+}
 
 int main()
 {
     /*
      * Install our own privelege and nmi exception handlers
      * The normal behavior is to coredump
-     * NOTE: Using the hard-coded addresses is a brutal hack,
-     * but the symbol names aren't exported from the standalone
-     * runtime.
+     * Read and decode the jump displacemnts from evb
+     * ASSUME negative displacement which is the standard.
      */
-#if (__clang_major__ == 10)
-    memcpy((void *)0x0ffc, goto_my_event_handler, 12);
-    memcpy((void *)0x0ff0, goto_my_event_handler, 12);
-#else
-    memcpy((void *)0x1000, goto_my_event_handler, 12);
-    memcpy((void *)0x0ff4, goto_my_event_handler, 12);
-#endif
+    uint32_t *evb_nmi = getevb()+1;
+    uint32_t *evb_err = getevb()+2;
+    uint32_t nmi_distance = -(0xfe000000|*evb_nmi)<<1;
+    uint32_t err_distance = -(0xfe000000|*evb_err)<<1;
+    uint32_t err_handler = (uint32_t)evb_err-err_distance;
+    uint32_t nmi_handler = (uint32_t)evb_nmi-nmi_distance;
+    memcpy((void *)nmi_handler, goto_my_event_handler, 12);
+    memcpy((void *)err_handler, goto_my_event_handler, 12);
 
     puts("Hexagon MMU test");
 

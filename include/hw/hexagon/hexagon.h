@@ -78,12 +78,14 @@ typedef enum {
 #define HEXAGON_DEFAULT_L1D_SIZE_KB (10)
 #define HEXAGON_DEFAULT_L1I_SIZE_KB (20)
 #define HEXAGON_DEFAULT_L1D_WRITE_POLICY (HEXAGON_L1_WRITE_BACK)
+#define HEXAGON_CFGSPACE_ENTRIES (128)
 
 /* TODO: make this default per-arch?
  */
 #define HEXAGON_HVX_DEFAULT_VEC_LOG_LEN_BYTES (7)
 
-typedef struct {
+typedef  union {
+  struct {
     uint32_t l2tcm_base; /* Base address of L2TCM space */
     uint32_t reserved; /* Reserved */
     uint32_t subsystem_base; /* Base address of subsystem space */
@@ -134,6 +136,8 @@ typedef struct {
     uint32_t reserved5;
     uint32_t hmx_cvt_mpy_size; /* FIXME: undocumented Size of the fractional multiplier in the HMX Covert */
     uint32_t axi3_lowaddr; /* FIXME: undocumented */
+  };
+  uint32_t raw[HEXAGON_CFGSPACE_ENTRIES];
 } hexagon_config_table;
 
 typedef struct {

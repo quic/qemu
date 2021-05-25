@@ -168,16 +168,26 @@ void goto_my_event_handler(void)
                  : : : "r0");
 }
 
+static inline uint32_t *getevb()
+{
+    uint32_t reg;
+    asm volatile ("%0=evb;"
+		  :"=r"(reg));
+    return (uint32_t *)reg;
+}
+
 int main()
 {
     /*
-     * Install our own exception handlers
+     * Install our own privelege exception handler.
      * The normal behavior is to coredump
-     * NOTE: Using the hard-coded addresses is a brutal hack,
-     * but the symbol names aren't exported from the standalone
-     * runtime.
+     * Read and decode the jump displacemnts from evb
+     * ASSUME negative displacement which is the standard.
      */
-    memcpy((void *)0x1000, goto_my_event_handler, 12);
+    uint32_t *evb_err = getevb()+2;
+    uint32_t err_distance = -(0xfe000000|*evb_err)<<1;
+    uint32_t err_handler = (uint32_t)evb_err-err_distance;
+    memcpy((void *)err_handler, goto_my_event_handler, 12);
 
     puts("Hexagon invalid opcode test");
 
