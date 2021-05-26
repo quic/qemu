@@ -400,6 +400,8 @@ static void fastl2vic_write(void *opaque, hwaddr offset,
         }
         return;
     }
+    qemu_log_mask(LOG_GUEST_ERROR, "%s: invalid write offset 0x%08x\n",
+        __func__, (unsigned int)offset);
     /* Address zero is the only legal spot to write */
     g_assert(0);
 }
@@ -541,6 +543,26 @@ static void v73na_1024_config_init(MachineState *machine)
     hexagon_common_init(machine, v73_rev);
 }
 
+static void v73na_1024_linux_config_init(MachineState *machine)
+{
+    syscfg_is_linux = true;
+
+    v73na_1024_config_init(machine);
+}
+
+static void v73na_1024_linux_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon Linux V73NA_1024";
+    mc->init = v73na_1024_linux_config_init;
+    mc->is_default = 0;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
+    mc->default_cpus = mc->max_cpus = 6;
+    mc->default_ram_size = 4 * GiB;
+}
+
 static void v73na_1024_init(ObjectClass *oc, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
@@ -571,6 +593,10 @@ static const TypeInfo hexagon_machine_types[] = {
         .name = MACHINE_TYPE_NAME("V73NA_1024"),
         .parent = TYPE_MACHINE,
         .class_init = v73na_1024_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("V73_Linux"),
+        .parent = TYPE_MACHINE,
+        .class_init = v73na_1024_linux_init,
     }, {
         .name = MACHINE_TYPE_NAME("V66_Linux"),
         .parent = TYPE_MACHINE,
