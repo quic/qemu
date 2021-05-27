@@ -82,11 +82,11 @@ static inline void ctx_log_vreg_write(DisasContext *ctx,
                                       int rnum, VRegWriteType type,
                                       bool is_predicated)
 {
-    ctx->vreg_log[ctx->vreg_log_idx] = rnum;
-    ctx->vreg_is_predicated[ctx->vreg_log_idx] = is_predicated;
-    ctx->vreg_log_idx++;
-
     if (type != EXT_TMP) {
+        ctx->vreg_log[ctx->vreg_log_idx] = rnum;
+        ctx->vreg_is_predicated[ctx->vreg_log_idx] = is_predicated;
+        ctx->vreg_log_idx++;
+
         set_bit(rnum, ctx->vregs_updated);
     }
     if (type == EXT_NEW) {
