@@ -67,8 +67,8 @@ typedef volatile unsigned long long vu64;
 #define L2VIC_INT_STATUS(n) ((vu32 *)((L2VIC_BASE) + 0x380 + 4 * (n / 32)))
 #define L2VIC_INT_PENDING(n) ((vu32 *)((L2VIC_BASE) + 0x500 + 4 * (n / 32)))
 
-#define ticks_per_qtimer1 ((QTMR_FREQ) / 70000)
-#define ticks_per_qtimer2 ((QTMR_FREQ) / 7000)
+#define ticks_per_qtimer1 ((QTMR_FREQ) / 700)
+#define ticks_per_qtimer2 ((QTMR_FREQ) / 70)
 
 static volatile int qtimer1_cnt = 0, qtimer2_cnt = 0, loop = 0,
                     thread_cnt[4] = { 0, 0, 0, 0 };
