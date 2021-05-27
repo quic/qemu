@@ -386,6 +386,17 @@ void restore_state_to_opc(CPUHexagonState *env, TranslationBlock *tb,
     env->gpr[HEX_REG_PC] = data[0];
 }
 
+#if !defined(CONFIG_USER_ONLY)
+void hexagon_cpu_soft_reset(CPUHexagonState *env)
+{
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR, 0);
+    hexagon_ssr_set_cause(env, 0);
+
+    target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
+    ARCH_SET_THREAD_REG(env, HEX_REG_PC, evb);
+}
+#endif
+
 static void hexagon_cpu_reset(DeviceState *dev)
 {
     CPUState *cs = CPU(dev);
@@ -397,26 +408,13 @@ static void hexagon_cpu_reset(DeviceState *dev)
 #ifndef CONFIG_USER_ONLY
     CPUHexagonState *env = &cpu->env;
 
-    SET_SSR_FIELD(env, SSR_EX, 1);
-    SET_SSR_FIELD(env, SSR_CAUSE, 0);
-
     clear_wait_mode(env);
     cs->halted = 1;
 
     env->tlb_lock_state = HEX_LOCK_UNLOCKED;
     env->k0_lock_state = HEX_LOCK_UNLOCKED;
 
-    target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-#if HEX_DEBUG
-    target_ulong reset_inst;
-    DEBUG_MEMORY_READ_ENV(env, evb, 4, &reset_inst);
-    HEX_DEBUG_LOG("\ttid = %u, evb = 0x%x, reset = 0x%x, new PC = 0x%x\n",
-            env->threadId, evb, reset_inst, evb);
-#endif
-    //fCHECK_PCALIGN(addr);
-    env->branch_taken = 1;
-    env->next_PC = evb;
-    ARCH_SET_THREAD_REG(env, HEX_REG_PC, env->next_PC);
+    hexagon_cpu_soft_reset(env);
 #endif
 }
 

@@ -306,7 +306,8 @@ static void do_start_thread(CPUState *cs, run_on_cpu_data tbd)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
-    cpu_reset(cs);
+
+    hexagon_cpu_soft_reset(env);
 
     uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
@@ -314,7 +315,6 @@ static void do_start_thread(CPUState *cs, run_on_cpu_data tbd)
     SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_E,thread_enabled_mask);
 
     cs->halted = 0;
-    clear_wait_mode(env);
     cs->exception_index = HEX_EVENT_NONE;
     cpu_resume(cs);
 }
@@ -330,7 +330,10 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
             continue;
         }
 
-        async_safe_run_on_cpu(cs, do_start_thread, RUN_ON_CPU_NULL);
+        if (current_env->threadId == env->threadId)
+            run_on_cpu(cs, do_start_thread, RUN_ON_CPU_NULL);
+        else
+            async_safe_run_on_cpu(cs, do_start_thread, RUN_ON_CPU_NULL);
     }
 }
 
