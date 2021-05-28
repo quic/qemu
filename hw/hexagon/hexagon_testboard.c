@@ -515,6 +515,24 @@ static void v68n_1024_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 4 * GiB;
 }
 
+static void v68g_1024_h2_init(MachineState *machine)
+{
+    syscfg_is_linux = true;
+    v68n_1024_config_init(machine);
+}
+
+static void v68g_h2_init(ObjectClass *oc, void *data)
+{
+    v66g_1024_init(oc, data);
+
+    MachineClass *mc = MACHINE_CLASS(oc);
+    mc->init = v68g_1024_h2_init;
+    mc->desc = "Hexagon H2 V68G_1024";
+
+   /* TODO: Remove but, 4 is better tested */
+    mc->default_cpus = mc->max_cpus = 4;
+}
+
 
 static void v69na_1024_config_init(MachineState *machine)
 {
@@ -601,6 +619,10 @@ static const TypeInfo hexagon_machine_types[] = {
         .name = MACHINE_TYPE_NAME("V66_Linux"),
         .parent = TYPE_MACHINE,
         .class_init = v66g_linux_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("V68_H2"),
+        .parent = TYPE_MACHINE,
+        .class_init = v68g_h2_init,
     },
 };
 
