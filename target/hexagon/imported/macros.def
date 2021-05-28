@@ -78,7 +78,7 @@ DEF_MACRO(
 
 /* Bit insert */
 DEF_MACRO(
-	fINSERT_BITS,(REG,WIDTH,OFFSET,INVAL),
+	fINSERT_BITS,
         {
 	   REG = ((REG) & ~(((fCONSTLL(1)<<(WIDTH))-1)<<(OFFSET))) | (((INVAL) & ((fCONSTLL(1)<<(WIDTH))-1)) << (OFFSET));
         },
@@ -353,7 +353,7 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fMUST_IMMEXT,
-	fIMMEXT
+	fIMMEXT,
 	(A_EXTENDABLE,A_MUST_EXTEND)
 )
 
@@ -805,7 +805,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fCAST2_2s, /* macro name */
-	(A), /* params */
 	((size2s_t)(A)),
 	/* optional attributes */
 )
@@ -837,7 +836,6 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fCAST4_8u, /* macro name */
-	(A), /* params */
 	((size8u_t)((size4u_t)(A))),
 	/* optional attributes */
 )
@@ -1130,7 +1128,7 @@ DEF_MACRO(
 
 DEF_MACRO(
 	fEA_BREVR, /* Calculate EA with bit reversed bottom of REGISTER */
-	EA=fbrev
+	EA=fbrev,
 	(A_EA_BREV_REG)
 )
 
@@ -1232,12 +1230,13 @@ DEF_MACRO(
 DEF_MACRO(
 	fPASS,
 	(A),
-	A,
+	A
 )
 
 DEF_MACRO(
 	fRND, /* saturating to 32-bits*/
 	(((A)+1)>>1),
+    /* FIXME */
 )
 
 
@@ -1768,7 +1767,7 @@ DEF_MACRO(fFRAME_SCRAMBLE,
 )
 
 DEF_MACRO(fFRAME_UNSCRAMBLE,
-	fFRAME_SCRAMBLE
+	fFRAME_SCRAMBLE,
 	/* ATTRIBS */
 )
 
@@ -1951,62 +1950,62 @@ DEF_MACRO(fUNDEFINED,
 /* Used for parity, etc........      */
 /*************************************/
 DEF_MACRO(fCOUNTONES_2,
-	count_ones_2
+	count_ones_2,
 	/* nothing */
 )
 
 DEF_MACRO(fCOUNTONES_4,
-	count_ones_4
+	count_ones_4,
 	/* nothing */
 )
 
 DEF_MACRO(fCOUNTONES_8,
-	count_ones_8
+	count_ones_8,
 	/* nothing */
 )
 
 DEF_MACRO(fBREV_8,
-	reverse_bits_8
+	reverse_bits_8,
 	/* nothing */
 )
 
 DEF_MACRO(fBREV_4,
-	reverse_bits_4
+	reverse_bits_4,
 	/* nothing */
 )
 
 DEF_MACRO(fBREV_2,
-	reverse_bits_2
+	reverse_bits_2,
 	/* nothing */
 )
 
 DEF_MACRO(fBREV_1,
-	reverse_bits_1
+	reverse_bits_1,
 	/* nothing */
 )
 
 DEF_MACRO(fCL1_8,
-	count_leading_ones_8
+	count_leading_ones_8,
 	/* nothing */
 )
 
 DEF_MACRO(fCL1_4,
-	count_leading_ones_4
+	count_leading_ones_4,
 	/* nothing */
 )
 
 DEF_MACRO(fCL1_2,
-	count_leading_ones_2
+	count_leading_ones_2,
 	/* nothing */
 )
 
 DEF_MACRO(fCL1_1,
-	count_leading_ones_1
+	count_leading_ones_1,
 	/* nothing */
 )
 
 DEF_MACRO(fCLZ_16,
-	count_leading_zeros_16
+	count_leading_zeros_16,
 	/* nothing */
 )
 
@@ -3063,19 +3062,16 @@ DEF_MACRO(CLEAR_PMU_EVENT_STATE,
 )
 
 DEF_MACRO(fNOP_EXECUTED,
-	,
 	{ sys_nop_executed(thread);	},
 	()
 )
 
 DEF_MACRO(fSETMREG,
-	  (IDX, VAL),
           (thread->Mregs[IDX] = (VAL)),
 	  ()
 )
 
 DEF_MACRO(fGETMREG,
-	  (IDX),
           (thread->Mregs[IDX]),
 	  ()
 )
