@@ -866,9 +866,24 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         break;
 
     case SYS_PROF_ON:
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
+        ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(ENOSYS));
+        qemu_log_mask(LOG_UNIMP, "SYS_PROF_ON is bogus on QEMU!\n");
+        break;
     case SYS_PROF_OFF:
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
+        ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(ENOSYS));
+        qemu_log_mask(LOG_UNIMP, "SYS_PROF_OFF bogus on QEMU!\n");
+        break;
     case SYS_PROF_STATSRESET:
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
+        ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(ENOSYS));
+        qemu_log_mask(LOG_UNIMP, "SYS_PROF_STATSRESET bogus on QEMU!\n");
+        break;
     case SYS_DUMP_PMU_STATS:
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
+        ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(ENOSYS));
+        qemu_log_mask(LOG_UNIMP, "PMU stats are bogus on QEMU!\n");
         break;
 
     default:
