@@ -37,9 +37,6 @@ def is_sysemu_tag(tag):
 
 def tag_skip(tag):
     tag_skips = (
-        'Y6_diag',
-        'Y6_diag0',
-        'Y6_diag1',
     )
     attr_skips = (
         'A_FAKEINSN',

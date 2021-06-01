@@ -119,6 +119,10 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
+    elif (regtype == "G"):
+        raise Exception('fixme guest')
+    elif (regtype == "S"):
+        raise Exception('fixme sys')
     else:
         print("Bad register parse: ", regtype, regid)
 
@@ -182,6 +186,10 @@ def genptr_free(f,regtype,regid,regno):
     elif (regtype == "M"):
         if (regid != "u"):
             print("Bad register parse: ", regtype, regid)
+    elif (regtype == "G"):
+        raise Exception('fixme guest')
+    elif (regtype == "S"):
+        raise Exception('fixme sys')
     else:
         print("Bad register parse: ", regtype, regid)
 
@@ -238,6 +246,10 @@ def genptr_src_read(f,regtype,regid):
     elif (regtype == "M"):
         if (regid != "u"):
             print("Bad register parse: ", regtype, regid)
+    elif (regtype == "G"):
+        raise Exception('fixme guest')
+    elif (regtype == "S"):
+        raise Exception('fixme sys')
     else:
         print("Bad register parse: ", regtype, regid)
 
@@ -331,6 +343,10 @@ def genptr_dst_write(f, tag, regtype, regid):
                              (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
+    elif (regtype == "G"):
+        raise Exception('fixme guest')
+    elif (regtype == "S"):
+        raise Exception('fixme sys')
     else:
         print("Bad register parse: ", regtype, regid)
 

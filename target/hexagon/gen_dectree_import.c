@@ -46,7 +46,7 @@ const char *const opcode_names[] = {
  *         "Insert Word Scalar into Vector",
  *         VxV.uw[0] = RtV;)
  */
-const char *opcode_syntax[XX_LAST_OPCODE] =
+const char *opcode_syntax[XX_LAST_OPCODE] = {
 
 #define Q6INSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
    [TAG] = BEH,

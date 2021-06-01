@@ -29,7 +29,7 @@ def main():
     ##     Generate a list of all the opcodes
     ##
     with open(sys.argv[3], 'w') as f:
-        for tag in hex_common.tags:
+        for tag in hex_common.get_all_tags():
             f.write ( "OPCODE(%s),\n" % (tag) )
 
 if __name__ == "__main__":

@@ -60,7 +60,6 @@ Q6INSN(J2_trap1,"trap1(Rx32,#u8)",ATTRIBS(A_COF,A_NOTE_NOPACKET,A_RESTRICT_NOPAC
 		fVIRTINSN_SPSWAP(uiV,RxV);
 	})
 
-DEF_MAPPING(J2_trap1_noregmap,"trap1(#u8)","trap1(R0,#u8)")
 
 Q6INSN(J2_pause,"pause(#u10)",ATTRIBS(A_COF,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET),
 "Enter low-power state for #u10 cycles",{fPAUSE(uiV);})
@@ -165,9 +164,6 @@ Q6INSN(Y2_tlblock,"tlblock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRI
 Q6INSN(Y2_tlbunlock,"tlbunlock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET), "Unlock TLB",
 {fCLEAR_TLB_LOCK();})
 
-DEF_MAPPING(Y2_k1lock_map,"k1lock","tlblock")
-DEF_MAPPING(Y2_k1unlock_map,"k1unlock","tlbunlock")
-
 Q6INSN(Y2_k0lock,"k0lock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_NOPACKET,A_NO_TIMING_LOG), "Lock K0",
 {fSET_K0_LOCK()})
 
@@ -185,7 +181,6 @@ Q6INSN(Y2_k0unlock,"k2unlock", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_REST
 /* Supervisor Reg Management                */
 /********************************************/
 
-DEF_V4_MAPPING(Y2_crswap_old,"crswap(Rx32,sgp)","crswap(Rx32,sgp0)")
 
 Q6INSN(Y2_crswap0,"crswap(Rx32,sgp0)",ATTRIBS(A_PRIV,A_NOTE_PRIV), "Swap system general pointer 0 with GPR",
 {fHIDE(size4s_t tmp;) tmp = RxV; RxV = READ_SGP0(); WRITE_SGP0(tmp);})
@@ -275,7 +270,6 @@ Q6INSN(Y2_syncht,"syncht",ATTRIBS(A_NOTE_NOPACKET,A_RESTRICT_SLOT0ONLY,A_RESTRIC
 
 
 Q6INSN(Y2_dcfetchbo,"dcfetch(Rs32+#u11:3)",ATTRIBS(A_RESTRICT_PREFERSLOT0,A_DCFETCH,A_RESTRICT_NOSLOT1_STORE),"Data Cache Prefetch",{fEA_RI(RsV,uiV); fDCFETCH(EA);})
-DEF_MAPPING(Y2_dcfetch,  "dcfetch(Rs32)","dcfetch(Rs32+#0)")
 Q6INSN(Y2_dckill,"dckill",ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NOTE_NOPACKET,A_RESTRICT_SLOT0ONLY,A_RESTRICT_NOPACKET,A_CACHEOP,A_DCFLUSHOP),"Data Cache Invalidate",{fDCKILL();})
 
 
@@ -367,7 +361,7 @@ Q6INSN(Y5_l2fetch,"l2fetch(Rs32,Rtt32)",ATTRIBS(A_RESTRICT_SLOT0ONLY,A_RESTRICT_
 })
 
 Q6INSN(Y5_l2locka,"Pd4=l2locka(Rs32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_CACHEOP,A_COPBYADDRESS,A_RESTRICT_SLOT0ONLY,A_RESTRICT_PACKET_AXOK,A_NOTE_AXOK,A_RESTRICT_LATEPRED,A_NOTE_LATEPRED),
-"Lock L2 cache line by address", { fEA_REG(RsV); fL2LOCKA(EA,PdV,PdN); fHIDE(MARK_LATE_PRED_WRITE(PdN)) });
+"Lock L2 cache line by address", { fEA_REG(RsV); fL2LOCKA(EA,PdV,PdN); fHIDE(MARK_LATE_PRED_WRITE(PdN)) })
 
 
 Q6INSN(Y5_l2unlocka,"l2unlocka(Rs32)", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_CACHEOP,A_COPBYADDRESS,A_RESTRICT_SLOT0ONLY,A_RESTRICT_PACKET_AXOK,A_NOTE_AXOK), "UnLock L2 cache line by address", { fEA_REG(RsV); fL2UNLOCKA(EA); })
