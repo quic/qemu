@@ -642,9 +642,9 @@
 #define fWRAP_L4_loadd_locked(GENHLPR, SHORTCODE) \
     SHORTCODE
 #define fWRAP_S2_storew_locked(GENHLPR, SHORTCODE) \
-    do { SHORTCODE; READ_PREG(PdV, PdN); } while (0)
+    SHORTCODE
 #define fWRAP_S4_stored_locked(GENHLPR, SHORTCODE) \
-    do { SHORTCODE; READ_PREG(PdV, PdN); } while (0)
+    SHORTCODE
 
 #define fWRAP_STORE(SHORTCODE) \
     do { \
