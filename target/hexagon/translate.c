@@ -317,17 +317,12 @@ static void gen_reg_writes(DisasContext *ctx)
 
 static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
 {
-    TCGv zero, control_reg, pval;
     int i;
 
     /* Early exit if the log is empty */
     if (!ctx->preg_log_idx) {
         return;
     }
-
-    zero = tcg_const_tl(0);
-    control_reg = tcg_temp_new();
-    pval = tcg_temp_new();
 
     /*
      * Only endloop instructions will conditionally
@@ -336,6 +331,7 @@ static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
      * write of the predicates.
      */
     if (pkt->pkt_has_endloop) {
+        TCGv zero = tcg_const_tl(0);
         TCGv pred_written = tcg_temp_new();
         for (i = 0; i < ctx->preg_log_idx; i++) {
             int pred_num = ctx->preg_log[i];
@@ -346,6 +342,7 @@ static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
                                hex_new_pred_value[pred_num],
                                hex_pred[pred_num]);
         }
+        tcg_temp_free(zero);
         tcg_temp_free(pred_written);
     } else {
         for (i = 0; i < ctx->preg_log_idx; i++) {
@@ -358,10 +355,6 @@ static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
             }
         }
     }
-
-    tcg_temp_free(zero);
-    tcg_temp_free(control_reg);
-    tcg_temp_free(pval);
 }
 
 static void gen_check_store_width(DisasContext *ctx, int slot_num)
