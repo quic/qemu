@@ -670,7 +670,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define fSTORE_LOCKED(NUM, SIZE, EA, SRC, PRED) \
-    gen_store_conditional##SIZE(env, ctx, PdN, PRED, EA, SRC);
+    gen_store_conditional##SIZE(ctx, PRED, EA, SRC);
 #endif
 
 #ifdef QEMU_GENERATE
