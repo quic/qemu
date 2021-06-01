@@ -47,29 +47,27 @@ typedef union {
 
 #define BUFSIZE      16
 #define OUTSIZE      16
+#define MASKMOD      3
 
 MMVector buffer0[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 MMVector buffer1[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
+MMVector mask[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 MMVector output[OUTSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 MMVector expect[OUTSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 
 #define CHECK_OUTPUT_FUNC(FIELD, FIELDSZ) \
-static void check_output_##FIELD(int line, size_t size) \
+static void check_output_##FIELD(int line, size_t num_vectors) \
 { \
-    for (int i = 0; i < size; i++) { \
+    for (int i = 0; i < num_vectors; i++) { \
         for (int j = 0; j < MAX_VEC_SIZE_BYTES / FIELDSZ; j++) { \
             __check(line, output[i].FIELD[j], expect[i].FIELD[j]); \
         } \
     } \
 }
 
-CHECK_OUTPUT_FUNC(ud, 8)
 CHECK_OUTPUT_FUNC(d,  8)
-CHECK_OUTPUT_FUNC(uw, 4)
 CHECK_OUTPUT_FUNC(w,  4)
-CHECK_OUTPUT_FUNC(uh, 2)
 CHECK_OUTPUT_FUNC(h,  2)
-CHECK_OUTPUT_FUNC(ub, 1)
 CHECK_OUTPUT_FUNC(b,  1)
 
 static void init_buffers(void)
@@ -80,6 +78,9 @@ static void init_buffers(void)
         for (int j = 0; j < MAX_VEC_SIZE_BYTES; j++) {
             buffer0[i].b[j] = counter0++;
             buffer1[i].b[j] = counter1++;
+        }
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            mask[i].w[j] = (i + j % MASKMOD == 0) ? 0 : 1;
         }
     }
 }
@@ -116,7 +117,7 @@ static void test_load_tmp(void)
         }
     }
 
-    check_output_uw(__LINE__, BUFSIZE);
+    check_output_w(__LINE__, BUFSIZE);
 }
 
 static void test_load_cur(void)
@@ -138,7 +139,7 @@ static void test_load_cur(void)
         }
     }
 
-    check_output_uw(__LINE__, BUFSIZE);
+    check_output_w(__LINE__, BUFSIZE);
 }
 
 static void test_load_aligned(void)
@@ -146,15 +147,16 @@ static void test_load_aligned(void)
     /* Aligned loads ignore the low bits of the address */
     void *p0 = buffer0;
     void *pout = output;
+    const size_t offset = 13;
 
-    p0 += 13;    /* Create an unaligned address */
+    p0 += offset;    /* Create an unaligned address */
     asm("v2 = vmem(%0 + #0)\n\t"
         "vmem(%1 + #0) = v2\n\t"
         : : "r"(p0), "r"(pout) : "v2", "memory");
 
     expect[0] = buffer0[0];
 
-    check_output_uw(__LINE__, BUFSIZE);
+    check_output_w(__LINE__, 1);
 }
 
 static void test_load_unaligned(void)
@@ -170,8 +172,135 @@ static void test_load_unaligned(void)
 
     memcpy(expect, &buffer0[0].ub[offset], sizeof(MMVector));
 
-    check_output_ub(__LINE__, BUFSIZE);
+    check_output_w(__LINE__, 1);
 }
+
+static void test_store_aligned(void)
+{
+    /* Aligned stores ignore the low bits of the address */
+    void *p0 = buffer0;
+    void *pout = output;
+    const size_t offset = 13;
+
+    pout += offset;    /* Create an unaligned address */
+    asm("v2 = vmem(%0 + #0)\n\t"
+        "vmem(%1 + #0) = v2\n\t"
+        : : "r"(p0), "r"(pout) : "v2", "memory");
+
+    expect[0] = buffer0[0];
+
+    check_output_w(__LINE__, 1);
+}
+
+static void test_store_unaligned(void)
+{
+    void *p0 = buffer0;
+    void *pout = output;
+    const size_t offset = 12;
+
+    pout += offset;    /* Create an unaligned address */
+    asm("v2 = vmem(%0 + #0)\n\t"
+        "vmemu(%1 + #0) = v2\n\t"
+        : : "r"(p0), "r"(pout) : "v2", "memory");
+
+    memcpy(expect, buffer0, 2 * sizeof(MMVector));
+    memcpy(&expect[0].ub[offset], buffer0, sizeof(MMVector));
+
+    check_output_w(__LINE__, 2);
+}
+
+static void test_masked_store(void)
+{
+    void *p0 = buffer0;
+    void *pmask = mask;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(expect));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("r4 = #0\n\t"
+            "v4 = vsplat(r4)\n\t"
+            "v5 = vmem(%0 + #0)\n\t"
+            "q0 = vcmp.eq(v4.w, v5.w)\n\t"
+            "v5 = vmem(%1)\n\t"
+            "if (q0) vmem(%2) = v5\n\t"
+            : : "r"(pmask), "r"(p0), "r"(pout) : "r4", "v4", "v5", "memory");
+        p0 += sizeof(MMVector);
+        pmask += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            if (i + j % MASKMOD == 0) {
+                expect[i].w[j] = buffer0[i].w[j];
+            }
+        }
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
+#define OP1(ASM, EL, IN, OUT) \
+    asm("v2 = vmem(%0 + #0)\n\t" \
+        "v2" #EL " = " #ASM "(v2" #EL ")\n\t" \
+        "vmem(%1 + #0) = v2\n\t" \
+        : : "r"(IN), "r"(OUT) : "v2", "memory")
+
+#define OP2(ASM, EL, IN0, IN1, OUT) \
+    asm("v2 = vmem(%0 + #0)\n\t" \
+        "v3 = vmem(%1 + #0)\n\t" \
+        "v2" #EL " = " #ASM "(v2" #EL ", v3" #EL ")\n\t" \
+        "vmem(%2 + #0) = v2\n\t" \
+        : : "r"(IN0), "r"(IN1), "r"(OUT) : "v2", "v3", "memory")
+
+#define TEST_OP1(NAME, ASM, EL, FIELD, FIELDSZ, OP) \
+static void test_##NAME(void) \
+{ \
+    void *pin = buffer0; \
+    void *pout = output; \
+    for (int i = 0; i < BUFSIZE; i++) { \
+        OP1(ASM, EL, pin, pout); \
+        pin += sizeof(MMVector); \
+        pout += sizeof(MMVector); \
+    } \
+    for (int i = 0; i < BUFSIZE; i++) { \
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / FIELDSZ; j++) { \
+            expect[i].FIELD[j] = OP buffer0[i].FIELD[j]; \
+        } \
+    } \
+    check_output_##FIELD(__LINE__, BUFSIZE); \
+}
+
+#define TEST_OP2(NAME, ASM, EL, FIELD, FIELDSZ, OP) \
+static void test_##NAME(void) \
+{ \
+    void *p0 = buffer0; \
+    void *p1 = buffer1; \
+    void *pout = output; \
+    for (int i = 0; i < BUFSIZE; i++) { \
+        OP2(ASM, EL, p0, p1, pout); \
+        p0 += sizeof(MMVector); \
+        p1 += sizeof(MMVector); \
+        pout += sizeof(MMVector); \
+    } \
+    for (int i = 0; i < BUFSIZE; i++) { \
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / FIELDSZ; j++) { \
+            expect[i].FIELD[j] = buffer0[i].FIELD[j] OP buffer1[i].FIELD[j]; \
+        } \
+    } \
+    check_output_##FIELD(__LINE__, BUFSIZE); \
+}
+
+TEST_OP2(vadd_w, vadd, .w, w, 4, +)
+TEST_OP2(vadd_h, vadd, .h, h, 2, +)
+TEST_OP2(vadd_b, vadd, .b, b, 1, +)
+TEST_OP2(vsub_w, vsub, .w, w, 4, -)
+TEST_OP2(vsub_h, vsub, .h, h, 2, -)
+TEST_OP2(vsub_b, vsub, .b, b, 1, -)
+TEST_OP2(vxor, vxor, , d, 8, ^)
+TEST_OP2(vand, vand, , d, 8, &)
+TEST_OP2(vor, vor, , d, 8, |)
+TEST_OP1(vnot, vnot, , d, 8, ~)
 
 int main()
 {
@@ -181,6 +310,20 @@ int main()
     test_load_cur();
     test_load_aligned();
     test_load_unaligned();
+    test_store_aligned();
+    test_store_unaligned();
+    test_masked_store();
+
+    test_vadd_w();
+    test_vadd_h();
+    test_vadd_b();
+    test_vsub_w();
+    test_vsub_h();
+    test_vsub_b();
+    test_vxor();
+    test_vand();
+    test_vor();
+    test_vnot();
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;
