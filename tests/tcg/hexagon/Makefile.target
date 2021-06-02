@@ -54,6 +54,8 @@ HEX_TESTS += scatter_gather
 HEX_TESTS += atomics
 HEX_TESTS += fpstuff
 HEX_TESTS += hvx_misc
+HEX_TESTS += privcheck
+HEX_TESTS += guestcheck
 
 TESTS += $(HEX_TESTS)
 
@@ -61,3 +63,26 @@ exec_counters: CFLAGS += -mhvx
 scatter_gather: CFLAGS += -mhvx
 vector_add_int: CFLAGS += -mhvx -fvectorize
 hvx_misc: CFLAGS += -mhvx
+
+# These tests raise an exception and return 1 to the shell
+# We'll grep for the proper exception number in their stderr
+run-privcheck: privcheck
+run-guestcheck: guestcheck
+
+run-privcheck:
+	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
+	if [ $$? -ne 1 ] ; then \
+		return -1; \
+	fi
+	$(call quiet-command, \
+		grep -q "exception 0x1b" $<.stderr, \
+		"GREP", "exception 0x1b"); \
+
+run-guestcheck:
+	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
+	if [ $$? -ne 1 ] ; then \
+		return -1; \
+	fi
+	$(call quiet-command, \
+		grep -q "exception 0x1a" $<.stderr, \
+		"GREP", "exception 0x1a"); \

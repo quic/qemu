@@ -140,5 +140,6 @@ extern TCGv hex_vstore_addr[VSTORES_MAX];
 extern TCGv hex_vstore_size[VSTORES_MAX];
 extern TCGv hex_vstore_pending[VSTORES_MAX];
 
+void gen_exception_end_tb(DisasContext *ctx, int excp);
 void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif

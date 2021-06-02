@@ -593,6 +593,16 @@ def gen_tcg_func(f, tag, regs, imms):
     f.write("                Insn *insn,\n")
     f.write("                Packet *pkt)\n")
     f.write('{\n')
+
+    if 'A_PRIV' in hex_common.attribdict[tag]:
+        f.write("#ifdef CONFIG_USER_ONLY\n")
+        f.write("    gen_exception_end_tb(ctx, HEX_EXCP_PRIV_USER_NO_SINSN);\n")
+        f.write("#else\n")
+    if 'A_GUEST' in hex_common.attribdict[tag]:
+        f.write("#ifdef CONFIG_USER_ONLY\n")
+        f.write("    gen_exception_end_tb(ctx, HEX_EXCP_PRIV_USER_NO_GINSN);\n")
+        f.write("#else\n")
+
     if hex_common.need_ea(tag): gen_decl_ea_tcg(f, tag)
     i=0
     ## Declare all the operands (regs and immediates)
@@ -671,6 +681,10 @@ def gen_tcg_func(f, tag, regs, imms):
         genptr_free_opn(f,regtype,regid,i,tag)
         i += 1
 
+    if 'A_PRIV' in hex_common.attribdict[tag] or \
+       'A_GUEST' in hex_common.attribdict[tag]:
+        f.write("#endif   /* CONFIG_USER_ONLY */\n")
+
     f.write("}\n\n")
 
 def gen_def_tcg_func(f, tag, tagregs, tagimms):
@@ -693,12 +707,6 @@ def main():
         f.write("#define HEXAGON_TCG_FUNCS_H\n\n")
 
         for tag in hex_common.tags:
-            ## Skip the priv instructions
-            if ( "A_PRIV" in hex_common.attribdict[tag] ) :
-                continue
-            ## Skip the guest instructions
-            if ( "A_GUEST" in hex_common.attribdict[tag] ) :
-                continue
             ## Skip the diag instructions
             if ( tag == "Y6_diag" ) :
                 continue

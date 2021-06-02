@@ -35,12 +35,6 @@ def main():
 
         f.write("const SemanticInsn opcode_genptr[XX_LAST_OPCODE] = {\n")
         for tag in hex_common.tags:
-            ## Skip the priv instructions
-            if ( "A_PRIV" in hex_common.attribdict[tag] ) :
-                continue
-            ## Skip the guest instructions
-            if ( "A_GUEST" in hex_common.attribdict[tag] ) :
-                continue
             ## Skip the diag instructions
             if ( tag == "Y6_diag" ) :
                 continue
