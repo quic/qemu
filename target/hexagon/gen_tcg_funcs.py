@@ -278,7 +278,8 @@ def genptr_free(f, tag, regtype, regid, regno):
         if (regid != "u"):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "V"):
-        if (regid in {"dd", "uu", "vv", "xx", "d", "s", "u", "v", "w", "x", "y"}):
+        if (regid in {"dd", "uu", "vv", "xx", \
+                      "d", "s", "u", "v", "w", "x", "y"}):
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    tcg_temp_free_ptr(%s%sV);\n" % \
                     (regtype, regid))
