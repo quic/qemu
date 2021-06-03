@@ -521,11 +521,11 @@ struct CPUHexagonState {
 
     insn_t insn_env;
     size8u_t pktid;
+    processor_t *processor_ptr;
+    unsigned int threadId;
+    systemstate_t *system_ptr;
 #ifndef CONFIG_USER_ONLY
     systemstate_t systemstate;
-    systemstate_t *system_ptr;
-    unsigned int threadId;
-    processor_t *processor_ptr;
     const char *cmdline;
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;

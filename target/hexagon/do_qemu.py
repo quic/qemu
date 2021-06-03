@@ -938,6 +938,9 @@ def gen_qemu(f, tag):
     regs = tagregs[tag]
     imms = tagimms[tag]
 
+    if ("A_PRIV" in attribdict[tag] or "A_GUEST" in attribdict[tag]):
+        f.write("#ifndef CONFIG_USER_ONLY\n")
+
     f.write('DEF_QEMU(%s,%s,\n' % (tag,semdict[tag]))
     gen_helper_prototype(f, tag, regs, imms)
     f.write(",\n" )
@@ -945,6 +948,9 @@ def gen_qemu(f, tag):
     f.write(",\n" )
     gen_helper_definition(f, tag, regs, imms)
     f.write(")\n")
+
+    if ("A_PRIV" in attribdict[tag] or "A_GUEST" in attribdict[tag]):
+        f.write("#endif /* CONFIG_USER_ONLY */\n")
 
 ##
 ## Generate the qemu_def_generated.h file
@@ -993,7 +999,8 @@ supported_privs = [
 # Sanity check for typos:
 assert(all(priv_inst in tags for priv_inst in supported_privs))
 
-system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
+##system_mode = 1 if sys.argv[1] == 'SYSTEM' else 0
+system_mode = 1
 
 skipped = []
 for tag in tags:

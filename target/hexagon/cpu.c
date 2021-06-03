@@ -442,13 +442,18 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
     env->threadId = cs->cpu_index;
+#ifndef CONFIG_USER_ONLY
     env->processor_ptr = &ProcessorStateV68;
+#else
+    g_assert_not_reached();   /* FIXME */
+#endif
     env->processor_ptr->thread[env->threadId] = env;
     env->processor_ptr->dma[env->threadId] = dma_adapter_init(
         env->processor_ptr,
         env->threadId);
     env->system_ptr = NULL;
 
+#ifndef CONFIG_USER_ONLY
     if (cs->cpu_index == 0) {
         env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
         env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
@@ -480,6 +485,9 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 
         clear_wait_mode(env);
     }
+#else
+    g_assert_not_reached();   /* FIXME */
+#endif
 
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
     cpu_reset(cs);
