@@ -1128,7 +1128,9 @@ static int dma_adapter_report_exception(dma_t *dma) {
 	// not correct. Since the exception is exposed to DMPOLL or DMWAIT,
 	// elr should be adjusted to be a PC of DMPOLL or DMWAIT.
 	dma_info->einfo.elr = thread->gpr[HEX_REG_PC];
+#if !defined(CONFIG_USER_ONLY)
 	dma_info->einfo.badva1 = thread->t_sreg[HEX_SREG_BADVA1];
+#endif
 
 	// Take an owner thread an exception.
 	//register_einfo(thread, &dma_info->einfo);

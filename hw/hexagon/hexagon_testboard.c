@@ -49,72 +49,8 @@ static hexagon_config_table *cfgTable;
 static hexagon_config_extensions *cfgExtensions;
 static bool syscfg_is_linux = false;
 
-const rev_features_t rev_features_v68 = {
-};
 
-const options_struct options_struct_v68 = {
-    .l2tcm_base  = 0,  /* FIXME - Should be l2tcm_base ?? */
-    .hmx_mac_fxp_callback = (void *)0,
-    .hmx_mac_flt_callback = (void *)0,
-};
-
-const arch_proc_opt_t arch_proc_opt_v68 = {
-    .vtcm_size = VTCM_SIZE,
-    .vtcm_offset = VTCM_OFFSET,
-    .dmadebugfile = NULL,
-    .hmxdebuglvl = 0,
-    .hmx_output_depth = 32,
-    .hmx_spatial_size = 6,
-    .hmx_channel_size = 5,
-    .hmx_block_size = 2048,
-    .hmx_mxmem_debug_acc_preload = 0,
-    .pmu_enable = 0,
-    .hmxdebugfile = 0,
-    .hmx_mxmem_debug = 0,
-    .hmxaccpreloadfile = 0,
-    .hmxarray_new = 0,
-    .hmxmpytrace = 0,
-    .hmx_v1 = 0,
-    .hmx_power_config = 0,
-    .hmx_8x4_mpy_mode = 0,
-    .hmx_group_conv_mode = 1,
-    .dmadebug_verbosity = 0,
-    .xfp_inexact_enable = 1,
-    .xfp_cvt_frac = 13,
-    .xfp_cvt_int = 3,
-    .QDSP6_DMA_PRESENT     = 1,
-    .QDSP6_MX_FP_PRESENT   = 1,
-    .QDSP6_MX_RATE = 8,
-    .QDSP6_MX_FP_RATE = 4,
-    .QDSP6_MX_FP_ACC_INT = 7,
-    .QDSP6_MX_FP_ACC_FRAC = 22,
-    .QDSP6_MX_FP_ACC_EXP = 9,
-    .QDSP6_MX_CHANNELS = 32,
-    .QDSP6_MX_ROWS = 64,
-    .QDSP6_MX_COLS = 32,
-    .QDSP6_MX_FP_ROWS = 32,
-    .QDSP6_MX_FP_COLS = 32,
-    .QDSP6_MX_CVT_MPY_SZ = 10,
-    .QDSP6_MX_SUB_COLS = 1,
-    .QDSP6_MX_ACCUM_WIDTH = 32,
-    .QDSP6_MX_CVT_WIDTH = 12,
-    .QDSP6_MX_FP_ACC_NORM = 3,
-    .QDSP6_DMA_EXTENDED_VA_PRESENT = 0,
-    .QDSP6_MX_PARALLEL_GRPS = 8,
-    .QDSP6_VX_PRESENT = 1,
-    .QDSP6_VX_CONTEXTS = 4,
-};
-
-struct ProcessorState ProcessorStateV68 = {
-    .features = &rev_features_v68,
-    .options = &options_struct_v68,
-    .arch_proc_options = &arch_proc_opt_v68,
-    .runnable_threads_max = 4,
-    .thread_system_mask = 0xf,
-    .shared_extptr = 0,
-};
-
-
+extern struct ProcessorState ProcessorStateV68;
 /* Board init.  */
 static struct hexagon_board_boot_info hexagon_binfo;
 static int ELF_FLAG_ARCH_MASK = 0x0ff;

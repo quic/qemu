@@ -27,7 +27,7 @@ TIMEOUT=40
 endif
 
 
-CFLAGS = -mv69 -O2 -mhvx -fvectorize
+CFLAGS = -mv69 -O2 -mhvx -mhmx -fvectorize
 
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
 VPATH += $(HEX_SRC)
@@ -52,5 +52,6 @@ HEX_TESTS += scatter_gather
 HEX_TESTS += atomics
 HEX_TESTS += sfminmax
 HEX_TESTS += lsbnew
+#HEX_TESTS += hmx
 
 TESTS += $(HEX_TESTS)

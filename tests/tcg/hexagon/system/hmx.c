@@ -1,10 +1,13 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 
 #define __HVXDBL__ 1
+#if !defined(__linux__)
 #include "hexagon_standalone.h"
+#endif
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
@@ -22,6 +25,7 @@ uint8_t *get_vtcm_base()
 
 {
   unsigned char *vtcm_base = NULL;
+#if !defined(__linux__)
   asm volatile(
             "r1 = cfgbase\n"
             "r1 = asl(r1, #5)\n"
@@ -29,6 +33,9 @@ uint8_t *get_vtcm_base()
             "r1 = memw_phys(r2, r1)\n"
             "%0 = asl(r1, #16)\n"
             : "=r"(vtcm_base) : : "r1", "r2" );
+#else
+  abort();
+#endif
 
   return vtcm_base;
 }
@@ -103,6 +110,7 @@ int main()
     unsigned spatialMask = 0xe0;
     unsigned activations_range = dY | spatialMask | channelStop;
     unsigned weights_range = dW;
+#if !defined(__linux__)
     unsigned vtcmPageSize = 4 * 1024 * 1024;
     unsigned pageSizeEnum = 32;
     unsigned perms = 7;
@@ -110,8 +118,10 @@ int main()
     unsigned asid = 0;
     unsigned aa = 0;
     unsigned vg = 3;
+#endif // !defined(__linux__)
 
     vtcm = get_vtcm_base();
+#if !defined(__linux__)
     add_translation_extended(1, vtcm,
       (uint64_t)vtcm, pageSizeEnum, perms,
       cachability, asid, aa, vg);
@@ -119,6 +129,7 @@ int main()
       2, vtcm + vtcmPageSize,
       (uint64_t)(vtcm + vtcmPageSize), pageSizeEnum, perms,
       cachability, asid, aa, vg);
+#endif // !defined(__linux__)
     printf("vtcm at  %p\n", vtcm);
 
     // acquire HMX
@@ -161,4 +172,5 @@ int main()
 
     return output[0] != 100;
 }
+
 

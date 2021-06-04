@@ -26,11 +26,11 @@
 #include "internal.h"
 #include "gdb_qreginfo.h"
 #include "hw/qdev-properties.h"
+#include "hmx/ext_hmx.h"
 
 #if !defined(CONFIG_USER_ONLY)
 #include "macros.h"
 #include "hex_mmu.h"
-#include "hmx/ext_hmx.h"
 #include "include/hw/hexagon/hexagon.h"
 #include "hw/intc/l2vic.h"
 #include "sysemu/cpus.h"
@@ -424,7 +424,71 @@ static void hexagon_cpu_disas_set_info(CPUState *s, disassemble_info *info)
 }
 
 dma_t *dma_adapter_init(processor_t *proc, int dmanum);
-extern struct ProcessorState ProcessorStateV68;
+const rev_features_t rev_features_v68 = {
+};
+
+const options_struct options_struct_v68 = {
+    .l2tcm_base  = 0,  /* FIXME - Should be l2tcm_base ?? */
+    .hmx_mac_fxp_callback = (void *)0,
+    .hmx_mac_flt_callback = (void *)0,
+};
+
+const arch_proc_opt_t arch_proc_opt_v68 = {
+    .vtcm_size = VTCM_SIZE,
+    .vtcm_offset = VTCM_OFFSET,
+    .dmadebugfile = NULL,
+    .hmxdebuglvl = 0,
+    .hmx_output_depth = 32,
+    .hmx_spatial_size = 6,
+    .hmx_channel_size = 5,
+    .hmx_block_size = 2048,
+    .hmx_mxmem_debug_acc_preload = 0,
+    .pmu_enable = 0,
+    .hmxdebugfile = 0,
+    .hmx_mxmem_debug = 0,
+    .hmxaccpreloadfile = 0,
+    .hmxarray_new = 0,
+    .hmxmpytrace = 0,
+    .hmx_v1 = 0,
+    .hmx_power_config = 0,
+    .hmx_8x4_mpy_mode = 0,
+    .hmx_group_conv_mode = 1,
+    .dmadebug_verbosity = 0,
+    .xfp_inexact_enable = 1,
+    .xfp_cvt_frac = 13,
+    .xfp_cvt_int = 3,
+    .QDSP6_DMA_PRESENT     = 1,
+    .QDSP6_MX_FP_PRESENT   = 1,
+    .QDSP6_MX_RATE = 8,
+    .QDSP6_MX_FP_RATE = 4,
+    .QDSP6_MX_FP_ACC_INT = 7,
+    .QDSP6_MX_FP_ACC_FRAC = 22,
+    .QDSP6_MX_FP_ACC_EXP = 9,
+    .QDSP6_MX_CHANNELS = 32,
+    .QDSP6_MX_ROWS = 64,
+    .QDSP6_MX_COLS = 32,
+    .QDSP6_MX_FP_ROWS = 32,
+    .QDSP6_MX_FP_COLS = 32,
+    .QDSP6_MX_CVT_MPY_SZ = 10,
+    .QDSP6_MX_SUB_COLS = 1,
+    .QDSP6_MX_ACCUM_WIDTH = 32,
+    .QDSP6_MX_CVT_WIDTH = 12,
+    .QDSP6_MX_FP_ACC_NORM = 3,
+    .QDSP6_DMA_EXTENDED_VA_PRESENT = 0,
+    .QDSP6_MX_PARALLEL_GRPS = 8,
+    .QDSP6_VX_PRESENT = 1,
+    .QDSP6_VX_CONTEXTS = 4,
+};
+
+struct ProcessorState ProcessorStateV68 = {
+    .features = &rev_features_v68,
+    .options = &options_struct_v68,
+    .arch_proc_options = &arch_proc_opt_v68,
+    .runnable_threads_max = 4,
+    .thread_system_mask = 0xf,
+    .shared_extptr = 0,
+};
+
 static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 {
     CPUState *cs = CPU(dev);
@@ -442,11 +506,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
     env->threadId = cs->cpu_index;
-#ifndef CONFIG_USER_ONLY
     env->processor_ptr = &ProcessorStateV68;
-#else
-    g_assert_not_reached();   /* FIXME */
-#endif
     env->processor_ptr->thread[env->threadId] = env;
     env->processor_ptr->dma[env->threadId] = dma_adapter_init(
         env->processor_ptr,
@@ -485,11 +545,12 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 
         clear_wait_mode(env);
     }
-#else
-    g_assert_not_reached();   /* FIXME */
-#endif
 
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
+#else
+    env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
+    env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
+#endif
     cpu_reset(cs);
     if (cs->cpu_index == 0) {
         cs->halted = 0;
