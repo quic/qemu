@@ -12,6 +12,11 @@ VPATH 		+= $(MULTIARCH_SRC)
 MULTIARCH_SRCS   =$(notdir $(wildcard $(MULTIARCH_SRC)/*.c))
 MULTIARCH_TESTS  =$(filter-out float_helpers, $(MULTIARCH_SRCS:.c=))
 
+# QUIC-specific
+# QTOOL-67204
+MULTIARCH_TESTS  =$(filter-out float_helpers threadcount, $(MULTIARCH_SRCS:.c=))
+# QUIC-end
+
 #
 # The following are any additional rules needed to build things
 #
