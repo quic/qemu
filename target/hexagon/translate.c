@@ -488,6 +488,7 @@ static void process_store(DisasContext *ctx, int slot_num)
             TCGLabel *label_w2 = gen_new_label();
             TCGLabel *label_w4 = gen_new_label();
             TCGLabel *label_w8 = gen_new_label();
+            TCGLabel *label_default = gen_new_label();
             TCGv width = tcg_temp_local_new();
 
             tcg_gen_mov_tl(width, hex_store_width[slot_num]);
@@ -521,6 +522,7 @@ static void process_store(DisasContext *ctx, int slot_num)
                 tcg_temp_free(value);
             }
             gen_set_label(label_w8);
+            tcg_gen_brcondi_tl(TCG_COND_NE, width, 8, label_default);
             {
                 /* Width is 8 bytes */
                 TCGv_i64 value = tcg_temp_new_i64();
@@ -529,6 +531,7 @@ static void process_store(DisasContext *ctx, int slot_num)
                 tcg_gen_br(label_end);
                 tcg_temp_free_i64(value);
             }
+            gen_set_label(label_default);
 
             tcg_temp_free(width);
         }

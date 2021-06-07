@@ -850,6 +850,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         break;
     }
 
+    case SYS_APP_REPORTED:
+        break;
+
     case SYS_PROF_ON:
     case SYS_PROF_OFF:
     case SYS_PROF_STATSRESET:
