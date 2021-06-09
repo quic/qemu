@@ -386,13 +386,6 @@ EXTINSN(M8_mxaccshl,    "acc=mxshl(acc,#16)",     ATTRIBS(A_SHARED_EXTENSION,A_H
 })
 
 
-// DEBUG PRINTS, VECX attribute for now, probably doesn't need any attribute
-EXTINSN(M8_pv64d, "pmxd", ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_VDBG,A_FAKEINSN,A_MEMLIKE), "Matrix Accumulator Print", { hmx_debug_print_acc(thread, !HMX_HEX, HMX_FULL, 0); })
-EXTINSN(M8_pv64,  "pmx",  ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_VDBG,A_FAKEINSN,A_MEMLIKE), "Matrix Accumulator Print", { hmx_debug_print_acc(thread,  HMX_HEX, HMX_FULL, 0); })
-EXTINSN(M8_pv64dfp, "pmxfpd", ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_VDBG,A_FAKEINSN,A_MEMLIKE), "Matrix Accumulator Print", { hmx_debug_print_acc(thread, !HMX_HEX, HMX_FULL, 1); })
-EXTINSN(M8_pv64fp,  "pmxfp",  ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_VDBG,A_FAKEINSN,A_MEMLIKE), "Matrix Accumulator Print", { hmx_debug_print_acc(thread,  HMX_HEX, HMX_FULL, 1); })
-EXTINSN(M8_pldacc,  "pmxaccpreload",  ATTRIBS(A_SHARED_EXTENSION,A_HMX,A_VDBG,A_FAKEINSN,A_MEMLIKE), "Matrix Accumulator Print", { hmx_preload_file(thread); })
-
 
 #ifdef __SELF_DEF_EXTINSN
 #undef EXTINSN

@@ -28,9 +28,14 @@ def main():
     ##
     ##     Generate a list of all the opcodes
     ##
-    with open(sys.argv[3], 'w') as f:
-        for tag in hex_common.get_all_tags():
-            f.write ( "OPCODE(%s),\n" % (tag) )
+    with open(sys.argv[3], 'wt') as f:
+        for tag in hex_common.get_user_tags():
+            f.write("OPCODE(%s),\n" % (tag))
+
+        f.write('#if !defined(CONFIG_USER_ONLY)\n')
+        for tag in hex_common.get_sys_tags():
+            f.write("OPCODE(%s),\n" % (tag))
+        f.write('#endif\n')
 
 if __name__ == "__main__":
     main()

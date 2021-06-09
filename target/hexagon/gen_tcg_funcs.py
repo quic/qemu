@@ -181,6 +181,9 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regN, regno))
         else:
             print("Bad register parse: ", regtype, regid)
+    elif (regtype == "V"):
+        # FIXME: what to put here?
+        raise Exception("FIXME genptr_decl() register parse: ", regtype, regid)
     else:
         print("Bad register parse: ", regtype, regid)
 

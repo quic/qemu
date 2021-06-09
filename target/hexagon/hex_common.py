@@ -45,13 +45,13 @@ def tag_skip(tag):
     return tag in tag_skips or any(attr in attribdict[tag] for attr in attr_skips)
 
 def get_sys_tags():
-    return sorted(tag for tag in tags if is_sysemu_tag(tag) and not tag_skip(tag))
+    return sorted(tag for tag in frozenset(tags) if is_sysemu_tag(tag) and not tag_skip(tag))
 
 def get_user_tags():
-    return sorted(tag for tag in tags if not is_sysemu_tag(tag) and not tag_skip(tag))
+    return sorted(tag for tag in frozenset(tags) if not is_sysemu_tag(tag) and not tag_skip(tag))
 
 def get_all_tags():
-    return get_sys_tags() + get_user_tags()
+    return sorted(get_sys_tags() + get_user_tags())
 
 def get_macro(macname,ext=""):
     mackey = macname + ":" + ext
