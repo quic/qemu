@@ -225,7 +225,8 @@ static void test_masked_store(void)
             "q0 = vcmp.eq(v4.w, v5.w)\n\t"
             "v5 = vmem(%1)\n\t"
             "if (q0) vmem(%2) = v5\n\t"
-            : : "r"(pmask), "r"(p0), "r"(pout) : "r4", "v4", "v5", "memory");
+            : : "r"(pmask), "r"(p0), "r"(pout)
+            : "r4", "v4", "v5", "q0", "memory");
         p0 += sizeof(MMVector);
         pmask += sizeof(MMVector);
         pout += sizeof(MMVector);
