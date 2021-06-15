@@ -49,6 +49,7 @@ int main()
          *  all threads are waiting.
          */
         asm_wait();
+	printf ("qtimer_cnt1 = %d, qtimer_cnt2 = %d\n", qtimer1_cnt, qtimer2_cnt);
     }
     printf("PASS\n");
     return 0;

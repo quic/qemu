@@ -167,19 +167,12 @@ void intr_handler(int irq)
     __asm__ __volatile__("%0 = VID" : "=r"(vid));
 
     if (vid == IRQ1) {
-        pcycle_count = hexagon_sim_read_pcycles();
-
-        printf("qtimer1 interrupt #%d, pcycle ctr = %llu  \n", qtimer1_cnt,
-               pcycle_count);
         qtimer1_cnt++;
         update_qtimer1();
         update_l2vic(vid);
 
     } else if (vid == IRQ2) {
         pcycle_count = hexagon_sim_read_pcycles();
-        printf("Qtimer 2 interrupt #%d, pcycle ctr = %llu  \n", qtimer2_cnt,
-               pcycle_count);
-
         update_qtimer2();
         update_l2vic(vid);
         qtimer2_cnt++;
