@@ -407,26 +407,24 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, fd);
 
         if (fd == -1) {
-            if (env->lib_search_dir && g_strrstr(filename, ".so") != NULL
+            HexagonCPU *cpu = hexagon_env_get_cpu(env);
+            if (cpu->usefs && g_strrstr(filename, ".so") != NULL
                 && errno == ENOENT) {
                 /* Didn't find it, so now we also try to open in the
-                ** 'search dir':
-                */
-                GString *lib_filename_str = g_string_new(env->lib_search_dir);
+                 * 'search dir':
+                 */
+                GString *lib_filename_str = g_string_new(cpu->usefs);
 
                 g_string_append_printf(lib_filename_str, "/%s", filename);
                 gchar *lib_filename = g_string_free(lib_filename_str, false);
                 fd = open(lib_filename, real_openmode, 0644);
                 ARCH_SET_THREAD_REG(env, HEX_REG_R00, fd);
 
-                if (fd == -1)
-                {
+                if (fd == -1) {
                     ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
                 }
                 g_free(lib_filename);
-            }
-            else
-            {
+            } else {
                 ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
             }
         }

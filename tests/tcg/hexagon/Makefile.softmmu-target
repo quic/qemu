@@ -37,6 +37,7 @@ TESTS += \
 	swi_fs \
 	vid_reg \
 	int_range \
+	fopen \
 	$()
  
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
@@ -85,6 +86,7 @@ levelint: levelint.o
 swi_fs: swi_fs.o
 vid_reg: vid_reg.o
 int_range: int_range.o
+fopen: fopen.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -107,7 +109,7 @@ timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
 qtimer_test: LDFLAGS+= -lhexagon
 
-QEMU_BASE_MACHINE=-M V68N_1024 -cpu v67,count-gcycle-xt=on
+QEMU_BASE_MACHINE=-M V68N_1024 -cpu v67,count-gcycle-xt=on,usefs=$(SRC_PATH)/tests/tcg/hexagon/system
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel
 
 run-framelimit: framelimit
@@ -132,3 +134,6 @@ run-vid-group run-timer_reg run-qtimer_test:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
 run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
+
+run-fopen: fopen
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< -append dummy.so,"$< on $(TARGET_NAME)")

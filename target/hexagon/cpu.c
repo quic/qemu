@@ -62,6 +62,7 @@ static Property hexagon_cpu_properties[] = {
 #if !defined(CONFIG_USER_ONLY)
     DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false),
     DEFINE_PROP_BOOL("sched-limit", HexagonCPU, sched_limit, false),
+    DEFINE_PROP_STRING("usefs", HexagonCPU, usefs),
 #endif
     DEFINE_PROP_END_OF_LIST()
 };
