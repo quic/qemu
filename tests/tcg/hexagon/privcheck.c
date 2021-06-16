@@ -22,7 +22,7 @@ int err;
 int main()
 {
     /* Try to execute a priv instruction in user mode */
-    asm volatile("rte");
+    asm volatile(".word 0x57e0c000");     /* rte */
 
     puts(err ? "FAIL" : "PASS");
     return err;
