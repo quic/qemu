@@ -964,6 +964,12 @@ void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
     HEX_DEBUG_LOG("value_i64 = 0x%lx\n", value);
 }
 
+void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
+{
+  printf("invalid width in store: width %d, PC 0x%x\n", value, pc);
+  g_assert_not_reached();
+}
+
 /* Log a write to HVX vector */
 static inline void log_vreg_write(CPUHexagonState *env, int num, void *var,
                                       int vnew, uint32_t slot)

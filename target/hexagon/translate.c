@@ -219,7 +219,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         READ_SREG(pcyclelo, HEX_SREG_PCYCLELO);
         READ_SREG(pcyclehi, HEX_SREG_PCYCLEHI);
         tcg_gen_concat_i32_i64(val64, pcyclelo, pcyclehi);
-        tcg_gen_addi_i64(val64, val64, 1);
+        tcg_gen_addi_i64(val64, val64, 3);
         tcg_gen_extrl_i64_i32(val32, val64);
         WRITE_SREG(HEX_SREG_PCYCLELO, val32);
         tcg_gen_extrh_i64_i32(val32, val64);
@@ -532,7 +532,9 @@ static void process_store(DisasContext *ctx, int slot_num)
                 tcg_temp_free_i64(value);
             }
             gen_set_label(label_default);
-
+            TCGv pc = tcg_const_tl(ctx->base.pc_next);
+            gen_helper_invalid_width(cpu_env, width, pc);
+            tcg_temp_free(pc);
             tcg_temp_free(width);
         }
         tcg_temp_free(address);

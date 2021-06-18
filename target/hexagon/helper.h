@@ -78,3 +78,4 @@ DEF_HELPER_1(commit_hmx, void, env)
 
 DEF_HELPER_2(debug_value, void, env, s32)
 DEF_HELPER_2(debug_value_i64, void, env, s64)
+DEF_HELPER_3(invalid_width, void, env, i32, i32)

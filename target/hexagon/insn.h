@@ -53,7 +53,6 @@ struct Instruction {
     size4u_t is_load:1;      /* Has A_LOAD attribute */
     size4u_t is_store:1;     /* Has A_STORE attribute */
     size4u_t is_vmem_ld:1;   /* Has an A_LOAD and an A_VMEM attribute */
-    size4u_t is_vmem_st:1;   /* Has an A_STORE and an A_VMEM attribute */
     size4u_t is_scatgath:1;  /* Has an A_CVI_GATHER or A_CVI_SCATTER attr */
     size4u_t is_memop:1;     /* Has A_MEMOP attribute */
     size4u_t is_dealloc:1;   /* Is a dealloc return or dealloc frame */

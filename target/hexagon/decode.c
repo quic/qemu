@@ -453,13 +453,14 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
 
         if (GET_ATTRIB(opcode, A_STORE) && !GET_ATTRIB(opcode, A_LLSC)) {
             pkt->insn[i].is_store = 1;
-            if (GET_ATTRIB(opcode, A_VMEM)) {
-                pkt->insn[i].is_vmem_st = 1;
-            }
-            else if (pkt->insn[i].slot == 0) {
-                pkt->pkt_has_scalar_store_s0 = 1;
-            } else {
-                pkt->pkt_has_scalar_store_s1 = 1;
+            int skip = (GET_ATTRIB(opcode, A_STORE) &&
+                       GET_ATTRIB(opcode, A_MEMSIZE_0B));
+            if (!skip) {
+                if (pkt->insn[i].slot == 0) {
+                    pkt->pkt_has_scalar_store_s0 = 1;
+                } else {
+                    pkt->pkt_has_scalar_store_s1 = 1;
+                }
             }
         }
         if (GET_ATTRIB(opcode, A_DCFETCH)) {
