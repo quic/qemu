@@ -1492,6 +1492,15 @@ void HELPER(check_hvx)(CPUHexagonState *env)
         helper_raise_exception(env, HEX_EVENT_PRECISE);
     }
 }
+
+void HELPER(check_hmx)(CPUHexagonState *env)
+{
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    if (!GET_SSR_FIELD(SSR_XE2, ssr)) {
+        env->cause_code = HEX_CAUSE_NO_COPROC2_ENABLE;
+        helper_raise_exception(env, HEX_EVENT_PRECISE);
+    }
+}
 #endif
 
 #ifdef CONFIG_USER_ONLY

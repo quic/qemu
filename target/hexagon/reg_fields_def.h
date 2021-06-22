@@ -278,6 +278,9 @@ DEF_REG_FIELD(SSR_PE,
 DEF_REG_FIELD(SSR_BP,
     "bp", 25, 1,
     "Internal Bus Priority bit.")
+DEF_REG_FIELD(SSR_XE2,
+    "xe2", 26, 1,
+    "read-write bit for 2nd Coprocessor Enable, which enables use of an attached secondary coprocessor.")
 DEF_REG_FIELD(SSR_XA,
     "xa", 27, 3,
     "Extension Active, which control operation of an attached coprocessor.")

@@ -16,6 +16,7 @@ TESTS += \
 	tlblock \
 	k0lock \
 	invalid_opcode \
+	invalid_hmx \
 	sys_atomics \
 	timer_reg \
 	qtimer_test \
@@ -39,7 +40,7 @@ TESTS += \
 	int_range \
 	fopen \
 	$()
- 
+
 ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
 
 LDFLAGS+=$(ISDB_FLAGS)
@@ -64,6 +65,7 @@ badva: badva.o
 tlblock: tlblock.o
 k0lock: k0lock.o
 invalid_opcode: invalid_opcode.o
+invalid_hmx: invalid_hmx.o
 sys_atomics: sys_atomics.o
 timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o

@@ -691,6 +691,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
           printf("0x%x, Illegal Execution of Coprocessor Instruction",
                  HEX_CAUSE_NO_COPROC_ENABLE);
           break;
+      case HEX_CAUSE_NO_COPROC2_ENABLE:
+          printf("0x%x, "
+                 "Illegal Execution of Secondary Coprocessor Instruction",
+                 HEX_CAUSE_NO_COPROC2_ENABLE);
+          break;
       default:
           printf("Don't know");
           break;
@@ -1062,7 +1067,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         case HEX_CAUSE_MISALIGNED_LOAD:
         case HEX_CAUSE_MISALIGNED_STORE:
         case HEX_CAUSE_PC_NOT_ALIGNED:
-        case HEX_CAUSE_NO_COPROC_ENABLE:
             qemu_log_mask(CPU_LOG_MMU,
                 "MMU permission exception (0x%x) caught: "
                 "Cause code (0x%x) "
@@ -1081,6 +1085,8 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         case HEX_CAUSE_PRIV_USER_NO_SINSN:
         case HEX_CAUSE_PRIV_USER_NO_GINSN:
         case HEX_CAUSE_INVALID_OPCODE:
+        case HEX_CAUSE_NO_COPROC_ENABLE:
+        case HEX_CAUSE_NO_COPROC2_ENABLE:
             hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
           break;

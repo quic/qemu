@@ -240,6 +240,9 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     if (pkt->pkt_has_hvx) {
         gen_helper_check_hvx(cpu_env);
     }
+    if (pkt->pkt_has_hmx) {
+        gen_helper_check_hmx(cpu_env);
+    }
 #endif
 }
 
