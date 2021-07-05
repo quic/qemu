@@ -128,6 +128,73 @@ There are also cases where we brute force the TCG code generation.
 Instructions with multiple definitions are examples.  These require special
 handling because qemu helpers can only return a single value.
 
+For HVX vectors, the generator behaves slightly differently.  The wide vectors
+won't fit in a TCGv or TCGv_i64, so we pass TCGv_ptr variables to pass the
+address to helper functions.  Here's an example for an HVX vector-add-word
+istruction.
+    static void generate_V6_vaddw(
+                    CPUHexagonState *env,
+                    DisasContext *ctx,
+                    Insn *insn,
+                    Packet *pkt)
+    {
+        const int VdN = insn->regno[0];
+        const intptr_t VdV_off =
+            offsetof(CPUHexagonState,
+                     future_VRegs[VdN]);
+        TCGv_ptr VdV = tcg_temp_local_new_ptr();
+        tcg_gen_addi_ptr(VdV, cpu_env, VdV_off);
+        const int VuN = insn->regno[1];
+        const intptr_t VuV_off =
+            vreg_src_off(ctx, VuN);
+        TCGv_ptr VuV = tcg_temp_local_new_ptr();
+        const int VvN = insn->regno[2];
+        const intptr_t VvV_off =
+            vreg_src_off(ctx, VvN);
+        TCGv_ptr VvV = tcg_temp_local_new_ptr();
+        tcg_gen_addi_ptr(VuV, cpu_env, VuV_off);
+        tcg_gen_addi_ptr(VvV, cpu_env, VvV_off);
+        TCGv slot = tcg_const_tl(insn->slot);
+        gen_helper_V6_vaddw(cpu_env, VdV, VuV, VvV, slot);
+        tcg_temp_free(slot);
+        gen_log_vreg_write(ctx, VdV_off, VdN, EXT_DFL, insn->slot, false, pkt->pkt_has_vhist);
+        ctx_log_vreg_write(ctx, VdN, EXT_DFL, false);
+        tcg_temp_free_ptr(VdV);
+        tcg_temp_free_ptr(VuV);
+        tcg_temp_free_ptr(VvV);
+    }
+
+Notice that we also generate a variable named <operand>_off for each operand of
+the instruction.  This makes it easy to override the instruction semantics with
+functions from tcg-op-gvec.h.  Here's the override for this instruction.
+    #define fGEN_TCG_V6_vaddw(SHORTCODE) \
+        tcg_gen_gvec_add(MO_32, VdV_off, VuV_off, VvV_off, \
+                         sizeof(MMVector), sizeof(MMVector))
+
+Finally, we notice that the override doesn't use the TCGv_ptr variables, so
+we don't generate them when an override is present.  Here is what we generate
+when the override is present.
+    static void generate_V6_vaddw(
+                    CPUHexagonState *env,
+                    DisasContext *ctx,
+                    Insn *insn,
+                    Packet *pkt)
+    {
+        const int VdN = insn->regno[0];
+        const intptr_t VdV_off =
+            offsetof(CPUHexagonState,
+                     future_VRegs[VdN]);
+        const int VuN = insn->regno[1];
+        const intptr_t VuV_off =
+            vreg_src_off(ctx, VuN);
+        const int VvN = insn->regno[2];
+        const intptr_t VvV_off =
+            vreg_src_off(ctx, VvN);
+        fGEN_TCG_V6_vaddw({ fHIDE(int i;) fVFOREACH(32, i) { VdV.w[i] = VuV.w[i] + VvV.w[i] ; } });
+        gen_log_vreg_write(ctx, VdV_off, VdN, EXT_DFL, insn->slot, false, pkt->pkt_has_vhist);
+        ctx_log_vreg_write(ctx, VdN, EXT_DFL, false);
+    }
+
 In addition to instruction semantics, we use a generator to create the decode
 tree.  This generation is also a two step process.  The first step is to run
 target/hexagon/gen_dectree_import.c to produce
@@ -211,8 +278,6 @@ During runtime, the following fields in CPUHexagonState (see cpu.h) are used
 For Hexagon Vector eXtensions (HVX), the following fields are used
     future_VRegs
     tmp_VRegs
-    future_ZRegs
-    ZRegs_updated
     VRegs_updated_tmp
     VRegs_updated
     VRegs_select
