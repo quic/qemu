@@ -109,7 +109,6 @@ hmx_conv_asm.o: ASFLAGS+= -mhmx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
-qtimer_test: LDFLAGS+= -lhexagon
 
 QEMU_BASE_MACHINE=-M V68N_1024 -cpu v67,count-gcycle-xt=on,usefs=$(SRC_PATH)/tests/tcg/hexagon/system
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel

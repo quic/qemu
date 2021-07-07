@@ -26,10 +26,8 @@
 
 volatile int exit_flag;
 unsigned long long start_cycles, current_cycles;
-unsigned long long pcycle_count;
 static char stack[COMPUTE_THREADS][STACK_SIZE] __attribute__((__aligned__(8)));
 
-unsigned long long hexagon_sim_read_pcycles(void);
 void register_interrupt(int intno, void (*IRQ_handler)(int intno));
 void thread_create(void (*pc)(void *), void(*sp), int threadno,
                    void(*data_struct));
@@ -172,7 +170,6 @@ void intr_handler(int irq)
         update_l2vic(vid);
 
     } else if (vid == IRQ2) {
-        pcycle_count = hexagon_sim_read_pcycles();
         update_qtimer2();
         update_l2vic(vid);
         qtimer2_cnt++;
