@@ -1089,10 +1089,12 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
 #endif
 }
 
+#if !defined(CONFIG_USER_ONLY)
 static const VMStateDescription vmstate_hexagon_cpu = {
     .name = "cpu",
     .unmigratable = 1,
 };
+#endif
 
 #include "hw/core/tcg-cpu-ops.h"
 

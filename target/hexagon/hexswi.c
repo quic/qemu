@@ -687,6 +687,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
           printf("0x%X, Floating-Point: Execution of Floating-Point "
                  "instruction resulted in exception",
                  HEX_CAUSE_FPTRAP_CAUSE_BADFLOAT);
+          break;
       case HEX_CAUSE_NO_COPROC_ENABLE:
           printf("0x%x, Illegal Execution of Coprocessor Instruction",
                  HEX_CAUSE_NO_COPROC_ENABLE);
@@ -812,6 +813,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         }
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, retval * 100);
     }
+    break;
 
     case SYS_TIME:
     {
