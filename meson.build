@@ -17,6 +17,7 @@ cc = meson.get_compiler('c')
 config_host = keyval.load(meson.current_build_dir() / 'config-host.mak')
 enable_modules = 'CONFIG_MODULES' in config_host
 enable_static = 'CONFIG_STATIC' in config_host
+build_libqemu = 'CONFIG_LIBQEMU' in config_host
 
 # Allow both shared and static libraries unless --enable-static
 static_kwargs = enable_static ? {'static': true} : {}
@@ -1793,11 +1794,20 @@ if capstone_opt == 'internal'
     '-include', 'capstone-defs.h'
   ]
 
-  libcapstone = static_library('capstone',
-                               build_by_default: false,
-                               sources: capstone_files,
-                               c_args: capstone_cargs,
-                               include_directories: 'capstone/include')
+  if build_libqemu
+    libcapstone = static_library('capstone',
+                                 build_by_default: false,
+                                 sources: capstone_files,
+                                 c_args: capstone_cargs,
+                                 include_directories: 'capstone/include',
+                                 pic: true)
+  else
+    libcapstone = static_library('capstone',
+                                 build_by_default: false,
+                                 sources: capstone_files,
+                                 c_args: capstone_cargs,
+                                 include_directories: 'capstone/include')
+  endif
   capstone = declare_dependency(link_with: libcapstone,
                                 include_directories: 'capstone/include/capstone')
 endif
@@ -1873,11 +1883,21 @@ if have_system
       configuration: slirp_conf)
 
     slirp_inc = include_directories('slirp', 'slirp/src')
-    libslirp = static_library('slirp',
-                              build_by_default: false,
-                              sources: slirp_files,
-                              c_args: slirp_cargs,
-                              include_directories: slirp_inc)
+
+    if build_libqemu
+      libslirp = static_library('slirp',
+                                build_by_default: false,
+                                sources: slirp_files,
+                                c_args: slirp_cargs,
+                                include_directories: slirp_inc,
+                                pic: true)
+    else
+      libslirp = static_library('slirp',
+                                build_by_default: false,
+                                sources: slirp_files,
+                                c_args: slirp_cargs,
+                                include_directories: slirp_inc)
+    endif
     slirp = declare_dependency(link_with: libslirp,
                                dependencies: slirp_deps,
                                include_directories: slirp_inc)
@@ -1931,10 +1951,18 @@ if have_system
     )
 
     fdt_inc = include_directories('dtc/libfdt')
-    libfdt = static_library('fdt',
-                            build_by_default: false,
-                            sources: fdt_files,
-                            include_directories: fdt_inc)
+    if build_libqemu
+      libfdt = static_library('fdt',
+                              build_by_default: false,
+                              sources: fdt_files,
+                              include_directories: fdt_inc,
+                              pic: true)
+    else
+      libfdt = static_library('fdt',
+                              build_by_default: false,
+                              sources: fdt_files,
+                              include_directories: fdt_inc)
+    endif
     fdt = declare_dependency(link_with: libfdt,
                              include_directories: fdt_inc)
   endif
@@ -2200,9 +2228,16 @@ stub_ss = stub_ss.apply(config_all, strict: false)
 
 util_ss.add_all(trace_ss)
 util_ss = util_ss.apply(config_all, strict: false)
-libqemuutil = static_library('qemuutil',
-                             sources: util_ss.sources() + stub_ss.sources() + genh,
-                             dependencies: [util_ss.dependencies(), libm, threads, glib, socket, malloc, pixman])
+if build_libqemu
+  libqemuutil = static_library('qemuutil',
+                               sources: util_ss.sources() + stub_ss.sources() + genh,
+                               dependencies: [util_ss.dependencies(), libm,  threads, glib, socket, malloc, pixman],
+                               pic: true)
+else
+  libqemuutil = static_library('qemuutil',
+                               sources: util_ss.sources() + stub_ss.sources() + genh,
+                               dependencies: [util_ss.dependencies(), libm, threads, glib, socket, malloc, pixman])
+endif
 qemuutil = declare_dependency(link_with: libqemuutil,
                               sources: genh + version_res)
 
@@ -2410,84 +2445,160 @@ qemu_syms = custom_target('qemu.syms', output: 'qemu.syms',
                              command: [undefsym, nm, '@INPUT@'])
 
 qom_ss = qom_ss.apply(config_host, strict: false)
-libqom = static_library('qom', qom_ss.sources() + genh,
-                        dependencies: [qom_ss.dependencies()],
-                        name_suffix: 'fa')
+if build_libqemu
+  libqom = static_library('qom', qom_ss.sources() + genh,
+                          dependencies: [qom_ss.dependencies()],
+                          name_suffix: 'fa',
+                          pic: true)
+else
+  libqom = static_library('qom', qom_ss.sources() + genh,
+                          dependencies: [qom_ss.dependencies()],
+                          name_suffix: 'fa')
+endif
 
 qom = declare_dependency(link_whole: libqom)
 
 authz_ss = authz_ss.apply(config_host, strict: false)
-libauthz = static_library('authz', authz_ss.sources() + genh,
-                          dependencies: [authz_ss.dependencies()],
-                          name_suffix: 'fa',
-                          build_by_default: false)
+if build_libqemu
+  libauthz = static_library('authz', authz_ss.sources() + genh,
+                            dependencies: [authz_ss.dependencies()],
+                            name_suffix: 'fa',
+                            build_by_default: false,
+                            pic: true)
+else
+  libauthz = static_library('authz', authz_ss.sources() + genh,
+                            dependencies: [authz_ss.dependencies()],
+                            name_suffix: 'fa',
+                            build_by_default: false)
+endif
 
 authz = declare_dependency(link_whole: libauthz,
                            dependencies: qom)
 
 crypto_ss = crypto_ss.apply(config_host, strict: false)
-libcrypto = static_library('crypto', crypto_ss.sources() + genh,
-                           dependencies: [crypto_ss.dependencies()],
-                           name_suffix: 'fa',
-                           build_by_default: false)
-
+if build_libqemu
+  libcrypto = static_library('crypto', crypto_ss.sources() + genh,
+                             dependencies: [crypto_ss.dependencies()],
+                             name_suffix: 'fa',
+                             build_by_default: false,
+                             pic: true)
+else
+  libcrypto = static_library('crypto', crypto_ss.sources() + genh,
+                             dependencies: [crypto_ss.dependencies()],
+                             name_suffix: 'fa',
+                             build_by_default: false)
+endif
 crypto = declare_dependency(link_whole: libcrypto,
                             dependencies: [authz, qom])
 
 io_ss = io_ss.apply(config_host, strict: false)
-libio = static_library('io', io_ss.sources() + genh,
-                       dependencies: [io_ss.dependencies()],
-                       link_with: libqemuutil,
-                       name_suffix: 'fa',
-                       build_by_default: false)
+if build_libqemu
+  libio = static_library('io', io_ss.sources() + genh,
+                         dependencies: [io_ss.dependencies()],
+                         link_with: libqemuutil,
+                         name_suffix: 'fa',
+                         build_by_default: false,
+                         pic: true)
+else
+  libio = static_library('io', io_ss.sources() + genh,
+                         dependencies: [io_ss.dependencies()],
+                         link_with: libqemuutil,
+                         name_suffix: 'fa',
+                         build_by_default: false)
+endif
 
 io = declare_dependency(link_whole: libio, dependencies: [crypto, qom])
 
-libmigration = static_library('migration', sources: migration_files + genh,
-                              name_suffix: 'fa',
-                              build_by_default: false)
+if build_libqemu
+  libmigration = static_library('migration', sources: migration_files + genh,
+                                name_suffix: 'fa',
+                                build_by_default: false,
+                                pic: true)
+else
+  libmigration = static_library('migration', sources: migration_files + genh,
+                                name_suffix: 'fa',
+                                build_by_default: false)
+endif
+
 migration = declare_dependency(link_with: libmigration,
                                dependencies: [zlib, qom, io])
 softmmu_ss.add(migration)
 
 block_ss = block_ss.apply(config_host, strict: false)
-libblock = static_library('block', block_ss.sources() + genh,
-                          dependencies: block_ss.dependencies(),
-                          link_depends: block_syms,
-                          name_suffix: 'fa',
-                          build_by_default: false)
-
+if build_libqemu
+  libblock = static_library('block', block_ss.sources() + genh,
+                            dependencies: block_ss.dependencies(),
+                            link_depends: block_syms,
+                            name_suffix: 'fa',
+                            build_by_default: false,
+                            pic: true)
+else
+  libblock = static_library('block', block_ss.sources() + genh,
+                            dependencies: block_ss.dependencies(),
+                            link_depends: block_syms,
+                            name_suffix: 'fa',
+                            build_by_default: false)
+endif
 block = declare_dependency(link_whole: [libblock],
                            link_args: '@block.syms',
                            dependencies: [crypto, io])
 
 blockdev_ss = blockdev_ss.apply(config_host, strict: false)
-libblockdev = static_library('blockdev', blockdev_ss.sources() + genh,
-                             dependencies: blockdev_ss.dependencies(),
-                             name_suffix: 'fa',
-                             build_by_default: false)
-
+if build_libqemu
+  libblockdev = static_library('blockdev', blockdev_ss.sources() + genh,
+                               dependencies: blockdev_ss.dependencies(),
+                               name_suffix: 'fa',
+                               build_by_default: false,
+                               pic: true)
+else
+  libblockdev = static_library('blockdev', blockdev_ss.sources() + genh,
+                               dependencies: blockdev_ss.dependencies(),
+                               name_suffix: 'fa',
+                               build_by_default: false)
+endif
 blockdev = declare_dependency(link_whole: [libblockdev],
                               dependencies: [block])
 
 qmp_ss = qmp_ss.apply(config_host, strict: false)
-libqmp = static_library('qmp', qmp_ss.sources() + genh,
-                        dependencies: qmp_ss.dependencies(),
-                        name_suffix: 'fa',
-                        build_by_default: false)
-
+if build_libqemu
+  libqmp = static_library('qmp', qmp_ss.sources() + genh,
+                          dependencies: qmp_ss.dependencies(),
+                          name_suffix: 'fa',
+                          build_by_default: false,
+                          pic: true)
+else
+  libqmp = static_library('qmp', qmp_ss.sources() + genh,
+                          dependencies: qmp_ss.dependencies(),
+                          name_suffix: 'fa',
+                          build_by_default: false)
+endif
 qmp = declare_dependency(link_whole: [libqmp])
 
-libchardev = static_library('chardev', chardev_ss.sources() + genh,
-                            name_suffix: 'fa',
-                            dependencies: [gnutls],
-                            build_by_default: false)
+if build_libqemu
+  libchardev = static_library('chardev', chardev_ss.sources() + genh,
+                              name_suffix: 'fa',
+                              dependencies: [gnutls],
+                              build_by_default: false,
+                              pic: true)
+else
+  libchardev = static_library('chardev', chardev_ss.sources() + genh,
+                              name_suffix: 'fa',
+                              dependencies: [gnutls],
+                              build_by_default: false)
+endif
 
 chardev = declare_dependency(link_whole: libchardev)
 
-libhwcore = static_library('hwcore', sources: hwcore_files + genh,
-                           name_suffix: 'fa',
-                           build_by_default: false)
+if build_libqemu
+  libhwcore = static_library('hwcore', sources: hwcore_files + genh,
+                             name_suffix: 'fa',
+                             build_by_default: false,
+                             pic: true)
+else
+  libhwcore = static_library('hwcore', sources: hwcore_files + genh,
+                             name_suffix: 'fa',
+                             build_by_default: false)
+endif
 hwcore = declare_dependency(link_whole: libhwcore)
 common_ss.add(hwcore)
 
@@ -2649,15 +2760,26 @@ foreach target : target_dirs
       exe_name += '-unsigned'
     endif
 
-    emulator = executable(exe_name, exe['sources'],
-               install: true,
-               c_args: c_args,
-               dependencies: arch_deps + deps + exe['dependencies'],
-               objects: lib.extract_all_objects(recursive: true),
-               link_language: link_language,
-               link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
-               link_args: link_args,
-               gui_app: exe['gui'])
+    if build_libqemu
+      emulator = shared_library(exe['name'], exe['sources'],
+                                install: true,
+                                c_args: c_args,
+                                dependencies: arch_deps + deps + exe['dependencies'],
+                                objects: lib.extract_all_objects(recursive: true),
+                                link_language: link_language,
+                                link_depends: [block_syms, qemu_syms, 'libqemu/libqemu.version'] + exe.get('link_depends', []),
+                                link_args: link_args)
+    else
+      emulator = executable(exe_name, exe['sources'],
+                            install: true,
+                            c_args: c_args,
+                            dependencies: arch_deps + deps + exe['dependencies'],
+                            objects: lib.extract_all_objects(recursive: true),
+                            link_language: link_language,
+                            link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
+                            link_args: link_args,
+                            gui_app: exe['gui'])
+    endif
 
     if targetos == 'darwin'
       icon = 'pc-bios/qemu.rsrc'
@@ -3106,6 +3228,7 @@ summary_info += {'libpmem support':   libpmem.found()}
 summary_info += {'libdaxctl support': libdaxctl.found()}
 summary_info += {'libudev':           libudev.found()}
 summary_info += {'FUSE lseek':        fuse_lseek.found()}
+summary_info += {'libqemu support':   config_host.has_key('CONFIG_LIBQEMU')}
 summary(summary_info, bool_yn: true, section: 'Dependencies')
 
 if not supported_cpus.contains(cpu)
