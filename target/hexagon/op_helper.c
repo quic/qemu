@@ -17,6 +17,7 @@
 
 #include "qemu/osdep.h"
 #include "qemu.h"
+#include "exec/cpu_ldst.h"
 #include "exec/helper-proto.h"
 #include "fpu/softfloat.h"
 #include "cpu.h"
@@ -155,22 +156,22 @@ void HELPER(debug_check_store_width)(CPUHexagonState *env, int slot, int check)
 
 void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
 {
-    switch (env->mem_log_stores[slot_num].width) {
+    uintptr_t ra = GETPC();
+    uint8_t width = env->mem_log_stores[slot_num].width;
+    target_ulong va = env->mem_log_stores[slot_num].va;
+
+    switch (width) {
     case 1:
-        put_user_u8(env->mem_log_stores[slot_num].data32,
-                    env->mem_log_stores[slot_num].va);
+        cpu_stb_data_ra(env, va, env->mem_log_stores[slot_num].data32, ra);
         break;
     case 2:
-        put_user_u16(env->mem_log_stores[slot_num].data32,
-                     env->mem_log_stores[slot_num].va);
+        cpu_stw_data_ra(env, va, env->mem_log_stores[slot_num].data32, ra);
         break;
     case 4:
-        put_user_u32(env->mem_log_stores[slot_num].data32,
-                     env->mem_log_stores[slot_num].va);
+        cpu_stl_data_ra(env, va, env->mem_log_stores[slot_num].data32, ra);
         break;
     case 8:
-        put_user_u64(env->mem_log_stores[slot_num].data64,
-                     env->mem_log_stores[slot_num].va);
+        cpu_stq_data_ra(env, va, env->mem_log_stores[slot_num].data64, ra);
         break;
     default:
         g_assert_not_reached();
@@ -185,6 +186,7 @@ void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, void *srcptr,
 
 void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 {
+    uintptr_t ra = GETPC();
     int i;
 
     /* Normal (possibly masked) vector store */
@@ -195,7 +197,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
             int size = env->vstore[i].size;
             for (int j = 0; j < size; j++) {
                 if (env->vstore[i].mask.ub[j]) {
-                    put_user_u8(env->vstore[i].data.ub[j], va + j);
+                    cpu_stb_data_ra(env, va + j, env->vstore[i].data.ub[j], ra);
                 }
             }
         }
@@ -217,7 +219,8 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
         } else {
             for (i = 0; i < env->vtcm_log.size; i++) {
                 if (env->vtcm_log.mask.ub[i] != 0) {
-                    put_user_u8(env->vtcm_log.data.ub[i], env->vtcm_log.va[i]);
+                    cpu_stb_data_ra(env, env->vtcm_log.va[i],
+                                    env->vtcm_log.data.ub[i], ra);
                     env->vtcm_log.mask.ub[i] = 0;
                     env->vtcm_log.data.ub[i] = 0;
                 }
