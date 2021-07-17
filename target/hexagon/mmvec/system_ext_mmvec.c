@@ -16,7 +16,6 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu.h"
 #include "cpu.h"
 #include "mmvec/system_ext_mmvec.h"
 
