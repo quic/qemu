@@ -1438,8 +1438,8 @@
     do { \
         TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
         { fEA_RI(RxV, -8); \
-          fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
-                                           fCAST4_4u(fREAD_FP()))); \
+          gen_frame_scramble(scramble_tmp); \
+          fSTORE(1, 8, EA, scramble_tmp); \
           gen_log_reg_write(HEX_REG_FP, EA); \
           ctx_log_reg_write(ctx, HEX_REG_FP); \
           fFRAMECHECK(EA - uiV, EA); \
@@ -1453,8 +1453,8 @@
         TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
         TCGv tmp = tcg_temp_new(); \
         { tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_SP], -8); \
-          fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
-                                           fCAST4_4u(fREAD_FP()))); \
+          gen_frame_scramble(scramble_tmp); \
+          fSTORE(1, 8, EA, scramble_tmp); \
           gen_log_reg_write(HEX_REG_FP, EA); \
           ctx_log_reg_write(ctx, HEX_REG_FP); \
           fFRAMECHECK(EA - uiV, EA); \
@@ -1474,7 +1474,7 @@
         { \
           fEA_REG(RsV); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          tcg_gen_mov_i64(RddV, fFRAME_UNSCRAMBLE(tmp_i64)); \
+          tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
           ctx_log_reg_write(ctx, HEX_REG_SP); \
@@ -1491,7 +1491,7 @@
         { \
           fEA_REG(fREAD_FP()); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          fFRAME_UNSCRAMBLE(tmp_i64); \
+          gen_frame_unscramble(tmp_i64); \
           gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
           ctx_log_reg_write(ctx, HEX_REG_LR); \
           gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
@@ -1513,7 +1513,7 @@
         { \
           fEA_REG(RsV); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          tcg_gen_mov_i64(RddV, fFRAME_UNSCRAMBLE(tmp_i64)); \
+          tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
           ctx_log_reg_write(ctx, HEX_REG_SP); \
@@ -1532,7 +1532,7 @@
         { \
           fEA_REG(fREAD_FP()); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          fFRAME_UNSCRAMBLE(tmp_i64); \
+          gen_frame_unscramble(tmp_i64); \
           gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
           ctx_log_reg_write(ctx, HEX_REG_LR); \
           gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
@@ -1565,7 +1565,7 @@
         PRED; \
         tcg_gen_extu_i32_i64(LSB_i64, LSB); \
         fLOAD(1, 8, u, EA, tmp_i64); \
-        tcg_gen_mov_i64(unscramble, fFRAME_UNSCRAMBLE(tmp_i64)); \
+        tcg_gen_mov_i64(unscramble, gen_frame_unscramble(tmp_i64)); \
         tcg_gen_concat_i32_i64(RddV, hex_gpr[HEX_REG_FP], \
                                      hex_gpr[HEX_REG_LR]); \
         tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, zero_i64, \
@@ -1618,7 +1618,7 @@
         PRED; \
         tcg_gen_extu_i32_i64(LSB_i64, LSB); \
         fLOAD(1, 8, u, EA, tmp_i64); \
-        tcg_gen_mov_i64(unscramble, fFRAME_UNSCRAMBLE(tmp_i64)); \
+        tcg_gen_mov_i64(unscramble, gen_frame_unscramble(tmp_i64)); \
         tcg_gen_concat_i32_i64(RddV, hex_gpr[HEX_REG_FP], \
                                      hex_gpr[HEX_REG_LR]); \
         tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, zero_i64, \

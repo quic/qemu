@@ -632,7 +632,6 @@ static inline TCGv_i64 gen_frame_scramble(TCGv_i64 result)
     tcg_temp_free_i64(FRAMEKEY_i64);
     return result;
 }
-#define fFRAME_SCRAMBLE(VAL) gen_frame_scramble(scramble_tmp)
 static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 {
     TCGv_i64 FRAMEKEY_i64 = tcg_temp_new_i64();
@@ -642,8 +641,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     tcg_temp_free_i64(FRAMEKEY_i64);
     return frame;
 }
-
-#define fFRAME_UNSCRAMBLE(VAL) gen_frame_unscramble(VAL)
 #else
 #define fGET_FRAMEKEY() READ_REG(HEX_REG_FRAMEKEY)
 #define fFRAME_SCRAMBLE(VAL) ((VAL) ^ (fCAST8u(fGET_FRAMEKEY()) << 32))
