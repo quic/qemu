@@ -27,7 +27,7 @@
 
 #define STRINGIZE(X)    #X
 
-const char *const opcode_names[] = {
+const char * const opcode_names[] = {
 #define OPCODE(IID) STRINGIZE(IID)
 #include "opcodes_def_generated.h.inc"
     NULL
@@ -42,12 +42,11 @@ const char *const opcode_names[] = {
  *         { RdV=RsV+RtV;})
  *     HVX instructions have the following form
  *         EXTINSN(V6_vinsertwr, "Vx32.w=vinsert(Rt32)",
- *         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_LATE,A_NOTE_MPY_RESOURCE),
+ *         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_LATE),
  *         "Insert Word Scalar into Vector",
  *         VxV.uw[0] = RtV;)
  */
-const char *opcode_syntax[XX_LAST_OPCODE] = {
-
+const char * const opcode_syntax[XX_LAST_OPCODE] = {
 #define Q6INSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
    [TAG] = BEH,
 #define EXTINSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
@@ -57,7 +56,7 @@ const char *opcode_syntax[XX_LAST_OPCODE] = {
 #undef EXTINSN
 };
 
-const char *const opcode_rregs[] = {
+const char * const opcode_rregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
 #include "op_regs_generated.h.inc"
@@ -66,7 +65,7 @@ const char *const opcode_rregs[] = {
 #undef IMMINFO
 };
 
-const char *const opcode_wregs[] = {
+const char * const opcode_wregs[] = {
 #define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
 #include "op_regs_generated.h.inc"
@@ -183,7 +182,7 @@ int main(int argc, char *argv[])
     FILE *outfile;
 
     if (argc != 2) {
-        fprintf(stderr, "Usage: gen_dectree_import outputfile\n");
+        fprintf(stderr, "Usage: gen_dectree_import ouptputfile\n");
         return 1;
     }
     outfile = fopen(argv[1], "w");

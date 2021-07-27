@@ -61,7 +61,8 @@
 #define fVALIGN(ADDR, LOG2_ALIGNMENT) ( ADDR = ADDR & ~(LOG2_ALIGNMENT-1))
 #define fVLASTBYTE(ADDR, LOG2_ALIGNMENT) ( ADDR = ADDR | (LOG2_ALIGNMENT-1))
 #define fVELEM(WIDTH) ((fVECSIZE()*8)/WIDTH)
-#define fVECLOGSIZE() (mmvec_current_veclogsize(thread))
+// mgl was thread not 0
+#define fVECLOGSIZE() (mmvec_current_veclogsize((void *)0))
 #define fVBUF_IDX(EA) (((EA) >> fVECLOGSIZE()) & 0xFF)
 #define fREAD_VBUF(IDX,WIDX) READ_VBUF(IDX,WIDX)
 #define fLOG_VBUF(IDX,VAL,WIDX) LOG_VBUF(IDX,VAL,WIDX)
@@ -94,7 +95,11 @@
 #define fSTORERELEASE(EA,TYPE) { fV_AL_CHECK(EA,fVECSIZE()-1); mem_store_release(thread, insn, fVECSIZE(), EA&~(fVECSIZE()-1), EA, TYPE, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
 #define fVFETCH_AL(EA) { fV_AL_CHECK(EA,fVECSIZE()-1); mem_fetch_vector(thread, insn, EA&~(fVECSIZE()-1), slot, fVECSIZE()); }
 #define fLOADMMV_AL(EA, ALIGNMENT, LEN, DST) { fV_AL_CHECK(EA,ALIGNMENT-1); /*thread->last_pkt->double_access_vec = 0;*/ mem_load_vector_oddva(thread, 0, EA&~(ALIGNMENT-1), EA, slot, LEN, &DST.ub[0], LEN, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
+#ifdef QEMU_GENERATE
+#define fLOADMMV(EA, DST) gen_vreg_load(ctx, DST##_off, EA, true)
+#else
 #define fLOADMMV(EA, DST) fLOADMMV_AL(EA,fVECSIZE(),fVECSIZE(),DST)
+#endif
 #define fLOADMMZ(EA,DST) { mmvector_t load_vec; fV_AL_CHECK(EA,fVECSIZE()-1); mem_load_vector_oddva(thread, 0, EA&~(fVECSIZE()-1), EA, slot, fVECSIZE(), &load_vec.ub[0], fVECSIZE(), fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); int idx = (EA & 0x80)>0; DST.v[idx] = load_vec; }
 #define fLOADZ_LOAD(EA,EAU,WIDTH,DST) {/* thread->last_pkt->ext_slot_cancelled = 0; thread->last_pkt->double_access_vec = 0;*/ int etm_size = ((EA % width) ==0) ? fVECSIZE() : 0; if (thread->processor_ptr->options->testgen_mode) etm_size = ((EA % width) ==0) ? WIDTH : 0; mem_load_vector_oddva(thread, 0, EA, EAU, slot, WIDTH, &DST.ub[0], etm_size, fUSE_LOOKUP_ADDRESS()); }
 #define fELSE_CANCELZ() else { /*if (thread->last_pkt) { thread->mem_access[slot].dropped_z = 1; thread->last_pkt->ext_slot_cancelled |= (1<<slot); } */ }
@@ -107,15 +112,38 @@
 #define fLOADMMVQ(EA,DST,QVAL) do { int __i; fLOADMMV_AL(EA,fVECSIZE(),fVECSIZE(),DST); fVFOREACH(8,__i) if (!fGETQBIT(QVAL,__i)) DST.b[__i] = 0; } while (0)
 #define fLOADMMVNQ(EA,DST,QVAL) do { int __i; fLOADMMV_AL(EA,fVECSIZE(),fVECSIZE(),DST); fVFOREACH(8,__i) if (fGETQBIT(QVAL,__i)) DST.b[__i] = 0; } while (0)
 #define fLOADMMVU_AL(EA, ALIGNMENT, LEN, DST) { size4u_t size2 = (EA)&(ALIGNMENT-1); size4u_t size1 = LEN-size2; /*thread->last_pkt->double_access_vec = 1;*/ mem_load_vector_oddva(thread, 0, EA+size1, EA+fVECSIZE(), 1, size2, &DST.ub[size1], size2, fUSE_LOOKUP_ADDRESS()); mem_load_vector_oddva(thread, 0, EA, EA, 0, size1, &DST.ub[0], size1, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
+#ifdef QEMU_GENERATE
+#define fLOADMMVU(EA, DST) gen_vreg_load(ctx, DST##_off, EA, false)
+#else
 #define fLOADMMVU(EA, DST) { /*thread->last_pkt->pkt_has_vtcm_access = 0; thread->last_pkt->pkt_access_count = 0;*/ if ( (EA & (fVECSIZE()-1)) == 0) { /*thread->last_pkt->pkt_has_vmemu_access = 0; thread->last_pkt->double_access = 0;*/ fLOADMMV_AL(EA,fVECSIZE(),fVECSIZE(),DST); } else { /*thread->last_pkt->pkt_has_vmemu_access = 1; thread->last_pkt->double_access = 1;*/ fLOADMMVU_AL(EA,fVECSIZE(),fVECSIZE(),DST); } }
+#endif
 #define fSTOREMMV_AL(EA, ALIGNMENT, LEN, SRC) { fV_AL_CHECK(EA,ALIGNMENT-1); mem_store_vector_oddva(thread, 0, EA&~(ALIGNMENT-1), EA, slot, LEN, &SRC.ub[0], 0, 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
+#ifdef QEMU_GENERATE
+#define fSTOREMMV(EA, SRC) gen_vreg_store(ctx, EA, SRC##_off, insn->slot, true)
+#else
 #define fSTOREMMV(EA, SRC) fSTOREMMV_AL(EA,fVECSIZE(),fVECSIZE(),SRC)
+#endif
 #define fSTOREMMVQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) do { mmvector_t maskvec; int i; for (i = 0; i < fVECSIZE(); i++) maskvec.ub[i] = fGETQBIT(MASK,i); mem_store_vector_oddva(thread, 0, EA&~(ALIGNMENT-1), EA, slot, LEN, &SRC.ub[0], &maskvec.ub[0], 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); } while (0)
+#ifdef QEMU_GENERATE
+#define fSTOREMMVQ(EA, SRC, MASK) \
+    gen_vreg_masked_store(ctx, EA, SRC##_off, MASK##_off, insn->slot, false)
+#else
 #define fSTOREMMVQ(EA, SRC, MASK) fSTOREMMVQ_AL(EA,fVECSIZE(),fVECSIZE(),SRC,MASK)
+#endif
 #define fSTOREMMVNQ_AL(EA, ALIGNMENT, LEN, SRC, MASK) { mmvector_t maskvec; int i; for (i = 0; i < fVECSIZE(); i++) maskvec.ub[i] = fGETQBIT(MASK,i); fV_AL_CHECK(EA,ALIGNMENT-1); mem_store_vector_oddva(thread, 0, EA&~(ALIGNMENT-1), EA, slot, LEN, &SRC.ub[0], &maskvec.ub[0], 1, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
+#ifdef QEMU_GENERATE
+#define fSTOREMMVNQ(EA, SRC, MASK) \
+    gen_vreg_masked_store(ctx, EA, SRC##_off, MASK##_off, insn->slot, true)
+#else
 #define fSTOREMMVNQ(EA, SRC, MASK) fSTOREMMVNQ_AL(EA,fVECSIZE(),fVECSIZE(),SRC,MASK)
+#endif
 #define fSTOREMMVU_AL(EA, ALIGNMENT, LEN, SRC) { size4u_t size1 = ALIGNMENT-((EA)&(ALIGNMENT-1)); size4u_t size2; if (size1>LEN) size1 = LEN; size2 = LEN-size1; mem_store_vector_oddva(thread, 0, EA+size1, EA+fVECSIZE(), 1, size2, &SRC.ub[size1], 0, 0, fUSE_LOOKUP_ADDRESS()); mem_store_vector_oddva(thread, 0, EA, EA, 0, size1, &SRC.ub[0], 0, 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
+#ifdef QEMU_GENERATE
+#define fSTOREMMVU(EA, SRC) \
+    gen_vreg_store(ctx, EA, SRC##_off, insn->slot, false)
+#else
 #define fSTOREMMVU(EA, SRC) { /*thread->last_pkt->pkt_has_vtcm_access = 0; thread->last_pkt->pkt_access_count = 0;*/ if ( (EA & (fVECSIZE()-1)) == 0) { /*thread->last_pkt->double_access = 0;*/ fSTOREMMV_AL(EA,fVECSIZE(),fVECSIZE(),SRC); } else { /*thread->last_pkt->double_access = 1; thread->last_pkt->pkt_has_vmemu_access = 1;*/ fSTOREMMVU_AL(EA,fVECSIZE(),fVECSIZE(),SRC); } }
+#endif
 #define fSTOREMMVQU_AL(EA, ALIGNMENT, LEN, SRC, MASK) { size4u_t size1 = ALIGNMENT-((EA)&(ALIGNMENT-1)); size4u_t size2; mmvector_t maskvec; int i; for (i = 0; i < fVECSIZE(); i++) maskvec.ub[i] = fGETQBIT(MASK,i); if (size1>LEN) size1 = LEN; size2 = LEN-size1; mem_store_vector_oddva(thread, 0, EA+size1, EA+fVECSIZE(), 1, size2, &SRC.ub[size1], &maskvec.ub[size1], 0, fUSE_LOOKUP_ADDRESS()); mem_store_vector_oddva(thread, 0, EA, 0, size1, &SRC.ub[0], &maskvec.ub[0], 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
 #define fSTOREMMVQU(EA, SRC, MASK) { /*thread->last_pkt->pkt_has_vtcm_access = 0; thread->last_pkt->pkt_access_count = 0;*/ if ( (EA & (fVECSIZE()-1)) == 0) { /*thread->last_pkt->double_access = 0;*/ fSTOREMMVQ_AL(EA,fVECSIZE(),fVECSIZE(),SRC,MASK); } else { /*thread->last_pkt->double_access = 1; thread->last_pkt->pkt_has_vmemu_access = 1;*/ fSTOREMMVQU_AL(EA,fVECSIZE(),fVECSIZE(),SRC,MASK); } }
 #define fSTOREMMVNQU_AL(EA, ALIGNMENT, LEN, SRC, MASK) { size4u_t size1 = ALIGNMENT-((EA)&(ALIGNMENT-1)); size4u_t size2; mmvector_t maskvec; int i; for (i = 0; i < fVECSIZE(); i++) maskvec.ub[i] = fGETQBIT(MASK,i); if (size1>LEN) size1 = LEN; size2 = LEN-size1; mem_store_vector_oddva(thread, 0, EA+size1, EA+fVECSIZE(), 1, size2, &SRC.ub[size1], &maskvec.ub[size1], 1, fUSE_LOOKUP_ADDRESS()); mem_store_vector_oddva(thread, 0, EA, EA, 0, size1, &SRC.ub[0], &maskvec.ub[0], 1, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }

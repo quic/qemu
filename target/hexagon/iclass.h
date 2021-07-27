@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,20 +18,14 @@
 #ifndef HEXAGON_ICLASS_H
 #define HEXAGON_ICLASS_H
 
-#include "opcodes.h"
+#include "attribs.h"
 
 #define ICLASS_FROM_TYPE(TYPE) ICLASS_##TYPE
 
-typedef enum {
+enum {
 
 #define DEF_PP_ICLASS32(TYPE, SLOTS, UNITS)    ICLASS_FROM_TYPE(TYPE),
-#define DEF_EE_ICLASS32(TYPE, SLOTS, UNITS)    /* nothing */
-#include "imported/iclass.def"
-#undef DEF_PP_ICLASS32
-#undef DEF_EE_ICLASS32
-
 #define DEF_EE_ICLASS32(TYPE, SLOTS, UNITS)    ICLASS_FROM_TYPE(TYPE),
-#define DEF_PP_ICLASS32(TYPE, SLOTS, UNITS)    /* nothing */
 #include "imported/iclass.def"
 #undef DEF_PP_ICLASS32
 #undef DEF_EE_ICLASS32
@@ -39,8 +33,18 @@ typedef enum {
     ICLASS_FROM_TYPE(COPROC_VX),
     ICLASS_FROM_TYPE(COPROC_VMEM),
     NUM_ICLASSES
-} iclass_t;
+};
 
-extern const char *find_iclass_slots(opcode_t opcode, int itype);
+typedef enum {
+    SLOTS_0          = (1 << 0),
+    SLOTS_1          = (1 << 1),
+    SLOTS_2          = (1 << 2),
+    SLOTS_3          = (1 << 3),
+    SLOTS_01         = SLOTS_0 | SLOTS_1,
+    SLOTS_23         = SLOTS_2 | SLOTS_3,
+    SLOTS_0123       = SLOTS_0 | SLOTS_1 | SLOTS_2 | SLOTS_3,
+} SlotMask;
+
+SlotMask find_iclass_slots(Opcode opcode, int itype);
 
 #endif

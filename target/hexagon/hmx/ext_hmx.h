@@ -24,7 +24,7 @@
 
 void *hmx_ext_palloc(processor_t *proc, int slots);
 void *hmx_ext_talloc(processor_t *proc, int slots);
-int hmx_ext_decode(thread_t *thread, insn_t *insn, size4u_t opcode);
+int hmx_ext_decode(thread_t *thread, Insn *insn, size4u_t opcode);
 
 void hmx_ext_init(processor_t *proc);
 void hmx_ext_pfree(processor_t *proc, int xa_start, int slots);
@@ -41,7 +41,7 @@ void hmx_ext_alloc(processor_t *proc, int slots);
 
 /* Replace execution pointers, opcode already determined */
 
-int hmx_ext_decode_checks(thread_t * thread, packet_t *pkt, exception_info *einfo);
+int hmx_ext_decode_checks(thread_t * thread, Packet *pkt, exception_info *einfo);
 const char * hmx_ext_decode_find_iclass_slots(int opcode);
 void hmx_ext_print_regs(thread_t *thread, FILE *fp);
 void hmx_ext_print_reg(thread_t *thread, FILE *fp, int rnum);
@@ -64,7 +64,7 @@ int hmx_read_fxp_acc_idx(thread_t *thread);
 void hmx_age_cvt_state(thread_t *thread);
 
 
-semantic_insn_t hmx_ext_bq_exec(int opcode); /* BQ */
+SemanticInsn hmx_ext_bq_exec(int opcode); /* BQ */
 
 
 const unsigned char *
@@ -87,6 +87,6 @@ int hmx_ext_set_ovf(thread_t *thread, int extno, size4u_t regno, size4u_t wordno
 
 void hmx_reset(processor_t *proc, thread_t *thread);
 
-void hmx_ext_analyze_packet(thread_t * thread, packet_t *pkt);
+void hmx_ext_analyze_packet(thread_t * thread, Packet *pkt);
 
 #endif

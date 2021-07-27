@@ -18,8 +18,7 @@
 #ifndef HEXAGON_INSN_H
 #define HEXAGON_INSN_H
 
-//#include "cpu.h"
-#include "hex_arch_types.h"
+#include "cpu.h"
 
 #define INSTRUCTIONS_MAX 7    /* 2 pairs + loopend */
 #define REG_OPERANDS_MAX 5
@@ -30,24 +29,25 @@ struct Instruction;
 struct Packet;
 struct DisasContext;
 
-typedef void (*semantic_insn_t)(CPUHexagonState *env,
+typedef void (*SemanticInsn)(CPUHexagonState *env,
                                 struct DisasContext *ctx,
                                 struct Instruction *insn,
                                 struct Packet *pkt);
 
 struct Instruction {
-    semantic_insn_t generate;            /* pointer to genptr routine */
-    size1u_t regno[REG_OPERANDS_MAX];    /* reg operands including predicates */
-    size2u_t opcode;
+    SemanticInsn generate;            /* pointer to genptr routine */
+    uint8_t regno[REG_OPERANDS_MAX];    /* reg operands including predicates */
+    uint16_t opcode;
 
-    size4u_t iclass:6;
-    size4u_t slot:3;
-    size4u_t part1:1;        /*
+    uint32_t iclass:6;
+    uint32_t slot:3;
+    uint32_t which_extended:1;    /* If has an extender, which immediate */
+    uint32_t new_value_producer_slot:4;
+    bool part1;              /*
                               * cmp-jumps are split into two insns.
                               * set for the compare and clear for the jump
                               */
     size4u_t extension_valid:1;   /* Has a constant extender attached */
-    size4u_t which_extended:1;    /* If has an extender, which immediate */
     size4u_t is_dcop:1;      /* Is a dcacheop */
     size4u_t is_dcfetch:1;   /* Has an A_DCFETCH attribute */
     size4u_t is_load:1;      /* Has A_LOAD attribute */
@@ -59,16 +59,15 @@ struct Instruction {
     size4u_t is_aia:1;       /* Is a post increment */
     size4u_t is_endloop:1;   /* This is an end of loop */
     size4u_t is_2nd_jump:1;  /* This is the second jump of a dual-jump packet */
-    size4u_t new_value_producer_slot:4;
     size4u_t hvx_resource:8;
     size4s_t immed[IMMEDS_MAX];    /* immediate field */
 };
 
-typedef struct Instruction insn_t;
+typedef struct Instruction Insn;
 
 struct Packet {
-    size2u_t num_insns;
-    size2u_t encod_pkt_size_in_bytes;
+    uint16_t num_insns;
+    uint16_t encod_pkt_size_in_bytes;
 
     /* Pre-decodes about LD/ST */
     size8u_t single_load:1;
@@ -172,6 +171,7 @@ struct Packet {
 
     size8u_t pkt_has_hvx:1;
     size8u_t pkt_has_hmx:1;
+    bool pkt_has_vhist;
     size8u_t pkt_has_extension:1;
 
 
@@ -185,10 +185,10 @@ struct Packet {
 #endif
     size8u_t num_insns1; // part1 and loop end are excluded
 	/* This MUST be the last thing in this structure */
-	insn_t insn[INSTRUCTIONS_MAX];
+	Insn insn[INSTRUCTIONS_MAX];
 
 };
 
-typedef struct Packet packet_t;
+typedef struct Packet Packet;
 
 #endif

@@ -115,7 +115,7 @@ static inline int in_valid_coproc_memory_space(thread_t *thread, paddr_t paddr)
     return 1;
 }
 
-static inline int check_gather_store(thread_t* thread, insn_t * insn)
+static inline int check_gather_store(thread_t* thread, Insn * insn)
 {
     /* First check to see if temp vreg has been updated */
     int check  = thread->gather_issued;
@@ -142,7 +142,7 @@ void gather_activeop(thread_t *thread, paddr_t paddr, int size) {
 }
 #endif
 
-void mem_load_vector_oddva(thread_t* thread, insn_t * insn, vaddr_t vaddr, vaddr_t lookup_vaddr, int slot, int size, size1u_t* data, int etm_size, int use_full_va)
+void mem_load_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t lookup_vaddr, int slot, int size, size1u_t* data, int etm_size, int use_full_va)
 {
     enum ext_mem_access_types access_type;
 
@@ -179,7 +179,7 @@ void mem_load_vector_oddva(thread_t* thread, insn_t * insn, vaddr_t vaddr, vaddr
 }
 
 #if 0
-void mem_fetch_vector(thread_t* thread, insn_t * insn, vaddr_t vaddr, int slot, int size)
+void mem_fetch_vector(thread_t* thread, Insn * insn, vaddr_t vaddr, int slot, int size)
 {
 	enum ext_mem_access_types access_type = access_type_vfetch;
 
@@ -194,7 +194,7 @@ void mem_fetch_vector(thread_t* thread, insn_t * insn, vaddr_t vaddr, int slot, 
 }
 #endif
 
-void mem_store_vector_oddva(thread_t* thread, insn_t * insn, vaddr_t vaddr, vaddr_t lookup_vaddr, int slot, int size, size1u_t* data, size1u_t* mask, unsigned invert, int use_full_va)
+void mem_store_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t lookup_vaddr, int slot, int size, size1u_t* data, size1u_t* mask, unsigned invert, int use_full_va)
 {
     enum ext_mem_access_types access_type;
     int i;
@@ -274,8 +274,29 @@ static int check_scatter_gather_page_cross(thread_t* thread, vaddr_t base, int l
     return 0;
 }
 
+void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
+                      int slot, uint8_t *data)
+{
+    size_t size = sizeof(MMVector);
 
-void mem_vector_scatter_init(thread_t* thread, insn_t * insn, vaddr_t base_vaddr, int length, int element_size)
+    /*
+     * If it's a gather store update store data from temporary register
+     * and clear flag
+     */
+    memcpy(data, &env->tmp_VRegs[0].ub[0], size);
+    env->VRegs_updated_tmp = 0;
+    env->gather_issued = false;
+
+    env->vstore_pending[slot] = 1;
+    env->vstore[slot].va   = vaddr;
+    env->vstore[slot].size = size;
+    memcpy(&env->vstore[slot].data.ub[0], data, size);
+
+    /* On a gather store, overwrite the store mask to emulate dropped gathers */
+    memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
+}
+
+void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, int length, int element_size)
 {
     enum ext_mem_access_types access_type=access_type_vscatter_store;
     // Translation for Store Address on Slot 1 - maybe any slot?
@@ -321,7 +342,7 @@ void mem_vector_scatter_init(thread_t* thread, insn_t * insn, vaddr_t base_vaddr
 }
 
 
-void mem_vector_gather_init(thread_t* thread, insn_t * insn, vaddr_t base_vaddr,  int length, int element_size)
+void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  int length, int element_size)
 {
 
     int slot = insn->slot;
@@ -381,7 +402,7 @@ void mem_vector_gather_init(thread_t* thread, insn_t * insn, vaddr_t base_vaddr,
 
 
 
-void mem_vector_scatter_finish(thread_t* thread, insn_t * insn, int op)
+void mem_vector_scatter_finish(thread_t* thread, Insn * insn, int op)
 {
 
     int slot = insn->slot;
@@ -400,7 +421,7 @@ void mem_vector_scatter_finish(thread_t* thread, insn_t * insn, int op)
     return;
 }
 
-void mem_vector_gather_finish(thread_t* thread, insn_t * insn)
+void mem_vector_gather_finish(thread_t* thread, Insn * insn)
 {
     // Gather Loads
     int slot = insn->slot;

@@ -2805,7 +2805,7 @@ static inline size8u_t sys_mem_merge_inflight_store(thread_t *thread,
 	return retdata.data;
 }
 
-int check_release(thread_t * thread, size4u_t vaddr, paddr_t paddr, size1u_t data, insn_t *insn) {
+int check_release(thread_t * thread, size4u_t vaddr, paddr_t paddr, size1u_t data, Insn *insn) {
 	processor_t *proc = (processor_t *)thread->processor_ptr;
 
 	size8u_t entry;
@@ -2876,7 +2876,7 @@ int check_release(thread_t * thread, size4u_t vaddr, paddr_t paddr, size1u_t dat
 
 
 size8u_t
-mem_general_load(thread_t * thread, size4u_t vaddr, int width, insn_t *insn)
+mem_general_load(thread_t * thread, size4u_t vaddr, int width, Insn *insn)
 {
 	paddr_t paddr;
 	size8u_t data;
@@ -2948,7 +2948,7 @@ char *get_l1s_hostptr(thread_t * thread, size4u_t vaddr)
 
 
 void
-mem_general_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, insn_t *insn)
+mem_general_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, Insn *insn)
 {
 	paddr_t paddr;
     int slot = insn->slot;
@@ -3053,7 +3053,7 @@ mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, i
 
 #ifdef FIXME
 
-size8s_t mem_load_locked(thread_t * thread, size4u_t vaddr, int width, insn_t *insn)
+size8s_t mem_load_locked(thread_t * thread, size4u_t vaddr, int width, Insn *insn)
 {
 	size8u_t data;
 	paddr_t paddr;
@@ -3093,7 +3093,7 @@ size8s_t mem_load_locked(thread_t * thread, size4u_t vaddr, int width, insn_t *i
 }
 
 int
-mem_store_conditional(thread_t * thread, size4u_t vaddr, size8u_t data, int width, insn_t *insn)
+mem_store_conditional(thread_t * thread, size4u_t vaddr, size8u_t data, int width, Insn *insn)
 {
 	paddr_t paddr;
 	mem_access_info_t *maptr = &thread->mem_access[0];
@@ -3207,7 +3207,7 @@ static inline int in_axi_space_proc(processor_t *proc, paddr_t paddr) {
 
 
 
-void mem_vtcm_memcpy(thread_t *thread, insn_t *insn, vaddr_t dst, vaddr_t src, size4u_t length) {
+void mem_vtcm_memcpy(thread_t *thread, Insn *insn, vaddr_t dst, vaddr_t src, size4u_t length) {
 
 	processor_t *proc = thread->processor_ptr;
 
@@ -4229,7 +4229,7 @@ void sys_cfgtbl_dump(FILE * fp, processor_t *proc) {
 }
 
 
-size4s_t mem_load_phys(thread_t * thread, size4u_t src1, size4u_t src2, insn_t *insn)
+size4s_t mem_load_phys(thread_t * thread, size4u_t src1, size4u_t src2, Insn *insn)
 {
     int slot = 0;
 	mem_access_info_t *maptr = &thread->mem_access[slot];
@@ -4806,7 +4806,7 @@ int sys_sync(thread_t * thread, int slot)
 }
 
 int
-sys_get_mem_size(thread_t *thread, insn_t *insn)
+sys_get_mem_size(thread_t *thread, Insn *insn)
 {
     if(GET_ATTRIB(insn->opcode, A_MEMSIZE_1B)) {
         return 1;
@@ -4836,7 +4836,7 @@ mem_init_access_cancelled(thread_t * thread, int slot, size4u_t vaddr,
 }
 
 void
-mem_general_load_cancelled(thread_t * thread, size4u_t vaddr, insn_t *insn)
+mem_general_load_cancelled(thread_t * thread, size4u_t vaddr, Insn *insn)
 {
     paddr_t paddr;
     int width = sys_get_mem_size(thread, insn);
@@ -4874,7 +4874,7 @@ mem_general_load_cancelled(thread_t * thread, size4u_t vaddr, insn_t *insn)
 }
 
 void
-mem_general_store_cancelled(thread_t * thread, size4u_t vaddr, insn_t *insn)
+mem_general_store_cancelled(thread_t * thread, size4u_t vaddr, Insn *insn)
 {
 	paddr_t paddr;
     int slot = insn->slot;
@@ -4899,7 +4899,7 @@ mem_general_store_cancelled(thread_t * thread, size4u_t vaddr, insn_t *insn)
 }
 
 bool
-can_dispatch_without_cracking(processor_t *proc, packet_t *packet, size1u_t bigcore_slots_pending, size1u_t tinycore_slots_avail, int* slotmap) {
+can_dispatch_without_cracking(processor_t *proc, Packet *packet, size1u_t bigcore_slots_pending, size1u_t tinycore_slots_avail, int* slotmap) {
     size2u_t opcode;
     size1u_t sitype;
     int bigcore_slot;
@@ -4968,7 +4968,7 @@ can_dispatch_without_cracking(processor_t *proc, packet_t *packet, size1u_t bigc
 }
 
 bool
-is_native_tinycore_packet (thread_t* thread, packet_t* packet) {
+is_native_tinycore_packet (thread_t* thread, Packet* packet) {
     size2u_t opcode;
 	processor_t *proc = thread->processor_ptr;
     size1u_t bigcore_slots_pending = 0;
@@ -5014,7 +5014,7 @@ size8u_t get_subinsn_class(size4u_t opcode) {
     return 0;
 }
 
-size4u_t get_iclass(insn_t *insn) {
+size4u_t get_iclass(Insn *insn) {
     size8u_t iclass = insn->iclass;
     /* convert subinsn classes to best fit iclass */
     if ( GET_ATTRIB(insn->opcode, A_SUBINSN) && (insn->slot==0 || insn->slot==1) ) {

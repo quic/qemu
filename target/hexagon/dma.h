@@ -175,10 +175,10 @@ typedef struct udma_ctx_t {
     uint32_t desc_new;                  // New descriptor to be processed
     // Timing mode support
     uint32_t timing_on;                 // for timing, 0 for non-timing
-    int16_t insn_timer;                 // Instruction timer : 0xFFFF means there is no
+    int16_t Insnimer;                 // Instruction timer : 0xFFFF means there is no
                                         // timing model working. 0 means the timer expires.
-    uint32_t insn_timer_active;
-    uint32_t insn_timer_pmu;
+    uint32_t Insnimer_active;
+    uint32_t Insnimer_pmu;
     // Error information
     uint32_t error_state_reason_captured;
     uint32_t error_state_reason;

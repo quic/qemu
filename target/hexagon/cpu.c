@@ -26,6 +26,7 @@
 #include "internal.h"
 #include "gdb_qreginfo.h"
 #include "hw/qdev-properties.h"
+#include "fpu/softfloat-helpers.h"
 #include "hmx/ext_hmx.h"
 
 #if !defined(CONFIG_USER_ONLY)

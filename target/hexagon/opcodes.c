@@ -88,47 +88,6 @@ static void init_attribs(int tag, ...)
     va_end(ap);
 }
 
-static size4u_t str2val(const char *str)
-{
-    size4u_t ret = 0;
-    for ( ; *str; str++) {
-        switch (*str) {
-        case ' ':
-        case '\t':
-            break;
-        case 's':
-        case 't':
-        case 'u':
-        case 'v':
-        case 'w':
-        case 'd':
-        case 'e':
-        case 'x':
-        case 'y':
-        case 'i':
-        case 'I':
-        case 'P':
-        case 'E':
-        case 'o':
-        case '-':
-        case '0':
-            ret = (ret << 1) | 0;
-            break;
-        case '1':
-            ret = (ret << 1) | 1;
-            break;
-        default:
-            break;
-        }
-    }
-    return ret;
-}
-
-static size1u_t has_ee(const char *str)
-{
-    return (strchr(str, 'E') != NULL);
-}
-
 const OpcodeEncoding opcode_encodings[] = {
 #define DEF_ENC32(OPCODE, ENCSTR) \
     [OPCODE] = { .encoding = ENCSTR },

@@ -130,8 +130,8 @@ int sys_k0lock_queue_ready(thread_t *thread);
 
 void recalculate_level_ipend(processor_t * proc);
 
-size8u_t mem_general_load(thread_t * thread, size4u_t vaddr, int width, insn_t *insn);
-void mem_general_load_cancelled(thread_t * thread, size4u_t vaddr, insn_t *insn);
+size8u_t mem_general_load(thread_t * thread, size4u_t vaddr, int width, Insn *insn);
+void mem_general_load_cancelled(thread_t * thread, size4u_t vaddr, Insn *insn);
 paddr_t mem_init_access_direct(thread_t * thread, int slot, size4u_t vaddr,
 	   int width, enum mem_access_types mtype, int type_for_xlate);
 paddr_t mem_init_access_silent(thread_t * thread, int slot, size4u_t vaddr,
@@ -147,11 +147,11 @@ void mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t da
 
 #ifdef FIXME
 
-int check_release(thread_t * thread, size4u_t vaddr, paddr_t paddr, size1u_t data, insn_t *insn);
-void mem_general_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, insn_t *insn);
-void mem_general_store_cancelled(thread_t * thread, size4u_t vaddr, insn_t *insn);
+int check_release(thread_t * thread, size4u_t vaddr, paddr_t paddr, size1u_t data, Insn *insn);
+void mem_general_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, Insn *insn);
+void mem_general_store_cancelled(thread_t * thread, size4u_t vaddr, Insn *insn);
 
-void mem_vtcm_memcpy(thread_t *thread, insn_t *insn, vaddr_t dst, vaddr_t src, size4u_t length);
+void mem_vtcm_memcpy(thread_t *thread, Insn *insn, vaddr_t dst, vaddr_t src, size4u_t length);
 
 
 void sys_dcinva(thread_t * thread, size4u_t va);
@@ -179,8 +179,8 @@ void sys_nop_executed(thread_t * thread);
 void sys_ciad(thread_t * thread, size4u_t val);
 void sys_siad(thread_t * thread, size4u_t val);
 
-size8s_t mem_load_locked(thread_t * thread, size4u_t vaddr, int width, insn_t *insn);
-int mem_store_conditional(thread_t * thread, size4u_t vaddr, size8u_t value, int width, insn_t *insn);
+size8s_t mem_load_locked(thread_t * thread, size4u_t vaddr, int width, Insn *insn);
+int mem_store_conditional(thread_t * thread, size4u_t vaddr, size8u_t value, int width, Insn *insn);
 
 size8u_t sys_cfgtbl_read(system_t *sys, processor_t *proc, int memmap_cluster_id, int tnum, paddr_t paddr, int width);
 void sys_cfgtbl_write(system_t *sys, processor_t *proc, int memmap_cluster_id, int tnum, paddr_t paddr, int width, size8u_t val);
@@ -197,7 +197,7 @@ void sys_ecc_reg_init(processor_t *proc);
 
 
 void sys_cfgtbl_dump(FILE *fp, processor_t *proc);
-size4s_t mem_load_phys(thread_t * thread, size4u_t src1, size4u_t src2, insn_t *insn);
+size4s_t mem_load_phys(thread_t * thread, size4u_t src1, size4u_t src2, Insn *insn);
 
 size4u_t imem_try_read4(thread_t * thread, size4u_t vaddr, size4u_t * word, xlate_info_t *xinfo, exception_info *einfo);
 
@@ -468,7 +468,7 @@ static inline int fmc_hit_store(thread_t * thread, size4u_t va)
 }
 
 
-static inline void mem_init_lean(thread_t *thread, size4u_t vaddr, insn_t *insn, enum mem_access_types mtype, int xlate_type, int width)
+static inline void mem_init_lean(thread_t *thread, size4u_t vaddr, Insn *insn, enum mem_access_types mtype, int xlate_type, int width)
 {
   	mem_access_info_t *maptr = &(thread->mem_access[insn->slot]);
     maptr->valid = 1;
@@ -483,7 +483,7 @@ static inline void mem_init_lean(thread_t *thread, size4u_t vaddr, insn_t *insn,
 	}
 }
 
-static inline size1u_t mem_load1(thread_t * thread, size4u_t vaddr, insn_t *insn)
+static inline size1u_t mem_load1(thread_t * thread, size4u_t vaddr, Insn *insn)
 {
 	if (LIKELY(FMC_ENABLED && fmc_hit_load(thread, vaddr))) {
 		if(thread->processor_ptr->uarch.cache_lean_ready) {
@@ -495,7 +495,7 @@ static inline size1u_t mem_load1(thread_t * thread, size4u_t vaddr, insn_t *insn
 	}
 }
 
-static inline size2u_t mem_load2(thread_t * thread, size4u_t vaddr, insn_t *insn)
+static inline size2u_t mem_load2(thread_t * thread, size4u_t vaddr, Insn *insn)
 {
 	if (LIKELY(ISALIGN(vaddr, 2) && FMC_ENABLED && fmc_hit_load(thread, vaddr))) {
 		if(thread->processor_ptr->uarch.cache_lean_ready) {
@@ -508,7 +508,7 @@ static inline size2u_t mem_load2(thread_t * thread, size4u_t vaddr, insn_t *insn
 }
 
 
-static inline size4u_t mem_load4(thread_t * thread, size4u_t vaddr, insn_t *insn)
+static inline size4u_t mem_load4(thread_t * thread, size4u_t vaddr, Insn *insn)
 {
 	if (LIKELY(ISALIGN(vaddr, 4) && FMC_ENABLED && fmc_hit_load(thread, vaddr))) {
 		if(thread->processor_ptr->uarch.cache_lean_ready) {
@@ -521,7 +521,7 @@ static inline size4u_t mem_load4(thread_t * thread, size4u_t vaddr, insn_t *insn
 }
 
 
-static inline size8u_t mem_load8(thread_t * thread, size4u_t vaddr, insn_t *insn)
+static inline size8u_t mem_load8(thread_t * thread, size4u_t vaddr, Insn *insn)
 {
 	if (LIKELY(ISALIGN(vaddr, 8) && FMC_ENABLED && fmc_hit_load(thread, vaddr))) {
 		if(thread->processor_ptr->uarch.cache_lean_ready) {
@@ -534,7 +534,7 @@ static inline size8u_t mem_load8(thread_t * thread, size4u_t vaddr, insn_t *insn
 }
 
 /* Store for release instructions */
-static inline void mem_store0(thread_t * thread, size4u_t vaddr, size1u_t data, insn_t *insn)
+static inline void mem_store0(thread_t * thread, size4u_t vaddr, size1u_t data, Insn *insn)
 {
 	paddr_t paddr = mem_init_access(thread,insn->slot,vaddr,1,access_type_store,TYPE_STORE);
 	if(check_release(thread,vaddr,paddr,data,insn)) {
@@ -543,7 +543,7 @@ static inline void mem_store0(thread_t * thread, size4u_t vaddr, size1u_t data, 
 	}
 }
 
-static inline void mem_store1(thread_t * thread, size4u_t vaddr, size1u_t data, insn_t *insn)
+static inline void mem_store1(thread_t * thread, size4u_t vaddr, size1u_t data, Insn *insn)
 {
 	/* See if we can store directly to the host */
 	if (LIKELY(ISALIGN(vaddr, 1) && FMC_ENABLED_ST && fmc_hit_store(thread, vaddr))) {
@@ -557,7 +557,7 @@ static inline void mem_store1(thread_t * thread, size4u_t vaddr, size1u_t data, 
 }
 
 
-static inline void mem_store2(thread_t * thread, size4u_t vaddr, size2u_t data, insn_t *insn)
+static inline void mem_store2(thread_t * thread, size4u_t vaddr, size2u_t data, Insn *insn)
 {
 	/* See if we can store directly to the host */
 	if (LIKELY(ISALIGN(vaddr, 2) && FMC_ENABLED_ST && fmc_hit_store(thread, vaddr))) {
@@ -570,7 +570,7 @@ static inline void mem_store2(thread_t * thread, size4u_t vaddr, size2u_t data, 
 	}
 }
 
-static inline void mem_store4(thread_t * thread, size4u_t vaddr, size4u_t data, insn_t *insn)
+static inline void mem_store4(thread_t * thread, size4u_t vaddr, size4u_t data, Insn *insn)
 {
 	/* See if we can store directly to the host */
 	if (LIKELY(ISALIGN(vaddr, 4) && FMC_ENABLED_ST && fmc_hit_store(thread, vaddr))) {
@@ -583,7 +583,7 @@ static inline void mem_store4(thread_t * thread, size4u_t vaddr, size4u_t data, 
 	}
 }
 
-static inline void mem_store8(thread_t * thread, size4u_t vaddr, size8u_t data, insn_t *insn)
+static inline void mem_store8(thread_t * thread, size4u_t vaddr, size8u_t data, Insn *insn)
 {
 	/* See if we can store directly to the host */
 	if (LIKELY(ISALIGN(vaddr, 8) && FMC_ENABLED_ST && fmc_hit_store(thread, vaddr))) {
@@ -632,12 +632,12 @@ static inline int sys_in_user_mode(thread_t * thread)
 
 void sys_stats_reset(processor_t * proc);
 
-bool can_dispatch_without_cracking(processor_t *proc, packet_t *packet, size1u_t bigcore_slots_pending, size1u_t tinycore_slots_avail, int* slotmap);
+bool can_dispatch_without_cracking(processor_t *proc, Packet *packet, size1u_t bigcore_slots_pending, size1u_t tinycore_slots_avail, int* slotmap);
 
 size8u_t get_subinsn_class( size4u_t opcode);
-size4u_t get_iclass(insn_t *insn);
+size4u_t get_iclass(Insn *insn);
 
-bool is_native_tinycore_packet(thread_t* thread, packet_t* packet);
+bool is_native_tinycore_packet(thread_t* thread, Packet* packet);
 
 #endif  /* FIXME */
 void iic_flush_cache(processor_t * proc);

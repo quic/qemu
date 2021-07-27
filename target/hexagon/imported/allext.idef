@@ -21,6 +21,5 @@
 #define EXTNAME mmvec
 #define EXTSTR "mmvec"
 #include "mmvec/ext.idef"
-#include "hmx/ext.idef"
 #undef EXTNAME
 #undef EXTSTR

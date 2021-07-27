@@ -18,15 +18,21 @@
 #ifndef HEXAGON_ATTRIBS_H
 #define HEXAGON_ATTRIBS_H
 
+#if 0
+#include </local/mnt2/workspace2/qemu/do_qemu_02/include/qemu/bitmap.h>
+#endif
+
+#include "qemu/bitmap.h"
+#include "opcodes.h"
+
 enum {
 #define DEF_ATTRIB(NAME, ...) A_##NAME,
 #include "attribs_def.h.inc"
 #undef DEF_ATTRIB
 };
 
-#define ATTRIB_WIDTH 32
+extern DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
 #define GET_ATTRIB(opcode, attrib) \
-    (((opcode_attribs[opcode][attrib / ATTRIB_WIDTH])\
-    >> (attrib % ATTRIB_WIDTH)) & 0x1)
+    test_bit(attrib, opcode_attribs[opcode])
 
 #endif /* ATTRIBS_H */

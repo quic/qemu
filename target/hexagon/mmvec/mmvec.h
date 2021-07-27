@@ -73,6 +73,7 @@ typedef union {
 	size2s_t hf[MAX_VEC_SIZE_BYTES/2];
 	size2s_t bf[MAX_VEC_SIZE_BYTES/2];
 } mmvector_t;
+typedef mmvector_t MMVector;
 
 typedef union {
 	size8u_t ud[2*MAX_VEC_SIZE_BYTES/8];
@@ -90,6 +91,7 @@ typedef union {
 	size2s_t bf[MAX_VEC_SIZE_BYTES/2];
 	mmvector_t v[2];
 } mmvector_pair_t;
+typedef mmvector_pair_t MMVectorPair;
 
 typedef union {
 	size8u_t ud[4*MAX_VEC_SIZE_BYTES/8];
@@ -123,7 +125,7 @@ typedef union {
 	size2s_t hf[MAX_VEC_SIZE_BYTES/2];
 	size2s_t bf[MAX_VEC_SIZE_BYTES/2];
 } mmqreg_t;
-
+typedef mmqreg_t MMQReg;
 
 typedef struct {
     mmvector_t data;
@@ -151,12 +153,12 @@ typedef struct {
     };
 } vtcm_storelog_verif_t;
 
-enum {
+typedef enum {
 	EXT_DFL,
 	EXT_NEW,
 	EXT_TMP,
 	EXT_REMAP
-};
+} VRegWriteType;
 
 #define MMVECX_LOG_MEM(VA,PA,WIDTH,DATA,SLOT,LOGTYPE,TYPE)
 #define MMVECX_LOG_MEM_LOAD(VA,PA,WIDTH,DATA,SLOT)

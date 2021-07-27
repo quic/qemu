@@ -661,9 +661,9 @@ def gen_decl_ea(tag,f):
     f.write("size4u_t EA;\n")
 
 def gen_decl_insn(tag,f,slot):
-    str = 'insn_t tmp_insn = { .slot = %d };\n' % (slot);
+    str = 'Insn tmp_insn = { .slot = %d };\n' % (slot);
     f.write(str);
-    f.write('insn_t *insn = &tmp_insn;\n');
+    f.write('Insn *insn = &tmp_insn;\n');
 
 def gen_helper_return_type(f,regtype,regid,regno):
     if regno > 1 : f.write(", ")

@@ -20,6 +20,8 @@
 
 /* Forward declaration needed by some of the header files */
 typedef struct CPUHexagonState CPUHexagonState;
+#include "fpu/softfloat-types.h"
+
 #ifndef CONFIG_USER_ONLY
 #include "reg_fields.h"
 typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
@@ -437,7 +439,7 @@ struct Einfo {
   size2u_t de_slotmask;
 };
 typedef struct Einfo exception_info;
-typedef struct Instruction insn_t;
+typedef struct Instruction Insn;
 typedef unsigned systemstate_t;
 
 struct CPUHexagonState {
@@ -483,6 +485,7 @@ struct CPUHexagonState {
     target_ulong dczero_addr;
 
     fenv_t fenv;
+    float_status fp_status;
 
     target_ulong llsc_addr;
     target_ulong llsc_val;
@@ -503,6 +506,13 @@ struct CPUHexagonState {
     mmqreg_t future_QRegs[NUM_QREGS];
     QRegMask QRegs_updated;
 
+    /* Temporaries used within instructions */
+    mmvector_t zero_vector QEMU_ALIGNED(16);
+    mmvector_pair_t VddV QEMU_ALIGNED(16),
+                 VuuV QEMU_ALIGNED(16),
+                 VvvV QEMU_ALIGNED(16),
+                 VxxV QEMU_ALIGNED(16);
+
     vstorelog_t vstore[VSTORES_MAX];
     uint8_t store_pending[VSTORES_MAX];
     uint8_t vstore_pending[VSTORES_MAX];
@@ -519,7 +529,6 @@ struct CPUHexagonState {
     target_ulong cache_tags[CACHE_TAGS_MAX];
     unsigned int timing_on;
 
-    insn_t insn_env;
     size8u_t pktid;
     processor_t *processor_ptr;
     unsigned int threadId;

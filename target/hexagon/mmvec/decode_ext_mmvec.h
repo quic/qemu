@@ -19,8 +19,8 @@
 #define HEXAGON__EXT_MMVEC_DECODE__
 
 #define MMVEC_EXT_DECODE_CHECKS(PKT)  mmvec_ext_decode_checks((thread_t *)0, (PKT), (exception_info *)0);
-int mmvec_ext_decode_checks(thread_t * thread, packet_t *pkt, exception_info *einfo);
-const char * mmvec_ext_decode_find_iclass_slots(int opcode);
+int mmvec_ext_decode_checks(thread_t * thread, Packet *pkt, exception_info *einfo);
+SlotMask mmvec_ext_decode_find_iclass_slots(int opcode);
 
 
 #endif

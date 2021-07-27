@@ -35,12 +35,26 @@ def is_sysemu_tag(tag):
     return ("A_PRIV" in attribdict[tag] or
             "A_GUEST" in attribdict[tag])
 
-def tag_skip(tag):
+def tag_ignore(tag):
     tag_skips = (
+        'Y6_diag',
+        'Y6_diag0',
+        'Y6_diag1',
+#        'V6_v6mpyhubs10_vxx',
+#        'V6_v6mpyvubs10_vxx',
     )
     attr_skips = (
         'A_FAKEINSN',
         'A_MAPPING',
+    )
+    return tag in tag_skips or any(attr in attribdict[tag] for attr in attr_skips)
+
+def tag_skip(tag):
+    tag_skips = (
+    )
+    attr_skips = (
+#        'A_FAKEINSN',
+#        'A_MAPPING',
     )
     return tag in tag_skips or any(attr in attribdict[tag] for attr in attr_skips)
 
@@ -51,7 +65,7 @@ def get_user_tags():
     return sorted(tag for tag in frozenset(tags) if not is_sysemu_tag(tag) and not tag_skip(tag))
 
 def get_all_tags():
-    return sorted(get_sys_tags() + get_user_tags())
+    return get_user_tags() + get_sys_tags()
 
 def get_macro(macname,ext=""):
     mackey = macname + ":" + ext
@@ -239,7 +253,7 @@ def is_readwrite(regid):
     return regid[0] in "xy"
 
 def is_scalar_reg(regtype):
-    return regtype in "RPC"
+    return regtype in "RPCGS"
 
 def is_sreg(regtype):
     return regtype == "S"
@@ -276,17 +290,26 @@ def need_ea(tag):
 def skip_qemu_helper(tag):
     return tag in overrides.keys()
 
-def is_hmx_act(attrs):
-    return ('A_HMX' in attrs and 'A_PAIR_1OF2' in attrs);
+def is_hmx(tag):
+    return ('A_HMX' in attribdict[tag])
 
-def is_hmx(attrs):
-    return ('A_HMX' in attrs)
+def is_scatter_gather(tag):
+    return ('A_CVI_SCATTER' in attribdict[tag] or 'A_CVI_SCATTER_RELEASE' in attribdict[tag] or 'A_CVI_GATHER' in attrbdict[tag]);
 
-def is_scatter_gather(attrs):
-    return ('A_CVI_SCATTER' in attrs or 'A_CVI_SCATTER_RELEASE' in attrs or 'A_CVI_GATHER' in attrs);
+def is_gather(tag):
+    return ('A_CVI_GATHER' in attribdict[tag]);
 
-def is_gather(attrs):
-    return ('A_CVI_GATHER' in attrs);
+def is_hmx_act(tag):
+    return ('A_HMX' in attribdict[tag] and 'A_PAIR_1OF2' in attribdict[tag]);
+
+def is_hmx(tag):
+    return ('A_HMX' in attribdict[tag])
+
+def is_scatter_gather(tag):
+    return ('A_CVI_SCATTER' in attribdict[tag] or 'A_CVI_SCATTER_RELEASE' in attribdict[tag] or 'A_CVI_GATHER' in attribdict[tag]);
+
+def is_gather(tag):
+    return ('A_CVI_GATHER' in attribdict[tag]);
 
 def imm_name(immlett):
     return "%siV" % immlett

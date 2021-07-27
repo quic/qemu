@@ -54,7 +54,7 @@
         break; \
 
 static void
-decode_op(insn_t *insn, opcode_t tag, size4u_t encoding)
+decode_op(Insn *insn, Opcode tag, size4u_t encoding)
 {
     insn->immed[0] = 0;
     insn->immed[1] = 0;
@@ -93,18 +93,18 @@ decode_op(insn_t *insn, opcode_t tag, size4u_t encoding)
 #undef DECODE_SEPARATOR_BITS
 
 static unsigned int
-decode_subinsn_tablewalk(insn_t *insn, dectree_table_t *table,
+decode_subInsnablewalk(Insn *insn, dectree_table_t *table,
                          size4u_t encoding)
 {
     unsigned int i;
-    opcode_t opc;
+    Opcode opc;
     if (table->lookup_function) {
         i = table->lookup_function(table->startbit, table->width, encoding);
     } else {
         i = ((encoding >> table->startbit) & ((1 << table->width) - 1));
     }
     if (table->table[i].type == DECTREE_TABLE_LINK) {
-        return decode_subinsn_tablewalk(insn, table->table[i].table_link,
+        return decode_subInsnablewalk(insn, table->table[i].table_link,
                                         encoding);
     } else if (table->table[i].type == DECTREE_TERMINAL) {
         opc = table->table[i].opcode;
@@ -129,11 +129,11 @@ static unsigned int get_insn_b(size4u_t encoding)
 }
 
 static unsigned int
-decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, size4u_t encoding)
+decode_insns_tablewalk(Insn *insn, dectree_table_t *table, size4u_t encoding)
 {
     unsigned int i;
     unsigned int a, b;
-    opcode_t opc;
+    Opcode opc;
     if (table->lookup_function) {
         i = table->lookup_function(table->startbit, table->width, encoding);
     } else {
@@ -145,8 +145,8 @@ decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, size4u_t encoding)
     } else if (table->table[i].type == DECTREE_SUBINSNS) {
         a = get_insn_a(encoding);
         b = get_insn_b(encoding);
-        b = decode_subinsn_tablewalk(insn, table->table[i].table_link_b, b);
-        a = decode_subinsn_tablewalk(insn + 1, table->table[i].table_link, a);
+        b = decode_subInsnablewalk(insn, table->table[i].table_link_b, b);
+        a = decode_subInsnablewalk(insn + 1, table->table[i].table_link, a);
         if ((a == 0) || (b == 0)) {
             return 0;
         }
@@ -174,7 +174,7 @@ decode_insns_tablewalk(insn_t *insn, dectree_table_t *table, size4u_t encoding)
 }
 
 static unsigned int
-decode_insns(insn_t *insn, size4u_t encoding)
+decode_insns(Insn *insn, size4u_t encoding)
 {
     dectree_table_t *table;
     if ((encoding & 0x0000c000) != 0) {
@@ -187,7 +187,7 @@ decode_insns(insn_t *insn, size4u_t encoding)
     return decode_insns_tablewalk(insn, table, encoding);
 }
 
-static void decode_add_endloop_insn(insn_t *insn, int loopnum)
+static void decode_add_endloop_insn(Insn *insn, int loopnum)
 {
     if (loopnum == 10) {
         insn->opcode = J2_endloop01;
@@ -214,7 +214,7 @@ static inline int decode_parsebits_is_loopend(size4u_t encoding32)
 }
 
 static int
-decode_set_slot_number(packet_t *pkt)
+decode_set_slot_number(Packet *pkt)
 {
     int slot;
     int i;
@@ -314,7 +314,7 @@ decode_set_slot_number(packet_t *pkt)
  * and number of words used on success
  */
 
-static int do_decode_packet(int max_words, const size4u_t *words, packet_t *pkt)
+static int do_decode_packet(int max_words, const size4u_t *words, Packet *pkt)
 {
     int num_insns = 0;
     int words_read = 0;

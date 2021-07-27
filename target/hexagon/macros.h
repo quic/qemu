@@ -202,8 +202,7 @@
 
 #define LOG_REG_WRITE(RNUM, VAL)\
     do { \
-        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
-        GEN_LOG_REG_WRITE(RNUM, VAL, insn->slot, is_predicated); \
+        GEN_LOG_REG_WRITE(RNUM, VAL);\
         ctx_log_reg_write(ctx, (RNUM)); \
     } while (0)
 
@@ -218,16 +217,19 @@
             tcg_temp_free_i32(num);                   \
         }                                             \
     } while (0)
+#if 1
+// mgl
+//        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC);
+//        GEN_LOG_GREG_WRITE(RNUM, VAL, insn->slot, is_predicated);
 #define LOG_GREG_WRITE(RNUM, VAL)\
     do { \
-        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
         if ((RNUM) > HEX_GREG_G3) { \
             g_assert_not_reached(); \
         } \
-        GEN_LOG_GREG_WRITE(RNUM, VAL, insn->slot, is_predicated); \
+        GEN_LOG_GREG_WRITE(RNUM, VAL); \
         ctx_log_greg_write(ctx, (RNUM)); \
     } while (0)
-
+#endif
 #define LOG_PRED_WRITE(PNUM, VAL) \
     do { \
         gen_log_pred_write(PNUM, VAL); \
@@ -325,8 +327,10 @@
 #define FREE_EA \
     tcg_temp_free(EA)
 #else
-#define LOG_REG_WRITE(RNUM, VAL)\
-    log_reg_write(env, RNUM, VAL, slot)
+#define LOG_REG_WRITE(RNUM, VAL) \
+    do {\
+        log_reg_write(env, RNUM, VAL, slot);\
+    } while (0)
 #define LOG_SREG_WRITE(SNUM, VAL)\
     log_sreg_write(env, SNUM, VAL, slot)
 #define LOG_PRED_WRITE(RNUM, VAL)\
@@ -412,7 +416,7 @@
                 gen_helper_sreg_read(dest, cpu_env, num); \
                 tcg_temp_free_i32(num); \
             } else { \
-                dest = hex_t_sreg[NUM]; \
+                tcg_gen_mov_tl(dest, hex_t_sreg[NUM]); \
             } \
         } else { \
             TCGv_i32 num = tcg_const_i32(NUM); \
@@ -628,10 +632,11 @@
     } while (0)
 #define WRITE_SREG_dd(NUM, VAL)          WRITE_SREG_PAIR(NUM, VAL)
 
+//        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC);
+//        GEN_LOG_GREG_WRITE_PAIR(NUM, VAL, insn->slot, is_predicated);
 #define WRITE_GREG_PAIR(NUM, VAL) \
     do { \
-        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
-        GEN_LOG_GREG_WRITE_PAIR(NUM, VAL, insn->slot, is_predicated); \
+        GEN_LOG_GREG_WRITE_PAIR(NUM, VAL); \
         ctx_log_greg_write(ctx, (NUM)); \
         ctx_log_greg_write(ctx, (NUM) + 1); \
     } while (0)
@@ -680,8 +685,15 @@
                        reg_field_info[FIELD].offset, \
                        reg_field_info[FIELD].width)
 
+#define TYPE_INT(X)          __builtin_types_compatible_p(typeof(X), int)
+#define TYPE_TCGV(X)         __builtin_types_compatible_p(typeof(X), TCGv)
+#define TYPE_TCGV_I64(X)     __builtin_types_compatible_p(typeof(X), TCGv_i64)
+
 #define SET_USR_FIELD_FUNC(X) \
-    _Generic((X), int : gen_set_usr_fieldi, TCGv : gen_set_usr_field)
+    __builtin_choose_expr(TYPE_INT(X), \
+        gen_set_usr_fieldi, \
+        __builtin_choose_expr(TYPE_TCGV(X), \
+            gen_set_usr_field, (void)0))
 #define SET_USR_FIELD(FIELD, VAL) \
     SET_USR_FIELD_FUNC(VAL)(FIELD, VAL)
 #else
@@ -750,11 +762,25 @@
         tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 4, s); \
     } while (0)
+#if 0
+        TCGv_i32 flag = tcg_const_i32(0xAAA4);
+        gen_helper_debug_value(cpu_env, flag);
+        gen_helper_debug_value(cpu_env, VA);
+        gen_helper_debug_value(cpu_env, DST);
+        tcg_temp_free_i32(flag);
+#endif
 #define MEM_LOAD4u(DST, VA) \
     do { \
         tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 4, u); \
     } while (0)
+#if 0
+        TCGv_i32 flag = tcg_const_i32(0xAAA8);
+        gen_helper_debug_value(cpu_env, flag);
+        gen_helper_debug_value(cpu_env, VA);
+        gen_helper_debug_value_i64(cpu_env, DST);
+        tcg_temp_free_i32(flag);
+#endif
 #define MEM_LOAD8u(DST, VA) \
     do { \
         tcg_gen_qemu_ld64(DST, VA, ctx->mem_idx); \
@@ -819,6 +845,12 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
     TCGv one = tcg_const_tl(1);
     tcg_gen_or_tl(slot_mask, hex_slot_cancelled, slot_mask);
     tcg_gen_andi_tl(tmp, pred, 1);
+        TCGv_i32 flag = tcg_const_i32(0xAAA0);
+        gen_helper_debug_value(cpu_env, flag);
+        gen_helper_debug_value(cpu_env, pred);
+        gen_helper_debug_value(cpu_env, slot_mask);
+        gen_helper_debug_value(cpu_env, hex_slot_cancelled);
+        tcg_temp_free_i32(flag);
     tcg_gen_movcond_tl(TCG_COND_EQ, hex_slot_cancelled, tmp, zero,
                        slot_mask, hex_slot_cancelled);
     tcg_temp_free(slot_mask);
@@ -832,7 +864,7 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 #define PRED_STORE_CANCEL(PRED, EA) \
     gen_pred_cancel(PRED, insn->is_endloop ? 4 : insn->slot)
 #else
-#define STORE_CANCEL(EA) { env->slot_cancelled |= (1 << slot); }
+#define STORE_CANCEL(EA) { printf("mgl: %d cancelled\n", slot), env->slot_cancelled |= (1 << slot); }
 #endif
 
 #define IS_CANCELLED(SLOT)
@@ -917,11 +949,9 @@ static inline void gen_logical_not(TCGv dest, TCGv src)
 #define fLSBNEW1NOT (!fLSBNEW1)
 #endif
 
-#define fNEWREG(RNUM) ((int32_t)(env->new_value[(RNUM)]))
+#define fNEWREG(VAL) ((int32_t)(VAL))
 
-#ifdef QEMU_GENERATE
-#define fNEWREG_ST(RNUM) (hex_new_value[NtX])
-#endif
+#define fNEWREG_ST(VAL) (VAL)
 
 #define fMEMZNEW(RNUM) (RNUM == 0)
 #define fMEMNZNEW(RNUM) (RNUM != 0)
@@ -1046,8 +1076,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fREAD_SA0 (READ_REG(tmp, HEX_REG_SA0))
 #define fREAD_SA1 (READ_REG(tmp, HEX_REG_SA1))
 #define fREAD_FP() (READ_REG(tmp, HEX_REG_FP))
-#define fREAD_GP() \
-    (insn->extension_valid ? gen_zero(tmp) : READ_REG(tmp, HEX_REG_GP))
 #define fREAD_PC() (READ_REG(tmp, HEX_REG_PC))
 #else
 #define fREAD_SP() (READ_REG(HEX_REG_SP))
@@ -1060,8 +1088,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fREAD_SA0 (READ_REG(HEX_REG_SA0))
 #define fREAD_SA1 (READ_REG(HEX_REG_SA1))
 #define fREAD_FP() (READ_REG(HEX_REG_FP))
-#define fREAD_GP() \
-    (insn->extension_valid ? 0 : READ_REG(HEX_REG_GP))
 #define fREAD_PC() (READ_REG(HEX_REG_PC))
 #endif
 
@@ -1242,7 +1268,15 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 
 #ifdef QEMU_GENERATE
 #define fEA_IMM(IMM) tcg_gen_movi_tl(EA, IMM)
-#define fEA_REG(REG) tcg_gen_mov_tl(EA, REG)
+#if 0
+        TCGv_i32 flag = tcg_const_i32(0xEEEE);
+        gen_helper_debug_value(cpu_env, flag);
+        gen_helper_debug_value(cpu_env, REG);
+        tcg_temp_free_i32(flag);
+#endif
+#define fEA_REG(REG) do {\
+    tcg_gen_mov_tl(EA, REG); \
+    } while(0)
 static inline void gen_fbrev(TCGv result, TCGv src)
 {
     TCGv result_hi = tcg_temp_new();
@@ -1275,8 +1309,15 @@ static inline void gen_fbrev(TCGv result, TCGv src)
     tcg_temp_free(tmp2);
 }
 
-#define fEA_BREVR(REG)      gen_fbrev(EA, REG)
-#define fEA_GPI(IMM)        tcg_gen_addi_tl(EA, fREAD_GP(), IMM)
+#define fEA_BREVR(REG)      gen_helper_fbrev(EA, REG)
+#define fEA_GPI(IMM) \
+    do { \
+        if (insn->extension_valid) { \
+            tcg_gen_movi_tl(EA, IMM); \
+        } else { \
+            tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_GP], IMM); \
+        } \
+    } while (0)
 #define fPM_I(REG, IMM)     tcg_gen_addi_tl(REG, REG, IMM)
 #define fPM_M(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
 #define fPM_M_BREV(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
@@ -1305,12 +1346,15 @@ static inline void gen_fbrev(TCGv result, TCGv src)
         EA = fbrev(REG); \
     } while (0)
 #endif
+
 #define fPM_CIRI(REG, IMM, MVAL) \
     do { \
         TCGv tcgv_siV = tcg_const_tl(siV); \
-        fcirc_add(REG, tcgv_siV, MuV); \
+        gen_helper_fcircadd(REG, REG, tcgv_siV, MuV, \
+                            hex_gpr[HEX_REG_CS0 + MuN]); \
         tcg_temp_free(tcgv_siV); \
     } while (0)
+
 #define fPM_CIRR(REG, VAL, MVAL) \
     do { \
         fcirc_add(REG, VAL, MuV); \
@@ -1405,8 +1449,8 @@ static inline void gen_fbrev(TCGv result, TCGv src)
     (fUNFLOAT(fFLOAT(A) * fFLOAT((fSF_BIAS() + (B)) << fSF_MANTBITS())))
 #define fSF_GETEXP(A) (((A) >> fSF_MANTBITS()) & 0xff)
 #define fSF_MAXEXP() (254)
-#define fSF_RECIP_COMMON(N, D, O, A) arch_sf_recip_common(&N, &D, &O, &A)
-#define fSF_INVSQRT_COMMON(N, O, A) arch_sf_invsqrt_common(&N, &O, &A)
+#define fSF_RECIP_COMMON(N, D, O, A, S) arch_sf_recip_common((float32 *)&N, (float32 *)&D, (float32 *)&O, &A, S)
+#define fSF_INVSQRT_COMMON(N, O, A, S) arch_sf_invsqrt_common((float32 *)&N, (float32 *)&O, &A, S)
 #define fFMAFX(A, B, C, ADJ) internal_fmafx(A, B, C, fSXTN(8, 64, ADJ))
 #define fFMAF(A, B, C) internal_fmafx(A, B, C, 0)
 #define fSFMPY(A, B) internal_mpyf(A, B)
@@ -1539,26 +1583,30 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     tcg_temp_free_i64(FRAMEKEY_i64);
     return frame;
 }
-
 #define fFRAME_UNSCRAMBLE(VAL) gen_frame_unscramble(VAL)
 #else
-#define fGET_FRAMEKEY() READ_REG(HEX_REG_FRAMEKEY)
-#define fFRAME_SCRAMBLE(VAL) ((VAL) ^ (fCAST8u(fGET_FRAMEKEY()) << 32))
-#define fFRAME_UNSCRAMBLE(VAL) fFRAME_SCRAMBLE(VAL)
+#define fGET_FRAMEKEY()         g_assert_not_reached() //READ_REG(HEX_REG_FRAMEKEY)
+#define fFRAME_SCRAMBLE(VAL)    g_assert_not_reached()
+#define fFRAME_UNSCRAMBLE(VAL)  g_assert_not_reached()
 #endif
 
 #ifdef CONFIG_USER_ONLY
 #define fFRAMECHECK(ADDR, EA) do { } while (0) /* Not modelled in linux-user */
 #else
 #ifdef QEMU_GENERATE
+#if 0
 #define fFRAMECHECK(ADDR, EA) \
     do { \
         TCGLabel *ok = gen_new_label(); \
         tcg_gen_brcond_tl(TCG_COND_GEU, ADDR, hex_gpr[HEX_REG_FRAMELIMIT], \
                           ok); \
+        TCGv_i32 slot = tcg_const_i32(insn->slot); \
         gen_helper_raise_stack_overflow(cpu_env, slot, EA); \
         gen_set_label(ok); \
     } while (0)
+#else
+#define fFRAMECHECK(ADDR, EA)
+#endif
 #endif
 #endif
 
@@ -1601,7 +1649,10 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define GETBYTE_FUNC(X) \
-    _Generic((X), TCGv_i32 : gen_get_byte, TCGv_i64 : gen_get_byte_i64)
+    __builtin_choose_expr(TYPE_TCGV(X), \
+        gen_get_byte, \
+        __builtin_choose_expr(TYPE_TCGV_I64(X), \
+            gen_get_byte_i64, (void)0))
 #define fGETBYTE(N, SRC) GETBYTE_FUNC(SRC)(BYTE, N, SRC, true)
 #define fGETUBYTE(N, SRC) GETBYTE_FUNC(SRC)(BYTE, N, SRC, false)
 #else

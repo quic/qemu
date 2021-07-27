@@ -822,7 +822,7 @@ void hmx_ext_dump_acc(FILE *fp, processor_t *proc, int extno) {
 }
 #endif
 
-void hmx_ext_analyze_packet(thread_t * thread, packet_t *pkt) {
+void hmx_ext_analyze_packet(thread_t * thread, Packet *pkt) {
 #if 0
 	processor_t *proc = thread->processor_ptr;
 	if (!thread->bq_on) {

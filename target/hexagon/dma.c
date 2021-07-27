@@ -1042,16 +1042,16 @@ uint32_t dma_tick(dma_t *dma, uint32_t do_step)
     return 1;
 }
 
-static uint32_t dma_cmd_insn_timer_checker(dma_t *dma)
+static uint32_t dma_cmd_Insnimer_checker(dma_t *dma)
 {
     udma_ctx_t *udma_ctx = (udma_ctx_t *)dma->udma_ctx;
-    if (--udma_ctx->insn_timer == 0)  {
-        udma_ctx->insn_timer_active = INSN_TIMER_EXPIRED;
-        dma_adapter_pmu_increment(dma, udma_ctx->insn_timer_pmu, 1);
+    if (--udma_ctx->Insnimer == 0)  {
+        udma_ctx->Insnimer_active = INSN_TIMER_EXPIRED;
+        dma_adapter_pmu_increment(dma, udma_ctx->Insnimer_pmu, 1);
         PRINTF(dma, "DMA %d: Tick %d: insn latency expired\n", dma->num, udma_ctx->dma_tick_count);
         return 1;
     }
-    PRINTF(dma, "DMA %d: Tick %d: insn latency timer=%d\n", dma->num, udma_ctx->dma_tick_count, udma_ctx->insn_timer);
+    PRINTF(dma, "DMA %d: Tick %d: insn latency timer=%d\n", dma->num, udma_ctx->dma_tick_count, udma_ctx->Insnimer);
     return 0;
 }
 
@@ -1059,14 +1059,14 @@ static inline uint32_t
 dma_instruction_latency(dma_t *dma, dma_cmd_report_t *report, uint32_t latency, uint32_t pmu_num) {
     udma_ctx_t *udma_ctx = (udma_ctx_t *)dma->udma_ctx;
     if (udma_ctx->timing_on == 1) {
-        if (udma_ctx->insn_timer_active == INSN_TIMER_IDLE) {
-            report->insn_checker = &dma_cmd_insn_timer_checker;
-            udma_ctx->insn_timer_active = INSN_TIMER_ACTIVE;
-            udma_ctx->insn_timer = dma_adapter_get_insn_latency(dma, latency); // get latency
-            udma_ctx->insn_timer_pmu = pmu_num;
-            PRINTF(dma, "DMA %d: Tick %d: setting insn latency timer=%d\n", dma->num, udma_ctx->dma_tick_count, udma_ctx->insn_timer);
+        if (udma_ctx->Insnimer_active == INSN_TIMER_IDLE) {
+            report->insn_checker = &dma_cmd_Insnimer_checker;
+            udma_ctx->Insnimer_active = INSN_TIMER_ACTIVE;
+            udma_ctx->Insnimer = dma_adapter_get_insn_latency(dma, latency); // get latency
+            udma_ctx->Insnimer_pmu = pmu_num;
+            PRINTF(dma, "DMA %d: Tick %d: setting insn latency timer=%d\n", dma->num, udma_ctx->dma_tick_count, udma_ctx->Insnimer);
             return 1;
-        } else if (udma_ctx->insn_timer_active == INSN_TIMER_EXPIRED) {
+        } else if (udma_ctx->Insnimer_active == INSN_TIMER_EXPIRED) {
             return 0;
         } else {
             return 1;
@@ -1265,7 +1265,7 @@ void dma_cmd_poll(dma_t *dma, uint32_t *ret, dma_cmd_report_t *report)
     /* Return value of dmpoll instruction. */
 
     (*ret) = dm0 | udma_ctx->ext_status;    // Need head of Queue
-    udma_ctx->insn_timer_active = INSN_TIMER_IDLE;
+    udma_ctx->Insnimer_active = INSN_TIMER_IDLE;
     dump_dma_status(dma, "<-dma_cmd_poll dm0", (*ret));
 }
 
@@ -1344,7 +1344,7 @@ void dma_cmd_wait(dma_t *dma, uint32_t *ret, dma_cmd_report_t *report)
 
     /* Return value of dmwait instruction. */
     (*ret) = dm0 | udma_ctx->ext_status;
-    udma_ctx->insn_timer_active = INSN_TIMER_IDLE;
+    udma_ctx->Insnimer_active = INSN_TIMER_IDLE;
     dump_dma_status(dma, "<-dma_cmd_wait dm0", (*ret));
 }
 
@@ -1458,7 +1458,7 @@ void dma_cmd_pause(dma_t *dma, uint32_t *ret, dma_cmd_report_t *report)
     }
 
     (*ret) =  active_desc_va  | status;
-    udma_ctx->insn_timer_active = INSN_TIMER_IDLE;
+    udma_ctx->Insnimer_active = INSN_TIMER_IDLE;
     dump_dma_status(dma, "<-dma_cmd_pause ret", active_desc_va | status);
 }
 
@@ -1518,7 +1518,7 @@ void dma_cmd_resume(dma_t *dma, uint32_t ptr, dma_cmd_report_t *report)
         }
         dma_adapter_pmu_increment(dma, DMA_PMU_CMD_RESUME, 1);
     }
-    udma_ctx->insn_timer_active = INSN_TIMER_IDLE;
+    udma_ctx->Insnimer_active = INSN_TIMER_IDLE;
     dump_dma_status(dma, "<-dma_cmd_resume",0);
 }
 
@@ -1542,7 +1542,7 @@ uint32_t dma_init(dma_t *dma, uint32_t timing_on)
     DMA_STATUS_INT_SET(udma_ctx, DMA_STATUS_INT_IDLE);
     udma_ctx->ext_status = DM0_STATUS_IDLE;
     udma_ctx->exception_status = 0;
-    udma_ctx->insn_timer_active = INSN_TIMER_IDLE;
+    udma_ctx->Insnimer_active = INSN_TIMER_IDLE;
 
     udma_ctx->target.va = 0;
 

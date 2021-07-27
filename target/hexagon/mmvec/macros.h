@@ -62,7 +62,8 @@
  * in reality they do not.
  *     vdelta instructions overwrite their VuV operand
  */
-static bool readonly_ok(insn_t *insn)
+#if 0
+static bool readonly_ok(Insn *insn)
 {
     uint32_t opcode = insn->opcode;
     if (opcode == V6_vdelta ||
@@ -71,6 +72,7 @@ static bool readonly_ok(insn_t *insn)
     }
     return true;
 }
+#endif
 
 #define DECL_VREG_READONLY(VAR, NUM, X, OFF) \
     TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
@@ -303,7 +305,7 @@ static inline mmvector_t mmvec_vtmp_data(CPUHexagonState *env)
  * implemented under QEMU_GENERATE
  */
 
-static inline void mem_store_release(thread_t* thread, insn_t * insn, int size, vaddr_t vaddr, vaddr_t lookup_vaddr, int type, int use_full_va)
+static inline void mem_store_release(thread_t* thread, Insn * insn, int size, vaddr_t vaddr, vaddr_t lookup_vaddr, int type, int use_full_va)
 {
 }
 #endif

@@ -16,8 +16,7 @@
  */
 
 #include "qemu/osdep.h"
-#include "exec/exec-all.h"
-#include "opcodes.h"
+#include "attribs.h"
 #include "printinsn.h"
 #include "insn.h"
 #include "reg_fields.h"
@@ -45,7 +44,7 @@ static const char *creg2str(unsigned int reg)
     }
 }
 
-static void snprintinsn(char *buf, int n, insn_t * insn)
+static void snprintinsn(char *buf, int n, Insn * insn)
 {
     switch (insn->opcode) {
 #define DEF_VECX_PRINTINFO(TAG, FMT, ...) DEF_PRINTINFO(TAG, FMT, __VA_ARGS__)
@@ -59,7 +58,7 @@ static void snprintinsn(char *buf, int n, insn_t * insn)
     }
 }
 
-void snprint_a_pkt(char *buf, int n, packet_t * pkt)
+void snprint_a_pkt(char *buf, int n, Packet * pkt)
 {
     char tmpbuf[128];
     buf[0] = '\0';

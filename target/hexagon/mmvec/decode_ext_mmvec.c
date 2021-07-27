@@ -19,7 +19,7 @@
 #include "decode.h"
 #include "opcodes.h"
 #include "insn.h"
-#include "printinsn.h"
+#include "iclass.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/decode_ext_mmvec.h"
 
@@ -38,7 +38,7 @@ typedef enum hvx_resource {
 #include "mmvec.h"
 #define THREAD2STRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
 
-void decode_check_vmemu_and_scalar_memory_ops(thread_t *thread, packet_t * packet,exception_info *einfo);
+void decode_check_vmemu_and_scalar_memory_ops(thread_t *thread, Packet * packet,exception_info *einfo);
 
 #if 0
 int opcode_vreg_rd_count[] = {
@@ -88,7 +88,7 @@ handle_bad_packet(
 
 
 static int
-check_scatter_gather_packet(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, packet_t * packet, exception_info *einfo)
+check_scatter_gather_packet(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, exception_info *einfo)
 {
 
 	int current_insn = 0;
@@ -110,7 +110,7 @@ check_scatter_gather_packet(thread_t * thread,  hvx_resource_t * resources, int 
 }
 
 static int
-check_dv_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, packet_t * packet, unsigned int attribute, hvx_resource_t resource0, hvx_resource_t resource1, exception_info *einfo)
+check_dv_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, unsigned int attribute, hvx_resource_t resource0, hvx_resource_t resource1, exception_info *einfo)
 {
 
 	int current_insn = 0;
@@ -137,7 +137,7 @@ check_dv_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilist
 
 /* Double Vector instructions that can use anyone of specific or both pairs */
 static int
-check_dv_instruction2(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, packet_t * packet, unsigned int attribute, hvx_resource_t resource3, hvx_resource_t resource2, hvx_resource_t resource1, hvx_resource_t resource0, exception_info *einfo)
+check_dv_instruction2(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, unsigned int attribute, hvx_resource_t resource3, hvx_resource_t resource2, hvx_resource_t resource1, hvx_resource_t resource0, exception_info *einfo)
 {
 
 	int current_insn = 0;
@@ -177,7 +177,7 @@ check_dv_instruction2(thread_t * thread,  hvx_resource_t * resources, int * ilis
 }
 
 static int
-check_umem_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, packet_t * packet, exception_info *einfo)
+check_umem_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, exception_info *einfo)
 {
 
 	int current_insn = 0;
@@ -215,7 +215,7 @@ check_umem_instruction(thread_t * thread,  hvx_resource_t * resources, int * ili
 
 /* Memory instructions */
 static int
-check_mem_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, packet_t * packet, exception_info *einfo)
+check_mem_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, exception_info *einfo)
 {
 
 	int current_insn = 0;
@@ -277,7 +277,7 @@ check_mem_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilis
 /* Single Vector instructions that can use anyone of one, two, or four resources */
 /* Insert instruction into one possible resource */
 static int
-check_instruction1(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, packet_t * packet, unsigned int attribute, hvx_resource_t resource0, exception_info *einfo)
+check_instruction1(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, unsigned int attribute, hvx_resource_t resource0, exception_info *einfo)
 {
 
 	int current_insn = 0;
@@ -303,7 +303,7 @@ check_instruction1(thread_t * thread,  hvx_resource_t * resources, int * ilist, 
 
 /* Insert instruction into one of two possible resource2 */
 static int
-check_instruction2(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, packet_t * packet, unsigned int attribute, hvx_resource_t resource1, hvx_resource_t resource0, exception_info *einfo)
+check_instruction2(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, unsigned int attribute, hvx_resource_t resource1, hvx_resource_t resource0, exception_info *einfo)
 {
 
 	int current_insn = 0;
@@ -354,7 +354,7 @@ check_instruction2(thread_t * thread,  hvx_resource_t * resources, int * ilist, 
 
 /* Insert instruction into one of 4 four possible resource */
 static int
-check_instruction4(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, packet_t *packet, unsigned int attribute, exception_info *einfo)
+check_instruction4(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet *packet, unsigned int attribute, exception_info *einfo)
 {
 	for (int current_insn = 0; current_insn < num_insn; current_insn++) {
 		// valid instruction
@@ -395,7 +395,7 @@ check_instruction4(thread_t * thread,  hvx_resource_t * resources, int * ilist, 
 }
 
 static int
-check_4res_instruction(thread_t * thread, hvx_resource_t * resources, int * ilist, int num_insn, packet_t * packet, exception_info *einfo)
+check_4res_instruction(thread_t * thread, hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, exception_info *einfo)
 {
 
 	int current_insn = 0;
@@ -433,7 +433,7 @@ check_4res_instruction(thread_t * thread, hvx_resource_t * resources, int * ilis
 
 
 static int
-decode_populate_cvi_resources(thread_t * thread, packet_t *packet, exception_info *einfo)
+decode_populate_cvi_resources(thread_t * thread, Packet *packet, exception_info *einfo)
 {
 
 	int i,num_insn=0;
@@ -493,7 +493,7 @@ decode_populate_cvi_resources(thread_t * thread, packet_t *packet, exception_inf
 
 
 static int
-check_new_value(thread_t * thread, packet_t * packet, exception_info *einfo)
+check_new_value(thread_t * thread, Packet * packet, exception_info *einfo)
 {
 	// .New Value for a MMVector Store
 	int i,j;
@@ -567,7 +567,7 @@ check_new_value(thread_t * thread, packet_t * packet, exception_info *einfo)
 
 #if 0
 // Shouln't be needed due to SLOT1 restriction of VMEMU
-void decode_check_vmemu_and_scalar_memory_ops(thread_t *thread, packet_t * packet,exception_info *einfo){
+void decode_check_vmemu_and_scalar_memory_ops(thread_t *thread, Packet * packet,exception_info *einfo){
 
     int packet_has_scalar_mem   = 0;
     int packet_has_vmemu        = 0;
@@ -604,7 +604,7 @@ void decode_check_vmemu_and_scalar_memory_ops(thread_t *thread, packet_t * packe
  */
 
 static void
-decode_mmvec_move_cvi_to_end(packet_t *packet, int max)
+decode_mmvec_move_cvi_to_end(Packet *packet, int max)
 {
 	int i;
 	for (i = 0; i < max; i++) {
@@ -632,7 +632,7 @@ decode_mmvec_move_cvi_to_end(packet_t *packet, int max)
 }
 
 static int
-decode_shuffle_for_execution_vops(packet_t * packet, exception_info *einfo)
+decode_shuffle_for_execution_vops(Packet * packet, exception_info *einfo)
 {
 	/* Sort for V.new = VMEM()
 	 * Right now we need to make sure that the vload occurs before the permute instruction or VPVX ops
@@ -668,7 +668,7 @@ decode_shuffle_for_execution_vops(packet_t * packet, exception_info *einfo)
 
 // Collect stats on HVX packet
 static void
-decode_hvx_packet_contents(thread_t * thread, packet_t * pkt) {
+decode_hvx_packet_contents(thread_t * thread, Packet * pkt) {
 	pkt->pkt_hvx_va = 0;
 	pkt->pkt_hvx_vx = 0;
 	pkt->pkt_hvx_vp = 0;
@@ -700,7 +700,7 @@ decode_hvx_packet_contents(thread_t * thread, packet_t * pkt) {
 }
 
 static int
-decode_mx_ops(thread_t * thread, packet_t * pkt, exception_info * einfo) {
+decode_mx_ops(thread_t * thread, Packet * pkt, exception_info * einfo) {
 #if 0
 	for (int i = 0; i < pkt->num_insns; i++) {
 		if ( GET_ATTRIB(pkt->insn[i].opcode, A_HMX) && !thread->processor_ptr->arch_proc_options->QDSP6_MX_PRESENT)
@@ -715,7 +715,7 @@ decode_mx_ops(thread_t * thread, packet_t * pkt, exception_info * einfo) {
 #define MAX_HVX_VECTOR_WR_PER_PACKET 4
 
 static int
-count_vector_access(thread_t * thread, packet_t * pkt, exception_info * einfo) {
+count_vector_access(thread_t * thread, Packet * pkt, exception_info * einfo) {
 	int error = 0;
 	if (pkt->pkt_hvx_vs_3src && pkt->pkt_hvx_va_2src) {
 					//gdb_print_pkt(pkt, thread);
@@ -739,29 +739,28 @@ count_vector_access(thread_t * thread, packet_t * pkt, exception_info * einfo) {
 /// Public Functions
 ////////////////////////////////////////////////////////////////////////////////
 
-const char *
-mmvec_ext_decode_find_iclass_slots(int opcode)
+SlotMask mmvec_ext_decode_find_iclass_slots(int opcode)
 {
 	if (GET_ATTRIB(opcode, A_CVI_VM)) {
 		// || GET_ATTRIB(opcode, A_MMVEC_VP) || GET_ATTRIB(opcode, A_MMVEC_VS))
         if (GET_ATTRIB(opcode, A_RESTRICT_SLOT0ONLY)) {
-           return "0";
+           return SLOTS_0;
         } else if (GET_ATTRIB(opcode, A_RESTRICT_SLOT1ONLY)) {
-            return "1";
+            return SLOTS_1;
         }
-		return "01";
+		return SLOTS_01;
 	} else if (GET_ATTRIB(opcode, A_RESTRICT_SLOT2ONLY)) {
-		return "2";
+		return SLOTS_2;
 	} else if (GET_ATTRIB(opcode, A_CVI_VX)) {
-		return "23";
+		return SLOTS_23;
 	} else if (GET_ATTRIB(opcode, A_CVI_VS_VX)) {
-		return "23";
+		return SLOTS_23;
 	} else {
-		return "0123";
+		return SLOTS_0123;
 	}
 }
 
-int mmvec_ext_decode_checks(thread_t * thread, packet_t *packet, exception_info *einfo){
+int mmvec_ext_decode_checks(thread_t * thread, Packet *packet, exception_info *einfo){
 	int errors = 0;
     packet->pkt_has_vmemu_access = 0; // Cleared, set by instruction if vmemu is truly unaligned
 

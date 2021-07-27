@@ -25,7 +25,7 @@
 #define sim_mem_read4(X, Y, ADDR) mem_read4(env, ADDR)
 #define sim_mem_read8(X, Y, ADDR) mem_read8(env, ADDR)
 
-#define tmp_insn_t insn_t;
+#define tmp_Insn Insn;
 
 #define fMX_NONE()
 #define fMX_HMX_FLT()

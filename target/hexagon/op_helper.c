@@ -17,6 +17,7 @@
 
 #include <math.h>
 #include "qemu/osdep.h"
+#include "fpu/softfloat.h"
 #include "cpu.h"
 #include "sysemu/cpus.h"
 #ifdef CONFIG_USER_ONLY
@@ -54,15 +55,18 @@
 #include "op_helper.h"
 #include "hw/intc/l2vic.h"
 
+#define SF_BIAS        127
+#define SF_MANTBITS    23
+
 #if COUNT_HEX_HELPERS
 #include "opcodes.h"
 
 typedef struct {
     int count;
     const char *tag;
-} helper_count_t;
+} HelperCount;
 
-helper_count_t helper_counts[] = {
+HelperCount helper_counts[] = {
 #define OPCODE(TAG)    { 0, #TAG },
 #include "opcodes_def_generated.h.inc"
 #undef OPCODE
@@ -76,7 +80,7 @@ helper_count_t helper_counts[] = {
 
 void print_helper_counts(void)
 {
-    helper_count_t *p;
+    HelperCount *p;
 
     printf("HELPER COUNTS\n");
     for (p = helper_counts; p->tag; p++) {
@@ -116,9 +120,766 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
 #endif
 }
 
+uint32_t HELPER(fbrev)(uint32_t addr)
+{
+    /*
+     *  Bit reverse the low 16 bits of the address
+     */
+    return deposit32(addr, 0, 16, revbit16(addr));
+}
+
+static float32 build_float32(uint8_t sign, uint32_t exp, uint32_t mant)
+{
+    return make_float32(
+        ((sign & 1) << 31) |
+        ((exp & 0xff) << SF_MANTBITS) |
+        (mant & ((1 << SF_MANTBITS) - 1)));
+}
+
 void HELPER(raise_exception)(CPUHexagonState *env, uint32_t exception)
 {
     do_raise_exception_err(env, exception, 0);
+}
+
+/* Floating point */
+float64 HELPER(conv_sf2df)(CPUHexagonState *env, float32 RsV)
+{
+    float64 out_f64;
+    arch_fpop_start(env);
+    out_f64 = float32_to_float64(RsV, &env->fp_status);
+    arch_fpop_end(env);
+    return out_f64;
+}
+
+float32 HELPER(conv_df2sf)(CPUHexagonState *env, float64 RssV)
+{
+    float32 out_f32;
+    arch_fpop_start(env);
+    out_f32 = float64_to_float32(RssV, &env->fp_status);
+    arch_fpop_end(env);
+    return out_f32;
+}
+
+float32 HELPER(conv_uw2sf)(CPUHexagonState *env, int32_t RsV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = uint32_to_float32(RsV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float64 HELPER(conv_uw2df)(CPUHexagonState *env, int32_t RsV)
+{
+    float64 RddV;
+    arch_fpop_start(env);
+    RddV = uint32_to_float64(RsV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float32 HELPER(conv_w2sf)(CPUHexagonState *env, int32_t RsV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = int32_to_float32(RsV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float64 HELPER(conv_w2df)(CPUHexagonState *env, int32_t RsV)
+{
+    float64 RddV;
+    arch_fpop_start(env);
+    RddV = int32_to_float64(RsV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float32 HELPER(conv_ud2sf)(CPUHexagonState *env, int64_t RssV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = uint64_to_float32(RssV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float64 HELPER(conv_ud2df)(CPUHexagonState *env, int64_t RssV)
+{
+    float64 RddV;
+    arch_fpop_start(env);
+    RddV = uint64_to_float64(RssV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float32 HELPER(conv_d2sf)(CPUHexagonState *env, int64_t RssV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = int64_to_float32(RssV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float64 HELPER(conv_d2df)(CPUHexagonState *env, int64_t RssV)
+{
+    float64 RddV;
+    arch_fpop_start(env);
+    RddV = int64_to_float64(RssV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+uint32_t HELPER(conv_sf2uw)(CPUHexagonState *env, float32 RsV)
+{
+    uint32_t RdV;
+    arch_fpop_start(env);
+    /* Hexagon checks the sign before rounding */
+    if (float32_is_neg(RsV) && !float32_is_any_nan(RsV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RdV = 0;
+    } else {
+        RdV = float32_to_uint32(RsV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_sf2w)(CPUHexagonState *env, float32 RsV)
+{
+    int32_t RdV;
+    arch_fpop_start(env);
+    /* Hexagon returns -1 for NaN */
+    if (float32_is_any_nan(RsV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RdV = -1;
+    } else {
+        RdV = float32_to_int32(RsV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RdV;
+}
+
+uint64_t HELPER(conv_sf2ud)(CPUHexagonState *env, float32 RsV)
+{
+    uint64_t RddV;
+    arch_fpop_start(env);
+    /* Hexagon checks the sign before rounding */
+    if (float32_is_neg(RsV) && !float32_is_any_nan(RsV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RddV = 0;
+    } else {
+        RddV = float32_to_uint64(RsV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int64_t HELPER(conv_sf2d)(CPUHexagonState *env, float32 RsV)
+{
+    int64_t RddV;
+    arch_fpop_start(env);
+    /* Hexagon returns -1 for NaN */
+    if (float32_is_any_nan(RsV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RddV = -1;
+    } else {
+        RddV = float32_to_int64(RsV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+uint32_t HELPER(conv_df2uw)(CPUHexagonState *env, float64 RssV)
+{
+    uint32_t RdV;
+    arch_fpop_start(env);
+    /* Hexagon checks the sign before rounding */
+    if (float64_is_neg(RssV) && !float64_is_any_nan(RssV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RdV = 0;
+    } else {
+        RdV = float64_to_uint32(RssV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_df2w)(CPUHexagonState *env, float64 RssV)
+{
+    int32_t RdV;
+    arch_fpop_start(env);
+    /* Hexagon returns -1 for NaN */
+    if (float64_is_any_nan(RssV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RdV = -1;
+    } else {
+        RdV = float64_to_int32(RssV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RdV;
+}
+
+uint64_t HELPER(conv_df2ud)(CPUHexagonState *env, float64 RssV)
+{
+    uint64_t RddV;
+    arch_fpop_start(env);
+    /* Hexagon checks the sign before rounding */
+    if (float64_is_neg(RssV) && !float64_is_any_nan(RssV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RddV = 0;
+    } else {
+        RddV = float64_to_uint64(RssV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int64_t HELPER(conv_df2d)(CPUHexagonState *env, float64 RssV)
+{
+    int64_t RddV;
+    arch_fpop_start(env);
+    /* Hexagon returns -1 for NaN */
+    if (float64_is_any_nan(RssV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RddV = -1;
+    } else {
+        RddV = float64_to_int64(RssV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+uint32_t HELPER(conv_sf2uw_chop)(CPUHexagonState *env, float32 RsV)
+{
+    uint32_t RdV;
+    arch_fpop_start(env);
+    /* Hexagon checks the sign before rounding */
+    if (float32_is_neg(RsV) && !float32_is_any_nan(RsV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RdV = 0;
+    } else {
+        RdV = float32_to_uint32_round_to_zero(RsV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_sf2w_chop)(CPUHexagonState *env, float32 RsV)
+{
+    int32_t RdV;
+    arch_fpop_start(env);
+    /* Hexagon returns -1 for NaN */
+    if (float32_is_any_nan(RsV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RdV = -1;
+    } else {
+        RdV = float32_to_int32_round_to_zero(RsV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RdV;
+}
+
+uint64_t HELPER(conv_sf2ud_chop)(CPUHexagonState *env, float32 RsV)
+{
+    uint64_t RddV;
+    arch_fpop_start(env);
+    /* Hexagon checks the sign before rounding */
+    if (float32_is_neg(RsV) && !float32_is_any_nan(RsV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RddV = 0;
+    } else {
+        RddV = float32_to_uint64_round_to_zero(RsV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int64_t HELPER(conv_sf2d_chop)(CPUHexagonState *env, float32 RsV)
+{
+    int64_t RddV;
+    arch_fpop_start(env);
+    /* Hexagon returns -1 for NaN */
+    if (float32_is_any_nan(RsV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RddV = -1;
+    } else {
+        RddV = float32_to_int64_round_to_zero(RsV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+uint32_t HELPER(conv_df2uw_chop)(CPUHexagonState *env, float64 RssV)
+{
+    uint32_t RdV;
+    arch_fpop_start(env);
+    /* Hexagon checks the sign before rounding */
+    if (float64_is_neg(RssV) && !float32_is_any_nan(RssV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RdV = 0;
+    } else {
+        RdV = float64_to_uint32_round_to_zero(RssV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(conv_df2w_chop)(CPUHexagonState *env, float64 RssV)
+{
+    int32_t RdV;
+    arch_fpop_start(env);
+    /* Hexagon returns -1 for NaN */
+    if (float64_is_any_nan(RssV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RdV = -1;
+    } else {
+        RdV = float64_to_int32_round_to_zero(RssV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RdV;
+}
+
+uint64_t HELPER(conv_df2ud_chop)(CPUHexagonState *env, float64 RssV)
+{
+    uint64_t RddV;
+    arch_fpop_start(env);
+    /* Hexagon checks the sign before rounding */
+    if (float64_is_neg(RssV) && !float64_is_any_nan(RssV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RddV = 0;
+    } else {
+        RddV = float64_to_uint64_round_to_zero(RssV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int64_t HELPER(conv_df2d_chop)(CPUHexagonState *env, float64 RssV)
+{
+    int64_t RddV;
+    arch_fpop_start(env);
+    /* Hexagon returns -1 for NaN */
+    if (float64_is_any_nan(RssV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+        RddV = -1;
+    } else {
+        RddV = float64_to_int64_round_to_zero(RssV, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float32 HELPER(sfadd)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = float32_add(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float32 HELPER(sfsub)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = float32_sub(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(sfcmpeq)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    int32_t PdV;
+    arch_fpop_start(env);
+    PdV = f8BITSOF(float32_eq_quiet(RsV, RtV, &env->fp_status));
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(sfcmpgt)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    int cmp;
+    int32_t PdV;
+    arch_fpop_start(env);
+    cmp = float32_compare_quiet(RsV, RtV, &env->fp_status);
+    PdV = f8BITSOF(cmp == float_relation_greater);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(sfcmpge)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    int cmp;
+    int32_t PdV;
+    arch_fpop_start(env);
+    cmp = float32_compare_quiet(RsV, RtV, &env->fp_status);
+    PdV = f8BITSOF(cmp == float_relation_greater ||
+                   cmp == float_relation_equal);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(sfcmpuo)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    int32_t PdV;
+    arch_fpop_start(env);
+    PdV = f8BITSOF(float32_is_any_nan(RsV) ||
+                   float32_is_any_nan(RtV));
+    arch_fpop_end(env);
+    return PdV;
+}
+
+float32 HELPER(sfmax)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = float32_maxnum(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float32 HELPER(sfmin)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = float32_minnum(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+int32_t HELPER(sfclass)(CPUHexagonState *env, float32 RsV, int32_t uiV)
+{
+    int32_t PdV = 0;
+    arch_fpop_start(env);
+    if (fGETBIT(0, uiV) && float32_is_zero(RsV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(1, uiV) && float32_is_normal(RsV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(2, uiV) && float32_is_denormal(RsV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(3, uiV) && float32_is_infinity(RsV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(4, uiV) && float32_is_any_nan(RsV)) {
+        PdV = 0xff;
+    }
+    set_float_exception_flags(0, &env->fp_status);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+float32 HELPER(sffixupn)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    float32 RdV = 0;
+    int adjust;
+    arch_fpop_start(env);
+    arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status);
+    RdV = RsV;
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float32 HELPER(sffixupd)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    float32 RdV = 0;
+    int adjust;
+    arch_fpop_start(env);
+    arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status);
+    RdV = RtV;
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float32 HELPER(sffixupr)(CPUHexagonState *env, float32 RsV)
+{
+    float32 RdV = 0;
+    int adjust;
+    arch_fpop_start(env);
+    arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status);
+    RdV = RsV;
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float64 HELPER(dfadd)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    float64 RddV;
+    arch_fpop_start(env);
+    RddV = float64_add(RssV, RttV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float64 HELPER(dfsub)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    float64 RddV;
+    arch_fpop_start(env);
+    RddV = float64_sub(RssV, RttV, &env->fp_status);
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float64 HELPER(dfmax)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    float64 RddV;
+    arch_fpop_start(env);
+    RddV = float64_maxnum(RssV, RttV, &env->fp_status);
+    if (float64_is_any_nan(RssV) || float64_is_any_nan(RttV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float64 HELPER(dfmin)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    float64 RddV;
+    arch_fpop_start(env);
+    RddV = float64_minnum(RssV, RttV, &env->fp_status);
+    if (float64_is_any_nan(RssV) || float64_is_any_nan(RttV)) {
+        float_raise(float_flag_invalid, &env->fp_status);
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+int32_t HELPER(dfcmpeq)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    int32_t PdV;
+    arch_fpop_start(env);
+    PdV = f8BITSOF(float64_eq_quiet(RssV, RttV, &env->fp_status));
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(dfcmpgt)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    int cmp;
+    int32_t PdV;
+    arch_fpop_start(env);
+    cmp = float64_compare_quiet(RssV, RttV, &env->fp_status);
+    PdV = f8BITSOF(cmp == float_relation_greater);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(dfcmpge)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    int cmp;
+    int32_t PdV;
+    arch_fpop_start(env);
+    cmp = float64_compare_quiet(RssV, RttV, &env->fp_status);
+    PdV = f8BITSOF(cmp == float_relation_greater ||
+                   cmp == float_relation_equal);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(dfcmpuo)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    int32_t PdV;
+    arch_fpop_start(env);
+    PdV = f8BITSOF(float64_is_any_nan(RssV) ||
+                   float64_is_any_nan(RttV));
+    arch_fpop_end(env);
+    return PdV;
+}
+
+int32_t HELPER(dfclass)(CPUHexagonState *env, float64 RssV, int32_t uiV)
+{
+    int32_t PdV = 0;
+    arch_fpop_start(env);
+    if (fGETBIT(0, uiV) && float64_is_zero(RssV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(1, uiV) && float64_is_normal(RssV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(2, uiV) && float64_is_denormal(RssV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(3, uiV) && float64_is_infinity(RssV)) {
+        PdV = 0xff;
+    }
+    if (fGETBIT(4, uiV) && float64_is_any_nan(RssV)) {
+        PdV = 0xff;
+    }
+    set_float_exception_flags(0, &env->fp_status);
+    arch_fpop_end(env);
+    return PdV;
+}
+
+float32 HELPER(sfmpy)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    float32 RdV;
+    arch_fpop_start(env);
+    RdV = internal_mpyf(RsV, RtV, &env->fp_status);
+    arch_fpop_end(env);
+    return RdV;
+}
+
+float32 HELPER(sffma)(CPUHexagonState *env, float32 RxV,
+                      float32 RsV, float32 RtV)
+{
+    arch_fpop_start(env);
+    RxV = internal_fmafx(RsV, RtV, RxV, 0, &env->fp_status);
+    arch_fpop_end(env);
+    return RxV;
+}
+
+static bool is_zero_prod(float32 a, float32 b)
+{
+    return ((float32_is_zero(a) && is_finite(b)) ||
+            (float32_is_zero(b) && is_finite(a)));
+}
+
+static float32 check_nan(float32 dst, float32 x, float_status *fp_status)
+{
+    float32 ret = dst;
+    if (float32_is_any_nan(x)) {
+        if (extract32(x, 22, 1) == 0) {
+            float_raise(float_flag_invalid, fp_status);
+        }
+        ret = make_float32(0xffffffff);    /* nan */
+    }
+    return ret;
+}
+
+float32 HELPER(sffma_sc)(CPUHexagonState *env, float32 RxV,
+                         float32 RsV, float32 RtV, float32 PuV)
+{
+    size4s_t tmp;
+    arch_fpop_start(env);
+    RxV = check_nan(RxV, RxV, &env->fp_status);
+    RxV = check_nan(RxV, RsV, &env->fp_status);
+    RxV = check_nan(RxV, RtV, &env->fp_status);
+    tmp = internal_fmafx(RsV, RtV, RxV, fSXTN(8, 64, PuV), &env->fp_status);
+    if (!(float32_is_zero(RxV) && is_zero_prod(RsV, RtV))) {
+        RxV = tmp;
+    }
+    arch_fpop_end(env);
+    return RxV;
+}
+
+float32 HELPER(sffms)(CPUHexagonState *env, float32 RxV,
+                      float32 RsV, float32 RtV)
+{
+    float32 neg_RsV;
+    arch_fpop_start(env);
+    neg_RsV = float32_sub(float32_zero, RsV, &env->fp_status);
+    RxV = internal_fmafx(neg_RsV, RtV, RxV, 0, &env->fp_status);
+    arch_fpop_end(env);
+    return RxV;
+}
+
+static bool is_inf_prod(int32_t a, int32_t b)
+{
+    return (float32_is_infinity(a) && float32_is_infinity(b)) ||
+           (float32_is_infinity(a) && is_finite(b) && !float32_is_zero(b)) ||
+           (float32_is_infinity(b) && is_finite(a) && !float32_is_zero(a));
+}
+
+float32 HELPER(sffma_lib)(CPUHexagonState *env, float32 RxV,
+                          float32 RsV, float32 RtV)
+{
+    bool infinp;
+    bool infminusinf;
+    float32 tmp;
+
+    arch_fpop_start(env);
+    set_float_rounding_mode(float_round_nearest_even, &env->fp_status);
+    infminusinf = float32_is_infinity(RxV) &&
+                  is_inf_prod(RsV, RtV) &&
+                  (fGETBIT(31, RsV ^ RxV ^ RtV) != 0);
+    infinp = float32_is_infinity(RxV) ||
+             float32_is_infinity(RtV) ||
+             float32_is_infinity(RsV);
+    RxV = check_nan(RxV, RxV, &env->fp_status);
+    RxV = check_nan(RxV, RsV, &env->fp_status);
+    RxV = check_nan(RxV, RtV, &env->fp_status);
+    tmp = internal_fmafx(RsV, RtV, RxV, 0, &env->fp_status);
+    if (!(float32_is_zero(RxV) && is_zero_prod(RsV, RtV))) {
+        RxV = tmp;
+    }
+    set_float_exception_flags(0, &env->fp_status);
+    if (float32_is_infinity(RxV) && !infinp) {
+        RxV = RxV - 1;
+    }
+    if (infminusinf) {
+        RxV = 0;
+    }
+    arch_fpop_end(env);
+    return RxV;
+}
+
+float32 HELPER(sffms_lib)(CPUHexagonState *env, float32 RxV,
+                          float32 RsV, float32 RtV)
+{
+    bool infinp;
+    bool infminusinf;
+    float32 tmp;
+
+    arch_fpop_start(env);
+    set_float_rounding_mode(float_round_nearest_even, &env->fp_status);
+    infminusinf = float32_is_infinity(RxV) &&
+                  is_inf_prod(RsV, RtV) &&
+                  (fGETBIT(31, RsV ^ RxV ^ RtV) == 0);
+    infinp = float32_is_infinity(RxV) ||
+             float32_is_infinity(RtV) ||
+             float32_is_infinity(RsV);
+    RxV = check_nan(RxV, RxV, &env->fp_status);
+    RxV = check_nan(RxV, RsV, &env->fp_status);
+    RxV = check_nan(RxV, RtV, &env->fp_status);
+    float32 minus_RsV = float32_sub(float32_zero, RsV, &env->fp_status);
+    tmp = internal_fmafx(minus_RsV, RtV, RxV, 0, &env->fp_status);
+    if (!(float32_is_zero(RxV) && is_zero_prod(RsV, RtV))) {
+        RxV = tmp;
+    }
+    set_float_exception_flags(0, &env->fp_status);
+    if (float32_is_infinity(RxV) && !infinp) {
+        RxV = RxV - 1;
+    }
+    if (infminusinf) {
+        RxV = 0;
+    }
+    arch_fpop_end(env);
+    return RxV;
+}
+
+float64 HELPER(dfmpyfix)(CPUHexagonState *env, float64 RssV, float64 RttV)
+{
+    int64_t RddV;
+    arch_fpop_start(env);
+    if (float64_is_denormal(RssV) &&
+        (float64_getexp(RttV) >= 512) &&
+        float64_is_normal(RttV)) {
+        RddV = float64_mul(RssV, make_float64(0x4330000000000000),
+                           &env->fp_status);
+    } else if (float64_is_denormal(RttV) &&
+               (float64_getexp(RssV) >= 512) &&
+               float64_is_normal(RssV)) {
+        RddV = float64_mul(RssV, make_float64(0x3cb0000000000000),
+                           &env->fp_status);
+    } else {
+        RddV = RssV;
+    }
+    arch_fpop_end(env);
+    return RddV;
+}
+
+float64 HELPER(dfmpyhh)(CPUHexagonState *env, float64 RxxV,
+                        float64 RssV, float64 RttV)
+{
+    arch_fpop_start(env);
+    RxxV = internal_mpyhh(RssV, RttV, RxxV, &env->fp_status);
+    arch_fpop_end(env);
+    return RxxV;
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -160,6 +921,7 @@ static inline void log_reg_write(CPUHexagonState *env, int rnum,
     HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld
       " (0x" TARGET_FMT_lx ")", rnum, val, val);
     if (env->slot_cancelled & (1 << slot)) {
+        printf("%s: %d CANCELLED", __FUNCTION__, slot);
         HEX_DEBUG_LOG(" CANCELLED");
     }
     if (val == env->gpr[rnum]) {
@@ -232,7 +994,7 @@ static inline void log_pred_write(CPUHexagonState *env, int pnum,
 
 static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 {
-    HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
+    //HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
 
     /*
      * If more than one branch is taken in a packet, only the first one
@@ -251,8 +1013,9 @@ static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
 {
-    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " tid = %d\n",
+    printf("Start packet: pc = 0x" TARGET_FMT_lx " tid = %d\n",
                   env->gpr[HEX_REG_PC], env->threadId);
+    return;
 
     int i;
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
@@ -315,25 +1078,58 @@ void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte,
 #ifdef CONFIG_USER_ONLY
   put_user_u8(store_byte, dst_vaddr);
 #else
-#if 1
   unsigned mmu_idx = cpu_mmu_index(env, false);
   cpu_stb_mmuidx_ra(env, dst_vaddr, store_byte, mmu_idx, GETPC());
-#else
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  uint8_t *hostaddr = (uint_8_t *)tlb_vaddr_to_host(env,
-                                                    dst_vaddr,
-                                                    MMU_DATA_STORE,
-                                                    mmu_idx);
-  if (hostaddr)
-    *hostaddr = store_byte;
-  else {
-    TCGMemOpIdx oi = make_memop_idx(MO_UB, mmu_idx);
-    helper_ret_stb_mmu(env, dst_vaddr, store_byte, oi, GETPC());
-  }
-#endif
 #endif
 }
 
+void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
+{
+    switch (env->mem_log_stores[slot_num].width) {
+#ifdef CONFIG_USER_ONLY
+    case 1:
+        put_user_u8(env->mem_log_stores[slot_num].data32,
+                    env->mem_log_stores[slot_num].va);
+        break;
+    case 2:
+        put_user_u16(env->mem_log_stores[slot_num].data32,
+                     env->mem_log_stores[slot_num].va);
+        break;
+    case 4:
+        put_user_u32(env->mem_log_stores[slot_num].data32,
+                     env->mem_log_stores[slot_num].va);
+        break;
+    case 8:
+        put_user_u64(env->mem_log_stores[slot_num].data64,
+                     env->mem_log_stores[slot_num].va);
+        break;
+#else
+    case 1:
+    case 2:
+    case 4:
+        hexagon_tools_memory_write(env,
+            env->mem_log_stores[slot_num].va,
+            env->mem_log_stores[slot_num].width,
+            env->mem_log_stores[slot_num].data32);
+        break;
+
+    case 8:
+        hexagon_tools_memory_write(env,
+            env->mem_log_stores[slot_num].va,
+            env->mem_log_stores[slot_num].width,
+            env->mem_log_stores[slot_num].data64);
+        break;
+#endif
+    default:
+        g_assert_not_reached();
+    }
+}
+
+void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, void *srcptr,
+                          int slot)
+{
+    mem_gather_store(env, addr, slot, srcptr);
+}
 
 void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 {
@@ -419,7 +1215,8 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     HEX_DEBUG_LOG("Packet committed: tid = %d, pc = 0x" TARGET_FMT_lx "\n",
                   env->threadId, env->this_PC);
     if (env->slot_cancelled)
-      HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
+      HEX_DEBUG_LOG("end: slot_cancelled = %d: pc = 0x%x\n",
+        env->slot_cancelled, env->this_PC);
 
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         if (env->reg_written[i]) {
@@ -534,6 +1331,57 @@ int32_t HELPER(fcircadd)(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
 }
 
 /*
+ * sfrecipa, sfinvsqrta have two 32-bit results
+ *     r0,p0=sfrecipa(r1,r2)
+ *     r0,p0=sfinvsqrta(r1)
+ *
+ * Since helpers can only return a single value, we pack the two results
+ * into a 64-bit value.
+ */
+uint64_t HELPER(sfrecipa)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    int32_t PeV = 0;
+    float32 RdV;
+    int idx;
+    int adjust;
+    int mant;
+    int exp;
+
+    arch_fpop_start(env);
+    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
+        PeV = adjust;
+        idx = (RtV >> 16) & 0x7f;
+        mant = (arch_recip_lookup(idx) << 15) | 1;
+        exp = SF_BIAS - (float32_getexp(RtV) - SF_BIAS) - 1;
+        RdV = build_float32(extract32(RtV, 31, 1), exp, mant);
+    }
+    arch_fpop_end(env);
+    return ((uint64_t)RdV << 32) | PeV;
+}
+
+uint64_t HELPER(sfinvsqrta)(CPUHexagonState *env, float32 RsV)
+{
+    int PeV = 0;
+    float32 RdV;
+    int idx;
+    int adjust;
+    int mant;
+    int exp;
+
+    arch_fpop_start(env);
+    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
+        PeV = adjust;
+        idx = (RsV >> 17) & 0x7f;
+        mant = (arch_invsqrt_lookup(idx) << 15);
+        exp = SF_BIAS - ((float32_getexp(RsV) - SF_BIAS) >> 1) - 1;
+        RdV = build_float32(extract32(RsV, 31, 1), exp, mant);
+    }
+    arch_fpop_end(env);
+    return ((uint64_t)RdV << 32) | PeV;
+}
+
+
+/*
  * sfrecipa, sfinvsqrta, vacsh have two results
  *     r0,p0=sfrecipa(r1,r2)
  *     r0,p0=sfinvsqrta(r1)
@@ -552,7 +1400,7 @@ int32_t HELPER(sfrecipa_val)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
     fHIDE(int adjust;)
     fHIDE(int mant;)
     fHIDE(int exp;)
-    if (fSF_RECIP_COMMON(RsV, RtV, RdV, adjust)) {
+    if (fSF_RECIP_COMMON(RsV, RtV, RdV, adjust, &env->fp_status)) {
         /* PeV = adjust; Not needed to compute value */
         idx = (RtV >> 16) & 0x7f;
         mant = (fSF_RECIP_LOOKUP(idx) << 15) | 1;
@@ -572,7 +1420,7 @@ int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
     fHIDE(int adjust;)
     fHIDE(int mant;)
     fHIDE(int exp;)
-    if (fSF_RECIP_COMMON(RsV, RtV, RdV, adjust)) {
+    if (fSF_RECIP_COMMON(RsV, RtV, RdV, adjust, &env->fp_status)) {
         PeV = adjust;
         idx = (RtV >> 16) & 0x7f;
         mant = (fSF_RECIP_LOOKUP(idx) << 15) | 1;
@@ -592,7 +1440,7 @@ int32_t HELPER(sfinvsqrta_val)(CPUHexagonState *env, int32_t RsV)
     fHIDE(int adjust;)
     fHIDE(int mant;)
     fHIDE(int exp;)
-    if (fSF_INVSQRT_COMMON(RsV, RdV, adjust)) {
+    if (fSF_INVSQRT_COMMON(RsV, RdV, adjust, &env->fp_status)) {
         /* PeV = adjust; Not needed for val version */
         idx = (RsV >> 17) & 0x7f;
         mant = (fSF_INVSQRT_LOOKUP(idx) << 15);
@@ -612,7 +1460,7 @@ int32_t HELPER(sfinvsqrta_pred)(CPUHexagonState *env, int32_t RsV)
     fHIDE(int adjust;)
     fHIDE(int mant;)
     fHIDE(int exp;)
-    if (fSF_INVSQRT_COMMON(RsV, RdV, adjust)) {
+    if (fSF_INVSQRT_COMMON(RsV, RdV, adjust, &env->fp_status)) {
         PeV = adjust;
         idx = (RsV >> 17) & 0x7f;
         mant = (fSF_INVSQRT_LOOKUP(idx) << 15);
@@ -956,12 +1804,18 @@ static void hex_k0_unlock(CPUHexagonState *env)
 /* Helpful for printing intermediate values within instructions */
 void HELPER(debug_value)(CPUHexagonState *env, int32_t value)
 {
-    HEX_DEBUG_LOG("value = 0x%x\n", value);
+   // HEX_DEBUG_LOG("mgl: value = 0x%x\n", value);
 }
 
 void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
 {
-    HEX_DEBUG_LOG("value_i64 = 0x%lx\n", value);
+   // HEX_DEBUG_LOG("mgl: value_i64 = 0x%lx\n", value);
+}
+
+void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
+{
+  printf("invalid width in store: width %d, PC 0x%x\n", value, pc);
+  g_assert_not_reached();
 }
 
 void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
@@ -1000,7 +1854,7 @@ static inline void log_mmvector_write(CPUHexagonState *env, int num,
 
 static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 {
-    HEX_DEBUG_LOG("Slot %d cancelled\n", slot);
+    HEX_DEBUG_LOG("op_helper: slot_cancelled = %d: pc = 0x%x\n", slot, env->gpr[HEX_REG_PC]);
     env->slot_cancelled |= (1 << slot);
 }
 
@@ -1550,6 +2404,7 @@ static inline uint32_t mem_load4(CPUHexagonState *env,
     get_user_u32(retval, vaddr);
 #else
     hexagon_tools_memory_read(env, vaddr, 4, &retval);
+    //printf("%s: 0x%x -> 0x%x\n", __FUNCTION__, vaddr, retval);
 #endif
     return retval;
 }
@@ -1561,6 +2416,7 @@ static inline uint64_t mem_load8(CPUHexagonState *env,
     get_user_u64(retval, vaddr);
 #else
     hexagon_tools_memory_read(env, vaddr, 8, &retval);
+    //printf("%s: 0x%x -> 0x%lx\n", __FUNCTION__, vaddr, retval);
 #endif
     return retval;
 }
@@ -1616,7 +2472,13 @@ static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#define DEF_QEMU(TAG, SHORTCODE, HELPER, GENFN, HELPFN) HELPFN
-#include "qemu_def_generated.h.inc"
-#undef DEF_QEMU
+
+#define warn(...) /* Nothing */
+#define fatal(...) g_assert_not_reached();
+
+#define BOGUS_HELPER(tag) \
+    printf("ERROR: bogus helper: " #tag "\n")
+
+#include "helper_funcs_generated.c.inc"
+
 #pragma GCC diagnostic pop

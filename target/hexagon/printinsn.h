@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,9 +18,8 @@
 #ifndef HEXAGON_PRINTINSN_H
 #define HEXAGON_PRINTINSN_H
 
-#include "qemu/osdep.h"
 #include "insn.h"
 
-extern void snprint_a_pkt(char *buf, int n, packet_t *pkt);
+extern void snprint_a_pkt(char *buf, int n, Packet *pkt);
 
 #endif

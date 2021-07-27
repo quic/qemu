@@ -46,7 +46,7 @@ enum {
 typedef struct {
     struct _dectree_table_struct *table_link;
     struct _dectree_table_struct *table_link_b;
-    opcode_t opcode;
+    Opcode opcode;
     enum {
         DECTREE_ENTRY_INVALID,
         DECTREE_TABLE_LINK,
@@ -212,9 +212,9 @@ void decode_init(void)
     decode_ext_init();
 }
 
-void decode_send_insn_to(packet_t *packet, int start, int newloc)
+void decode_send_insn_to(Packet *packet, int start, int newloc)
 {
-    insn_t tmpinsn;
+    Insn tmpinsn;
     int direction;
     int i;
     if (start == newloc) {
@@ -236,7 +236,7 @@ void decode_send_insn_to(packet_t *packet, int start, int newloc)
 
 /* Fill newvalue registers with the correct regno */
 static int
-decode_fill_newvalue_regno(packet_t *packet)
+decode_fill_newvalue_regno(Packet *packet)
 {
     int i, def_regnum, use_regidx, def_idx;
     size2u_t def_opcode, use_opcode;
@@ -247,14 +247,19 @@ decode_fill_newvalue_regno(packet_t *packet)
             !GET_ATTRIB(packet->insn[i].opcode, A_EXTENSION)) {
             use_opcode = packet->insn[i].opcode;
 
-            /* It's a store, so we're adjusting the Nt field */
+            char find_char;
             if (GET_ATTRIB(use_opcode, A_STORE)) {
-                use_regidx = strchr(opcode_reginfo[use_opcode], 't') -
-                    opcode_reginfo[use_opcode];
-            } else {    /* It's a Jump, so we're adjusting the Ns field */
-                use_regidx = strchr(opcode_reginfo[use_opcode], 's') -
-                    opcode_reginfo[use_opcode];
+                /* It's a store, so we're adjusting the Nt field */
+                find_char = 't';
+            } else {
+                /* It's a Jump, so we're adjusting the Ns field */
+                find_char = 's';
             }
+            char *find_ptr = strchr(opcode_reginfo[use_opcode], find_char);
+            if (find_ptr == NULL) {
+                g_assert_not_reached();
+            }
+            use_regidx = find_ptr -opcode_reginfo[use_opcode];
 
             /*
              * What's encoded at the N-field is the offset to who's producing
@@ -314,7 +319,7 @@ decode_fill_newvalue_regno(packet_t *packet)
 }
 
 /* Split CJ into a compare and a jump */
-static int decode_split_cmpjump(packet_t *pkt)
+static int decode_split_cmpjump(Packet *pkt)
 {
     int last, i;
     int numinsns = pkt->num_insns;
@@ -370,7 +375,7 @@ static inline int decode_opcode_ends_loop(int opcode)
 }
 
 /* Set the is_* fields in each instruction */
-static int decode_set_insn_attr_fields(packet_t *pkt)
+static int decode_set_insn_attr_fields(Packet *pkt)
 {
     int i;
     int numinsns = pkt->num_insns;
@@ -625,7 +630,7 @@ static int decode_set_insn_attr_fields(packet_t *pkt)
  * Move stores to end (in same order as encoding)
  * Move compares to beginning (for use by .new insns)
  */
-static int decode_shuffle_for_execution(packet_t *packet)
+static int decode_shuffle_for_execution(Packet *packet)
 {
     int changed = 0;
     int i;
@@ -745,7 +750,7 @@ static int decode_shuffle_for_execution(packet_t *packet)
     return 0;
 }
 
-static void decode_assembler_count_fpops(packet_t *pkt)
+static void decode_assembler_count_fpops(Packet *pkt)
 {
     int i;
     for (i = 0; i < pkt->num_insns; i++) {
@@ -761,7 +766,7 @@ static void decode_assembler_count_fpops(packet_t *pkt)
 }
 
 static int
-apply_extender(packet_t *pkt, int i, size4u_t extender)
+apply_extender(Packet *pkt, int i, size4u_t extender)
 {
     int immed_num;
     size4u_t base_immed;
@@ -773,7 +778,7 @@ apply_extender(packet_t *pkt, int i, size4u_t extender)
     return 0;
 }
 
-static int decode_apply_extenders(packet_t *packet)
+static int decode_apply_extenders(Packet *packet)
 {
     int i;
     for (i = 0; i < packet->num_insns; i++) {
@@ -786,7 +791,7 @@ static int decode_apply_extenders(packet_t *packet)
     return 0;
 }
 
-static int decode_remove_extenders(packet_t *packet)
+static int decode_remove_extenders(Packet *packet)
 {
     int i, j;
     for (i = 0; i < packet->num_insns; i++) {
@@ -802,8 +807,7 @@ static int decode_remove_extenders(packet_t *packet)
     return 0;
 }
 
-static const char *
-get_valid_slot_str(const packet_t *pkt, unsigned int slot)
+static SlotMask get_valid_slots(const Packet *pkt, unsigned int slot)
 {
     if (GET_ATTRIB(pkt->insn[slot].opcode, A_EXTENSION)) {
         return mmvec_ext_decode_find_iclass_slots(pkt->insn[slot].opcode);
@@ -813,9 +817,47 @@ get_valid_slot_str(const packet_t *pkt, unsigned int slot)
     }
 }
 
+static const char *
+get_valid_slot_str(const Packet *pkt, unsigned int slot)
+
+{
+    const char *str;
+
+    switch (get_valid_slots(pkt, slot)) {
+        case SLOTS_0:
+            str = "0";
+            break;
+
+        case SLOTS_1:
+            str = "1";
+            break;
+
+        case SLOTS_01:
+            str = "01";
+            break;
+
+        case SLOTS_2:
+            str = "2";
+            break;
+
+        case SLOTS_3:
+            str = "3";
+            break;
+
+        case SLOTS_23:
+            str = "23";
+            break;
+
+        case SLOTS_0123:
+            str = "0123";
+            break;
+    }
+    return str;
+}
+
 #include "q6v_decode.c"
 
-packet_t *decode_this(int max_words, size4u_t *words, packet_t *decode_pkt)
+Packet *decode_this(int max_words, size4u_t *words, Packet *decode_pkt)
 {
     int ret;
     ret = do_decode_packet(max_words, words, decode_pkt);
@@ -829,7 +871,7 @@ packet_t *decode_this(int max_words, size4u_t *words, packet_t *decode_pkt)
 /* Used for "-d in_asm" logging */
 int disassemble_hexagon(uint32_t *words, int nwords, char *buf, int bufsize)
 {
-    packet_t pkt;
+    Packet pkt;
 
     if (decode_this(nwords, words, &pkt)) {
         snprint_a_pkt(buf, bufsize, &pkt);
