@@ -280,13 +280,9 @@ def genptr_decl_new(f, tag, regtype, regid, regno):
             if (hex_common.skip_qemu_helper(tag)):
                 f.write("    const intptr_t %s%sN_off =\n" % \
                     (regtype, regid))
-                f.write("        test_bit(%s%sN_num, ctx->vregs_updated)\n" % \
+                f.write("        offsetof(CPUHexagonState, ")
+                f.write("future_VRegs[%s%sN_num]);\n" % \
                     (regtype, regid))
-                f.write("            ? offsetof(CPUHexagonState, ")
-                f.write("future_VRegs[%s%sN_num])\n" % \
-                    (regtype, regid))
-                f.write("            : offsetof(CPUHexagonState, ")
-                f.write("zero_vector);\n")
             else:
                 f.write("    TCGv %s%sN = tcg_const_tl(%s%sN_num);\n" % \
                     (regtype, regid, regtype, regid))

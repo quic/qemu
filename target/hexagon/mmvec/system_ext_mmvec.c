@@ -30,7 +30,6 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
      */
     memcpy(data, &env->tmp_VRegs[0].ub[0], size);
     env->VRegs_updated_tmp = 0;
-    env->gather_issued = false;
 
     env->vstore_pending[slot] = 1;
     env->vstore[slot].va   = vaddr;
@@ -38,7 +37,7 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
     memcpy(&env->vstore[slot].data.ub[0], data, size);
 
     /* On a gather store, overwrite the store mask to emulate dropped gathers */
-    memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
+    bitmap_copy(env->vstore[slot].mask, env->vtcm_log.mask, size);
 }
 
 void mem_vector_scatter_init(CPUHexagonState *env, int slot,
@@ -49,8 +48,8 @@ void mem_vector_scatter_init(CPUHexagonState *env, int slot,
 
     for (i = 0; i < sizeof(MMVector); i++) {
         env->vtcm_log.data.ub[i] = 0;
-        env->vtcm_log.mask.ub[i] = 0;
     }
+    bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
 
     env->vtcm_pending = true;
     env->vtcm_log.op = false;
@@ -66,10 +65,10 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot,
 
     for (i = 0; i < sizeof(MMVector); i++) {
         env->vtcm_log.data.ub[i] = 0;
-        env->vtcm_log.mask.ub[i] = 0;
         env->vtcm_log.va[i] = 0;
         env->tmp_VRegs[0].ub[i] = 0;
     }
+    bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES / 8);
     env->vtcm_log.op = false;
     env->vtcm_log.op_size = 0;
 
@@ -78,5 +77,4 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot,
      * This allows store .new to grab the correct result
      */
     env->VRegs_updated_tmp = 1;
-    env->gather_issued = true;
 }

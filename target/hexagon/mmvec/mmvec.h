@@ -65,7 +65,7 @@ typedef union {
 
 typedef struct {
     MMVector data;
-    MMVector mask;
+    DECLARE_BITMAP(mask, MAX_VEC_SIZE_BYTES);
     int size;
     target_ulong va[MAX_VEC_SIZE_BYTES];
     bool op;

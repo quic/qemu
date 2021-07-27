@@ -197,7 +197,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
             target_ulong va = env->vstore[i].va;
             int size = env->vstore[i].size;
             for (int j = 0; j < size; j++) {
-                if (env->vstore[i].mask.ub[j]) {
+                if (test_bit(j, env->vstore[i].mask)) {
                     cpu_stb_data_ra(env, va + j, env->vstore[i].data.ub[j], ra);
                 }
             }
@@ -219,10 +219,10 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
             }
         } else {
             for (i = 0; i < env->vtcm_log.size; i++) {
-                if (env->vtcm_log.mask.ub[i] != 0) {
+                if (test_bit(i, env->vtcm_log.mask)) {
                     cpu_stb_data_ra(env, env->vtcm_log.va[i],
                                     env->vtcm_log.data.ub[i], ra);
-                    env->vtcm_log.mask.ub[i] = 0;
+                    clear_bit(i, env->vtcm_log.mask);
                     env->vtcm_log.data.ub[i] = 0;
                 }
 

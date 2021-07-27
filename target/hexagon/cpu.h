@@ -57,7 +57,7 @@ typedef struct {
 typedef struct {
     target_ulong va;
     int size;
-    MMVector mask QEMU_ALIGNED(16);
+    DECLARE_BITMAP(mask, MAX_VEC_SIZE_BYTES / 8) QEMU_ALIGNED(16);
     MMVector data QEMU_ALIGNED(16);
 } VStoreLog;
 
@@ -106,7 +106,6 @@ struct CPUHexagonState {
     uint64_t     llsc_val_i64;
 
     target_ulong is_gather_store_insn;
-    bool gather_issued;
 
     MMVector VRegs[NUM_VREGS] QEMU_ALIGNED(16);
     MMVector future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
@@ -121,7 +120,6 @@ struct CPUHexagonState {
     QRegMask QRegs_updated;
 
     /* Temporaries used within instructions */
-    MMVector zero_vector QEMU_ALIGNED(16);
     MMVectorPair VddV QEMU_ALIGNED(16),
                  VuuV QEMU_ALIGNED(16),
                  VvvV QEMU_ALIGNED(16),

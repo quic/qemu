@@ -79,7 +79,11 @@
 #define LOG_VTCM_BYTE(VA, MASK, VAL, IDX) \
     do { \
         env->vtcm_log.data.ub[IDX] = (VAL); \
-        env->vtcm_log.mask.ub[IDX] = (MASK); \
+        if (MASK) { \
+            set_bit((IDX), env->vtcm_log.mask); \
+        } else { \
+            clear_bit((IDX), env->vtcm_log.mask); \
+        } \
         env->vtcm_log.va[IDX] = (VA); \
     } while (0)
 
@@ -132,16 +136,6 @@
 #define fVECLOGSIZE() (7)
 #define fVECSIZE() (1 << fVECLOGSIZE())
 #define fSWAPB(A, B) do { uint8_t tmp = A; A = B; B = tmp; } while (0)
-static inline MMVector mmvec_zero_vector(void)
-{
-    MMVector ret;
-    memset(&ret, 0, sizeof(ret));
-    return ret;
-}
-#define fVZERO() mmvec_zero_vector()
-#define fNEWVREG(VNUM) \
-    ((env->VRegs_updated & (((VRegMask)1) << VNUM)) ? env->future_VRegs[VNUM] \
-                                                    : mmvec_zero_vector())
 #define fV_AL_CHECK(EA, MASK) \
     if ((EA) & (MASK)) { \
         warn("aligning misaligned vector. EA=%08x", (EA)); \
@@ -242,7 +236,7 @@ static inline MMVector mmvec_zero_vector(void)
     do { \
         uintptr_t ra = GETPC(); \
         for (int i = 0; i < env->vtcm_log.size; i += sizeof(TYPE)) { \
-            if (env->vtcm_log.mask.ub[i] != 0) { \
+            if (test_bit(i, env->vtcm_log.mask)) { \
                 TYPE dst = 0; \
                 TYPE inc = 0; \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
@@ -250,7 +244,7 @@ static inline MMVector mmvec_zero_vector(void)
                     val = cpu_ldub_data_ra(env, env->vtcm_log.va[i + j], ra); \
                     dst |= val << (8 * j); \
                     inc |= env->vtcm_log.data.ub[j + i] << (8 * j); \
-                    env->vtcm_log.mask.ub[j + i] = 0; \
+                    clear_bit(j + i, env->vtcm_log.mask); \
                     env->vtcm_log.data.ub[j + i] = 0; \
                 } \
                 dst += inc; \

@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 
 int err;
@@ -93,7 +94,7 @@ static void test_load_tmp(void)
 
     for (int i = 0; i < BUFSIZE; i++) {
         /*
-         * Load into v2 as .tmp, then ues it in the next packet
+         * Load into v2 as .tmp, then use it in the next packet
          * Should get the new value within the same packet and
          * the old value in the next packet
          */
@@ -209,7 +210,7 @@ static void test_store_unaligned(void)
     check_output_w(__LINE__, 2);
 }
 
-static void test_masked_store(void)
+static void test_masked_store(bool invert)
 {
     void *p0 = buffer0;
     void *pmask = mask;
@@ -219,21 +220,38 @@ static void test_masked_store(void)
     memset(output, 0xff, sizeof(expect));
 
     for (int i = 0; i < BUFSIZE; i++) {
-        asm("r4 = #0\n\t"
-            "v4 = vsplat(r4)\n\t"
-            "v5 = vmem(%0 + #0)\n\t"
-            "q0 = vcmp.eq(v4.w, v5.w)\n\t"
-            "v5 = vmem(%1)\n\t"
-            "if (q0) vmem(%2) = v5\n\t"
-            : : "r"(pmask), "r"(p0), "r"(pout)
-            : "r4", "v4", "v5", "q0", "memory");
+        if (invert) {
+            asm("r4 = #0\n\t"
+                "v4 = vsplat(r4)\n\t"
+                "v5 = vmem(%0 + #0)\n\t"
+                "q0 = vcmp.eq(v4.w, v5.w)\n\t"
+                "v5 = vmem(%1)\n\t"
+                "if (!q0) vmem(%2) = v5\n\t"             /* Inverted test */
+                : : "r"(pmask), "r"(p0), "r"(pout)
+                : "r4", "v4", "v5", "q0", "memory");
+        } else {
+            asm("r4 = #0\n\t"
+                "v4 = vsplat(r4)\n\t"
+                "v5 = vmem(%0 + #0)\n\t"
+                "q0 = vcmp.eq(v4.w, v5.w)\n\t"
+                "v5 = vmem(%1)\n\t"
+                "if (q0) vmem(%2) = v5\n\t"             /* Non-inverted test */
+                : : "r"(pmask), "r"(p0), "r"(pout)
+                : "r4", "v4", "v5", "q0", "memory");
+        }
         p0 += sizeof(MMVector);
         pmask += sizeof(MMVector);
         pout += sizeof(MMVector);
 
         for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
-            if (i + j % MASKMOD == 0) {
-                expect[i].w[j] = buffer0[i].w[j];
+            if (invert) {
+                if (i + j % MASKMOD != 0) {
+                    expect[i].w[j] = buffer0[i].w[j];
+                }
+            } else {
+                if (i + j % MASKMOD == 0) {
+                    expect[i].w[j] = buffer0[i].w[j];
+                }
             }
         }
     }
@@ -313,7 +331,8 @@ int main()
     test_load_unaligned();
     test_store_aligned();
     test_store_unaligned();
-    test_masked_store();
+    test_masked_store(false);
+    test_masked_store(true);
 
     test_vadd_w();
     test_vadd_h();
