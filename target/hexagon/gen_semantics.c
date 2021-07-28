@@ -59,6 +59,13 @@ int main(int argc, char *argv[])
                          ")\n", \
                 #TAG, STRINGIZE(ATTRIBS)); \
     } while (0);
+#define EXTINSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
+    do { \
+        fprintf(outfile, "EXT_SEMANTICS(\"%s\",\"%s\",%s,\"\"\"%s\"\"\")\n", \
+                EXTSTR, #TAG, STRINGIZE(BEH), STRINGIZE(SEM)); \
+        fprintf(outfile, "ATTRIBUTES(\"%s\",\"%s\")\n", \
+                #TAG, STRINGIZE(ATTRIBS)); \
+    } while (0);
 #include "imported/allidefs.def"
 #undef Q6INSN
 
@@ -81,6 +88,15 @@ int main(int argc, char *argv[])
                      ")\n", \
             #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS));
 #include "imported/macros.def"
+#undef DEF_MACRO
+
+/*
+ * Process the macros for HVX
+ */
+#define DEF_MACRO(MNAME, PARAMS, SDESC, LDESC, BEH, ATTRS) \
+    fprintf(outfile, "MACROATTRIB(\"%s\",\"\"\"%s\"\"\",\"%s\",\"%s\")\n", \
+            #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS), EXTSTR);
+#include "imported/allext_macros.def"
 #undef DEF_MACRO
 
     fclose(outfile);

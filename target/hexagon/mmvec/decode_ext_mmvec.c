@@ -72,7 +72,7 @@ handle_bad_packet(
 		exception_info * einfo,
 		const char *reason
 ) {
-//	thread->exception_msg = "Bad HVX Decode";
+	//thread->exception_msg = "Bad HVX Decode";
 	//decode_error(thread, einfo, PRECISE_CAUSE_INVALID_PACKET);
 	//warn("Bad Packet:HVX:%s:PC=0x%x\n",reason,einfo->elr);
 
@@ -102,9 +102,9 @@ check_scatter_gather_packet(thread_t * thread,  hvx_resource_t * resources, int 
 		}
 	}
 
-    if (scatter_gather_count>1)
+    if (scatter_gather_count>1) {
         return handle_bad_packet(thread, einfo, "Only one scatter/gather opcode per packet");
-
+    }
     return 0;
 
 }
