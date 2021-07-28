@@ -762,25 +762,11 @@
         tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 4, s); \
     } while (0)
-#if 0
-        TCGv_i32 flag = tcg_const_i32(0xAAA4);
-        gen_helper_debug_value(cpu_env, flag);
-        gen_helper_debug_value(cpu_env, VA);
-        gen_helper_debug_value(cpu_env, DST);
-        tcg_temp_free_i32(flag);
-#endif
 #define MEM_LOAD4u(DST, VA) \
     do { \
         tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 4, u); \
     } while (0)
-#if 0
-        TCGv_i32 flag = tcg_const_i32(0xAAA8);
-        gen_helper_debug_value(cpu_env, flag);
-        gen_helper_debug_value(cpu_env, VA);
-        gen_helper_debug_value_i64(cpu_env, DST);
-        tcg_temp_free_i32(flag);
-#endif
 #define MEM_LOAD8u(DST, VA) \
     do { \
         tcg_gen_qemu_ld64(DST, VA, ctx->mem_idx); \
@@ -845,12 +831,6 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
     TCGv one = tcg_const_tl(1);
     tcg_gen_or_tl(slot_mask, hex_slot_cancelled, slot_mask);
     tcg_gen_andi_tl(tmp, pred, 1);
-        TCGv_i32 flag = tcg_const_i32(0xAAA0);
-        gen_helper_debug_value(cpu_env, flag);
-        gen_helper_debug_value(cpu_env, pred);
-        gen_helper_debug_value(cpu_env, slot_mask);
-        gen_helper_debug_value(cpu_env, hex_slot_cancelled);
-        tcg_temp_free_i32(flag);
     tcg_gen_movcond_tl(TCG_COND_EQ, hex_slot_cancelled, tmp, zero,
                        slot_mask, hex_slot_cancelled);
     tcg_temp_free(slot_mask);
@@ -864,7 +844,7 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 #define PRED_STORE_CANCEL(PRED, EA) \
     gen_pred_cancel(PRED, insn->is_endloop ? 4 : insn->slot)
 #else
-#define STORE_CANCEL(EA) { printf("mgl: %d cancelled\n", slot), env->slot_cancelled |= (1 << slot); }
+#define STORE_CANCEL(EA) env->slot_cancelled |= (1 << slot)
 #endif
 
 #define IS_CANCELLED(SLOT)
@@ -1268,12 +1248,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 
 #ifdef QEMU_GENERATE
 #define fEA_IMM(IMM) tcg_gen_movi_tl(EA, IMM)
-#if 0
-        TCGv_i32 flag = tcg_const_i32(0xEEEE);
-        gen_helper_debug_value(cpu_env, flag);
-        gen_helper_debug_value(cpu_env, REG);
-        tcg_temp_free_i32(flag);
-#endif
 #define fEA_REG(REG) do {\
     tcg_gen_mov_tl(EA, REG); \
     } while(0)

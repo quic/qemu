@@ -245,11 +245,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         if (count) {
           retval = write(fd, buf, count);
         }
-        if (count) {
-            for (i = 0 ; i < count; ++i)
-                if (buf[i] == 0)
-                    printf("mgl: null found inside string\n");
-        }
         if (retval == count) {
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
         } else if (retval == -1) {
@@ -810,7 +805,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 
     case SYS_CLOCK:
     {
-        int retval = 0; // mgl comment this back in: time(NULL);
+        int retval = time(NULL);
         if (retval == -1) {
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
             ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
@@ -822,7 +817,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 
     case SYS_TIME:
     {
-        int retval = 0; // mgl comment this back in: time(NULL);
+        int retval = time(NULL);
         if (retval == -1) {
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
             ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));

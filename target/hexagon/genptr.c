@@ -72,15 +72,6 @@ static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot)
 
 static inline void gen_log_reg_write(int rnum, TCGv val)
 {
-#if 0
-        TCGv_i32 flag = tcg_const_i32(0xDDDD);
-        gen_helper_debug_value(cpu_env, flag);
-        TCGv_i32 rnum_t = tcg_const_i32(rnum);
-        gen_helper_debug_value(cpu_env, rnum_t);
-        gen_helper_debug_value(cpu_env, val);
-        tcg_temp_free_i32(rnum_t);
-        tcg_temp_free_i32(flag);
-#endif
     tcg_gen_mov_tl(hex_new_value[rnum], val);
     if (HEX_DEBUG) {
         /* Do this so HELPER(debug_commit_end) will know */
@@ -181,7 +172,6 @@ static inline void gen_log_sreg_write_pair(int rnum, TCGv_i64 val)
 static inline void gen_log_pred_write(DisasContext *ctx, int pnum, TCGv val)
 {
     TCGv base_val = tcg_temp_new();
-
     tcg_gen_andi_tl(base_val, val, 0xff);
 
     /*
@@ -520,13 +510,6 @@ static inline void gen_store_conditional8(DisasContext *ctx,
 
 static inline void gen_store32(TCGv vaddr, TCGv src, int width, int slot)
 {
-#if 0
-        TCGv_i32 flag = tcg_const_i32(0xBBBB);
-        gen_helper_debug_value(cpu_env, flag);
-        gen_helper_debug_value(cpu_env, vaddr);
-        gen_helper_debug_value(cpu_env, src);
-        tcg_temp_free_i32(flag);
-#endif
     tcg_gen_mov_tl(hex_store_addr[slot], vaddr);
     tcg_gen_movi_tl(hex_store_width[slot], width);
     tcg_gen_mov_tl(hex_store_val32[slot], src);
@@ -792,24 +775,12 @@ static inline void gen_cond_jump(TCGv pred, int pc_off)
 static inline void gen_call(int pc_off)
 {
     gen_log_reg_write(HEX_REG_LR, hex_next_PC);
-#if 0
-    TCGv_i32 flag = tcg_const_i32(0xCCCC);
-    gen_helper_debug_value(cpu_env, flag);
-    gen_helper_debug_value(cpu_env, hex_next_PC);
-    tcg_temp_free_i32(flag);
-#endif
     gen_jump(pc_off);
 }
 
 static inline void gen_callr(TCGv new_pc)
 {
     gen_log_reg_write(HEX_REG_LR, hex_next_PC);
-#if 0
-    TCGv_i32 flag = tcg_const_i32(0xCCCC);
-    gen_helper_debug_value(cpu_env, flag);
-    gen_helper_debug_value(cpu_env, hex_next_PC);
-    tcg_temp_free_i32(flag);
-#endif
     gen_write_new_pc(new_pc);
 }
 

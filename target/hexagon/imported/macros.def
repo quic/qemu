@@ -601,6 +601,11 @@ DEF_MACRO(
     WRITE_PREG(3,VAL),     /* behavior */
     (A_IMPLICIT_WRITES_P3)
 )
+DEF_MACRO(
+	fWRITE_P3_LATE, /* write Predicate 0 */
+	{WRITE_PREG(3,VAL); fHIDE(MARK_LATE_PRED_WRITE(3))} ,          /* behavior */
+	(A_IMPLICIT_WRITES_P3,A_RESTRICT_LATEPRED)
+)
 
 DEF_MACRO(
     fPART1, /* write Predicate 0 */

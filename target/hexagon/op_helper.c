@@ -921,7 +921,6 @@ static inline void log_reg_write(CPUHexagonState *env, int rnum,
     HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld
       " (0x" TARGET_FMT_lx ")", rnum, val, val);
     if (env->slot_cancelled & (1 << slot)) {
-        printf("%s: %d CANCELLED", __FUNCTION__, slot);
         HEX_DEBUG_LOG(" CANCELLED");
     }
     if (val == env->gpr[rnum]) {
@@ -1013,10 +1012,6 @@ static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
 {
-    printf("Start packet: pc = 0x" TARGET_FMT_lx " tid = %d\n",
-                  env->gpr[HEX_REG_PC], env->threadId);
-    return;
-
     int i;
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         env->reg_written[i] = 0;
@@ -1262,15 +1257,16 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
 #endif
 
     for (i = 0; i < NUM_PREGS; i++) {
-        if (env->pred_written & (1 << i)) {
+//        if (env->pred_written & (1 << i)) {
             if (!pred_printed) {
                 HEX_DEBUG_LOG("Predicates written\n");
                 pred_printed = true;
             }
-            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx "\n",
-                          i, env->new_pred_value[i]);
+            char flag = (env->pred_written & (1 << i)) ? '*' : ' ';
+            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx " %c\n",
+                          i, env->new_pred_value[i], flag);
         }
-    }
+//    }
 
     if (has_st0 || has_st1) {
         HEX_DEBUG_LOG("Stores\n");
@@ -1804,12 +1800,12 @@ static void hex_k0_unlock(CPUHexagonState *env)
 /* Helpful for printing intermediate values within instructions */
 void HELPER(debug_value)(CPUHexagonState *env, int32_t value)
 {
-   // HEX_DEBUG_LOG("mgl: value = 0x%x\n", value);
+    HEX_DEBUG_LOG("mgl: value = 0x%x\n", value);
 }
 
 void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
 {
-   // HEX_DEBUG_LOG("mgl: value_i64 = 0x%lx\n", value);
+    HEX_DEBUG_LOG("mgl: value_i64 = 0x%lx\n", value);
 }
 
 void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
@@ -2404,7 +2400,6 @@ static inline uint32_t mem_load4(CPUHexagonState *env,
     get_user_u32(retval, vaddr);
 #else
     hexagon_tools_memory_read(env, vaddr, 4, &retval);
-    //printf("%s: 0x%x -> 0x%x\n", __FUNCTION__, vaddr, retval);
 #endif
     return retval;
 }
@@ -2416,7 +2411,6 @@ static inline uint64_t mem_load8(CPUHexagonState *env,
     get_user_u64(retval, vaddr);
 #else
     hexagon_tools_memory_read(env, vaddr, 8, &retval);
-    //printf("%s: 0x%x -> 0x%lx\n", __FUNCTION__, vaddr, retval);
 #endif
     return retval;
 }

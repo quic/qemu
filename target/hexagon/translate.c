@@ -186,8 +186,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     /* Handy place to set a breakpoint before the packet executes */
     gen_helper_debug_start_packet(cpu_env);
     tcg_gen_movi_tl(hex_this_PC, ctx->base.pc_next);
-#else
-    gen_helper_debug_start_packet(cpu_env);
 #endif
 
     /* Initialize the runtime state for packet semantics */
@@ -339,8 +337,6 @@ static void gen_reg_writes(DisasContext *ctx)
     for (i = 0; i < ctx->reg_log_idx; i++) {
         int reg_num = ctx->reg_log[i];
         tcg_gen_mov_tl(hex_gpr[reg_num], hex_new_value[reg_num]);
-        if (reg_num == HEX_REG_LR)
-            gen_helper_debug_value(cpu_env, hex_gpr[reg_num]);
     }
 }
 

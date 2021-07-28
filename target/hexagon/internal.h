@@ -23,7 +23,7 @@
 /*
  * Change HEX_DEBUG to 1 to turn on debugging output
  */
-#define HEX_DEBUG 1
+#define HEX_DEBUG 0
 #define HEX_DEBUG_LOG(...) \
     do { \
         if (HEX_DEBUG) { \

@@ -863,10 +863,6 @@
         GET_EA; \
         PRED;  \
         PRED_STORE_CANCEL(LSB, EA); \
-        TCGv_i32 flag = tcg_const_i32(0xAAA5); \
-        gen_helper_debug_value(cpu_env, flag);\
-        gen_helper_debug_value(cpu_env, LSB);\
-        tcg_temp_free_i32(flag);\
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
             INC; \
             fSTORE(1, SIZE, EA, SRC); \
@@ -2276,11 +2272,6 @@
         tcg_gen_movi_tl(mask, 1 << insn->slot); \
         tcg_gen_movcond_tl(TCG_COND_EQ, mask, LSB, zero, mask, zero); \
         tcg_gen_or_tl(hex_slot_cancelled, hex_slot_cancelled, mask); \
-        TCGv_i32 flag = tcg_const_i32(0xFFFF); \
-        gen_helper_debug_value(cpu_env, flag);\
-        gen_helper_debug_value(cpu_env, mask);\
-        gen_helper_debug_value(cpu_env, hex_slot_cancelled);\
-        tcg_temp_free_i32(flag);\
         tcg_temp_free(LSB); \
         tcg_temp_free(zero); \
         tcg_temp_free(mask); \
