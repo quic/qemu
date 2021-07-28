@@ -32,10 +32,8 @@ def main():
         for tag in hex_common.get_user_tags():
             f.write("OPCODE(%s),\n" % (tag))
 
-        f.write('#if !defined(CONFIG_USER_ONLY)\n')
         for tag in hex_common.get_sys_tags():
             f.write("OPCODE(%s),\n" % (tag))
-        f.write('#endif\n')
 
 if __name__ == "__main__":
     main()

@@ -50,7 +50,9 @@ SlotMask find_iclass_slots(Opcode opcode, int itype)
     } else if (GET_ATTRIB(opcode, A_RESTRICT_NOSLOT1)) {
         return SLOTS_0;
     } else if ((opcode == J2_trap0) || (opcode == J2_trap1) ||
+#if !defined(CONFIG_USER_ONLY)
                (opcode == Y2_isync) || (opcode == J2_rte) ||
+#endif
                (opcode == J2_pause) || (opcode == J4_hintjumpr)) {
         return SLOTS_2;
     } else if (GET_ATTRIB(opcode, A_CRSLOT23)) {
