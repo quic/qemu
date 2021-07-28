@@ -271,7 +271,6 @@ static void mark_implicit_reg_write(DisasContext *ctx, Insn *insn,
                                     int attrib, int rnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
-        //printf("mgl: implicit write %d: %d\n", rnum, ctx->reg_log_idx);
         ctx->reg_log[ctx->reg_log_idx] = rnum;
         ctx->reg_log_idx++;
     }

@@ -137,7 +137,7 @@ typedef struct {
     int oob_access;
     int op;
     int op_size;
-} vtcm_storelog_t;
+} VTCMStoreLog;
 
 
 typedef struct {

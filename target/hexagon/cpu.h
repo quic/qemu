@@ -279,9 +279,9 @@ struct MemLog {
 typedef struct {
     target_ulong va;
     int size;
-    mmvector_t mask;
-    mmvector_t data;
-} vstorelog_t;
+    mmvector_t mask QEMU_ALIGNED(16);
+    mmvector_t data QEMU_ALIGNED(16);
+} VStoreLog;
 
 struct dma_state;
 typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *);
@@ -494,16 +494,16 @@ struct CPUHexagonState {
     target_ulong is_gather_store_insn;
     target_ulong gather_issued;
 
-    mmvector_t VRegs[NUM_VREGS];
-    mmvector_t future_VRegs[NUM_VREGS];
-    mmvector_t tmp_VRegs[NUM_VREGS];
+    mmvector_t VRegs[NUM_VREGS] QEMU_ALIGNED(16);
+    mmvector_t future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
+    mmvector_t tmp_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
 
     VRegMask VRegs_updated_tmp;
     VRegMask VRegs_updated;
     VRegMask VRegs_select;
 
-    mmqreg_t QRegs[NUM_QREGS];
-    mmqreg_t future_QRegs[NUM_QREGS];
+    mmqreg_t QRegs[NUM_QREGS] QEMU_ALIGNED(16);
+    mmqreg_t future_QRegs[NUM_QREGS] QEMU_ALIGNED(16);
     QRegMask QRegs_updated;
 
     /* Temporaries used within instructions */
@@ -513,11 +513,11 @@ struct CPUHexagonState {
                  VvvV QEMU_ALIGNED(16),
                  VxxV QEMU_ALIGNED(16);
 
-    vstorelog_t vstore[VSTORES_MAX];
+    VStoreLog vstore[VSTORES_MAX];
     uint8_t store_pending[VSTORES_MAX];
     uint8_t vstore_pending[VSTORES_MAX];
     uint8_t vtcm_pending;
-    vtcm_storelog_t vtcm_log;
+    VTCMStoreLog vtcm_log;
     mem_access_info_t mem_access[SLOTS_MAX];
 
     int status;
