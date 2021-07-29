@@ -79,6 +79,15 @@ static inline void gen_log_reg_write(int rnum, TCGv val)
     }
 }
 
+static inline void gen_log_greg_write(int rnum, TCGv val)
+{
+    tcg_gen_mov_tl(hex_greg_new_value[rnum], val);
+    if (HEX_DEBUG) {
+        /* Do this so HELPER(debug_commit_end) will know */
+        tcg_gen_movi_tl(hex_greg_written[rnum], 1);
+    }
+}
+
 static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot)
 {
     TCGv val32 = tcg_temp_new();
@@ -136,21 +145,36 @@ static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
 #define GEN_LOG_REG_WRITE(r,v) \
     gen_log_reg_write(r,v)
 #define GEN_LOG_GREG_WRITE(r,v) \
-    gen_log_reg_write(r,v)
+    gen_log_greg_write(r,v)
 #define GEN_LOG_REG_WRITE_PAIR(r,v)\
     gen_log_reg_write_pair(r,v)
 #define GEN_LOG_GREG_WRITE_PAIR(r,v)\
-    gen_log_reg_write_pair(r,v)
+    gen_log_greg_write_pair(r,v)
 #else
 #define GEN_LOG_REG_WRITE(r,v) \
     gen_log_reg_write(r,v)
 #define GEN_LOG_GREG_WRITE(r,v) \
-    gen_log_reg_write(r,v)
+    gen_log_greg_write(r,v)
 #define GEN_LOG_REG_WRITE_PAIR(r,v)\
     gen_log_reg_write_pair(r,v)
 #define GEN_LOG_GREG_WRITE_PAIR(r,v)\
-    gen_log_reg_write_pair(r,v)
+    gen_log_greg_write_pair(r,v)
 #endif
+
+static inline void gen_log_greg_write_pair(int rnum, TCGv_i64 val)
+
+{
+    TCGv val32 = tcg_temp_new();
+
+    /* Low word */
+    tcg_gen_extrl_i64_i32(val32, val);
+    tcg_gen_mov_tl(hex_greg_new_value[rnum], val32);
+    /* High word */
+    tcg_gen_extrh_i64_i32(val32, val);
+    tcg_gen_mov_tl(hex_greg_new_value[rnum + 1], val32);
+
+    tcg_temp_free(val32);
+}
 
 // mgl gen_log_sreg_write
 static inline void gen_log_sreg_write_pair(int rnum, TCGv_i64 val)
