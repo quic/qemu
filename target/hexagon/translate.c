@@ -89,6 +89,18 @@ void gen_exception(int excp)
     tcg_temp_free_i32(helper_tmp);
 }
 
+static void gen_exec_counters(DisasContext *ctx)
+{
+    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],
+                    hex_gpr[HEX_REG_QEMU_PKT_CNT], ctx->num_packets);
+    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_INSN_CNT],
+                    hex_gpr[HEX_REG_QEMU_INSN_CNT], ctx->num_insns);
+    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HVX_CNT],
+                    hex_gpr[HEX_REG_QEMU_HVX_CNT], ctx->num_hvx_insns);
+    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HMX_CNT],
+                    hex_gpr[HEX_REG_QEMU_HMX_CNT], ctx->num_hmx_insns);
+}
+
 void gen_exception_debug(void)
 {
     gen_exception(EXCP_DEBUG);
@@ -818,21 +830,20 @@ static void gen_cpu_limit(void)
 
 #endif
 
-static void gen_exec_counters(Packet *pkt)
+static void update_exec_counters(DisasContext *ctx, Packet *pkt)
 {
     int num_insns = pkt->num_insns;
     int num_real_insns = 0;
     int num_hvx_insns = 0;
     int num_hmx_insns = 0;
-    int i;
 
-    for (i = 0; i < num_insns; i++) {
+    for (int i = 0; i < num_insns; i++) {
         if (!pkt->insn[i].is_endloop &&
             !pkt->insn[i].part1 &&
             !GET_ATTRIB(pkt->insn[i].opcode, A_IT_NOP)) {
             num_real_insns++;
         }
-        if (pkt->insn[i].hvx_resource) {
+        if (GET_ATTRIB(pkt->insn[i].opcode, A_CVI)) {
             num_hvx_insns++;
         }
         if (GET_ATTRIB(pkt->insn[i].opcode, A_HMX)) {
@@ -840,20 +851,10 @@ static void gen_exec_counters(Packet *pkt)
         }
     }
 
-    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],
-                    hex_gpr[HEX_REG_QEMU_PKT_CNT], 1);
-    if (num_real_insns) {
-        tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_INSN_CNT],
-                        hex_gpr[HEX_REG_QEMU_INSN_CNT], num_real_insns);
-    }
-    if (num_hvx_insns) {
-        tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HVX_CNT],
-                        hex_gpr[HEX_REG_QEMU_HVX_CNT], num_hvx_insns);
-    }
-    if (num_hmx_insns) {
-        tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HMX_CNT],
-                        hex_gpr[HEX_REG_QEMU_HMX_CNT], num_hmx_insns);
-    }
+    ctx->num_packets++;
+    ctx->num_insns += num_real_insns;
+    ctx->num_hvx_insns += num_hvx_insns;
+    ctx->num_hmx_insns += num_hmx_insns;
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -913,7 +914,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     if (pkt->pkt_has_hmx) {
         gen_helper_commit_hmx(cpu_env);
     }
-    gen_exec_counters(pkt);
+    update_exec_counters(ctx, pkt);
 #if HEX_DEBUG
     {
         /* Handy place to set a breakpoint at the end of execution */
@@ -942,8 +943,6 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
         ctx->base.is_jmp = DISAS_TOO_MANY;
     }
 #endif
-
-    ctx->num_packets++;
 }
 
 static void decode_and_translate_packet(CPUHexagonState *env,
@@ -996,6 +995,11 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     CPUHexagonState *env = &cpu->env;
     ctx->mem_idx = cpu_mmu_index(env, false);
 #endif
+
+    ctx->num_packets = 0;
+    ctx->num_insns = 0;
+    ctx->num_hvx_insns = 0;
+    ctx->num_hmx_insns = 0;
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
@@ -1088,6 +1092,7 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 
     switch (ctx->base.is_jmp) {
     case DISAS_TOO_MANY:
+        gen_exec_counters(ctx);
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
 
     /* Fall through */
@@ -1099,6 +1104,7 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 
         break;
     case DISAS_NORETURN:
+        gen_exec_counters(ctx);
         tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
 
         break;

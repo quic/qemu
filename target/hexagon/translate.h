@@ -25,9 +25,10 @@
 
 typedef struct DisasContext {
     DisasContextBase base;
-    uint32_t num_packets;   // mgl needs init
-    uint32_t num_insns;     // mgl needs init
-    uint32_t num_hvx_insns; // mgl needs init
+    uint32_t num_packets;
+    uint32_t num_insns;
+    uint32_t num_hvx_insns;
+    uint32_t num_hmx_insns;
     uint32_t mem_idx;
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
