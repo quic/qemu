@@ -105,8 +105,6 @@ struct CPUHexagonState {
     target_ulong llsc_val;
     uint64_t     llsc_val_i64;
 
-    target_ulong is_gather_store_insn;
-
     MMVector VRegs[NUM_VREGS] QEMU_ALIGNED(16);
     MMVector future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
     MMVector tmp_VRegs[NUM_VREGS] QEMU_ALIGNED(16);

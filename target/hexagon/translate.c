@@ -47,7 +47,6 @@ TCGv hex_dczero_addr;
 TCGv hex_llsc_addr;
 TCGv hex_llsc_val;
 TCGv_i64 hex_llsc_val_i64;
-TCGv hex_is_gather_store_insn;
 TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
 TCGv hex_VRegs_select;
@@ -221,7 +220,6 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
         ctx->is_gather_store_insn = false;
-        tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
     }
 }
 
@@ -291,7 +289,6 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
     if (insn->generate) {
         if (is_gather_store_insn(insn, pkt)) {
             ctx->is_gather_store_insn = true;
-            tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
         }
         mark_implicit_reg_writes(ctx, insn);
         insn->generate(env, ctx, insn, pkt);
@@ -882,9 +879,6 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, llsc_val), "llsc_val");
     hex_llsc_val_i64 = tcg_global_mem_new_i64(cpu_env,
         offsetof(CPUHexagonState, llsc_val_i64), "llsc_val_i64");
-    hex_is_gather_store_insn = tcg_global_mem_new(cpu_env,
-        offsetof(CPUHexagonState, is_gather_store_insn),
-        "is_gather_store_insn");
     hex_VRegs_updated_tmp = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, VRegs_updated_tmp), "VRegs_updated_tmp");
     hex_VRegs_updated = tcg_global_mem_new(cpu_env,
