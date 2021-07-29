@@ -440,61 +440,6 @@
 #define READ_GREG_s(dest, NUM) \
     READ_GREG_READONLY(dest, NUM)
 
-#define READ_CREG_s(dest, NUM) \
-    do { \
-        if ((NUM) + HEX_REG_SA0 == HEX_REG_P3_0) { \
-            gen_read_p3_0(dest); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UPCYCLEHI) { \
-            gen_read_upcycle_reg(dest, HEX_REG_UPCYCLEHI); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UPCYCLELO) { \
-            gen_read_upcycle_reg(dest, HEX_REG_UPCYCLELO); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_PKTCNTLO) { \
-            TCGv num = tcg_const_tl(HEX_REG_PKTCNTLO); \
-            gen_helper_creg_read(dest, cpu_env, num); \
-            tcg_temp_free(num); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_PKTCNTHI) { \
-            TCGv num = tcg_const_tl(HEX_REG_PKTCNTHI); \
-            gen_helper_creg_read(dest, cpu_env, num); \
-            tcg_temp_free(num); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERLO) { \
-            TCGv num = tcg_const_tl(HEX_REG_UTIMERLO); \
-            gen_helper_creg_read(dest, cpu_env, num); \
-            tcg_temp_free(num); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERHI) { \
-            TCGv num = tcg_const_tl(HEX_REG_UTIMERHI); \
-            gen_helper_creg_read(dest, cpu_env, num); \
-            tcg_temp_free(num); \
-        } else { \
-            READ_REG_READONLY(dest, ((NUM) + HEX_REG_SA0)); \
-        } \
-    } while (0)
-
-#define READ_CREG_PAIR(tmp, NUM) \
-    do { \
-        if ((NUM) + HEX_REG_SA0 == HEX_REG_P3_0) { \
-            TCGv p3_0 = tcg_temp_new(); \
-            gen_read_p3_0(p3_0); \
-            tcg_gen_concat_i32_i64(tmp, p3_0, \
-                                        hex_gpr[(NUM) + HEX_REG_SA0 + 1]); \
-            tcg_temp_free(p3_0); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UPCYCLELO) { \
-            TCGv_i32 num = tcg_const_i32(HEX_REG_UPCYCLELO); \
-            gen_helper_creg_read_pair(tmp, cpu_env, num); \
-            tcg_temp_free_i32(num); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_PKTCNTLO) { \
-            TCGv_i32 num = tcg_const_i32(HEX_REG_PKTCNTLO); \
-            gen_helper_creg_read_pair(tmp, cpu_env, num); \
-            tcg_temp_free_i32(num); \
-        } else if ((NUM) + HEX_REG_SA0 == HEX_REG_UTIMERLO) { \
-            TCGv_i32 num = tcg_const_i32(HEX_REG_UTIMERLO); \
-            gen_helper_creg_read_pair(tmp, cpu_env, num); \
-            tcg_temp_free_i32(num); \
-        } else { \
-            tcg_gen_concat_i32_i64(tmp, hex_gpr[NUM + HEX_REG_SA0], \
-                                   hex_gpr[(NUM) + HEX_REG_SA0 + 1]); \
-        } \
-    } while (0)
-
 #define READ_CREG_ss(dest, NUM) READ_CREG_PAIR(dest, NUM)
 
 

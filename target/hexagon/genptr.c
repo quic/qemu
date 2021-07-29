@@ -247,6 +247,10 @@ static inline void gen_read_ctrl_reg(DisasContext *ctx, const int reg_num,
 {
     if (reg_num == HEX_REG_P3_0) {
         gen_read_p3_0(dest);
+    } else if (reg_num == HEX_REG_UPCYCLEHI) {
+        gen_read_upcycle_reg(dest, HEX_REG_UPCYCLEHI);
+    } else if (reg_num == HEX_REG_UPCYCLELO) {
+        gen_read_upcycle_reg(dest, HEX_REG_UPCYCLELO);
     } else if (reg_num == HEX_REG_PC) {
         tcg_gen_movi_tl(dest, ctx->base.pc_next);
     } else if (reg_num == HEX_REG_QEMU_PKT_CNT) {
@@ -258,6 +262,13 @@ static inline void gen_read_ctrl_reg(DisasContext *ctx, const int reg_num,
     } else if (reg_num == HEX_REG_QEMU_HVX_CNT) {
         tcg_gen_addi_tl(dest, hex_gpr[HEX_REG_QEMU_HVX_CNT],
                         ctx->num_hvx_insns);
+    } else if ((reg_num == HEX_REG_PKTCNTLO)
+            || (reg_num == HEX_REG_PKTCNTHI)
+            || (reg_num == HEX_REG_UTIMERLO)
+            || (reg_num == HEX_REG_UTIMERHI) ) {
+        TCGv num = tcg_const_tl(reg_num);
+        gen_helper_creg_read(dest, cpu_env, num);
+        tcg_temp_free(num);
     } else {
         tcg_gen_mov_tl(dest, hex_gpr[reg_num]);
     }
@@ -291,6 +302,13 @@ static inline void gen_read_ctrl_reg_pair(DisasContext *ctx, const int reg_num,
                         ctx->num_hvx_insns);
         tcg_gen_concat_i32_i64(dest, hvx_cnt, hex_gpr[reg_num + 1]);
         tcg_temp_free(hvx_cnt);
+    } else if ((reg_num == HEX_REG_PKTCNTLO)
+            || (reg_num == HEX_REG_UTIMERLO)
+            || (reg_num == HEX_REG_UPCYCLELO)
+            ) {
+        TCGv_i32 num = tcg_const_i32(reg_num);
+        gen_helper_creg_read_pair(dest, cpu_env, num);
+        tcg_temp_free_i32(num);
     } else {
         tcg_gen_concat_i32_i64(dest,
             hex_gpr[reg_num],
