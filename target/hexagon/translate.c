@@ -202,6 +202,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
         tcg_gen_movi_tl(hex_VRegs_select, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
+        ctx->is_gather_store_insn = false;
         tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         tcg_gen_movi_tl(hex_gather_issued, 0);
     }
@@ -317,11 +318,13 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
 {
     bool is_gather_store = is_gather_store_insn(insn);
     if (is_gather_store) {
+        ctx->is_gather_store_insn = true;
         tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
     }
     insn->generate(env, ctx, insn, pkt);
     mark_implicit_writes(ctx, insn);
     if (is_gather_store) {
+        ctx->is_gather_store_insn = false;
         tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
     }
 }

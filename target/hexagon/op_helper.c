@@ -993,7 +993,7 @@ static inline void log_pred_write(CPUHexagonState *env, int pnum,
 
 static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 {
-    //HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
+    HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
 
     /*
      * If more than one branch is taken in a packet, only the first one
@@ -1012,6 +1012,9 @@ static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
 {
+    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " tid = %d\n",
+                  env->gpr[HEX_REG_PC], env->threadId);
+
     int i;
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         env->reg_written[i] = 0;
@@ -1210,8 +1213,7 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     HEX_DEBUG_LOG("Packet committed: tid = %d, pc = 0x" TARGET_FMT_lx "\n",
                   env->threadId, env->this_PC);
     if (env->slot_cancelled)
-      HEX_DEBUG_LOG("end: slot_cancelled = %d: pc = 0x%x\n",
-        env->slot_cancelled, env->this_PC);
+      HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
 
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         if (env->reg_written[i]) {
