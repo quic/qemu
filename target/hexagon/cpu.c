@@ -412,8 +412,6 @@ static void hexagon_cpu_reset(DeviceState *dev)
     set_float_detect_tininess(float_tininess_before_rounding, &env->fp_status);
 
 #ifndef CONFIG_USER_ONLY
-    CPUHexagonState *env = &cpu->env;
-
     clear_wait_mode(env);
     cs->halted = 1;
 
