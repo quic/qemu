@@ -259,6 +259,22 @@ static void test_masked_store(bool invert)
     check_output_w(__LINE__, BUFSIZE);
 }
 
+static void test_new_value_store(void)
+{
+    void *p0 = buffer0;
+    void *pout = output;
+
+    asm("{\n\t"
+        "    v2 = vmem(%0 + #0)\n\t"
+        "    vmem(%1 + #0) = v2.new\n\t"
+        "}\n\t"
+        : : "r"(p0), "r"(pout) : "v2", "memory");
+
+    expect[0] = buffer0[0];
+
+    check_output_w(__LINE__, 1);
+}
+
 #define OP1(ASM, EL, IN, OUT) \
     asm("v2 = vmem(%0 + #0)\n\t" \
         "v2" #EL " = " #ASM "(v2" #EL ")\n\t" \
@@ -333,6 +349,7 @@ int main()
     test_store_unaligned();
     test_masked_store(false);
     test_masked_store(true);
+    test_new_value_store();
 
     test_vadd_w();
     test_vadd_h();
