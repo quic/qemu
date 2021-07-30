@@ -1812,13 +1812,7 @@ void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
 
 void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
 {
-  printf("invalid width in store: width %d, PC 0x%x\n", value, pc);
-  g_assert_not_reached();
-}
-
-void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
-{
-  printf("invalid width in store: width %d, PC 0x%x\n", value, pc);
+  cpu_abort(env_cpu(env), "invalid width in store: width %d, PC 0x%x\n", value, pc);
   g_assert_not_reached();
 }
 
