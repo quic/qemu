@@ -268,11 +268,19 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
 #endif
 }
 
-static int is_gather_store_insn(Insn *insn)
+static int is_gather_store_insn(Insn *insn, Packet *pkt)
 {
-    int check = GET_ATTRIB(insn->opcode, A_CVI_NEW);
-    check &= (insn->new_value_producer_slot == 1);
-    return check;
+    if (GET_ATTRIB(insn->opcode, A_CVI_NEW) &&
+        insn->new_value_producer_slot == 1) {
+        /* Look for gather instruction */
+        for (int i = 0; i < pkt->num_insns; i++) {
+            Insn *in = &pkt->insn[i];
+            if (GET_ATTRIB(in->opcode, A_CVI_GATHER) && in->slot == 1) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 /*
@@ -328,7 +336,7 @@ static void mark_implicit_writes(DisasContext *ctx, Insn *insn)
 static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
                      Insn *insn, Packet *pkt)
 {
-    bool is_gather_store = is_gather_store_insn(insn);
+    bool is_gather_store = is_gather_store_insn(insn, pkt);
     if (is_gather_store) {
         ctx->is_gather_store_insn = true;
         tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
