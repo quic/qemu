@@ -119,7 +119,13 @@ static inline int check_gather_store(thread_t* thread, Insn * insn)
 {
     /* First check to see if temp vreg has been updated */
     int check  = thread->gather_issued;
+#if 0
+    /* This field has been removed from the runtime state */
     check &= thread->is_gather_store_insn;
+#else
+    /* This function should never be called, be defensive about it */
+    g_assert_not_reached();
+#endif
 
     /* In case we don't have store, suppress gather */
     if (!check) {

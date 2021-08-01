@@ -53,7 +53,6 @@ TCGv hex_dczero_addr;
 TCGv hex_llsc_addr;
 TCGv hex_llsc_val;
 TCGv_i64 hex_llsc_val_i64;
-TCGv hex_is_gather_store_insn;
 TCGv hex_gather_issued;
 TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
@@ -214,8 +213,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
         tcg_gen_movi_tl(hex_VRegs_select, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
-        ctx->is_gather_store_insn = false;
-        tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
         tcg_gen_movi_tl(hex_gather_issued, 0);
     }
 
@@ -268,7 +265,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
 #endif
 }
 
-static int is_gather_store_insn(Insn *insn, Packet *pkt)
+bool is_gather_store_insn(Insn *insn, Packet *pkt)
 {
     if (GET_ATTRIB(insn->opcode, A_CVI_NEW) &&
         insn->new_value_producer_slot == 1) {
@@ -336,17 +333,8 @@ static void mark_implicit_writes(DisasContext *ctx, Insn *insn)
 static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
                      Insn *insn, Packet *pkt)
 {
-    bool is_gather_store = is_gather_store_insn(insn, pkt);
-    if (is_gather_store) {
-        ctx->is_gather_store_insn = true;
-        tcg_gen_movi_tl(hex_is_gather_store_insn, 1);
-    }
     insn->generate(env, ctx, insn, pkt);
     mark_implicit_writes(ctx, insn);
-    if (is_gather_store) {
-        ctx->is_gather_store_insn = false;
-        tcg_gen_movi_tl(hex_is_gather_store_insn, 0);
-    }
 }
 
 /*
@@ -1251,9 +1239,6 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, llsc_val), "llsc_val");
     hex_llsc_val_i64 = tcg_global_mem_new_i64(cpu_env,
         offsetof(CPUHexagonState, llsc_val_i64), "llsc_val_i64");
-    hex_is_gather_store_insn = tcg_global_mem_new(cpu_env,
-        offsetof(CPUHexagonState, is_gather_store_insn),
-        "is_gather_store_insn");
     hex_gather_issued = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, gather_issued), "gather_issued");
     hex_VRegs_updated_tmp = tcg_global_mem_new(cpu_env,

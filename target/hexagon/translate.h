@@ -52,7 +52,6 @@ typedef struct DisasContext {
     int qreg_log[NUM_QREGS];
     int qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
-    bool is_gather_store_insn;  // mgl needs init
 } DisasContext;
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
@@ -150,7 +149,6 @@ extern TCGv hex_dczero_addr;
 extern TCGv hex_llsc_addr;
 extern TCGv hex_llsc_val;
 extern TCGv_i64 hex_llsc_val_i64;
-extern TCGv hex_is_gather_store_insn;
 extern TCGv hex_gather_issued;
 extern TCGv hex_VRegs_updated_tmp;
 extern TCGv hex_VRegs_updated;
@@ -199,6 +197,7 @@ static inline void gen_log_sreg_write(int snum, TCGv val)
 
 extern void gen_exception(int excp);
 extern void gen_exception_debug(void);
+bool is_gather_store_insn(Insn *insn, Packet *pkt);
 
 extern void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n);
 
