@@ -1129,6 +1129,17 @@ void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, void *srcptr,
     mem_gather_store(env, addr, slot, srcptr);
 }
 
+void HELPER(debug_print_vec)(CPUHexagonState *env, int rnum, void *vecptr)
+
+{
+    unsigned char *vec = (unsigned char *)vecptr;
+    printf("vec[%d] = 0x", rnum);
+    for (int i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
+        printf("%02x", *vec);
+    }
+    printf("\n");
+}
+
 void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 {
     int i;
