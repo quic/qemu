@@ -47,7 +47,6 @@ typedef struct DisasContext {
     int qreg_log[NUM_QREGS];
     bool qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
-    bool is_gather_store_insn;
 } DisasContext;
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
@@ -140,5 +139,6 @@ extern TCGv hex_vstore_size[VSTORES_MAX];
 extern TCGv hex_vstore_pending[VSTORES_MAX];
 
 void gen_exception_end_tb(DisasContext *ctx, int excp);
+bool is_gather_store_insn(Insn *insn, Packet *pkt);
 void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif

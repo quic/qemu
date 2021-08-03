@@ -219,11 +219,10 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
         }
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
-        ctx->is_gather_store_insn = false;
     }
 }
 
-static bool is_gather_store_insn(Insn *insn, Packet *pkt)
+bool is_gather_store_insn(Insn *insn, Packet *pkt)
 {
     if (GET_ATTRIB(insn->opcode, A_CVI_NEW) &&
         insn->new_value_producer_slot == 1) {
@@ -287,9 +286,6 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
                      Insn *insn, Packet *pkt)
 {
     if (insn->generate) {
-        if (is_gather_store_insn(insn, pkt)) {
-            ctx->is_gather_store_insn = true;
-        }
         mark_implicit_reg_writes(ctx, insn);
         insn->generate(env, ctx, insn, pkt);
         mark_implicit_pred_writes(ctx, insn);
