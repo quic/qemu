@@ -113,7 +113,7 @@ static const char *get_opcode_enc_class(int opcode)
     const char *tmp = opcode_encodings[opcode].encoding;
     if (tmp == NULL) {
         const char *test = "V6_";        /* HVX */
-        char *name = (char *)opcode_names[opcode];
+        const char *name = opcode_names[opcode];
         if (strncmp(name, test, strlen(test)) == 0) {
             return "EXT_mmvec";
         }
