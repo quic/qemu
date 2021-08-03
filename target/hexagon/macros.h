@@ -745,7 +745,7 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fBREV_4(VAL) revbit32(VAL)
 #define fCL1_8(VAL) clo64(VAL)
 #define fCL1_4(VAL) clo32(VAL)
-#define fCL1_2(VAL) count_leading_ones_2(VAL)
+#define fCL1_2(VAL) (clz32(~(uint16_t)(VAL) & 0xffff) - 16)
 #define fINTERLEAVE(ODD, EVEN) interleave(ODD, EVEN)
 #define fDEINTERLEAVE(MIXED) deinterleave(MIXED)
 #define fHIDE(A) A
