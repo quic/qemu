@@ -59,6 +59,28 @@ static const char * const hexagon_prednames[] = {
   "p0", "p1", "p2", "p3"
 };
 
+intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
+                          int num, bool alloc_ok)
+{
+    intptr_t offset;
+
+    /* See if it is already allocated */
+    for (int i = 0; i < ctx->tmp_vregs_idx; i++) {
+        if (ctx->tmp_vregs_num[i] == regnum) {
+            return offsetof(CPUHexagonState, tmp_VRegs[i]);
+        }
+    }
+
+    g_assert(alloc_ok);
+    offset = offsetof(CPUHexagonState, tmp_VRegs[ctx->tmp_vregs_idx]);
+    for (int i = 0; i < num; i++) {
+        ctx->tmp_vregs_num[ctx->tmp_vregs_idx + i] = regnum++;
+    }
+    ctx->tmp_vregs_idx += num;
+    g_assert(ctx->tmp_vregs_idx < VECTOR_TEMPS_MAX);
+    return offset;
+}
+
 static void gen_exception_raw(int excp)
 {
     TCGv_i32 helper_tmp = tcg_const_i32(excp);
@@ -181,6 +203,7 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
     ctx->preg_log_idx = 0;
     bitmap_zero(ctx->pregs_written, NUM_PREGS);
+    ctx->tmp_vregs_idx = 0;
     ctx->vreg_log_idx = 0;
     bitmap_zero(ctx->vregs_updated_tmp, NUM_VREGS);
     bitmap_zero(ctx->vregs_updated, NUM_VREGS);
@@ -213,11 +236,9 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     }
 
     if (pkt->pkt_has_hvx) {
-        if (pkt->pkt_has_vhist) {
-            tcg_gen_movi_tl(hex_VRegs_updated_tmp, 0);
-            tcg_gen_movi_tl(hex_VRegs_select, 0);
-        }
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
+        tcg_gen_movi_tl(hex_VRegs_updated_tmp, 0);
+        tcg_gen_movi_tl(hex_VRegs_select, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
     }
 }

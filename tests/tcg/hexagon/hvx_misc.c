@@ -94,21 +94,21 @@ static void test_load_tmp(void)
 
     for (int i = 0; i < BUFSIZE; i++) {
         /*
-         * Load into v2 as .tmp, then use it in the next packet
+         * Load into v12 as .tmp, then use it in the next packet
          * Should get the new value within the same packet and
          * the old value in the next packet
          */
         asm("v3 = vmem(%0 + #0)\n\t"
             "r1 = #1\n\t"
-            "v2 = vsplat(r1)\n\t"
+            "v12 = vsplat(r1)\n\t"
             "{\n\t"
-            "    v2.tmp = vmem(%1 + #0)\n\t"
-            "    v4.w = vadd(v2.w, v3.w)\n\t"
+            "    v12.tmp = vmem(%1 + #0)\n\t"
+            "    v4.w = vadd(v12.w, v3.w)\n\t"
             "}\n\t"
-            "v4.w = vadd(v4.w, v2.w)\n\t"
+            "v4.w = vadd(v4.w, v12.w)\n\t"
             "vmem(%2 + #0) = v4\n\t"
             : : "r"(p0), "r"(p1), "r"(pout)
-            : "r1", "v2", "v3", "v4", "v6", "memory");
+            : "r1", "v12", "v3", "v4", "v6", "memory");
         p0 += sizeof(MMVector);
         p1 += sizeof(MMVector);
         pout += sizeof(MMVector);

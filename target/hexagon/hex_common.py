@@ -207,6 +207,13 @@ def need_ea(tag):
 def skip_qemu_helper(tag):
     return tag in overrides.keys()
 
+def is_tmp_result(tag):
+    return ('A_CVI_TMP' in attribdict[tag] or
+            'A_CVI_TMP_DST' in attribdict[tag])
+
+def is_new_result(tag):
+    return ('A_CVI_NEW' in attribdict[tag])
+
 def imm_name(immlett):
     return "%siV" % immlett
 

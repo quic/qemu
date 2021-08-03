@@ -125,8 +125,13 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid, regno))
             f.write("    const intptr_t %s%sV_off =\n" %\
                  (regtype, regid))
-            f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
-                 (regtype, regid))
+            if (hex_common.is_tmp_result(tag)):
+                f.write("        ctx_tmp_vreg_off(ctx, %s%sN, 2, true);\n" % \
+                     (regtype, regid))
+            else:
+                f.write("        offsetof(CPUHexagonState, ")
+                f.write("future_VRegs[%s%sN]);\n" % \
+                    (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                     (regtype, regid))
@@ -159,9 +164,13 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid, regno))
             f.write("    const intptr_t %s%sV_off =\n" % \
                 (regtype, regid))
-            f.write("        offsetof(CPUHexagonState,\n")
-            f.write("                 future_VRegs[%s%sN]);\n" % \
-                (regtype, regid))
+            if (hex_common.is_tmp_result(tag)):
+                f.write("        ctx_tmp_vreg_off(ctx, %s%sN, 1, true);\n" % \
+                    (regtype, regid))
+            else:
+                f.write("        offsetof(CPUHexagonState,\n")
+                f.write("                 future_VRegs[%s%sN]);\n" % \
+                    (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                     (regtype, regid))
@@ -642,9 +651,10 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
                 is_predicated = "true"
             else:
                 is_predicated = "false"
-            f.write("    gen_log_vreg_write_pair(%s%sV_off, %s%sN, %s, " % \
-                (regtype, regid, regtype, regid, newv))
-            f.write("insn->slot, %s, pkt->pkt_has_vhist);\n" % (is_predicated))
+            f.write("    gen_log_vreg_write_pair(ctx, %s%sV_off, %s%sN, " % \
+                (regtype, regid, regtype, regid))
+            f.write("%s, insn->slot, %s, pkt->pkt_has_vhist);\n" % \
+                (newv, is_predicated))
             f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
                 (regtype, regid, newv))
             f.write("        %s);\n" % (is_predicated))
@@ -653,7 +663,7 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
                 is_predicated = "true"
             else:
                 is_predicated = "false"
-            f.write("    gen_log_vreg_write(%s%sV_off, %s%sN, %s, " % \
+            f.write("    gen_log_vreg_write(ctx, %s%sV_off, %s%sN, %s, " % \
                 (regtype, regid, regtype, regid, newv))
             f.write("insn->slot, %s, pkt->pkt_has_vhist);\n" % (is_predicated))
             f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, %s);\n" % \
@@ -679,8 +689,7 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
 def genptr_dst_write_opn(f,regtype, regid, tag):
     if (hex_common.is_pair(regid)):
         if (hex_common.is_hvx_reg(regtype)):
-            if ('A_CVI_TMP' in hex_common.attribdict[tag] or
-                'A_CVI_TMP_DST' in hex_common.attribdict[tag]):
+            if (hex_common.is_tmp_result(tag)):
                 genptr_dst_write_ext(f, tag, regtype, regid, "EXT_TMP")
             else:
                 genptr_dst_write_ext(f, tag, regtype, regid)
@@ -688,11 +697,9 @@ def genptr_dst_write_opn(f,regtype, regid, tag):
             genptr_dst_write(f, tag, regtype, regid)
     elif (hex_common.is_single(regid)):
         if (hex_common.is_hvx_reg(regtype)):
-            if 'A_CVI_NEW' in hex_common.attribdict[tag]:
+            if (hex_common.is_new_result(tag)):
                 genptr_dst_write_ext(f, tag, regtype, regid, "EXT_NEW")
-            elif 'A_CVI_TMP' in hex_common.attribdict[tag]:
-                genptr_dst_write_ext(f, tag, regtype, regid, "EXT_TMP")
-            elif 'A_CVI_TMP_DST' in hex_common.attribdict[tag]:
+            if (hex_common.is_tmp_result(tag)):
                 genptr_dst_write_ext(f, tag, regtype, regid, "EXT_TMP")
             else:
                 genptr_dst_write_ext(f, tag, regtype, regid, "EXT_DFL")

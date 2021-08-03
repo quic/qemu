@@ -73,6 +73,9 @@ typedef struct {
 #define CLEAR_EXCEPTION         (env->status &= (~EXEC_STATUS_EXCEPTION))
 #define SET_EXCEPTION           (env->status |= EXEC_STATUS_EXCEPTION)
 
+/* Maximum number of vector temps in a packet */
+#define VECTOR_TEMPS_MAX            8
+
 struct CPUHexagonState {
     target_ulong gpr[TOTAL_PER_THREAD_REGS];
     target_ulong pred[NUM_PREGS];
@@ -107,7 +110,7 @@ struct CPUHexagonState {
 
     MMVector VRegs[NUM_VREGS] QEMU_ALIGNED(16);
     MMVector future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
-    MMVector tmp_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
+    MMVector tmp_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
 
     VRegMask VRegs_updated_tmp;
     VRegMask VRegs_updated;

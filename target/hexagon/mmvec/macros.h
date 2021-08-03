@@ -333,15 +333,19 @@
 /* Used for vhist */
 static inline MMVector mmvec_vtmp_data(CPUHexagonState *env)
 {
+    /*
+     * There isn't a 1-1 mapping of register numbers for tmp_VRegs
+     * They are allocated on an as-needed basis during translation.
+     *
+     * The rules for histogram instructions are that there can only
+     * be one tmp register assigned in the packet.
+     * So, we check that there is only one bit in the mask, and
+     * this means the tmp we need will be at index 0.
+     */
     VRegMask vsel = env->VRegs_updated_tmp;
-    MMVector ret;
-    int idx = clo32(~revbit32(vsel));
-    if (vsel == 0) {
-        printf("[UNDEFINED] no .tmp load when implicitly required...");
-    }
-    ret = env->tmp_VRegs[idx];
+    g_assert(ctpop32(vsel) == 1);
     env->VRegs_updated_tmp = 0;
-    return ret;
+    return env->tmp_VRegs[0];
 }
 #define fTMPVDATA() mmvec_vtmp_data(env)
 #endif

@@ -76,14 +76,14 @@ hvx_histogram_row:
 
     .falign
 .innerloop:
-    { v0.tmp = vmem(R0++#1)
+    { v12.tmp = vmem(R0++#1)
       vhist
     }:endloop0
 
     .falign
 .loopend:
     if (p1) jump .skip       /* if (width % VLEN == 0) done with current row */
-    { v0.tmp = vmem(r0 + #0)
+    { v13.tmp = vmem(r0 + #0)
       vhist(q0)
     }
 
