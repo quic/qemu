@@ -19,22 +19,16 @@
 #include "cpu.h"
 #include "mmvec/system_ext_mmvec.h"
 
-void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
-                      int slot, uint8_t *data)
+void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot)
 {
     size_t size = sizeof(MMVector);
 
-    /*
-     * If it's a gather store update store data from temporary register
-     * and clear flag
-     */
-    memcpy(data, &env->tmp_VRegs[0].ub[0], size);
     env->VRegs_updated_tmp = 0;
 
     env->vstore_pending[slot] = 1;
     env->vstore[slot].va   = vaddr;
     env->vstore[slot].size = size;
-    memcpy(&env->vstore[slot].data.ub[0], data, size);
+    memcpy(&env->vstore[slot].data.ub[0], &env->tmp_VRegs[0], size);
 
     /* On a gather store, overwrite the store mask to emulate dropped gathers */
     bitmap_copy(env->vstore[slot].mask, env->vtcm_log.mask, size);
