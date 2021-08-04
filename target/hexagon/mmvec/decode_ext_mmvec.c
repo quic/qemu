@@ -735,6 +735,19 @@ count_vector_access(thread_t * thread, Packet * pkt, exception_info * einfo) {
 	return error;
 }
 
+static void
+check_for_vhist(Packet *pkt)
+{
+    pkt->pkt_has_vhist = false;
+    for (int i = 0; i < pkt->num_insns; i++) {
+        int opcode = pkt->insn[i].opcode;
+        if (GET_ATTRIB(opcode, A_CVI) && GET_ATTRIB(opcode, A_CVI_4SLOT)) {
+                pkt->pkt_has_vhist = true;
+                return;
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// Public Functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -774,6 +787,7 @@ int mmvec_ext_decode_checks(thread_t * thread, Packet *packet, exception_info *e
   	decode_hvx_packet_contents(thread, packet);
   }
 
+    check_for_vhist(packet);
 
 	return errors;
 }

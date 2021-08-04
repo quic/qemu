@@ -683,18 +683,6 @@ static inline bool pkt_has_hvx_store(Packet *pkt)
     return false;
 }
 
-static bool pkt_has_vhist(Packet *pkt)
-{
-    int i;
-    for (i = 0; i < pkt->num_insns; i++) {
-        int opcode = pkt->insn[i].opcode;
-        if (GET_ATTRIB(opcode, A_CVI) && GET_ATTRIB(opcode, A_CVI_4SLOT)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
 {
     int i;
@@ -703,7 +691,7 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
      * vhist instructions need special handling
      * They potentially write the entire vector register file
      */
-    if (pkt_has_vhist(pkt)) {
+    if (pkt->pkt_has_vhist) {
         TCGv cmp = tcg_temp_local_new();
         size_t size = sizeof(mmvector_t);
         for (i = 0; i < NUM_VREGS; i++) {
