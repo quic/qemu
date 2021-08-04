@@ -29,9 +29,9 @@ TESTS += \
 	hmx \
 	hmx_conv \
 	pcycle \
-	framelimit \
-	float_excp \
-	hvx_nocoproc \
+	neg-framelimit \
+	neg-float_excp \
+	neg-hvx_nocoproc \
 	pendalot \
 	vid-group \
 	levelint \
@@ -41,9 +41,6 @@ TESTS += \
 	fopen \
 	$()
 
-ISDB_FLAGS=-Wl,--defsym=ISDB_TRUSTED_FLAG=2 -Wl,--defsym=ISDB_SECURE_FLAG=2
-
-LDFLAGS+=$(ISDB_FLAGS)
 CFLAGS+=-G0 -O2
 
 CRT_OBJS=boot.o
@@ -79,9 +76,9 @@ hmx: hmx.o
 hmx_conv: hmx_conv.o hmx_conv_asm.o util.o
 wait: wait.o
 pcycle: pcycle.o
-framelimit: framelimit.o
-float_excp: float_excp.o
-hvx_nocoproc: hvx_nocoproc.o
+neg-framelimit: framelimit.o
+neg-float_excp: float_excp.o
+neg-hvx_nocoproc: hvx_nocoproc.o
 pendalot: pendalot.o
 vid-group: vid-group.o
 levelint: levelint.o
@@ -113,21 +110,13 @@ qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIR
 QEMU_BASE_MACHINE=-M V68N_1024 -cpu v67,count-gcycle-xt=on,usefs=$(SRC_PATH)/tests/tcg/hexagon/system
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel
 
-run-framelimit: framelimit
-run-hvx_nocoproc: hvx_nocoproc
-run-float_excp: float_excp
+run-neg-framelimit: neg-framelimit
+run-neg-hvx_nocoproc: neg-hvx_nocoproc
+run-neg-float_excp: neg-float_excp
+
 run-vid-group: vid-group
 run-timer_reg: timer_reg
 run-qtimer_test: qtimer_test
-
-# These tests raise an exception and return 255 to the shell
-run-framelimit run-hvx_nocoproc run-float_excp:
-	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)"); \
-	if [ $$? -eq 255 ] ; then \
-		return 0; \
-	else \
-		return -1; \
-	fi
 
 ICOUNT_OPTS=-icount auto
 run-vid-group run-timer_reg run-qtimer_test:
