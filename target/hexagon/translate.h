@@ -196,6 +196,7 @@ static inline void gen_log_sreg_write(int snum, TCGv val)
 }
 
 extern void gen_exception(int excp);
+extern void gen_exception_end_tb(DisasContext *ctx, int excp);
 extern void gen_exception_debug(void);
 bool is_gather_store_insn(Insn *insn, Packet *pkt);
 

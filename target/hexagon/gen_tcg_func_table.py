@@ -35,17 +35,11 @@ def main():
 
         f.write("const SemanticInsn opcode_genptr[XX_LAST_OPCODE] = {\n")
 
-        for tag in hex_common.get_user_tags():
+        for tag in hex_common.tags:
             if ( hex_common.tag_ignore(tag) ):
                 continue
 
             f.write("    [%s] = generate_%s,\n" % (tag, tag))
-
-        f.write('#if !defined(CONFIG_USER_ONLY)\n')
-        for tag in hex_common.get_sys_tags():
-            f.write("    [%s] = generate_%s,\n" % (tag, tag))
-        f.write('#endif\n')
-
         f.write("};\n\n")
 
         f.write("#endif    /* HEXAGON_FUNC_TABLE_H */\n")

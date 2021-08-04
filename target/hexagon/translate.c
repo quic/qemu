@@ -88,6 +88,12 @@ void gen_exception(int excp)
     tcg_temp_free_i32(helper_tmp);
 }
 
+void gen_exception_end_tb(DisasContext *ctx, int excp)
+{
+    gen_exception(excp);
+    ctx->base.is_jmp = DISAS_NORETURN;
+}
+
 static void gen_exec_counters(DisasContext *ctx)
 {
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],

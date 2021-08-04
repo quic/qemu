@@ -749,11 +749,11 @@ def gen_tcg_func(f, tag, regs, imms):
     f.write('{\n')
     if 'A_PRIV' in hex_common.attribdict[tag]:
         f.write("#ifdef CONFIG_USER_ONLY\n")
-        f.write("    gen_exception_end_tb(ctx, HEX_EXCP_PRIV_USER_NO_SINSN);\n")
+        f.write("    gen_exception_end_tb(ctx, HEX_CAUSE_PRIV_USER_NO_SINSN);\n")
         f.write("#else\n")
     if 'A_GUEST' in hex_common.attribdict[tag]:
         f.write("#ifdef CONFIG_USER_ONLY\n")
-        f.write("    gen_exception_end_tb(ctx, HEX_EXCP_PRIV_USER_NO_GINSN);\n")
+        f.write("    gen_exception_end_tb(ctx, HEX_CAUSE_PRIV_USER_NO_GINSN);\n")
         f.write("#else\n")
     if hex_common.need_ea(tag): gen_decl_ea_tcg(f, tag)
     i=0
@@ -857,14 +857,11 @@ def main():
         f.write("#ifndef HEXAGON_TCG_FUNCS_H\n")
         f.write("#define HEXAGON_TCG_FUNCS_H\n\n")
 
-        for tag in hex_common.get_user_tags():
-            if not hex_common.tag_ignore(tag):
-                gen_def_tcg_func(f, tag, tagregs, tagimms)
+        for tag in hex_common.tags:
+            if  hex_common.tag_ignore(tag):
+                continue
 
-        f.write('#if !defined(CONFIG_USER_ONLY)\n')
-        for tag in hex_common.get_sys_tags():
             gen_def_tcg_func(f, tag, tagregs, tagimms)
-        f.write('#endif\n')
 
         f.write("#endif    /* HEXAGON_TCG_FUNCS_H */\n")
 
