@@ -140,12 +140,12 @@ PLUGINS=$(patsubst %.c, lib%.so, $(notdir $(wildcard $(PLUGIN_SRC)/*.c)))
 # pre-requistes manually here as we can't use stems to handle it. We
 # also add some special helpers the run-plugin- rules can use bellow.
 
-# QUIC: only run the plugins on POS_TESTS for now
-$(foreach p,$(PLUGINS), \
-	$(foreach t,$(POS_TESTS),\
-		$(eval run-plugin-$(t)-with-$(p): $t $p) \
-		$(eval run-plugin-$(t)-with-$(p): TIMEOUT=60) \
-		$(eval RUN_TESTS+=run-plugin-$(t)-with-$(p))))
+# QUIC: disable the plugins on POS_TESTS for now
+#$(foreach p,$(PLUGINS), \
+#	$(foreach t,$(POS_TESTS),\
+#		$(eval run-plugin-$(t)-with-$(p): $t $p) \
+#		$(eval run-plugin-$(t)-with-$(p): TIMEOUT=60) \
+#		$(eval RUN_TESTS+=run-plugin-$(t)-with-$(p))))
 endif
 
 strip-plugin = $(wordlist 1, 1, $(subst -with-, ,$1))
