@@ -28,6 +28,7 @@ endif
 
 
 CFLAGS = -mv69 -O2 -mhvx -mhmx -fvectorize
+CFLAGS += -Wno-undefined-internal
 
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
 VPATH += $(HEX_SRC)

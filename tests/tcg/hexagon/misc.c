@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -181,6 +181,19 @@ static inline void S4_storeirifnew_io(void *p, int pred)
                : "p0", "memory");
 }
 
+static int L2_ploadrifnew_pi(void *p, int pred)
+{
+  int result;
+  asm volatile("%0 = #31\n\t"
+               "{\n\t"
+               "    p0 = cmp.eq(%1, #1)\n\t"
+               "    if (!p0.new) %0 = memw(%2++#4)\n\t"
+               "}\n\t"
+               : "=&r"(result) : "r"(pred), "r"(p)
+               : "p0");
+  return result;
+}
+
 /*
  * Test that compound-compare-jump is executed in 2 parts
  * First we have to do all the compares in the packet and
@@ -206,13 +219,38 @@ static inline int cmpnd_cmp_jump(void)
     return retval;
 }
 
+static inline int test_clrtnew(int arg1, int old_val)
+{
+  int ret;
+  asm volatile("r5 = %2\n\t"
+               "{\n\t"
+                   "p0 = cmp.eq(%1, #1)\n\t"
+                   "if (p0.new) r5=#0\n\t"
+               "}\n\t"
+               "%0 = r5\n\t"
+               : "=r"(ret)
+               : "r"(arg1), "r"(old_val)
+               : "p0", "r5");
+  return ret;
+}
+
 int err;
 
-#define check(VAL, EXPECT) \
-  if (VAL != EXPECT) { \
-    printf("ERROR: 0x%04x != 0x%04x\n", VAL, EXPECT); \
-    err++; \
-  }
+static void check(int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%04x != 0x%04x\n", val, expect);
+        err++;
+    }
+}
+
+static void check64(long long val, long long expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%016llx != 0x%016llx\n", val, expect);
+        err++;
+    }
+}
 
 uint32_t init[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 uint32_t array[10];
@@ -220,10 +258,10 @@ uint32_t array[10];
 uint32_t early_exit;
 
 /*
- * Write this as a function because we can't guarantee the compiler will
- * allocate a frame with just the SL2_return_tnew packet.
+ * Write these as functions because we can't guarantee the compiler will
+ * allocate a frame with just the SL2_return_?new packet.
  */
-void SL2_return_tnew(int x);
+static void SL2_return_tnew(int x);
 asm ("SL2_return_tnew:\n\t"
      "   allocframe(#0)\n\t"
      "   r1 = #1\n\t"
@@ -237,8 +275,102 @@ asm ("SL2_return_tnew:\n\t"
      "   dealloc_return\n\t"
     );
 
+static void SL2_return_fnew(int x);
+asm ("SL2_return_fnew:\n\t"
+     "   allocframe(#0)\n\t"
+     "   r1 = #1\n\t"
+     "   memw(##early_exit) = r1\n\t"
+     "   {\n\t"
+     "       p0 = cmp.eq(r0, #1)\n\t"
+     "       if (!p0.new) dealloc_return:nt\n\t"    /* SL2_return_fnew */
+     "   }\n\t"
+     "   r1 = #0\n\t"
+     "   memw(##early_exit) = r1\n\t"
+     "   dealloc_return\n\t"
+    );
+
+static long long creg_pair(int x, int y)
+{
+    long long retval;
+    asm ("m0 = %1\n\t"
+         "m1 = %2\n\t"
+         "%0 = c7:6\n\t"
+         : "=r"(retval) : "r"(x), "r"(y) : "m0", "m1");
+    return retval;
+}
+
+static long long decbin(long long x, long long y, int *pred)
+{
+    long long retval;
+    asm ("%0 = decbin(%2, %3)\n\t"
+         "%1 = p0\n\t"
+         : "=r"(retval), "=r"(*pred)
+         : "r"(x), "r"(y));
+    return retval;
+}
+
+/* Check that predicates are auto-and'ed in a packet */
+static void auto_and(void)
+{
+    int res;
+    asm ("r5 = #1\n\t"
+         "{\n\t"
+         "    p0 = cmp.eq(r1, #1)\n\t"
+         "    p0 = cmp.eq(r1, #2)\n\t"
+         "}\n\t"
+         "%0 = p0\n\t"
+         : "=r"(res)
+         :
+         : "r5", "p0");
+    check(res, 0);
+
+    asm ("r4 = #7\n\t"
+         "r5 = #5\n\t"
+         "r6 = #3\n\t"
+         "{\n\t"
+         "    p0 = !cmp.gt(r6, r5)\n\t"
+         "    p0 = cmp.gt(r6, r4); if (!p0.new) jump:nt 1f\n\t"
+         "}\n\t"
+         "1:\n\t"
+         "%0 = p0\n\t"
+         : "=r"(res): : "p0", "r4", "r5", "r5");
+    check(res, 0);
+}
+
+void test_lsbnew(void)
+{
+    int result;
+
+    asm("r0 = #2\n\t"
+        "r1 = #5\n\t"
+        "{\n\t"
+        "    p0 = r0\n\t"
+        "    if (p0.new) r1 = #3\n\t"
+        "}\n\t"
+        "%0 = r1\n\t"
+        : "=r"(result) :: "r0", "r1", "p0");
+    check(result, 5);
+}
+
+void test_l2fetch(void)
+{
+    /* These don't do anything in qemu, just make sure they don't assert */
+    asm volatile ("l2fetch(r0, r1)\n\t"
+                  "l2fetch(r0, r3:2)\n\t");
+}
+
+static int cl0(int x)
+{
+    int retval;
+    asm("%0 = cl0(%1)\n\t" : "=r"(retval) : "r"(x));
+    return retval;
+}
+
 int main()
 {
+    int res;
+    long long res64;
+    int pred;
 
     memcpy(array, init, sizeof(array));
     S4_storerhnew_rr(array, 4, 0xffff);
@@ -331,6 +463,12 @@ int main()
     S4_storeirifnew_io(&array[8], 1);
     check(array[9], 9);
 
+    memcpy(array, init, sizeof(array));
+    res = L2_ploadrifnew_pi(&array[6], 0);
+    check(res, 6);
+    res = L2_ploadrifnew_pi(&array[7], 1);
+    check(res, 31);
+
     int x = cmpnd_cmp_jump();
     check(x, 12);
 
@@ -338,6 +476,39 @@ int main()
     check(early_exit, 0);
     SL2_return_tnew(1);
     check(early_exit, 1);
+
+    SL2_return_fnew(0);
+    check(early_exit, 1);
+    SL2_return_fnew(1);
+    check(early_exit, 0);
+
+    long long pair = creg_pair(5, 7);
+    check((int)pair, 5);
+    check((int)(pair >> 32), 7);
+
+    res = test_clrtnew(1, 7);
+    check(res, 0);
+    res = test_clrtnew(2, 7);
+    check(res, 7);
+
+    res64 = decbin(0xf0f1f2f3f4f5f6f7LL, 0x7f6f5f4f3f2f1f0fLL, &pred);
+    check64(res64, 0x357980003700010cLL);
+    check(pred, 0);
+
+    res64 = decbin(0xfLL, 0x1bLL, &pred);
+    check64(res64, 0x78000100LL);
+    check(pred, 1);
+
+    auto_and();
+
+    test_lsbnew();
+
+    test_l2fetch();
+
+    res = cl0(0x7fff);
+    check(res, 17);
+    res = cl0(0);
+    check(res, 32);
 
     puts(err ? "FAIL" : "PASS");
     return err;
