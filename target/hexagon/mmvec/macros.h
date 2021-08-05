@@ -49,17 +49,6 @@
 #define NEW_WRITTEN(NUM) ((env->VRegs_select >> (NUM)) & 1)
 #define TMP_WRITTEN(NUM) ((env->VRegs_updated_tmp >> (NUM)) & 1)
 
-#define TYPE_VOID(X)   __builtin_types_compatible_p(typeof(X), void *)
-#define TYPE_MMVECTOR(X)   __builtin_types_compatible_p(typeof(X), MMVector)
-
-#define LOG_VREG_WRITE_FUNC(X) \
-    __builtin_choose_expr(TYPE_VOID(X), \
-        log_vreg_write, \
-        __builtin_choose_expr(TYPE_MMVECTOR(X), \
-            log_mmvector_write, (void)0))
-#define LOG_VREG_WRITE(NUM, VAR, VNEW) \
-    LOG_VREG_WRITE_FUNC(VAR)(env, NUM, VAR, VNEW)
-
 #define READ_EXT_VREG(NUM, VAR, VTMP) \
     do { \
         VAR = ((NEW_WRITTEN(NUM)) ? env->future_VRegs[NUM] \

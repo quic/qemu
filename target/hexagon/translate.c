@@ -213,6 +213,7 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
         ctx->store_width[i] = 0;
     }
     ctx->s1_store_processed = false;
+    ctx->pre_commit = true;
 
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
@@ -521,32 +522,9 @@ static bool pkt_has_hvx_store(Packet *pkt)
     return false;
 }
 
-static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
+static void gen_commit_hvx(CPUHexagonState *env, DisasContext *ctx, Packet *pkt)
 {
     int i;
-
-    /*
-     * vhist instructions need special handling
-     * They potentially write the entire vector register file
-     */
-    if (pkt->vhist_insn != NULL) {
-        TCGv cmp = tcg_temp_local_new();
-        size_t size = sizeof(MMVector);
-        for (i = 0; i < NUM_VREGS; i++) {
-            intptr_t dstoff = offsetof(CPUHexagonState, VRegs[i]);
-            intptr_t srcoff = offsetof(CPUHexagonState, future_VRegs[i]);
-            TCGLabel *label_skip = gen_new_label();
-
-            tcg_gen_andi_tl(cmp, hex_VRegs_updated, 1 << i);
-            tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            {
-                tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
-            }
-            gen_set_label(label_skip);
-        }
-        tcg_temp_free(cmp);
-        return;
-    }
 
     /*
      *    for (i = 0; i < ctx->vreg_log_idx; i++) {
@@ -645,14 +623,15 @@ static void update_exec_counters(DisasContext *ctx, Packet *pkt)
     ctx->num_hvx_insns += num_hvx_insns;
 }
 
-static void gen_commit_packet(DisasContext *ctx, Packet *pkt)
+static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
+                              Packet *pkt)
 {
     gen_reg_writes(ctx);
     gen_pred_writes(ctx, pkt);
     process_store_log(ctx, pkt);
     process_dczeroa(ctx, pkt);
     if (pkt->pkt_has_hvx) {
-        gen_commit_hvx(ctx, pkt);
+        gen_commit_hvx(env, ctx, pkt);
     }
     update_exec_counters(ctx, pkt);
     if (HEX_DEBUG) {
@@ -666,6 +645,11 @@ static void gen_commit_packet(DisasContext *ctx, Packet *pkt)
 
         tcg_temp_free(has_st0);
         tcg_temp_free(has_st1);
+    }
+
+    if (pkt->vhist_insn != NULL) {
+        ctx->pre_commit = false;
+        pkt->vhist_insn->generate(env, ctx, pkt->vhist_insn, pkt);
     }
 
     if (pkt->pkt_has_cof) {
@@ -692,7 +676,7 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
         for (i = 0; i < pkt.num_insns; i++) {
             gen_insn(env, ctx, &pkt.insn[i], &pkt);
         }
-        gen_commit_packet(ctx, &pkt);
+        gen_commit_packet(env, ctx, &pkt);
         ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
     } else {
         gen_exception_end_tb(ctx, HEX_EXCP_INVALID_PACKET);
