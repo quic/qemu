@@ -189,7 +189,7 @@ static int L2_ploadrifnew_pi(void *p, int pred)
                "    p0 = cmp.eq(%1, #1)\n\t"
                "    if (!p0.new) %0 = memw(%2++#4)\n\t"
                "}\n\t"
-               : "=r"(result) : "r"(pred), "r"(p)
+               : "=&r"(result) : "r"(pred), "r"(p)
                : "p0");
   return result;
 }
@@ -310,19 +310,31 @@ static long long decbin(long long x, long long y, int *pred)
 }
 
 /* Check that predicates are auto-and'ed in a packet */
-static int auto_and(void)
+static void auto_and(void)
 {
-    int retval;
+    int res;
     asm ("r5 = #1\n\t"
          "{\n\t"
          "    p0 = cmp.eq(r1, #1)\n\t"
          "    p0 = cmp.eq(r1, #2)\n\t"
          "}\n\t"
          "%0 = p0\n\t"
-         : "=r"(retval)
+         : "=r"(res)
          :
          : "r5", "p0");
-    return retval;
+    check(res, 0);
+
+    asm ("r4 = #7\n\t"
+         "r5 = #5\n\t"
+         "r6 = #3\n\t"
+         "{\n\t"
+         "    p0 = !cmp.gt(r6, r5)\n\t"
+         "    p0 = cmp.gt(r6, r4); if (!p0.new) jump:nt 1f\n\t"
+         "}\n\t"
+         "1:\n\t"
+         "%0 = p0\n\t"
+         : "=r"(res) : : "p0", "r4", "r5", "r5");
+    check(res, 0);
 }
 
 void test_lsbnew(void)
@@ -487,8 +499,7 @@ int main()
     check64(res64, 0x78000100LL);
     check(pred, 1);
 
-    res = auto_and();
-    check(res, 0);
+    auto_and();
 
     test_lsbnew();
 
