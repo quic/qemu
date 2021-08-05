@@ -295,8 +295,12 @@ static void mark_implicit_reg_write(DisasContext *ctx, Insn *insn,
                                     int attrib, int rnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
-        ctx->reg_log[ctx->reg_log_idx] = rnum;
-        ctx->reg_log_idx++;
+        bool is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC);
+        if (is_predicated && !is_preloaded(ctx, rnum)) {
+            tcg_gen_mov_tl(hex_new_value[rnum], hex_gpr[rnum]);
+        }
+
+        ctx_log_reg_write(ctx, rnum);
     }
 }
 
@@ -313,8 +317,7 @@ static void mark_implicit_pred_write(DisasContext *ctx, Insn *insn,
                                      int attrib, int pnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
-        ctx->preg_log[ctx->preg_log_idx] = pnum;
-        ctx->preg_log_idx++;
+        ctx_log_pred_write(ctx, pnum);
     }
 }
 
