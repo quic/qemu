@@ -47,6 +47,14 @@ int hexagon_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
+    if (n == HEX_REG_P3_0) {
+        return gdb_get_regl(mem_buf,
+                            ((env->pred[3] & 0xff) << 24 |
+                             (env->pred[2] & 0xff) << 16 |
+                             (env->pred[1] & 0xff) << 8 |
+                             (env->pred[0] & 0xff)));
+    }
+
     if (n < TOTAL_PER_THREAD_REGS) {
         return gdb_get_regl(mem_buf, env->gpr[n]);
     }
