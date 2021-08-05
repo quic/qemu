@@ -529,7 +529,7 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
      * vhist instructions need special handling
      * They potentially write the entire vector register file
      */
-    if (pkt->pkt_has_vhist) {
+    if (pkt->vhist_insn != NULL) {
         TCGv cmp = tcg_temp_local_new();
         size_t size = sizeof(MMVector);
         for (i = 0; i < NUM_VREGS; i++) {
