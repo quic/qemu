@@ -328,27 +328,6 @@
     ARRAY.v[(INDEX) / (fVECSIZE() / (sizeof(ARRAY.TYPE[0])))].TYPE[(INDEX) % \
     (fVECSIZE() / (sizeof(ARRAY.TYPE[0])))]
 
-#ifndef QEMU_GENERATE
-/* Grabs the .tmp data, wherever it is, and clears the .tmp status */
-/* Used for vhist */
-static inline MMVector mmvec_vtmp_data(CPUHexagonState *env)
-{
-    /*
-     * There isn't a 1-1 mapping of register numbers for tmp_VRegs
-     * They are allocated on an as-needed basis during translation.
-     *
-     * The rules for histogram instructions are that there can only
-     * be one tmp register assigned in the packet.
-     * So, we check that there is only one bit in the mask, and
-     * this means the tmp we need will be at index 0.
-     */
-    VRegMask vsel = env->VRegs_updated_tmp;
-    g_assert(ctpop32(vsel) == 1);
-    env->VRegs_updated_tmp = 0;
-    return env->tmp_VRegs[0];
-}
-#define fTMPVDATA() mmvec_vtmp_data(env)
-#endif
 #define fVSATDW(U, V) fVSATW(((((long long)U) << 32) | fZXTN(32, 64, V)))
 #define fVASL_SATHI(U, V) fVSATW(((U) << 1) | ((V) >> 31))
 #define fVUADDSAT(WIDTH, U, V) \

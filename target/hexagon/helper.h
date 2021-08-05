@@ -91,3 +91,15 @@ DEF_HELPER_4(sffms_lib, f32, env, f32, f32, f32)
 
 DEF_HELPER_3(dfmpyfix, f64, env, f64, f64)
 DEF_HELPER_4(dfmpyhh, f64, env, f64, f64, f64)
+
+/* Histogram instructions */
+DEF_HELPER_1(vhist, void, env)
+DEF_HELPER_2(vhistq, void, env, ptr)
+DEF_HELPER_1(vwhist256, void, env)
+DEF_HELPER_2(vwhist256q, void, env, ptr)
+DEF_HELPER_1(vwhist256_sat, void, env)
+DEF_HELPER_2(vwhist256q_sat, void, env, ptr)
+DEF_HELPER_1(vwhist128, void, env)
+DEF_HELPER_2(vwhist128q, void, env, ptr)
+DEF_HELPER_2(vwhist128m, void, env, s32)
+DEF_HELPER_3(vwhist128qm, void, env, ptr, s32)
