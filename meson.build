@@ -2329,6 +2329,7 @@ common_ss.add(libbpf)
 
 if build_libqemu
   subdir('libqemu')
+  install_headers('include/exec/hwaddr.h', 'include/exec/memattrs.h', subdir : 'libqemu/exec')
 endif
 specific_ss.add_all(when: 'CONFIG_LIBQEMU', if_true: libqemu_ss)
 
