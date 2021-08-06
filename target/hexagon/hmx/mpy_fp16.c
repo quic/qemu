@@ -457,7 +457,6 @@ static inline size8s_t acc_rectify(processor_t *proc, size8s_t acc_shifted, size
     size8s_t summarize_output = 0;
     size8s_t sign_bit = 0;
     size2u_t frac_bits = element_size * 12;
-    acc_shifted = acc_shifted;
     size8s_t summarization_bits = acc_shifted & 0xFFFFFFFE00000000ll;
 
     if(acc_biased < 0){

@@ -708,6 +708,7 @@ static void memwrite(thread_t *thread, mem_access_info_t *memaptr)
 
 
 int dma_adapter_memread(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *dst, int width) {
+  uint32_t check;
   mem_access_info_t macc_task;
   thread_t * thread = dma_adapter_retrieve_thread(dma);
   macc_task.vaddr = va;
@@ -729,7 +730,8 @@ int dma_adapter_memread(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *dst, int 
 
   }
 
-  return ((*(uint32_t *)dst) != 0xdeadbeef);
+  memcpy(&check, dst, sizeof(check));
+  return (check != 0xdeadbeef);
 }
 
 int dma_adapter_memwrite(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *src, int width) {

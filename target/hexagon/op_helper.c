@@ -2472,7 +2472,13 @@ static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
+
+/* Not supported and rejected by clang-11, possibly available in newer
+ * clang releases:
+ */
+#if !defined(__clang_major__) || (defined(__clang_major__) && __clang_major__ < 11)
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();

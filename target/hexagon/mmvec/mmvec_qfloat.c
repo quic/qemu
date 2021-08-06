@@ -17,7 +17,12 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
+/* Not supported and rejected by clang-11, possibly available in newer
+ * clang releases:
+ */
+#if !defined(__clang_major__) || (defined(__clang_major__) && __clang_major__ < 11)
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 
 #include "mmvec_qfloat.h"
 
@@ -596,7 +601,7 @@ size2s_t rnd_sat_hf_rint(int exp_in, double sig_in)
     exp_ub = (exp_d> E_MIN_HF)? exp_d: E_MIN_HF; // EMIN=-14 for fp16
     den = ldexp(val, -exp_ub); // denormalized if we hit EMIN
     int sign = (sig<0)? 1:0;
-    sig = abs(den);
+    sig = fabs(den);
     // round to final mantissa
     mant = rint(ldexp(sig, FRAC_HF)); // FRAC=10 for fp16; RNE
     // post-round exponent adjust

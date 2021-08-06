@@ -163,7 +163,7 @@ void mem_load_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t
     if (!size) return;
 
     access_type=access_type_vload;
-    mem_init_access_unaligned(thread, slot, lookup_vaddr, vaddr, size, access_type, TYPE_LOAD);
+    mem_init_access_unaligned(thread, slot, lookup_vaddr, vaddr, size, ext_ma_as_core_ma(access_type), TYPE_LOAD);
     if (EXCEPTION_DETECTED) return;
 
 
@@ -219,7 +219,7 @@ void mem_store_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_
 
 
     access_type=access_type_vstore;
-    mem_init_access_unaligned(thread, slot, lookup_vaddr, vaddr, size, access_type, TYPE_STORE);
+    mem_init_access_unaligned(thread, slot, lookup_vaddr, vaddr, size, ext_ma_as_core_ma(access_type), TYPE_STORE);
     if (EXCEPTION_DETECTED) return;
 
     int in_tcm = in_vtcm_space(thread->processor_ptr,vaddr, HIDE_WARNING);
@@ -307,7 +307,7 @@ void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, 
     enum ext_mem_access_types access_type=access_type_vscatter_store;
     // Translation for Store Address on Slot 1 - maybe any slot?
     int slot = insn->slot;
-    mem_init_access(thread, slot, base_vaddr, 1, access_type, TYPE_STORE);
+    mem_init_access(thread, slot, base_vaddr, 1, ext_ma_as_core_ma(access_type), TYPE_STORE);
     mem_access_info_t * maptr = &thread->mem_access[slot];
     if (EXCEPTION_DETECTED) return;
     //mmvecx_t *mmvecx = thread; //THREAD2STRUCT;
@@ -353,7 +353,7 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
 
     int slot = insn->slot;
     enum ext_mem_access_types access_type = access_type_vgather_load;
-    mem_init_access(thread, slot, base_vaddr, 1,  access_type, TYPE_LOAD);
+    mem_init_access(thread, slot, base_vaddr, 1, ext_ma_as_core_ma(access_type), TYPE_LOAD);
     mem_access_info_t * maptr = &thread->mem_access[slot];
     mmvecx_t *mmvecx = thread ;//THREAD2STRUCT;
 

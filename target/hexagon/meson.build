@@ -142,6 +142,7 @@ hexagon_ss.add(opcodes_def_generated)
 gen_dectree_import = executable(
     'gen_dectree_import',
     'gen_dectree_import.c', opcodes_def_generated, op_regs_generated,
+    c_args: ['-Wno-initializer-overrides'],
     native: true, build_by_default: false)
 
 iset_py = custom_target(
