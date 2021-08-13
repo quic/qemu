@@ -109,7 +109,7 @@ struct CPUHexagonState {
     uint64_t     llsc_val_i64;
 
     MMVector VRegs[NUM_VREGS] QEMU_ALIGNED(16);
-    MMVector future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
+    MMVector future_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
     MMVector tmp_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
 
     VRegMask VRegs_updated_tmp;

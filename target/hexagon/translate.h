@@ -38,6 +38,8 @@ typedef struct DisasContext {
     DECLARE_BITMAP(pregs_written, NUM_PREGS);
     uint8_t store_width[STORES_MAX];
     bool s1_store_processed;
+    int future_vregs_idx;
+    int future_vregs_num[VECTOR_TEMPS_MAX];
     int tmp_vregs_idx;
     int tmp_vregs_num[VECTOR_TEMPS_MAX];
     int vreg_log[NUM_VREGS];
@@ -80,6 +82,8 @@ static inline bool is_preloaded(DisasContext *ctx, int num)
     return test_bit(num, ctx->regs_written);
 }
 
+intptr_t ctx_future_vreg_off(DisasContext *ctx, int regnum,
+                             int num, bool alloc_ok);
 intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
                           int num, bool alloc_ok);
 

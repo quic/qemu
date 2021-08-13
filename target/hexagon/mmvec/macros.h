@@ -46,25 +46,6 @@
 #define QxV      (*(MMQReg *)(QxV_void))
 #endif
 
-#define NEW_WRITTEN(NUM) ((env->VRegs_select >> (NUM)) & 1)
-#define TMP_WRITTEN(NUM) ((env->VRegs_updated_tmp >> (NUM)) & 1)
-
-#define READ_EXT_VREG(NUM, VAR, VTMP) \
-    do { \
-        VAR = ((NEW_WRITTEN(NUM)) ? env->future_VRegs[NUM] \
-                                  : env->VRegs[NUM]); \
-        VAR = ((TMP_WRITTEN(NUM)) ? env->tmp_VRegs[NUM] : VAR); \
-        if (VTMP == EXT_TMP) { \
-            if (env->VRegs_updated & ((VRegMask)1) << (NUM)) { \
-                VAR = env->future_VRegs[NUM]; \
-                env->VRegs_updated ^= ((VRegMask)1) << (NUM); \
-            } \
-        } \
-    } while (0)
-
-
-#define WRITE_EXT_VREG(NUM, VAR, VNEW)   LOG_VREG_WRITE(NUM, VAR, VNEW)
-
 #define LOG_VTCM_BYTE(VA, MASK, VAL, IDX) \
     do { \
         env->vtcm_log.data.ub[IDX] = (VAL); \

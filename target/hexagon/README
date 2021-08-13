@@ -140,8 +140,7 @@ istruction.
     {
         const int VdN = insn->regno[0];
         const intptr_t VdV_off =
-            offsetof(CPUHexagonState,
-                     future_VRegs[VdN]);
+            ctx_future_vreg_off(ctx, VdN, 1, true);
         TCGv_ptr VdV = tcg_temp_local_new_ptr();
         tcg_gen_addi_ptr(VdV, cpu_env, VdV_off);
         const int VuN = insn->regno[1];
@@ -182,8 +181,7 @@ when the override is present.
     {
         const int VdN = insn->regno[0];
         const intptr_t VdV_off =
-            offsetof(CPUHexagonState,
-                     future_VRegs[VdN]);
+            ctx_future_vreg_off(ctx, VdN, 1, true);
         const int VuN = insn->regno[1];
         const intptr_t VuV_off =
             vreg_src_off(ctx, VuN);

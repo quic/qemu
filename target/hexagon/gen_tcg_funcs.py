@@ -129,9 +129,9 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 f.write("        ctx_tmp_vreg_off(ctx, %s%sN, 2, true);\n" % \
                      (regtype, regid))
             else:
-                f.write("        offsetof(CPUHexagonState, ")
-                f.write("future_VRegs[%s%sN]);\n" % \
-                    (regtype, regid))
+                f.write("        ctx_future_vreg_off(ctx, %s%sN," % \
+                     (regtype, regid))
+                f.write(" 2, true);\n")
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
@@ -168,9 +168,9 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 f.write("        ctx_tmp_vreg_off(ctx, %s%sN, 1, true);\n" % \
                     (regtype, regid))
             else:
-                f.write("        offsetof(CPUHexagonState,\n")
-                f.write("                 future_VRegs[%s%sN]);\n" % \
+                f.write("        ctx_future_vreg_off(ctx, %s%sN," %\
                     (regtype, regid))
+                f.write(" 1, true);\n");
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
@@ -289,9 +289,9 @@ def genptr_decl_new(f, tag, regtype, regid, regno):
             if (hex_common.skip_qemu_helper(tag)):
                 f.write("    const intptr_t %s%sN_off =\n" % \
                     (regtype, regid))
-                f.write("        offsetof(CPUHexagonState, ")
-                f.write("future_VRegs[%s%sN_num]);\n" % \
+                f.write("         ctx_future_vreg_off(ctx, %s%sN_num," % \
                     (regtype, regid))
+                f.write(" 1, true);\n")
             else:
                 f.write("    TCGv %s%sN = tcg_const_tl(%s%sN_num);\n" % \
                     (regtype, regid, regtype, regid))

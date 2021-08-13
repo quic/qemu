@@ -59,6 +59,28 @@ static const char * const hexagon_prednames[] = {
   "p0", "p1", "p2", "p3"
 };
 
+intptr_t ctx_future_vreg_off(DisasContext *ctx, int regnum,
+                          int num, bool alloc_ok)
+{
+    intptr_t offset;
+
+    /* See if it is already allocated */
+    for (int i = 0; i < ctx->future_vregs_idx; i++) {
+        if (ctx->future_vregs_num[i] == regnum) {
+            return offsetof(CPUHexagonState, future_VRegs[i]);
+        }
+    }
+
+    g_assert(alloc_ok);
+    offset = offsetof(CPUHexagonState, future_VRegs[ctx->future_vregs_idx]);
+    for (int i = 0; i < num; i++) {
+        ctx->future_vregs_num[ctx->future_vregs_idx + i] = regnum++;
+    }
+    ctx->future_vregs_idx += num;
+    g_assert(ctx->future_vregs_idx < VECTOR_TEMPS_MAX);
+    return offset;
+}
+
 intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
                           int num, bool alloc_ok)
 {
@@ -203,6 +225,7 @@ static void gen_start_packet(DisasContext *ctx, Packet *pkt)
     bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
     ctx->preg_log_idx = 0;
     bitmap_zero(ctx->pregs_written, NUM_PREGS);
+    ctx->future_vregs_idx = 0;
     ctx->tmp_vregs_idx = 0;
     ctx->vreg_log_idx = 0;
     bitmap_zero(ctx->vregs_updated_tmp, NUM_VREGS);
@@ -542,7 +565,7 @@ static void gen_commit_hvx(CPUHexagonState *env, DisasContext *ctx, Packet *pkt)
         int rnum = ctx->vreg_log[i];
         bool is_predicated = ctx->vreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, VRegs[rnum]);
-        intptr_t srcoff = offsetof(CPUHexagonState, future_VRegs[rnum]);
+        intptr_t srcoff = ctx_future_vreg_off(ctx, rnum, 1, false);
         size_t size = sizeof(MMVector);
 
         if (is_predicated) {

@@ -877,7 +877,7 @@ static intptr_t vreg_src_off(DisasContext *ctx, int num)
     intptr_t offset = offsetof(CPUHexagonState, VRegs[num]);
 
     if (test_bit(num, ctx->vregs_select)) {
-        offset = offsetof(CPUHexagonState, future_VRegs[num]);
+        offset = ctx_future_vreg_off(ctx, num, 1, false);
     }
     if (test_bit(num, ctx->vregs_updated_tmp)) {
         offset = ctx_tmp_vreg_off(ctx, num, 1, false);
@@ -912,7 +912,7 @@ static void gen_log_vreg_write(DisasContext *ctx, intptr_t srcoff, int num,
         tcg_gen_ori_tl(hex_VRegs_updated_tmp, hex_VRegs_updated_tmp, 1 << num);
     }
 
-    dstoff = offsetof(CPUHexagonState, future_VRegs[num]);
+    dstoff = ctx_future_vreg_off(ctx, num, 1, true);
     tcg_gen_gvec_mov(MO_64, dstoff, srcoff,
                      sizeof(MMVector), sizeof(MMVector));
 
