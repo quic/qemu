@@ -913,10 +913,8 @@ static void gen_log_vreg_write(DisasContext *ctx, intptr_t srcoff, int num,
     }
 
     dstoff = offsetof(CPUHexagonState, future_VRegs[num]);
-    if (dstoff != srcoff) {
-        tcg_gen_gvec_mov(MO_64, dstoff, srcoff,
-                         sizeof(MMVector), sizeof(MMVector));
-    }
+    tcg_gen_gvec_mov(MO_64, dstoff, srcoff,
+                     sizeof(MMVector), sizeof(MMVector));
 
     if (type == EXT_TMP) {
         dstoff = ctx_tmp_vreg_off(ctx, num, 1, false);
@@ -957,9 +955,7 @@ static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
     }
 
     dstoff = offsetof(CPUHexagonState, future_QRegs[num]);
-    if (dstoff != srcoff) {
-        tcg_gen_gvec_mov(MO_64, dstoff, srcoff, sizeof(MMQReg), sizeof(MMQReg));
-    }
+    tcg_gen_gvec_mov(MO_64, dstoff, srcoff, sizeof(MMQReg), sizeof(MMQReg));
 
     if (is_predicated) {
         tcg_gen_ori_tl(hex_QRegs_updated, hex_QRegs_updated, 1 << num);

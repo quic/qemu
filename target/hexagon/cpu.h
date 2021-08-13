@@ -121,10 +121,11 @@ struct CPUHexagonState {
     QRegMask QRegs_updated;
 
     /* Temporaries used within instructions */
-    MMVectorPair VddV QEMU_ALIGNED(16),
-                 VuuV QEMU_ALIGNED(16),
-                 VvvV QEMU_ALIGNED(16),
-                 VxxV QEMU_ALIGNED(16);
+    MMVectorPair VuuV QEMU_ALIGNED(16);
+    MMVectorPair VvvV QEMU_ALIGNED(16);
+    MMVectorPair VxxV QEMU_ALIGNED(16);
+    MMVector     vtmp QEMU_ALIGNED(16);
+    MMQReg       qtmp QEMU_ALIGNED(16);
 
     VStoreLog vstore[VSTORES_MAX];
     target_ulong vstore_pending[VSTORES_MAX];

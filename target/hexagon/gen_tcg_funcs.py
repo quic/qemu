@@ -133,7 +133,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 f.write("future_VRegs[%s%sN]);\n" % \
                     (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
-                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
                 f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
                     (regtype, regid, regtype, regid))
@@ -145,7 +145,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
             f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
                  (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
-                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
                 f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
                     (regtype, regid, regtype, regid))
@@ -157,7 +157,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
             f.write("        vreg_src_off(ctx, %s%sN);\n" % \
                               (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
-                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
         elif (regid in {"d", "x", "y"}):
             f.write("    const int %s%sN = insn->regno[%d];\n" % \
@@ -172,7 +172,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 f.write("                 future_VRegs[%s%sN]);\n" % \
                     (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
-                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
                 f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
                     (regtype, regid, regtype, regid))
@@ -188,7 +188,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
             f.write("                 future_QRegs[%s%sN]);\n" % \
                 (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
-                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
                 f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
                     (regtype, regid, regtype, regid))
@@ -200,7 +200,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
             f.write("        offsetof(CPUHexagonState, QRegs[%s%sN]);\n" % \
                 (regtype, regid))
             if (not hex_common.skip_qemu_helper(tag)):
-                f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
+                f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)

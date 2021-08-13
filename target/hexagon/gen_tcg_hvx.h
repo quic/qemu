@@ -22,31 +22,32 @@
     tcg_gen_gvec_mov(MO_64, VdV_off, VuV_off, \
                      sizeof(MMVector), sizeof(MMVector))
 
-/* Vector conditional move (true) */
-#define fGEN_TCG_V6_vcmov(SHORTCODE) \
+/* Vector conditional move */
+#define fGEN_TCG_VEC_CMOV(PRED) \
     do { \
         TCGv lsb = tcg_temp_new(); \
-        TCGLabel *label = gen_new_label(); \
+        TCGLabel *false_label = gen_new_label(); \
+        TCGLabel *end_label = gen_new_label(); \
         tcg_gen_andi_tl(lsb, PsV, 1); \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, lsb, 0, label); \
+        tcg_gen_brcondi_tl(TCG_COND_NE, lsb, PRED, false_label); \
         tcg_temp_free(lsb); \
         tcg_gen_gvec_mov(MO_64, VdV_off, VuV_off, \
                          sizeof(MMVector), sizeof(MMVector)); \
-        gen_set_label(label); \
+        tcg_gen_br(end_label); \
+        gen_set_label(false_label); \
+        tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, \
+                       1 << insn->slot); \
+        gen_set_label(end_label); \
     } while (0)
+
+
+/* Vector conditional move (true) */
+#define fGEN_TCG_V6_vcmov(SHORTCODE) \
+    fGEN_TCG_VEC_CMOV(1)
 
 /* Vector conditional move (false) */
 #define fGEN_TCG_V6_vncmov(SHORTCODE) \
-    do { \
-        TCGv lsb = tcg_temp_new(); \
-        TCGLabel *label = gen_new_label(); \
-        tcg_gen_andi_tl(lsb, PsV, 1); \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, lsb, 1, label); \
-        tcg_temp_free(lsb); \
-        tcg_gen_gvec_mov(MO_64, VdV_off, VuV_off, \
-                         sizeof(MMVector), sizeof(MMVector)); \
-        gen_set_label(label); \
-    } while (0)
+    fGEN_TCG_VEC_CMOV(0)
 
 /* Vector add - various forms */
 #define fGEN_TCG_V6_vaddb(SHORTCODE) \
@@ -110,7 +111,7 @@
 
 #define fGEN_TCG_V6_vasrh_acc(SHORTCODE) \
     do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        intptr_t tmpoff = offsetof(CPUHexagonState, vtmp); \
         TCGv shift = tcg_temp_new(); \
         tcg_gen_andi_tl(shift, RtV, 15); \
         tcg_gen_gvec_sars(MO_16, tmpoff, VuV_off, shift, \
@@ -131,7 +132,7 @@
 
 #define fGEN_TCG_V6_vasrw_acc(SHORTCODE) \
     do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        intptr_t tmpoff = offsetof(CPUHexagonState, vtmp); \
         TCGv shift = tcg_temp_new(); \
         tcg_gen_andi_tl(shift, RtV, 31); \
         tcg_gen_gvec_sars(MO_32, tmpoff, VuV_off, shift, \
@@ -189,7 +190,7 @@
 
 #define fGEN_TCG_V6_vaslh_acc(SHORTCODE) \
     do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        intptr_t tmpoff = offsetof(CPUHexagonState, vtmp); \
         TCGv shift = tcg_temp_new(); \
         tcg_gen_andi_tl(shift, RtV, 15); \
         tcg_gen_gvec_shls(MO_16, tmpoff, VuV_off, shift, \
@@ -210,7 +211,7 @@
 
 #define fGEN_TCG_V6_vaslw_acc(SHORTCODE) \
     do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        intptr_t tmpoff = offsetof(CPUHexagonState, vtmp); \
         TCGv shift = tcg_temp_new(); \
         tcg_gen_andi_tl(shift, RtV, 31); \
         tcg_gen_gvec_shls(MO_32, tmpoff, VuV_off, shift, \
@@ -286,7 +287,7 @@
 
 #define fGEN_TCG_V6_pred_or_n(SHORTCODE) \
     do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        intptr_t tmpoff = offsetof(CPUHexagonState, qtmp); \
         tcg_gen_gvec_not(MO_64, tmpoff, QtV_off, \
                          sizeof(MMQReg), sizeof(MMQReg)); \
         tcg_gen_gvec_or(MO_64, QdV_off, QsV_off, tmpoff, \
@@ -295,7 +296,7 @@
 
 #define fGEN_TCG_V6_pred_and_n(SHORTCODE) \
     do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        intptr_t tmpoff = offsetof(CPUHexagonState, qtmp); \
         tcg_gen_gvec_not(MO_64, tmpoff, QtV_off, \
                          sizeof(MMQReg), sizeof(MMQReg)); \
         tcg_gen_gvec_and(MO_64, QdV_off, QsV_off, tmpoff, \
@@ -309,7 +310,7 @@
 /* Vector compares */
 #define fGEN_TCG_VEC_CMP(COND, TYPE, SIZE) \
     do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
+        intptr_t tmpoff = offsetof(CPUHexagonState, vtmp); \
         tcg_gen_gvec_cmp(COND, TYPE, tmpoff, VuV_off, VvV_off, \
                          sizeof(MMVector), sizeof(MMVector)); \
         vec_to_qvec(SIZE, QdV_off, tmpoff); \
@@ -338,8 +339,8 @@
 
 #define fGEN_TCG_VEC_CMP_OP(COND, TYPE, SIZE, OP) \
     do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, VddV); \
-        intptr_t qoff = offsetof(CPUHexagonState, VuuV); \
+        intptr_t tmpoff = offsetof(CPUHexagonState, vtmp); \
+        intptr_t qoff = offsetof(CPUHexagonState, qtmp); \
         tcg_gen_gvec_cmp(COND, TYPE, tmpoff, VuV_off, VvV_off, \
                          sizeof(MMVector), sizeof(MMVector)); \
         vec_to_qvec(SIZE, qoff, tmpoff); \
@@ -462,15 +463,19 @@
 #define fGEN_TCG_PRED_VEC_LOAD(GET_EA, PRED, DSTOFF, INC) \
     do { \
         TCGv LSB = tcg_temp_new(); \
-        TCGLabel *label = gen_new_label(); \
+        TCGLabel *false_label = gen_new_label(); \
+        TCGLabel *end_label = gen_new_label(); \
         GET_EA; \
         PRED; \
-        gen_pred_cancel(LSB, insn->slot); \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, false_label); \
         tcg_temp_free(LSB); \
         gen_vreg_load(ctx, DSTOFF, EA, true); \
         INC; \
-        gen_set_label(label); \
+        tcg_gen_br(end_label); \
+        gen_set_label(false_label); \
+        tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, \
+                       1 << insn->slot); \
+        gen_set_label(end_label); \
     } while (0)
 
 #define fGEN_TCG_PRED_VEC_LOAD_pred_pi \
@@ -629,15 +634,19 @@
 #define fGEN_TCG_PRED_VEC_STORE(GET_EA, PRED, SRCOFF, ALIGN, INC) \
     do { \
         TCGv LSB = tcg_temp_new(); \
-        TCGLabel *label = gen_new_label(); \
+        TCGLabel *false_label = gen_new_label(); \
+        TCGLabel *end_label = gen_new_label(); \
         GET_EA; \
         PRED; \
-        gen_pred_cancel(LSB, insn->slot); \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, false_label); \
         tcg_temp_free(LSB); \
         gen_vreg_store(ctx, insn, pkt, EA, SRCOFF, insn->slot, ALIGN); \
         INC; \
-        gen_set_label(label); \
+        tcg_gen_br(end_label); \
+        gen_set_label(false_label); \
+        tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, \
+                       1 << insn->slot); \
+        gen_set_label(end_label); \
     } while (0)
 
 #define fGEN_TCG_PRED_VEC_STORE_pred_pi(ALIGN) \
