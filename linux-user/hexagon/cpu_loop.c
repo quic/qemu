@@ -91,6 +91,10 @@ void cpu_loop(CPUHexagonState *env)
         case EXCP_ATOMIC:
             cpu_exec_step_atomic(cs);
             break;
+        case EXCP_DEBUG:
+            signum = TARGET_SIGTRAP;
+            sigcode = TARGET_TRAP_BRKPT;
+            break;
         case EXCP_YIELD:
             /* nothing to do here for user-mode, just resume guest code */
             break;
