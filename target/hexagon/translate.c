@@ -545,7 +545,7 @@ static bool pkt_has_hvx_store(Packet *pkt)
     return false;
 }
 
-static void gen_commit_hvx(CPUHexagonState *env, DisasContext *ctx, Packet *pkt)
+static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
 {
     int i;
 
@@ -654,7 +654,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     process_store_log(ctx, pkt);
     process_dczeroa(ctx, pkt);
     if (pkt->pkt_has_hvx) {
-        gen_commit_hvx(env, ctx, pkt);
+        gen_commit_hvx(ctx, pkt);
     }
     update_exec_counters(ctx, pkt);
     if (HEX_DEBUG) {
