@@ -1980,5 +1980,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fDMWAITDESCRIPTOR(SRC,DST) DST=dma_adapter_cmd(thread,DMA_CMD_WAITDESCRIPTOR,SRC,0)
 #define fDMCFGRD(DMANUM,DST) DST=dma_adapter_cmd(thread,DMA_CMD_CFGRD,DMANUM,0)
 #define fDMCFGWR(DMANUM,DATA) dma_adapter_cmd(thread,DMA_CMD_CFGWR,DMANUM,DATA)
+#define GET_DMA_LDST_ERROR_BADVA(EXTENDED_VA, VA) ((EXTENDED_VA) ? (size4u_t) (( (size8u_t) VA>>32) | (VA & ~0xFFF)) : (size4u_t)VA)
 
 #endif

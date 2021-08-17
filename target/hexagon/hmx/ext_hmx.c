@@ -56,7 +56,6 @@
 #define memwrap_memtrace_ld(...)
 #define memwrap_memtrace_st(...)
 #define warn(...)
-#define register_coproc_ldst_exception(...) {}
 #define MEMTRACE_LD(...)
 
 

@@ -491,6 +491,7 @@ struct ProcessorState ProcessorStateV68 = {
     .runnable_threads_max = 4,
     .thread_system_mask = 0xf,
     .shared_extptr = 0,
+    .timing_on = 0,
 };
 
 static void hexagon_cpu_realize(DeviceState *dev, Error **errp)

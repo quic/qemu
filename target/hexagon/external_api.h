@@ -441,6 +441,14 @@ typedef enum {
   DMA_CMD_UND = 11              // DO NOT USE THIS. JUST TERMINATOR.
 } dma_cmd_t;
 
+typedef enum {
+	DMA_DESC_STATE_START=0,
+	DMA_DESC_STATE_DONE=1,
+	DMA_DESC_STATE_PAUSE=2,
+	DMA_DESC_STATE_EXCEPT=3,
+	DMA_DESC_STATE_NUM=4
+} dma_callback_state_t;
+
 /********************************************************************/
 /*                These are ISA defined constants                   */
 /********************************************************************/
@@ -718,7 +726,6 @@ typedef struct {
 	size4u_t transactions;
 	memcpy_trace_event_t event;
 } memcpy_callback_info_t;
-
 
 typedef struct {
 	size4u_t dmano;

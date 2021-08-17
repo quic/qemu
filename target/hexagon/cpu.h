@@ -287,7 +287,7 @@ struct dma_state;
 typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *);
 
 #include "hmx/hmx.h"
-#include "dma.h"
+#include "dma/dma.h"
 
 struct ProcessorState {
     const rev_features_t *features;
@@ -301,10 +301,11 @@ struct ProcessorState {
     struct dma_adapter_engine_info * dma_engine_info[THREADS_MAX];
     struct dma_state *dma[DMA_MAX]; // same as dma_t
     dma_insn_checker_ptr dma_insn_checker[DMA_MAX];
-	  size8u_t monotonic_pcycles;	/* never reset */
+	size8u_t monotonic_pcycles;	/* never reset */
 
     /* one hmx unit shared among all threads */
     hmx_state_t *shared_extptr;
+    int timing_on;
 };
 
 typedef struct CPUHexagonState CPUArchState;

@@ -46,7 +46,7 @@ typedef struct desc_tracker_entry_t {
 	void * dma;
 	int dnum; /* DMA number */
 
-	dma_decoded_descriptor_t init_desc;	///< initial descriptor - before executed by ISS
+	dma_decoded_descriptor_t uarch_desc;	///< initial descriptor - before executed by ISS and used by timing uarch model
 
 	dma_decoded_descriptor_t desc;		///< desc - after executed by ISS. May be done or stopped at exception point.
 	callback_desc_t callback;

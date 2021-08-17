@@ -194,9 +194,9 @@ hexagon_ss.add(files(
    'hmx/mpy_fp16.c',
    'hmx/mpy_hmx_fp_custom.c',
    'dma_adapter.c',
-   'dma.c',
-   'dma_descriptor.c',
-   'desc_tracker.c',
+   'dma/dma.c',
+   'dma/dma_descriptor.c',
+   'dma/desc_tracker.c',
    'uarch/queue.c',
 ))
 
