@@ -64,6 +64,14 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false),
     DEFINE_PROP_BOOL("sched-limit", HexagonCPU, sched_limit, false),
     DEFINE_PROP_STRING("usefs", HexagonCPU, usefs),
+    /* This value should be the 36-bit address of the config table
+     * (not the value that goes in the cfgbase register):
+     */
+    DEFINE_PROP_UINT64("config-table-addr", HexagonCPU, config_table_addr,
+        0xffffffffULL),
+    /* This value should be the contents of the 'rev' register:
+     */
+    DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, 0),
 #endif
     DEFINE_PROP_END_OF_LIST()
 };
@@ -523,6 +531,12 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
         env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
         hex_mmu_init(env);
+
+        env->g_sreg[HEX_SREG_EVB] = 0x0;
+        env->g_sreg[HEX_SREG_CFGBASE] =
+            HEXAGON_CFG_ADDR_BASE(cpu->config_table_addr);
+        env->g_sreg[HEX_SREG_REV] = cpu->rev_reg;
+        env->g_sreg[HEX_SREG_MODECTL] = 0x1;
     }
     else {
         CPUState *cpu0_s = NULL;

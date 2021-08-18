@@ -575,6 +575,8 @@ typedef struct HexagonCPU {
     bool count_gcycle_xt;
     bool sched_limit;
     gchar *usefs;
+    uint64_t config_table_addr;
+    uint32_t rev_reg;
 #endif
 } HexagonCPU;
 

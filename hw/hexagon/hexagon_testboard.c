@@ -22,6 +22,7 @@
 #include "qemu/units.h"
 #include "exec/address-spaces.h"
 #include "hw/boards.h"
+#include "hw/qdev-properties.h"
 #include "hw/hexagon/hexagon.h"
 #include "hw/hexagon/qtimer.h"
 #include "hw/hexagon/machine_configs.h"
@@ -133,9 +134,12 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     HexagonCPU *cpu_0 = NULL;
     CPUHexagonState *env_0 = NULL;
+    Error **errp = NULL;
     for (i = 0; i < machine->smp.cpus; i++) {
-        HexagonCPU *cpu = HEXAGON_CPU(cpu_create(machine->cpu_type));
+        HexagonCPU *cpu = HEXAGON_CPU(object_new(machine->cpu_type));
         CPUHexagonState *env = &cpu->env;
+        qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr", cfgExtensions->cfgbase);
+        qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
 
         HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
                 __FUNCTION__, cpu, env);
@@ -149,14 +153,11 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
             g_string_append(argv, machine->kernel_cmdline);
             env->cmdline = g_string_free(argv, false);
             env->dir_list = NULL;
-
-            env->g_sreg[HEX_SREG_EVB] = 0x0;
-            env->g_sreg[HEX_SREG_CFGBASE] =
-                HEXAGON_CFG_ADDR_BASE(cfgExtensions->cfgbase);
-            env->g_sreg[HEX_SREG_REV] = rev;
-            env->g_sreg[HEX_SREG_MODECTL] = 0x1;
         }
 
+        if (!qdev_realize_and_unref(DEVICE(cpu), NULL, errp)) {
+            return;
+        }
     }
 
     HexagonCPU *cpu = cpu_0;
