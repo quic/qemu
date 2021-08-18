@@ -73,6 +73,17 @@ static GString *get_exe_dir(GString *exe_dir)
 #error "No host implementation for get_exe_dir() provided"
 #endif
 }
+static hwaddr isdb_secure_flag = 0;
+static hwaddr isdb_trusted_flag = 0;
+static void hex_symbol_callback(const char *st_name, int st_info, uint64_t st_value,
+                          uint64_t st_size) {
+    if (!g_strcmp0("isdb_secure_flag", st_name)) {
+        isdb_secure_flag = st_value;
+    }
+    if (!g_strcmp0("isdb_trusted_flag", st_name)) {
+        isdb_trusted_flag = st_value;
+    }
+}
 
 
 static void hexagon_load_kernel(CPUHexagonState *env)
@@ -80,9 +91,10 @@ static void hexagon_load_kernel(CPUHexagonState *env)
     uint64_t pentry;
     long kernel_size;
 
-    kernel_size =
-        load_elf(hexagon_binfo.kernel_filename, NULL, NULL, NULL, &pentry, NULL,
-                 NULL, &hexagon_binfo.kernel_elf_flags, 0, EM_HEXAGON, 0, 0);
+    kernel_size = load_elf_ram_sym(hexagon_binfo.kernel_filename, NULL, NULL,
+                      NULL, &pentry, NULL, NULL,
+                      &hexagon_binfo.kernel_elf_flags, 0, EM_HEXAGON, 0, 0,
+                      &address_space_memory, false, hex_symbol_callback);
 
     if (kernel_size <= 0) {
         error_report("no kernel file '%s'",
@@ -153,7 +165,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     MemoryRegion *address_space = get_system_memory();
 
-    cfgTable->raw[HEXAGON_CFGSPACE_ENTRIES-1] = 0x12341234;
     MemoryRegion *config_table_rom = g_new(MemoryRegion, 1);
     memory_region_init_rom(config_table_rom, NULL, "config_table.rom",
                            sizeof(*cfgTable), &error_fatal);
@@ -222,6 +233,20 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     if (machine->kernel_filename) {
         hexagon_load_kernel(env_0);
+        if (isdb_secure_flag || isdb_trusted_flag) {
+            /* By convention these flags are at offsets 0x30 and 0x34 */
+            uint32_t  mem;
+            cpu_physical_memory_read(isdb_secure_flag, &mem, sizeof(mem));
+            if (mem == 0x0) {
+                mem = 1;
+                cpu_physical_memory_write(isdb_secure_flag, &mem, sizeof(mem));
+            }
+            cpu_physical_memory_read(isdb_trusted_flag, &mem, sizeof(mem));
+            if (mem == 0x0) {
+                mem = 1;
+                cpu_physical_memory_write(isdb_trusted_flag, &mem, sizeof(mem));
+            }
+        }
     }
 }
 
