@@ -87,7 +87,7 @@ static void hex_symbol_callback(const char *st_name, int st_info, uint64_t st_va
 }
 
 
-static void hexagon_load_kernel(CPUHexagonState *env)
+static void hexagon_load_kernel(HexagonCPU *cpu)
 {
     uint64_t pentry;
     long kernel_size;
@@ -103,7 +103,6 @@ static void hexagon_load_kernel(CPUHexagonState *env)
         exit(1);
     }
 
-    HexagonCPU *cpu = hexagon_env_get_cpu(env);
 
     /* $exe_dir/../target/hexagon/lib/v$exe_elf_machine_flags/G0/pic/ */
     if (!cpu->usefs) {
@@ -117,7 +116,29 @@ static void hexagon_load_kernel(CPUHexagonState *env)
         cpu->usefs = g_string_free(lib_search_dir, false);
         g_free(exe_dir);
     }
-    env->gpr[HEX_REG_PC] = pentry;
+    qdev_prop_set_uint32(DEVICE(cpu),
+        "exec-start-addr", pentry);
+}
+
+static void hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
+{
+    if (machine->kernel_filename) {
+        hexagon_load_kernel(cpu);
+        if (isdb_secure_flag || isdb_trusted_flag) {
+            /* By convention these flags are at offsets 0x30 and 0x34 */
+            uint32_t  mem;
+            cpu_physical_memory_read(isdb_secure_flag, &mem, sizeof(mem));
+            if (mem == 0x0) {
+                mem = 1;
+                cpu_physical_memory_write(isdb_secure_flag, &mem, sizeof(mem));
+            }
+            cpu_physical_memory_read(isdb_trusted_flag, &mem, sizeof(mem));
+            if (mem == 0x0) {
+                mem = 1;
+                cpu_physical_memory_write(isdb_trusted_flag, &mem, sizeof(mem));
+            }
+        }
+    }
 }
 
 static void hexagon_common_init(MachineState *machine, Rev_t rev)
@@ -131,36 +152,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         hexagon_binfo.ram_size = machine->ram_size;
         hexagon_binfo.kernel_filename = machine->kernel_filename;
     }
-
-    HexagonCPU *cpu_0 = NULL;
-    CPUHexagonState *env_0 = NULL;
-    Error **errp = NULL;
-    for (i = 0; i < machine->smp.cpus; i++) {
-        HexagonCPU *cpu = HEXAGON_CPU(object_new(machine->cpu_type));
-        CPUHexagonState *env = &cpu->env;
-        qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr", cfgExtensions->cfgbase);
-        qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
-
-        HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
-                __FUNCTION__, cpu, env);
-
-        if (i == 0) {
-            cpu_0 = cpu;
-            env_0 = env;
-
-            GString *argv = g_string_new(machine->kernel_filename);
-            g_string_append(argv, " ");
-            g_string_append(argv, machine->kernel_cmdline);
-            env->cmdline = g_string_free(argv, false);
-            env->dir_list = NULL;
-        }
-
-        if (!qdev_realize_and_unref(DEVICE(cpu), NULL, errp)) {
-            return;
-        }
-    }
-
-    HexagonCPU *cpu = cpu_0;
 
     machine->enable_graphics = 0;
 
@@ -195,6 +186,35 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         memory_region_add_subregion(address_space, cfgTable->l2tcm_base, tcm);
     }
 
+
+    HexagonCPU *cpu_0 = NULL;
+    Error **errp = NULL;
+    for (i = 0; i < machine->smp.cpus; i++) {
+        HexagonCPU *cpu = HEXAGON_CPU(object_new(machine->cpu_type));
+        CPUHexagonState *env = &cpu->env;
+        qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr", cfgExtensions->cfgbase);
+        qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
+
+        HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
+                __FUNCTION__, cpu, env);
+
+        if (i == 0) {
+            hexagon_init_bootstrap(machine, cpu);
+            cpu_0 = cpu;
+
+            GString *argv = g_string_new(machine->kernel_filename);
+            g_string_append(argv, " ");
+            g_string_append(argv, machine->kernel_cmdline);
+            env->cmdline = g_string_free(argv, false);
+            env->dir_list = NULL;
+        }
+
+        if (!qdev_realize_and_unref(DEVICE(cpu), NULL, errp)) {
+            return;
+        }
+    }
+
+    HexagonCPU *cpu = cpu_0;
     dev = sysbus_create_varargs("l2vic", cfgExtensions->l2vic_base,
                                              /* IRQ#, Evnt#,CauseCode */
         qdev_get_gpio_in(DEVICE(cpu), 0), /* IRQ 0, 16, 0xc0 */
@@ -232,23 +252,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
     rom_add_blob_fixed_as("config_table.rom", config_table,
         sizeof(*config_table), cfgExtensions->cfgbase, &address_space_memory);
 
-    if (machine->kernel_filename) {
-        hexagon_load_kernel(env_0);
-        if (isdb_secure_flag || isdb_trusted_flag) {
-            /* By convention these flags are at offsets 0x30 and 0x34 */
-            uint32_t  mem;
-            cpu_physical_memory_read(isdb_secure_flag, &mem, sizeof(mem));
-            if (mem == 0x0) {
-                mem = 1;
-                cpu_physical_memory_write(isdb_secure_flag, &mem, sizeof(mem));
-            }
-            cpu_physical_memory_read(isdb_trusted_flag, &mem, sizeof(mem));
-            if (mem == 0x0) {
-                mem = 1;
-                cpu_physical_memory_write(isdb_trusted_flag, &mem, sizeof(mem));
-            }
-        }
-    }
 }
 
 void hexagon_read_timer(uint32_t *low, uint32_t *high)

@@ -71,7 +71,10 @@ static Property hexagon_cpu_properties[] = {
         0xffffffffULL),
     /* This value should be the contents of the 'rev' register:
      */
-    DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, 0),
+    DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, /*v73:*/0x8c73),
+    DEFINE_PROP_BOOL("virtual-platform-mode", HexagonCPU, vp_mode, false),
+    DEFINE_PROP_UINT32("start-evb", HexagonCPU, boot_evb, 0x0),
+    DEFINE_PROP_UINT32("exec-start-addr", HexagonCPU, boot_addr, 0x0),
 #endif
     DEFINE_PROP_END_OF_LIST()
 };
@@ -571,6 +574,12 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
 #endif
     cpu_reset(cs);
+
+#if !defined(CONFIG_USER_ONLY)
+    env->g_sreg[HEX_SREG_EVB] = cpu->boot_evb;
+    env->gpr[HEX_REG_PC] = cpu->boot_addr;
+#endif
+
     if (cs->cpu_index == 0) {
         cs->halted = 0;
     }

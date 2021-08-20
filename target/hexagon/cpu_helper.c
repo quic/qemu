@@ -357,8 +357,8 @@ static target_ulong get_thread0_r2(void)
 void hexagon_stop_thread(CPUHexagonState *env)
 
 {
-    #if HEX_DEBUG
     HexagonCPU *cpu = hexagon_env_get_cpu(env);
+    #if HEX_DEBUG
     HEX_DEBUG_LOG("%s: htid %d, cpu %p\n",
         __FUNCTION__, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID), cpu);
     #endif
@@ -369,8 +369,10 @@ void hexagon_stop_thread(CPUHexagonState *env)
     SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_E,thread_enabled_mask);
     cpu_stop_current();
     if (!thread_enabled_mask) {
-        /* All threads are stopped, exit */
-        exit(get_thread0_r2());
+        if (!cpu->vp_mode) {
+            /* All threads are stopped, exit */
+            exit(get_thread0_r2());
+        }
     }
 }
 

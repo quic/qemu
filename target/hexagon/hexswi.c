@@ -176,7 +176,15 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         HEX_DEBUG_LOG("%s: swi_info 0x%x, ret %d/0x%x\n",
             __FUNCTION__, swi_info, ret, ret);
 
-        exit(ret);
+        HexagonCPU *cpu = hexagon_env_get_cpu(env);
+        if (!cpu->vp_mode) {
+            exit(ret);
+        }
+        else {
+            CPUState *cs = CPU(cpu);
+            qemu_log_mask(CPU_LOG_RESET | LOG_GUEST_ERROR, "resetting\n");
+            cpu_reset(cs);
+        }
     }
     break;
 
@@ -579,7 +587,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         else
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0 /* NULL */);
         break;
-        fprintf(stderr, "> readdir done\n");
     }
     break;
   case SYS_CLOSEDIR:
@@ -885,7 +892,7 @@ static int sim_handle_trap(CPUHexagonState *env)
     retval = sim_handle_trap_functional(env);
 
     if(!retval) {
-        fprintf(stderr, "I don't know that swi request: 0x%x\n", what_swi);
+        qemu_log_mask(LOG_GUEST_ERROR, "unknown swi request: 0x%x\n", what_swi);
     }
 
     return retval;

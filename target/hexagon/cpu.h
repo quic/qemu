@@ -577,6 +577,9 @@ typedef struct HexagonCPU {
     gchar *usefs;
     uint64_t config_table_addr;
     uint32_t rev_reg;
+    bool vp_mode;
+    uint32_t boot_addr;
+    uint32_t boot_evb;
 #endif
 } HexagonCPU;
 
