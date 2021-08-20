@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -69,13 +69,10 @@ const char * const opcode_short_semantics[] = {
 #define DEF_SHORTCODE(TAG, SHORTCODE)              [TAG] = #SHORTCODE,
 #include "shortcode_generated.h.inc"
 #undef DEF_SHORTCODE
-
     NULL
 };
 
-
 DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
-
 
 static void init_attribs(int tag, ...)
 {

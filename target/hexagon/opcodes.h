@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
 
 #ifndef HEXAGON_OPCODES_H
 #define HEXAGON_OPCODES_H
-
-#include "hex_arch_types.h"
 
 typedef enum {
 #define OPCODE(IID) IID
@@ -48,10 +46,7 @@ extern const char * const opcode_wregs[];
 
 typedef struct {
     const char * const encoding;
-    size4u_t vals;
-    size4u_t dep_vals;
     const EncClass enc_class;
-    size1u_t is_ee:1;
 } OpcodeEncoding;
 
 extern const OpcodeEncoding opcode_encodings[XX_LAST_OPCODE];

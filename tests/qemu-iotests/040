@@ -89,7 +89,7 @@ class TestSingleDrive(ImageCommitTestCase):
         qemu_io('-f', 'raw', '-c', 'write -P 0xab 0 524288', backing_img)
         qemu_io('-f', iotests.imgfmt, '-c', 'write -P 0xef 524288 524288', mid_img)
         self.vm = iotests.VM().add_drive(test_img, "node-name=top,backing.node-name=mid,backing.backing.node-name=base", interface="none")
-        self.vm.add_device(iotests.get_virtio_scsi_device())
+        self.vm.add_device('virtio-scsi')
         self.vm.add_device("scsi-hd,id=scsi0,drive=drive0")
         self.vm.launch()
         self.has_quit = False
@@ -175,13 +175,13 @@ class TestSingleDrive(ImageCommitTestCase):
         self.assert_no_active_block_jobs()
         result = self.vm.qmp('block-commit', device='drive0', top_node='badfile', base_node='base')
         self.assert_qmp(result, 'error/class', 'GenericError')
-        self.assert_qmp(result, 'error/desc', "Cannot find device= nor node_name=badfile")
+        self.assert_qmp(result, 'error/desc', "Cannot find device='' nor node-name='badfile'")
 
     def test_base_node_invalid(self):
         self.assert_no_active_block_jobs()
         result = self.vm.qmp('block-commit', device='drive0', top_node='mid', base_node='badfile')
         self.assert_qmp(result, 'error/class', 'GenericError')
-        self.assert_qmp(result, 'error/desc', "Cannot find device= nor node_name=badfile")
+        self.assert_qmp(result, 'error/desc', "Cannot find device='' nor node-name='badfile'")
 
     def test_top_path_and_node(self):
         self.assert_no_active_block_jobs()

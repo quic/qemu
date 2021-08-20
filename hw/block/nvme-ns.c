@@ -32,36 +32,110 @@
 
 #define MIN_DISCARD_GRANULARITY (4 * KiB)
 
-static int nvme_ns_init(NvmeNamespace *ns, Error **errp)
+void nvme_ns_init_format(NvmeNamespace *ns)
 {
-    BlockDriverInfo bdi;
     NvmeIdNs *id_ns = &ns->id_ns;
-    int lba_index = NVME_ID_NS_FLBAS_INDEX(ns->id_ns.flbas);
-    int npdg;
+    BlockDriverInfo bdi;
+    int npdg, nlbas, ret;
 
-    ns->id_ns.dlfeat = 0x9;
+    nlbas = nvme_ns_nlbas(ns);
 
-    id_ns->lbaf[lba_index].ds = 31 - clz32(ns->blkconf.logical_block_size);
-
-    id_ns->nsze = cpu_to_le64(nvme_ns_nlbas(ns));
-
-    ns->csi = NVME_CSI_NVM;
+    id_ns->nsze = cpu_to_le64(nlbas);
 
     /* no thin provisioning */
     id_ns->ncap = id_ns->nsze;
     id_ns->nuse = id_ns->ncap;
 
-    /* support DULBE and I/O optimization fields */
-    id_ns->nsfeat |= (0x4 | 0x10);
+    ns->mdata_offset = nvme_l2b(ns, nlbas);
 
-    npdg = ns->blkconf.discard_granularity / ns->blkconf.logical_block_size;
+    npdg = ns->blkconf.discard_granularity / nvme_lsize(ns);
 
-    if (bdrv_get_info(blk_bs(ns->blkconf.blk), &bdi) >= 0 &&
-        bdi.cluster_size > ns->blkconf.discard_granularity) {
-        npdg = bdi.cluster_size / ns->blkconf.logical_block_size;
+    ret = bdrv_get_info(blk_bs(ns->blkconf.blk), &bdi);
+    if (ret >= 0 && bdi.cluster_size > ns->blkconf.discard_granularity) {
+        npdg = bdi.cluster_size / nvme_lsize(ns);
     }
 
     id_ns->npda = id_ns->npdg = npdg - 1;
+}
+
+static int nvme_ns_init(NvmeNamespace *ns, Error **errp)
+{
+    NvmeIdNs *id_ns = &ns->id_ns;
+    uint8_t ds;
+    uint16_t ms;
+    int i;
+
+    ns->csi = NVME_CSI_NVM;
+    ns->status = 0x0;
+
+    ns->id_ns.dlfeat = 0x1;
+
+    /* support DULBE and I/O optimization fields */
+    id_ns->nsfeat |= (0x4 | 0x10);
+
+    if (ns->params.shared) {
+        id_ns->nmic |= NVME_NMIC_NS_SHARED;
+    }
+
+    /* simple copy */
+    id_ns->mssrl = cpu_to_le16(ns->params.mssrl);
+    id_ns->mcl = cpu_to_le32(ns->params.mcl);
+    id_ns->msrc = ns->params.msrc;
+
+    ds = 31 - clz32(ns->blkconf.logical_block_size);
+    ms = ns->params.ms;
+
+    if (ns->params.ms) {
+        id_ns->mc = 0x3;
+
+        if (ns->params.mset) {
+            id_ns->flbas |= 0x10;
+        }
+
+        id_ns->dpc = 0x1f;
+        id_ns->dps = ((ns->params.pil & 0x1) << 3) | ns->params.pi;
+
+        NvmeLBAF lbaf[16] = {
+            [0] = { .ds =  9           },
+            [1] = { .ds =  9, .ms =  8 },
+            [2] = { .ds =  9, .ms = 16 },
+            [3] = { .ds =  9, .ms = 64 },
+            [4] = { .ds = 12           },
+            [5] = { .ds = 12, .ms =  8 },
+            [6] = { .ds = 12, .ms = 16 },
+            [7] = { .ds = 12, .ms = 64 },
+        };
+
+        memcpy(&id_ns->lbaf, &lbaf, sizeof(lbaf));
+        id_ns->nlbaf = 7;
+    } else {
+        NvmeLBAF lbaf[16] = {
+            [0] = { .ds =  9 },
+            [1] = { .ds = 12 },
+        };
+
+        memcpy(&id_ns->lbaf, &lbaf, sizeof(lbaf));
+        id_ns->nlbaf = 1;
+    }
+
+    for (i = 0; i <= id_ns->nlbaf; i++) {
+        NvmeLBAF *lbaf = &id_ns->lbaf[i];
+        if (lbaf->ds == ds) {
+            if (lbaf->ms == ms) {
+                id_ns->flbas |= i;
+                goto lbaf_found;
+            }
+        }
+    }
+
+    /* add non-standard lba format */
+    id_ns->nlbaf++;
+    id_ns->lbaf[id_ns->nlbaf].ds = ds;
+    id_ns->lbaf[id_ns->nlbaf].ms = ms;
+    id_ns->flbas |= id_ns->nlbaf;
+
+lbaf_found:
+    nvme_ns_init_format(ns);
 
     return 0;
 }
@@ -96,7 +170,7 @@ static int nvme_ns_init_blk(NvmeNamespace *ns, Error **errp)
 static int nvme_ns_zoned_check_calc_geometry(NvmeNamespace *ns, Error **errp)
 {
     uint64_t zone_size, zone_cap;
-    uint32_t lbasz = ns->blkconf.logical_block_size;
+    uint32_t lbasz = nvme_lsize(ns);
 
     /* Make sure that the values of ZNS properties are sane */
     if (ns->params.zone_size_bs) {
@@ -131,7 +205,7 @@ static int nvme_ns_zoned_check_calc_geometry(NvmeNamespace *ns, Error **errp)
      */
     ns->zone_size = zone_size / lbasz;
     ns->zone_capacity = zone_cap / lbasz;
-    ns->num_zones = ns->size / lbasz / ns->zone_size;
+    ns->num_zones = nvme_ns_nlbas(ns) / ns->zone_size;
 
     /* Do a few more sanity checks of ZNS properties */
     if (!ns->num_zones) {
@@ -152,6 +226,18 @@ static int nvme_ns_zoned_check_calc_geometry(NvmeNamespace *ns, Error **errp)
                    "max_active_zones value %u exceeds the number of zones %u",
                    ns->params.max_active_zones, ns->num_zones);
         return -1;
+    }
+
+    if (ns->params.max_active_zones) {
+        if (ns->params.max_open_zones > ns->params.max_active_zones) {
+            error_setg(errp, "max_open_zones (%u) exceeds max_active_zones (%u)",
+                       ns->params.max_open_zones, ns->params.max_active_zones);
+            return -1;
+        }
+
+        if (!ns->params.max_open_zones) {
+            ns->params.max_open_zones = ns->params.max_active_zones;
+        }
     }
 
     if (ns->params.zd_extension_size) {
@@ -208,9 +294,10 @@ static void nvme_ns_zoned_init_state(NvmeNamespace *ns)
     }
 }
 
-static void nvme_ns_init_zoned(NvmeNamespace *ns, int lba_index)
+static void nvme_ns_init_zoned(NvmeNamespace *ns)
 {
     NvmeIdNsZoned *id_ns_z;
+    int i;
 
     nvme_ns_zoned_init_state(ns);
 
@@ -222,9 +309,11 @@ static void nvme_ns_init_zoned(NvmeNamespace *ns, int lba_index)
     id_ns_z->zoc = 0;
     id_ns_z->ozcs = ns->params.cross_zone_read ? 0x01 : 0x00;
 
-    id_ns_z->lbafe[lba_index].zsze = cpu_to_le64(ns->zone_size);
-    id_ns_z->lbafe[lba_index].zdes =
-        ns->params.zd_extension_size >> 6; /* Units of 64B */
+    for (i = 0; i <= ns->id_ns.nlbaf; i++) {
+        id_ns_z->lbafe[i].zsze = cpu_to_le64(ns->zone_size);
+        id_ns_z->lbafe[i].zdes =
+            ns->params.zd_extension_size >> 6; /* Units of 64B */
+    }
 
     ns->csi = NVME_CSI_ZONED;
     ns->id_ns.nsze = cpu_to_le64(ns->num_zones * ns->zone_size);
@@ -298,19 +387,46 @@ static void nvme_zoned_ns_shutdown(NvmeNamespace *ns)
     assert(ns->nr_open_zones == 0);
 }
 
-static int nvme_ns_check_constraints(NvmeNamespace *ns, Error **errp)
+static int nvme_ns_check_constraints(NvmeCtrl *n, NvmeNamespace *ns,
+                                     Error **errp)
 {
     if (!ns->blkconf.blk) {
         error_setg(errp, "block backend not configured");
         return -1;
     }
 
+    if (ns->params.pi && ns->params.ms < 8) {
+        error_setg(errp, "at least 8 bytes of metadata required to enable "
+                   "protection information");
+        return -1;
+    }
+
+    if (ns->params.nsid > NVME_MAX_NAMESPACES) {
+        error_setg(errp, "invalid namespace id (must be between 0 and %d)",
+                   NVME_MAX_NAMESPACES);
+        return -1;
+    }
+
+    if (!n->subsys) {
+        if (ns->params.detached) {
+            error_setg(errp, "detached requires that the nvme device is "
+                       "linked to an nvme-subsys device");
+            return -1;
+        }
+
+        if (ns->params.shared) {
+            error_setg(errp, "shared requires that the nvme device is "
+                       "linked to an nvme-subsys device");
+            return -1;
+        }
+    }
+
     return 0;
 }
 
-int nvme_ns_setup(NvmeNamespace *ns, Error **errp)
+int nvme_ns_setup(NvmeCtrl *n, NvmeNamespace *ns, Error **errp)
 {
-    if (nvme_ns_check_constraints(ns, errp)) {
+    if (nvme_ns_check_constraints(n, ns, errp)) {
         return -1;
     }
 
@@ -325,7 +441,7 @@ int nvme_ns_setup(NvmeNamespace *ns, Error **errp)
         if (nvme_ns_zoned_check_calc_geometry(ns, errp) != 0) {
             return -1;
         }
-        nvme_ns_init_zoned(ns, 0);
+        nvme_ns_init_zoned(ns);
     }
 
     return 0;
@@ -358,21 +474,71 @@ static void nvme_ns_realize(DeviceState *dev, Error **errp)
     NvmeNamespace *ns = NVME_NS(dev);
     BusState *s = qdev_get_parent_bus(dev);
     NvmeCtrl *n = NVME(s->parent);
+    NvmeSubsystem *subsys = n->subsys;
+    uint32_t nsid = ns->params.nsid;
+    int i;
 
-    if (nvme_ns_setup(ns, errp)) {
+    if (nvme_ns_setup(n, ns, errp)) {
         return;
     }
 
-    if (nvme_register_namespace(n, ns, errp)) {
-        return;
+    if (!nsid) {
+        for (i = 1; i <= NVME_MAX_NAMESPACES; i++) {
+            if (nvme_ns(n, i) || nvme_subsys_ns(subsys, i)) {
+                continue;
+            }
+
+            nsid = ns->params.nsid = i;
+            break;
+        }
+
+        if (!nsid) {
+            error_setg(errp, "no free namespace id");
+            return;
+        }
+    } else {
+        if (nvme_ns(n, nsid) || nvme_subsys_ns(subsys, nsid)) {
+            error_setg(errp, "namespace id '%d' already allocated", nsid);
+            return;
+        }
     }
 
+    if (subsys) {
+        subsys->namespaces[nsid] = ns;
+
+        if (ns->params.detached) {
+            return;
+        }
+
+        if (ns->params.shared) {
+            for (i = 0; i < ARRAY_SIZE(subsys->ctrls); i++) {
+                NvmeCtrl *ctrl = subsys->ctrls[i];
+
+                if (ctrl) {
+                    nvme_attach_ns(ctrl, ns);
+                }
+            }
+
+            return;
+        }
+    }
+
+    nvme_attach_ns(n, ns);
 }
 
 static Property nvme_ns_props[] = {
     DEFINE_BLOCK_PROPERTIES(NvmeNamespace, blkconf),
+    DEFINE_PROP_BOOL("detached", NvmeNamespace, params.detached, false),
+    DEFINE_PROP_BOOL("shared", NvmeNamespace, params.shared, false),
     DEFINE_PROP_UINT32("nsid", NvmeNamespace, params.nsid, 0),
     DEFINE_PROP_UUID("uuid", NvmeNamespace, params.uuid),
+    DEFINE_PROP_UINT16("ms", NvmeNamespace, params.ms, 0),
+    DEFINE_PROP_UINT8("mset", NvmeNamespace, params.mset, 0),
+    DEFINE_PROP_UINT8("pi", NvmeNamespace, params.pi, 0),
+    DEFINE_PROP_UINT8("pil", NvmeNamespace, params.pil, 0),
+    DEFINE_PROP_UINT16("mssrl", NvmeNamespace, params.mssrl, 128),
+    DEFINE_PROP_UINT32("mcl", NvmeNamespace, params.mcl, 128),
+    DEFINE_PROP_UINT8("msrc", NvmeNamespace, params.msrc, 127),
     DEFINE_PROP_BOOL("zoned", NvmeNamespace, params.zoned, false),
     DEFINE_PROP_SIZE("zoned.zone_size", NvmeNamespace, params.zone_size_bs,
                      NVME_DEFAULT_ZONE_SIZE),

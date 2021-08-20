@@ -323,7 +323,7 @@ static int migrate_send_rp_message(MigrationIncomingState *mis,
     int ret = 0;
 
     trace_migrate_send_rp_message((int)message_type, len);
-    qemu_mutex_lock(&mis->rp_mutex);
+    QEMU_LOCK_GUARD(&mis->rp_mutex);
 
     /*
      * It's possible that the file handle got lost due to network
@@ -331,7 +331,7 @@ static int migrate_send_rp_message(MigrationIncomingState *mis,
      */
     if (!mis->to_src_file) {
         ret = -EIO;
-        goto error;
+        return ret;
     }
 
     qemu_put_be16(mis->to_src_file, (unsigned int)message_type);
@@ -342,8 +342,6 @@ static int migrate_send_rp_message(MigrationIncomingState *mis,
     /* It's possible that qemu file got error during sending */
     ret = qemu_file_get_error(mis->to_src_file);
 
-error:
-    qemu_mutex_unlock(&mis->rp_mutex);
     return ret;
 }
 
@@ -1978,6 +1976,14 @@ bool migration_in_incoming_postcopy(void)
     return ps >= POSTCOPY_INCOMING_DISCARD && ps < POSTCOPY_INCOMING_END;
 }
 
+bool migration_in_bg_snapshot(void)
+{
+    MigrationState *s = migrate_get_current();
+
+    return migrate_background_snapshot() &&
+            migration_is_setup_or_active(s->state);
+}
+
 bool migration_is_idle(void)
 {
     MigrationState *s = current_migration;
@@ -2316,51 +2322,6 @@ void qmp_migrate_continue(MigrationStatus state, Error **errp)
         return;
     }
     qemu_sem_post(&s->pause_sem);
-}
-
-void qmp_migrate_set_cache_size(int64_t value, Error **errp)
-{
-    MigrateSetParameters p = {
-        .has_xbzrle_cache_size = true,
-        .xbzrle_cache_size = value,
-    };
-
-    qmp_migrate_set_parameters(&p, errp);
-}
-
-uint64_t qmp_query_migrate_cache_size(Error **errp)
-{
-    return migrate_xbzrle_cache_size();
-}
-
-void qmp_migrate_set_speed(int64_t value, Error **errp)
-{
-    MigrateSetParameters p = {
-        .has_max_bandwidth = true,
-        .max_bandwidth = value,
-    };
-
-    qmp_migrate_set_parameters(&p, errp);
-}
-
-void qmp_migrate_set_downtime(double value, Error **errp)
-{
-    if (value < 0 || value > MAX_MIGRATE_DOWNTIME_SECONDS) {
-        error_setg(errp, QERR_INVALID_PARAMETER_VALUE,
-                   "downtime_limit",
-                   "an integer in the range of 0 to "
-                    stringify(MAX_MIGRATE_DOWNTIME_SECONDS)" seconds");
-        return;
-    }
-
-    value *= 1000; /* Convert to milliseconds */
-
-    MigrateSetParameters p = {
-        .has_downtime_limit = true,
-        .downtime_limit = (int64_t)value,
-    };
-
-    qmp_migrate_set_parameters(&p, errp);
 }
 
 bool migrate_release_ram(void)
@@ -3859,12 +3820,20 @@ static void *bg_migration_thread(void *opaque)
      * with vCPUs running and, finally, write stashed non-RAM part of
      * the vmstate from the buffer to the migration stream.
      */
-    s->bioc = qio_channel_buffer_new(128 * 1024);
+    s->bioc = qio_channel_buffer_new(512 * 1024);
     qio_channel_set_name(QIO_CHANNEL(s->bioc), "vmstate-buffer");
     fb = qemu_fopen_channel_output(QIO_CHANNEL(s->bioc));
     object_unref(OBJECT(s->bioc));
 
     update_iteration_initial_status(s);
+
+    /*
+     * Prepare for tracking memory writes with UFFD-WP - populate
+     * RAM pages before protecting.
+     */
+#ifdef __linux__
+    ram_write_tracking_prepare();
+#endif
 
     qemu_savevm_state_header(s->to_dst_file);
     qemu_savevm_state_setup(s->to_dst_file);
@@ -3913,6 +3882,12 @@ static void *bg_migration_thread(void *opaque)
     if (qemu_savevm_state_complete_precopy_non_iterable(fb, false, false)) {
         goto fail;
     }
+    /*
+     * Since we are going to get non-iterable state data directly
+     * from s->bioc->data, explicit flush is needed here.
+     */
+    qemu_fflush(fb);
+
     /* Now initialize UFFD context and start tracking RAM writes */
     if (ram_write_tracking_start()) {
         goto fail;

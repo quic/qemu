@@ -28,7 +28,7 @@ from .parser import QAPISchemaParser
 class QAPISchemaEntity:
     meta: Optional[str] = None
 
-    def __init__(self, name, info, doc, ifcond=None, features=None):
+    def __init__(self, name: str, info, doc, ifcond=None, features=None):
         assert name is None or isinstance(name, str)
         for f in features or []:
             assert isinstance(f, QAPISchemaFeature)
@@ -779,7 +779,7 @@ class QAPISchemaCommand(QAPISchemaEntity):
         if self._ret_type_name:
             self.ret_type = schema.resolve_type(
                 self._ret_type_name, self.info, "command's 'returns'")
-            if self.name not in self.info.pragma.returns_whitelist:
+            if self.name not in self.info.pragma.command_returns_exceptions:
                 typ = self.ret_type
                 if isinstance(typ, QAPISchemaArrayType):
                     typ = self.ret_type.element_type

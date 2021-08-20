@@ -22,6 +22,7 @@
  */
 
 #include <stdio.h>
+
 #define STRINGIZE(X) #X
 
 int main(int argc, char *argv[])
@@ -59,6 +60,7 @@ int main(int argc, char *argv[])
                          ")\n", \
                 #TAG, STRINGIZE(ATTRIBS)); \
     } while (0);
+
 #define EXTINSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
     do { \
         fprintf(outfile, "EXT_SEMANTICS(\"%s\",\"%s\",%s,\"\"\"%s\"\"\")\n", \

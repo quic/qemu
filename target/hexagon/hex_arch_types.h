@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,32 +18,23 @@
 #ifndef HEXAGON_ARCH_TYPES_H
 #define HEXAGON_ARCH_TYPES_H
 
-#include <stdint.h>
+#include "qemu/osdep.h"
+#include "qemu/int128.h"
 
 /*
- * These types are used by the code generated from the Hexagon
+ * These types are used by the code imported from the Hexagon
  * architecture library.
  */
-typedef unsigned char size1u_t;
-typedef char size1s_t;
-typedef unsigned short int size2u_t;
-typedef short size2s_t;
-typedef unsigned int size4u_t;
-typedef int size4s_t;
-typedef unsigned long long int size8u_t;
-typedef long long int size8s_t;
-typedef size8u_t paddr_t;
-typedef size4u_t vaddr_t;
-typedef size8u_t pcycles_t;
-
-typedef struct size16s {
-    union {
-        struct {
-            size8u_t lo;
-            size8s_t hi;
-        };
-        size4u_t w[4];
-    };
-} size16s_t;
+typedef uint8_t     size1u_t;
+typedef int8_t      size1s_t;
+typedef uint16_t    size2u_t;
+typedef int16_t     size2s_t;
+typedef uint32_t    size4u_t;
+typedef int32_t     size4s_t;
+typedef uint64_t    size8u_t;
+typedef int64_t     size8s_t;
+typedef Int128      size16s_t;
+typedef uint64_t    paddr_t;
+typedef uint32_t    vaddr_t;
 
 #endif

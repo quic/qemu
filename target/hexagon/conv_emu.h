@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,33 +18,14 @@
 #ifndef HEXAGON_CONV_EMU_H
 #define HEXAGON_CONV_EMU_H
 
-#include "hex_arch_types.h"
+uint64_t conv_sf_to_8u(float32 in, float_status *fp_status);
+uint32_t conv_sf_to_4u(float32 in, float_status *fp_status);
+int64_t conv_sf_to_8s(float32 in, float_status *fp_status);
+int32_t conv_sf_to_4s(float32 in, float_status *fp_status);
 
-extern size8u_t conv_sf_to_8u(float in);
-extern size4u_t conv_sf_to_4u(float in);
-extern size8s_t conv_sf_to_8s(float in);
-extern size4s_t conv_sf_to_4s(float in);
-
-extern size8u_t conv_df_to_8u(double in);
-extern size4u_t conv_df_to_4u(double in);
-extern size8s_t conv_df_to_8s(double in);
-extern size4s_t conv_df_to_4s(double in);
-
-extern double conv_8u_to_df(size8u_t in);
-extern double conv_4u_to_df(size4u_t in);
-extern double conv_8s_to_df(size8s_t in);
-extern double conv_4s_to_df(size4s_t in);
-
-extern float conv_8u_to_sf(size8u_t in);
-extern float conv_4u_to_sf(size4u_t in);
-extern float conv_8s_to_sf(size8s_t in);
-extern float conv_4s_to_sf(size4s_t in);
-
-extern float conv_df_to_sf(double in);
-
-static inline double conv_sf_to_df(float in)
-{
-    return in;
-}
+uint64_t conv_df_to_8u(float64 in, float_status *fp_status);
+uint32_t conv_df_to_4u(float64 in, float_status *fp_status);
+int64_t conv_df_to_8s(float64 in, float_status *fp_status);
+int32_t conv_df_to_4s(float64 in, float_status *fp_status);
 
 #endif

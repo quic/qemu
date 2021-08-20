@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,23 +18,19 @@
 #ifndef HEXAGON_REG_FIELDS_H
 #define HEXAGON_REG_FIELDS_H
 
-#define NUM_GEN_REGS 32
-
 typedef struct {
-    const char *name;
     int offset;
     int width;
-    const char *description;
-} reg_field_t;
+} RegField;
 
-extern reg_field_t reg_field_info[];
-
-enum reg_fields_enum {
-#define DEF_REG_FIELD(TAG, NAME, START, WIDTH, DESCRIPTION) \
+enum {
+#define DEF_REG_FIELD(TAG, START, WIDTH) \
     TAG,
-#include "reg_fields_def.h"
+#include "reg_fields_def.h.inc"
     NUM_REG_FIELDS
 #undef DEF_REG_FIELD
 };
+
+extern const RegField reg_field_info[NUM_REG_FIELDS];
 
 #endif

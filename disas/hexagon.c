@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,15 +32,14 @@
 int print_insn_hexagon(bfd_vma memaddr, struct disassemble_info *info)
 {
     uint32_t words[PACKET_WORDS_MAX];
-    int len, slen;
-    char buf[PACKET_BUFFER_LEN];
-    int status;
-    int i;
+    bool found_end = false;
+    GString *buf = g_string_sized_new(PACKET_BUFFER_LEN);
+    int i, len;
 
-    for (i = 0; i < PACKET_WORDS_MAX; i++) {
-        status = (*info->read_memory_func)(memaddr + i * sizeof(uint32_t),
-                                           (bfd_byte *)&words[i],
-                                           sizeof(uint32_t), info);
+    for (i = 0; i < PACKET_WORDS_MAX && !found_end; i++) {
+        int status = (*info->read_memory_func)(memaddr + i * sizeof(uint32_t),
+                                               (bfd_byte *)&words[i],
+                                               sizeof(uint32_t), info);
         if (status) {
             if (i > 0) {
                 break;
@@ -48,14 +47,19 @@ int print_insn_hexagon(bfd_vma memaddr, struct disassemble_info *info)
             (*info->memory_error_func)(status, memaddr, info);
             return status;
         }
+        if (is_packet_end(words[i])) {
+            found_end = true;
+        }
     }
 
-    len = disassemble_hexagon(words, i, buf, PACKET_BUFFER_LEN);
-    slen = strlen(buf);
-    if (buf[slen - 1] == '\n') {
-        buf[slen - 1] = '\0';
+    if (!found_end) {
+        (*info->fprintf_func)(info->stream, "<invalid>");
+        return PACKET_WORDS_MAX * sizeof(uint32_t);
     }
-    (*info->fprintf_func)(info->stream, "%s", buf);
+
+    len = disassemble_hexagon(words, i, memaddr, buf);
+    (*info->fprintf_func)(info->stream, "%s", buf->str);
+    g_string_free(buf, true);
 
     return len;
 }

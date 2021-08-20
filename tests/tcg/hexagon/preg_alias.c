@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -72,10 +72,12 @@ static inline void creg_alias(int cval, PRegs *pregs)
 
 int err;
 
-#define check(val, expect) \
-  if (val != expect) { \
-    printf("ERROR: 0x%08x != 0x%08x\n", val, expect); \
-    err++; \
+static void check(int val, int expect)
+{
+    if (val != expect) {
+        printf("ERROR: 0x%08x != 0x%08x\n", val, expect);
+        err++;
+    }
 }
 
 static inline void creg_alias_pair(unsigned int cval, PRegs *pregs)
@@ -165,4 +167,3 @@ int main()
     puts(err ? "FAIL" : "PASS");
     return err;
 }
-

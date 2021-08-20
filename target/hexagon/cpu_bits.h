@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -99,7 +99,31 @@ enum data_cache_state {
 
 #define PACKET_WORDS_MAX                    4
 
-extern int disassemble_hexagon(uint32_t *words, int nwords,
-                               char *buf, int bufsize);
+#include "qemu/bitops.h"
+
+static inline uint32_t parse_bits(uint32_t encoding)
+{
+    /* The parse bits are [15:14] */
+    return extract32(encoding, 14, 2);
+}
+
+static inline uint32_t iclass_bits(uint32_t encoding)
+{
+    /* The instruction class is encoded in bits [31:28] */
+    uint32_t iclass = extract32(encoding, 28, 4);
+    /* If parse bits are zero, this is a duplex */
+    if (parse_bits(encoding) == 0) {
+        iclass += 16;
+    }
+    return iclass;
+}
+
+static inline int is_packet_end(uint32_t endocing)
+{
+    uint32_t bits = parse_bits(endocing);
+    return ((bits == 0x3) || (bits == 0x0));
+}
+
+int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc, GString *buf);
 
 #endif

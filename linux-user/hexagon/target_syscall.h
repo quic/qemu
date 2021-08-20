@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,9 +26,11 @@ struct target_pt_regs {
 #define UNAME_MACHINE "hexagon"
 #define UNAME_MINIMUM_RELEASE "4.15.0"
 
-#define TARGET_MCL_CURRENT 1
-#define TARGET_MCL_FUTURE  2
-#define TARGET_MCL_ONFAULT 4
+#define TARGET_MLOCKALL_MCL_CURRENT 1
+#define TARGET_MLOCKALL_MCL_FUTURE  2
 
+#define TARGET_MCL_CURRENT  1
+#define TARGET_MCL_FUTURE   2
+#define TARGET_MCL_ONFAULT  4
 
 #endif

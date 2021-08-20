@@ -193,10 +193,8 @@ vhost_user_gpu_handle_display(VhostUserGPU *g, VhostUserGpuMsg *msg)
         s = &g->parent_obj.scanout[m->scanout_id];
         con = s->con;
 
-        if (m->scanout_id == 0 && m->width == 0) {
-            s->ds = qemu_create_message_surface(640, 480,
-                                                "Guest disabled display.");
-            dpy_gfx_replace_surface(con, s->ds);
+        if (m->width == 0) {
+            dpy_gfx_replace_surface(con, NULL);
         } else {
             s->ds = qemu_create_displaysurface(m->width, m->height);
             /* replace surface on next update */
@@ -327,7 +325,6 @@ vhost_user_gpu_chr_read(void *opaque)
     }
 
     msg = g_malloc(VHOST_USER_GPU_HDR_SIZE + size);
-    g_return_if_fail(msg != NULL);
 
     r = qemu_chr_fe_read_all(&g->vhost_chr,
                              (uint8_t *)&msg->payload, size);

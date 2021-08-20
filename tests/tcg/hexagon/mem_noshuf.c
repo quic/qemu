@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -114,28 +114,32 @@ unsigned long long cancel_sw_ld(int pred, int *p, long long *q, int x)
 }
 
 typedef union {
-    signed long long d;
-    unsigned long long ud;
-    signed int w[2];
-    unsigned int uw[2];
-    signed short h[4];
-    unsigned short uh[4];
-    signed char b[8];
-    unsigned char ub[8];
+    signed long long d[2];
+    unsigned long long ud[2];
+    signed int w[4];
+    unsigned int uw[4];
+    signed short h[8];
+    unsigned short uh[8];
+    signed char b[16];
+    unsigned char ub[16];
 } Memory;
 
 int err;
 
-#define check32(N, EXPECT) \
-  if (N != EXPECT) { \
-    printf("ERROR: 0x%08x != 0x%08x\n", N, EXPECT); \
-    err++; \
+static void check32(int n, int expect)
+{
+    if (n != expect) {
+        printf("ERROR: 0x%08x != 0x%08x\n", n, expect);
+        err++;
+    }
 }
 
-#define check64(N, EXPECT) \
-  if (N != EXPECT) { \
-    printf("ERROR: 0x%08llx != 0x%08llx\n", N, EXPECT); \
-    err++; \
+static void check64(long long n, long long expect)
+{
+    if (n != expect) {
+        printf("ERROR: 0x%08llx != 0x%08llx\n", n, expect);
+        err++;
+    }
 }
 
 int main()
@@ -167,9 +171,9 @@ int main()
     res32 = mem_noshuf_sb_lw(&n.b[0], &n.w[0], 0x87);
     check32(res32, 0xffffff87);
 
-    n.d = ~0;
-    res64 = mem_noshuf_sb_ld(&n.b[0], &n.d, 0x87);
-    check64(res64, 0xffffffffffffff87);
+    n.d[0] = ~0LL;
+    res64 = mem_noshuf_sb_ld(&n.b[0], &n.d[0], 0x87);
+    check64(res64, 0xffffffffffffff87LL);
 
     /*
      * Store half combinations
@@ -195,8 +199,8 @@ int main()
     check32(res32, 0x8a87ffff);
 
     n.w[0] = ~0;
-    res64 = mem_noshuf_sh_ld(&n.h[1], &n.d, 0x8a87);
-    check64(res64, 0xffffffff8a87ffff);
+    res64 = mem_noshuf_sh_ld(&n.h[1], &n.d[0], 0x8a87);
+    check64(res64, 0xffffffff8a87ffffLL);
 
     /*
      * Store word combinations
@@ -221,36 +225,36 @@ int main()
     res32 = mem_noshuf_sw_lw(&n.w[0], &n.w[0], 0x12345678);
     check32(res32, 0x12345678);
 
-    n.d = ~0;
-    res64 = mem_noshuf_sw_ld(&n.w[0], &n.d, 0x12345678);
-    check64(res64, 0xffffffff12345678);
+    n.d[0] = ~0LL;
+    res64 = mem_noshuf_sw_ld(&n.w[0], &n.d[0], 0x12345678);
+    check64(res64, 0xffffffff12345678LL);
 
     /*
      * Store double combinations
      */
-    n.d = ~0;
-    res32 = mem_noshuf_sd_lb(&n.d, &n.b[1], 0x123456789abcdef0);
+    n.d[0] = ~0LL;
+    res32 = mem_noshuf_sd_lb(&n.d[0], &n.b[1], 0x123456789abcdef0);
     check32(res32, 0xffffffde);
 
-    n.d = ~0;
-    res32 = mem_noshuf_sd_lub(&n.d, &n.ub[1], 0x123456789abcdef0);
+    n.d[0] = ~0LL;
+    res32 = mem_noshuf_sd_lub(&n.d[0], &n.ub[1], 0x123456789abcdef0);
     check32(res32, 0x000000de);
 
-    n.d = ~0;
-    res32 = mem_noshuf_sd_lh(&n.d, &n.h[1], 0x123456789abcdef0);
+    n.d[0] = ~0LL;
+    res32 = mem_noshuf_sd_lh(&n.d[0], &n.h[1], 0x123456789abcdef0);
     check32(res32, 0xffff9abc);
 
-    n.d = ~0;
-    res32 = mem_noshuf_sd_luh(&n.d, &n.uh[1], 0x123456789abcdef0);
+    n.d[0] = ~0LL;
+    res32 = mem_noshuf_sd_luh(&n.d[0], &n.uh[1], 0x123456789abcdef0);
     check32(res32, 0x00009abc);
 
-    n.d = ~0;
-    res32 = mem_noshuf_sd_lw(&n.d, &n.w[1], 0x123456789abcdef0);
+    n.d[0] = ~0LL;
+    res32 = mem_noshuf_sd_lw(&n.d[0], &n.w[1], 0x123456789abcdef0);
     check32(res32, 0x12345678);
 
-    n.d = ~0;
-    res64 = mem_noshuf_sd_ld(&n.d, &n.d, 0x123456789abcdef0);
-    check64(res64, 0x123456789abcdef0);
+    n.d[0] = ~0LL;
+    res64 = mem_noshuf_sd_ld(&n.d[0], &n.d[0], 0x123456789abcdef0);
+    check64(res64, 0x123456789abcdef0LL);
 
     /*
      * Predicated word stores
@@ -266,21 +270,58 @@ int main()
     /*
      * Predicated double stores
      */
-    n.d = ~0;
-    res64 = cancel_sw_ld(0, &n.w[0], &n.d, 0x12345678);
-    check64(res64, 0xffffffffffffffff);
+    n.d[0] = ~0LL;
+    res64 = cancel_sw_ld(0, &n.w[0], &n.d[0], 0x12345678);
+    check64(res64, 0xffffffffffffffffLL);
 
-    n.d = ~0;
-    res64 = cancel_sw_ld(1, &n.w[0], &n.d, 0x12345678);
-    check64(res64, 0xffffffff12345678);
+    n.d[0] = ~0LL;
+    res64 = cancel_sw_ld(1, &n.w[0], &n.d[0], 0x12345678);
+    check64(res64, 0xffffffff12345678LL);
 
-    n.d = ~0;
-    res64 = cancel_sw_ld(0, &n.w[1], &n.d, 0x12345678);
-    check64(res64, 0xffffffffffffffff);
+    n.d[0] = ~0LL;
+    res64 = cancel_sw_ld(0, &n.w[1], &n.d[0], 0x12345678);
+    check64(res64, 0xffffffffffffffffLL);
 
-    n.d = ~0;
-    res64 = cancel_sw_ld(1, &n.w[1], &n.d, 0x12345678);
-    check64(res64, 0x12345678ffffffff);
+    n.d[0] = ~0LL;
+    res64 = cancel_sw_ld(1, &n.w[1], &n.d[0], 0x12345678);
+    check64(res64, 0x12345678ffffffffLL);
+
+    /*
+     * No overlap tests
+     */
+    n.w[0] = ~0;
+    res32 = mem_noshuf_sb_lb(&n.b[1], &n.b[0], 0x87);
+    check32(res32, 0xffffffff);
+
+    n.w[0] = ~0;
+    res32 = mem_noshuf_sb_lb(&n.b[0], &n.b[1], 0x87);
+    check32(res32, 0xffffffff);
+
+    n.w[0] = ~0;
+    res32 = mem_noshuf_sh_lh(&n.h[1], &n.h[0], 0x8787);
+    check32(res32, 0xffffffff);
+
+    n.w[0] = ~0;
+    res32 = mem_noshuf_sh_lh(&n.h[0], &n.h[1], 0x8787);
+    check32(res32, 0xffffffff);
+
+    n.d[0] = ~0LL;
+    res32 = mem_noshuf_sw_lw(&n.w[0], &n.w[1], 0x12345678);
+    check32(res32, 0xffffffff);
+
+    n.d[0] = ~0LL;
+    res32 = mem_noshuf_sw_lw(&n.w[1], &n.w[0], 0x12345678);
+    check32(res32, 0xffffffff);
+
+    n.d[0] = ~0LL;
+    n.d[1] = ~0LL;
+    res64 = mem_noshuf_sd_ld(&n.d[1], &n.d[0], 0x123456789abcdef0LL);
+    check64(res64, 0xffffffffffffffffLL);
+
+    n.d[0] = ~0LL;
+    n.d[1] = ~0LL;
+    res64 = mem_noshuf_sd_ld(&n.d[0], &n.d[1], 0x123456789abcdef0LL);
+    check64(res64, 0xffffffffffffffffLL);
 
     puts(err ? "FAIL" : "PASS");
     return err;

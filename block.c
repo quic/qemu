@@ -670,14 +670,48 @@ out:
 
 int bdrv_create_file(const char *filename, QemuOpts *opts, Error **errp)
 {
+    QemuOpts *protocol_opts;
     BlockDriver *drv;
+    QDict *qdict;
+    int ret;
 
     drv = bdrv_find_protocol(filename, true, errp);
     if (drv == NULL) {
         return -ENOENT;
     }
 
-    return bdrv_create(drv, filename, opts, errp);
+    if (!drv->create_opts) {
+        error_setg(errp, "Driver '%s' does not support image creation",
+                   drv->format_name);
+        return -ENOTSUP;
+    }
+
+    /*
+     * 'opts' contains a QemuOptsList with a combination of format and protocol
+     * default values.
+     *
+     * The format properly removes its options, but the default values remain
+     * in 'opts->list'.  So if the protocol has options with the same name
+     * (e.g. rbd has 'cluster_size' as qcow2), it will see the default values
+     * of the format, since for overlapping options, the format wins.
+     *
+     * To avoid this issue, lets convert QemuOpts to QDict, in this way we take
+     * only the set options, and then convert it back to QemuOpts, using the
+     * create_opts of the protocol. So the new QemuOpts, will contain only the
+     * protocol defaults.
+     */
+    qdict = qemu_opts_to_qdict(opts, NULL);
+    protocol_opts = qemu_opts_from_qdict(drv->create_opts, qdict, errp);
+    if (protocol_opts == NULL) {
+        ret = -EINVAL;
+        goto out;
+    }
+
+    ret = bdrv_create(drv, filename, protocol_opts, errp);
+out:
+    qemu_opts_del(protocol_opts);
+    qobject_unref(qdict);
+    return ret;
 }
 
 int coroutine_fn bdrv_co_delete_file(BlockDriverState *bs, Error **errp)
@@ -1440,7 +1474,7 @@ static void bdrv_assign_node_name(BlockDriverState *bs,
          * Check for empty string or invalid characters, but not if it is
          * generated (generated names use characters not available to the user)
          */
-        error_setg(errp, "Invalid node name");
+        error_setg(errp, "Invalid node-name: '%s'", node_name);
         return;
     }
 
@@ -1453,7 +1487,7 @@ static void bdrv_assign_node_name(BlockDriverState *bs,
 
     /* takes care of avoiding duplicates node names */
     if (bdrv_find_node(node_name)) {
-        error_setg(errp, "Duplicate node name");
+        error_setg(errp, "Duplicate nodes with node-name='%s'", node_name);
         goto out;
     }
 
@@ -2995,11 +3029,9 @@ int bdrv_open_backing_file(BlockDriverState *bs, QDict *parent_options,
 
     /* Hook up the backing file link; drop our reference, bs owns the
      * backing_hd reference now */
-    bdrv_set_backing_hd(bs, backing_hd, &local_err);
+    ret = bdrv_set_backing_hd(bs, backing_hd, errp);
     bdrv_unref(backing_hd);
-    if (local_err) {
-        error_propagate(errp, local_err);
-        ret = -EINVAL;
+    if (ret < 0) {
         goto free_exit;
     }
 
@@ -5432,7 +5464,7 @@ BlockDriverState *bdrv_lookup_bs(const char *device,
         }
     }
 
-    error_setg(errp, "Cannot find device=%s nor node_name=%s",
+    error_setg(errp, "Cannot find device=\'%s\' nor node-name=\'%s\'",
                      device ? device : "",
                      node_name ? node_name : "");
     return NULL;
@@ -6752,7 +6784,7 @@ BlockDriverState *check_to_replace_node(BlockDriverState *parent_bs,
     AioContext *aio_context;
 
     if (!to_replace_bs) {
-        error_setg(errp, "Node name '%s' not found", node_name);
+        error_setg(errp, "Failed to find node with node-name='%s'", node_name);
         return NULL;
     }
 

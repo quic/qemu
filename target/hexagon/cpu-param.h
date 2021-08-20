@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,5 +26,12 @@
 #else
 #define NB_MMU_MODES 3
 #endif
+
+#ifdef CONFIG_USER_ONLY
+#define TARGET_PAGE_BITS 16     /* 64K pages */
+#else
+#define TARGET_PAGE_BITS 12     /* 4K pages */
+#endif
+#define TARGET_LONG_BITS 32
 
 #endif

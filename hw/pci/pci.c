@@ -79,6 +79,7 @@ static Property pci_props[] = {
                     QEMU_PCIE_EXTCAP_INIT_BITNR, true),
     DEFINE_PROP_STRING("failover_pair_id", PCIDevice,
                        failover_pair_id),
+    DEFINE_PROP_UINT32("acpi-index",  PCIDevice, acpi_index, 0),
     DEFINE_PROP_END_OF_LIST()
 };
 
@@ -132,8 +133,13 @@ static void pci_bus_realize(BusState *qbus, Error **errp)
 static void pcie_bus_realize(BusState *qbus, Error **errp)
 {
     PCIBus *bus = PCI_BUS(qbus);
+    Error *local_err = NULL;
 
-    pci_bus_realize(qbus, errp);
+    pci_bus_realize(qbus, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        return;
+    }
 
     /*
      * A PCI-E bus can support extended config space if it's the root
@@ -1444,6 +1450,8 @@ static void pci_irq_handler(void *opaque, int irq_num, int level)
     PCIDevice *pci_dev = opaque;
     int change;
 
+    assert(0 <= irq_num && irq_num < PCI_NUM_PINS);
+    assert(level == 0 || level == 1);
     change = level - pci_irq_state(pci_dev, irq_num);
     if (!change)
         return;
@@ -1463,6 +1471,7 @@ static inline int pci_intx(PCIDevice *pci_dev)
 qemu_irq pci_allocate_irq(PCIDevice *pci_dev)
 {
     int intx = pci_intx(pci_dev);
+    assert(0 <= intx && intx < PCI_NUM_PINS);
 
     return qemu_allocate_irq(pci_irq_handler, pci_dev, intx);
 }
@@ -2127,10 +2136,8 @@ static void pci_qdev_realize(DeviceState *qdev, Error **errp)
             pci_qdev_unrealize(DEVICE(pci_dev));
             return;
         }
-        if (!(pci_dev->cap_present & QEMU_PCI_CAP_MULTIFUNCTION)
-            && (PCI_FUNC(pci_dev->devfn) == 0)) {
-            qdev->allow_unplug_during_migration = true;
-        } else {
+        if ((pci_dev->cap_present & QEMU_PCI_CAP_MULTIFUNCTION)
+            || (PCI_FUNC(pci_dev->devfn) != 0)) {
             error_setg(errp, "failover: primary device must be in its own "
                               "PCI slot");
             pci_qdev_unrealize(DEVICE(pci_dev));

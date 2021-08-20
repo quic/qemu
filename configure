@@ -111,7 +111,7 @@ error_exit() {
 do_compiler() {
     # Run the compiler, capturing its output to the log. First argument
     # is compiler binary to execute.
-    local compiler="$1"
+    compiler="$1"
     shift
     if test -n "$BASH_VERSION"; then eval '
         echo >>config.log "
@@ -365,7 +365,7 @@ tcg_interpreter="false"
 bigendian="no"
 mingw32="no"
 gcov="no"
-EXESUF="$default_feature"
+EXESUF=""
 HOST_DSOSUF=".so"
 modules="no"
 module_upgrades="no"
@@ -394,7 +394,6 @@ u2f="auto"
 libusb="$default_feature"
 usb_redir="$default_feature"
 opengl="$default_feature"
-opengl_dmabuf="no"
 cpuid_h="no"
 avx2_opt="$default_feature"
 capstone="auto"
@@ -463,9 +462,10 @@ skip_meson=no
 gettext="auto"
 fuse="auto"
 fuse_lseek="auto"
-multiprocess="no"
+multiprocess="auto"
 
 malloc_trim="auto"
+gio="$default_feature"
 
 # parse CC options second
 for opt do
@@ -800,7 +800,6 @@ Linux)
   linux="yes"
   linux_user="yes"
   vhost_user=${default_feature:-yes}
-  multiprocess=${default_feature:-yes}
 ;;
 esac
 
@@ -1560,9 +1559,13 @@ for opt do
   ;;
   --disable-fuse-lseek) fuse_lseek="disabled"
   ;;
-  --enable-multiprocess) multiprocess="yes"
+  --enable-multiprocess) multiprocess="enabled"
   ;;
-  --disable-multiprocess) multiprocess="no"
+  --disable-multiprocess) multiprocess="disabled"
+  ;;
+  --enable-gio) gio=yes
+  ;;
+  --disable-gio) gio=no
   ;;
   *)
       echo "ERROR: unknown option $opt"
@@ -1659,7 +1662,7 @@ if [ "$ARCH" = "unknown" ]; then
 fi
 
 default_target_list=""
-deprecated_targets_list=ppc64abi32-linux-user,tilegx-linux-user,lm32-softmmu,unicore32-softmmu
+deprecated_targets_list=ppc64abi32-linux-user,lm32-softmmu,unicore32-softmmu
 deprecated_features=""
 mak_wilds=""
 
@@ -1916,7 +1919,8 @@ disabled with --disable-FEATURE, default is enabled if available
   libdaxctl       libdaxctl support
   fuse            FUSE block device export
   fuse-lseek      SEEK_HOLE/SEEK_DATA support for FUSE exports
-  multiprocess    Multiprocess QEMU support
+  multiprocess    Out of process device emulation support
+  gio             libgio support
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -3323,17 +3327,19 @@ if test "$static" = yes && test "$mingw32" = yes; then
     glib_cflags="-DGLIB_STATIC_COMPILATION $glib_cflags"
 fi
 
-if $pkg_config --atleast-version=$glib_req_ver gio-2.0; then
-    gio_cflags=$($pkg_config --cflags gio-2.0)
-    gio_libs=$($pkg_config --libs gio-2.0)
-    gdbus_codegen=$($pkg_config --variable=gdbus_codegen gio-2.0)
-    if [ ! -x "$gdbus_codegen" ]; then
-        gdbus_codegen=
-    fi
-    # Check that the libraries actually work -- Ubuntu 18.04 ships
-    # with pkg-config --static --libs data for gio-2.0 that is missing
-    # -lblkid and will give a link error.
-    cat > $TMPC <<EOF
+if ! test "$gio" = "no"; then
+    pass=no
+    if $pkg_config --atleast-version=$glib_req_ver gio-2.0; then
+        gio_cflags=$($pkg_config --cflags gio-2.0)
+        gio_libs=$($pkg_config --libs gio-2.0)
+        gdbus_codegen=$($pkg_config --variable=gdbus_codegen gio-2.0)
+        if [ ! -x "$gdbus_codegen" ]; then
+            gdbus_codegen=
+        fi
+        # Check that the libraries actually work -- Ubuntu 18.04 ships
+        # with pkg-config --static --libs data for gio-2.0 that is missing
+        # -lblkid and will give a link error.
+        cat > $TMPC <<EOF
 #include <gio/gio.h>
 int main(void)
 {
@@ -3341,18 +3347,28 @@ int main(void)
     return 0;
 }
 EOF
-    if compile_prog "$gio_cflags" "$gio_libs" ; then
-        gio=yes
-    else
-        gio=no
-    fi
-else
-    gio=no
-fi
+        if compile_prog "$gio_cflags" "$gio_libs" ; then
+            pass=yes
+        else
+            pass=no
+        fi
 
-if $pkg_config --atleast-version=$glib_req_ver gio-unix-2.0; then
-    gio_cflags="$gio_cflags $($pkg_config --cflags gio-unix-2.0)"
-    gio_libs="$gio_libs $($pkg_config --libs gio-unix-2.0)"
+        if test "$pass" = "yes" &&
+            $pkg_config --atleast-version=$glib_req_ver gio-unix-2.0; then
+            gio_cflags="$gio_cflags $($pkg_config --cflags gio-unix-2.0)"
+            gio_libs="$gio_libs $($pkg_config --libs gio-unix-2.0)"
+        fi
+    fi
+
+    if test "$pass" = "no"; then
+        if test "$gio" = "yes"; then
+            feature_not_found "gio" "Install libgio >= 2.0"
+        else
+            gio=no
+        fi
+    else
+        gio=yes
+    fi
 fi
 
 # Sanity check that the current size_t matches the
@@ -3609,31 +3625,28 @@ if $pkg_config gbm; then
 fi
 
 if test "$opengl" != "no" ; then
-  opengl_pkgs="epoxy gbm"
-  if $pkg_config $opengl_pkgs; then
-    opengl_cflags="$($pkg_config --cflags $opengl_pkgs)"
-    opengl_libs="$($pkg_config --libs $opengl_pkgs)"
+  epoxy=no
+  if $pkg_config epoxy; then
+    cat > $TMPC << EOF
+#include <epoxy/egl.h>
+int main(void) { return 0; }
+EOF
+    if compile_prog "" "" ; then
+      epoxy=yes
+    fi
+  fi
+
+  if test "$epoxy" = "yes" ; then
+    opengl_cflags="$($pkg_config --cflags epoxy)"
+    opengl_libs="$($pkg_config --libs epoxy)"
     opengl=yes
   else
     if test "$opengl" = "yes" ; then
-      feature_not_found "opengl" "Please install opengl (mesa) devel pkgs: $opengl_pkgs"
+      feature_not_found "opengl" "Please install epoxy with EGL"
     fi
     opengl_cflags=""
     opengl_libs=""
     opengl=no
-  fi
-fi
-
-if test "$opengl" = "yes"; then
-  cat > $TMPC << EOF
-#include <epoxy/egl.h>
-#ifndef EGL_MESA_image_dma_buf_export
-# error mesa/epoxy lacks support for dmabufs (mesa 10.6+)
-#endif
-int main(void) { return 0; }
-EOF
-  if compile_prog "" "" ; then
-    opengl_dmabuf=yes
   fi
 fi
 
@@ -4768,9 +4781,9 @@ if test "$int128" = "yes"; then
 int main(void)
 {
   unsigned __int128 x = 0, y = 0;
-  y = __atomic_load_16(&x, 0);
-  __atomic_store_16(&x, y, 0);
-  __atomic_compare_exchange_16(&x, &y, x, 0, 0, 0);
+  y = __atomic_load(&x, 0);
+  __atomic_store(&x, y, 0);
+  __atomic_compare_exchange(&x, &y, x, 0, 0, 0);
   return 0;
 }
 EOF
@@ -4876,21 +4889,6 @@ if  test "$plugins" = "yes" &&
       "that are exported to plugins. Unfortunately your linker doesn't " \
       "support the flag (--dynamic-list or -exported_symbols_list) used " \
       "for this purpose. You can't build with --static."
-fi
-
-########################################
-# See if __attribute__((alias)) is supported.
-# This false for Xcode 9, but has been remedied for Xcode 10.
-# Unfortunately, travis uses Xcode 9 by default.
-
-attralias=no
-cat > $TMPC << EOF
-int x = 1;
-extern const int y __attribute__((alias("x")));
-int main(void) { return 0; }
-EOF
-if compile_prog "" "" ; then
-    attralias=yes
 fi
 
 ########################################
@@ -5839,9 +5837,6 @@ if test "$opengl" = "yes" ; then
   echo "CONFIG_OPENGL=y" >> $config_host_mak
   echo "OPENGL_CFLAGS=$opengl_cflags" >> $config_host_mak
   echo "OPENGL_LIBS=$opengl_libs" >> $config_host_mak
-  if test "$opengl_dmabuf" = "yes" ; then
-    echo "CONFIG_OPENGL_DMABUF=y" >> $config_host_mak
-  fi
 fi
 
 if test "$gbm" = "yes" ; then
@@ -5925,10 +5920,6 @@ fi
 
 if test "$atomic64" = "yes" ; then
   echo "CONFIG_ATOMIC64=y" >> $config_host_mak
-fi
-
-if test "$attralias" = "yes" ; then
-  echo "CONFIG_ATTRIBUTE_ALIAS=y" >> $config_host_mak
 fi
 
 if test "$getauxval" = "yes" ; then
@@ -6091,14 +6082,21 @@ fi
 if test "$have_mlockall" = "yes" ; then
   echo "HAVE_MLOCKALL=y" >> $config_host_mak
 fi
-if test "$multiprocess" = "yes" ; then
-  echo "CONFIG_MULTIPROCESS_ALLOWED=y" >> $config_host_mak
-fi
 if test "$fuzzing" = "yes" ; then
   # If LIB_FUZZING_ENGINE is set, assume we are running on OSS-Fuzz, and the
   # needed CFLAGS have already been provided
   if test -z "${LIB_FUZZING_ENGINE+xxx}" ; then
+    # Add CFLAGS to tell clang to add fuzzer-related instrumentation to all the
+    # compiled code.
     QEMU_CFLAGS="$QEMU_CFLAGS -fsanitize=fuzzer-no-link"
+    # To build non-fuzzer binaries with --enable-fuzzing, link everything with
+    # fsanitize=fuzzer-no-link. Otherwise, the linker will be unable to bind
+    # the fuzzer-related callbacks added by instrumentation.
+    QEMU_LDFLAGS="$QEMU_LDFLAGS -fsanitize=fuzzer-no-link"
+    # For the actual fuzzer binaries, we need to link against the libfuzzer
+    # library. Provide the flags for doing this in FUZZ_EXE_LDFLAGS. The meson
+    # rule for the fuzzer adds these to the link_args. They need to be
+    # configurable, to support OSS-Fuzz
     FUZZ_EXE_LDFLAGS="-fsanitize=fuzzer"
   else
     FUZZ_EXE_LDFLAGS="$LIB_FUZZING_ENGINE"
@@ -6303,7 +6301,7 @@ done
 (for i in $cross_cc_vars; do
   export $i
 done
-export target_list source_path use_containers
+export target_list source_path use_containers ARCH
 $source_path/tests/tcg/configure.sh)
 
 # temporary config to build submodules
@@ -6426,7 +6424,7 @@ NINJA=$ninja $meson setup \
         -Dzstd=$zstd -Dseccomp=$seccomp -Dvirtfs=$virtfs -Dcap_ng=$cap_ng \
         -Dattr=$attr -Ddefault_devices=$default_devices \
         -Ddocs=$docs -Dsphinx_build=$sphinx_build -Dinstall_blobs=$blobs \
-        -Dvhost_user_blk_server=$vhost_user_blk_server \
+        -Dvhost_user_blk_server=$vhost_user_blk_server -Dmultiprocess=$multiprocess \
         -Dfuse=$fuse -Dfuse_lseek=$fuse_lseek -Dguest_agent_msi=$guest_agent_msi \
         $(if test "$default_features" = no; then echo "-Dauto_features=disabled"; fi) \
 	-Dtcg_interpreter=$tcg_interpreter \
