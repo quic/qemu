@@ -8,7 +8,7 @@ set -x
 set -euo pipefail
 
 if [[ -d /prj/qct/llvm/release ]]; then
-    rel_base=/prj/qct/llvm/release/
+    rel_base=/prj/qct/llvm/release/internal
 else
     rel_base=/prj/dsp/qdsp6/release/
 fi
