@@ -27,7 +27,6 @@ static int gdb_get_vreg(CPUHexagonState *env, GByteArray *mem_buf, int n)
     int i;
     for (i = 0; i < MAX_VEC_SIZE_BYTES / sizeof(uint32_t); i++) {
         total += gdb_get_regl(mem_buf, env->VRegs[n].uw[i]);
-        mem_buf += sizeof(uint32_t);
     }
     return total;
 }
@@ -40,7 +39,6 @@ static int gdb_get_qreg(CPUHexagonState *env, GByteArray *mem_buf, int n)
          i < MAX_VEC_SIZE_BYTES / sizeof(uint32_t) / BITS_PER_BYTE;
          i++) {
         total += gdb_get_regl(mem_buf, env->QRegs[n].uw[i]);
-        mem_buf += sizeof(uint32_t);
     }
     return total;
 }
