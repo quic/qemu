@@ -33,8 +33,18 @@ typedef uint32_t    size4u_t;
 typedef int32_t     size4s_t;
 typedef uint64_t    size8u_t;
 typedef int64_t     size8s_t;
-typedef Int128      size16s_t;
 typedef uint64_t    paddr_t;
 typedef uint32_t    vaddr_t;
+
+typedef struct size16s {
+    union {
+        struct {
+            size8u_t lo;
+            size8s_t hi;
+        };
+        size4u_t w[4];
+    };
+} size16s_t;
+
 
 #endif

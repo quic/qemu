@@ -51,7 +51,6 @@
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
 #endif
-#include "op_helper.h"
 #include "hw/intc/l2vic.h"
 
 #include "hex_arch_types.h"
@@ -104,15 +103,6 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
             env->gpr[HEX_REG_PC],
         pc, env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
 
-#if 0
-    if (cs->exception_index != HEX_EVENT_NONE)
-        fprintf(stderr, "old exception_index: 0x%02x, new exception_index 0x%02x, cc: 0x%02x\n",
-            cs->exception_index, exception,
-            env->cause_code);
-    assert(cs->exception_index == HEX_EVENT_NONE ||
-           cs->exception_index == 6);
-#endif
-
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
 #ifndef CONFIG_USER_ONLY
@@ -139,37 +129,12 @@ static float32 build_float32(uint8_t sign, uint32_t exp, uint32_t mant)
 
 
 /* Exceptions processing helpers */
-static void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
-                                                 uint32_t exception,
-                                                 uintptr_t pc)
-{
-    CPUState *cs = CPU(hexagon_env_get_cpu(env));
-    qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
-    cs->exception_index = exception;
-    cpu_loop_exit_restore(cs, pc);
-}
 
 void QEMU_NORETURN HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
 {
     do_raise_exception_err(env, excp, 0);
 }
 
-static inline void log_reg_write(CPUHexagonState *env, int rnum,
-                                 target_ulong val, uint32_t slot)
-{
-    HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
-                  rnum, val, val);
-    if (val == env->gpr[rnum]) {
-        HEX_DEBUG_LOG(" NO CHANGE");
-    }
-    HEX_DEBUG_LOG("\n");
-
-    env->new_value[rnum] = val;
-#if HEX_DEBUG
-    /* Do this so HELPER(debug_commit_end) will know */
-    env->reg_written[rnum] = 1;
-#endif
-}
 
 static inline void log_pred_write(CPUHexagonState *env, int pnum,
                                   target_ulong val)
@@ -259,29 +224,47 @@ void HELPER(debug_check_store_width)(CPUHexagonState *env, int slot, int check)
 
 void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
 {
-    switch (env->mem_log_stores[slot_num].width) {
+#ifdef CONFIG_USER_ONLY
+    uintptr_t ra = GETPC();
+#endif
+    target_ulong va = env->mem_log_stores[slot_num].va;
+    uint8_t width = env->mem_log_stores[slot_num].width;
+
+    switch (width) {
+#ifdef CONFIG_USER_ONLY
     case 1:
-        put_user_u8(env->mem_log_stores[slot_num].data32,
-                    env->mem_log_stores[slot_num].va);
+        cpu_stb_data_ra(env, va, env->mem_log_stores[slot_num].data32, ra);
         break;
     case 2:
-        put_user_u16(env->mem_log_stores[slot_num].data32,
-                     env->mem_log_stores[slot_num].va);
+        cpu_stw_data_ra(env, va, env->mem_log_stores[slot_num].data32, ra);
         break;
     case 4:
-        put_user_u32(env->mem_log_stores[slot_num].data32,
-                     env->mem_log_stores[slot_num].va);
+        cpu_stl_data_ra(env, va, env->mem_log_stores[slot_num].data32, ra);
         break;
     case 8:
-        put_user_u64(env->mem_log_stores[slot_num].data64,
-                     env->mem_log_stores[slot_num].va);
+        cpu_stq_data_ra(env, va, env->mem_log_stores[slot_num].data64, ra);
         break;
+#else
+    case 1:
+    case 2:
+    case 4:
+        hexagon_tools_memory_write(env,
+            va, width,
+            env->mem_log_stores[slot_num].data32);
+        break;
+
+    case 8:
+        hexagon_tools_memory_write(env,
+            va, width,
+            env->mem_log_stores[slot_num].data64);
+        break;
+#endif
+
     default:
         g_assert_not_reached();
     }
 }
 
-#if HEX_DEBUG
 static void print_store(CPUHexagonState *env, int slot)
 {
     if (!(env->slot_cancelled & (1 << slot))) {
@@ -321,9 +304,10 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     bool pred_printed = false;
     int i;
 
-    HEX_DEBUG_LOG("Packet committed: pc = 0x" TARGET_FMT_lx "\n",
-                  env->this_PC);
-    HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
+    HEX_DEBUG_LOG("Packet committed: tid = %d, pc = 0x" TARGET_FMT_lx "\n",
+                  env->threadId, env->this_PC);
+    if (env->slot_cancelled)
+      HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
 
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         if (env->reg_written[i]) {
@@ -331,10 +315,42 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
                 HEX_DEBUG_LOG("Regs written\n");
                 reg_printed = true;
             }
-            HEX_DEBUG_LOG("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")\n",
+            HEX_DEBUG_LOG("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
                           i, env->new_value[i], env->new_value[i]);
         }
     }
+
+#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+    bool greg_printed = false;
+    for (i = 0; i < NUM_GREGS; i++) {
+        if (env->greg_written[i]) {
+            if (!greg_printed) {
+                HEX_DEBUG_LOG("GRegs written\n");
+                greg_printed = true;
+            }
+            HEX_DEBUG_LOG("\tset g%d (%s) = " TARGET_FMT_ld
+                " (0x" TARGET_FMT_lx " )\n",
+                i, hexagon_gregnames[i], env->greg_new_value[i],
+                env->greg_new_value[i]);
+        }
+    }
+
+    bool sreg_printed = false;
+    for (i = 0; i < NUM_SREGS; i++) {
+        if (i < HEX_SREG_GLB_START) {
+            if (env->t_sreg_written[i]) {
+                if (!sreg_printed) {
+                    HEX_DEBUG_LOG("SRegs written\n");
+                    sreg_printed = true;
+                }
+                HEX_DEBUG_LOG("\tset s%d (%s) = " TARGET_FMT_ld
+                    " (0x" TARGET_FMT_lx " )\n",
+                    i, hexagon_sregnames[i], env->t_sreg_new_value[i],
+                    env->t_sreg_new_value[i]);
+            }
+        }
+    }
+#endif
 
     for (i = 0; i < NUM_PREGS; i++) {
         if (env->pred_written & (1 << i)) {
@@ -342,8 +358,9 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
                 HEX_DEBUG_LOG("Predicates written\n");
                 pred_printed = true;
             }
-            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx "\n",
-                          i, env->new_pred_value[i]);
+            char flag = (env->pred_written & (1 << i)) ? '*' : ' ';
+            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx " %c\n",
+                    i, env->new_pred_value[i], flag);
         }
     }
 
@@ -357,15 +374,15 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
         }
     }
 
-    HEX_DEBUG_LOG("Next PC = " TARGET_FMT_lx "\n", env->next_PC);
+    HEX_DEBUG_LOG("tid[%d], Next PC = 0x%x\n", env->threadId, env->next_PC);
     HEX_DEBUG_LOG("Exec counters: pkt = " TARGET_FMT_lx
                   ", insn = " TARGET_FMT_lx
-                  "\n",
+                  ", hvx = " TARGET_FMT_lx "\n",
                   env->gpr[HEX_REG_QEMU_PKT_CNT],
-                  env->gpr[HEX_REG_QEMU_INSN_CNT]);
+                  env->gpr[HEX_REG_QEMU_INSN_CNT],
+                  env->gpr[HEX_REG_QEMU_HVX_CNT]);
 
 }
-#endif
 
 static int32_t fcircadd_v4(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
 {
@@ -405,6 +422,7 @@ int32_t HELPER(fcircadd)(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
     return new_ptr;
 }
 
+#if 0 
 /*
  * Hexagon FP operations return ~0 insteat of NaN
  * The hex_check_sfnan/hex_check_dfnan functions perform this check
@@ -416,6 +434,7 @@ static float32 hex_check_sfnan(float32 x)
     }
     return x;
 }
+#endif
 
 static float64 hex_check_dfnan(float64 x)
 {
@@ -446,7 +465,8 @@ static inline uint8_t mem_load1(CPUHexagonState *env, uint32_t slot,
     uint8_t retval;
     check_noshuf(env, slot);
 #ifdef CONFIG_USER_ONLY
-    get_user_u8(retval, vaddr);
+    uintptr_t ra = GETPC();
+    retval = cpu_ldub_data_ra(env, vaddr, ra);
 #else
     hexagon_tools_memory_read(env, vaddr, 1, &retval);
 #endif
@@ -459,7 +479,8 @@ static inline uint16_t mem_load2(CPUHexagonState *env, uint32_t slot,
     uint16_t retval;
     check_noshuf(env, slot);
 #ifdef CONFIG_USER_ONLY
-    get_user_u16(retval, vaddr);
+    uintptr_t ra = GETPC();
+    retval = cpu_lduw_data_ra(env, vaddr, ra);
 #else
     hexagon_tools_memory_read(env, vaddr, 2, &retval);
 #endif
@@ -472,7 +493,8 @@ static inline uint32_t mem_load4(CPUHexagonState *env, uint32_t slot,
     uint32_t retval;
     check_noshuf(env, slot);
 #ifdef CONFIG_USER_ONLY
-    get_user_u32(retval, vaddr);
+    uintptr_t ra = GETPC();
+    retval = cpu_ldul_data_ra(env, vaddr, ra);
 #else
     hexagon_tools_memory_read(env, vaddr, 4, &retval);
 #endif
@@ -485,7 +507,8 @@ static inline uint64_t mem_load8(CPUHexagonState *env, uint32_t slot,
     uint64_t retval;
     check_noshuf(env, slot);
 #ifdef CONFIG_USER_ONLY
-    get_user_u64(retval, vaddr);
+    uintptr_t ra = GETPC();
+    retval = cpu_ldq_data_ra(env, vaddr, ra);
 #else
     hexagon_tools_memory_read(env, vaddr, 8, &retval);
 #endif
@@ -1327,39 +1350,6 @@ static inline void log_sreg_write(CPUHexagonState *env, int rnum,
 
 #endif
 
-static inline void log_pred_write(CPUHexagonState *env, int pnum,
-                                  target_ulong val)
-{
-    HEX_DEBUG_LOG("log_pred_write[%d] = " TARGET_FMT_ld
-                  " (0x" TARGET_FMT_lx ")\n",
-                  pnum, val, val);
-
-    /* Multiple writes to the same preg are and'ed together */
-    if (env->pred_written & (1 << pnum)) {
-        env->new_pred_value[pnum] &= val & 0xff;
-    } else {
-        env->new_pred_value[pnum] = val & 0xff;
-        env->pred_written |= 1 << pnum;
-    }
-}
-
-static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
-{
-    HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
-
-    /*
-     * If more than one branch is taken in a packet, only the first one
-     * is actually done.
-     */
-    if (env->branch_taken) {
-        HEX_DEBUG_LOG("INFO: multiple branches taken in same packet, "
-                      "ignoring the second one\n");
-    } else {
-        fCHECK_PCALIGN(addr);
-        env->branch_taken = 1;
-        env->next_PC = addr;
-    }
-}
 
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
@@ -1433,47 +1423,6 @@ void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte,
 #endif
 }
 
-void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
-{
-    switch (env->mem_log_stores[slot_num].width) {
-#ifdef CONFIG_USER_ONLY
-    case 1:
-        put_user_u8(env->mem_log_stores[slot_num].data32,
-                    env->mem_log_stores[slot_num].va);
-        break;
-    case 2:
-        put_user_u16(env->mem_log_stores[slot_num].data32,
-                     env->mem_log_stores[slot_num].va);
-        break;
-    case 4:
-        put_user_u32(env->mem_log_stores[slot_num].data32,
-                     env->mem_log_stores[slot_num].va);
-        break;
-    case 8:
-        put_user_u64(env->mem_log_stores[slot_num].data64,
-                     env->mem_log_stores[slot_num].va);
-        break;
-#else
-    case 1:
-    case 2:
-    case 4:
-        hexagon_tools_memory_write(env,
-            env->mem_log_stores[slot_num].va,
-            env->mem_log_stores[slot_num].width,
-            env->mem_log_stores[slot_num].data32);
-        break;
-
-    case 8:
-        hexagon_tools_memory_write(env,
-            env->mem_log_stores[slot_num].va,
-            env->mem_log_stores[slot_num].width,
-            env->mem_log_stores[slot_num].data64);
-        break;
-#endif
-    default:
-        g_assert_not_reached();
-    }
-}
 
 void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, void *srcptr,
                           int slot)
@@ -1538,159 +1487,6 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
     }
 }
 
-static void print_store(CPUHexagonState *env, int slot)
-{
-    if (!(env->slot_cancelled & (1 << slot))) {
-        size1u_t width = env->mem_log_stores[slot].width;
-        if (width == 1) {
-            size4u_t data = env->mem_log_stores[slot].data32 & 0xff;
-            HEX_DEBUG_LOG("\tmemb[0x" TARGET_FMT_lx "] = %d (0x%02x)\n",
-                          env->mem_log_stores[slot].va, data, data);
-        } else if (width == 2) {
-            size4u_t data = env->mem_log_stores[slot].data32 & 0xffff;
-            HEX_DEBUG_LOG("\tmemh[0x" TARGET_FMT_lx "] = %d (0x%04x)\n",
-                          env->mem_log_stores[slot].va, data, data);
-        } else if (width == 4) {
-            size4u_t data = env->mem_log_stores[slot].data32;
-            HEX_DEBUG_LOG("\tmemw[0x" TARGET_FMT_lx "] = %d (0x%08x)\n",
-                          env->mem_log_stores[slot].va, data, data);
-        } else if (width == 8) {
-            HEX_DEBUG_LOG("\tmemd[0x" TARGET_FMT_lx "] = %lu (0x%016lx)\n",
-                          env->mem_log_stores[slot].va,
-                          env->mem_log_stores[slot].data64,
-                          env->mem_log_stores[slot].data64);
-        } else {
-            HEX_DEBUG_LOG("\tBad store width %d\n", width);
-            g_assert_not_reached();
-        }
-    }
-}
-
-/* This function is a handy place to set a breakpoint */
-void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
-{
-    bool reg_printed = false;
-    bool pred_printed = false;
-    int i;
-
-    HEX_DEBUG_LOG("Packet committed: tid = %d, pc = 0x" TARGET_FMT_lx "\n",
-                  env->threadId, env->this_PC);
-    if (env->slot_cancelled)
-      HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
-
-    for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
-        if (env->reg_written[i]) {
-            if (!reg_printed) {
-                HEX_DEBUG_LOG("Regs written\n");
-                reg_printed = true;
-            }
-            HEX_DEBUG_LOG("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
-                          i, env->new_value[i], env->new_value[i]);
-        }
-    }
-
-#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
-    bool greg_printed = false;
-    for (i = 0; i < NUM_GREGS; i++) {
-        if (env->greg_written[i]) {
-            if (!greg_printed) {
-                HEX_DEBUG_LOG("GRegs written\n");
-                greg_printed = true;
-            }
-            HEX_DEBUG_LOG("\tset g%d (%s) = " TARGET_FMT_ld
-                " (0x" TARGET_FMT_lx " )\n",
-                i, hexagon_gregnames[i], env->greg_new_value[i],
-                env->greg_new_value[i]);
-        }
-    }
-
-    bool sreg_printed = false;
-    for (i = 0; i < NUM_SREGS; i++) {
-        if (i < HEX_SREG_GLB_START) {
-            if (env->t_sreg_written[i]) {
-                if (!sreg_printed) {
-                    HEX_DEBUG_LOG("SRegs written\n");
-                    sreg_printed = true;
-                }
-                HEX_DEBUG_LOG("\tset s%d (%s) = " TARGET_FMT_ld
-                    " (0x" TARGET_FMT_lx " )\n",
-                    i, hexagon_sregnames[i], env->t_sreg_new_value[i],
-                    env->t_sreg_new_value[i]);
-            }
-        }
-    }
-#endif
-
-    for (i = 0; i < NUM_PREGS; i++) {
-//        if (env->pred_written & (1 << i)) {
-            if (!pred_printed) {
-                HEX_DEBUG_LOG("Predicates written\n");
-                pred_printed = true;
-            }
-            char flag = (env->pred_written & (1 << i)) ? '*' : ' ';
-            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx " %c\n",
-                          i, env->new_pred_value[i], flag);
-        }
-//    }
-
-    if (has_st0 || has_st1) {
-        HEX_DEBUG_LOG("Stores\n");
-        if (has_st0) {
-            print_store(env, 0);
-        }
-        if (has_st1) {
-            print_store(env, 1);
-        }
-    }
-
-    HEX_DEBUG_LOG("tid[%d], Next PC = 0x%x\n", env->threadId, env->next_PC);
-    HEX_DEBUG_LOG("Exec counters: pkt = " TARGET_FMT_lx
-                  ", insn = " TARGET_FMT_lx
-                  ", hvx = " TARGET_FMT_lx "\n",
-                  env->gpr[HEX_REG_QEMU_PKT_CNT],
-                  env->gpr[HEX_REG_QEMU_INSN_CNT],
-                  env->gpr[HEX_REG_QEMU_HVX_CNT]);
-
-}
-
-static int32_t fcircadd_v4(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
-{
-    int32_t length = M & 0x0001ffff;
-    uint32_t new_ptr = RxV + offset;
-    uint32_t start_addr = CS;
-    uint32_t end_addr = start_addr + length;
-
-    if (new_ptr >= end_addr) {
-        new_ptr -= length;
-    } else if (new_ptr < start_addr) {
-        new_ptr += length;
-    }
-
-    return new_ptr;
-}
-
-int32_t HELPER(fcircadd)(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
-{
-    int32_t K_const = (M >> 24) & 0xf;
-    int32_t length = M & 0x1ffff;
-    int32_t mask = (1 << (K_const + 2)) - 1;
-    uint32_t new_ptr = RxV + offset;
-    uint32_t start_addr = RxV & (~mask);
-    uint32_t end_addr = start_addr | length;
-
-    if (K_const == 0 && length >= 4) {
-        return fcircadd_v4(RxV, offset, M, CS);
-    }
-
-    if (new_ptr >= end_addr) {
-        new_ptr -= length;
-    } else if (new_ptr < start_addr) {
-        new_ptr += length;
-    }
-
-    return new_ptr;
-}
-
 /*
  * sfrecipa, sfinvsqrta have two 32-bit results
  *     r0,p0=sfrecipa(r1,r2)
@@ -1712,7 +1508,7 @@ uint64_t HELPER(sfrecipa)(CPUHexagonState *env, float32 RsV, float32 RtV)
     if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
         PeV = adjust;
         idx = (RtV >> 16) & 0x7f;
-        mant = (arch_recip_lookup(idx) << 15) | 1;
+        mant = (recip_lookup_table[idx] << 15) | 1;
         exp = SF_BIAS - (float32_getexp(RtV) - SF_BIAS) - 1;
         RdV = build_float32(extract32(RtV, 31, 1), exp, mant);
     }
@@ -1733,7 +1529,7 @@ uint64_t HELPER(sfinvsqrta)(CPUHexagonState *env, float32 RsV)
     if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
         PeV = adjust;
         idx = (RsV >> 17) & 0x7f;
-        mant = (arch_invsqrt_lookup(idx) << 15);
+        mant = (recip_lookup_table[idx] << 15);
         exp = SF_BIAS - ((float32_getexp(RsV) - SF_BIAS) >> 1) - 1;
         RdV = build_float32(extract32(RsV, 31, 1), exp, mant);
     }
@@ -1742,95 +1538,6 @@ uint64_t HELPER(sfinvsqrta)(CPUHexagonState *env, float32 RsV)
 }
 
 
-/*
- * sfrecipa, sfinvsqrta, vacsh have two results
- *     r0,p0=sfrecipa(r1,r2)
- *     r0,p0=sfinvsqrta(r1)
- *     r1:0,p0=vacsh(r3:2,r5:4)
- * Since helpers can only return a single value, we have two helpers
- * for each of these. They each contain basically the same code (copy/pasted
- * from the arch library), but one returns the register and the other
- * returns the predicate.
- */
-int32_t HELPER(sfrecipa_val)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
-{
-    fFPOP_START();
-    /* int32_t PeV; Not needed to compute value */
-    int32_t RdV;
-    fHIDE(int idx;)
-    fHIDE(int adjust;)
-    fHIDE(int mant;)
-    fHIDE(int exp;)
-    if (fSF_RECIP_COMMON(RsV, RtV, RdV, adjust, &env->fp_status)) {
-        /* PeV = adjust; Not needed to compute value */
-        idx = (RtV >> 16) & 0x7f;
-        mant = (fSF_RECIP_LOOKUP(idx) << 15) | 1;
-        exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
-        RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
-    }
-    fFPOP_END();
-    return RdV;
-}
-
-int32_t HELPER(sfrecipa_pred)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
-{
-    fFPOP_START();
-    int32_t PeV = 0;
-    int32_t RdV;
-    fHIDE(int idx;)
-    fHIDE(int adjust;)
-    fHIDE(int mant;)
-    fHIDE(int exp;)
-    if (fSF_RECIP_COMMON(RsV, RtV, RdV, adjust, &env->fp_status)) {
-        PeV = adjust;
-        idx = (RtV >> 16) & 0x7f;
-        mant = (fSF_RECIP_LOOKUP(idx) << 15) | 1;
-        exp = fSF_BIAS() - (fSF_GETEXP(RtV) - fSF_BIAS()) - 1;
-        RdV = fMAKESF(fGETBIT(31, RtV), exp, mant);
-    }
-    fFPOP_END();
-    return PeV;
-}
-
-int32_t HELPER(sfinvsqrta_val)(CPUHexagonState *env, int32_t RsV)
-{
-    fFPOP_START();
-    /* int32_t PeV; Not needed for val version */
-    int32_t RdV;
-    fHIDE(int idx;)
-    fHIDE(int adjust;)
-    fHIDE(int mant;)
-    fHIDE(int exp;)
-    if (fSF_INVSQRT_COMMON(RsV, RdV, adjust, &env->fp_status)) {
-        /* PeV = adjust; Not needed for val version */
-        idx = (RsV >> 17) & 0x7f;
-        mant = (fSF_INVSQRT_LOOKUP(idx) << 15);
-        exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
-        RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
-    }
-    fFPOP_END();
-    return RdV;
-}
-
-int32_t HELPER(sfinvsqrta_pred)(CPUHexagonState *env, int32_t RsV)
-{
-    fFPOP_START();
-    int32_t PeV = 0;
-    int32_t RdV;
-    fHIDE(int idx;)
-    fHIDE(int adjust;)
-    fHIDE(int mant;)
-    fHIDE(int exp;)
-    if (fSF_INVSQRT_COMMON(RsV, RdV, adjust, &env->fp_status)) {
-        PeV = adjust;
-        idx = (RsV >> 17) & 0x7f;
-        mant = (fSF_INVSQRT_LOOKUP(idx) << 15);
-        exp = fSF_BIAS() - ((fSF_GETEXP(RsV) - fSF_BIAS()) >> 1) - 1;
-        RdV = fMAKESF(fGETBIT(31, RsV), exp, mant);
-    }
-    fFPOP_END();
-    return PeV;
-}
 
 int64_t HELPER(vacsh_val)(CPUHexagonState *env,
                            int64_t RxxV, int64_t RssV, int64_t RttV)
@@ -2730,6 +2437,55 @@ void HELPER(commit_hmx)(CPUHexagonState *env)
     hmx_ext_commit_mem(env, 0);
 }
 
+static inline uint8_t mem_load1(CPUHexagonState *env,
+                                uint32_t slot,
+                                target_ulong vaddr)
+{
+    uint8_t retval;
+#ifdef CONFIG_USER_ONLY
+    uintptr_t ra = GETPC();
+    retval = cpu_ldub_data_ra(env, paddr, ra);
+#else
+    hexagon_tools_memory_read(env, vaddr, 1, &retval);
+#endif
+    return retval;
+}
+
+static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
+{
+    size2u_t retval;
+#ifdef CONFIG_USER_ONLY
+    uintptr_t ra = GETPC();
+    retval = cpu_ldus_data_ra(env, paddr, ra);
+#else
+    hexagon_tools_memory_read(env, paddr, 2, &retval);
+#endif
+    return retval;
+}
+static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
+{
+    size4u_t retval;
+#ifdef CONFIG_USER_ONLY
+    uintptr_t ra = GETPC();
+    retval = cpu_lduw_data_ra(env, paddr, ra);
+#else
+    hexagon_tools_memory_read(env, paddr, 4, &retval);
+#endif
+    return retval;
+}
+static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
+{
+    size8u_t retval;
+#ifdef CONFIG_USER_ONLY
+    uintptr_t ra = GETPC();
+    retval = cpu_ldq_data_ra(env, vaddr, ra);
+#else
+    hexagon_tools_memory_read(env, paddr, 8, &retval);
+#endif
+    return retval;
+}
+
+
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();
@@ -2738,12 +2494,6 @@ void HELPER(commit_hmx)(CPUHexagonState *env)
 
 #define BOGUS_HELPER(tag) \
     printf("ERROR: bogus helper: " #tag "\n")
-
-static void cancel_slot(CPUHexagonState *env, uint32_t slot)
-{
-    HEX_DEBUG_LOG("Slot %d cancelled\n", slot);
-    env->slot_cancelled |= (1 << slot);
-}
 
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */

@@ -22,6 +22,15 @@
  * Change HEX_DEBUG to 1 to turn on debugging output
  */
 #define HEX_DEBUG 0
+#define HEX_DEBUG_LOG(...) \
+    do { \
+        if (HEX_DEBUG) { \
+            rcu_read_lock(); \
+            fprintf(stderr, __VA_ARGS__); \
+            rcu_read_unlock(); \
+        } \
+    } while (0)
+
 
 /*
  * Change COUNT_HEX_HELPERS to 1 to count how many times each helper
@@ -59,10 +68,5 @@ extern void init_genptr(void);
 #define hexagon_cpu_mmu_enabled(env) \
     GET_SYSCFG_FIELD(SYSCFG_MMUEN, ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG))
 
-#if HEX_DEBUG
-#define HEX_DEBUG_LOG(...) qemu_log(__VA_ARGS__)
-#else
-#define HEX_DEBUG_LOG(...) do { } while (0)
-#endif
 
 #endif

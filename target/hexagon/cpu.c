@@ -160,7 +160,7 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
     if (regnum == HEX_REG_P3_0) {
         value = read_p3_0(env);
     } else {
-        value = regnum < 32 ? hack_stack_ptrs(env, env->gpr[regnum])
+        value = regnum < 32 ? adjust_stack_ptrs(env, env->gpr[regnum])
                             : env->gpr[regnum];
     }
 
@@ -1183,7 +1183,7 @@ static void hexagon_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
 #endif
 
 #ifdef CONFIG_TCG
-static const struct TCGCPUOps hexagon_tcg_ops = {
+static struct TCGCPUOps hexagon_tcg_ops = {
     .initialize = hexagon_translate_init,
     .synchronize_from_tb = hexagon_cpu_synchronize_from_tb,
     .tlb_fill = hexagon_tlb_fill,

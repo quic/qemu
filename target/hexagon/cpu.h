@@ -444,9 +444,9 @@ struct CPUHexagonState {
     target_ulong next_PC;
     target_ulong cause_code;
 
-    /* For comparing with LLDB on target - see hack_stack_ptrs function */
+    /* For comparing with LLDB on target - see adjust_stack_ptrs function */
+    target_ulong last_pc_dumped;
     target_ulong stack_start;
-    target_ulong stack_adjust;
 
     uint8_t slot_cancelled;
     target_ulong new_value[TOTAL_PER_THREAD_REGS];
@@ -472,11 +472,7 @@ struct CPUHexagonState {
     target_ulong pred_written;
 
     struct MemLog mem_log_stores[STORES_MAX];
-
-#ifndef CONFIG_USER_ONLY
-    int slot;                    /* Needed for exception generation */
-#endif
-
+    target_ulong pkt_has_store_s1;
     target_ulong dczero_addr;
 
     fenv_t fenv;
@@ -528,6 +524,7 @@ struct CPUHexagonState {
     unsigned int threadId;
     systemstate_t *system_ptr;
 #ifndef CONFIG_USER_ONLY
+    int slot;                    /* Needed for exception generation */
     systemstate_t systemstate;
     const char *cmdline;
     CPUHexagonTLBContext *hex_tlb;
@@ -570,6 +567,8 @@ typedef struct HexagonCPU {
     bool sched_limit;
     gchar *usefs;
 #endif
+    bool lldb_compat;
+    target_ulong lldb_stack_adjust;
 } HexagonCPU;
 
 static inline HexagonCPU *hexagon_env_get_cpu(CPUHexagonState *env)

@@ -42,7 +42,6 @@
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
 #endif
-#include "op_helper.h"
 #include "sysemu/runstate.h"
 
 
