@@ -135,7 +135,7 @@ DEF_ENC32(M8_mxmemdi_wei_n_2x,   ICLASS_LD" 001 0 000 sssss PP1ttttt 01000100")
 DEF_ENC32(M8_mxmema_wei_n_2x,    ICLASS_LD" 001 0 000 sssss PP1ttttt 01000101")
 DEF_ENC32(M8_mxmem_wei_n_2x,     ICLASS_LD" 001 0 000 sssss PP1ttttt 01000110")
 // DEBUG FAKE INSNS
-DEF_ENC32(M8_pldacc,             ICLASS_LD" 001 0 000 ----- PP--1111 11111110")
+
 DEF_ENC32(M8_pv64fp,             ICLASS_LD" 001 0 000 ----- PP--1100 11111111")
 DEF_ENC32(M8_pv64dfp,            ICLASS_LD" 001 0 000 ----- PP--1101 11111111")
 DEF_ENC32(M8_pv64d,              ICLASS_LD" 001 0 000 ----- PP--1110 11111111")

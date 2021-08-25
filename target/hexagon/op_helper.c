@@ -43,7 +43,7 @@
 #include "hmx/hmx.h"
 #include "hmx/macros_auto.h"
 #include "hmx/ext_hmx.h"
-#include "hmx/mpy_fp16.h"
+#include "hmx/hmx_int_ops.h"
 #include "system.h"
 #include "dma_adapter.h"
 #include "fma_emu.h"
@@ -2374,92 +2374,8 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 void HELPER(commit_hmx)(CPUHexagonState *env)
 {
-    hmx_ext_commit_regs(env);
-    hmx_ext_commit_mem(env, 0);
-}
-static inline uint8_t mem_load1(CPUHexagonState *env,
-                                target_ulong vaddr)
-{
-    uint8_t retval;
-#ifdef CONFIG_USER_ONLY
-    get_user_u8(retval, vaddr);
-#else
-    hexagon_tools_memory_read(env, vaddr, 1, &retval);
-#endif
-    return retval;
-}
-static inline uint16_t mem_load2(CPUHexagonState *env,
-                                 target_ulong vaddr)
-{
-    uint16_t retval;
-#ifdef CONFIG_USER_ONLY
-    get_user_u16(retval, vaddr);
-#else
-    hexagon_tools_memory_read(env, vaddr, 2, &retval);
-#endif
-    return retval;
-}
-static inline uint32_t mem_load4(CPUHexagonState *env,
-                                 target_ulong vaddr)
-{
-    uint32_t retval;
-#ifdef CONFIG_USER_ONLY
-    get_user_u32(retval, vaddr);
-#else
-    hexagon_tools_memory_read(env, vaddr, 4, &retval);
-#endif
-    return retval;
-}
-static inline uint64_t mem_load8(CPUHexagonState *env,
-                                 target_ulong vaddr)
-{
-    uint64_t retval;
-#ifdef CONFIG_USER_ONLY
-    get_user_u64(retval, vaddr);
-#else
-    hexagon_tools_memory_read(env, vaddr, 8, &retval);
-#endif
-    return retval;
-}
-static inline size1u_t mem_read1(CPUHexagonState *env, paddr_t paddr)
-{
-    size1u_t retval;
-#ifdef CONFIG_USER_ONLY
-    get_user_u8(retval, paddr);
-#else
-    hexagon_tools_memory_read(env, paddr, 1, &retval);
-#endif
-    return retval;
-}
-static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
-{
-    size2u_t retval;
-#ifdef CONFIG_USER_ONLY
-    get_user_u16(retval, paddr);
-#else
-    hexagon_tools_memory_read(env, paddr, 2, &retval);
-#endif
-    return retval;
-}
-static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
-{
-    size4u_t retval;
-#ifdef CONFIG_USER_ONLY
-    get_user_u32(retval, paddr);
-#else
-    hexagon_tools_memory_read(env, paddr, 4, &retval);
-#endif
-    return retval;
-}
-static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
-{
-    size8u_t retval;
-#ifdef CONFIG_USER_ONLY
-    get_user_u64(retval, paddr);
-#else
-    hexagon_tools_memory_read(env, paddr, 8, &retval);
-#endif
-    return retval;
+    hmx_ext_commit_regs(env, 0);
+    hmx_ext_commit_mem(env, 0, 0);
 }
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */

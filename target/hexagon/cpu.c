@@ -64,13 +64,8 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false),
     DEFINE_PROP_BOOL("sched-limit", HexagonCPU, sched_limit, false),
     DEFINE_PROP_STRING("usefs", HexagonCPU, usefs),
-    /* This value should be the 36-bit address of the config table
-     * (not the value that goes in the cfgbase register):
-     */
     DEFINE_PROP_UINT64("config-table-addr", HexagonCPU, config_table_addr,
         0xffffffffULL),
-    /* This value should be the contents of the 'rev' register:
-     */
     DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, /*v73:*/0x8c73),
     DEFINE_PROP_BOOL("virtual-platform-mode", HexagonCPU, vp_mode, false),
     DEFINE_PROP_UINT32("start-evb", HexagonCPU, boot_evb, 0x0),
@@ -473,26 +468,28 @@ const arch_proc_opt_t arch_proc_opt_v68 = {
     .xfp_cvt_frac = 13,
     .xfp_cvt_int = 3,
     .QDSP6_DMA_PRESENT     = 1,
+    .QDSP6_DMA_EXTENDED_VA_PRESENT = 0,
     .QDSP6_MX_FP_PRESENT   = 1,
     .QDSP6_MX_RATE = 8,
-    .QDSP6_MX_FP_RATE = 4,
-    .QDSP6_MX_FP_ACC_INT = 7,
-    .QDSP6_MX_FP_ACC_FRAC = 22,
-    .QDSP6_MX_FP_ACC_EXP = 9,
     .QDSP6_MX_CHANNELS = 32,
     .QDSP6_MX_ROWS = 64,
     .QDSP6_MX_COLS = 32,
-    .QDSP6_MX_FP_ROWS = 32,
-    .QDSP6_MX_FP_COLS = 32,
     .QDSP6_MX_CVT_MPY_SZ = 10,
     .QDSP6_MX_SUB_COLS = 1,
     .QDSP6_MX_ACCUM_WIDTH = 32,
     .QDSP6_MX_CVT_WIDTH = 12,
+    .QDSP6_MX_FP_RATE = 4,
+    .QDSP6_MX_FP_ACC_INT = 7,
+    .QDSP6_MX_FP_ACC_FRAC = 22,
+    .QDSP6_MX_FP_ACC_EXP = 9,
+    .QDSP6_MX_FP_ROWS = 32,
+    .QDSP6_MX_FP_COLS = 32,
     .QDSP6_MX_FP_ACC_NORM = 3,
-    .QDSP6_DMA_EXTENDED_VA_PRESENT = 0,
     .QDSP6_MX_PARALLEL_GRPS = 8,
     .QDSP6_VX_PRESENT = 1,
     .QDSP6_VX_CONTEXTS = 4,
+    .QDSP6_VX_MEM_ENTRIES = 2048,
+    .QDSP6_VX_VEC_SZ = 1024,
 };
 
 struct ProcessorState ProcessorStateV68 = {
@@ -533,8 +530,8 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     if (cs->cpu_index == 0) {
         env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
         env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
+        hmx_configure_state(env);
         hex_mmu_init(env);
-
         env->g_sreg[HEX_SREG_EVB] = 0x0;
         env->g_sreg[HEX_SREG_CFGBASE] =
             HEXAGON_CFG_ADDR_BASE(cpu->config_table_addr);
@@ -572,14 +569,13 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 #else
     env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
+    hmx_configure_state(env);
 #endif
     cpu_reset(cs);
-
 #if !defined(CONFIG_USER_ONLY)
     env->g_sreg[HEX_SREG_EVB] = cpu->boot_evb;
     env->gpr[HEX_REG_PC] = cpu->boot_addr;
 #endif
-
     if (cs->cpu_index == 0) {
         cs->halted = 0;
     }

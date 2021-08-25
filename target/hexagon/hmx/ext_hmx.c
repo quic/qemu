@@ -31,14 +31,14 @@
 #include "hmx/hmx.h"
 #include "arch_options_calc.h"
 #include "hmx/macros_auto.h"
-//#include "assert.h"
-//#include "string.h"
-
 #include <stdio.h>
 #include <assert.h>
-//#include "pmu.h"
 
 #define THREAD2STRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
+#define INC_TSTAT(...)
+#define INC_TSTATN(...)
+#define INC_TSTATNPC(...)
+#define INC_PSTATNPC(...)
 
 #ifdef CONFIG_USER_ONLY
 #define sim_mem_write1(X, Y, addr, val)        put_user_u8(val, addr)
@@ -50,94 +50,94 @@
 #define sim_mem_write4(X, Y, addr, val)        hexagon_tools_memory_write(thread, addr, 4, val)
 #endif
 
-// Get Arch option through thread
-#define ARCH_OPT_TH(OPTION) (thread->processor_ptr->arch_proc_options->OPTION)
-#define MEMTRACE_LD(...)
-#define memwrap_memtrace_ld(...)
-#define memwrap_memtrace_st(...)
-#define warn(...)
-#define MEMTRACE_LD(...)
-
-
-static void clear_xfp_accumulators(processor_t *proc, int idx) {
-  if (proc->arch_proc_options->QDSP6_MX_FP_ACC_EXP)
-  {
-    hmx_xfp_t xfp_zero = hmx_xfp_zero(proc);
-    thread_t * thread = proc->thread[0];
-    for (int x = 0; x < MAX_ACCUMULATORS_DEPTH; x++) {
-      for(int y = 0; y < MAX_ACCUMULATORS_SPATIAL; y++) {
-          THREAD2STRUCT->accum_flt[y][x].xfp[idx] = xfp_zero;
-          THREAD2STRUCT->accum_flt[y][x].ovf[idx] = 0;
-      }
-    }
-  }
+static void clear_xfp_accumulators(hmx_state_t * state, int idx) {
+	hmx_xfp_t xfp_zero = hmx_xfp_zero(state);
+	for (int x = 0; x < MAX_ACCUMULATORS_DEPTH; x++) {
+		for(int y = 0; y < MAX_ACCUMULATORS_SPATIAL; y++) {
+				state->accum_flt[y][x].xfp[idx] = xfp_zero;
+				state->accum_flt[y][x].ovf[idx] = 0;
+		}
+	}
+}
+static void clear_fxp_accumulators(hmx_state_t *hmx_state, int acc_idx) {
+	for (int x = 0; x < MAX_ACCUMULATORS_DEPTH; x++) {
+		for(int y = 0; y < MAX_ACCUMULATORS_SPATIAL; y++) {
+			hmx_state->accum_fxp[y][x].w[acc_idx+0] = hmx_state->internal_bias_value;	// Lo
+			hmx_state->accum_fxp[y][x].w[acc_idx+2] = hmx_state->internal_bias_value;	// Hi
+			hmx_state->accum_fxp[y][x].bias_state |= (1<<(acc_idx+0));
+			hmx_state->accum_fxp[y][x].bias_state |= (1<<(acc_idx+2));
+		}
+	}
 }
 
-void hmx_ext_init(processor_t *proc) {
-  clear_xfp_accumulators(proc,0);
-  clear_xfp_accumulators(proc,1);
+void hmx_ext_alloc(processor_t *proc, int slots) { }
+void *hmx_ext_talloc(processor_t *proc, int slots) { return NULL; }
+void hmx_ext_init(processor_t *proc, int extno) {
+	thread_t *thread = proc->thread[0];
+	hmx_state_t * state = THREAD2HMXSTRUCT;
+	hmx_tmp_set_state(thread, state); // Configure internal parameters
+	state->internal_bias_value = (state->QDSP6_MX_SUB_COLS>1) ? -(1 << 16) : -(1 << 20); // TODO: Make me a parameter
+	clear_xfp_accumulators(state,0);
+	clear_xfp_accumulators(state,1);
 }
 
-#if 0
-void hmx_ext_print_reg(thread_t *thread, FILE *fp, int rnum)
+
+int hmx_ext_decode_checks(thread_t *thread, Packet *pkt, exception_info *einfo) {	return 0; }
+const char * hmx_ext_decode_find_iclass_slots(int opcode) { return ""; }
+
+void hmx_ext_print_reg(thread_t *thread, FILE *fp, int rnum, int extno)
 {
-	int hmx_spatial_sz = 1 << thread->processor_ptr->arch_proc_options->hmx_spatial_size;
-	int hmx_channel_depth = 1 << fMX_GETCHANNELSIZE(thread->processor_ptr);
+	hmx_state_t * state = THREAD2HMXSTRUCT;
 	int print_col = 4;
-	int j, k;
-	size4s_t v;
-	if(rnum >= hmx_spatial_sz) {
-		fprintf(fp, "HMX row index is out of bounds, max is %d", hmx_spatial_sz-1);
+
+	if(rnum >= state->QDSP6_MX_ROWS) {
+		fprintf(fp, "HMX row index is out of bounds, max is %d", state->QDSP6_MX_ROWS-1);
 		return;
 	}
 	fprintf(fp, "\tSet 0\t\t\tSet 1\n");
-	for (j=0;j<hmx_channel_depth; j+=print_col) {
+	for (int j=0;j<state->QDSP6_MX_COLS; j+=print_col) {
 		fprintf(fp,"A%02d.%02d: ", rnum, j);
-		for(k=0; k < print_col && (j + k) < hmx_channel_depth; k++) {
-			v = THREAD2STRUCT->accum_fxp[rnum][j+k].w[0];
-			fprintf(fp, "%04x ", v);
+		for(int k=0; k < print_col && (j + k) < state->QDSP6_MX_COLS; k++) {
+			fprintf(fp, "%04x ", (int32_t)state->accum_fxp[rnum][j+k].w[0]);
+
 		}
 		fprintf(fp, "\t");
-		for(k=0; k < print_col && (j + k) < hmx_channel_depth; k++) {
-			v = THREAD2STRUCT->accum_fxp[rnum][j+k].w[1];
-			fprintf(fp, "%04x ", v);
+		for(int k=0; k < print_col && (j + k) < state->QDSP6_MX_COLS; k++) {
+			fprintf(fp, "%04x ", (int32_t)state->accum_fxp[rnum][j+k].w[1]);
 		}
 		fprintf(fp, "\n");
 	}
+
 }
-void hmx_ext_print_regs(thread_t *thread, FILE *fp) {
-	int hmx_spatial_sz = 1 << thread->processor_ptr->arch_proc_options->hmx_spatial_size;
-	int hmx_channel_depth = 1 << fMX_GETCHANNELSIZE(thread->processor_ptr);
+void hmx_ext_print_regs(thread_t *thread, FILE *fp, int extno) {
+	hmx_state_t * state = THREAD2HMXSTRUCT;
 	int print_col = 4;
-	int i, j, k;
-	size4s_t v;
-	fprintf(fp, "\nAccumulators size configured as %d <spatial size> by %d <channel depth>\n", hmx_spatial_sz, hmx_channel_depth);
+	fprintf(fp, "\nAccumulators size configured as %d <spatial size> by %d <channel depth>\n", state->QDSP6_MX_ROWS, state->QDSP6_MX_COLS);
 	fprintf(fp, "\tSet 0\t\t\tSet 1\n");
-	for (i=0;i<hmx_spatial_sz;i++) {
-		for (j=0;j<hmx_channel_depth; j+=print_col) {
+	for (int i=0;i<state->QDSP6_MX_ROWS;i++) {
+		for (int j=0;j<state->QDSP6_MX_COLS; j+=print_col) {
 			fprintf(fp,"A%02d.%02d: ", i, j);
-			for(k=0; k < print_col && (j + k) < hmx_channel_depth; k++) {
-				v = THREAD2STRUCT->accum_fxp[i][j+k].w[0];
-				fprintf(fp, "%04x ", v);
+			for(int k=0; k < print_col && (j + k) < state->QDSP6_MX_COLS; k++) {;
+				fprintf(fp, "%04x ", (int32_t)state->accum_fxp[i][j+k].w[0]);
 			}
+
 			fprintf(fp, "\t");
-			for(k=0; k < print_col && (j + k) < hmx_channel_depth; k++) {
-				v = THREAD2STRUCT->accum_fxp[i][j+k].w[1];
-				fprintf(fp, "%04x ", v);
+			for(int k=0; k < print_col && (j + k) < state->QDSP6_MX_COLS; k++) {
+				fprintf(fp, "%04x ", (int32_t)state->accum_fxp[i][j+k].w[1]);
 			}
 			fprintf(fp, "\n");
 		}
 	}
 	fprintf(fp,"\n");
 }
-#endif
 
 int hmx_ext_get_ovf(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t acc_select, size4u_t *result)
 {
 	*result = 0x0;
-	if (THREAD2STRUCT != NULL) {
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t * state = THREAD2HMXSTRUCT;
 		spatial_index <<= 1;
-		*result = THREAD2STRUCT->accum_flt[spatial_index][channel_index].ovf[acc_select];
+		*result = state->accum_flt[spatial_index][channel_index].ovf[acc_select];
 		fMX_DEBUG_LOG(2, "TB HMX READ: FLT OVERFLOW BITS ACC[%02d][%02d][%02d]=%08x", spatial_index/2, channel_index, acc_select, *result);
 		return 0;
 	}
@@ -147,9 +147,10 @@ int hmx_ext_get_ovf(thread_t *thread, int spatial_index, size4u_t channel_index,
 
 int hmx_ext_set_ovf(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t acc_select, size4u_t val)
 {
-	if (THREAD2STRUCT != NULL) {
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t * state = THREAD2HMXSTRUCT;
 		spatial_index <<= 1;
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].ovf[acc_select] = val;
+		state->accum_flt[spatial_index][channel_index].ovf[acc_select] = val;
 		fMX_DEBUG_LOG(2, "TB HMX WRITE: FLT OVERFLOW BITS ACC[%02d][%02d][%02d]=%08x", spatial_index/2, channel_index, acc_select, val);
 		return 0;
 	}
@@ -174,251 +175,264 @@ void hmx_ext_pfree(processor_t *proc, int xa, int slots)
 void hmx_ext_tfree(processor_t *proc, int xa, int slots)
 {
 }
-
-#if 0
+// TODO: Take state as input not proc
 void hmx_acc_ptr_reset(processor_t *proc) {
-	((hmx_state_t*)proc->shared_extptr)->current_acc_flt = 0;
-	((hmx_state_t*)proc->shared_extptr)->current_acc_fxp = 0;
+	thread_t * thread = proc->thread[0];
+	hmx_state_t * state = THREAD2HMXSTRUCT;
+	state->current_acc_flt = 0;
+	state->current_acc_fxp = 0;
 }
 
 void hmx_reset(processor_t *proc, thread_t *thread){
 	hmx_acc_t reset_acc;
+	hmx_acc_t reset_acc_zero;
 	hmx_acc_t reset_acc_flt;
 	hmx_bias_t reset_bias;
+	hmx_state_t * state = THREAD2HMXSTRUCT;
+
+
 	reset_bias.val[0] = 0;
 	reset_bias.val[1] = 0;
 	reset_acc.ovf[0] = 0;
 	reset_acc.ovf[1] = 0;
+	reset_acc_zero.ovf[0] = 0;
+	reset_acc_zero.ovf[1] = 0;
 	reset_acc_flt.ovf[0] = 0;
 	reset_acc_flt.ovf[1] = 0;
-	for(int i = 0; i < MAX_HMX_ACC_BYTES/8; i++){
-		reset_acc.ud[i] = 0;
-		reset_acc_flt.ud[i] = 0;
+	for(int i = 0; i < MAX_HMX_ACC_BYTES/4; i++){
+		reset_acc.uw[i] = state->internal_bias_value;
+		reset_acc_zero.uw[i] = 0;
+		reset_acc_flt.uw[i] = 0;
 	}
-	if (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP != 0){
-		for(int acc_idx = 0; acc_idx < 2; acc_idx++) {
-			reset_acc_flt.xfp[acc_idx].exp = (-1<<(thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP-1));
-			reset_acc_flt.xfp[acc_idx].sig = 0;
-			reset_acc_flt.xfp[acc_idx].status.inf = 0;
-			reset_acc_flt.xfp[acc_idx].status.negative = 0;
-			reset_acc_flt.xfp[acc_idx].status.zero = 1;
-			reset_acc_flt.xfp[acc_idx].EXP = thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP;
-			reset_acc_flt.xfp[acc_idx].INT = thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_INT;
-			reset_acc_flt.xfp[acc_idx].FRAC = thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_FRAC;
 
-		}
+	for(int acc_idx = 0; acc_idx < 2; acc_idx++) {
+		reset_acc_flt.xfp[acc_idx].exp = (-1<<(state->QDSP6_MX_FP_ACC_EXP-1));
+		reset_acc_flt.xfp[acc_idx].sig = 0;
+		reset_acc_flt.xfp[acc_idx].status.inf = 0;
+		reset_acc_flt.xfp[acc_idx].status.negative = 0;
+		reset_acc_flt.xfp[acc_idx].status.zero = 1;
+		reset_acc_flt.xfp[acc_idx].EXP = state->QDSP6_MX_FP_ACC_EXP;
+		reset_acc_flt.xfp[acc_idx].INT = state->QDSP6_MX_FP_ACC_INT;
+		reset_acc_flt.xfp[acc_idx].FRAC = state->QDSP6_MX_FP_ACC_FRAC;
 	}
+
 	for(int depth = 0; depth < MAX_ACCUMULATORS_DEPTH; depth++){
-		((hmx_state_t*)proc->shared_extptr)->bias[depth] = reset_bias;
-		((hmx_state_t*)proc->shared_extptr)->future_bias[depth] = reset_bias;
+		state->bias[depth] = reset_bias;
+		state->future_bias[depth] = reset_bias;
 		for(int spatial = 0; spatial < MAX_ACCUMULATORS_SPATIAL; spatial++){
-			((hmx_state_t*)proc->shared_extptr)->accum_fxp[spatial][depth] = reset_acc;
-			((hmx_state_t*)proc->shared_extptr)->accum_flt[spatial][depth] = reset_acc_flt;
-			((hmx_state_t*)proc->shared_extptr)->cvt_future_accum_fxp[spatial][depth] = reset_acc;
-			((hmx_state_t*)proc->shared_extptr)->future_accum_fxp[spatial][depth] = reset_acc;
-			((hmx_state_t*)proc->shared_extptr)->future_accum_flt[spatial][depth] = reset_acc_flt;
+			state->accum_fxp[spatial][depth] = reset_acc;
+			state->accum_flt[spatial][depth] = reset_acc_flt;
+			state->cvt_future_accum_fxp[spatial][depth] = reset_acc_zero;
+			state->future_accum_fxp[spatial][depth] = reset_acc_zero;
+			state->future_accum_flt[spatial][depth] = reset_acc_flt;
+			state->accum_fxp[spatial][depth].bias_state = 0xF;
 			for(int cvt_state = 0; cvt_state < MAX_CONVERT_STATES; cvt_state++){
-				((hmx_state_t*)proc->shared_extptr)->cvt_accum[cvt_state][spatial][depth] = reset_acc;
+				state->cvt_accum[cvt_state][spatial][depth] = reset_acc_zero;
+
 			}
 		}
 	}
-	((hmx_state_t*)proc->shared_extptr)->current_acc_flt = 0;
-	((hmx_state_t*)proc->shared_extptr)->current_acc_fxp = 0;
+
+	state->current_acc_flt = 0;
+	state->current_acc_fxp = 0;
 }
-#endif
 
 /* Commit registers */
-void hmx_ext_commit_regs(thread_t *thread)
+void hmx_ext_commit_regs(thread_t *thread, int extno)
 {
-	THREAD2STRUCT->operand_ready = 0;
+	hmx_state_t * state = THREAD2HMXSTRUCT;
+	state->operand_ready = 0;
 	// Fixed Point Array
-	// int clear_fxp_future = 0;
-	// int clear_flt_future = 0;
-	if(THREAD2STRUCT->fxp_commit_state.cvt_update) {
-		if(!THREAD2STRUCT->fxp_commit_state.cvt_advance){
-		hmx_age_cvt_state(thread);
+	if(state->fxp_commit_state.cvt_update) {
+		if(!state->fxp_commit_state.cvt_advance){
+			hmx_age_cvt_state(thread);
 		}
-		memcpy(THREAD2STRUCT->cvt_accum[THREAD2STRUCT->cvt_accum_current_index], THREAD2STRUCT->cvt_future_accum_fxp, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-		// clear_fxp_future = 1;
+		memcpy(state->cvt_accum[state->cvt_accum_current_index], state->cvt_future_accum_fxp, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+
 	}
-	if(THREAD2STRUCT->fxp_commit_state.acc_update) {
-		memcpy(THREAD2STRUCT->accum_fxp, THREAD2STRUCT->future_accum_fxp, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-		// clear_fxp_future = 1;
+	if(state->fxp_commit_state.acc_update) {
+		memcpy(state->accum_fxp, state->future_accum_fxp, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+
 	}
-	if(THREAD2STRUCT->fxp_commit_state.bias_update) {
-		memcpy(THREAD2STRUCT->bias,  THREAD2STRUCT->future_bias,  sizeof(size4u_t)*MAX_ACCUMULATORS_DEPTH);
+	if(state->fxp_commit_state.bias_update) {
+		memcpy(state->bias,  state->future_bias,  sizeof(size4u_t)*MAX_ACCUMULATORS_DEPTH);
 	}
-	// if(clear_fxp_future){
-	// 	memset(THREAD2STRUCT->cvt_future_accum_fxp, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-	// }
-	THREAD2STRUCT->fxp_commit_state.cvt_update = 0;
-	THREAD2STRUCT->fxp_commit_state.cvt_advance = 0;
-	THREAD2STRUCT->fxp_commit_state.acc_update = 0;
-	THREAD2STRUCT->fxp_commit_state.bias_update = 0;
+
+	state->fxp_commit_state.cvt_update = 0;
+	state->fxp_commit_state.cvt_advance = 0;
+	state->fxp_commit_state.acc_update = 0;
+	state->fxp_commit_state.bias_update = 0;
 
 
 	// Floating Point Array
-	if(THREAD2STRUCT->flt_commit_state.cvt_update) {
-		if(!THREAD2STRUCT->flt_commit_state.cvt_advance){
-		hmx_age_cvt_state(thread);
+	if(state->flt_commit_state.cvt_update) {
+		if(!state->flt_commit_state.cvt_advance){
+			hmx_age_cvt_state(thread);
 		}
-		memcpy(THREAD2STRUCT->cvt_accum[THREAD2STRUCT->cvt_accum_current_index], THREAD2STRUCT->cvt_future_accum_flt, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-		// clear_flt_future = 1;
+		memcpy(state->cvt_accum[state->cvt_accum_current_index], state->cvt_future_accum_flt, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	}
-	if(THREAD2STRUCT->flt_commit_state.acc_update) {
-		if(thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_PRESENT == 0){
-			if (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP) {
-				clear_xfp_accumulators(thread->processor_ptr,0);
-			} else {
-			memset(THREAD2STRUCT->accum_flt, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-			}
+	if(state->flt_commit_state.acc_update) {
+		if(state->support_fp16 == 0){
+				clear_xfp_accumulators(state,0);
 		}
 		else{
-			memcpy(THREAD2STRUCT->accum_flt, THREAD2STRUCT->future_accum_flt, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+			memcpy(state->accum_flt, state->future_accum_flt, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 		}
-		// clear_flt_future = 1;
 	}
 
 
-	THREAD2STRUCT->flt_commit_state.cvt_update = 0;
-	THREAD2STRUCT->flt_commit_state.cvt_advance = 0;
-	THREAD2STRUCT->flt_commit_state.acc_update = 0;
+	state->flt_commit_state.cvt_update = 0;
+	state->flt_commit_state.cvt_advance = 0;
+	state->flt_commit_state.acc_update = 0;
 
-	if(THREAD2STRUCT->fxp_commit_state.acc_clear_both) {
-		THREAD2STRUCT->fxp_commit_state.acc_clear_both = 0;
-		memset(THREAD2STRUCT->accum_fxp, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-		memset(THREAD2STRUCT->future_accum_fxp, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+	if(state->fxp_commit_state.acc_clear_both) {
+		state->fxp_commit_state.acc_clear_both = 0;
+		clear_fxp_accumulators(state, 0);
+		clear_fxp_accumulators(state, 1);
+		memset(state->accum_fxp, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+		memset(state->future_accum_fxp, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	}
-	if(THREAD2STRUCT->flt_commit_state.acc_clear_both) {
-    THREAD2STRUCT->flt_commit_state.acc_clear_both = 0;
-    if (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP) {
-      clear_xfp_accumulators(thread->processor_ptr,0);
-      clear_xfp_accumulators(thread->processor_ptr,1);
-    } else {
-      memset(THREAD2STRUCT->accum_flt, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-    }
-
-		memset(THREAD2STRUCT->future_accum_flt, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-  }
-	// if(clear_flt_future){
-	// 	memset(THREAD2STRUCT->cvt_future_accum_flt, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
-	// }
-
-
-	if(THREAD2STRUCT->fxp_commit_state.swap_acc) {
-        THREAD2STRUCT->current_acc_fxp ^= 1;
-		THREAD2STRUCT->fxp_commit_state.swap_acc = 0;
+	if(state->flt_commit_state.acc_clear_both) {
+		state->flt_commit_state.acc_clear_both = 0;
+		clear_xfp_accumulators(state,0);
+		clear_xfp_accumulators(state,1);
+		memset(state->future_accum_flt, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	}
-	if(THREAD2STRUCT->flt_commit_state.swap_acc) {
-		THREAD2STRUCT->current_acc_flt ^= 1;
-		THREAD2STRUCT->flt_commit_state.swap_acc = 0;
+
+	if(state->fxp_commit_state.swap_acc) {
+        state->current_acc_fxp ^= 1;
+		state->fxp_commit_state.swap_acc = 0;
+	}
+	if(state->flt_commit_state.swap_acc) {
+		state->current_acc_flt ^= 1;
+		state->flt_commit_state.swap_acc = 0;
 	}
 }
 
 
 /* Cancel packet in progress */
-void hmx_ext_rewind(thread_t *thread)
+void hmx_ext_rewind(thread_t *thread, int extno)
 {
-	THREAD2STRUCT->operand_ready = 0;
-	THREAD2STRUCT->fxp_commit_state.val = 0;
-	THREAD2STRUCT->flt_commit_state.val = 0;
+	hmx_state_t *state = THREAD2HMXSTRUCT;
+	state->operand_ready = 0;
+	if(state->fxp_commit_state.cvt_update)
+		memcpy(state->cvt_future_accum_fxp, state->cvt_accum[state->cvt_accum_current_index], sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+	if(state->flt_commit_state.cvt_update)
+		memcpy(state->cvt_future_accum_flt, state->cvt_accum[state->cvt_accum_current_index], sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+	state->fxp_commit_state.val = 0;
+	state->flt_commit_state.val = 0;
 };
 
 
 void hmx_ext_commit_rewind(thread_t *thread)
 {
-	THREAD2STRUCT->operand_ready = 0;
-	THREAD2STRUCT->fxp_commit_state.val = 0;
-	THREAD2STRUCT->flt_commit_state.val = 0;
+	hmx_state_t *state = THREAD2HMXSTRUCT;
+	state->operand_ready = 0;
+	state->fxp_commit_state.val = 0;
+	state->flt_commit_state.val = 0;
 }
 
 static void write_converted_peg(thread_t *thread, int x_idx, int y_idx, int x_acc_idx, int y_acc_idx, int old_state) {
-	hmx_state_t *hmx_state = THREAD2STRUCT;
+	hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 	int acc_idx = (x_acc_idx|y_acc_idx);
-	//int current_acc = thread->mem_access[0].hmx_ma.acc_select;
-	int format =  thread->mem_access[0].hmx_ma.format;
-	int flt = thread->mem_access[0].hmx_ma.flt;
-	int enable16x16 = thread->mem_access[0].hmx_ma.enable16x16;
-	int outputselect16x16 = thread->mem_access[0].hmx_ma.outputselect16x16;
+
+	int format =  hmx_state->format;
+	int flt = hmx_state->is_flt;
+	int enable16x16 = hmx_state->enable16x16;
+	int outputselect16x16 = hmx_state->outputselect16x16;
 	paddr_t paddr_base = thread->mem_access[0].paddr;
+
 	fMX_GET_ACC_INDEX(acc_idx, format);
 
 	int beginning = 0;
-	int end = thread->processor_ptr->arch_proc_options->hmx_output_depth;
+	int end = hmx_state->QDSP6_MX_COLS;
 	int offset_16x16 = 0;
 	int scale_16x16 = 1;
 	int adjust_16x16 = 0;
-	int z_idx_adjusted;
 	//modifying to only print 16 outputs
 	if(enable16x16){
 		adjust_16x16 = 1;
 		scale_16x16 = 2;
 		if(outputselect16x16){
-			beginning = thread->processor_ptr->arch_proc_options->hmx_output_depth / 2;
+			beginning = hmx_state->QDSP6_MX_COLS / 2;
 			offset_16x16 = 16;
 		}
 		else{
-			end = thread->processor_ptr->arch_proc_options->hmx_output_depth / 2;
+			end = hmx_state->QDSP6_MX_COLS / 2;
 		}
 	}
 
-  int cvt_accum_index = hmx_state->cvt_accum_current_index;
+	int cvt_accum_index = hmx_state->cvt_accum_current_index;
 
-  if (old_state)
-  {
-    cvt_accum_index += MAX_CONVERT_STATES; //Force backwards iteration to be positive
-    cvt_accum_index = (cvt_accum_index - 1) % MAX_CONVERT_STATES;
-  }
+	if (old_state)
+	{
+		cvt_accum_index += MAX_CONVERT_STATES; //Force backwards iteration to be positive
+		cvt_accum_index = (cvt_accum_index - 1) % MAX_CONVERT_STATES;
+	}
 
-  int convert_width = thread->processor_ptr->arch_proc_options->QDSP6_MX_CVT_WIDTH;
-  if((convert_width < 8) || (convert_width > 16)){
-    CPUState *cs = env_cpu(thread);
-    cpu_abort(cs, "convert state width does not fall in acceptable range");
-  }
+	int convert_width = hmx_state->QDSP6_MX_CVT_WIDTH;
+	if((convert_width < 8) || (convert_width > 16)){
+		fatal("convert state width does not fall in acceptable range");
+	}
 
 	for(int z_idx = beginning; z_idx < end; z_idx++) {
 
 		paddr_t pa = paddr_base + (x_idx|y_idx) + (z_idx << format);
-
+		//fMX_DEBUG_LOG(2,        "HMX_CVT_FLT: pa=%llx x=%x y=%x z=%x" , pa, x_idx, y_idx, (z_idx << format));
 		size1u_t byte = 0;
-		size1u_t byte_zero = 0;
-		size1u_t byte_one = 0;
 		size2u_t hf = 0;
+		int z_idx_adjusted = ((z_idx - offset_16x16) * scale_16x16) + adjust_16x16;
+		if(flt) {
+			size1u_t byte_zero = (hmx_state->cvt_accum[cvt_accum_index][acc_idx][z_idx_adjusted].uh[0] >> (convert_width - 8)) & 0xFF;
+			size1u_t byte_one  = (hmx_state->cvt_accum[cvt_accum_index][acc_idx + 1][z_idx_adjusted].uh[0] >> (convert_width - 8)) & 0xFF;
+			hf = byte_zero + (((size2u_t)byte_one) << 8);
+			if (thread->processor_ptr->options->hmx_cvt_state_write_callback) {
+				thread->processor_ptr->options->hmx_cvt_state_write_callback(thread->system_ptr, thread->processor_ptr, thread->pktid, old_state, acc_idx, z_idx, acc_idx, byte_zero);
+				thread->processor_ptr->options->hmx_cvt_state_write_callback(thread->system_ptr, thread->processor_ptr, thread->pktid, old_state, acc_idx+1, z_idx, acc_idx, byte_one);
+			}
+			sim_mem_write2(thread->system_ptr,thread->threadId, pa, hf);
+			fMX_DEBUG_LOG(2,        "HMX_CVT_FLT: WRITE CVT_STATE[%02d][%02d] PA=%08llx Half word: %04x pktid:%08x" , acc_idx+0, z_idx_adjusted, pa+0, byte_zero, thread->pktid);
+			fMX_DEBUG_LOG(2,        "HMX_CVT_FLT: WRITE CVT_STATE[%02d][%02d] PA=%08llx Half word: %04x pktid:%08x" , acc_idx+1, z_idx_adjusted, pa+1, byte_one, thread->pktid);
+		} else {
+			byte = (hmx_state->cvt_accum[cvt_accum_index][acc_idx][z_idx_adjusted].uh[0] >> (convert_width - 8)) & 0xFF;
+			if (thread->processor_ptr->options->hmx_cvt_state_write_callback) {
+				thread->processor_ptr->options->hmx_cvt_state_write_callback(thread->system_ptr, thread->processor_ptr, thread->pktid, old_state, acc_idx, z_idx, acc_idx, byte);
+			}
+			sim_mem_write1(thread->system_ptr,thread->threadId, pa, byte);
+			fMX_DEBUG_LOG(2,         "HMX_CVT_FXP: WRITE CVT_STATE[%02d][%02d] PA=%08llx Byte: %02x pktid:%08x" , acc_idx, z_idx_adjusted, pa, byte, thread->pktid);
+		}
 
-		z_idx_adjusted = ((z_idx - offset_16x16) * scale_16x16) + adjust_16x16;
-    if(flt) {
-      byte_zero = (hmx_state->cvt_accum[cvt_accum_index][acc_idx][z_idx_adjusted].uh[0] >> (convert_width - 8)) & 0xFF;
-      byte_one  = (hmx_state->cvt_accum[cvt_accum_index][acc_idx + 1][z_idx_adjusted].uh[0] >> (convert_width - 8)) & 0xFF;
-      hf = byte_zero + (((size2u_t)byte_one) << 8);
-      sim_mem_write2(thread->system_ptr,thread->threadId, pa, hf);
-      fMX_DEBUG_LOG(3,        "HMX_CVT_FLT: write ACC[%02d][%02d][%02d] to PA=%08llx Half word: %04x pktid:%08x" , acc_idx, z_idx, current_acc, pa, byte_zero, thread->pktid);
-      fMX_DEBUG_LOG(3,        "HMX_CVT_FLT: write ACC[%02d][%02d][%02d] to PA=%08llx Half word: %04x pktid:%08x" , acc_idx+1, z_idx, current_acc, pa, byte_one, thread->pktid);
-    } else {
-      byte = (hmx_state->cvt_accum[cvt_accum_index][acc_idx][z_idx_adjusted].uh[0] >> (convert_width - 8)) & 0xFF;
-      sim_mem_write1(thread->system_ptr,thread->threadId, pa, byte);
-      fMX_DEBUG_LOG(3,         "HMX_CVT_FXP: write ACC[%02d][%02d][%02d] to PA=%08llx Byte: %02x pktid:%08x" , acc_idx, z_idx, current_acc, pa, byte, thread->pktid);
-    }
-
+#ifdef VERIFICATION
+		int slot_tmp = thread->ver_cur_slot;
+		thread->ver_cur_slot = 0;
+		int width = (flt) ? 2 : 1;
+		int val = (flt) ? hf : byte;
+		if (thread->processor_ptr->options->sim_vtcm_memory_callback) {
+			thread->processor_ptr->options->sim_vtcm_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId, 0, pa, width, DWRITE, val);
+		}
+		thread->ver_cur_slot = 0;
+		thread->ver_cur_slot = slot_tmp;
+#endif
 	}
 }
 
 
 static void write_x_row(thread_t *thread, int y_idx, int y_acc_idx) {
-	hmx_state_t *hmx_state = THREAD2STRUCT;
+	hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 	int x_idx  = 0;
 	int x_acc_idx = hmx_state->x_acc_offset;
 	int x_inc = hmx_state->tile_x_inc;
 	int x_mask = hmx_state->tile_x_mask | (1<<31);
-	int x_offset  = thread->mem_access[0].hmx_ma.x_offset;	// Start at offset
+	int x_offset  = hmx_state->x_offset;	// Start at offset
 
-	fMX_DEBUG_LOG(5,  "HMX_CVT_FLT: starting x=%x offset = %x pktid:%08x" , x_idx, x_offset, thread->pktid);
+	//fMX_DEBUG_LOG(1,  "HMX_CVT_FLT: starting x=%x acc=%x offset = %x y=%x offset = %x pktid:%08x" , x_idx, x_acc_idx, x_offset, y_idx, y_acc_idx, thread->pktid);
 	for (; x_idx < x_offset; ) {
 		if ((hmx_state->cvt_type == HMX_CVT_BEFORE) || (hmx_state->cvt_type == HMX_CVT_BOTH)) {
-			fMX_DEBUG_LOG(5,  "HMX_CVT_FLT: before: writing peg x=%x pktid:%08x" , x_idx, thread->pktid);
+			//fMX_DEBUG_LOG(1,  "HMX_CVT_FLT: before: writing peg x=%x pktid:%08x" , x_idx, thread->pktid);
 			write_converted_peg(thread, x_idx, y_idx, x_acc_idx, y_acc_idx, hmx_state->cvt_type == HMX_CVT_BOTH);
-			x_acc_idx = fMX_INC_MASKED(x_acc_idx, x_inc, x_mask);
+			x_acc_idx = hmx_inc_with_spatial_mask(x_acc_idx, x_inc, x_mask);
 		}
-		x_idx = fMX_INC_MASKED(x_idx, x_inc, x_mask);
+		x_idx = hmx_inc_with_spatial_mask(x_idx, x_inc, x_mask);
 		if (x_inc == 0) break;
 	}
 	//printf("x_idx=%x x_acc_idx=%x\n", x_idx, x_acc_idx);
@@ -426,201 +440,172 @@ static void write_x_row(thread_t *thread, int y_idx, int y_acc_idx) {
 
 	while(x_idx>=0) {
 		if ((hmx_state->cvt_type == HMX_CVT_AFTER) || (hmx_state->cvt_type == HMX_CVT_BOTH)) {
-			fMX_DEBUG_LOG(5,  "HMX_CVT_FLT: after: writing peg x=%x pktid:%08x" , x_idx, thread->pktid);
+			//fMX_DEBUG_LOG(1,  "HMX_CVT_FLT: after: writing peg x=%x pktid:%08x" , x_idx, thread->pktid);
 			write_converted_peg(thread, x_idx, y_idx, x_acc_idx, y_acc_idx, 0);
-			x_acc_idx = fMX_INC_MASKED(x_acc_idx, x_inc, x_mask);
+			x_acc_idx = hmx_inc_with_spatial_mask(x_acc_idx, x_inc, x_mask);
 		}
-		x_idx = fMX_INC_MASKED(x_idx, x_inc, x_mask);
+		x_idx = hmx_inc_with_spatial_mask(x_idx, x_inc, x_mask);
 		if (x_inc == 0) break;
 	}
 }
 
 static void write_out_convert(thread_t *thread) {
-		hmx_state_t *hmx_state = THREAD2STRUCT;
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		int y_mask = hmx_state->tile_y_mask | (1<<31);
 		int y_inc  = hmx_state->tile_y_inc;
-		int y_idx  = thread->mem_access[0].hmx_ma.y_offset;
-		int dY = thread->mem_access[0].hmx_ma.dY;
+		int y_idx  = hmx_state->y_offset;
+		int dY = hmx_state->dY;
 		int y_offset = y_idx;
 		int y_acc_idx  = 0;
 
 		while(y_idx>=0) {
 			// Write out Horizontal Strip
-			fMX_DEBUG_LOG(5,  "HMX_CVT_FLT: writing row offset y=%x pktid:%08x" , y_idx, thread->pktid);
+			//fMX_DEBUG_LOG(1,  "HMX_CVT_FLT: writing row offset y=%x pktid:%08x" , y_idx, thread->pktid);
 			write_x_row(thread, y_idx, y_acc_idx);
-			y_idx = fMX_INC_MASKED(y_idx, y_inc, y_mask);
-			y_acc_idx = fMX_INC_MASKED(y_acc_idx, y_inc, y_mask);
+			y_idx =  hmx_inc_with_spatial_mask(y_idx, y_inc, y_mask);
+			y_acc_idx =  hmx_inc_with_spatial_mask(y_acc_idx, y_inc, y_mask);
 			if (y_inc == 0) break;
 		}
 		if (dY != 0) {
 			// Address to next tile
 			thread->mem_access[0].paddr += dY;
-			fMX_DEBUG_LOG(5,  "HMX_CVT_FLT: second block writing row y=%x pktid:%08x" , y_idx, thread->pktid);
+			//fMX_DEBUG_LOG(1,  "HMX_CVT_FLT: second block writing row y=%x pktid:%08x" , y_idx, thread->pktid);
 			for (y_idx  = 0; y_idx < y_offset; )  {
 				write_x_row(thread, y_idx, y_acc_idx);
-				y_idx = fMX_INC_MASKED(y_idx, y_inc, y_mask);
-				y_acc_idx = fMX_INC_MASKED(y_acc_idx, y_inc, y_mask);
+				y_idx = hmx_inc_with_spatial_mask(y_idx, y_inc, y_mask);
+				y_acc_idx = hmx_inc_with_spatial_mask(y_acc_idx, y_inc, y_mask);
 				if (y_inc == 0) break;
 			}
 		} else {
 			for (y_idx  = 0; y_idx < y_offset; )  {
-				fMX_DEBUG_LOG(5,  "HMX_CVT_FLT: writing row y=%x pktid:%08x" , y_idx, thread->pktid);
+				//fMX_DEBUG_LOG(1,  "HMX_CVT_FLT: writing row y=%x pktid:%08x" , y_idx, thread->pktid);
 				write_x_row(thread, y_idx, y_acc_idx );
-				y_idx = fMX_INC_MASKED(y_idx, y_inc, y_mask);
-				y_acc_idx = fMX_INC_MASKED(y_acc_idx, y_inc, y_mask);
+				y_idx = hmx_inc_with_spatial_mask(y_idx, y_inc, y_mask);
+				y_acc_idx =  hmx_inc_with_spatial_mask(y_acc_idx, y_inc, y_mask);
 				if (y_inc == 0) break;
 			}
 		}
 }
 
-void hmx_ext_commit_mem(thread_t *thread, int slot)
+
+void hmx_ext_commit_mem(thread_t *thread, int slot, int extno)
 {
-	hmx_state_t *hmx_state = THREAD2STRUCT;
+	hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 	// NPU: Matrix Multiply Accumulators
 
 	if(hmx_state->fxp_commit_state.cvt_write) {
 		write_out_convert(thread);
 		hmx_state->fxp_commit_state.cvt_write = 0;
-		memset(THREAD2STRUCT->future_accum_fxp, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+		memset(hmx_state->future_accum_fxp, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	}
 
 	if (hmx_state->fxp_commit_state.acc_clear) {
-		int current_acc = thread->mem_access[0].hmx_ma.acc_select;
-		for (int x = 0; x < MAX_ACCUMULATORS_DEPTH; x++) {
-			for(int y = 0; y < MAX_ACCUMULATORS_SPATIAL; y++) {
-				hmx_state->accum_fxp[y][x].w[current_acc+0] = 0;	// Lo
-				hmx_state->accum_fxp[y][x].w[current_acc+2] = 0;	// Hi
-			}
-		}
+		int current_acc = hmx_state->acc_select;
+		clear_fxp_accumulators(hmx_state, current_acc);
 		hmx_state->current_acc_fxp ^= 0x1 ; // Flip Accumulator
 		hmx_state->fxp_commit_state.acc_clear = 0;
+#ifdef VERIFICATION
 		fMX_DEBUG_LOG(1, "\t HMX CVT Accumulator swapped to %x", hmx_state->fxp_commit_state.acc_clear);
+#endif
 	}
 
 	// Float Array
 	if(hmx_state->flt_commit_state.cvt_write) {
 		write_out_convert(thread);
 		hmx_state->flt_commit_state.cvt_write = 0;
-		memset(THREAD2STRUCT->future_accum_flt, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+		memset(hmx_state->future_accum_flt, 0, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	}
 
 	if (hmx_state->flt_commit_state.acc_clear) {
-		int current_acc = thread->mem_access[0].hmx_ma.acc_select;
-		if (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_EXP) {
-				clear_xfp_accumulators(thread->processor_ptr,current_acc);
-		}
-		else
-		{
-			for (int x = 0; x < MAX_ACCUMULATORS_DEPTH; x++) {
-				for(int y = 0; y < MAX_ACCUMULATORS_SPATIAL; y++) {
-					// Legacy accumulators
-					hmx_state->accum_flt[y][x].val[current_acc].w[0] = 0;
-					hmx_state->accum_flt[y][x].val[current_acc].w[1] = 0;
-					hmx_state->accum_flt[y][x].val[current_acc].w[2] = 0;
-					hmx_state->accum_flt[y][x].val[current_acc].w[3] = 0;
-					hmx_state->accum_flt[y][x].ovf[current_acc] = 0;
-				}
-			}
-		}
+		clear_xfp_accumulators(hmx_state, hmx_state->acc_select);
 		hmx_state->flt_commit_state.acc_clear = 0;
 		hmx_state->current_acc_flt ^= 0x1 ; // Flip Accumulator
+#ifdef VERIFICATION
+		fMX_DEBUG_LOG(1, "\t HMX CVT Accumulator swapped to %x", hmx_state->fxp_commit_state.acc_clear);
+#endif
 	}
 
 	// This will get cleaned up when old bias instructions are replicated
 	if(hmx_state->fxp_commit_state.bias_write) {
-		for(int output_ch_idx = 0; output_ch_idx < thread->processor_ptr->arch_proc_options->hmx_output_depth; output_ch_idx++) {
+		for(int output_ch_idx = 0; output_ch_idx < hmx_state->QDSP6_MX_COLS; output_ch_idx++) {
 			size4u_t temp = hmx_state->bias[output_ch_idx].val[0];
 			paddr_t pa = thread->mem_access[0].paddr + 4*output_ch_idx;
 			sim_mem_write4(thread->system_ptr,thread->threadId, pa , temp);
+#ifdef VERIFICATION
+			int slot_tmp = thread->ver_cur_slot;
+			thread->ver_cur_slot = 0;
+			if (thread->processor_ptr->options->sim_vtcm_memory_callback) {
+				thread->processor_ptr->options->sim_vtcm_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId, 0, pa, 4, DWRITE, temp);
+			}
+			thread->ver_cur_slot = slot_tmp;
+#endif
 		}
 		if(hmx_state->fxp_commit_state.bias_write == 2) {
-			for(int output_ch_idx = 0; output_ch_idx < thread->processor_ptr->arch_proc_options->hmx_output_depth; output_ch_idx++) {
+			for(int output_ch_idx = 0; output_ch_idx < hmx_state->QDSP6_MX_COLS; output_ch_idx++) {
 				size4u_t temp = hmx_state->bias[output_ch_idx].val[1];
 				paddr_t pa = thread->mem_access[0].paddr + 4*output_ch_idx + 128;
 				sim_mem_write4(thread->system_ptr,thread->threadId, pa , temp);
+#ifdef VERIFICATION
+				int slot_tmp = thread->ver_cur_slot;
+				thread->ver_cur_slot = 0;
+				if (thread->processor_ptr->options->sim_vtcm_memory_callback) {
+					thread->processor_ptr->options->sim_vtcm_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId, 0, pa, 4, DWRITE, temp);
+				}
+				thread->ver_cur_slot = slot_tmp;
+#endif
 			}
 		}
 		hmx_state->fxp_commit_state.bias_write = 0;
 	}
 
 
-
 }
 
-
-#if 0
+void hmx_ext_print_acc(thread_t *thread, FILE *fp);
 void hmx_ext_print_acc(thread_t *thread, FILE *fp) {
-	hmx_state_t *mmvecx = THREAD2STRUCT;
-	int r,i,k;
-	int len_words = (fVECSIZE())/4;
-	fprintf(fp,"Vector size configured as %d words\n",len_words);
 
-	for (r=0; r<NUM_VREGS; r++) {
-		for (k = 0; k < len_words/8; k++) {
-			fprintf(fp,"V%02d.%02d: ", r, k*8);
-			for (i = 0; i < 8; i++) {
-				fprintf(fp,"%08x ", mmvecx->VRegs[r].uw[i+k*8]);
-			}
-			fprintf(fp,"\n");
-		}
-	}
-	for (r=0; r<NUM_QREGS; r++) {
-		fprintf(fp,"Q%02d: ", r);
-		for (i = 0; i < len_words/2; i++) {
-			fprintf(fp,"%02x ", mmvecx->QRegs[r].ub[i]);
-		}
-		fprintf(fp,"\n");
-	}
 }
-#endif
 
 int	hmx_ext_set_fp_acc(thread_t *thread,  int spatial_idx, int channel_idx, int acc_idx, size4s_t exponent, size8s_t significand_hi, size8u_t significand_lo, size4u_t ovf) {
 
-	if (THREAD2STRUCT != NULL)
+	if (THREAD2HMXSTRUCT != NULL)
 	{
-		processor_t * proc = thread->processor_ptr;
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		spatial_idx <<= 1;
-		if (proc->arch_proc_options->QDSP6_MX_FP_ACC_EXP==0) // ACC TYPE - Fractional format Q63.64 format
-		{
-			exponent = (proc->arch_proc_options->QDSP6_MX_FP_ACC_INT-2);
-			size16s_t acc_128 = {.hi = significand_hi, .lo = significand_lo };
-			acc_128 = shiftr128(acc_128, 62-exponent);	// Align to Q63.64 format
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_idx].hi = acc_128.hi;
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_idx].lo = acc_128.lo;
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_idx] = ovf;
-			fMX_DEBUG_LOG(2,  "TB HMX WRITE: Q63.64 FLT ACC[%02d][%02d][%02d] = %016llx.%016llx ovf=%x (input exponent: %4d significand=%016llx%016llx)",
-			spatial_idx/2, channel_idx, acc_idx, acc_128.hi, acc_128.lo, ovf, exponent, significand_hi, significand_lo );
-    } else {
-      hmx_xfp_t acc;
-      int32_t shift = proc->arch_proc_options->QDSP6_MX_FP_ACC_FRAC+proc->arch_proc_options->QDSP6_MX_FP_ACC_INT;
-      acc.EXP = proc->arch_proc_options->QDSP6_MX_FP_ACC_EXP;
-			// mask
-      acc.exp = exponent & ((1<<proc->arch_proc_options->QDSP6_MX_FP_ACC_EXP)-1);
-			// sign extend
-			acc.exp <<= (32 - proc->arch_proc_options->QDSP6_MX_FP_ACC_EXP);
-			acc.exp >>= (32 - proc->arch_proc_options->QDSP6_MX_FP_ACC_EXP);
-      acc.FRAC = proc->arch_proc_options->QDSP6_MX_FP_ACC_FRAC;
-			acc.INT = proc->arch_proc_options->QDSP6_MX_FP_ACC_INT;
-      acc.sig = significand_hi >> (64 - shift );
-      acc.status.val = 0;
-      acc.status.inf = ovf ;
-			acc.lza = 0;
-      if (acc.status.inf==0) {
-        acc.status.negative = (significand_hi < 0);
-				int32_t min_exp = -(1 << (acc.EXP-1));
-				acc.status.zero = (significand_hi==0) && (acc.exp == min_exp);
-      } else {
-        acc.status.negative = ((acc.status.inf & 0x2) == 2);
-      }
-      THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_idx] = ovf;
-       THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].xfp[acc_idx] = acc;
 
-			fMX_DEBUG_LOG(2,  "TB HMX WRITE: XFP ACC[%02d][%02d][%02d] exp: %04x raw sig: %016llx q=%02x.%06x Q%d.%de%d status inf: %d neg: %d zero: %d -> legacy: in ovf: %d exp: 0x%04x sig=%016llx.%016llx",
-			spatial_idx/2, channel_idx, acc_idx, (uint16_t) acc.exp, (long long int)acc.sig, (uint8_t)((acc.sig >> acc.FRAC) & 0xFF), (uint32_t)(((acc.sig) & ((1<<acc.FRAC)-1)) << (24 - acc.FRAC)), acc.INT, acc.FRAC, acc.EXP,  acc.status.inf, acc.status.negative, acc.status.zero, ovf,  exponent, significand_hi, significand_lo );
-    }
-    return 0;
-  }
-  return -1;
+		hmx_xfp_t acc;
+		int32_t shift = hmx_state->QDSP6_MX_FP_ACC_FRAC+hmx_state->QDSP6_MX_FP_ACC_INT;
+		acc.EXP = hmx_state->QDSP6_MX_FP_ACC_EXP;
+
+		// mask
+		acc.exp = exponent & ((1<<hmx_state->QDSP6_MX_FP_ACC_EXP)-1);
+
+		// sign extend
+		acc.exp <<= (32 - hmx_state->QDSP6_MX_FP_ACC_EXP);
+		acc.exp >>= (32 - hmx_state->QDSP6_MX_FP_ACC_EXP);
+
+		acc.FRAC = hmx_state->QDSP6_MX_FP_ACC_FRAC;
+		acc.INT = hmx_state->QDSP6_MX_FP_ACC_INT;
+		acc.sig = significand_hi >> (64 - shift );
+		acc.status.val = 0;
+		acc.status.inf = ovf ;
+		acc.lza = 0;
+		if (acc.status.inf==0) {
+			acc.status.negative = (significand_hi < 0);
+			int32_t min_exp = -(1 << (acc.EXP-1));
+			acc.status.zero = (significand_hi==0) && (acc.exp == min_exp);
+		} else {
+			acc.status.negative = ((acc.status.inf & 0x2) == 2);
+		}
+		hmx_state->accum_flt[spatial_idx][channel_idx].ovf[acc_idx] = ovf;
+		hmx_state->accum_flt[spatial_idx][channel_idx].xfp[acc_idx] = acc;
+
+		fMX_DEBUG_LOG(2,  "TB HMX WRITE: XFP ACC[%02d][%02d][%02d] exp: %04x raw sig: %016llx q=%02x.%06x Q%d.%de%d status inf: %d neg: %d zero: %d -> legacy: in ovf: %d exp: 0x%04x sig=%016llx.%016llx",
+		spatial_idx/2, channel_idx, acc_idx, (uint16_t) acc.exp, (long long int)acc.sig, (uint8_t)((acc.sig >> acc.FRAC) & 0xFF), (uint32_t)(((acc.sig) & ((1<<acc.FRAC)-1)) << (24 - acc.FRAC)), acc.INT, acc.FRAC, acc.EXP,  acc.status.inf, acc.status.negative, acc.status.zero, ovf,  exponent, significand_hi, significand_lo );
+
+		return 0;
+	}
+	return -1;
 
 }
 
@@ -628,33 +613,18 @@ int hmx_ext_get_fp_acc(thread_t *thread,  int spatial_idx, int channel_idx, int 
 	*significand_hi = 0xDEADBEEF;
 	*significand_lo = 0xDEADBEEF;
 	*ovf = 0xDEADBEEF;
-	if (THREAD2STRUCT != NULL)
+	if (THREAD2HMXSTRUCT != NULL)
 	{
-		processor_t * proc = thread->processor_ptr;
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		spatial_idx <<= 1;
 		*exponent = 0;
-		if (proc->arch_proc_options->QDSP6_MX_FP_ACC_EXP==0) // ACC TYPE - Fractional format Q63.64 format
-		{
-			*exponent =  (proc->arch_proc_options->QDSP6_MX_FP_ACC_INT-2);
-			size16s_t acc_128 = {.hi = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_idx].hi, .lo = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_idx].lo };
-			size16s_t acc_normalized = shiftl128(acc_128, 62 - *exponent);	// Align to S1.126 format. Legacy format uses a provided exponent
-			*significand_hi = acc_normalized.hi;
-			*significand_lo = acc_normalized.lo;
-			*ovf = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_idx];
-			fMX_DEBUG_LOG(2,  "TB HMX READ: Q63.64 FLT ACC[%02d][%02d][%02d] = %016llx.%016llx converted to (exponent: %4d significand=%016llx%016llx ovf=%x)",
-			spatial_idx, channel_idx, acc_idx, acc_normalized.hi, acc_normalized.lo, *exponent, *significand_hi, *significand_lo, *ovf);
-		} else {
-			hmx_xfp_t acc = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].xfp[acc_idx];
-			size16s_t acc_128 = hmx_xfp_to_tb_callback(thread->processor_ptr, exponent, ovf, acc);
+		hmx_xfp_t acc = hmx_state->accum_flt[spatial_idx][channel_idx].xfp[acc_idx];
+		size16s_t acc_128 = hmx_xfp_to_tb_callback(hmx_state, exponent, ovf, acc);
+		*significand_hi = acc_128.hi;
+		*significand_lo = acc_128.lo;
+		fMX_DEBUG_LOG(2,  "TB HMX READ: XFP ACC[%02d][%02d][%02d] exp: %08x sig: %016llx status inf: %d neg: %d true zero: %d ovf: %d exponent: %08x significand=%016llx%016llx ",
+			spatial_idx/2, channel_idx, acc_idx, acc.exp,  (long long int)acc.sig, acc.status.inf, acc.status.negative,  acc.status.zero, *ovf, *exponent, *significand_hi, *significand_lo);
 
-			*significand_hi = acc_128.hi;
-			*significand_lo = acc_128.lo;
-
-
-			fMX_DEBUG_LOG(2,  "TB HMX READ: XFP ACC[%02d][%02d][%02d] exp: %08x sig: %016llx status inf: %d neg: %d true zero: %d ovf: %d exponent: %08x significand=%016llx%016llx ",
-				spatial_idx/2, channel_idx, acc_idx, acc.exp,  (long long int)acc.sig, acc.status.inf, acc.status.negative,  acc.status.zero, *ovf, *exponent, *significand_hi, *significand_lo);
-
-		}
 
 		return 0;
 	}
@@ -662,15 +632,17 @@ int hmx_ext_get_fp_acc(thread_t *thread,  int spatial_idx, int channel_idx, int 
 
 }
 
+
 int hmx_ext_get_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_index, size8s_t * integer, size8u_t * fractional, size4u_t * ovf) {
 	*integer = 0xDEADBEEF;
 	*fractional = 0xDEADBEEF;
 	*ovf = 0xDEADBEEF;
-	if (THREAD2STRUCT != NULL) {
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		spatial_idx <<= 1;
-		*integer = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].hi;
-		*fractional = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].lo;
-		*ovf = THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_index];
+		*integer = hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].hi;
+		*fractional = hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].lo;
+		*ovf = hmx_state->accum_flt[spatial_idx][channel_idx].ovf[acc_index];
 		return 0;
 	}
 	return -1;
@@ -678,16 +650,17 @@ int hmx_ext_get_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t chan
 int hmx_ext_set_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_index, size8s_t integer, size8u_t fractional, size4u_t ovf)
 {
 
-	if (THREAD2STRUCT != NULL) {
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		spatial_idx <<= 1;
-		THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].hi = integer;
-		THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].lo = fractional;
-		THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_index] = ovf;
+		hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].hi = integer;
+		hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].lo = fractional;
+		hmx_state->accum_flt[spatial_idx][channel_idx].ovf[acc_index] = ovf;
 		fMX_DEBUG_LOG(2,  "TB HMX WRITE: FLT ACC[%02d][%02d][%02d] = %016llx.%016llx ovf=%x",
 			spatial_idx/2, channel_idx, acc_index,
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].hi,
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].val[acc_index].lo,
-			THREAD2STRUCT->accum_flt[spatial_idx][channel_idx].ovf[acc_index] );
+			hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].hi,
+			hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].lo,
+			hmx_state->accum_flt[spatial_idx][channel_idx].ovf[acc_index] );
 		return 0;
 	}
 	return -1;
@@ -695,12 +668,13 @@ int hmx_ext_set_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t chan
 
 int hmx_ext_get_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t wordno, size4u_t *result) {
 	*result = 0xDEADBEEF;
-	if (THREAD2STRUCT != NULL) {
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		int acc_select = (wordno > 3);
 		int word_select = wordno & 0x3;
-		int acc_shift = 16+66 - (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_FRAC+thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_INT);
+		int acc_shift = 16+66 - (hmx_state->QDSP6_MX_FP_ACC_FRAC+hmx_state->QDSP6_MX_FP_ACC_INT);
 		spatial_index <<= 1;
-		size16s_t acc =  THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select];
+		size16s_t acc =  hmx_state->accum_flt[spatial_index][channel_index].val[acc_select];
 
 		acc = shiftr128(acc, acc_shift);
 		*result = acc.w[word_select];
@@ -714,31 +688,32 @@ int hmx_ext_get_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_in
 }
 int hmx_ext_set_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t wordno, size4u_t val) {
 
-	if (THREAD2STRUCT != NULL) {
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		int acc_select = (wordno > 3);
 		int word_select = wordno & 0x3;
-		int acc_shift = 16+(66 - (thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_FRAC+thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_ACC_INT)) + (word_select*32);
+		int acc_shift = 16+(66 - (hmx_state->QDSP6_MX_FP_ACC_FRAC+hmx_state->QDSP6_MX_FP_ACC_INT)) + (word_select*32);
 		size16s_t acc =  {0};
 		spatial_index <<= 1;
 		acc.w[0] = val;
 		acc = shiftl128(acc, acc_shift);
-    if (word_select == 0) {
-      THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[0] = 0;
-      THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[1] = 0;
-      THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[2] = 0;
-      THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[3] = 0;
-    }
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[0] |= acc.w[0];
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[1] |= acc.w[1];
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[2] |= acc.w[2];
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].w[3] |= acc.w[3];
+		if (word_select == 0) {
+			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[0] = 0;
+			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[1] = 0;
+			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[2] = 0;
+			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[3] = 0;
+		}
+		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[0] |= acc.w[0];
+		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[1] |= acc.w[1];
+		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[2] |= acc.w[2];
+		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[3] |= acc.w[3];
 
 		// Sign extend
-		THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select] = shiftr128(shiftl128(THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select], 46), 46);
+		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select] = shiftr128(shiftl128(hmx_state->accum_flt[spatial_index][channel_index].val[acc_select], 46), 46);
 		fMX_DEBUG_LOG(2,  "TB HMX WRITE: FLT ACC[%02d][%02d][%02d] = %016llx.%016llx w[%d]=%08x",
 			spatial_index/2, channel_index, acc_select,
-			THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].hi,
-			THREAD2STRUCT->accum_flt[spatial_index][channel_index].val[acc_select].lo, wordno, val);
+			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].hi,
+			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].lo, wordno, val);
 		return 0;
 	}
 	return -1;
@@ -746,17 +721,26 @@ int hmx_ext_set_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_in
 
 int hmx_ext_get_acc(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t wordno, size4u_t *result) {
 	*result = 0xDEADBEEF;
-	if (THREAD2STRUCT != NULL) {
-		*result = THREAD2STRUCT->accum_fxp[spatial_index][channel_index].w[wordno];
-		fMX_DEBUG_LOG(2, "TB HMX READ: FXP ACC[%02d][%02d][%02d]=%08x pktid:%08x", spatial_index, channel_index, wordno, *result, thread->pktid);
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
+		uint32_t bias_flag = (hmx_state->accum_fxp[spatial_index][channel_index].bias_state & (1 << (wordno)))>0;
+		uint32_t bias = bias_flag ? hmx_state->internal_bias_value : 0;
+		*result = (size4u_t)(hmx_state->accum_fxp[spatial_index][channel_index].w[wordno] - bias);
+		fMX_DEBUG_LOG(2, "TB HMX READ: FXP ACC[%02d][%02d][%02d]=%08x return unbias val=%08x (biased: %d subtracting bias val: %08x) bstate=%x pktid:%08x", spatial_index, channel_index, wordno, hmx_state->accum_fxp[spatial_index][channel_index].w[wordno], *result, bias_flag,  bias, THREAD2HMXSTRUCT->accum_fxp[spatial_index][channel_index].bias_state, thread->pktid);
 		return 0;
 	}
 	return -1;
 }
 int hmx_ext_set_acc(thread_t *thread, int spatial_index, size4u_t channel_index, size4u_t wordno, size4u_t val) {
-	if (THREAD2STRUCT != NULL) {
-		THREAD2STRUCT->accum_fxp[spatial_index][channel_index].w[wordno] = val;
-		fMX_DEBUG_LOG(1, "TB HMX WRITE: FXP ACC[%02d][%02d][%02d]=%08x", spatial_index, channel_index, wordno, val);
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
+		uint32_t is_biased = (wordno>>16);
+		hmx_state->accum_fxp[spatial_index][channel_index].w[wordno & 0xFFFF] = (size4s_t)val + ((is_biased) ? hmx_state->internal_bias_value : 0);
+		uint32_t bias_flag = (is_biased << (wordno & 0xFFFF));
+		//uint32_t old_state = hmx_state->accum_fxp[spatial_index][channel_index].bias_state;
+		hmx_state->accum_fxp[spatial_index][channel_index].bias_state &= ~(1 << (wordno & 0xFFFF));	//clear flag
+		hmx_state->accum_fxp[spatial_index][channel_index].bias_state |= bias_flag;
+		fMX_DEBUG_LOG(1, "TB HMX WRITE: FXP ACC[%02d][%02d][%02d]=%08x (incoming val: %08x, bias_flag: %08x bstate old=%x new=%x)", spatial_index, channel_index, wordno & 0xFFFF, hmx_state->accum_fxp[spatial_index][channel_index].w[wordno & 0xFFFF], val, bias_flag, old_state, hmx_state->accum_fxp[spatial_index][channel_index].bias_state);
 		return 0;
 	}
 	return -1;
@@ -764,8 +748,9 @@ int hmx_ext_set_acc(thread_t *thread, int spatial_index, size4u_t channel_index,
 
 int hmx_ext_get_bias(thread_t *thread, int arrayno, size4u_t channel_index, size4u_t wordno, size4u_t *result) {
 	*result = 0xDEADBEEF;
-	if (THREAD2STRUCT != NULL) {
-		*result = THREAD2STRUCT->bias[channel_index].val[wordno];
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
+		*result = hmx_state->bias[channel_index].val[wordno];
 		fMX_DEBUG_LOG(2, "TB HMX READ: BIAS [%02d].w[%d] = %08x", channel_index, wordno, *result);
 		return 0;
 	}
@@ -773,53 +758,58 @@ int hmx_ext_get_bias(thread_t *thread, int arrayno, size4u_t channel_index, size
 }
 
 int hmx_ext_set_bias(thread_t *thread, int arrayno, size4u_t channel_index, size4u_t wordno, size4u_t val) {
-	if (THREAD2STRUCT != NULL) {
+	if (THREAD2HMXSTRUCT != NULL) {
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		fMX_DEBUG_LOG(2, "TB HMX WRITE: BIAS [%02d].w[%d] = %08x", channel_index, wordno, val);
-		THREAD2STRUCT->bias[channel_index].val[wordno] = val;
+		hmx_state->bias[channel_index].val[wordno] = val;
 		return 0;
 	}
 	return -1;
 }
 
 size4u_t hmx_ext_set_cvt_state(thread_t *thread, size4u_t age, size4u_t spatial_idx, size4u_t channel_idx, size4u_t state_index, size4u_t val) {
-	if (THREAD2STRUCT != NULL){
-		THREAD2STRUCT->cvt_accum[age ^ THREAD2STRUCT->cvt_accum_current_index][spatial_idx][channel_idx].w[state_index] = val;
+	if (THREAD2HMXSTRUCT != NULL){
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
+		hmx_state->cvt_accum[age ^ hmx_state->cvt_accum_current_index][spatial_idx][channel_idx].w[state_index] = val;
 		if(age == 0){
-			THREAD2STRUCT->cvt_future_accum_fxp[spatial_idx][channel_idx].uh[0] = val;
+			hmx_state->cvt_future_accum_fxp[spatial_idx][channel_idx].uh[0] = val;
 		}
-		fMX_DEBUG_LOG(2, "TB SET HMX CVT STATE[%02d][%02d] [%02d][%02d] = 0x%02x", age, state_index, spatial_idx, channel_idx, val);
+		fMX_DEBUG_LOG(2, "TB HMX WRITE: CVT ST[%02d][%02d] [%02d][%02d] = 0x%02x", age, state_index, spatial_idx, channel_idx, val);
 		return 0;
 	}
 	return -1;
 }
 
 size4u_t hmx_ext_get_cvt_state(thread_t *thread, size4u_t age, size4u_t spatial_idx, size4u_t channel_idx, size4u_t state_index){
-	if (THREAD2STRUCT != NULL){
-		fMX_DEBUG_LOG(2, "TB GET HMX CVT STATE[%02d][%02d] [%02d][%02d]", age, state_index, spatial_idx, channel_idx);
-		return THREAD2STRUCT->cvt_accum[age ^ THREAD2STRUCT->cvt_accum_current_index][spatial_idx][channel_idx].w[state_index];
+	if (THREAD2HMXSTRUCT != NULL){
+		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
+		fMX_DEBUG_LOG(2, "TB HMX READ: CVT STATE[%02d][%02d] [%02d][%02d]", age, state_index, spatial_idx, channel_idx);
+		return hmx_state->cvt_accum[age ^ hmx_state->cvt_accum_current_index][spatial_idx][channel_idx].w[state_index];
 	}
 	return -1;
 }
 
 void hmx_age_cvt_state(thread_t *thread){
-	THREAD2STRUCT->cvt_accum_current_index = (THREAD2STRUCT->cvt_accum_current_index + 1) % MAX_CONVERT_STATES;
+	hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
+	hmx_state->cvt_accum_current_index = (hmx_state->cvt_accum_current_index + 1) % MAX_CONVERT_STATES;
 }
 
 int hmx_read_flt_acc_idx(thread_t *thread){
-	return THREAD2STRUCT->current_acc_flt;
+	hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
+	return hmx_state->current_acc_flt;
 }
 
 int hmx_read_fxp_acc_idx(thread_t *thread){
-	return THREAD2STRUCT->current_acc_fxp;
+	hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
+	return hmx_state->current_acc_fxp;
 }
 
-#if 0
 /* Checkpoint save/restore functions; ignore SYSCFG vector length here */
+void hmx_ext_dump_acc(FILE *fp, processor_t *proc, int extno);
 void hmx_ext_dump_acc(FILE *fp, processor_t *proc, int extno) {
 
 
 }
-#endif
 
 void hmx_ext_analyze_packet(thread_t * thread, Packet *pkt) {
 #if 0

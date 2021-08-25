@@ -14,41 +14,56 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef _HMX_ARCH_H
 #define _HMX_ARCH_H
 
 #include "arch_types.h"
 #include <stdint.h>
 #include "../max.h"
-//#include "hmx/macros_auto.h"
-#include "mpy_fp16.h"
-#include "mpy_hmx_fp_custom.h"
+#include "hmx/hmx_int_ops.h"
+#include "hmx/mpy_hmx_fp_custom.h"
 
 #define MAX_ACCUMULATORS_DEPTH 64
 #define MAX_ACCUMULATORS_SPATIAL 64
 #define MAX_CONVERT_STATES 2
 #define MAX_INPUT_CHANNELS 64
+#define MAX_RATE_INPUT_CHANNELS 32
 
 #define MAX_HMX_ACC_BYTES	32
 #define HMX_HEX 1
 
-#define MAX_MX_RATE 8
-
-#define thread_t CPUHexagonState
+#define HMX_SPATIAL_MASK_BITS_CM 0x7E0
+#define HMX_SPATIAL_MASK_BITS_SM 0x783
 
 typedef enum {
 	HMX_UB=0,
 	HMX_B,
-	HMX_H,
+	HMX_UB4,
 	HMX_UH,
-	HMX_W,
-	HMX_FULL,
 	HMX_FP16,
 	HMX_UH_UH,
-	HMX_BF16
+	HMX_OP_TYPES
 } hmx_operand_type_t;
 
+typedef enum {
+	HMX_MULT_FXP=0,
+    HMX_MULT_FXP_SUBBYTE,
+	HMX_MULT_XFP,
+    HMX_MULT_TYPES
+} hmx_mult_type_t;
 
+typedef enum {
+	HMX_UNPACK_BYTE_FROM_BYTE=0,
+    HMX_UNPACK_SM_FROM_BYTE,
+	HMX_UNPACK_NIBBLE_FROM_BYTE,
+    HMX_UNPACK_CRUMB_FROM_BYTE,
+	HMX_UNPACK_SCRUMB_FROM_BYTE,
+	HMX_UNPACK_1BIT_FROM_BYTE,
+	HMX_UNPACK_1SBIT_FROM_BYTE,
+	HMX_UNPACK_NONE,
+	HMX_UNPACK_TYPES
+} hmx_unpack_type_t;
 
 typedef enum {
 	HMX_ROW=0,
@@ -108,23 +123,16 @@ typedef enum {
 	HMX_WEI_DROP=5
 } hmx_weight_type_t;
 
-
-typedef struct {
-	union {
-		hmx_xfp_t xfp[2];			// Custom Floating Point format Accumulators s
-		size16s_t val[MAX_HMX_ACC_BYTES/16];
-		size2s_t  hf[MAX_HMX_ACC_BYTES/2];
-		size8u_t  ud[MAX_HMX_ACC_BYTES/8];
-		size8s_t   d[MAX_HMX_ACC_BYTES/8];
-		size4u_t  uw[MAX_HMX_ACC_BYTES/4];
-		size4s_t   w[MAX_HMX_ACC_BYTES/4];
-		size2u_t  uh[MAX_HMX_ACC_BYTES/2];
-		size2s_t   h[MAX_HMX_ACC_BYTES/2];
-		size1u_t  ub[MAX_HMX_ACC_BYTES/1];
-		size1s_t   b[MAX_HMX_ACC_BYTES/1];
-	};
-	size1s_t ovf[2];
-} hmx_acc_t;
+typedef struct hmx_bias_flt_poly {
+	uint32_t scale:16;
+	uint32_t out_bias:16;
+	uint32_t scale_extra:4;
+	uint32_t out_bias_extra:4;
+	uint32_t shape:2;
+    uint32_t negate:1;
+	uint32_t acc_bias_extra:5;
+	uint32_t acc_bias:16;
+} hmx_bias_flt_poly_t;
 
 typedef struct {
 	uint32_t sig:10;
@@ -159,7 +167,7 @@ typedef struct {
 	uint32_t bias:21;
 } hmx_bias_flt_new_t;
 
-typedef union {
+typedef union hmx_bias {
 	hmx_bias_fxp_t fxp;
 	hmx_bias_flt_t flt;
 	hmx_bias_flt_new_t flt_new;
@@ -167,7 +175,81 @@ typedef union {
 	uint32_t val[2];
 } hmx_bias_t;
 
+typedef struct xfp_status {
+    union {
+        struct {
+            uint32_t zero:1;
+            uint32_t inf:2;
+            uint32_t negative:1;
+			uint32_t under:1;
+            uint32_t in0_zero:1;
+            uint32_t in1_zero:1;
+            uint32_t reserved:26;
+        };
+        uint32_t val;
+    };
+} xfp_status_t;
 
+typedef struct hmx_xfp {
+    xfp_status_t status;
+    int32_t exp;               // Unbiased Exponent
+    int64_t sig;               // Signed significand in Q INT.FRAC format
+    uint8_t INT;                // Number of integer bits + sign bit
+    uint8_t FRAC;               // Number of fractional bits
+    uint8_t EXP;                // Number of exponent bits
+    uint8_t lza;
+} hmx_xfp_t;
+
+typedef struct {
+	union {
+		hmx_xfp_t xfp[2];			// Custom Floating Point format Accumulators s
+		size16s_t val[MAX_HMX_ACC_BYTES/16];
+		uint16_t  hf[MAX_HMX_ACC_BYTES/2];
+		uint64_t  ud[MAX_HMX_ACC_BYTES/8];
+		 int64_t   d[MAX_HMX_ACC_BYTES/8];
+		uint32_t  uw[MAX_HMX_ACC_BYTES/4];
+		 int32_t   w[MAX_HMX_ACC_BYTES/4];
+		uint16_t  uh[MAX_HMX_ACC_BYTES/2];
+		 int16_t   h[MAX_HMX_ACC_BYTES/2];
+		 uint8_t  ub[MAX_HMX_ACC_BYTES/1];
+		  int8_t   b[MAX_HMX_ACC_BYTES/1];
+	};
+	union {
+		int8_t ovf[2];
+		uint16_t bias_state;
+	};
+} hmx_acc_t;
+
+typedef union usr_fp_reg  {
+    struct {
+        uint32_t inf_nan_enable:1;
+        uint32_t nan_propagate:1;
+        uint32_t reserved:30;
+    };
+    uint32_t raw;
+} usr_fp_reg_t;
+
+
+typedef union hmx_cvt_rs_reg  {
+    struct {
+        uint32_t acc_clear:1;
+        uint32_t relu:1;
+        uint32_t fb_dst:2;
+        uint32_t fb_limit:1;
+        uint32_t reserved0:1;
+        uint32_t fp_maxnorm:1;
+        uint32_t fp_type:1;
+        uint32_t fp_rnd:1;
+        uint32_t fxp16_ch_sel:2;
+        uint32_t reserved:21;
+    };
+    uint32_t raw;
+} hmx_cvt_rs_reg_t;
+
+typedef enum {
+	HMX_CVT_FB_OUTBIAS=1,
+	HMX_CVT_FB_SCALE=2
+} hmx_cvt_fd_dst_t;
 
 
 typedef union {
@@ -185,12 +267,12 @@ typedef union {
 	size2u_t val;
 } hmx_commit_state_t;
 
-
 typedef struct {
 	uint16_t wgt;
 	uint8_t valid;
 } hmx_wgt_cache_t;
 
+#define WGT_CACHE_MAX_SIZE 2148
 
 typedef struct HMX_State {
 
@@ -198,33 +280,116 @@ typedef struct HMX_State {
 	vaddr_t start[2];
 	vaddr_t range[2];
 	paddr_t paddr[2];
-	size1u_t type[2];
+	uint16_t type[2];
 
-  size2u_t pkt_total_mx;
-	size4u_t mac_cycle_limit;
-	size4u_t limit_execeeded;
-	size4u_t force_zero;
-	size4s_t dY;
+	uint32_t mac_cycle_limit;
+	uint32_t limit_execeeded;
 
+	paddr_t act_addr;
+	paddr_t wgt_addr;
 	paddr_t max_weight_pa;
-	size4u_t operand_ready:4;
-	size4u_t cvt_type:4;
-	size1s_t weight_count;
-	usr_fp_reg_t usr_fp;
 
-	size4u_t tile_x_mask;
-	size4u_t tile_y_mask;
-	size4u_t tile_x_inc;
-	size4u_t tile_y_inc;
-	size4u_t x_acc_offset;
+	uint32_t operand_ready:4;
+	uint8_t weight_count;
+
 
 	hmx_commit_state_t fxp_commit_state;
 	hmx_commit_state_t flt_commit_state;
 
-	size4u_t current_acc_fxp:1;
-	size4u_t current_acc_flt:1;
-	size4u_t negate_flt_wgt:1;
-	size4u_t is_bf16:1;
+	// reviewed parameters (convert so far)
+	usr_fp_reg_t usr_fp;
+
+	uint32_t enable16x16:1;
+	uint32_t outputselect16x16:1;
+	uint32_t cvt_type:4;
+	uint32_t current_acc_fxp:1;
+	uint32_t current_acc_flt:1;
+	uint32_t is_flt:1;
+	uint32_t is_bf16:1;
+	uint32_t format:2;
+	uint32_t act_block_type:4;
+	uint32_t wgt_block_type:4;
+
+	uint32_t redundant_acc:1;
+	uint32_t acc_select:1;
+	uint32_t wgt_deep:1;
+	uint32_t deep:1;
+	uint32_t drop:1;
+	uint32_t y_dilate:1;
+	uint32_t x_dilate:1;
+	uint32_t batch:1;
+	uint32_t support_bf16:1;
+	uint32_t support_fp16:1;
+	uint32_t wgtc_mode:1;
+	uint32_t group_convolution:1;
+	uint32_t group_size:6;
+	uint32_t group_count:6;
+	uint32_t bias_32bit:1;
+	uint32_t weight_bits:5;
+	uint32_t weight_bytes_per_cycle:32;
+
+	uint8_t wgtc_start_offset;
+	uint16_t wgtc_total_bytes;
+
+	uint8_t blocks;
+	uint8_t ch_start;
+	uint8_t ch_stop;
+
+	int32_t dY;
+
+	// Todo: Put in a struct?
+	uint32_t tile_x_mask;
+	uint32_t tile_x_inc;
+	uint32_t x_offset;
+	uint32_t x_start;
+	uint32_t x_stop;
+	uint32_t fx;
+	uint32_t x_tap;
+
+	uint32_t tile_y_mask;
+	uint32_t tile_y_inc;
+	uint32_t y_start;
+	uint32_t y_stop;
+	uint32_t y_offset;
+	uint32_t fy;
+	uint32_t y_tap;
+
+	uint32_t x_acc_offset;
+	uint16_t wgt_negate;
+	uint32_t acc_range:1;
+	int64_t lo_msb;
+	int64_t lo_mask;
+	uint8_t data_type;
+
+	uint32_t internal_bias_value;
+
+
+	uint8_t QDSP6_MX_FP_ACC_NORM;
+	uint8_t QDSP6_MX_FP_ACC_INT;
+	uint8_t QDSP6_MX_FP_ACC_FRAC;
+	uint8_t QDSP6_MX_FP_ACC_EXP;
+	uint8_t QDSP6_MX_FP_RATE;
+	uint8_t QDSP6_MX_RATE;
+	uint8_t QDSP6_MX_CVT_WIDTH;
+	uint8_t QDSP6_MX_FP_ROWS;
+	uint8_t QDSP6_MX_ROWS;
+	uint8_t QDSP6_MX_FP_COLS;
+	uint8_t QDSP6_MX_COLS;
+ 	uint8_t QDSP6_MX_PARALLEL_GRPS;
+	uint8_t QDSP6_MX_SUB_COLS;
+
+	// TEMP, until we can remove Pointers back to processor, eventually become void pointers
+	system_t * system;
+	thread_t * thread;
+	processor_t * proc;
+
+	uint32_t threadId;
+
+	uint32_t pktid;
+
+	FILE * fp_hmx_debug;
+	uint32_t hmx_debug_lvl;
+
 
 	hmx_acc_t accum_fxp[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
 	hmx_acc_t accum_flt[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
@@ -245,57 +410,96 @@ typedef struct HMX_State {
 		hmx_acc_t future_accum_flt[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
 	//};
 
-	hmx_wgt_cache_t wgt_cache[2148][64];	// WGT Stream per output channel
+	hmx_wgt_cache_t wgt_cache[WGT_CACHE_MAX_SIZE][64];	// WGT Stream per output channel
+	uint16_t 	    act_cache[WGT_CACHE_MAX_SIZE][64];	// WGT Stream per output channel
 
 	union {
 		uint8_t act_cache_ub[2048*2];
 		uint16_t act_cache_uh[2048*2/2];
 		uint64_t act_cache_dw[2048*2/8];
 	};
+#ifdef VERIFICATION
+	union {
+		uint8_t act_cache_ub_accessed[2048*2];
+		uint16_t act_cache_uh_accessed[2048*2/2];
+		uint64_t act_cache_dw_accessed[2048*2/8];
+	};
+#endif
 	hmx_xfp_t tmp_flt_acc_cache[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH][8];	// Max Input Channel Rate by Max output channels for FP16/BF16
 
-	size1s_t mpy_matrix[MAX_ACCUMULATORS_SPATIAL][MAX_INPUT_CHANNELS][MAX_ACCUMULATORS_DEPTH];
-
-	size1s_t mpy_matrix_pre[MAX_ACCUMULATORS_SPATIAL][4][MAX_ACCUMULATORS_DEPTH];
-
-	size4u_t array_mpy[MAX_MX_RATE];
-	size4u_t array_acc;
-	size4u_t array_cvt;
-
-	size1u_t weight_bits;
-	size8u_t hmxmpytrace_cycle;
+	uint8_t mpy_matrix[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH][MAX_INPUT_CHANNELS];
+	uint8_t mpy_matrix_pre[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH][MAX_RATE_INPUT_CHANNELS];
+	uint32_t array_mpy[MAX_RATE_INPUT_CHANNELS];
+	uint32_t array_acc;
 
 
-	size1u_t group_convolution;
-
-	size1u_t wgtc_mode;
-	size1u_t wgtc_start_offset;
-	size2u_t wgtc_total_bytes;
-
-	size1u_t weight_sm_mode;
 } hmx_state_t;
+
+
+// Function Pointers
+
+typedef int64_t (*hmx_acc_select_ptr_t )(hmx_state_t *,  int32_t,  int32_t, int32_t );
+typedef void (*hmx_cvt_body_ptr_t)(hmx_state_t *,  uint32_t,  uint32_t,  uint32_t,  hmx_bias_t,  uint32_t,  uint32_t, hmx_cvt_rs_reg_t,  void *); // void pointer???
+typedef void (*hmx_mult_body_ptr_t)(hmx_state_t *, uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t,  uint32_t);
+typedef int8_t (*hmx_unpack_ptr_t)( int8_t,  int32_t);
+
+uint32_t hmx_get_usr_reg_coproc_field(thread_t* thread);
 
 void hmx_legacy_convert_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t vaddr, vaddr_t range, int format, int direction, int type);
 void hmx_convert_init(thread_t* thread, int slot, int type, int feedback);
 void hmx_convert_store_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int format, int type);
 
-void hmx_activation_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int type, int format, int block_type);
-void hmx_weight_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int type, int block_type, int weight_count, int output_ch_scale);
+void hmx_mxmem_wr_xlate(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int access_type);
 
+void hmx_act_init(thread_t* thread, vaddr_t start, vaddr_t range, int32_t slot);
+void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int32_t slot, int32_t weight_count, int32_t output_ch_scale);
 
 void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, int size);
 
-void hmx_debug_print_acc(thread_t* thread, int hex, int type, int f);
-void matrix_mult(thread_t * thread, hmx_state_t * hmx_state);
-
+void hmx_debug_print_acc(thread_t* thread, int hex, int flt);
 void hmx_debug_file_log(thread_t* thread, int lvl, char * buf);
-
-void hmx_preload_file(thread_t* thread);
-
 void hmx_acc_reset(processor_t * proc);
+void hmx_debug_log_mac_info(thread_t * thread);
 
 
-#define fMX_DEBUG_LOG(...)
+#define THREAD2HMXSTRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
+
+
+#ifdef VERIFICAITON
+#define CALL_HMX_CMD(NAME, STATE, ...) NAME##_##debug(STATE, __VA_ARGS__);
+#else
+#define CALL_HMX_CMD(NAME, STATE, ...) \
+    {NAME(STATE, __VA_ARGS__);}
+#if 0
+	if ((STATE->fp_hmx_debug != NULL))  { NAME##_##debug(STATE, __VA_ARGS__); }\
+	else {NAME(STATE, __VA_ARGS__); }
+#endif
+#endif
+
+
+
+#ifdef VERIFICATION
+#define  fMX_DEBUG_LOG(LVL,...) \
+	{\
+		if (THREAD2HMXSTRUCT->fp_hmx_debug && (THREAD2HMXSTRUCT->hmx_debug_lvl >= LVL)) {\
+			fprintf(THREAD2HMXSTRUCT->fp_hmx_debug, __VA_ARGS__);\
+			fprintf(THREAD2HMXSTRUCT->fp_hmx_debug, "\n");\
+		}\
+	}
+#else
+#if 1
+#define  fMX_DEBUG_LOG(LVL,...)
+#else
+#define  fMX_DEBUG_LOG(LVL,...) \
+	{\
+		if (thread->processor_ptr->arch_proc_options->hmxdebugfile && (thread->processor_ptr->monotonic_pcycles > thread->processor_ptr->arch_proc_options->hmxdebugfile_start_pcycle) && (thread->processor_ptr->monotonic_pcycles < thread->processor_ptr->arch_proc_options->hmxdebugfile_end_pcycle)) {\
+			char buf[1024];\
+			sprintf(buf, __VA_ARGS__);\
+			hmx_debug_file_log(thread, LVL, buf);\
+		}\
+	}
+#endif
+#endif
 
 #endif
 

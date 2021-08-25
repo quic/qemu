@@ -1,7 +1,7 @@
 /* Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved. */
 
-/* 
- * 
+/*
+ *
  */
 
 
@@ -26,7 +26,7 @@
 #else
 #define warn(...) /* Nothing */
 #endif
-#define fatal(...) err_fatal((const char*)__FUNCTION__,__FILE__,__LINE__,__VA_ARGS__)
+#define fatal(...) { CPUState *cs = env_cpu(thread); cpu_abort(cs, __VA_ARGS__); }
 #define panic(...) err_panic((const char*)__FUNCTION__,__FILE__,__LINE__,__VA_ARGS__)
 #define debug(...) err_debug(__VA_ARGS__)
 

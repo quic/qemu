@@ -160,6 +160,7 @@ DEF_ATTRIB(VTCM_ALLBANK_ACCESS, "This instruction allocates in all VTCM schedule
 
 DEF_ATTRIB(SYNC_MARKER, "This instruction needs a sync marker.", "", "")
 DEF_ATTRIB(HMX_BLOCK_ALIGN, "This instruction aligns the address to the HMX block size for page translation checks.", "", "")
+DEF_ATTRIB(HMX_128B_ALIGN,"This instruction aligns the address to the cache line (128B) size.","","")
 
 
 /* Change-of-flow attributes */

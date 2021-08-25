@@ -196,9 +196,11 @@ typedef struct udma_ctx_t {
 
 
 
+#ifndef ARCH_FUNCTION_DECL
 #define ARCH_FUNCTION_DECL(rval, fname, ...) \
 rval fname(__VA_ARGS__);\
 rval fname##_##debug(__VA_ARGS__);
+#endif
 
 
 #define VERIF_DMASTEP_DESC_DONE 0
