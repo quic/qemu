@@ -1,3 +1,20 @@
+/*
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -12,56 +29,6 @@
 #include "hmx_common.h"
 #include "hmx_input_dat.h"
 #include "hmx_ref_output_dat.h"
-
-#define SET_SSR_XE2()   \
-{    \
-    register uint32_t SSR_TEMP=0;    \
-    asm( \
-        "%0 = SSR\n"    \
-        "%0 = setbit(%0 , #26)\n"    \
-        "SSR = %0\n" \
-        :: "r" (SSR_TEMP) \
-		:\
-    );\
-};
-
-#define SET_SSR_XE_XA(XA)   \
-{    \
-    register uint32_t SSR_TEMP=0;    \
-    register uint32_t XA_TEMP = XA; \
-    asm( \
-        "%0 = SSR\n"    \
-        "%0 = setbit(%0 , #31)\n"    \
-        "%0 = insert(%1, #3, #27)\n"  \
-        "SSR = %0\n" \
-        :: "r" (SSR_TEMP), "r" (XA_TEMP) \
-		:\
-    );\
-};
-
-#define VTCM_SIZE_KB        (2048)
-#define VTCM_BYTES_PER_KB   (1024)
-#define VTCM_PAGE_SIZE_MULT (128)
-void * setup_vtcm(int page_size) {
-
-	unsigned char *vtcm_base = NULL;
-	asm volatile(
-            "r1 = cfgbase\n"
-            "r1 = asl(r1, #5)\n"
-            "r2 = #0x38\n"
-            "r1 = memw_phys(r2, r1)\n"
-            "%0 = asl(r1, #16)\n"
-            : "=r"(vtcm_base) : : "r1", "r2" );
-
-
-    void *va = (void *)vtcm_base;
-    uint64_t pa = (uintptr_t)vtcm_base;
-    add_translation_fixed(1, va, (void *)pa, 6, 7);
-	add_translation_fixed(2, va+1024*1024, (void *)pa+1024*1024, 6, 7);
-
-    printf("Adding %dKB VTCM Page at VA:%x PA:%llx\n", page_size*VTCM_PAGE_SIZE_MULT, (int)va, pa);
-	return va;
-}
 
 unsigned int mxmem_gen_start(unsigned int dx, unsigned int dy, int input_depth, unsigned int Y0, int spatial_major) {
 
@@ -112,13 +79,7 @@ void hmx_conv_channel_major_deep_asm(hmx_param_t * hmx_parameters);
 void hmx_conv_spatial_major_asm(hmx_param_t * p_hmx_parameters);
 void hmx_conv_channel_major_asm(hmx_param_t * p_hmx_parameters);
 
-#define RESET_PMU() __asm__ __volatile__ (" r0 = #0x48 ; trap0(#0); \n" : : : "r0","r1","r2","r3","r4","r5","r6","r7","memory")
-#define DUMP_PMU() __asm__ __volatile__ (" r0 = #0x4a ; trap0(#0); \n" : : : "r0","r1","r2","r3","r4","r5","r6","r7","memory")
-#define cycles() ({ unsigned long long _; asm volatile ("%0=s31:30" : "=r" (_)); _; })
-
-
 hmx_param_t hmx_parameters __attribute__((aligned(8)));
-
 
 long fsize(FILE *fp)
 

@@ -28,6 +28,7 @@ TESTS += \
 	udma \
 	hmx \
 	hmx_conv \
+	hmx_conv_fp16 \
 	pcycle \
 	neg-framelimit \
 	neg-float_excp \
@@ -74,6 +75,7 @@ swi: swi.o
 udma: udma.o
 hmx: hmx.o
 hmx_conv: hmx_conv.o hmx_conv_asm.o util.o
+hmx_conv_fp16: hmx_conv_fp16.o
 wait: wait.o
 pcycle: pcycle.o
 neg-framelimit: framelimit.o
@@ -103,6 +105,7 @@ hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
 hmx.o: CFLAGS+= -mhmx
 hmx_conv.o: CFLAGS+= -mhmx
 hmx_conv_asm.o: ASFLAGS+= -mhmx
+hmx_conv_fp16.o: CFLAGS+= -mhmx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
@@ -127,3 +130,6 @@ run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
 
 run-fopen: fopen
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< -append dummy.so,"$< on $(TARGET_NAME)")
+
+run-hmx_conv_fp16: hmx_conv_fp16
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 hmx_input_fp16.dat hmx_output_fp16.dat","$< on $(TARGET_NAME)")

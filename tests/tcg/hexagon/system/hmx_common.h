@@ -1,7 +1,19 @@
-
-//#define USE_SEQUENTIAL_WEIGHT_INSTEAD_OF_RANDOM
-//#define USE_SEQUENTIAL_DATA_INSTEAD_OF_RANDOM
-//#define USE_GENERALIZED_REF_CONV
+/*
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
 
 #define BYTE_ALIGNMENT_REQ 2048
 
@@ -19,15 +31,85 @@
 #define DEPTH_SIZE 5
 
 
+#define CROUTON_SIZE 2048
+#define VECTOR_SIZE 128
+#define BYTES_PER_LANE 4
 #define Z_REMAINDER_OFFSET (11)
 
 #define X_TILE_MASK (7)
 #define Y_TILE_MASK (7)
 #define Z_TILE_MASK (31)
 
+#define INT8_BIAS 0x0
+#define INT8_SHIFT_SCALE 14408
+#define FP_BIAS 0x3c00
+#define VTCM_SIZE_KB        (2048)
+#define VTCM_BYTES_PER_KB   (1024)
+#define VTCM_PAGE_SIZE_MULT (128)
+
+#define SET_SSR_XE2()   \
+{    \
+    uint32_t SSR_TEMP=0;    \
+    asm( \
+        "%0 = SSR\n"    \
+        "%0 = setbit(%0 , #26)\n"    \
+        "SSR = %0\n" \
+        :: "r" (SSR_TEMP) \
+		:\
+    );\
+};
+
+#define SET_SSR_XE_XA(XA)   \
+{    \
+    uint32_t SSR_TEMP=0;    \
+    uint32_t XA_TEMP = XA; \
+    asm( \
+        "%0 = SSR\n"    \
+        "%0 = setbit(%0 , #31)\n"    \
+        "%0 = insert(%1, #3, #27)\n"  \
+        "SSR = %0\n" \
+        :: "r" (SSR_TEMP), "r" (XA_TEMP) \
+		:\
+    );\
+};
+
+#define RESET_PMU() \
+    __asm__ __volatile__ (\
+        " r0 = #0x48 ; trap0(#0); \n" : : \
+        : "r0","r1","r2","r3","r4","r5","r6","r7","memory")
+#define DUMP_PMU() \
+    __asm__ __volatile__ (\
+        " r0 = #0x4a ; trap0(#0); \n" : : \
+        : "r0","r1","r2","r3","r4","r5","r6","r7","memory")
+#define cycles() ({ \
+        unsigned long long _; asm volatile ("%0=s31:30" : "=r" (_)); _; \
+    })
+
+
 const uint32_t VECT_LEN = 128; // Set vector length for contexts
 const uint32_t PRINT = 1;
 const uint32_t NOPRINT = 0;
+
+void * setup_vtcm(int page_size) {
+
+	unsigned char *vtcm_base = NULL;
+	asm volatile(
+            "r1 = cfgbase\n"
+            "r1 = asl(r1, #5)\n"
+            "r2 = #0x38\n"
+            "r1 = memw_phys(r2, r1)\n"
+            "%0 = asl(r1, #16)\n"
+            : "=r"(vtcm_base) : : "r1", "r2" );
+
+    void *va = (void *)vtcm_base;
+    uint64_t pa = (uint64_t)(void *)vtcm_base;
+    add_translation_fixed(1, va, (void *)pa, 6, 7);
+	add_translation_fixed(2, (char *)va+1024*1024, (char *)pa+1024*1024, 6, 7);
+
+    printf("Adding %dKB VTCM Page at VA:%x PA:%llx\n",
+        page_size*VTCM_PAGE_SIZE_MULT, (uintptr_t)va, pa);
+	return va;
+}
 
 typedef struct hmx_param {
 	uint32_t activations_start;
@@ -145,7 +227,7 @@ uint8_t * read_output_image(const char * fname, int32_t * X, int32_t * Y, int32_
 	read(fp, output_depth,  sizeof(uint32_t));
 	read(fp, dy,  sizeof(uint32_t));
 	int32_t s = (*X) * (*Y) * (*output_depth);
-	uint8_t * img = malloc(sizeof(uint8_t)*s);
+	uint8_t * img = (uint8_t *)malloc(sizeof(uint8_t)*s);
 
 	if(read(fp, img,  sizeof(uint8_t)*s)!=s){
 		printf("Error:  Writing file: %s\n", fname);
@@ -153,4 +235,84 @@ uint8_t * read_output_image(const char * fname, int32_t * X, int32_t * Y, int32_
 	close(fp);
 	return img;
 }
+
+void write_output_crouton(const char * fname, uint8_t * in) {
+	uint32_t fp;
+	printf("Writing to %s\n", fname);
+	if((fp = open(fname, O_CREAT | O_WRONLY | O_TRUNC, 0777)) < 0) {
+        printf("Error: Cannot open %s for output\n", fname);
+        return;
+    }
+	if(write(fp, (uint8_t * ) in,  CROUTON_SIZE)!=CROUTON_SIZE){
+		printf("Error:  Writing file: %s\n", fname);
+	}
+    close(fp);
+}
+
+#if defined(__cplusplus)
+class mxmem_cvt_t {
+	public:
+		mxmem_cvt_t() : m_start(0), m_range(0) {};
+		void ch_start(uint32_t in) {m_ch_start = in; };
+		void ch_stop(uint32_t in) {m_ch_stop = in; };
+		void offset(uint32_t in) {m_offset = in; };
+		void spatial_mask(uint32_t in) {m_spatial_mask = in; };
+		void y0(uint32_t in) {m_y0 = in; };
+		void dy(uint32_t in) {m_dy = in; };
+		uint32_t start() { return spatial_major_convert(m_start); };
+		uint32_t range() { return spatial_major_convert(m_range); };
+		uint32_t start_cm() { return m_start; };
+		uint32_t range_cm() { return m_range; };
+	private:
+		union {
+			struct {
+				uint32_t m_ch_start : 5;
+				uint32_t m_offset : 6;
+				uint32_t m_y0 : 21;
+			};
+			uint32_t m_start;
+		};
+		union {
+			struct {
+				uint32_t m_ch_stop : 5;
+				uint32_t m_spatial_mask : 6;
+				uint32_t m_dy : 21;
+			};
+			uint32_t m_range;
+		};
+};
+
+
+class mxmem_act_t {
+	public:
+		mxmem_act_t() : m_start(0), m_range(0) {};
+		void ch_start(uint32_t in) {m_ch_start = in; };
+		void ch_stop(uint32_t in) {m_ch_stop = in; };
+		void filter(uint32_t in) {m_filter = in; };
+		void spatial_mask(uint32_t in) {m_spatial_mask = in; };
+		void y0(uint32_t in) {m_y0 = in; };
+		void dy(uint32_t in) {m_dy = in; };
+		uint32_t start() { return spatial_major_convert(m_start); };
+		uint32_t range() { return spatial_major_convert(m_range); };
+		uint32_t start_cm() { return m_start; };
+		uint32_t range_cm() { return m_range; };
+	private:
+		union {
+			struct {
+				uint32_t m_ch_start : 5;
+				uint32_t m_filter : 6;
+				uint32_t m_y0 : 21;
+			};
+			uint32_t m_start;
+		};
+		union {
+			struct {
+				uint32_t m_ch_stop : 5;
+				uint32_t m_spatial_mask : 6;
+				uint32_t m_dy : 21;
+			};
+			uint32_t m_range;
+		};
+};
+#endif
 
