@@ -19,6 +19,7 @@ NAMES += howvec
 NAMES += lockstep
 NAMES += hwprofile
 NAMES += actprofile
+NAMES += coverage
 
 SONAMES := $(addsuffix .so,$(addprefix lib,$(NAMES)))
 
