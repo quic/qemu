@@ -152,28 +152,6 @@ static inline void log_pred_write(CPUHexagonState *env, int pnum,
     }
 }
 
-static inline void log_store32(CPUHexagonState *env, target_ulong addr,
-                               target_ulong val, int width, int slot)
-{
-    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx
-                  ", %" PRId32 " [0x08%" PRIx32 "])\n",
-                  width, addr, val, val);
-    env->mem_log_stores[slot].va = addr;
-    env->mem_log_stores[slot].width = width;
-    env->mem_log_stores[slot].data32 = val;
-}
-
-static inline void log_store64(CPUHexagonState *env, target_ulong addr,
-                               int64_t val, int width, int slot)
-{
-    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx
-                  ", %" PRId64 " [0x016%" PRIx64 "])\n",
-                   width, addr, val, val);
-    env->mem_log_stores[slot].va = addr;
-    env->mem_log_stores[slot].width = width;
-    env->mem_log_stores[slot].data64 = val;
-}
-
 static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
 {
     HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
@@ -459,20 +437,6 @@ static void check_noshuf(CPUHexagonState *env, uint32_t slot)
     }
 }
 
-static inline uint8_t mem_load1(CPUHexagonState *env, uint32_t slot,
-                                target_ulong vaddr)
-{
-    uint8_t retval;
-    check_noshuf(env, slot);
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldub_data_ra(env, vaddr, ra);
-#else
-    hexagon_tools_memory_read(env, vaddr, 1, &retval);
-#endif
-    return retval;
-}
-
 static inline uint16_t mem_load2(CPUHexagonState *env, uint32_t slot,
                                  target_ulong vaddr)
 {
@@ -494,7 +458,7 @@ static inline uint32_t mem_load4(CPUHexagonState *env, uint32_t slot,
     check_noshuf(env, slot);
 #ifdef CONFIG_USER_ONLY
     uintptr_t ra = GETPC();
-    retval = cpu_ldul_data_ra(env, vaddr, ra);
+    retval = cpu_ldl_data_ra(env, vaddr, ra);
 #else
     hexagon_tools_memory_read(env, vaddr, 4, &retval);
 #endif
@@ -2444,7 +2408,7 @@ static inline uint8_t mem_load1(CPUHexagonState *env,
     uint8_t retval;
 #ifdef CONFIG_USER_ONLY
     uintptr_t ra = GETPC();
-    retval = cpu_ldub_data_ra(env, paddr, ra);
+    retval = cpu_ldub_data_ra(env, vaddr, ra);
 #else
     hexagon_tools_memory_read(env, vaddr, 1, &retval);
 #endif
@@ -2456,7 +2420,7 @@ static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
     size2u_t retval;
 #ifdef CONFIG_USER_ONLY
     uintptr_t ra = GETPC();
-    retval = cpu_ldus_data_ra(env, paddr, ra);
+    retval = cpu_lduw_data_ra(env, paddr, ra);
 #else
     hexagon_tools_memory_read(env, paddr, 2, &retval);
 #endif
@@ -2467,7 +2431,7 @@ static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
     size4u_t retval;
 #ifdef CONFIG_USER_ONLY
     uintptr_t ra = GETPC();
-    retval = cpu_lduw_data_ra(env, paddr, ra);
+    retval = cpu_ldl_data_ra(env, paddr, ra);
 #else
     hexagon_tools_memory_read(env, paddr, 4, &retval);
 #endif
@@ -2478,7 +2442,7 @@ static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
     size8u_t retval;
 #ifdef CONFIG_USER_ONLY
     uintptr_t ra = GETPC();
-    retval = cpu_ldq_data_ra(env, vaddr, ra);
+    retval = cpu_ldq_data_ra(env, paddr, ra);
 #else
     hexagon_tools_memory_read(env, paddr, 8, &retval);
 #endif

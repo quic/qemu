@@ -21,6 +21,7 @@
 #include "cpu.h"
 #include "hex_regs.h"
 #include "reg_fields.h"
+#include "op_helper.h"
 
 #ifdef QEMU_GENERATE
 #define DECL_REG(NAME, NUM, X, OFF) \

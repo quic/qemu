@@ -94,6 +94,13 @@ void gen_exception_end_tb(DisasContext *ctx, int excp)
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
+static void gen_exception_raw(int excp)
+{
+    TCGv_i32 helper_tmp = tcg_const_i32(excp);
+    gen_helper_raise_exception(cpu_env, helper_tmp);
+    tcg_temp_free_i32(helper_tmp);
+}
+
 static void gen_exec_counters(DisasContext *ctx)
 {
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],
@@ -105,6 +112,19 @@ static void gen_exec_counters(DisasContext *ctx)
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HMX_CNT],
                     hex_gpr[HEX_REG_QEMU_HMX_CNT], ctx->num_hmx_insns);
 }
+
+static void gen_end_tb(DisasContext *ctx)
+{
+    gen_exec_counters(ctx);
+    tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+    if (ctx->base.singlestep_enabled) {
+        gen_exception_raw(EXCP_DEBUG);
+    } else {
+        tcg_gen_exit_tb(NULL, 0);
+    }
+    ctx->base.is_jmp = DISAS_NORETURN;
+}
+
 
 void gen_exception_debug(void)
 {
@@ -224,7 +244,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     }
 
     ctx->preg_log_idx = 0;
-    tcg_gen_movi_tl(hex_pkt_has_store_s1, pkt->pkt_has_store_s1);
+    tcg_gen_movi_tl(hex_pkt_has_store_s1, pkt->pkt_has_scalar_store_s1);
     ctx->s1_store_processed = 0;
 
 #if HEX_DEBUG
@@ -384,7 +404,7 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
         mark_implicit_writes(ctx, insn);
         insn->generate(env, ctx, insn, pkt);
     } else {
-        gen_exception(HEX_EXCP_INVALID_OPCODE);
+        gen_exception(HEX_CAUSE_INVALID_OPCODE);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }
@@ -933,7 +953,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
         gen_helper_commit_hmx(cpu_env);
     }
     update_exec_counters(ctx, pkt);
-#if HEX_DEBUG
+    if (HEX_DEBUG)
     {
         /* Handy place to set a breakpoint at the end of execution */
         TCGv has_st0 =
@@ -943,70 +963,27 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
             tcg_const_tl(pkt->pkt_has_scalar_store_s1 &&
                          !pkt->pkt_has_dczeroa);
 
-}
-
-static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
-    Packet *pkt)
-{
-#if !defined(CONFIG_USER_ONLY)
-    if (pkt->pkt_has_scalar_store_s0 ||
-        pkt->pkt_has_scalar_store_s1 ||
-        pkt->pkt_has_dczeroa ||
-        pkt_has_hvx_store(pkt)) {
-        TCGv has_st0 = tcg_const_tl(pkt->pkt_has_scalar_store_s0);
-        TCGv has_st1 = tcg_const_tl(pkt->pkt_has_scalar_store_s1);
-        TCGv has_dczeroa = tcg_const_tl(pkt->pkt_has_dczeroa);
-        TCGv has_hvx_stores = tcg_const_tl(pkt_has_hvx_store(pkt));
-        TCGv mem_idx = tcg_const_tl(ctx->mem_idx);
-
-        gen_helper_probe_pkt_stores(cpu_env, has_st0, has_st1,
-                                    has_dczeroa, has_hvx_stores, mem_idx);
-
-        tcg_temp_free(has_st0);
-        tcg_temp_free(has_st1);
-        tcg_temp_free(has_dczeroa);
-        tcg_temp_free(has_hvx_stores);
-        tcg_temp_free(mem_idx);
-    }
-#endif
-
-    gen_reg_writes(ctx);
-#if !defined(CONFIG_USER_ONLY)
-    gen_greg_writes(ctx);
-    gen_sreg_writes(env, ctx);
-#endif
-
-    gen_pred_writes(ctx, pkt);
-    process_store_log(ctx, pkt);
-    process_dczeroa(ctx, pkt);
-    update_exec_counters(ctx, pkt);
-#if HEX_DEBUG
-    {
-        TCGv has_st0 =
-            tcg_const_tl(pkt->pkt_has_store_s0 && !pkt->pkt_has_dczeroa);
-        TCGv has_st1 =
-            tcg_const_tl(pkt->pkt_has_store_s1 && !pkt->pkt_has_dczeroa);
-
         /* Handy place to set a breakpoint at the end of execution */
         gen_helper_debug_commit_end(cpu_env, has_st0, has_st1);
 
         tcg_temp_free(has_st0);
         tcg_temp_free(has_st1);
     }
-#endif
+
 #if !defined(CONFIG_USER_ONLY)
     check_imprecise_exception(pkt);
 #endif
 
-    if (pkt->pkt_has_cof) {
-        ctx->base.is_jmp = DISAS_NORETURN;
-    }
 #if !defined(CONFIG_USER_ONLY)
-    else if (pkt->pkt_has_sys_visibility) {
-        ctx->base.is_jmp = DISAS_TOO_MANY;
+    if (pkt->pkt_has_sys_visibility) {
+        gen_end_tb(ctx);
     }
 #endif
+    if (pkt->pkt_has_cof) {
+        gen_end_tb(ctx);
+    }
 }
+
 
 static void decode_and_translate_packet(CPUHexagonState *env,
     DisasContext *ctx)
@@ -1018,17 +995,11 @@ static void decode_and_translate_packet(CPUHexagonState *env,
 
     nwords = read_packet_words(env, ctx, words);
     if (!nwords) {
+        gen_exception_end_tb(ctx, HEX_CAUSE_INVALID_PACKET);
         return;
     }
 
-    bool decode_success = decode_this(nwords, words, &pkt);
-    bool has_invalid_opcode = !decode_success;
-    for (i = 0; i < pkt.num_insns && !has_invalid_opcode; i++) {
-        if (!pkt.insn[i].generate) {
-            has_invalid_opcode = true;
-        }
-    }
-    if (!has_invalid_opcode) {
+    if (decode_packet(nwords, words, &pkt, false) > 0) {
         HEX_DEBUG_PRINT_PKT(&pkt);
         gen_start_packet(env, ctx, &pkt);
         for (i = 0; i < pkt.num_insns; i++) {
@@ -1037,25 +1008,7 @@ static void decode_and_translate_packet(CPUHexagonState *env,
         gen_commit_packet(env, ctx, &pkt);
         ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
     } else {
-        if (decode_success) {
-            gen_start_packet(env, ctx, &pkt);
-        }
-        env->cause_code = HEX_CAUSE_INVALID_PACKET;
-        gen_exception(HEX_EVENT_PRECISE);
-        ctx->base.is_jmp = DISAS_NORETURN;
-        return;
-    }
-
-    if (decode_packet(nwords, words, &pkt, false) > 0) {
-        HEX_DEBUG_PRINT_PKT(&pkt);
-        gen_start_packet(ctx, &pkt);
-        for (i = 0; i < pkt.num_insns; i++) {
-            gen_insn(env, ctx, &pkt.insn[i], &pkt);
-        }
-        gen_commit_packet(ctx, &pkt);
-        ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
-    } else {
-        gen_exception(HEX_EXCP_INVALID_PACKET);
+        gen_exception(HEX_CAUSE_INVALID_PACKET);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }

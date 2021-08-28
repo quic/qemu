@@ -49,6 +49,12 @@ enum {
         /* Name   Num Table */
 DEF_REGMAP(R_16,  16, 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23)
 DEF_REGMAP(R__8,  8,  0, 2, 4, 6, 16, 18, 20, 22)
+DEF_REGMAP(R__4,  4,  0, 2, 4, 6)
+DEF_REGMAP(R_4,   4,  0, 1, 2, 3)
+DEF_REGMAP(R_8S,  8,  0, 1, 2, 3, 16, 17, 18, 19)
+DEF_REGMAP(R_8,   8,  0, 1, 2, 3, 4, 5, 6, 7)
+DEF_REGMAP(V__8,  8,  0, 4, 8, 12, 16, 20, 24, 28)
+DEF_REGMAP(V__16, 16, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30)
 
 #define DECODE_MAPPED_REG(REGNO, NAME) \
     insn->regno[REGNO] = DECODE_REGISTER_##NAME[insn->regno[REGNO]];
@@ -86,8 +92,6 @@ typedef struct DectreeTable {
 #define DECODE_MATCH_INFO(...)                /* NOTHING */
 #define DECODE_LEGACY_MATCH_INFO(...)         /* NOTHING */
 #define DECODE_OPINFO(...)                    /* NOTHING */
-
-#include "dectree_generated.h.inc"
 
 #undef DECODE_OPINFO
 #undef DECODE_MATCH_INFO
@@ -337,7 +341,7 @@ static inline int decode_opcode_ends_loop(int opcode)
 }
 
 /* Set the is_* fields in each instruction */
-static int decode_set_insn_attr_fields(Packet *pkt)
+static void decode_set_insn_attr_fields(Packet *pkt)
 {
     int i;
     int numinsns = pkt->num_insns;
@@ -574,13 +578,6 @@ static int decode_set_insn_attr_fields(Packet *pkt)
             pkt->pkt_has_dczeroa = 1;
         }
 
-        if (GET_ATTRIB(opcode, A_STORE)) {
-            if (pkt->insn[i].slot == 0) {
-                pkt->pkt_has_store_s0 = 1;
-            } else {
-                pkt->pkt_has_store_s1 = 1;
-            }
-        }
 
         pkt->pkt_has_cof |= decode_opcode_can_jump(opcode);
 
@@ -728,9 +725,9 @@ static void decode_shuffle_for_execution(Packet *packet)
         }
     }
 #endif
-    return 0;
 }
 
+#if 0
 static void decode_assembler_count_fpops(Packet *pkt)
 {
     int i;
@@ -745,6 +742,7 @@ static void decode_assembler_count_fpops(Packet *pkt)
         }
     }
 }
+#endif
 
 static void
 apply_extender(Packet *pkt, int i, uint32_t extender)
@@ -796,6 +794,7 @@ static SlotMask get_valid_slots(const Packet *pkt, unsigned int slot)
 }
 
 
+#if 0
 static const char *
 get_valid_slot_str(const Packet *pkt, unsigned int slot)
 
@@ -833,6 +832,7 @@ get_valid_slot_str(const Packet *pkt, unsigned int slot)
     }
     return str;
 }
+#endif
 
 #define DECODE_NEW_TABLE(TAG, SIZE, WHATNOT)     /* NOTHING */
 #define TABLE_LINK(TABLE)                        /* NOTHING */

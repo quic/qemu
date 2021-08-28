@@ -31,20 +31,29 @@ typedef uint16_t    size2u_t;
 typedef int16_t     size2s_t;
 typedef uint32_t    size4u_t;
 typedef int32_t     size4s_t;
+#if 0
+/* FIXME: investigate whether there is a stdint type that applies here
+ */
 typedef uint64_t    size8u_t;
 typedef int64_t     size8s_t;
+#else
+typedef unsigned long long int size8u_t;
+typedef long long int size8s_t;
+#endif
 typedef uint64_t    paddr_t;
 typedef uint32_t    vaddr_t;
 
 typedef struct size16s {
     union {
         struct {
-            size8u_t lo;
-            size8s_t hi;
+            uint64_t lo;
+            int64_t hi;
         };
-        size4u_t w[4];
+        uint32_t w[4];
     };
-} size16s_t;
+} Size16s;
+
+typedef Size16s size16s_t;
 
 
 #endif
