@@ -825,7 +825,7 @@ static const char *
 get_valid_slot_str(const Packet *pkt, unsigned int slot)
 
 {
-    const char *str;
+    const char *str = NULL;
 
     switch (get_valid_slots(pkt, slot)) {
         case SLOTS_0:
@@ -855,6 +855,9 @@ get_valid_slot_str(const Packet *pkt, unsigned int slot)
         case SLOTS_0123:
             str = "0123";
             break;
+
+	default:
+            g_assert_not_reached();
     }
     return str;
 }
