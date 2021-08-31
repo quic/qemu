@@ -35,6 +35,16 @@
 #define SF_MANTBITS    23
 #define float32_nan    make_float32(0xffffffff)
 
+
+size4u_t count_leading_ones_8(size8u_t src)
+{
+    int ret;
+    for (ret = 0; src & 0x8000000000000000LL; src <<= 1) {
+        ret++;
+    }
+    return ret;
+}
+
 #define BITS_MASK_8 0x5555555555555555ULL
 #define PAIR_MASK_8 0x3333333333333333ULL
 #define NYBL_MASK_8 0x0f0f0f0f0f0f0f0fULL

@@ -49,12 +49,7 @@ enum {
         /* Name   Num Table */
 DEF_REGMAP(R_16,  16, 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23)
 DEF_REGMAP(R__8,  8,  0, 2, 4, 6, 16, 18, 20, 22)
-DEF_REGMAP(R__4,  4,  0, 2, 4, 6)
-DEF_REGMAP(R_4,   4,  0, 1, 2, 3)
-DEF_REGMAP(R_8S,  8,  0, 1, 2, 3, 16, 17, 18, 19)
 DEF_REGMAP(R_8,   8,  0, 1, 2, 3, 4, 5, 6, 7)
-DEF_REGMAP(V__8,  8,  0, 4, 8, 12, 16, 20, 24, 28)
-DEF_REGMAP(V__16, 16, 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30)
 
 #define DECODE_MAPPED_REG(REGNO, NAME) \
     insn->regno[REGNO] = DECODE_REGISTER_##NAME[insn->regno[REGNO]];
@@ -93,6 +88,8 @@ typedef struct DectreeTable {
 #define DECODE_LEGACY_MATCH_INFO(...)         /* NOTHING */
 #define DECODE_OPINFO(...)                    /* NOTHING */
 
+#include "dectree_generated.h.inc"
+
 #undef DECODE_OPINFO
 #undef DECODE_MATCH_INFO
 #undef DECODE_LEGACY_MATCH_INFO
@@ -105,6 +102,50 @@ typedef struct DectreeTable {
 #undef DECODE_NEW_TABLE
 #undef DECODE_SEPARATOR_BITS
 
+#define DECODE_SEPARATOR_BITS(START, WIDTH) NULL, START, WIDTH
+#define DECODE_NEW_TABLE_HELPER(TAG, SIZE, FN, START, WIDTH) \
+    static const DectreeTable dectree_table_##TAG = { \
+        .size = SIZE, \
+        .lookup_function = FN, \
+        .startbit = START, \
+        .width = WIDTH, \
+        .table = {
+#define DECODE_NEW_TABLE(TAG, SIZE, WHATNOT) \
+    DECODE_NEW_TABLE_HELPER(TAG, SIZE, WHATNOT)
+
+#define TABLE_LINK(TABLE) \
+    { .type = DECTREE_TABLE_LINK, .table_link = &dectree_table_##TABLE },
+#define TERMINAL(TAG, ENC) \
+    { .type = DECTREE_TERMINAL, .opcode = TAG  },
+#define SUBINSNS(TAG, CLASSA, CLASSB, ENC) \
+    { \
+        .type = DECTREE_SUBINSNS, \
+        .table_link = &dectree_table_DECODE_SUBINSN_##CLASSA, \
+        .table_link_b = &dectree_table_DECODE_SUBINSN_##CLASSB \
+    },
+#define EXTSPACE(TAG, ENC) { .type = DECTREE_EXTSPACE },
+#define INVALID() { .type = DECTREE_ENTRY_INVALID, .opcode = XX_LAST_OPCODE },
+
+#define DECODE_END_TABLE(...) } };
+
+#define DECODE_MATCH_INFO(...)                /* NOTHING */
+#define DECODE_LEGACY_MATCH_INFO(...)         /* NOTHING */
+#define DECODE_OPINFO(...)                    /* NOTHING */
+
+#include "dectree_generated.h.inc"
+
+#undef DECODE_OPINFO
+#undef DECODE_MATCH_INFO
+#undef DECODE_LEGACY_MATCH_INFO
+#undef DECODE_END_TABLE
+#undef INVALID
+#undef TERMINAL
+#undef SUBINSNS
+#undef EXTSPACE
+#undef TABLE_LINK
+#undef DECODE_NEW_TABLE
+#undef DECODE_NEW_TABLE_HELPER
+#undef DECODE_SEPARATOR_BITS
 
 static const DectreeTable dectree_table_DECODE_EXT_EXT_noext = {
     .size = 1, .lookup_function = NULL, .startbit = 0, .width = 0,
@@ -154,6 +195,10 @@ typedef struct {
 
 #undef DECODE_MATCH_INFO
 #define DECODE_MATCH_INFO(...) DECODE_MATCH_INFO_NULL(__VA_ARGS__)
+
+static const DecodeITableEntry decode_itable[XX_LAST_OPCODE] = {
+#include "dectree_generated.h.inc"
+};
 
 #undef DECODE_LEGACY_MATCH_INFO
 #define DECODE_LEGACY_MATCH_INFO(...) DECODE_MATCH_INFO_NORMAL(__VA_ARGS__)

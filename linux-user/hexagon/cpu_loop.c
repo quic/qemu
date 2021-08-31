@@ -21,7 +21,7 @@
 #include "qemu/osdep.h"
 #include "qemu.h"
 #include "cpu_loop-common.h"
-#include "internal.h"
+#include "target/hexagon/internal.h"
 
 void cpu_loop(CPUHexagonState *env)
 {
