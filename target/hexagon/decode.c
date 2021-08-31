@@ -1037,6 +1037,13 @@ decode_insns_tablewalk(Insn *insn, const DectreeTable *table,
         }
         decode_op(insn, opc, encoding);
         return 1;
+    } else if (table->table[i].type == DECTREE_EXTSPACE) {
+        size4u_t active_ext;
+        /*
+         * For now, HVX will be the only coproc
+         */
+        active_ext = EXT_IDX_mmvec;
+        return decode_insns_tablewalk(insn, ext_trees[active_ext], encoding);
     } else {
         return 0;
     }
