@@ -191,7 +191,7 @@ if __name__ == '__main__':
     t0 = time.time()
     start_timestamp = time.ctime()
     SKIP_LIST_TERMS = ()
-    SKIP_LIST_TERMS = ('osam', 'power', 'rmutex_timed', 'qurt_sleep', 'sysclk',)
+    SKIP_LIST_TERMS = ('osam', 'power', 'rmutex', 'rmutex_timed', 'qurt_sleep', 'sysclk',)
     SOLO_LIST_TERMS = ()
     skipped = [t for t in test_paths if any(skip_term in t[0] for skip_term in SKIP_LIST_TERMS)]
     solo    = [t for t in test_paths if any(solo_term in t[0] for solo_term in SOLO_LIST_TERMS)]
