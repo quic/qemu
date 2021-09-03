@@ -16,6 +16,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/main-loop.h"
 #include "cpu.h"
 #include "sysemu/cpus.h"
 #include "internal.h"
@@ -527,12 +528,15 @@ static inline void print_thread_states(const char *str)
 void hex_tlb_lock(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_lock: %d\n", env->threadId);
+    const bool exception_context = qemu_mutex_iothread_locked();
+    if (!exception_context) qemu_mutex_lock_iothread();
 
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     uint8_t tlb_lock = GET_SYSCFG_FIELD(SYSCFG_TLBLOCK, syscfg);
     if (tlb_lock) {
         if (env->tlb_lock_state == HEX_LOCK_OWNER) {
             qemu_log_mask(CPU_LOG_MMU, "Already the owner\n");
+            if (!exception_context) qemu_mutex_unlock_iothread();
             return;
         }
         qemu_log_mask(CPU_LOG_MMU, "\tWaiting\n");
@@ -548,6 +552,7 @@ void hex_tlb_lock(CPUHexagonState *env)
         qemu_log_mask(CPU_LOG_MMU, "Threads after hex_tlb_lock:\n");
         print_thread_states("\tThread");
     }
+    if (!exception_context) qemu_mutex_unlock_iothread();
 }
 
 void hex_tlb_unlock(CPUHexagonState *env)
