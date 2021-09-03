@@ -193,12 +193,12 @@ typedef struct {
 #define DECODE_MATCH_INFO(...) DECODE_MATCH_INFO_NORMAL(__VA_ARGS__)
 #define DECODE_LEGACY_MATCH_INFO(...) /* NOTHING */
 
-#undef DECODE_MATCH_INFO
-#define DECODE_MATCH_INFO(...) DECODE_MATCH_INFO_NULL(__VA_ARGS__)
-
 static const DecodeITableEntry decode_itable[XX_LAST_OPCODE] = {
 #include "dectree_generated.h.inc"
 };
+
+#undef DECODE_MATCH_INFO
+#define DECODE_MATCH_INFO(...) DECODE_MATCH_INFO_NULL(__VA_ARGS__)
 
 #undef DECODE_LEGACY_MATCH_INFO
 #define DECODE_LEGACY_MATCH_INFO(...) DECODE_MATCH_INFO_NORMAL(__VA_ARGS__)
