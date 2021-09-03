@@ -391,7 +391,7 @@ DEF_MACRO(fSCATTER_INIT, ( REGION_START, LENGTH, ELEMENT_SIZE),
     mem_vector_scatter_init(thread, insn,   REGION_START, LENGTH, ELEMENT_SIZE);
 	if (EXCEPTION_DETECTED) return;
     },
-    (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_RESTRICT_SLOT0ONLY,A_NOTE_NO_ECC)
+    (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_RESTRICT_SLOT0ONLY)
 )
 
 DEF_MACRO(fGATHER_INIT, ( REGION_START, LENGTH, ELEMENT_SIZE),
@@ -401,7 +401,7 @@ DEF_MACRO(fGATHER_INIT, ( REGION_START, LENGTH, ELEMENT_SIZE),
     mem_vector_gather_init(thread, insn,   REGION_START, LENGTH, ELEMENT_SIZE);
 	if (EXCEPTION_DETECTED) return;
     },
-    (A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST,A_NOTE_NO_ECC)
+    (A_LOAD,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
 
 DEF_MACRO(fSCATTER_FINISH, (OP),
@@ -537,6 +537,9 @@ DEF_MACRO(GATHER_FUNCTION, (EA,OFFSET,IDX, LEN, ELEMENT_SIZE, BANK_IDX, QVAL),
             log_byte =  ((OFFSET>=0)&&((pa+i0)<=pa_high)) && QVAL;
             log_bank |= (log_byte<<i0);
             size1u_t B  = sim_mem_read1(thread->system_ptr, thread->threadId, thread->mem_access[slot].paddr+OFFSET+i0);
+#ifdef VERIFICATION
+			warn("Gather[%d] sim_mem_read1 pa:%llx val: %x", ELEMENT_SIZE*IDX+i0, thread->mem_access[slot].paddr+OFFSET+i0, B);
+#endif
             THREAD2STRUCT->tmp_VRegs[0].ub[ELEMENT_SIZE*IDX+i0] = B;
             LOG_VTCM_BYTE(pa+i0,log_byte,B,ELEMENT_SIZE*IDX+i0);
         }

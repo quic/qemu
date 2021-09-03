@@ -272,6 +272,7 @@ struct MemLog {
 
 typedef struct {
     target_ulong va;
+    paddr_t pa;
     int size;
     mmvector_t mask QEMU_ALIGNED(16);
     mmvector_t data QEMU_ALIGNED(16);

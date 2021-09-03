@@ -42,12 +42,14 @@
 #define TYPE_FETCH 'F'
 #define TYPE_ICINVA 'I'
 
+#define THREAD2STRUCT thread
+
 // Get Arch option through thread
 #define ARCH_OPT_TH(OPTION) (thread->processor_ptr->arch_proc_options->OPTION)
 
 static inline int vmemu_vtcm_page_cross(thread_t *thread, int in_tcm_new)
 {
-#if 0
+#ifdef FIXME
     if (thread->last_pkt->double_access && thread->last_pkt->pkt_has_vmemu_access && thread->last_pkt->pkt_access_count==1)
     {
         if((thread->last_pkt->pkt_has_vtcm_access ^ in_tcm_new))
@@ -62,7 +64,7 @@ static inline int vmemu_vtcm_page_cross(thread_t *thread, int in_tcm_new)
 
 static inline int check_vmem_and_zmem(thread_t *thread)
 {
-#if 0
+#ifdef FIXME
     if (((thread->last_pkt->pkt_ldaccess_vtcm==2) || (thread->last_pkt->pkt_ldaccess_l2==2)) && (!thread->last_pkt->double_access_vec))
     {
         warn("Packet has VMEM & ZMEM to same memory location VTCM=%d L2=%d", thread->last_pkt->pkt_ldaccess_vtcm, thread->last_pkt->pkt_ldaccess_l2);
@@ -74,7 +76,7 @@ static inline int check_vmem_and_zmem(thread_t *thread)
 
 static inline int in_valid_coproc_memory_space(thread_t *thread, paddr_t paddr)
 {
-#if 0
+#ifdef FIXME
     int in_vtcm = in_vtcm_space(thread->processor_ptr, paddr, HIDE_WARNING);
     int in_tcm = in_l2tcm_space(thread->processor_ptr, paddr, HIDE_WARNING);
 
@@ -118,10 +120,11 @@ static inline int in_valid_coproc_memory_space(thread_t *thread, paddr_t paddr)
 static inline int check_gather_store(thread_t* thread, Insn * insn)
 {
     /* First check to see if temp vreg has been updated */
-    int check  = thread->gather_issued;
-#if 0
+    int check  = THREAD2STRUCT->gather_issued;
+#ifdef FIXME
     /* This field has been removed from the runtime state */
-    check &= thread->is_gather_store_insn;
+	check &= GET_ATTRIB(insn->opcode, A_CVI_NEW);
+    check &= (insn->new_value_producer_slot == 1);
 #else
     /* This function should never be called, be defensive about it */
     g_assert_not_reached();
@@ -129,14 +132,14 @@ static inline int check_gather_store(thread_t* thread, Insn * insn)
 
     /* In case we don't have store, suppress gather */
     if (!check) {
-        thread->gather_issued = 0;
-        thread->vtcm_pending = 0;   /* Suppress any gather writes to memory */
+        THREAD2STRUCT->gather_issued = 0;
+        THREAD2STRUCT->vtcm_pending = 0;   // Suppress any gather writes to memory
     }
     return check;
 }
 
 
-#if 0
+#ifdef FIXME
 void gather_activeop(thread_t *thread, paddr_t paddr, int size) {
     paddr_t paddr_byte = paddr;
     paddr_t final_paddr = (paddr_t) paddr + size;
@@ -161,9 +164,9 @@ void mem_load_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t
 
     FATAL_REPLAY;
     if (!size) return;
-
-    access_type=access_type_vload;
-    mem_init_access_unaligned(thread, slot, lookup_vaddr, vaddr, size, ext_ma_as_core_ma(access_type), TYPE_LOAD);
+    if (GET_ATTRIB(insn->opcode,A_NT_VMEM)) access_type=access_type_vload_nt;
+    else access_type=access_type_vload;
+    mem_init_access_unaligned(thread, slot, lookup_vaddr, vaddr, size, (enum mem_access_types) access_type, TYPE_LOAD);
     if (EXCEPTION_DETECTED) return;
 
 
@@ -173,6 +176,7 @@ void mem_load_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t
 
     for (i=0;i<size;i++) {
         //data[i] = sim_mem_read1(thread->system_ptr, thread->threadId, paddr);
+        //paddr = paddr + 1;
         hexagon_load_byte(thread, &data[i], vaddr);
         vaddr = vaddr + 1;
     }
@@ -184,28 +188,55 @@ void mem_load_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t
     fVDOCHKPAGECROSS(vaddr, vaddr+size);
 }
 
-#if 0
+#ifdef FIXME
 void mem_fetch_vector(thread_t* thread, Insn * insn, vaddr_t vaddr, int slot, int size)
 {
 	enum ext_mem_access_types access_type = access_type_vfetch;
+    mem_access_info_t *maptr;
+    paddr_t   paddr;
+    mmvecx_t *mmvecx = THREAD2STRUCT;
+#ifdef VERIFICATION
+    int slot_tmp;
+#endif
 
+	if (!ARCH_OPT_TH(HVX_VFETCH))
+		return;
 
     FATAL_REPLAY;
     if (!size) return;
 
-    mem_init_access(thread, slot, vaddr, size, access_type, TYPE_LOAD);
+    mem_init_access(thread, slot, vaddr, size, (enum mem_access_types) access_type, TYPE_LOAD);
     if (EXCEPTION_DETECTED) return;
 
+    maptr = &thread->mem_access[slot];
+    paddr = maptr->paddr;
+	int in_tcm = in_vtcm_space(thread->processor_ptr,paddr, HIDE_WARNING);
+	if (maptr->xlate_info.memtype.device && !in_tcm) register_coproc_ldst_exception(thread,slot,vaddr);
+    if (!in_valid_coproc_memory_space(thread,paddr)) register_coproc_ldst_exception(thread,slot,vaddr);
+    if (EXCEPTION_DETECTED) return;
+
+    thread->last_pkt->pkt_access_count++;
+	  if(!thread->bq_on) {
+#ifdef VERIFICATION
+    slot_tmp = thread->ver_cur_slot;
+    thread->ver_cur_slot = slot;
+#endif
+    MMVECX_LOG_MEM_LOAD(vaddr, paddr, size, 0xfeedfacedeadbeefULL, slot)
+#ifdef VERIFICATION
+    thread->ver_cur_slot = slot_tmp;
+#endif
+}
 
 }
 #endif
 
 void mem_store_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t lookup_vaddr, int slot, int size, size1u_t* data, size1u_t* mask, unsigned invert, int use_full_va)
 {
+    paddr_t   paddr;
     enum ext_mem_access_types access_type;
+    mem_access_info_t *maptr;
     int i;
-    //mmvecx_t *mmvecx = thread; //THREAD2STRUCT;
-    thread_t *mmvecx = thread; //THREAD2STRUCT;
+    mmvecx_t *mmvecx = THREAD2STRUCT;
 
 	if (!use_full_va) {
 		lookup_vaddr = vaddr;
@@ -213,16 +244,20 @@ void mem_store_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_
 
     if (!size) return;
     FATAL_REPLAY;
+    if (GET_ATTRIB(insn->opcode,A_NT_VMEM)) access_type=access_type_vstore_nt;
+    else access_type=access_type_vstore;
 
 
 
 
 
-    access_type=access_type_vstore;
-    mem_init_access_unaligned(thread, slot, lookup_vaddr, vaddr, size, ext_ma_as_core_ma(access_type), TYPE_STORE);
+    mem_init_access_unaligned(thread, slot, lookup_vaddr, vaddr, size, (enum mem_access_types) access_type, TYPE_STORE);
     if (EXCEPTION_DETECTED) return;
+    maptr = &thread->mem_access[slot];
+    paddr = maptr->paddr;
 
-    int in_tcm = in_vtcm_space(thread->processor_ptr,vaddr, HIDE_WARNING);
+
+    int in_tcm = in_vtcm_space(thread->processor_ptr,paddr, HIDE_WARNING);
     int is_gather_store = check_gather_store(thread, insn); /* Right Now only gather stores temp */
     //printf("mem_store_vector_oddva thread->last_pkt->double_access=%d in_tcm=%d paddr=%llx\n", thread->last_pkt->double_access, in_tcm, paddr);
 
@@ -234,13 +269,19 @@ void mem_store_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_
 
     if (EXCEPTION_DETECTED) return;
 
+#ifdef FIXME
+    thread->last_pkt->pkt_has_vtcm_access = in_tcm;
+    thread->last_pkt->pkt_access_count++;
+    if (in_tcm) {
+      write_vtcm_poison(thread, paddr, size, is_gather_store);
+    }
     // If it's a gather store update store data from temporary register
     // And clear flag
-
+#endif
 
 
     mmvecx->vstore_pending[slot] = 1;
-    mmvecx->vstore[slot].va   = vaddr;
+    mmvecx->vstore[slot].pa   = paddr;
     mmvecx->vstore[slot].size = size;
     memcpy(&mmvecx->vstore[slot].data.ub[0], data, size);
     if (!mask) {
@@ -253,7 +294,13 @@ void mem_store_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_
         memcpy(&mmvecx->vstore[slot].mask.ub[0], mask, size);
     }
 
-
+#ifdef FIXME
+    if(thread->last_pkt->invalid_new_target) {
+        memset(&mmvecx->vstore[slot].mask.ub[0], 1, size);
+        memset(&mmvecx->vstore[slot].data.ub[0], 0, size);
+        thread->last_pkt->invalid_new_target = 0;
+    }
+#endif
     // On a gather store, overwrite the store mask to emulate dropped gathers
     if (is_gather_store) {
         memcpy(&mmvecx->vstore[slot].mask.ub[0], &mmvecx->vtcm_log.mask.ub[0], size);
@@ -307,12 +354,12 @@ void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, 
     enum ext_mem_access_types access_type=access_type_vscatter_store;
     // Translation for Store Address on Slot 1 - maybe any slot?
     int slot = insn->slot;
-    mem_init_access(thread, slot, base_vaddr, 1, ext_ma_as_core_ma(access_type), TYPE_STORE);
+    mem_init_access(thread, slot, base_vaddr, 1, (enum mem_access_types) access_type, TYPE_STORE);
     mem_access_info_t * maptr = &thread->mem_access[slot];
     if (EXCEPTION_DETECTED) return;
-    //mmvecx_t *mmvecx = thread; //THREAD2STRUCT;
-    thread_t *mmvecx = thread; //THREAD2STRUCT;
+    mmvecx_t *mmvecx = THREAD2STRUCT;
 
+    paddr_t base_paddr = thread->mem_access[slot].paddr;
 
     thread->mem_access[slot].paddr = thread->mem_access[slot].paddr & ~(element_size-1);   // Align to element Size
 
@@ -335,10 +382,10 @@ void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, 
         mmvecx->vtcm_log.offsets.ub[i] = 0; // Mark invalid
         mmvecx->vtcm_log.data.ub[i] = 0;
         mmvecx->vtcm_log.mask.ub[i] = 0;
-        //mmvecx->vtcm_log.pa[i] = 0;
+        mmvecx->vtcm_log.pa[i] = 0;
     }
     mmvecx->vtcm_log.va_base = base_vaddr;
-//    mmvecx->vtcm_log.pa_base = base_paddr;
+    mmvecx->vtcm_log.pa_base = base_paddr;
 
     mmvecx->vtcm_pending = 1;
     mmvecx->vtcm_log.oob_access = 0;
@@ -353,11 +400,12 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
 
     int slot = insn->slot;
     enum ext_mem_access_types access_type = access_type_vgather_load;
-    mem_init_access(thread, slot, base_vaddr, 1, ext_ma_as_core_ma(access_type), TYPE_LOAD);
+    mem_init_access(thread, slot, base_vaddr, 1,  (enum mem_access_types) access_type, TYPE_LOAD);
     mem_access_info_t * maptr = &thread->mem_access[slot];
-    mmvecx_t *mmvecx = thread ;//THREAD2STRUCT;
+    mmvecx_t *mmvecx = THREAD2STRUCT;
 
     if (EXCEPTION_DETECTED) return;
+    paddr_t base_paddr = thread->mem_access[slot].paddr;
 
 
 
@@ -388,7 +436,7 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
     for(i = 0; i < fVECSIZE(); i++) {
         mmvecx->vtcm_log.data.ub[i] = 0;
         mmvecx->vtcm_log.mask.ub[i] = 0;
-        //mmvecx->vtcm_log.pa[i] = 0;
+        mmvecx->vtcm_log.pa[i] = 0;
         mmvecx->tmp_VRegs[0].ub[i] = 0;
     }
     mmvecx->vtcm_log.oob_access = 0;
@@ -396,7 +444,7 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
     mmvecx->vtcm_log.op_size = 0;
 
     mmvecx->vtcm_log.va_base = base_vaddr;
-//    mmvecx->vtcm_log.pa_base = base_paddr;
+    mmvecx->vtcm_log.pa_base = base_paddr;
 
     // Temp Reg gets updated
     // This allows Store .new to grab the correct result
@@ -412,7 +460,7 @@ void mem_vector_scatter_finish(thread_t* thread, Insn * insn, int op)
 {
 
     int slot = insn->slot;
-    mmvecx_t *mmvecx = thread;//THREAD2STRUCT;
+    mmvecx_t *mmvecx = THREAD2STRUCT;
     thread->store_pending[slot] = 0;
     mmvecx->vstore_pending[slot] = 0;
     mmvecx->vtcm_log.size = fVECSIZE();
@@ -431,7 +479,7 @@ void mem_vector_gather_finish(thread_t* thread, Insn * insn)
 {
     // Gather Loads
     int slot = insn->slot;
-    mmvecx_t *mmvecx = thread;//THREAD2STRUCT;
+    mmvecx_t *mmvecx = THREAD2STRUCT;
 
 
 	memcpy(thread->mem_access[slot].cdata, &mmvecx->vtcm_log.offsets.ub[0], 256);

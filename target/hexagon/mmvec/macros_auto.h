@@ -37,7 +37,7 @@
 #define fREAD_VEC(DST,IDX) (DST = READ_VREG(fMODCIRCU((IDX),5)))
 #define fREAD_ZVEC(DST,IDX) (DST = READ_ZREG(fMODCIRCU((IDX),5)))
 #define fREAD_ZVEC_WORD(DST,IDX) { mmvector_t ZReg = READ_ZREG(0); DST = ZReg.uw[IDX]; }
-#define fREAD_ZVEC_ALL(DST,N,NZ) { int __idx = 0; for (__idx = 0; __idx < NZ/N; __idx++) { memcpy(&DST[N*__idx], &thread->ZRegs[__idx], N); } }
+#define fREAD_ZVEC_ALL(DST,N,NZ) { int __idx = 0; for (__idx = 0; __idx < NZ/N; __idx++) { memcpy(&DST[N*__idx], &THREAD2STRUCT->ZRegs[__idx], N); } }
 #define fZREGB(Z,IDX) ((size1s_t)Z[IDX])
 #define fZREGUB(Z,IDX) ((size1u_t)Z[IDX])
 #define fZREGH(Z,IDX) ((size2s_t)Z[IDX])
@@ -69,14 +69,14 @@
 #define fVECSIZE() (1<<fVECLOGSIZE())
 #define fSWAPB(A, B) { size1u_t tmp = A; A = B; B = tmp; }
 #define fVZERO() mmvec_zero_vector()
-#define fNEWVREG(VNUM) ((thread->VRegs_updated & (((VRegMask)1)<<VNUM)) ? thread->future_VRegs[VNUM] : mmvec_zero_vector())
+#define fNEWVREG(VNUM) ((THREAD2STRUCT->VRegs_updated & (((VRegMask)1)<<VNUM)) ? THREAD2STRUCT->future_VRegs[VNUM] : mmvec_zero_vector())
 #define fV_AL_CHECK(EA,MASK) if ((EA) & (MASK)) { warn("aligning misaligned vector. PC=%08x EA=%08x",thread->Regs[REG_PC],(EA)); }
 #define fSCATTER_INIT( REGION_START, LENGTH, ELEMENT_SIZE) { mem_vector_scatter_init(thread, insn, REGION_START, LENGTH, ELEMENT_SIZE); if (EXCEPTION_DETECTED) return; }
 #define fGATHER_INIT( REGION_START, LENGTH, ELEMENT_SIZE) { mem_vector_gather_init(thread, insn, REGION_START, LENGTH, ELEMENT_SIZE); if (EXCEPTION_DETECTED) return; }
 #define fSCATTER_FINISH(OP) { if (EXCEPTION_DETECTED) return; mem_vector_scatter_finish(thread, insn, OP); }
 #define fGATHER_FINISH() { if (EXCEPTION_DETECTED) return; mem_vector_gather_finish(thread, insn); }
 #define CHECK_VTCM_PAGE(FLAG, BASE, LENGTH, OFFSET, ALIGNMENT) { int slot = insn->slot; paddr_t pa = thread->mem_access[slot].paddr+OFFSET; pa = pa & ~(ALIGNMENT-1); FLAG = (pa < (thread->mem_access[slot].paddr+LENGTH)); }
-#define COUNT_OUT_OF_BOUNDS(FLAG, SIZE) { if (!FLAG) { thread->vtcm_log.oob_access += SIZE; warn("Scatter/Gather out of bounds of region"); } }
+#define COUNT_OUT_OF_BOUNDS(FLAG, SIZE) { if (!FLAG) { THREAD2STRUCT->vtcm_log.oob_access += SIZE; warn("Scatter/Gather out of bounds of region"); } }
 #define fLOG_SCATTER_OP(SIZE) { thread->vtcm_log.op = 1; thread->vtcm_log.op_size = SIZE; }
 #define fVLOG_VTCM_GATHER_WORD(EA,OFFSET,IDX, LEN) { GATHER_FUNCTION(EA,OFFSET,IDX, LEN, 4, IDX, 1); }
 #define fVLOG_VTCM_GATHER_HALFWORD(EA,OFFSET,IDX, LEN) { GATHER_FUNCTION(EA,OFFSET,IDX, LEN, 2, IDX, 1); }
@@ -150,7 +150,7 @@
 #define fSTOREMMVNQU(EA, SRC, MASK) { /*thread->last_pkt->pkt_has_vtcm_access = 0; thread->last_pkt->pkt_access_count = 0;*/ if ( (EA & (fVECSIZE()-1)) == 0) { /*thread->last_pkt->double_access = 0;*/ fSTOREMMVNQ_AL(EA,fVECSIZE(),fVECSIZE(),SRC,MASK); } else { /*thread->last_pkt->double_access = 1; thread->last_pkt->pkt_has_vmemu_access = 1;*/ fSTOREMMVNQU_AL(EA,fVECSIZE(),fVECSIZE(),SRC,MASK); } }
 #define fVFOREACH(WIDTH, VAR) for (VAR = 0; VAR < fVELEM(WIDTH); VAR++)
 #define fVARRAY_ELEMENT_ACCESS(ARRAY, TYPE, INDEX) ARRAY.v[(INDEX) / (fVECSIZE()/(sizeof(ARRAY.TYPE[0])))].TYPE[(INDEX) % (fVECSIZE()/(sizeof(ARRAY.TYPE[0])))]
-#define fVNEWCANCEL(REGNUM) do { thread->VRegs_select &= ~(1<<(REGNUM)); } while (0)
+#define fVNEWCANCEL(REGNUM) do { THREAD2STRUCT->VRegs_select &= ~(1<<(REGNUM)); } while (0)
 #define fTMPVDATA() mmvec_vtmp_data(thread)
 #define fVSATDW(U,V) fVSATW( ( ( ((long long)U)<<32 ) | fZXTN(32,64,V) ) )
 #define fVASL_SATHI(U,V) fVSATW(((U)<<1) | ((V)>>31))

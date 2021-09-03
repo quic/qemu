@@ -1879,6 +1879,7 @@ EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRI
 EXTINSN(V6_vgt##TYPE##_or, "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-or", \
 	VCMPGT_QF16_HF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC1, SRC2, MASK, WIDTH))
 
+/* Vector BF compare */
 MMVEC_CMPGT_SF(sf,"sf","Vector sf Compare ", fVELEM(32), 0xF, 4, sf)
 MMVEC_CMPGT_HF(hf,"hf","Vector hf Compare ", fVELEM(16), 0x3, 2, hf)
 

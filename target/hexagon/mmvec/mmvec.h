@@ -131,7 +131,9 @@ typedef struct {
     mmvector_t data;
     mmvector_t mask;
     mmvector_pair_t offsets;
+    paddr_t pa[MAX_VEC_SIZE_BYTES];
     int size;
+    paddr_t pa_base;
     target_ulong va_base;
     target_ulong va[MAX_VEC_SIZE_BYTES];
     int oob_access;

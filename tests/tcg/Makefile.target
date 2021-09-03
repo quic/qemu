@@ -37,7 +37,7 @@ all:
 COMMA := ,
 
 quiet-command = $(if $(V),$1,$(if $(2),@printf "  %-7s %s\n" $2 $3 && $1, @$1))
-quiet-command-neg = $(call quiet-command, $(1); if [ $$? -ne 0 ] ; then return 0 ; else return 1; fi, $(2), $(3))
+quiet-command-neg = $(call quiet-command, $(1); if [ $$? -ne 0 ] ; then /bin/true ; else /bin/false; fi, $(2), $(3))
 
 # $1 = test name, $2 = cmd, $3 = desc
 ifdef CONFIG_USER_ONLY

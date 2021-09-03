@@ -212,7 +212,6 @@ check_umem_instruction(thread_t * thread,  hvx_resource_t * resources, int * ili
 }
 
 
-
 /* Memory instructions */
 static int
 check_mem_instruction(thread_t * thread,  hvx_resource_t * resources, int * ilist, int num_insn, Packet * packet, exception_info *einfo)

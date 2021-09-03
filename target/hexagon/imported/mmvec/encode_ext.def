@@ -118,6 +118,8 @@ DEF_HVX_FIELDROW_DESC32(                ICLASS_NCJ" 1 000 --- ----- PP i --iii -
 	OP(TAGPRE##_nt_nqpred,    010,vv,101,ddddd) \
     */
 
+#define LDST_DOUBLELD(OP,TAGPRE) \
+    OP(TAGPRE,                010,00,011,ddddd) \
 
 #define LDST_BASICST(OP,TAGPRE) \
 	OP(TAGPRE,           001,--,000,sssss) \
@@ -126,6 +128,8 @@ DEF_HVX_FIELDROW_DESC32(                ICLASS_NCJ" 1 000 --- ----- PP i --iii -
     OP(TAGPRE##_srls,    001,--,001,-1---) \
 	OP(TAGPRE##_nt_new,  011,--,001,--sss) \
 
+#define LDST_DOUBLEST(OP,TAGPRE) \
+    OP(TAGPRE,           011,--,010,sssss) \
 
 #define LDST_QPREDST(OP,TAGPRE) \
 	OP(TAGPRE##_qpred,    100,vv,000,sssss) \
@@ -226,13 +230,6 @@ LDST_PREDST(LDST_BO,V6_vS32Ub,0,11)
 DEF_HVX_FIELDROW_DESC32(            	ICLASS_NCJ" 1 001 --- ----- PP - ----- ddddd ---","[#1] vmem(Rx++#s3)[:nt]")
 
 // Loads
-LDST_BASICLD(LDST_PI,V6_vL32b)
-//macro DEF_ENC(V6_vL32b_pi, 				ICLASS_NCJ" 1 001 000 xxxxx PP - 00iii 000 ddddd")	// Vd=vmem(Rx++s3)
-//macro DEF_ENC(V6_vL32b_nt_pi, 			ICLASS_NCJ" 1 001 010 xxxxx PP - 00iii 000 ddddd")	// Vd=vmem(Rx++s3):nt
-//macro DEF_ENC(V6_vL32b_cur_pi, 			ICLASS_NCJ" 1 001 000 xxxxx PP - 00iii 001 ddddd")	// Vd.cur = vmem(Rx++s3)
-//macro DEF_ENC(V6_vL32b_nt_cur_pi, 		ICLASS_NCJ" 1 001 010 xxxxx PP - 00iii 001 ddddd")	// Vd.cur = vmem(Rx++s3):nt
-//macro DEF_ENC(V6_vL32b_tmp_pi, 			ICLASS_NCJ" 1 001 000 xxxxx PP - 00iii 010 ddddd") // Vd.tmp = vmem(Rx++s3)
-//macro DEF_ENC(V6_vL32b_nt_tmp_pi, 		ICLASS_NCJ" 1 001 010 xxxxx PP - 00iii 010 ddddd") // Vd.tmp = vmem(Rx++s3):nt
 
 LDST_PI(V6_vL32Ub,000,00,111,ddddd)
 // DEF_ENC(V6_vL32Ub_pi, 					ICLASS_NCJ" 1 001 000 xxxxx PP - 00iii 111 ddddd")	// Vd=vmemu(Rx++s3)
@@ -280,13 +277,6 @@ LDST_PREDST(LDST_PI,V6_vS32Ub,0,11)
 DEF_HVX_FIELDROW_DESC32(            ICLASS_NCJ" 1 011 --- ----- PP - ----- ----- ---","[#3] vmem(Rx++#M)[:nt]")
 
 // Loads
-LDST_BASICLD(LDST_PM,V6_vL32b)
-//macro DEF_ENC(V6_vL32b_ppu, 				ICLASS_NCJ" 1 011 000 xxxxx PP u 00--- 000 ddddd")	// Vd=vmem(Rx++Mu2)
-//macro DEF_ENC(V6_vL32b_nt_ppu, 			ICLASS_NCJ" 1 011 010 xxxxx PP u 00--- 000 ddddd")	// Vd=vmem(Rx++Mu2):nt
-//macro DEF_ENC(V6_vL32b_cur_ppu, 			ICLASS_NCJ" 1 011 000 xxxxx PP u 00--- 001 ddddd")	// Vd.cur = vmem(Rx++Mu2)
-//macro DEF_ENC(V6_vL32b_nt_cur_ppu, 		ICLASS_NCJ" 1 011 010 xxxxx PP u 00--- 001 ddddd")	// Vd.cur = vmem(Rx++Mu2):nt
-//macro DEF_ENC(V6_vL32b_tmp_ppu, 			ICLASS_NCJ" 1 011 000 xxxxx PP u 00--- 010 ddddd")  // Vd.tmp = vmem(Rx++Mu2)
-//macro DEF_ENC(V6_vL32b_nt_tmp_ppu, 		ICLASS_NCJ" 1 011 010 xxxxx PP u 00--- 010 ddddd")  // Vd.tmp = vmem(Rx++Mu2):nt
 
 LDST_PM(V6_vL32Ub,000,00,111,ddddd)
 //macro DEF_ENC(V6_vL32Ub_ppu, 				ICLASS_NCJ" 1 011 000 xxxxx PP u 00--- 111 ddddd")	// Vd=vmemu(Rx++Mu2)
@@ -756,6 +746,8 @@ DEF_ENC(V6_vasrvuhubsat,    ICLASS_CJ" 1 101 000 vvvvv PP 0 uuuuu 010 ddddd")
 DEF_ENC(V6_vasrvuhubrndsat, ICLASS_CJ" 1 101 000 vvvvv PP 0 uuuuu 011 ddddd")
 
 
+//DEF_ENC(V6_vmpy_bf_bf_acc,  ICLASS_CJ" 1 101 000 vvvvv PP 1 uuuuu 001 xxxxx")
+//DEF_ENC(V6_vdmpy_sf_bf_acc, ICLASS_CJ" 1 101 000 vvvvv PP 1 uuuuu 010 xxxxx")
 
 
 /************** Not Real Instructions for Debug Only  ************************/
@@ -1068,7 +1060,6 @@ DEF_ENC(V6_vgtsf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 100xx") //
 DEF_ENC(V6_vgthf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 101xx") //
 //DEF_ENC(V6_vgtqf16hf_or,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 111xx") //
 
-//In V1, IEEE compares only, SW will do QF subtract -> int compare
 //DEF_ENC(V6_vgtqf32,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 010 111dd") //
 //DEF_ENC(V6_vgtqf16,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 011dd") //
 DEF_ENC(V6_vgtsf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 100dd") //
