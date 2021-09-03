@@ -170,35 +170,10 @@ static inline void write_new_pc(CPUHexagonState *env, target_ulong addr)
     }
 }
 
-#if HEX_DEBUG
-/* Handy place to set a breakpoint */
-void HELPER(debug_start_packet)(CPUHexagonState *env)
-{
-    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx "\n",
-                  env->gpr[HEX_REG_PC]);
-
-    for (int i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
-        env->reg_written[i] = 0;
-    }
-}
-#endif
-
 static inline int32_t new_pred_value(CPUHexagonState *env, int pnum)
 {
     return env->new_pred_value[pnum];
 }
-
-#if HEX_DEBUG
-/* Checks for bookkeeping errors between disassembly context and runtime */
-void HELPER(debug_check_store_width)(CPUHexagonState *env, int slot, int check)
-{
-    if (env->mem_log_stores[slot].width != check) {
-        HEX_DEBUG_LOG("ERROR: %d != %d\n",
-                      env->mem_log_stores[slot].width, check);
-        g_assert_not_reached();
-    }
-}
-#endif
 
 void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
 {
