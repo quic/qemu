@@ -195,6 +195,11 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr", cfgExtensions->cfgbase);
         qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
 
+        /* CPU #0 is the only CPU running at boot, others must be
+         * explicitly enabled via start instruction.
+         */
+        qdev_prop_set_bit(DEVICE(cpu), "start-powered-off", (i != 0));
+
         HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
                 __FUNCTION__, cpu, env);
 

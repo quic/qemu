@@ -420,7 +420,6 @@ static void hexagon_cpu_reset(DeviceState *dev)
 
 #ifndef CONFIG_USER_ONLY
     clear_wait_mode(env);
-    cs->halted = 1;
 
     env->tlb_lock_state = HEX_LOCK_UNLOCKED;
     env->k0_lock_state = HEX_LOCK_UNLOCKED;
@@ -577,9 +576,6 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     env->g_sreg[HEX_SREG_EVB] = cpu->boot_evb;
     env->gpr[HEX_REG_PC] = cpu->boot_addr;
 #endif
-    if (cs->cpu_index == 0) {
-        cs->halted = 0;
-    }
 
     mcc->parent_realize(dev, errp);
 }
