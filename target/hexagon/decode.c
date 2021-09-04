@@ -587,6 +587,8 @@ static int decode_set_insn_attr_fields(Packet *pkt)
         case 3:
             pkt->slot3_valid = 1;
         break;
+        default:
+            g_assert_not_reached();
         }
         total_slots_valid++;
 
@@ -622,6 +624,8 @@ static int decode_set_insn_attr_fields(Packet *pkt)
         pkt->single_load = 1;
     } else if (stores == 1) {
         pkt->single_store = 1;
+    } else if (loads > 2 || stores > 2) {
+        g_assert_not_reached();
     }
 
     return 0;
