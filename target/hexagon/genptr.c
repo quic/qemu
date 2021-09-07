@@ -887,7 +887,7 @@ static intptr_t vreg_src_off(DisasContext *ctx, int num)
 
 static void gen_log_vreg_write(DisasContext *ctx, intptr_t srcoff, int num,
                                VRegWriteType type, int slot_num,
-                               bool is_predicated, bool has_vhist)
+                               bool is_predicated)
 {
     TCGLabel *label_end = NULL;
     intptr_t dstoff;
@@ -903,20 +903,11 @@ static void gen_log_vreg_write(DisasContext *ctx, intptr_t srcoff, int num,
     }
 
     if (type != EXT_TMP) {
+        dstoff = ctx_future_vreg_off(ctx, num, 1, true);
+        tcg_gen_gvec_mov(MO_64, dstoff, srcoff,
+                         sizeof(MMVector), sizeof(MMVector));
         tcg_gen_ori_tl(hex_VRegs_updated, hex_VRegs_updated, 1 << num);
-    }
-    if (has_vhist && type == EXT_NEW) {
-        tcg_gen_ori_tl(hex_VRegs_select, hex_VRegs_select, 1 << num);
-    }
-    if (has_vhist && type == EXT_TMP) {
-        tcg_gen_ori_tl(hex_VRegs_updated_tmp, hex_VRegs_updated_tmp, 1 << num);
-    }
-
-    dstoff = ctx_future_vreg_off(ctx, num, 1, true);
-    tcg_gen_gvec_mov(MO_64, dstoff, srcoff,
-                     sizeof(MMVector), sizeof(MMVector));
-
-    if (type == EXT_TMP) {
+    } else {
         dstoff = ctx_tmp_vreg_off(ctx, num, 1, false);
         tcg_gen_gvec_mov(MO_64, dstoff, srcoff,
                          sizeof(MMVector), sizeof(MMVector));
@@ -929,13 +920,11 @@ static void gen_log_vreg_write(DisasContext *ctx, intptr_t srcoff, int num,
 
 static void gen_log_vreg_write_pair(DisasContext *ctx, intptr_t srcoff, int num,
                                     VRegWriteType type, int slot_num,
-                                    bool is_predicated, bool has_vhist)
+                                    bool is_predicated)
 {
-    gen_log_vreg_write(ctx, srcoff, num ^ 0, type, slot_num,
-                       is_predicated, has_vhist);
+    gen_log_vreg_write(ctx, srcoff, num ^ 0, type, slot_num, is_predicated);
     srcoff += sizeof(MMVector);
-    gen_log_vreg_write(ctx, srcoff, num ^ 1, type, slot_num,
-                       is_predicated, has_vhist);
+    gen_log_vreg_write(ctx, srcoff, num ^ 1, type, slot_num, is_predicated);
 }
 
 static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,

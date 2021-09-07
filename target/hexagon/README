@@ -156,7 +156,7 @@ istruction.
         TCGv slot = tcg_const_tl(insn->slot);
         gen_helper_V6_vaddw(cpu_env, VdV, VuV, VvV, slot);
         tcg_temp_free(slot);
-        gen_log_vreg_write(ctx, VdV_off, VdN, EXT_DFL, insn->slot, false, pkt->vhist_insn != NULL);
+        gen_log_vreg_write(ctx, VdV_off, VdN, EXT_DFL, insn->slot, false);
         ctx_log_vreg_write(ctx, VdN, EXT_DFL, false);
         tcg_temp_free_ptr(VdV);
         tcg_temp_free_ptr(VuV);
@@ -189,7 +189,7 @@ when the override is present.
         const intptr_t VvV_off =
             vreg_src_off(ctx, VvN);
         fGEN_TCG_V6_vaddw({ fHIDE(int i;) fVFOREACH(32, i) { VdV.w[i] = VuV.w[i] + VvV.w[i] ; } });
-        gen_log_vreg_write(ctx, VdV_off, VdN, EXT_DFL, insn->slot, false, pkt->vhist_insn != NULL);
+        gen_log_vreg_write(ctx, VdV_off, VdN, EXT_DFL, insn->slot, false);
         ctx_log_vreg_write(ctx, VdN, EXT_DFL, false);
     }
 
@@ -274,11 +274,13 @@ During runtime, the following fields in CPUHexagonState (see cpu.h) are used
     mem_log_stores        record of the stores (indexed by slot)
 
 For Hexagon Vector eXtensions (HVX), the following fields are used
-    future_VRegs
-    tmp_VRegs
-    VRegs_updated_tmp
-    VRegs_updated
-    VRegs_select
+    VRegs                       Vector registers
+    future_VRegs                Registers to be stored during packet commit
+    tmp_VRegs                   Temporary registers *not* stored during commit
+    VRegs_updated               Mask of predicated vector writes
+    QRegs                       Q (vector predicate) registers
+    future_QRegs                Registers to be stored during packet commit
+    QRegs_updated               Mask of predicated vector writes
 
 *** Debugging ***
 

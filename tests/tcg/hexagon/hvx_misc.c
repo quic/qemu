@@ -275,6 +275,52 @@ static void test_new_value_store(void)
     check_output_w(__LINE__, 1);
 }
 
+static void test_max_temps()
+{
+    void *p0 = buffer0;
+    void *pout = output;
+
+    asm("v0 = vmem(%0 + #0)\n\t"
+        "v1 = vmem(%0 + #1)\n\t"
+        "v2 = vmem(%0 + #2)\n\t"
+        "v3 = vmem(%0 + #3)\n\t"
+        "v4 = vmem(%0 + #4)\n\t"
+        "{\n\t"
+        "    v1:0.w = vadd(v3:2.w, v1:0.w)\n\t"
+        "    v2.b = vshuffe(v3.b, v2.b)\n\t"
+        "    v3.w = vadd(v1.w, v4.w)\n\t"
+        "    v4.tmp = vmem(%0 + #5)\n\t"
+        "}\n\t"
+        "vmem(%1 + #0) = v0\n\t"
+        "vmem(%1 + #1) = v1\n\t"
+        "vmem(%1 + #2) = v2\n\t"
+        "vmem(%1 + #3) = v3\n\t"
+        "vmem(%1 + #4) = v4\n\t"
+        : : "r"(p0), "r"(pout) : "memory");
+
+        /* The first two vectors come from the vadd-pair instruction */
+        for (int i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
+            expect[0].w[i] = buffer0[0].w[i] + buffer0[2].w[i];
+            expect[1].w[i] = buffer0[1].w[i] + buffer0[3].w[i];
+        }
+        /* The third vector comes from the vshuffe instruction */
+        for (int i = 0; i < MAX_VEC_SIZE_BYTES / 2; i++) {
+            expect[2].uh[i] = (buffer0[2].uh[i] & 0xff) |
+                              (buffer0[3].uh[i] & 0xff) << 8;
+        }
+        /* The fourth vector comes from the vadd-single instruction */
+        for (int i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
+            expect[3].w[i] = buffer0[1].w[i] + buffer0[5].w[i];
+        }
+        /*
+         * The fifth vector comes from the load to v4
+         * make sure the .tmp is dropped
+         */
+        expect[4] = buffer0[4];
+
+        check_output_b(__LINE__, 5);
+}
+
 #define OP1(ASM, EL, IN, OUT) \
     asm("v2 = vmem(%0 + #0)\n\t" \
         "v2" #EL " = " #ASM "(v2" #EL ")\n\t" \
@@ -350,6 +396,7 @@ int main()
     test_masked_store(false);
     test_masked_store(true);
     test_new_value_store();
+    test_max_temps();
 
     test_vadd_w();
     test_vadd_h();

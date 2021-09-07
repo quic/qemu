@@ -23,8 +23,6 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot)
 {
     size_t size = sizeof(MMVector);
 
-    env->VRegs_updated_tmp = 0;
-
     env->vstore_pending[slot] = 1;
     env->vstore[slot].va   = vaddr;
     env->vstore[slot].size = size;
@@ -65,10 +63,4 @@ void mem_vector_gather_init(CPUHexagonState *env, int slot,
     bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES / 8);
     env->vtcm_log.op = false;
     env->vtcm_log.op_size = 0;
-
-    /*
-     * Temp reg gets updated
-     * This allows store .new to grab the correct result
-     */
-    env->VRegs_updated_tmp = 1;
 }

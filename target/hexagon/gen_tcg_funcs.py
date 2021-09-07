@@ -653,7 +653,7 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
                 is_predicated = "false"
             f.write("    gen_log_vreg_write_pair(ctx, %s%sV_off, %s%sN, " % \
                 (regtype, regid, regtype, regid))
-            f.write("%s, insn->slot, %s, pkt->vhist_insn != NULL);\n" % \
+            f.write("%s, insn->slot, %s);\n" % \
                 (newv, is_predicated))
             f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
                 (regtype, regid, newv))
@@ -665,7 +665,7 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
                 is_predicated = "false"
             f.write("    gen_log_vreg_write(ctx, %s%sV_off, %s%sN, %s, " % \
                 (regtype, regid, regtype, regid, newv))
-            f.write("insn->slot, %s, pkt->vhist_insn != NULL);\n" % \
+            f.write("insn->slot, %s);\n" % \
                 (is_predicated))
             f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, %s);\n" % \
                 (regtype, regid, newv, is_predicated))
