@@ -192,8 +192,7 @@ def is_new_val(regtype, regid, tag):
 
 def need_slot(tag):
     if ('A_CONDEXEC' in attribdict[tag] or
-        'A_STORE' in attribdict[tag] or
-        'A_CVI' in attribdict[tag]):
+        'A_STORE' in attribdict[tag]):
         return 1
     else:
         return 0
