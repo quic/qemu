@@ -22,7 +22,7 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot);
 void mem_vector_scatter_init(CPUHexagonState *env, int slot,
                              target_ulong base_vaddr, int length,
                              int element_size);
-void mem_vector_gather_init(CPUHexagonState *env, int slot,
+void mem_vector_gather_init(CPUHexagonState *env,
                             target_ulong base_vaddr, int length,
                             int element_size);
 

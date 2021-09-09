@@ -156,7 +156,6 @@ def gen_helper_return_opn(f, regtype, regid, i):
 ##     We produce:
 ##       int32_t HELPER(A2_add)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
 ##       {
-##           uint32_t slot __attribute__(unused)) = 4;
 ##           int32_t RdV = 0;
 ##           { RdV=RsV+RtV;}
 ##           COUNT_HELPER(A2_add);
@@ -245,8 +244,6 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             if i > 0: f.write(", ")
             f.write("uint32_t part1")
         f.write(")\n{\n")
-        if (not hex_common.need_slot(tag)):
-            f.write("    uint32_t slot __attribute__((unused)) = 4;\n" )
         if hex_common.need_ea(tag): gen_decl_ea(f)
         ## Declare the return variable
         i=0

@@ -49,7 +49,7 @@ void mem_vector_scatter_init(CPUHexagonState *env, int slot,
     env->vtcm_log.size = sizeof(MMVector);
 }
 
-void mem_vector_gather_init(CPUHexagonState *env, int slot,
+void mem_vector_gather_init(CPUHexagonState *env,
                             target_ulong base_vaddr,
                             int length, int element_size)
 {

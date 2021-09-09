@@ -89,7 +89,6 @@ tcg_funcs_generated.c.inc
 helper_funcs_generated.c.inc
     int32_t HELPER(A2_add)(CPUHexagonState *env, int32_t RsV, int32_t RtV)
     {
-        uint32_t slot __attribute__((unused)) = 4;
         int32_t RdV = 0;
         { RdV=RsV+RtV;}
         return RdV;

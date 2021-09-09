@@ -84,8 +84,7 @@ void QEMU_NORETURN HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
     do_raise_exception_err(env, excp, 0);
 }
 
-static void log_reg_write(CPUHexagonState *env, int rnum,
-                          target_ulong val, uint32_t slot)
+static void log_reg_write(CPUHexagonState *env, int rnum, target_ulong val)
 {
     HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
                   rnum, val, val);
