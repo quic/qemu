@@ -155,6 +155,10 @@ DEF_CVI_MAPPING(V6_stup0,  "if (Pv4) vmemu(Rt32)=Vs32",  "if (Pv4) vmemu(Rt32+#0
 DEF_CVI_MAPPING(V6_stunp0, "if (!Pv4) vmemu(Rt32)=Vs32",  "if (!Pv4) vmemu(Rt32+#0)=Vs32")
 
 
+
+
+
+
 /****************************************************************
 * MAPPING FOR VMEMs
 ****************************************************************/
@@ -1157,6 +1161,7 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpyhus_acc, "Vxx32.w+=vmpy(Vu32.h,Vv32.uh)
     VxxV.v[0].w[i] += fMPY16SU(fGETHALF(0, VuV.w[i]), fGETUHALF(0, VvV.uw[i]));
     VxxV.v[1].w[i] += fMPY16SU(fGETHALF(1, VuV.w[i]), fGETUHALF(1, VvV.uw[i])))
 
+
 /* VMPY_QF32 */
 /* multiply qf32 input, produce qf32 output*/
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32,"Vd32.qf32=vmpy(Vu32.qf32,Vv32.qf32)","Vector multiply: qf32 output from qf32 input",
@@ -1171,6 +1176,7 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32_sf,"Vd32.qf32=vmpy(Vu32.sf,Vv32.s
     fHIDE(unfloat )v = fPARSESF(VvV.sf[i]);
     VdV.qf32[i] = fRNDSATQF32(u.exp+v.exp, u.sig*v.sig, 0);
     if(u.sign^v.sign) VdV.qf32[i] = fNEGQF32(VdV.qf32[i]))
+
 
 /* VMPY_QF16 */
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpy_qf16,"Vd32.qf16=vmpy(Vu32.qf16,Vv32.qf16)","Vector multiply: qf16 output from qf16 inupt",
@@ -1300,7 +1306,6 @@ ITERATOR_INSN_SHIFT_SLOT(32,vadd_qf32_mix,"Vd32.qf32=vadd(Vu32.qf32,Vv32.sf)","V
     fHIDE(double) sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
     VdV.qf32[i] = fRNDSATQF32(exp, sig, sig_low))
 
-
 /* VSUB_QF32 */
 ITERATOR_INSN_SHIFT_SLOT(32,vsub_qf32,"Vd32.qf32=vsub(Vu32.qf32,Vv32.qf32)","Vector subtraction of qf32 input",
     fHIDE(unfloat )u = fPARSEQF32(VuV.qf32[i]);
@@ -1422,8 +1427,6 @@ ITERATOR_INSN_SHIFT_SLOT(16,vadd_hf,"Vd32.qf16=vadd(Vu32.hf,Vv32.hf)","Vector ad
     if(u.sign && v.sign)
         VdV.qf16[i] = fNEGQF16(VdV.qf16[i]))
 
-
-
 /* VADD_QF16_MIX */
 ITERATOR_INSN_SHIFT_SLOT(16,vadd_qf16_mix,"Vd32.qf16=vadd(Vu32.qf16,Vv32.hf)","Vector addition of mixed qf16 and hf",
     fHIDE(unfloat )u = fPARSEQF16(VuV.qf16[i]);
@@ -1492,6 +1495,7 @@ ITERATOR_INSN_SHIFT_SLOT(16,vsub_hf,"Vd32.qf16=vsub(Vu32.hf,Vv32.hf)","Vector su
     VdV.qf16[i] = fRNDSATQF16(exp, sig, sig_low);
     if((u.sign==1) && (v.sign==0))
         VdV.qf16[i] = fNEGQF16(VdV.qf16[i]))
+
 
 /* VSUB_QF16_MIXED */
 ITERATOR_INSN_SHIFT_SLOT(16,vsub_qf16_mix,"Vd32.qf16=vsub(Vu32.qf16,Vv32.hf)","Vector subtraction of mixed qf16 and hf",
@@ -1719,8 +1723,6 @@ ITERATOR_INSN_ANY_SLOT_2SRC(8,vandvnqv,"Vd32=vand(!Qv4,Vu32)","Mask off bytes", 
     } \
 }
 
-
-
 #define MMVEC_CMPEQMAP(T,T2,T3) \
 DEF_CVI_MAPPING(V6_MAP_eq##T,      "Qd4=vcmp.eq(Vu32." T2 ",Vv32." T2 ")", "Qd4=vcmp.eq(Vu32." T3 ",Vv32." T3 ")") \
 DEF_CVI_MAPPING(V6_MAP_eq##T##_and,"Qx4&=vcmp.eq(Vu32." T2 ",Vv32." T2 ")", "Qx4&=vcmp.eq(Vu32." T3 ",Vv32." T3 ")") \
@@ -1811,6 +1813,7 @@ MMVEC_CMPEQMAP(ub,"ub","b")
     } \
 }
 
+
 #define VCMPGT_BF(DEST, ASRC, ASRCOP, CMP, N, SRC, MASK, WIDTH)        \
 { \
     fBFLOAT(); \
@@ -1820,6 +1823,7 @@ MMVEC_CMPEQMAP(ub,"ub","b")
     } \
 }
 // TODO: Collapse these
+
 /* Vector QF32 compare */
 #define MMVEC_CMPGT_QF32(TYPE,TYPE2,DESCR,N,MASK,WIDTH,SRC) \
 EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-and", \
@@ -1879,9 +1883,20 @@ EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRI
 EXTINSN(V6_vgt##TYPE##_or, "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-or", \
 	VCMPGT_QF16_HF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC1, SRC2, MASK, WIDTH))
 
+
 /* Vector BF compare */
+#define MMVEC_CMPGT_BF(TYPE,TYPE2,DESCR,N,MASK,WIDTH,SRC) \
+EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_CVI_VA_2SRC,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-and", \
+	VCMPGT_BF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), &, ">", N, SRC, MASK, WIDTH)) \
+EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_CVI_VA_2SRC,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-xor", \
+	VCMPGT_BF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, ">", N, SRC, MASK, WIDTH)) \
+EXTINSN(V6_vgt##TYPE##_or, "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_CVI_VA_2SRC,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-or", \
+	VCMPGT_BF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC, MASK, WIDTH)) \
+EXTINSN(V6_vgt##TYPE, "Qd4=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_CVI_VA_2SRC,A_NOTE_ANY_RESOURCE), DESCR" greater than", \
+	VCMPGT_BF(QdV, , , ">", N, SRC, MASK, WIDTH))
 MMVEC_CMPGT_SF(sf,"sf","Vector sf Compare ", fVELEM(32), 0xF, 4, sf)
 MMVEC_CMPGT_HF(hf,"hf","Vector hf Compare ", fVELEM(16), 0x3, 2, hf)
+MMVEC_CMPGT_BF(bf,"bf","Vector bf Compare ", fVELEM(16), 0x3, 2, bf)
 
 ITERATOR_INSN_ANY_SLOT_2SRC(32,vmax_sf,"Vd32.sf=vmax(Vu32.sf,Vv32.sf)", "Vector max of sf input", VdV.sf[i] = fMAX_SF(VuV.sf[i], VvV.sf[i]))
 ITERATOR_INSN_ANY_SLOT_2SRC(32,vmin_sf,"Vd32.sf=vmin(Vu32.sf,Vv32.sf)", "Vector min of sf input", VdV.sf[i] = fMIN_SF(VuV.sf[i], VvV.sf[i]))
@@ -2951,6 +2966,176 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32, v6mpyhubs10, "Vdd32.w=v6mpy(Vuu32.ub,Vvv32
     }
 )
 
+/* KVX - IEEE FP Instructions */
+
+// Two pipes: P2 & P3, single output: P2, 32-bit output
+#define ITERATOR_INSN_IEEE_FP_DOUBLE_SINGLE_32(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RESOURCE,A_HVX_IEEE_FP_DV_ONE,A_HVX_IEEE_FP_OUT_32), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+// Two pipes: P2 & P3, two outputs, 32-bit output
+#define ITERATOR_INSN_IEEE_FP_DOUBLE_32(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RESOURCE,A_HVX_IEEE_FP_OUT_32), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+// Two pipes:P2 & P3, two outputs, 16-bit
+#define ITERATOR_INSN_IEEE_FP_DOUBLE_16(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RESOURCE,A_HVX_IEEE_FP_OUT_16), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+
+// Single pipe, 32-bit output
+#define ITERATOR_INSN_IEEE_FP_32(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_OUT_32), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+// Single pipe, 16-bit output
+#define ITERATOR_INSN_IEEE_FP_16(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_OUT_16), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+// single pipe, output can feed 16- or 32-bit accumulate
+#define ITERATOR_INSN_IEEE_FP_16_32(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_OUT_16,A_HVX_IEEE_FP_OUT_32), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+// single pipe, accumulate instruction, produces 32-bit output, requires 32-bit accumulate input
+#define ITERATOR_INSN_IEEE_FP_ACC_32(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_ACC,A_HVX_IEEE_FP_OUT_32,A_CVI_VX_NO_TMP_LD), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+// single pipe, accumulate instruction, produces 16-bit output, requires 16-bit accumulate input
+#define ITERATOR_INSN_IEEE_FP_ACC_16(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_ACC,A_HVX_IEEE_FP_OUT_16,A_CVI_VX_NO_TMP_LD), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+
+// KVX Instructions
+//     (WIDTH, TAG, SYNTAX, DESCR, CODE)
+ITERATOR_INSN_IEEE_FP_DOUBLE_SINGLE_32(32, vmpy_sf_sf,    "Vd32.sf=vmpy(Vu32.sf,Vv32.sf)", "Vector IEEE mul: sf",    VdV.sf[i] = fp_mult_sf_sf(VuV.sf[i], VvV.sf[i]))
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_hf,    "Vdd32.sf=vmpy(Vu32.hf,Vv32.hf)", "Vector IEEE mul: hf widen to sf",
+    VddV.v[0].sf[i] = fp_mult_sf_hf(VuV.hf[2*i], VvV.hf[2*i]);
+    VddV.v[1].sf[i] = fp_mult_sf_hf(VuV.hf[2*i+1], VvV.hf[2*i+1]))
+
+ITERATOR_INSN_IEEE_FP_16(16, vmpy_hf_hf,     "Vd32.hf=vmpy(Vu32.hf,Vv32.hf)", "Vector IEEE mul: hf",  VdV.hf[i] = fp_mult_hf_hf(VuV.hf[i], VvV.hf[i]))
+ITERATOR_INSN_IEEE_FP_32(32, vdmpy_sf_hf,     "Vd32.sf=vdmpy(Vu32.hf,Vv32.hf)", "Vector IEEE mul reduction: hf widen to sf", VdV.sf[i] = fp_vdmpy(VuV.hf[2*i+1], VuV.hf[2*i], VvV.hf[2*i+1], VvV.hf[2*i]))
+
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_hf_acc,"Vxx32.sf+=vmpy(Vu32.hf,Vv32.hf)", "Vector IEEE fma: hf widen to sf",
+    fCVI_VX_NO_TMP_LD();
+    VxxV.v[0].sf[i] = fp_mult_sf_hf_acc(VuV.hf[2*i], VvV.hf[2*i], VxxV.v[0].sf[i]);
+    VxxV.v[1].sf[i] = fp_mult_sf_hf_acc(VuV.hf[2*i+1], VvV.hf[2*i+1], VxxV.v[1].sf[i]))
+
+ITERATOR_INSN_IEEE_FP_ACC_16(16, vmpy_hf_hf_acc, "Vx32.hf+=vmpy(Vu32.hf,Vv32.hf)", "Vector IEEE fma: hf", VxV.hf[i] = fp_mult_hf_hf_acc(VuV.hf[i], VvV.hf[i], VxV.hf[i]))
+ITERATOR_INSN_IEEE_FP_ACC_32(32, vdmpy_sf_hf_acc, "Vx32.sf+=vdmpy(Vu32.hf,Vv32.hf)", "Vector IEEE fma reduce: hf widen to sf",  VxV.sf[i] = fp_vdmpy_acc(VxV.sf[i], VuV.hf[2*i+1], VuV.hf[2*i], VvV.hf[2*i+1], VvV.hf[2*i]))
+
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vadd_sf_hf,    "Vdd32.sf=vadd(Vu32.hf,Vv32.hf)",  "Vector IEEE add: hf widen to sf",
+    VddV.v[0].sf[i] = fp_add_sf_hf(VuV.hf[2*i], VvV.hf[2*i]);
+    VddV.v[1].sf[i] = fp_add_sf_hf(VuV.hf[2*i+1], VvV.hf[2*i+1]))
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vsub_sf_hf,    "Vdd32.sf=vsub(Vu32.hf,Vv32.hf)",  "Vector IEEE sub: hf widen to sf",
+    VddV.v[0].sf[i] = fp_sub_sf_hf(VuV.hf[2*i], VvV.hf[2*i]);
+    VddV.v[1].sf[i] = fp_sub_sf_hf(VuV.hf[2*i+1], VvV.hf[2*i+1]))
+
+ITERATOR_INSN_IEEE_FP_32(32, vadd_sf_sf, "Vd32.sf=vadd(Vu32.sf,Vv32.sf)", "Vector IEEE add: sf", VdV.sf[i] = fp_add_sf_sf(VuV.sf[i], VvV.sf[i]))
+ITERATOR_INSN_IEEE_FP_32(32, vsub_sf_sf, "Vd32.sf=vsub(Vu32.sf,Vv32.sf)", "Vector IEEE sub: sf", VdV.sf[i] = fp_sub_sf_sf(VuV.sf[i], VvV.sf[i]))
+ITERATOR_INSN_IEEE_FP_16(16, vadd_hf_hf, "Vd32.hf=vadd(Vu32.hf,Vv32.hf)", "Vector IEEE add: hf", VdV.hf[i] = fp_add_hf_hf(VuV.hf[i], VvV.hf[i]))
+ITERATOR_INSN_IEEE_FP_16(16, vsub_hf_hf, "Vd32.hf=vsub(Vu32.hf,Vv32.hf)", "Vector IEEE sub: hf", VdV.hf[i] = fp_sub_hf_hf(VuV.hf[i], VvV.hf[i]))
+
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_16(32,  vcvt_hf_ub, "Vdd32.hf=vcvt(Vu32.ub)", "Vector IEEE cvt from int: ub widen to hf",
+    VddV.v[0].hf[2*i]   = ub_to_f16(VuV.ub[4*i]);
+    VddV.v[0].hf[2*i+1] = ub_to_f16(VuV.ub[4*i+1]);
+    VddV.v[1].hf[2*i]   = ub_to_f16(VuV.ub[4*i+2]);
+    VddV.v[1].hf[2*i+1] = ub_to_f16(VuV.ub[4*i+3]))
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_16(32,  vcvt_hf_b,  "Vdd32.hf=vcvt(Vu32.b)",  "Vector IEEE cvt from int: b widen to hf",
+    VddV.v[0].hf[2*i]   = b_to_f16(VuV.b[4*i]);
+    VddV.v[0].hf[2*i+1] = b_to_f16(VuV.b[4*i+1]);
+    VddV.v[1].hf[2*i]   = b_to_f16(VuV.b[4*i+2]);
+    VddV.v[1].hf[2*i+1] = b_to_f16(VuV.b[4*i+3]))
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vcvt_sf_hf, "Vdd32.sf=vcvt(Vu32.hf)", "Vector IEEE cvt: hf widen to sf",
+    VddV.v[0].sf[i] = f16_to_f32(VuV.hf[2*i]);
+    VddV.v[1].sf[i] = f16_to_f32(VuV.hf[2*i+1]))
+
+ITERATOR_INSN_IEEE_FP_16(16,    vcvt_hf_uh, "Vd32.hf=vcvt(Vu32.uh)", "Vector IEEE cvt from int: uh to hf", VdV.hf[i] = uh_to_f16(VuV.uh[i]))
+ITERATOR_INSN_IEEE_FP_16(16,    vcvt_hf_h,  "Vd32.hf=vcvt(Vu32.h)",  "Vector IEEE cvt from int: h to hf",  VdV.hf[i] = h_to_f16(VuV.h[i]))
+ITERATOR_INSN_IEEE_FP_16_32(16, vcvt_uh_hf, "Vd32.uh=vcvt(Vu32.hf)", "Vector IEEE cvt to int: hf to uh",   VdV.uh[i] = f16_to_uh(VuV.hf[i]))
+ITERATOR_INSN_IEEE_FP_16_32(16, vcvt_h_hf,  "Vd32.h=vcvt(Vu32.hf)",  "Vector IEEE cvt to int: hf to h",    VdV.h[i]  = f16_to_h(VuV.hf[i]))
+
+
+ITERATOR_INSN_IEEE_FP_16(32, vcvt_hf_sf, "Vd32.hf=vcvt(Vu32.sf,Vv32.sf)", "Vector IEEE cvt: sf to hf",
+    VdV.hf[2*i]   = f32_to_f16(VuV.sf[i]);
+    VdV.hf[2*i+1] = f32_to_f16(VvV.sf[i]))
+
+ITERATOR_INSN_IEEE_FP_16_32(32, vcvt_ub_hf, "Vd32.ub=vcvt(Vu32.hf,Vv32.hf)", "Vector cvt to int: hf narrow to ub",
+    VdV.ub[4*i]   = f16_to_ub(VuV.hf[2*i]);
+    VdV.ub[4*i+1] = f16_to_ub(VuV.hf[2*i+1]);
+    VdV.ub[4*i+2] = f16_to_ub(VvV.hf[2*i]);
+    VdV.ub[4*i+3] = f16_to_ub(VvV.hf[2*i+1]))
+
+ITERATOR_INSN_IEEE_FP_16_32(32, vcvt_b_hf,  "Vd32.b=vcvt(Vu32.hf,Vv32.hf)", "Vector cvt to int: hf narrow to b",
+    VdV.b[4*i]   = f16_to_b(VuV.hf[2*i]);
+    VdV.b[4*i+1] = f16_to_b(VuV.hf[2*i+1]);
+    VdV.b[4*i+2] = f16_to_b(VvV.hf[2*i]);
+    VdV.b[4*i+3] = f16_to_b(VvV.hf[2*i+1]))
+
+#define ITERATOR_INSN_IEEE_FP_16_32_LATE(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_OUT_16,A_HVX_IEEE_FP_OUT_32,A_CVI_LATE), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+ITERATOR_INSN_IEEE_FP_16_32_LATE(32, vassign_fp,  "Vd32.w=vfmv(Vu32.w)", "Vector IEEE move",              VdV.w[i]  = VuV.w[i])
+ITERATOR_INSN_IEEE_FP_16_32_LATE(16, vfneg_hf, "Vd32.hf=vfneg(Vu32.hf)", "Vector IEEE neg: hf",          VdV.hf[i] = (VuV.hf[i] ^ 0x8000))
+ITERATOR_INSN_IEEE_FP_16_32_LATE(32, vfneg_sf, "Vd32.sf=vfneg(Vu32.sf)", "Vector IEEE neg: sf",          VdV.sf[i] = (VuV.sf[i] ^ 0x80000000))
+ITERATOR_INSN_IEEE_FP_16_32_LATE(16, vabs_hf,  "Vd32.hf=vabs(Vu32.hf)", "Vector IEEE abs: hf",           VdV.hf[i] = ((signF16UI(VuV.hf[i])) ? (VuV.hf[i] ^ 0x8000) : VuV.hf[i]))
+ITERATOR_INSN_IEEE_FP_16_32_LATE(32, vabs_sf,  "Vd32.sf=vabs(Vu32.sf)", "Vector IEEE abs: sf",           VdV.sf[i] = ((signF32UI(VuV.sf[i])) ? (VuV.sf[i] ^ 0x80000000) : VuV.sf[i]))
+ITERATOR_INSN_IEEE_FP_16_32_LATE(16, vfmin_hf, "Vd32.hf=vfmin(Vu32.hf,Vv32.hf)", "Vector IEEE min: hf",  VdV.hf[i] = fp_min_hf(VuV.hf[i], VvV.hf[i]))
+ITERATOR_INSN_IEEE_FP_16_32_LATE(32, vfmin_sf, "Vd32.sf=vfmin(Vu32.sf,Vv32.sf)", "Vector IEEE min: sf",  VdV.sf[i] = fp_min_sf(VuV.sf[i], VvV.sf[i]))
+ITERATOR_INSN_IEEE_FP_16_32_LATE(16, vfmax_hf,  "Vd32.hf=vfmax(Vu32.hf,Vv32.hf)", "Vector IEEE max: hf", VdV.hf[i] = fp_max_hf(VuV.hf[i], VvV.hf[i]))
+ITERATOR_INSN_IEEE_FP_16_32_LATE(32, vfmax_sf,  "Vd32.sf=vfmax(Vu32.sf,Vv32.sf)", "Vector IEEE max: sf", VdV.sf[i] = fp_max_sf(VuV.sf[i], VvV.sf[i]))
+
+
+
+// BFLOAT INSTRUCTIONS FOR V72/QOGNITION
+
+// First Tier Must haves
+//Add/sub (BF16,BF16)->(FP32,FP32) (double-vector output)
+//Mpy/MAC (BF16,BF16)->(FP32,FP32) (double-vector output)
+//convert (FP32,FP32)->BF16
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vadd_sf_bf,     "Vdd32.sf=vadd(Vu32.bf,Vv32.bf)",  "Vector IEEE add: bf widen to sf",
+	VddV.v[0].sf[i] = fp_add_sf_bf(VuV.bf[2*i], VvV.bf[2*i]);
+	VddV.v[1].sf[i] = fp_add_sf_bf(VuV.bf[2*i+1], VvV.bf[2*i+1]); fBFLOAT())
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vsub_sf_bf,     "Vdd32.sf=vsub(Vu32.bf,Vv32.bf)",  "Vector IEEE sub: bf widen to sf",
+	VddV.v[0].sf[i] = fp_sub_sf_bf(VuV.bf[2*i], VvV.bf[2*i]);
+	VddV.v[1].sf[i] = fp_sub_sf_bf(VuV.bf[2*i+1], VvV.bf[2*i+1]); fBFLOAT())
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_bf,     "Vdd32.sf=vmpy(Vu32.bf,Vv32.bf)",  "Vector IEEE mul: hf widen to sf",
+	VddV.v[0].sf[i] = fp_mult_sf_bf(VuV.bf[2*i], VvV.bf[2*i]);
+	VddV.v[1].sf[i] = fp_mult_sf_bf(VuV.bf[2*i+1], VvV.bf[2*i+1]); fBFLOAT())
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_bf_acc, "Vxx32.sf+=vmpy(Vu32.bf,Vv32.bf)", "Vector IEEE fma: hf widen to sf",
+	VxxV.v[0].sf[i] = fp_mult_sf_bf_acc(VuV.bf[2*i], VvV.bf[2*i], VxxV.v[0].sf[i]);
+	VxxV.v[1].sf[i] = fp_mult_sf_bf_acc(VuV.bf[2*i+1], VvV.bf[2*i+1], VxxV.v[1].sf[i]); fCVI_VX_NO_TMP_LD(); fBFLOAT())
+ITERATOR_INSN_IEEE_FP_16(32, vcvt_bf_sf,            "Vd32.bf=vcvt(Vu32.sf,Vv32.sf)",   "Vector IEEE cvt: sf to bf",
+	VdV.bf[2*i]   = sf_to_bf(VuV.sf[i]);
+    VdV.bf[2*i+1] = sf_to_bf(VvV.sf[i]); fBFLOAT())
+
+
+
+//Min/max BF16->BF16
+ITERATOR_INSN_IEEE_FP_16_32_LATE(16, vmax_bf, "Vd32.bf=vmax(Vu32.bf,Vv32.bf)", "Vector IEEE max: bf", VdV.bf[i] = fp_max_bf(VuV.bf[i], VvV.bf[i]); fBFLOAT())
+ITERATOR_INSN_IEEE_FP_16_32_LATE(16, vmin_bf, "Vd32.bf=vmin(Vu32.bf,Vv32.bf)", "Vector IEEE max: bf", VdV.bf[i] = fp_min_bf(VuV.bf[i], VvV.bf[i]); fBFLOAT())
 
 
 EXTINSN(V6_vscattermhwq,  "if (Qs4) vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA_DV,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_2B,A_CVI_GATHER_ADDR_4B,A_VTCM_ALLBANK_ACCESS,A_MEMLIKE,A_NOTE_ANY2_RESOURCE), "Scatter halfwords conditional",

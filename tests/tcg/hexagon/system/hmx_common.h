@@ -15,6 +15,9 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef HMX_COMMON_H
+#define HMX_COMMON_H 1
+
 #define BYTE_ALIGNMENT_REQ 2048
 
 #define X_TILE_SIZE_DEF (8)
@@ -315,4 +318,4 @@ class mxmem_act_t {
 		};
 };
 #endif
-
+#endif

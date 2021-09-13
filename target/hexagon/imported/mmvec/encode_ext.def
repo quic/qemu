@@ -673,10 +673,17 @@ DEF_ENC(V6_vmpyowh_sacc,	ICLASS_CJ" 1 100 001 vvvvv PP 1 uuuuu 110 xxxxx") //
 DEF_ENC(V6_vmpyowh_rnd_sacc,ICLASS_CJ" 1 100 001 vvvvv PP 1 uuuuu 111 xxxxx") //
 
 DEF_ENC(V6_vmpyiewh_acc,	  ICLASS_CJ" 1 100 010 vvvvv PP 1 uuuuu 000 xxxxx") //
+DEF_ENC(V6_vmpy_sf_hf_acc,	  ICLASS_CJ" 1 100 010 vvvvv PP 1 uuuuu 001 xxxxx") //
+DEF_ENC(V6_vmpy_hf_hf_acc,	  ICLASS_CJ" 1 100 010 vvvvv PP 1 uuuuu 010 xxxxx") //
+DEF_ENC(V6_vdmpy_sf_hf_acc,	  ICLASS_CJ" 1 100 010 vvvvv PP 1 uuuuu 011 xxxxx") //
 DEF_ENC(V6_vadduhw_acc,		  ICLASS_CJ" 1 100 010 vvvvv PP 1 uuuuu 100 xxxxx") //
 DEF_ENC(V6_vaddubh_acc,		  ICLASS_CJ" 1 100 010 vvvvv PP 1 uuuuu 101 xxxxx") //
 
 
+DEF_ENC(V6_vfmin_hf,  ICLASS_CJ" 1 100 011 vvvvv PP 1 uuuuu 000 ddddd") //
+DEF_ENC(V6_vfmin_sf,  ICLASS_CJ" 1 100 011 vvvvv PP 1 uuuuu 001 ddddd") //
+DEF_ENC(V6_vfmax_hf,  ICLASS_CJ" 1 100 011 vvvvv PP 1 uuuuu 010 ddddd") //
+DEF_ENC(V6_vfmax_sf,  ICLASS_CJ" 1 100 011 vvvvv PP 1 uuuuu 011 ddddd") //
 
 //
 
@@ -746,8 +753,16 @@ DEF_ENC(V6_vasrvuhubsat,    ICLASS_CJ" 1 101 000 vvvvv PP 0 uuuuu 010 ddddd")
 DEF_ENC(V6_vasrvuhubrndsat, ICLASS_CJ" 1 101 000 vvvvv PP 0 uuuuu 011 ddddd")
 
 
+DEF_ENC(V6_vmpy_sf_bf_acc,  ICLASS_CJ" 1 101 000 vvvvv PP 1 uuuuu 000 xxxxx")
 //DEF_ENC(V6_vmpy_bf_bf_acc,  ICLASS_CJ" 1 101 000 vvvvv PP 1 uuuuu 001 xxxxx")
 //DEF_ENC(V6_vdmpy_sf_bf_acc, ICLASS_CJ" 1 101 000 vvvvv PP 1 uuuuu 010 xxxxx")
+DEF_ENC(V6_vmax_bf, 	    ICLASS_CJ" 1 101 010 vvvvv PP 1 uuuuu 111 ddddd") //
+
+DEF_ENC(V6_vmin_bf, 	    ICLASS_CJ" 1 101 010 vvvvv PP 1 uuuuu 000 ddddd") //
+DEF_ENC(V6_vcvt_bf_sf, 	    ICLASS_CJ" 1 101 010 vvvvv PP 1 uuuuu 011 ddddd") //
+DEF_ENC(V6_vmpy_sf_bf, 	    ICLASS_CJ" 1 101 010 vvvvv PP 1 uuuuu 100 ddddd") //
+DEF_ENC(V6_vsub_sf_bf, 		ICLASS_CJ" 1 101 010 vvvvv PP 1 uuuuu 101 ddddd") //
+DEF_ENC(V6_vadd_sf_bf, 		ICLASS_CJ" 1 101 010 vvvvv PP 1 uuuuu 110 ddddd") //
 
 
 /************** Not Real Instructions for Debug Only  ************************/
@@ -1014,6 +1029,13 @@ DEF_ENC(V6_vmpy_qf16_mix_hf,ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 101 ddddd")
 DEF_ENC(V6_vmpy_qf32_qf16,  ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 110 ddddd")
 DEF_ENC(V6_vmpy_qf32_hf,	ICLASS_CJ" 1 111 111 vvvvv PP 1 uuuuu 111 ddddd")
 DEF_ENC(V6_vmpy_qf32_mix_hf,ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 000 ddddd")
+DEF_ENC(V6_vmpy_sf_sf,      ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 001 ddddd")
+DEF_ENC(V6_vmpy_sf_hf,      ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 010 ddddd")
+DEF_ENC(V6_vmpy_hf_hf,      ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 011 ddddd")
+DEF_ENC(V6_vadd_sf_hf,      ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 100 ddddd")
+DEF_ENC(V6_vsub_sf_hf,      ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 101 ddddd")
+DEF_ENC(V6_vadd_sf_sf,      ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 110 ddddd")
+DEF_ENC(V6_vsub_sf_sf,      ICLASS_CJ" 1 111 100 vvvvv PP 1 uuuuu 111 ddddd")
 
 
 DEF_ENC(V6_vadd_qf32, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 000 ddddd")
@@ -1022,7 +1044,11 @@ DEF_ENC(V6_vadd_qf32_mix, 	ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 010 ddddd")
 DEF_ENC(V6_vsub_qf32, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 011 ddddd")
 DEF_ENC(V6_vsub_sf, 		ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 100 ddddd")
 DEF_ENC(V6_vsub_qf32_mix, 	ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 101 ddddd")
+DEF_ENC(V6_vdmpy_sf_hf, 	ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 110 ddddd")
+DEF_ENC(V6_vadd_hf_hf, 	    ICLASS_CJ" 1 111 101 vvvvv PP 1 uuuuu 111 ddddd")
 
+DEF_ENC(V6_vsub_hf_hf, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 000 ddddd")
+DEF_ENC(V6_vcvt_hf_sf, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 001 ddddd")
 DEF_ENC(V6_vadd_qf16, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 010 ddddd")
 DEF_ENC(V6_vadd_hf, 		ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 011 ddddd")
 DEF_ENC(V6_vadd_qf16_mix, 	ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 100 ddddd")
@@ -1032,13 +1058,25 @@ DEF_ENC(V6_vsub_qf16_mix, 	ICLASS_CJ" 1 111 011 vvvvv PP 1 uuuuu 111 ddddd")
 
 //Vconvert FP
 DEF_ENC(V6_vconv_sf_qf32, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 000 ddddd")
+DEF_ENC(V6_vcvt_hf_ub, 	    ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 001 ddddd")
+DEF_ENC(V6_vcvt_hf_b, 	    ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 010 ddddd")
 DEF_ENC(V6_vconv_hf_qf16, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 011 ddddd")
+DEF_ENC(V6_vcvt_sf_hf, 	    ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 100 ddddd")
+DEF_ENC(V6_vcvt_hf_uh, 	    ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 101 ddddd")
 DEF_ENC(V6_vconv_hf_qf32, 	ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 110 ddddd")
+DEF_ENC(V6_vcvt_hf_h, 	    ICLASS_CJ" 1 110 --0 --100 PP 1 uuuuu 111 ddddd")
+DEF_ENC(V6_vcvt_uh_hf,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 000 ddddd")
 DEF_ENC(V6_vconv_w_sf,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 001 ddddd")
 DEF_ENC(V6_vconv_h_hf,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 010 ddddd")
 DEF_ENC(V6_vconv_sf_w,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 011 ddddd")
 DEF_ENC(V6_vconv_hf_h,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 100 ddddd")
 
+DEF_ENC(V6_vcvt_h_hf,       ICLASS_CJ" 1 110 --0 --110 PP 1 uuuuu 000 ddddd")
+DEF_ENC(V6_vassign_fp,      ICLASS_CJ" 1 110 --0 --110 PP 1 uuuuu 001 ddddd")
+DEF_ENC(V6_vfneg_hf,        ICLASS_CJ" 1 110 --0 --110 PP 1 uuuuu 010 ddddd")
+DEF_ENC(V6_vfneg_sf,        ICLASS_CJ" 1 110 --0 --110 PP 1 uuuuu 011 ddddd")
+DEF_ENC(V6_vabs_hf,         ICLASS_CJ" 1 110 --0 --110 PP 1 uuuuu 100 ddddd")
+DEF_ENC(V6_vabs_sf,         ICLASS_CJ" 1 110 --0 --110 PP 1 uuuuu 101 ddddd")
 
 
 //Vcmp for FP
@@ -1046,24 +1084,28 @@ DEF_ENC(V6_vconv_hf_h,      ICLASS_CJ" 1 110 --0 --101 PP 1 uuuuu 100 ddddd")
 //DEF_ENC(V6_vgtqf16_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 001xx") //
 DEF_ENC(V6_vgtsf_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 010xx") //
 DEF_ENC(V6_vgthf_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 011xx") //
+DEF_ENC(V6_vgtbf_and,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 100xx") //
 //DEF_ENC(V6_vgtqf16hf_and,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 110 101xx") //
 
 //DEF_ENC(V6_vgtqf32_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 000xx") //
 //DEF_ENC(V6_vgtqf16_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 001xx") //
 DEF_ENC(V6_vgtsf_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 010xx") //
 DEF_ENC(V6_vgthf_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 011xx") //
+DEF_ENC(V6_vgtbf_xor,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 100xx") //
 //DEF_ENC(V6_vgtqf16hf_xor,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 111 101xx") //
 
 //DEF_ENC(V6_vgtqf32_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 000 111xx") //
 //DEF_ENC(V6_vgtqf16_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 011xx") //
 DEF_ENC(V6_vgtsf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 100xx") //
 DEF_ENC(V6_vgthf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 101xx") //
+DEF_ENC(V6_vgtbf_or,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 110xx") //
 //DEF_ENC(V6_vgtqf16hf_or,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 001 111xx") //
 
 //DEF_ENC(V6_vgtqf32,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 010 111dd") //
 //DEF_ENC(V6_vgtqf16,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 011dd") //
 DEF_ENC(V6_vgtsf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 100dd") //
 DEF_ENC(V6_vgthf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 101dd") //
+DEF_ENC(V6_vgtbf,	    ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 110dd") //
 //DEF_ENC(V6_vgtqf16hf,	ICLASS_CJ" 1 100 100 vvvvv PP 1 uuuuu 011 111dd") //
 
 
@@ -1072,6 +1114,8 @@ DEF_ENC(V6_vmax_sf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 001 ddddd") //
 DEF_ENC(V6_vmin_sf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 010 ddddd") //
 DEF_ENC(V6_vmax_hf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 011 ddddd") //
 DEF_ENC(V6_vmin_hf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 100 ddddd") //
+DEF_ENC(V6_vcvt_ub_hf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 101 ddddd") //
+DEF_ENC(V6_vcvt_b_hf, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 110 ddddd") //
 DEF_ENC(V6_vmpyuhvs, 		ICLASS_CJ" 1 111 110 vvvvv PP 1 uuuuu 111 ddddd") //
 
 

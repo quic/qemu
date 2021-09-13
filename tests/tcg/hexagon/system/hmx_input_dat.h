@@ -15,8 +15,8 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HMX_INPUT_DAT
-#define HMX_INPUT_DAT 1
+#ifndef HMX_INPUT_DAT_H
+#define HMX_INPUT_DAT_H 1
 
 unsigned char hmx_input_dat[] = {
     0x08, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,

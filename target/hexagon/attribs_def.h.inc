@@ -451,6 +451,16 @@ DEF_ATTRIB(DMA,  "User-DMA instruction", "", "")
 DEF_ATTRIB(VERIF_DMASTEP,  "Hiphop needs to step dma prior to executing this packet", "", "")
 DEF_ATTRIB(VERIF_DMATICK,  "DMA gets a tick in verif mode for this instruction after a commit", "", "")
 
+DEF_ATTRIB(HVX_IEEE_FP, "HVX IEEE FP extension instruction","","")
+DEF_ATTRIB(NOTE_HVX_IEEE_FP, "Only supported on the HVX cores with the IEEE FP extension","","")
+
+DEF_ATTRIB(HVX_IEEE_FP_DV_ONE, "HVX IEEE FP extension instruction - dual pipes: P2 and P3 - output only on P2","","")
+DEF_ATTRIB(HVX_IEEE_FP_ACC, "HVX IEEE FP accumulate instruction","","")
+DEF_ATTRIB(HVX_IEEE_BF, "HVX IEEE BF extension instruction: 16-bit bfloat input","","")
+DEF_ATTRIB(HVX_IEEE_FP_OUT_BF, "HVX IEEE FP extension instruction: 16-bit bfloat output","","")
+DEF_ATTRIB(HVX_IEEE_FP_OUT_16, "HVX IEEE FP extension instruction: 16-bit output","","")
+DEF_ATTRIB(HVX_IEEE_FP_OUT_32, "HVX IEEE FP extension instruction: 32-bit output","","")
+DEF_ATTRIB(HVX_IEEE_FP_BINARY_LATE, "HVX IEEE FP extension instruction: Both inputs can arrive late","","")
 
 /* Keep this as the last attribute: */
 DEF_ATTRIB(ZZ_LASTATTRIB, "Last attribute in the file", "", "")

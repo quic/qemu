@@ -15,8 +15,8 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HMX_REF_OUTPUT
-#define HMX_REF_OUTPUT 1
+#ifndef HMX_REF_OUTPUT_H
+#define HMX_REF_OUTPUT_H 1
 
 unsigned char hmx_ref_output_dat[] = {
     0x08, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
