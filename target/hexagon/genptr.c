@@ -732,18 +732,14 @@ static inline void gen_endloop0(Packet *pkt)
     /*
      *    if (hex_gpr[HEX_REG_LC0] > 1) {
      *        hex_next_PC = hex_gpr[HEX_REG_SA0];
-     *        hex_gpr[HEX_REG_LC0] = hex_gpr[HEX_REG_LC0] - 1;
+     *        hex_new_value[HEX_REG_LC0] = hex_gpr[HEX_REG_LC0] - 1;
      *    }
      */
     TCGLabel *label3 = gen_new_label();
     tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC0], 1, label3);
     {
-        TCGv lc0 = tcg_temp_local_new();
         gen_write_new_pc(pkt, hex_gpr[HEX_REG_SA0]);
-        tcg_gen_mov_tl(lc0, hex_gpr[HEX_REG_LC0]);
-        tcg_gen_subi_tl(lc0, lc0, 1);
-        tcg_gen_mov_tl(hex_new_value[HEX_REG_LC0], lc0);
-        tcg_temp_free(lc0);
+        tcg_gen_subi_tl(hex_new_value[HEX_REG_LC0], hex_gpr[HEX_REG_LC0], 1);
     }
     gen_set_label(label3);
 
@@ -755,18 +751,14 @@ static inline void gen_endloop1(Packet *pkt)
     /*
      *    if (hex_gpr[HEX_REG_LC1] > 1) {
      *        hex_next_PC = hex_gpr[HEX_REG_SA1];
-     *        hex_gpr[HEX_REG_LC1] = hex_gpr[HEX_REG_LC1] - 1;
+     *        hex_new_value[HEX_REG_LC1] = hex_gpr[HEX_REG_LC1] - 1;
      *    }
      */
     TCGLabel *label = gen_new_label();
     tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC1], 1, label);
     {
-        TCGv lc1 = tcg_temp_local_new();
         gen_write_new_pc(pkt, hex_gpr[HEX_REG_SA1]);
-        tcg_gen_mov_tl(lc1, hex_gpr[HEX_REG_LC1]);
-        tcg_gen_subi_tl(lc1, lc1, 1);
-        tcg_gen_mov_tl(hex_new_value[HEX_REG_LC1], lc1);
-        tcg_temp_free(lc1);
+        tcg_gen_subi_tl(hex_new_value[HEX_REG_LC1], hex_gpr[HEX_REG_LC1], 1);
     }
     gen_set_label(label);
 }
