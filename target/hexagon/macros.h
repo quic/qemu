@@ -387,7 +387,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fREAD_PC() (PC)
 #endif
 
-#define fREAD_NPC() (env->next_PC & (0xfffffffe))
+#define fREAD_NPC() (next_PC & (0xfffffffe))
 
 #ifdef QEMU_GENERATE
 #define fREAD_P0() (READ_PREG(tmp, 0))
