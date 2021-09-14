@@ -608,71 +608,6 @@ static inline void gen_compare_i64(TCGCond cond, TCGv res,
     tcg_temp_free_i64(temp);
 }
 
-static inline void gen_cmpnd_cmp_jmp(DisasContext *ctx, Insn *insn,
-                                     int pnum, TCGCond cond,
-                                     bool sense, TCGv arg1, TCGv arg2,
-                                     int pc_off)
-{
-    if (insn->part1) {
-        TCGv pred = tcg_temp_new();
-        gen_compare(cond, pred, arg1, arg2);
-        gen_log_pred_write(ctx, pnum, pred);
-        tcg_temp_free(pred);
-    } else {
-        TCGv new_pc = tcg_temp_new();
-        TCGv zero = tcg_const_tl(0);
-        TCGv one = tcg_const_tl(1);
-        TCGv pred = tcg_temp_new();
-
-        tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
-        tcg_gen_mov_tl(pred, hex_new_pred_value[pnum]);
-        if (!sense) {
-            tcg_gen_xori_tl(pred, pred, 0xff);
-        }
-
-        /* If there are multiple branches in a packet, ignore the second one */
-        tcg_gen_movcond_tl(TCG_COND_NE, pred, hex_branch_taken, zero,
-                           zero, pred);
-
-        tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, pred, zero,
-                           new_pc, hex_next_PC);
-        tcg_gen_movcond_tl(TCG_COND_NE, hex_branch_taken, pred, zero,
-                           one, hex_branch_taken);
-
-        tcg_temp_free(new_pc);
-        tcg_temp_free(zero);
-        tcg_temp_free(one);
-        tcg_temp_free(pred);
-    }
-}
-
-static inline void gen_cmpnd_cmpi_jmp(DisasContext *ctx, Insn *insn,
-                                      int pnum, TCGCond cond,
-                                      bool sense, TCGv arg1, int arg2,
-                                      int pc_off)
-{
-    TCGv tmp = tcg_const_tl(arg2);
-    gen_cmpnd_cmp_jmp(ctx, insn, pnum, cond, sense, arg1, tmp, pc_off);
-    tcg_temp_free(tmp);
-
-}
-
-static inline void gen_cmpnd_cmp_n1_jmp(DisasContext *ctx, Insn *insn,
-                                        int pnum, TCGCond cond,
-                                        bool sense, TCGv arg, int pc_off)
-{
-    gen_cmpnd_cmpi_jmp(ctx, insn, pnum, cond, sense, arg, -1, pc_off);
-}
-
-
-static inline void gen_jump(Packet *pkt, int pc_off)
-{
-    TCGv new_pc = tcg_temp_new();
-    tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
-    gen_write_new_pc(pkt, new_pc);
-    tcg_temp_free(new_pc);
-}
-
 static inline void gen_cond_jumpr(Packet *pkt, TCGv pred, TCGv dst_pc)
 {
     TCGLabel *skip = gen_new_label();
@@ -696,6 +631,57 @@ static inline void gen_cond_jump(Packet *pkt, TCGv pred, int pc_off)
     tcg_temp_free(dst_pc);
 
     gen_set_label(skip);
+}
+
+static inline void gen_cmpnd_cmp_jmp(DisasContext *ctx, Packet *pkt, Insn *insn,
+                                     int pnum, TCGCond cond,
+                                     bool sense, TCGv arg1, TCGv arg2,
+                                     int pc_off)
+{
+    if (insn->part1) {
+        TCGv pred = tcg_temp_new();
+        gen_compare(cond, pred, arg1, arg2);
+        gen_log_pred_write(ctx, pnum, pred);
+        tcg_temp_free(pred);
+    } else {
+        TCGv pred = tcg_temp_new();
+
+        tcg_gen_mov_tl(pred, hex_new_pred_value[pnum]);
+        if (!sense) {
+            tcg_gen_xori_tl(pred, pred, 0xff);
+        }
+
+        gen_cond_jump(pkt, pred, pc_off);
+
+        tcg_temp_free(pred);
+    }
+}
+
+static void gen_cmpnd_cmpi_jmp(DisasContext *ctx, Packet *pkt, Insn *insn,
+                               int pnum, TCGCond cond,
+                               bool sense, TCGv arg1, int arg2,
+                               int pc_off)
+{
+    TCGv tmp = tcg_const_tl(arg2);
+    gen_cmpnd_cmp_jmp(ctx, pkt, insn, pnum, cond, sense, arg1, tmp, pc_off);
+    tcg_temp_free(tmp);
+
+}
+
+static void gen_cmpnd_cmp_n1_jmp(DisasContext *ctx, Packet *pkt, Insn *insn,
+                                 int pnum, TCGCond cond,
+                                 bool sense, TCGv arg, int pc_off)
+{
+    gen_cmpnd_cmpi_jmp(ctx, pkt, insn, pnum, cond, sense, arg, -1, pc_off);
+}
+
+
+static inline void gen_jump(Packet *pkt, int pc_off)
+{
+    TCGv new_pc = tcg_temp_new();
+    tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
+    gen_write_new_pc(pkt, new_pc);
+    tcg_temp_free(new_pc);
 }
 
 static inline void gen_call(Packet *pkt, int pc_off)
