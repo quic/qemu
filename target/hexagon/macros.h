@@ -400,7 +400,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fCHECK_PCALIGN(A)
 
 #ifdef QEMU_GENERATE
-#define fWRITE_NPC(A) gen_write_new_pc(A)
+#define fWRITE_NPC(A) gen_write_new_pc(pkt, A)
 #else
 #define fWRITE_NPC(A) write_new_pc(env, A)
 #endif

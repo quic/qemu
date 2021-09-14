@@ -515,7 +515,7 @@ static TCGv gen_8bitsof(TCGv result, TCGv value)
     return result;
 }
 
-static inline void gen_write_new_pc(TCGv addr)
+static inline void gen_write_new_pc(Packet *pkt, TCGv addr)
 {
     /* If there are multiple branches in a packet, ignore the second one */
     TCGv zero = tcg_const_tl(0);
@@ -662,11 +662,11 @@ static inline void gen_cmpnd_cmp_n1_jmp(DisasContext *ctx, Insn *insn,
 }
 
 
-static inline void gen_jump(int pc_off)
+static inline void gen_jump(Packet *pkt, int pc_off)
 {
     TCGv new_pc = tcg_temp_new();
     tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
-    gen_write_new_pc(new_pc);
+    gen_write_new_pc(pkt, new_pc);
     tcg_temp_free(new_pc);
 }
 
@@ -699,16 +699,16 @@ static inline void gen_cond_jump(TCGv pred, int pc_off)
     tcg_temp_free(new_pc);
 }
 
-static inline void gen_call(int pc_off)
+static inline void gen_call(Packet *pkt, int pc_off)
 {
     gen_log_reg_write(HEX_REG_LR, hex_next_PC);
-    gen_jump(pc_off);
+    gen_jump(pkt, pc_off);
 }
 
-static inline void gen_callr(TCGv new_pc)
+static inline void gen_callr(Packet *pkt, TCGv new_pc)
 {
     gen_log_reg_write(HEX_REG_LR, hex_next_PC);
-    gen_write_new_pc(new_pc);
+    gen_write_new_pc(pkt, new_pc);
 }
 
 static inline void gen_endloop0(void)

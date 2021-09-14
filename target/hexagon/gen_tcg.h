@@ -1760,9 +1760,9 @@
     } while (0)
 
 #define fGEN_TCG_J2_call(SHORTCODE) \
-    gen_call(riV)
+    gen_call(pkt, riV)
 #define fGEN_TCG_J2_callr(SHORTCODE) \
-    gen_callr(RsV)
+    gen_callr(pkt, RsV)
 
 #define fGEN_TCG_J2_loop0r(SHORTCODE) \
     gen_loop0r(RsV, riV, insn)
@@ -1979,9 +1979,9 @@
     tcg_gen_ext8u_tl(RdV, RsV)
 
 #define fGEN_TCG_J2_jump(SHORTCODE) \
-    gen_jump(riV)
+    gen_jump(pkt, riV)
 #define fGEN_TCG_J2_jumpr(SHORTCODE) \
-    gen_write_new_pc(RsV)
+    gen_write_new_pc(pkt, RsV)
 
 #define fGEN_TCG_cond_jump(COND) \
     do { \
@@ -2050,7 +2050,7 @@
 #define fGEN_TCG_J4_jumpsetr(SHORTCODE) \
     do { \
         tcg_gen_mov_tl(RdV, RsV); \
-        gen_jump(riV); \
+        gen_jump(pkt, riV); \
     } while (0)
 
 /* r0 = lsr(r1, #5) */
@@ -2380,7 +2380,7 @@
     } while (0)
 
 #define fGEN_TCG_SL2_jumpr31(SHORTCODE) \
-    gen_write_new_pc(hex_gpr[HEX_REG_LR])
+    gen_write_new_pc(pkt, hex_gpr[HEX_REG_LR])
 
 #define fGEN_TCG_SL2_jumpr31_tnew(SHORTCODE) \
     gen_cond_jumpr(hex_new_pred_value[0], hex_gpr[HEX_REG_LR])
