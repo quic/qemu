@@ -174,7 +174,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         || pkt->pkt_has_scalar_store_s1
         || pkt->pkt_has_load_s0
         || pkt->pkt_has_load_s1
-        || pkt->pkt_has_sys_visibility;
+        || pkt->can_do_io;
 
     if (may_do_io && (tb_cflags(ctx->base.tb) & CF_USE_ICOUNT)) {
         gen_io_start();

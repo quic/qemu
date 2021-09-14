@@ -182,6 +182,7 @@ struct Packet {
 
 #ifndef CONFIG_USER_ONLY
     uint32_t pkt_has_sys_visibility:1;
+    uint32_t can_do_io:1;
 #endif
     size8u_t num_insns1; // part1 and loop end are excluded
 	/* This MUST be the last thing in this structure */

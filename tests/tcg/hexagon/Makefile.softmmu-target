@@ -20,6 +20,7 @@ TESTS += \
 	sys_atomics \
 	timer_reg \
 	qtimer_test \
+	qtimer \
 	bestwait \
 	ciad-siad \
 	fastl2vic \
@@ -67,6 +68,7 @@ invalid_hmx: invalid_hmx.o
 sys_atomics: sys_atomics.o
 timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o
+qtimer: qtimer.o
 bestwait: bestwait.o
 ciad-siad: ciad-siad.o
 fastl2vic: fastl2vic.o
@@ -109,6 +111,7 @@ hmx_conv_fp16.o: CFLAGS+= -mhmx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
+qtimer.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
 
 QEMU_BASE_MACHINE=-M V68N_1024 -cpu v67,count-gcycle-xt=on,usefs=$(SRC_PATH)/tests/tcg/hexagon/system
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel

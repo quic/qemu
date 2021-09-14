@@ -405,6 +405,7 @@ static int decode_set_insn_attr_fields(Packet *pkt)
     pkt->pkt_has_dealloc_return = 0;
 #ifndef CONFIG_USER_ONLY
     pkt->pkt_has_sys_visibility = 0;
+    pkt->can_do_io = 0;
 #endif
 
     for (i = 0; i < numinsns; i++) {
@@ -506,7 +507,7 @@ static int decode_set_insn_attr_fields(Packet *pkt)
         uint32_t could_halt = 0;
         uint32_t triggers_int = 0;
         uint32_t is_solo = 0;
-        uint32_t sys_reg_access = 0;
+        uint32_t can_do_io = 0;
         if (opcode == Y2_tfrscrr ||
             opcode == Y2_tfrsrcr ||
             opcode == Y4_tfrscpp ||
@@ -515,7 +516,7 @@ static int decode_set_insn_attr_fields(Packet *pkt)
             opcode == A2_tfrrcr ||
             opcode == A4_tfrcpp ||
             opcode == A4_tfrpcp) {
-            sys_reg_access = 1;
+            can_do_io = 1;
         }
         if (opcode == Y2_stop ||
             opcode == Y2_wait ||
@@ -606,11 +607,11 @@ static int decode_set_insn_attr_fields(Packet *pkt)
                              GET_ATTRIB(opcode, A_CACHEOP)))
              || could_halt
              || triggers_int
-             || sys_reg_access
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IPEND)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IAD)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_K0LOCK)
              || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_TLBLOCK);
+        pkt->can_do_io |= can_do_io;
 #endif
     }
 
