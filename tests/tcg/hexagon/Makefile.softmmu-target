@@ -42,6 +42,7 @@ TESTS += \
 	vid_reg \
 	int_range \
 	fopen \
+	ftrunc \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -92,6 +93,7 @@ swi_fs: swi_fs.o
 vid_reg: vid_reg.o
 int_range: int_range.o
 fopen: fopen.o
+ftrunc: ftrunc.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -136,6 +138,11 @@ run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
 
 run-fopen: fopen
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< -append dummy.so,"$< on $(TARGET_NAME)")
+run-ftrunc: ftrunc
+	echo "valid" > _testfile_ftrunc
+	stat _testfile_ftrunc | fgrep "Size: 6"
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
+	stat _testfile_ftrunc | fgrep "Size: 1"
 
 run-hmx_conv_fp16: hmx_conv_fp16
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 hmx_input_fp16.dat hmx_output_fp16.dat","$< on $(TARGET_NAME)")

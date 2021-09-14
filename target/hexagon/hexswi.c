@@ -98,6 +98,7 @@
 #define SYS_READDIR         0x182
 #define SYS_MKDIR           0x183
 #define SYS_RMDIR           0x184
+#define SYS_FTRUNC          0x186
 
 static const int DIR_INDEX_OFFSET = 0x0b000;
 
@@ -519,6 +520,25 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             break;
         }
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, len);
+    }
+    break;
+
+    case SYS_FTRUNC:
+    {
+        int fd;
+        int retval;
+        off64_t size_limit;
+
+        DEBUG_MEMORY_READ(swi_info, 4, &fd);
+        DEBUG_MEMORY_READ(swi_info + 4, 8, &size_limit);
+
+        retval = ftruncate(fd, size_limit);
+        if (retval == -1) {
+            ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
+            ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
+        } else {
+            ARCH_SET_THREAD_REG(env, HEX_REG_R00, retval);
+        }
     }
     break;
 
