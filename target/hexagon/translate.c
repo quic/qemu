@@ -208,7 +208,20 @@ static bool check_for_opcode(Packet *pkt, uint16_t opcode)
 
 static bool need_slot_cancelled(Packet *pkt)
 {
-    return check_for_attrib(pkt, A_CONDEXEC);
+    /*
+     * We only need slot_cancelled for conditional instructions
+     * Further, we don't need it for conditional jumps unless the
+     * jump is part of a conditional dealloc_return which sets SP
+     */
+    for (int i = 0; i < pkt->num_insns; i++) {
+        uint16_t opcode = pkt->insn[i].opcode;
+        if (GET_ATTRIB(opcode, A_CONDEXEC) &&
+            (!GET_ATTRIB(opcode, A_JUMP) ||
+             GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SP))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static bool need_pred_written(Packet *pkt)
