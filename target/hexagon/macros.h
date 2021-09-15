@@ -402,7 +402,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #ifdef QEMU_GENERATE
 #define fWRITE_NPC(A) gen_write_new_pc(pkt, A)
 #else
-#define fWRITE_NPC(A) write_new_pc(env, A)
+#define fWRITE_NPC(A) write_new_pc(env, pkt_has_multi_cof != 0, A)
 #endif
 
 #define fBRANCH(LOC, TYPE)          fWRITE_NPC(LOC)

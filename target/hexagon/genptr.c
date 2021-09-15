@@ -517,12 +517,16 @@ static TCGv gen_8bitsof(TCGv result, TCGv value)
 
 static inline void gen_write_new_pc(Packet *pkt, TCGv addr)
 {
-    /* If there are multiple branches in a packet, ignore the second one */
-    TCGv zero = tcg_const_tl(0);
-    tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, hex_branch_taken, zero,
-                       hex_next_PC, addr);
-    tcg_gen_movi_tl(hex_branch_taken, 1);
-    tcg_temp_free(zero);
+    if (pkt->pkt_has_multi_cof) {
+        /* If there are multiple branches in a packet, ignore the second one */
+        TCGv zero = tcg_const_tl(0);
+        tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, hex_branch_taken, zero,
+                           hex_next_PC, addr);
+        tcg_gen_movi_tl(hex_branch_taken, 1);
+        tcg_temp_free(zero);
+    } else {
+        tcg_gen_mov_tl(hex_next_PC, addr);
+    }
 }
 
 static inline void gen_set_usr_field(int field, TCGv val)

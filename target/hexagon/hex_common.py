@@ -203,6 +203,20 @@ def need_part1(tag):
 def need_ea(tag):
     return re.compile(r"\bEA\b").search(semdict[tag])
 
+def need_pkt_has_multi_cof(tag):
+    if ('A_JUMP' in attribdict[tag] or
+        'A_CALL' in attribdict[tag] or
+        'A_HWLOOP0_END' in attribdict[tag] or
+        'A_HWLOOP1_END' in attribdict[tag] or
+        tag == 'J2_trap0' or
+        tag == 'J2_trap1' or
+        tag == 'J2_rte' or
+        tag == 'J2_pause'):
+        if (tag == 'J4_hintjumpr'):
+            return False
+        return True
+    return False
+
 def skip_qemu_helper(tag):
     return tag in overrides.keys()
 
