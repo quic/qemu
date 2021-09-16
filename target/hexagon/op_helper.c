@@ -1468,7 +1468,7 @@ uint64_t HELPER(sfinvsqrta)(CPUHexagonState *env, float32 RsV)
     if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
         PeV = adjust;
         idx = (RsV >> 17) & 0x7f;
-        mant = (recip_lookup_table[idx] << 15);
+        mant = (invsqrt_lookup_table[idx] << 15);
         exp = SF_BIAS - ((float32_getexp(RsV) - SF_BIAS) >> 1) - 1;
         RdV = build_float32(extract32(RsV, 31, 1), exp, mant);
     }
