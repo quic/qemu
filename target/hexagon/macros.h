@@ -679,7 +679,7 @@
 #define CHECK_NOSHUF(DST, VA, SZ, SIGN) \
     do { \
         if (insn->slot == 0 && pkt->pkt_has_scalar_store_s1) { \
-            gen_helper_merge_inflight_store##SZ##SIGN(DST, cpu_env, VA, DST); \
+            process_store(ctx, pkt, 1); \
         } \
     } while (0)
 

@@ -260,8 +260,9 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     }
     if (pkt->pkt_has_cof || pkt->pkt_has_fp_op) {
         tcg_gen_movi_tl(hex_branch_taken, 0);
-        tcg_gen_movi_tl(hex_next_PC, next_PC);
     }
+    // FIXME: this was moved out of the conditional init above:
+    tcg_gen_movi_tl(hex_next_PC, next_PC);
     if (need_pred_written(pkt)) {
         tcg_gen_movi_tl(hex_pred_written, 0);
     }
