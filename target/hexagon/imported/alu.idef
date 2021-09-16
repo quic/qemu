@@ -155,16 +155,20 @@ Q6INSN(A2_subp,"Rdd32=sub(Rtt32,Rss32)",ATTRIBS(),
 
 /* 64-bit with carry */
 
-Q6INSN(A4_addp_c,"Rdd32=add(Rss32,Rtt32,Px4):carry",ATTRIBS(),"Add with Carry",
+Q6INSN(A4_addp_c,"Rdd32=add(Rss32,Rtt32,Px4):carry",ATTRIBS(A_RESTRICT_LATEPRED,A_NOTE_LATEPRED),"Add with Carry",
 {
+  fPREDUSE_TIMING();
   RddV = RssV + RttV + fLSBOLD(PxV);
   PxV = f8BITSOF(fCARRY_FROM_ADD(RssV,RttV,fLSBOLD(PxV)));
+  fHIDE(MARK_LATE_PRED_WRITE(PxN))
 })
 
-Q6INSN(A4_subp_c,"Rdd32=sub(Rss32,Rtt32,Px4):carry",ATTRIBS(),"Sub with Carry",
+Q6INSN(A4_subp_c,"Rdd32=sub(Rss32,Rtt32,Px4):carry",ATTRIBS(A_RESTRICT_LATEPRED,A_NOTE_LATEPRED),"Sub with Carry",
 {
+  fPREDUSE_TIMING();
   RddV = RssV + ~RttV + fLSBOLD(PxV);
   PxV = f8BITSOF(fCARRY_FROM_ADD(RssV,~RttV,fLSBOLD(PxV)));
+  fHIDE(MARK_LATE_PRED_WRITE(PxN))
 })
 
 
@@ -203,7 +207,7 @@ Q6INSN(A2_max,"Rd32=max(Rs32,Rt32)",ATTRIBS(),
 "Maximum of two registers",
 { RdV = fMAX(RsV,RtV); })
 
-Q6INSN(A2_maxu,"Rd32=maxu(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(A2_maxu,"Rd32=maxu(Rs32,Rt32)",ATTRIBS(A_INTRINSIC_RETURNS_UNSIGNED),
 "Maximum of two registers (unsigned)",
 { RdV = fMAX(fCAST4u(RsV),fCAST4u(RtV)); })
 
@@ -211,7 +215,7 @@ Q6INSN(A2_min,"Rd32=min(Rt32,Rs32)",ATTRIBS(),
 "Minimum of two registers",
 { RdV = fMIN(RtV,RsV); })
 
-Q6INSN(A2_minu,"Rd32=minu(Rt32,Rs32)",ATTRIBS(),
+Q6INSN(A2_minu,"Rd32=minu(Rt32,Rs32)",ATTRIBS(A_INTRINSIC_RETURNS_UNSIGNED),
 "Minimum of two registers (unsigned)",
 { RdV = fMIN(fCAST4u(RtV),fCAST4u(RsV)); })
 
@@ -221,7 +225,7 @@ Q6INSN(A2_maxp,"Rdd32=max(Rss32,Rtt32)",ATTRIBS(A_ARCHV3),
 "Maximum of two register pairs",
 { RddV = fMAX(RssV,RttV); })
 
-Q6INSN(A2_maxup,"Rdd32=maxu(Rss32,Rtt32)",ATTRIBS(A_ARCHV3),
+Q6INSN(A2_maxup,"Rdd32=maxu(Rss32,Rtt32)",ATTRIBS(A_INTRINSIC_RETURNS_UNSIGNED,A_ARCHV3),
 "Maximum of two register pairs (unsigned)",
 { RddV = fMAX(fCAST8u(RssV),fCAST8u(RttV)); })
 
@@ -229,7 +233,7 @@ Q6INSN(A2_minp,"Rdd32=min(Rtt32,Rss32)",ATTRIBS(A_ARCHV3),
 "Minimum of two register pairs",
 { RddV = fMIN(RttV,RssV); })
 
-Q6INSN(A2_minup,"Rdd32=minu(Rtt32,Rss32)",ATTRIBS(A_ARCHV3),
+Q6INSN(A2_minup,"Rdd32=minu(Rtt32,Rss32)",ATTRIBS(A_INTRINSIC_RETURNS_UNSIGNED,A_ARCHV3),
 "Minimum of two register pairs (unsigned)",
 { RddV = fMIN(fCAST8u(RttV),fCAST8u(RssV)); })
 #endif
@@ -263,19 +267,19 @@ Q6INSN(A2_zxth,"Rd32=zxth(Rs32)",ATTRIBS(),
 Q6INSN(A2_sxth,"Rd32=sxth(Rs32)",ATTRIBS(),
 "Sign extend half", {RdV = fSXTN(16,32,RsV);})
 
-Q6INSN(A2_combinew,"Rdd32=combine(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(A2_combinew,"Rdd32=combine(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Combine two words into a register pair",
 { fSETWORD(0,RddV,RtV);
   fSETWORD(1,RddV,RsV);
 })
 
-Q6INSN(A4_combineri,"Rdd32=combine(Rs32,#s8)",ATTRIBS(),
+Q6INSN(A4_combineri,"Rdd32=combine(Rs32,#s8)",ATTRIBS(A_ROPS_2),
 "Combine a word and an immediate into a register pair",
 { fIMMEXT(siV); fSETWORD(0,RddV,siV);
   fSETWORD(1,RddV,RsV);
 })
 
-Q6INSN(A4_combineir,"Rdd32=combine(#s8,Rs32)",ATTRIBS(),
+Q6INSN(A4_combineir,"Rdd32=combine(#s8,Rs32)",ATTRIBS(A_ROPS_2),
 "Combine a word and an immediate into a register pair",
 { fIMMEXT(siV); fSETWORD(0,RddV,RsV);
   fSETWORD(1,RddV,siV);
@@ -283,11 +287,11 @@ Q6INSN(A4_combineir,"Rdd32=combine(#s8,Rs32)",ATTRIBS(),
 
 
 
-Q6INSN(A2_combineii,"Rdd32=combine(#s8,#S8)",ATTRIBS(A_ARCHV2),
+Q6INSN(A2_combineii,"Rdd32=combine(#s8,#S8)",ATTRIBS(A_ARCHV2,A_ROPS_2),
 "Set two small immediates",
 { fIMMEXT(siV); fSETWORD(0,RddV,SiV); fSETWORD(1,RddV,siV); })
 
-Q6INSN(A4_combineii,"Rdd32=combine(#s8,#U6)",ATTRIBS(),"Set two small immediates",
+Q6INSN(A4_combineii,"Rdd32=combine(#s8,#U6)",ATTRIBS(A_ROPS_2),"Set two small immediates",
 { fIMMEXT(UiV); fSETWORD(0,RddV,UiV); fSETWORD(1,RddV,siV); })
 
 
@@ -363,12 +367,12 @@ Q6INSN(A4_ornp,"Rdd32=or(Rtt32,~Rss32)",,
 /* Compound add-add */
 /********************/
 
-Q6INSN(S4_addaddi,"Rd32=add(Rs32,add(Ru32,#s6))",ATTRIBS(),
+Q6INSN(S4_addaddi,"Rd32=add(Rs32,add(Ru32,#s6))",ATTRIBS(A_ROPS_2),
         "3-input add",
         { RdV = RsV + RuV + fIMMEXT(siV); })
 
 
-Q6INSN(S4_subaddi,"Rd32=add(Rs32,sub(#s6,Ru32))",ATTRIBS(),
+Q6INSN(S4_subaddi,"Rd32=add(Rs32,sub(#s6,Ru32))",ATTRIBS(A_ROPS_2),
         "3-input sub",
         { RdV = RsV - RuV + fIMMEXT(siV); })
 
@@ -378,52 +382,52 @@ Q6INSN(S4_subaddi,"Rd32=add(Rs32,sub(#s6,Ru32))",ATTRIBS(),
 /* Compound logical-logical */
 /****************************/
 
-Q6INSN(M4_and_and,"Rx32&=and(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(M4_and_and,"Rx32&=and(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Compound And-And", { RxV &= (RsV & RtV); })
 
-Q6INSN(M4_and_andn,"Rx32&=and(Rs32,~Rt32)",ATTRIBS(),
+Q6INSN(M4_and_andn,"Rx32&=and(Rs32,~Rt32)",ATTRIBS(A_ROPS_2),
 "Compound And-Andn", { RxV &= (RsV & ~RtV); })
 
-Q6INSN(M4_and_or,"Rx32&=or(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(M4_and_or,"Rx32&=or(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Compound And-Or", { RxV &= (RsV | RtV); })
 
-Q6INSN(M4_and_xor,"Rx32&=xor(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(M4_and_xor,"Rx32&=xor(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Compound And-xor", { RxV &= (RsV ^ RtV); })
 
 
 
-Q6INSN(M4_or_and,"Rx32|=and(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(M4_or_and,"Rx32|=and(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Compound Or-And", { RxV |= (RsV & RtV); })
 
-Q6INSN(M4_or_andn,"Rx32|=and(Rs32,~Rt32)",ATTRIBS(),
+Q6INSN(M4_or_andn,"Rx32|=and(Rs32,~Rt32)",ATTRIBS(A_ROPS_2),
 "Compound Or-AndN", { RxV |= (RsV & ~RtV); })
 
-Q6INSN(M4_or_or,"Rx32|=or(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(M4_or_or,"Rx32|=or(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Compound Or-Or", { RxV |= (RsV | RtV); })
 
-Q6INSN(M4_or_xor,"Rx32|=xor(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(M4_or_xor,"Rx32|=xor(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Compound Or-xor", { RxV |= (RsV ^ RtV); })
 
 
-Q6INSN(S4_or_andix,"Rx32=or(Ru32,and(Rx32,#s10))",ATTRIBS(),
+Q6INSN(S4_or_andix,"Rx32=or(Ru32,and(Rx32,#s10))",ATTRIBS(A_ROPS_2),
 "Compound Or-And", { RxV = RuV | (RxV & fIMMEXT(siV)); })
 
-Q6INSN(S4_or_andi,"Rx32|=and(Rs32,#s10)",ATTRIBS(),
+Q6INSN(S4_or_andi,"Rx32|=and(Rs32,#s10)",ATTRIBS(A_ROPS_2),
 "Compound Or-And", { RxV = RxV | (RsV & fIMMEXT(siV)); })
 
-Q6INSN(S4_or_ori,"Rx32|=or(Rs32,#s10)",ATTRIBS(),
+Q6INSN(S4_or_ori,"Rx32|=or(Rs32,#s10)",ATTRIBS(A_ROPS_2),
 "Compound Or-And", { RxV = RxV | (RsV | fIMMEXT(siV)); })
 
 
 
 
-Q6INSN(M4_xor_and,"Rx32^=and(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(M4_xor_and,"Rx32^=and(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Compound Xor-And", { RxV ^= (RsV & RtV); })
 
-Q6INSN(M4_xor_or,"Rx32^=or(Rs32,Rt32)",ATTRIBS(),
+Q6INSN(M4_xor_or,"Rx32^=or(Rs32,Rt32)",ATTRIBS(A_ROPS_2),
 "Compound Xor-Or", { RxV ^= (RsV | RtV); })
 
-Q6INSN(M4_xor_andn,"Rx32^=and(Rs32,~Rt32)",ATTRIBS(),
+Q6INSN(M4_xor_andn,"Rx32^=and(Rs32,~Rt32)",ATTRIBS(A_ROPS_2),
 "Compound Xor-And", { RxV ^= (RsV & ~RtV); })
 
 
@@ -1255,7 +1259,7 @@ MINMAX(uw,WORD,UWORD,2)
 #undef VMINORMAX3
 
 
-Q6INSN(A5_ACS,"Rxx32,Pe4=vacsh(Rss32,Rtt32)",ATTRIBS(),
+Q6INSN(A5_ACS,"Rxx32,Pe4=vacsh(Rss32,Rtt32)",ATTRIBS(A_NOTE_LATEPRED,A_RESTRICT_LATEPRED),
 "Add Compare and Select elements of two vectors, record the maximums and the decisions ",
 {
         fHIDE(int i;)
@@ -1274,7 +1278,7 @@ Q6INSN(A5_ACS,"Rxx32,Pe4=vacsh(Rss32,Rtt32)",ATTRIBS(),
         }
 })
 
-Q6INSN(A6_vminub_RdP,"Rdd32,Pe4=vminub(Rtt32,Rss32)",ATTRIBS(),
+Q6INSN(A6_vminub_RdP,"Rdd32,Pe4=vminub(Rtt32,Rss32)",ATTRIBS(A_NOTE_LATEPRED,A_RESTRICT_LATEPRED),
 "Vector minimum of bytes, records minimum and decision vector",
 {
         fHIDE(int i;)

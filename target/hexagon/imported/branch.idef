@@ -103,7 +103,7 @@ fJUMPR(RsN,RsV,COF_TYPE_JUMPR);)
 
 
 
-Q6INSN(J4_hintjumpr,"hintjr(Rs32)",ATTRIBS(A_JINDIR,A_HINTJR),"hint indirect conditional jump",
+Q6INSN(J4_hintjumpr,"hintjr(Rs32)",ATTRIBS(A_HINTJR),"hint indirect conditional jump",
 {fHINTJR(RsV);})
 
 

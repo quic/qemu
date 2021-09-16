@@ -399,9 +399,9 @@ Q6INSN(S4_stored_locked_rl,"memd_locked_rl(Rs32,Pd4)=Rtt32", ATTRIBS(A_FAKEINSN,
 Q6INSN(L4_##TAG##_memopb_io,  "memb(Rs32+#u6:0)"OPER,     ATTRIBS(A_MEMSIZE_1B),DESCR,{fIMMEXT(uiV); fEA_RI(RsV,uiV); fMEMOP(1,1,s,EA,TAG,VALUE);})\
 Q6INSN(L4_##TAG##_memoph_io,  "memh(Rs32+#u6:1)"OPER,     ATTRIBS(A_REGWRSIZE_2B,A_MEMSIZE_2B),DESCR,{fIMMEXT(uiV); fEA_RI(RsV,uiV); fMEMOP(1,2,s,EA,TAG,VALUE);})\
 Q6INSN(L4_##TAG##_memopw_io,  "memw(Rs32+#u6:2)"OPER,     ATTRIBS(A_REGWRSIZE_4B,A_MEMSIZE_4B),DESCR,{fIMMEXT(uiV); fEA_RI(RsV,uiV); fMEMOP(1,4,s,EA,TAG,VALUE);})\
-DEF_MAPPING(L4_##TAG##_memopw_zomap, "memw(Rs32)"OPER, "memw(Rs32+#0)"OPER);\
-DEF_MAPPING(L4_##TAG##_memoph_zomap, "memh(Rs32)"OPER, "memh(Rs32+#0)"OPER);\
-DEF_MAPPING(L4_##TAG##_memopb_zomap, "memb(Rs32)"OPER, "memb(Rs32+#0)"OPER);
+DEF_MAPPING(L4_##TAG##_memopw_zomap, "memw(Rs32)"OPER, "memw(Rs32+#0)"OPER)\
+DEF_MAPPING(L4_##TAG##_memoph_zomap, "memh(Rs32)"OPER, "memh(Rs32+#0)"OPER)\
+DEF_MAPPING(L4_##TAG##_memopb_zomap, "memb(Rs32)"OPER, "memb(Rs32+#0)"OPER)
 
 STD_MEMOP_AMODES(add, "+=Rt32", "Add Register to Memory Word", RtV)
 STD_MEMOP_AMODES(sub, "-=Rt32", "Sub Register from Memory Word", RtV)
