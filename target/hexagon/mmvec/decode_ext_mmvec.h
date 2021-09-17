@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,12 +15,10 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HEXAGON__EXT_MMVEC_DECODE__
-#define HEXAGON__EXT_MMVEC_DECODE__
+#ifndef HEXAGON_DECODE_EXT_MMVEC_H
+#define HEXAGON_DECODE_EXT_MMVEC_H
 
-#define MMVEC_EXT_DECODE_CHECKS(PKT)  mmvec_ext_decode_checks((thread_t *)0, (PKT), (exception_info *)0);
-int mmvec_ext_decode_checks(thread_t * thread, Packet *pkt, exception_info *einfo);
+void mmvec_ext_decode_checks(Packet *pkt, bool disas_only);
 SlotMask mmvec_ext_decode_find_iclass_slots(int opcode);
-
 
 #endif

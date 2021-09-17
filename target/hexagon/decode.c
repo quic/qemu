@@ -1190,6 +1190,7 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     int words_read = 0;
     int end_of_packet = 0;
     int new_insns = 0;
+    int i;
     uint32_t encoding32;
 
     /* Initialize */
@@ -1217,6 +1218,11 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         return 0;
     }
     pkt->encod_pkt_size_in_bytes = words_read * 4;
+    pkt->pkt_has_hvx = false;
+    for (i = 0; i < num_insns; i++) {
+        pkt->pkt_has_hvx |=
+            GET_ATTRIB(pkt->insn[i].opcode, A_CVI);
+    }
 
     /*
      * Check for :endloop in the parse bits
@@ -1246,6 +1252,10 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     }
     decode_set_slot_number(pkt);
     decode_fill_newvalue_regno(pkt);
+
+    if (pkt->pkt_has_hvx) {
+        mmvec_ext_decode_checks(pkt, disas_only);
+    }
 
     if (!disas_only) {
         decode_shuffle_for_execution(pkt);
