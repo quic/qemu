@@ -244,7 +244,7 @@ Q6INSN(A2_minup,"Rdd32=minu(Rtt32,Rss32)",ATTRIBS(A_INTRINSIC_RETURNS_UNSIGNED,A
 
 Q6INSN(A2_nop,"nop",ATTRIBS(A_IT_NOP),
 "Nop (32-bit encoding)",
- fHIDE( { }  ))
+ fHIDE( { fNOP_EXECUTED }  ))
 
 
 Q6INSN(A4_ext,"immext(#u26:6)",ATTRIBS(A_IT_EXTENDER),
@@ -747,6 +747,7 @@ Q6INSN(A2_vraddub_acc,"Rxx32+=vraddub(Rss32,Rtt32)",ATTRIBS(),
         for (i = 4; i < 8; i++) {
             fSETWORD(1,RxxV,(fGETWORD(1,RxxV) + (fGETUBYTE(i,RssV)+fGETUBYTE(i,RttV))));
         }
+    fACC();\
 })
 
 
@@ -947,6 +948,7 @@ Q6INSN(A2_vrsadub_acc,"Rxx32+=vrsadub(Rss32,Rtt32)",ATTRIBS(),
         for (i = 4; i < 8; i++) {
             fSETWORD(1,RxxV,(fGETWORD(1,RxxV) + fABS((fGETUBYTE(i,RssV) - fGETUBYTE(i,RttV)))));
         }
+    fACC();\
 })
 
 
@@ -1171,7 +1173,7 @@ CROUND(RddV,RssV,fZXTN(6,32,RtV));
 
 
 
-Q6INSN(A7_clip,"Rd32=clip(Rs32,#u5)",ATTRIBS(),"Clip to  #s5", {   fCLIP(RdV,RsV,uiV);})
+Q6INSN(A7_clip,"Rd32=clip(Rs32,#u5)",ATTRIBS(),"Clip to  #s5", 	{   fCLIP(RdV,RsV,uiV); fEXTENSION_AUDIO();})
 Q6INSN(A7_vclip,"Rdd32=vclip(Rss32,#u5)",ATTRIBS(),"Clip to  #s5",
 {
 fHIDE(size4s_t tmp;)
