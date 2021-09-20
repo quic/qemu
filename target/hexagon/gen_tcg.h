@@ -1765,9 +1765,9 @@
     gen_callr(pkt, RsV)
 
 #define fGEN_TCG_J2_loop0r(SHORTCODE) \
-    gen_loop0r(RsV, riV, insn)
+    gen_loop0r(pkt, RsV, riV, insn)
 #define fGEN_TCG_J2_loop1r(SHORTCODE) \
-    gen_loop1r(RsV, riV, insn)
+    gen_loop1r(pkt, RsV, riV, insn)
 
 #define fGEN_TCG_J2_endloop0(SHORTCODE) \
     gen_endloop0(pkt)
@@ -2600,4 +2600,12 @@
         RsV = RsV; \
     } while (0)
 
+#define fGEN_TCG_J2_trap0(SHORTCODE) \
+    do { \
+        uiV = uiV; \
+        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], pkt->pc); \
+        TCGv excp = tcg_const_tl(HEX_EXCP_TRAP0); \
+        gen_helper_raise_exception(cpu_env, excp); \
+        tcg_temp_free(excp); \
+    } while (0)
 #endif

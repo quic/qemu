@@ -553,26 +553,26 @@ static inline void gen_cond_return(Packet *pkt, TCGv pred, TCGv addr)
     gen_set_label(skip);
 }
 
-static inline void gen_loop0r(TCGv RsV, int riV, Insn *insn)
+static inline void gen_loop0r(Packet *pkt, TCGv RsV, int riV, Insn *insn)
 {
     TCGv tmp = tcg_temp_new();
     fIMMEXT(riV);
     fPCALIGN(riV);
     /* fWRITE_LOOP_REGS0( fREAD_PC()+riV, RsV); */
-    tcg_gen_addi_tl(tmp, hex_gpr[HEX_REG_PC], riV);
+    tcg_gen_movi_tl(tmp, pkt->pc + riV);
     gen_log_reg_write(HEX_REG_LC0, RsV);
     gen_log_reg_write(HEX_REG_SA0, tmp);
     fSET_LPCFG(0);
     tcg_temp_free(tmp);
 }
 
-static inline void gen_loop1r(TCGv RsV, int riV, Insn *insn)
+static inline void gen_loop1r(Packet *pkt, TCGv RsV, int riV, Insn *insn)
 {
     TCGv tmp = tcg_temp_new();
     fIMMEXT(riV);
     fPCALIGN(riV);
     /* fWRITE_LOOP_REGS1( fREAD_PC()+riV, RsV); */
-    tcg_gen_addi_tl(tmp, hex_gpr[HEX_REG_PC], riV);
+    tcg_gen_movi_tl(tmp, pkt->pc + riV);
     gen_log_reg_write(HEX_REG_LC1, RsV);
     gen_log_reg_write(HEX_REG_SA1, tmp);
     tcg_temp_free(tmp);
@@ -629,8 +629,7 @@ static inline void gen_cond_jump(Packet *pkt, TCGv pred, int pc_off)
 
     tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, skip);
 
-    dst_pc = tcg_temp_new();
-    tcg_gen_addi_tl(dst_pc, hex_gpr[HEX_REG_PC], pc_off);
+    dst_pc = tcg_const_tl(pkt->pc + pc_off);
     gen_write_new_pc(pkt, dst_pc);
     tcg_temp_free(dst_pc);
 
@@ -682,21 +681,23 @@ static void gen_cmpnd_cmp_n1_jmp(DisasContext *ctx, Packet *pkt, Insn *insn,
 
 static inline void gen_jump(Packet *pkt, int pc_off)
 {
-    TCGv new_pc = tcg_temp_new();
-    tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
+    TCGv new_pc = tcg_const_tl(pkt->pc + pc_off);
     gen_write_new_pc(pkt, new_pc);
     tcg_temp_free(new_pc);
 }
 
 static inline void gen_call(Packet *pkt, int pc_off)
 {
-    gen_log_reg_write(HEX_REG_LR, hex_next_PC);
+    TCGv next_PC = tcg_const_tl(pkt->pc + pkt->encod_pkt_size_in_bytes);
+    gen_log_reg_write(HEX_REG_LR, next_PC);
     gen_jump(pkt, pc_off);
+    tcg_temp_free(next_PC);
 }
 
 static inline void gen_callr(Packet *pkt, TCGv new_pc)
 {
-    gen_log_reg_write(HEX_REG_LR, hex_next_PC);
+    TCGv next_PC = tcg_const_tl(pkt->pc + pkt->encod_pkt_size_in_bytes);
+    gen_log_reg_write(HEX_REG_LR, next_PC);
     gen_write_new_pc(pkt, new_pc);
 }
 
