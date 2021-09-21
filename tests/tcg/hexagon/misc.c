@@ -21,6 +21,7 @@
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
+typedef unsigned long long uint64_t;
 
 
 static inline void S4_storerhnew_rr(void *p, int index, uint16_t v)
@@ -366,6 +367,28 @@ static int cl0(int x)
     return retval;
 }
 
+#define extractu(RET, SRC, WIDTH, OFF) \
+    asm("%0 = extractu(%1, #%2, #%3)\n\t" \
+        : "=r"(RET) : "r"(SRC), "i"(WIDTH), "i"(OFF))
+
+static void test_extractu(void)
+{
+    uint32_t res32;
+    uint64_t res64;
+
+    extractu(res32, -1, 0, 10);
+    check(res32, 0);
+
+    extractu(res32, -1, 31, 31);
+    check(res32, 1);
+
+    extractu(res64, -1LL, 0, 10);
+    check64(res64, 0);
+
+    extractu(res64, -1LL, 63, 63);
+    check64(res64, 1);
+}
+
 int main()
 {
     int res;
@@ -509,6 +532,8 @@ int main()
     check(res, 17);
     res = cl0(0);
     check(res, 32);
+
+    test_extractu();
 
     puts(err ? "FAIL" : "PASS");
     return err;

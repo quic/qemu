@@ -2124,9 +2124,31 @@
     tcg_gen_deposit_i32(RxV, RxV, RsV, UiV, uiV)
 
 #define fGEN_TCG_S2_extractu(SHORTCODE) \
-    tcg_gen_extract_i32(RdV, RsV, UiV, uiV)
+    do { \
+        unsigned int ofs = UiV; \
+        unsigned int len = uiV; \
+        if (len == 0) { \
+            tcg_gen_movi_tl(RdV, 0); \
+        } else { \
+            if (ofs + len > 32) { \
+                len = 32 - ofs; \
+            } \
+            tcg_gen_extract_i32(RdV, RsV, ofs, len); \
+        } \
+    } while (0)
 #define fGEN_TCG_S2_extractup(SHORTCODE) \
-    tcg_gen_extract_i64(RddV, RssV, UiV, uiV)
+    do { \
+        unsigned int ofs = UiV; \
+        unsigned int len = uiV; \
+        if (len == 0) { \
+            tcg_gen_movi_i64(RddV, 0); \
+        } else { \
+            if (ofs + len > 64) { \
+                len = 64 - ofs; \
+            } \
+            tcg_gen_extract_i64(RddV, RssV, ofs, len); \
+        } \
+    } while (0)
 
 #define fGEN_TCG_A2_combinew(SHORTCODE) \
     tcg_gen_concat_i32_i64(RddV, RtV, RsV)
