@@ -409,7 +409,8 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
         insn->generate(env, ctx, insn, pkt);
         mark_implicit_pred_writes(ctx, insn);
     } else {
-        gen_exception(HEX_CAUSE_INVALID_OPCODE);
+        env->cause_code = HEX_CAUSE_INVALID_PACKET;
+        gen_exception(HEX_EVENT_PRECISE);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }

@@ -1032,7 +1032,7 @@ decode_insns_tablewalk(Insn *insn, const DectreeTable *table,
         if ((encoding & decode_itable[opc].mask) != decode_itable[opc].match) {
             if ((encoding & decode_legacy_itable[opc].mask) !=
                 decode_legacy_itable[opc].match) {
-                return 0;
+                return 1;
             }
         }
         decode_op(insn, opc, encoding);
@@ -1200,7 +1200,6 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         encoding32 = words[words_read];
         end_of_packet = is_packet_end(encoding32);
         new_insns = decode_insns(&pkt->insn[num_insns], encoding32);
-        g_assert(new_insns > 0);
         /*
          * If we saw an extender, mark next word extended so immediate
          * decode works
