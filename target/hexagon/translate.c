@@ -197,7 +197,7 @@ static bool check_for_attrib(Packet *pkt, int attrib)
 
 static bool need_pc(Packet *pkt)
 {
-    return check_for_attrib(pkt, A_IMPLICIT_READS_PC);
+    return true; // return check_for_attrib(pkt, A_IMPLICIT_READS_PC);
 }
 
 static bool need_slot_cancelled(Packet *pkt)
