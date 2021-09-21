@@ -394,22 +394,12 @@ static inline void assert_vhist_tmp(DisasContext *ctx)
                      sizeof(MMQReg), sizeof(MMQReg))
 
 #define fGEN_TCG_V6_pred_or_n(SHORTCODE) \
-    do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, qtmp); \
-        tcg_gen_gvec_not(MO_64, tmpoff, QtV_off, \
-                         sizeof(MMQReg), sizeof(MMQReg)); \
-        tcg_gen_gvec_or(MO_64, QdV_off, QsV_off, tmpoff, \
-                        sizeof(MMQReg), sizeof(MMQReg)); \
-    } while (0)
+    tcg_gen_gvec_orc(MO_64, QdV_off, QsV_off, QtV_off, \
+                     sizeof(MMQReg), sizeof(MMQReg))
 
 #define fGEN_TCG_V6_pred_and_n(SHORTCODE) \
-    do { \
-        intptr_t tmpoff = offsetof(CPUHexagonState, qtmp); \
-        tcg_gen_gvec_not(MO_64, tmpoff, QtV_off, \
-                         sizeof(MMQReg), sizeof(MMQReg)); \
-        tcg_gen_gvec_and(MO_64, QdV_off, QsV_off, tmpoff, \
-                         sizeof(MMQReg), sizeof(MMQReg)); \
-    } while (0)
+    tcg_gen_gvec_andc(MO_64, QdV_off, QsV_off, QtV_off, \
+                      sizeof(MMQReg), sizeof(MMQReg))
 
 #define fGEN_TCG_V6_pred_not(SHORTCODE) \
     tcg_gen_gvec_not(MO_64, QdV_off, QsV_off, \
