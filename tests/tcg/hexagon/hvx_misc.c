@@ -321,26 +321,26 @@ static void test_max_temps()
         check_output_b(__LINE__, 5);
 }
 
-#define OP1(ASM, EL, IN, OUT) \
+#define VEC_OP1(ASM, EL, IN, OUT) \
     asm("v2 = vmem(%0 + #0)\n\t" \
         "v2" #EL " = " #ASM "(v2" #EL ")\n\t" \
         "vmem(%1 + #0) = v2\n\t" \
         : : "r"(IN), "r"(OUT) : "v2", "memory")
 
-#define OP2(ASM, EL, IN0, IN1, OUT) \
+#define VEC_OP2(ASM, EL, IN0, IN1, OUT) \
     asm("v2 = vmem(%0 + #0)\n\t" \
         "v3 = vmem(%1 + #0)\n\t" \
         "v2" #EL " = " #ASM "(v2" #EL ", v3" #EL ")\n\t" \
         "vmem(%2 + #0) = v2\n\t" \
         : : "r"(IN0), "r"(IN1), "r"(OUT) : "v2", "v3", "memory")
 
-#define TEST_OP1(NAME, ASM, EL, FIELD, FIELDSZ, OP) \
+#define TEST_VEC_OP1(NAME, ASM, EL, FIELD, FIELDSZ, OP) \
 static void test_##NAME(void) \
 { \
     void *pin = buffer0; \
     void *pout = output; \
     for (int i = 0; i < BUFSIZE; i++) { \
-        OP1(ASM, EL, pin, pout); \
+        VEC_OP1(ASM, EL, pin, pout); \
         pin += sizeof(MMVector); \
         pout += sizeof(MMVector); \
     } \
@@ -352,14 +352,14 @@ static void test_##NAME(void) \
     check_output_##FIELD(__LINE__, BUFSIZE); \
 }
 
-#define TEST_OP2(NAME, ASM, EL, FIELD, FIELDSZ, OP) \
+#define TEST_VEC_OP2(NAME, ASM, EL, FIELD, FIELDSZ, OP) \
 static void test_##NAME(void) \
 { \
     void *p0 = buffer0; \
     void *p1 = buffer1; \
     void *pout = output; \
     for (int i = 0; i < BUFSIZE; i++) { \
-        OP2(ASM, EL, p0, p1, pout); \
+        VEC_OP2(ASM, EL, p0, p1, pout); \
         p0 += sizeof(MMVector); \
         p1 += sizeof(MMVector); \
         pout += sizeof(MMVector); \
@@ -372,16 +372,65 @@ static void test_##NAME(void) \
     check_output_##FIELD(__LINE__, BUFSIZE); \
 }
 
-TEST_OP2(vadd_w, vadd, .w, w, 4, +)
-TEST_OP2(vadd_h, vadd, .h, h, 2, +)
-TEST_OP2(vadd_b, vadd, .b, b, 1, +)
-TEST_OP2(vsub_w, vsub, .w, w, 4, -)
-TEST_OP2(vsub_h, vsub, .h, h, 2, -)
-TEST_OP2(vsub_b, vsub, .b, b, 1, -)
-TEST_OP2(vxor, vxor, , d, 8, ^)
-TEST_OP2(vand, vand, , d, 8, &)
-TEST_OP2(vor, vor, , d, 8, |)
-TEST_OP1(vnot, vnot, , d, 8, ~)
+#define THRESHOLD        31
+
+#define PRED_OP2(ASM, IN0, IN1, OUT, INV) \
+    asm("r4 = #%3\n\t" \
+        "v1.b = vsplat(r4)\n\t" \
+        "v2 = vmem(%0 + #0)\n\t" \
+        "q0 = vcmp.gt(v2.b, v1.b)\n\t" \
+        "v3 = vmem(%1 + #0)\n\t" \
+        "q1 = vcmp.gt(v3.b, v1.b)\n\t" \
+        "q2 = " #ASM "(q0, " INV "q1)\n\t" \
+        "r4 = #0xff\n\t" \
+        "v1.b = vsplat(r4)\n\t" \
+        "if (q2) vmem(%2 + #0) = v1\n\t" \
+        : : "r"(IN0), "r"(IN1), "r"(OUT), "i"(THRESHOLD) \
+        : "r4", "v1", "v2", "v3", "q0", "q1", "q2", "memory")
+
+#define TEST_PRED_OP2(NAME, ASM, OP, INV) \
+static void test_##NAME(bool invert) \
+{ \
+    void *p0 = buffer0; \
+    void *p1 = buffer1; \
+    void *pout = output; \
+    memset(output, 0, sizeof(expect)); \
+    for (int i = 0; i < BUFSIZE; i++) { \
+        PRED_OP2(ASM, p0, p1, pout, INV); \
+        p0 += sizeof(MMVector); \
+        p1 += sizeof(MMVector); \
+        pout += sizeof(MMVector); \
+    } \
+    for (int i = 0; i < BUFSIZE; i++) { \
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES; j++) { \
+            bool p0 = (buffer0[i].b[j] > THRESHOLD); \
+            bool p1 = (buffer1[i].b[j] > THRESHOLD); \
+            if (invert) { \
+                expect[i].b[j] = (p0 OP !p1) ? 0xff : 0x00; \
+            } else { \
+                expect[i].b[j] = (p0 OP p1) ? 0xff : 0x00; \
+            } \
+        } \
+    } \
+    check_output_b(__LINE__, BUFSIZE); \
+}
+
+TEST_VEC_OP2(vadd_w, vadd, .w, w, 4, +)
+TEST_VEC_OP2(vadd_h, vadd, .h, h, 2, +)
+TEST_VEC_OP2(vadd_b, vadd, .b, b, 1, +)
+TEST_VEC_OP2(vsub_w, vsub, .w, w, 4, -)
+TEST_VEC_OP2(vsub_h, vsub, .h, h, 2, -)
+TEST_VEC_OP2(vsub_b, vsub, .b, b, 1, -)
+TEST_VEC_OP2(vxor, vxor, , d, 8, ^)
+TEST_VEC_OP2(vand, vand, , d, 8, &)
+TEST_VEC_OP2(vor, vor, , d, 8, |)
+TEST_VEC_OP1(vnot, vnot, , d, 8, ~)
+
+TEST_PRED_OP2(pred_or, or, |, "")
+TEST_PRED_OP2(pred_or_n, or, |, "!")
+TEST_PRED_OP2(pred_and, and, &, "")
+TEST_PRED_OP2(pred_and_n, and, &, "!")
+TEST_PRED_OP2(pred_xor, xor, ^, "")
 
 int main()
 {
@@ -408,6 +457,12 @@ int main()
     test_vand();
     test_vor();
     test_vnot();
+
+    test_pred_or(false);
+    test_pred_or_n(true);
+    test_pred_and(false);
+    test_pred_and_n(true);
+    test_pred_xor(false);
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;
