@@ -18,11 +18,13 @@
 #ifndef HEXAGON_OP_HELPER_H
 #define HEXAGON_OP_HELPER_H
 
+#include "internal.h"
+
 static inline void log_store32(CPUHexagonState *env, target_ulong addr,
                                target_ulong val, int width, int slot)
 {
-    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx ", " TARGET_FMT_ld
-                  " [0x" TARGET_FMT_lx "])\n",
+    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx
+                  ", %" PRId32 " [0x08%" PRIx32 "])\n",
                   width, addr, val, val);
     env->mem_log_stores[slot].va = addr;
     env->mem_log_stores[slot].width = width;
@@ -32,7 +34,8 @@ static inline void log_store32(CPUHexagonState *env, target_ulong addr,
 static inline void log_store64(CPUHexagonState *env, target_ulong addr,
                                int64_t val, int width, int slot)
 {
-    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx ", %ld [0x%lx])\n",
+    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx
+                  ", %" PRId64 " [0x016%" PRIx64 "])\n",
                    width, addr, val, val);
     env->mem_log_stores[slot].va = addr;
     env->mem_log_stores[slot].width = width;

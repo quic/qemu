@@ -42,12 +42,11 @@
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
 #endif
-#include "op_helper.h"
 #include "sysemu/runstate.h"
 
 
 #ifndef CONFIG_USER_ONLY
-static size1u_t hexagon_swi_mem_read1(CPUHexagonState *env, vaddr_t paddr)
+static size1u_t hexagon_swi_mem_read1(CPUHexagonState *env, target_ulong paddr)
 
 {
     size1u_t data = 0;
@@ -56,7 +55,7 @@ static size1u_t hexagon_swi_mem_read1(CPUHexagonState *env, vaddr_t paddr)
     return data;
 }
 
-static size2u_t hexagon_swi_mem_read2(CPUHexagonState *env, vaddr_t paddr)
+static size2u_t hexagon_swi_mem_read2(CPUHexagonState *env, target_ulong paddr)
 
 {
     size2u_t data = 0;
@@ -71,7 +70,7 @@ static size2u_t hexagon_swi_mem_read2(CPUHexagonState *env, vaddr_t paddr)
     return data;
 }
 
-static target_ulong hexagon_swi_mem_read4(CPUHexagonState *env, vaddr_t paddr)
+static target_ulong hexagon_swi_mem_read4(CPUHexagonState *env, target_ulong paddr)
 
 {
     target_ulong data = 0;
@@ -87,7 +86,7 @@ static target_ulong hexagon_swi_mem_read4(CPUHexagonState *env, vaddr_t paddr)
 }
 
 
-static size8u_t hexagon_swi_mem_read8(CPUHexagonState *env, vaddr_t paddr)
+static size8u_t hexagon_swi_mem_read8(CPUHexagonState *env, target_ulong paddr)
 
 {
     size8u_t data = 0;
@@ -102,7 +101,7 @@ static size8u_t hexagon_swi_mem_read8(CPUHexagonState *env, vaddr_t paddr)
     return data;
 }
 
-static void hexagon_swi_mem_write1(CPUHexagonState *env, vaddr_t paddr,
+static void hexagon_swi_mem_write1(CPUHexagonState *env, target_ulong paddr,
     size1u_t value)
 
 {
@@ -110,7 +109,7 @@ static void hexagon_swi_mem_write1(CPUHexagonState *env, vaddr_t paddr,
     cpu_stb_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void hexagon_swi_mem_write2(CPUHexagonState *env, vaddr_t paddr,
+static void hexagon_swi_mem_write2(CPUHexagonState *env, target_ulong paddr,
     size2u_t value)
 
 {
@@ -118,7 +117,7 @@ static void hexagon_swi_mem_write2(CPUHexagonState *env, vaddr_t paddr,
     cpu_stw_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void hexagon_swi_mem_write4(CPUHexagonState *env, vaddr_t paddr,
+static void hexagon_swi_mem_write4(CPUHexagonState *env, target_ulong paddr,
     target_ulong value)
 
 {
@@ -126,19 +125,19 @@ static void hexagon_swi_mem_write4(CPUHexagonState *env, vaddr_t paddr,
     cpu_stl_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-static void hexagon_swi_mem_write8(CPUHexagonState *env, vaddr_t paddr,
+static void hexagon_swi_mem_write8(CPUHexagonState *env, target_ulong paddr,
     size8u_t value)
 {
     unsigned mmu_idx = cpu_mmu_index(env, false);
     cpu_stq_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
 }
 
-void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr,
+void hexagon_tools_memory_read(CPUHexagonState *env, target_ulong vaddr,
     int size, void *retptr)
 
 {
     CPUState *cs = env_cpu(env);
-    vaddr_t paddr = vaddr;
+    target_ulong paddr = vaddr;
 
     switch (size) {
     case 1:
@@ -158,7 +157,7 @@ void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr,
     }
 }
 
-void hexagon_tools_memory_write(CPUHexagonState *env, vaddr_t vaddr,
+void hexagon_tools_memory_write(CPUHexagonState *env, target_ulong vaddr,
     int size, size8u_t data)
 
 {
@@ -187,12 +186,12 @@ void hexagon_tools_memory_write(CPUHexagonState *env, vaddr_t vaddr,
     }
 }
 
-int hexagon_tools_memory_read_locked(CPUHexagonState *env, vaddr_t vaddr,
+int hexagon_tools_memory_read_locked(CPUHexagonState *env, target_ulong vaddr,
     int size, void *retptr)
 
 {
     CPUState *cs = env_cpu(env);
-    vaddr_t paddr = vaddr;
+    target_ulong paddr = vaddr;
     int ret = 0;
 
     switch (size) {
@@ -210,7 +209,7 @@ int hexagon_tools_memory_read_locked(CPUHexagonState *env, vaddr_t vaddr,
     return ret;
 }
 
-int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
+int hexagon_tools_memory_write_locked(CPUHexagonState *env, target_ulong vaddr,
     int size, size8u_t data)
 
 {

@@ -1,5 +1,5 @@
 ##
-##  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -21,14 +21,14 @@ EXTRA_RUNS =
 # Hexagon has 64K pages, so increase the timeout to keep
 # test-mmap from timing out
 ifeq ($(CONFIG_DEBUG_TCG),y)
-TIMEOUT=90
+TIMEOUT=800
 else
-TIMEOUT=40
+TIMEOUT=500
 endif
-
 
 CFLAGS = -mv69 -O2 -mhvx -mhmx -fvectorize
 CFLAGS += -Wno-undefined-internal
+CFLAGS += -Wno-incompatible-pointer-types -Wno-undefined-internal
 
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
 VPATH += $(HEX_SRC)
@@ -45,6 +45,7 @@ HEX_TESTS += clrtnew
 HEX_TESTS += pred_stores
 HEX_TESTS += multi_result
 HEX_TESTS += mem_noshuf
+HEX_TESTS += fpstuff
 HEX_TESTS += gp_rel
 HEX_TESTS += circ
 HEX_TESTS += pthread_cancel
@@ -87,3 +88,5 @@ run-guestcheck:
 	$(call quiet-command, \
 		grep -q "exception 0x1a" $<.stderr, \
 		"GREP", "exception 0x1a");
+
+TESTS += $(HEX_TESTS)

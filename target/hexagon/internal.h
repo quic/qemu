@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,8 +18,6 @@
 #ifndef HEXAGON_INTERNAL_H
 #define HEXAGON_INTERNAL_H
 
-#include "internal_helpers.h"
-
 /*
  * Change HEX_DEBUG to 1 to turn on debugging output
  */
@@ -32,6 +30,7 @@
             rcu_read_unlock(); \
         } \
     } while (0)
+
 
 /*
  * Change COUNT_HEX_HELPERS to 1 to count how many times each helper
@@ -68,5 +67,6 @@ extern void init_genptr(void);
 
 #define hexagon_cpu_mmu_enabled(env) \
     GET_SYSCFG_FIELD(SYSCFG_MMUEN, ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG))
+
 
 #endif

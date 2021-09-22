@@ -215,22 +215,15 @@ static inline void stl_phys_notdirty(AddressSpace *as, hwaddr addr, uint32_t val
 /* page related stuff */
 
 #ifdef TARGET_PAGE_BITS_VARY
-typedef struct {
-    bool decided;
-    int bits;
-    target_long mask;
-} TargetPageBits;
-#if defined(CONFIG_ATTRIBUTE_ALIAS) || !defined(IN_EXEC_VARY)
+# include "exec/page-vary.h"
 extern const TargetPageBits target_page;
-#else
-extern TargetPageBits target_page;
-#endif
 #ifdef CONFIG_DEBUG_TCG
 #define TARGET_PAGE_BITS   ({ assert(target_page.decided); target_page.bits; })
-#define TARGET_PAGE_MASK   ({ assert(target_page.decided); target_page.mask; })
+#define TARGET_PAGE_MASK   ({ assert(target_page.decided); \
+                              (target_long)target_page.mask; })
 #else
 #define TARGET_PAGE_BITS   target_page.bits
-#define TARGET_PAGE_MASK   target_page.mask
+#define TARGET_PAGE_MASK   ((target_long)target_page.mask)
 #endif
 #define TARGET_PAGE_SIZE   (-(int)TARGET_PAGE_MASK)
 #else
@@ -275,8 +268,8 @@ extern intptr_t qemu_host_page_mask;
 #define PAGE_RESERVED  0x0100
 #endif
 /* Target-specific bits that will be used via page_get_flags().  */
-#define PAGE_TARGET_1  0x0080
-#define PAGE_TARGET_2  0x0200
+#define PAGE_TARGET_1  0x0200
+#define PAGE_TARGET_2  0x0400
 
 #if defined(CONFIG_USER_ONLY)
 void page_dump(FILE *f);

@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,8 +34,8 @@ static inline const char *cpu_get_model(uint32_t eflags)
         eflags == 0x68 ||    /* v68 */
         eflags == 0x69 ||    /* v69 */
         eflags == 0x71 ||    /* v71 */
-        eflags == 0x8071 ||  /* v71t */
-        eflags == 0x73) {    /* v73 */
+        eflags == 0x73 ||    /* v73 */
+        eflags == 0x8071) {  /* v71t */
         return "v67";
     }
     return "unknown";

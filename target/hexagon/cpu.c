@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -71,8 +71,12 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_UINT32("start-evb", HexagonCPU, boot_evb, 0x0),
     DEFINE_PROP_UINT32("exec-start-addr", HexagonCPU, boot_addr, 0x0),
 #endif
+    DEFINE_PROP_BOOL("lldb-compat", HexagonCPU, lldb_compat, false),
+    DEFINE_PROP_UNSIGNED("lldb-stack-adjust", HexagonCPU, lldb_stack_adjust,
+                         0, qdev_prop_uint32, target_ulong),
     DEFINE_PROP_END_OF_LIST()
 };
+
 
 const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
 #ifdef CONFIG_USER_ONLY
@@ -123,34 +127,19 @@ const char * const hexagon_gregnames[] = {
  * stacks at different locations.  This is used to compensate so the diff is
  * cleaner.
  */
-static inline target_ulong hack_stack_ptrs(CPUHexagonState *env,
-                                           target_ulong addr)
+static target_ulong adjust_stack_ptrs(CPUHexagonState *env, target_ulong addr)
 {
-    static bool first = true;
-    if (first) {
-        first = false;
-        env->stack_start = env->gpr[HEX_REG_SP];
-#ifdef CONFIG_USER_ONLY
-        env->gpr[HEX_REG_USR] = 0x56000;
-#endif
-
-#define ADJUST_STACK 0
-#if ADJUST_STACK
-        /*
-         * Change the two numbers below to
-         *     1    qemu stack location
-         *     2    hardware stack location
-         * Or set to zero for normal mode (no stack adjustment)
-         */
-        env->stack_adjust = 0xfffeeb80 - 0xbf89f980;
-#else
-        env->stack_adjust = 0;
-#endif
-    }
-
+    HexagonCPU *cpu = env_archcpu(env);
+    target_ulong stack_adjust = cpu->lldb_stack_adjust;
     target_ulong stack_start = env->stack_start;
     target_ulong stack_size = 0x10000;
-    target_ulong stack_adjust = env->stack_adjust;
+#ifdef CONFIG_USER_ONLY
+    env->gpr[HEX_REG_USR] = 0x56000;
+#endif
+
+    if (stack_adjust == 0) {
+        return addr;
+    }
 
     if (stack_start + 0x1000 >= addr && addr >= (stack_start - stack_size)) {
         return addr - stack_adjust;
@@ -177,7 +166,7 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
     if (regnum == HEX_REG_P3_0) {
         value = read_p3_0(env);
     } else {
-        value = regnum < 32 ? hack_stack_ptrs(env, env->gpr[regnum])
+        value = regnum < 32 ? adjust_stack_ptrs(env, env->gpr[regnum])
                             : env->gpr[regnum];
     }
 
@@ -217,13 +206,22 @@ static void print_greg(FILE *f, CPUHexagonState *env, int regnum)
 
 static void print_vreg(FILE *f, CPUHexagonState *env, int regnum)
 {
+    bool nonzero_found = false;
     int i;
-    qemu_fprintf(f, "  v%d = (", regnum);
+    qemu_fprintf(f, "  v%d = ( ", regnum);
     qemu_fprintf(f, "0x%02x", env->VRegs[regnum].ub[MAX_VEC_SIZE_BYTES - 1]);
     for (i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
-        qemu_fprintf(f, ", 0x%02x", env->VRegs[regnum].ub[i]);
+        if (env->VRegs[regnum].ub[i] != 0) {
+            nonzero_found = true;
+            break;
+        }
     }
-    qemu_fprintf(f, ")\n");
+    if (nonzero_found) {
+        for (i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
+            qemu_fprintf(f, ", 0x%02x", env->VRegs[regnum].ub[i]);
+        }
+    }
+    qemu_fprintf(f, " )\n");
 }
 
 void hexagon_debug_vreg(CPUHexagonState *env, int regnum)
@@ -233,14 +231,23 @@ void hexagon_debug_vreg(CPUHexagonState *env, int regnum)
 
 static void print_qreg(FILE *f, CPUHexagonState *env, int regnum)
 {
+    bool nonzero_found = false;
     int i;
-    qemu_fprintf(f, "  q%d = (", regnum);
-    qemu_fprintf(f, ", 0x%02x",
+    qemu_fprintf(f, "  q%d = ( ", regnum);
+    qemu_fprintf(f, "0x%02x",
                  env->QRegs[regnum].ub[MAX_VEC_SIZE_BYTES / 8 - 1]);
     for (i = MAX_VEC_SIZE_BYTES / 8 - 2; i >= 0; i--) {
-        qemu_fprintf(f, ", 0x%02x", env->QRegs[regnum].ub[i]);
+        if (env->QRegs[regnum].ub[i] != 0) {
+            nonzero_found = true;
+            break;
+        }
     }
-    qemu_fprintf(f, ")\n");
+    if (nonzero_found) {
+        for (i = MAX_VEC_SIZE_BYTES / 8 - 2; i >= 0; i--) {
+            qemu_fprintf(f, ", 0x%02x", env->QRegs[regnum].ub[i]);
+        }
+    }
+    qemu_fprintf(f, " )\n");
 }
 
 void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
@@ -250,16 +257,19 @@ void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
 
 void hexagon_dump(CPUHexagonState *env, FILE *f)
 {
-    static target_ulong last_pc;
+    HexagonCPU *cpu = env_archcpu(env);
 
-    /*
-     * When comparing with LLDB, it doesn't step through single-cycle
-     * hardware loops the same way.  So, we just skip them here
-     */
-    if (env->gpr[HEX_REG_PC] == last_pc) {
-        return;
+    if (cpu->lldb_compat) {
+        /*
+         * When comparing with LLDB, it doesn't step through single-cycle
+         * hardware loops the same way.  So, we just skip them here
+         */
+        if (env->gpr[HEX_REG_PC] == env->last_pc_dumped) {
+            return;
+        }
+        env->last_pc_dumped = env->gpr[HEX_REG_PC];
     }
-    last_pc = env->gpr[HEX_REG_PC];
+
 #ifdef CONFIG_USER_ONLY
     qemu_fprintf(f, "General Purpose Registers = {\n");
 #else
