@@ -494,6 +494,64 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     }
     break;
 
+    case SYS_STAT:
+    case SYS_FSTAT:
+    {
+        /* This must match the caller's definition, it would be in the
+         * caller's angel.h or equivalent header.
+         */
+        struct __SYS_STAT {
+            uint64_t dev;
+            uint64_t ino;
+            uint32_t mode;
+            uint32_t nlink;
+            uint64_t rdev;
+            uint32_t size;
+            uint32_t __pad1;
+            uint32_t atime;
+            uint32_t mtime;
+            uint32_t ctime;
+            uint32_t __pad2;
+        } sys_stat;
+        struct stat st_buf;
+        uint8_t *st_bufptr = (uint8_t *)&sys_stat;
+        int rc;
+        char filename[BUFSIZ];
+        target_ulong physicalFilenameAddr;
+        target_ulong statBufferAddr;
+        DEBUG_MEMORY_READ(swi_info, 4, &physicalFilenameAddr);
+
+        if (what_swi == SYS_STAT) {
+            i = 0;
+            do {
+                DEBUG_MEMORY_READ(physicalFilenameAddr + i, 1, &filename[i]);
+                i++;
+            } while ((i < BUFSIZ) && filename[i - 1]);
+            rc = stat(filename, &st_buf);
+        } else{
+            int fd = physicalFilenameAddr;
+            rc = fstat(fd, &st_buf);
+        }
+        if (rc == 0) {
+            sys_stat.dev   = st_buf.st_dev;
+            sys_stat.ino   = st_buf.st_ino;
+            sys_stat.mode  = st_buf.st_mode;
+            sys_stat.nlink = (uint32_t) st_buf.st_nlink;
+            sys_stat.rdev  = st_buf.st_rdev;
+            sys_stat.size  = (uint32_t) st_buf.st_size;
+            sys_stat.atime = (uint32_t) st_buf.st_atim.tv_sec;
+            sys_stat.mtime = (uint32_t) st_buf.st_mtim.tv_sec;
+            sys_stat.ctime = (uint32_t) st_buf.st_ctim.tv_sec;
+        }
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &statBufferAddr);
+
+        for (i = 0; i < sizeof(sys_stat); i++) {
+            DEBUG_MEMORY_WRITE(statBufferAddr+i, 1, st_bufptr[i]);
+        }
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00, rc);
+    }
+    break;
+
     case SYS_FLEN:
     {
         off_t oldpos;

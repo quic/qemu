@@ -141,6 +141,7 @@ run-fopen: fopen
 run-ftrunc: ftrunc
 	echo "valid" > _testfile_ftrunc
 	stat _testfile_ftrunc | fgrep "Size: 6"
+	sleep 1
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
 	stat _testfile_ftrunc | fgrep "Size: 1"
 
