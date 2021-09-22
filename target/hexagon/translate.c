@@ -871,27 +871,40 @@ static void check_imprecise_exception(Packet *pkt)
 static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     Packet *pkt)
 {
-#if !defined(CONFIG_USER_ONLY)
-    if (pkt->pkt_has_scalar_store_s0 ||
-        pkt->pkt_has_scalar_store_s1 ||
+    /*
+     * If there is more than one store in a packet, make sure they are all OK
+     * before proceeding with the rest of the packet commit.
+     *
+     * Note that we don't call the probe helper for packets with only one
+     * store.  Therefore, we call process_store_log before anything else
+     * involved in committing the packet.
+     */
+    if ((pkt->pkt_has_scalar_store_s0 && pkt->pkt_has_scalar_store_s1) ||
         pkt->pkt_has_dczeroa ||
         pkt_has_hvx_store(pkt)) {
-        TCGv has_st0 = tcg_const_tl(pkt->pkt_has_scalar_store_s0);
-        TCGv has_st1 = tcg_const_tl(pkt->pkt_has_scalar_store_s1);
-        TCGv has_dczeroa = tcg_const_tl(pkt->pkt_has_dczeroa);
-        TCGv has_hvx_stores = tcg_const_tl(pkt_has_hvx_store(pkt));
         TCGv mem_idx = tcg_const_tl(ctx->mem_idx);
+        int mask = 0;
+        TCGv mask_tcgv;
 
-        gen_helper_probe_pkt_stores(cpu_env, has_st0, has_st1,
-                                    has_dczeroa, has_hvx_stores, mem_idx);
-
-        tcg_temp_free(has_st0);
-        tcg_temp_free(has_st1);
-        tcg_temp_free(has_dczeroa);
-        tcg_temp_free(has_hvx_stores);
+        if (pkt->pkt_has_scalar_store_s0) {
+            mask |= (1 << 0);
+        }
+        if (pkt->pkt_has_scalar_store_s1) {
+            mask |= (1 << 1);
+        }
+        if (pkt->pkt_has_dczeroa) {
+            mask |= (1 << 2);
+        }
+        if (pkt_has_hvx_store(pkt)) {
+            mask |= (1 << 3);
+        }
+        mask_tcgv = tcg_const_tl(mask);
+        gen_helper_probe_pkt_stores(cpu_env, mask_tcgv, mem_idx);
         tcg_temp_free(mem_idx);
+        tcg_temp_free(mask_tcgv);
     }
-#endif
+
+    process_store_log(ctx, pkt);
 
     gen_reg_writes(ctx);
 #if !defined(CONFIG_USER_ONLY)
@@ -899,7 +912,6 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     gen_sreg_writes(env, ctx);
 #endif
     gen_pred_writes(ctx, pkt);
-    process_store_log(ctx, pkt);
     process_dczeroa(ctx, pkt);
     if (pkt->pkt_has_hvx) {
         gen_commit_hvx(ctx, pkt);

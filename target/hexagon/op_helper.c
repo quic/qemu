@@ -1606,8 +1606,9 @@ void HELPER(checkforpriv)(CPUHexagonState *env)
         helper_raise_exception(env, HEX_EVENT_PRECISE);
     }
 }
+#endif
 
-static inline void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
+static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
 {
     if (!(env->slot_cancelled & (1 << slot))) {
         size1u_t width = env->mem_log_stores[slot].width;
@@ -1617,7 +1618,7 @@ static inline void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
     }
 }
 
-static inline void probe_hvx_stores(CPUHexagonState *env, int mmu_idx)
+static void probe_hvx_stores(CPUHexagonState *env, int mmu_idx)
 {
     uintptr_t retaddr = GETPC();
     int i;
@@ -1658,9 +1659,13 @@ static inline void probe_hvx_stores(CPUHexagonState *env, int mmu_idx)
     }
 }
 
-void HELPER(probe_pkt_stores)(CPUHexagonState *env, int has_st0, int has_st1,
-                              int has_dczeroa, int has_hvx_stores, int mmu_idx)
+void HELPER(probe_pkt_stores)(CPUHexagonState *env, int mask, int mmu_idx)
 {
+    bool has_st0        = (mask >> 0) & 1;
+    bool has_st1        = (mask >> 1) & 1;
+    bool has_dczeroa    = (mask >> 2) & 1;
+    bool has_hvx_stores = (mask >> 2) & 1;
+
     if (has_st0 && !has_dczeroa) {
         probe_store(env, 0, mmu_idx);
     }
@@ -1681,6 +1686,7 @@ void HELPER(probe_pkt_stores)(CPUHexagonState *env, int has_st0, int has_st1,
     }
 }
 
+#ifndef CONFIG_USER_ONLY
 #if HEX_DEBUG
 static inline void print_thread(const char *str, CPUState *cs)
 {
