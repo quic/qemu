@@ -38,6 +38,7 @@ first: $(HEX_SRC)/first.S
 
 HEX_TESTS = first
 HEX_TESTS += exec_counters
+HEX_TESTS += hex_sigsegv
 HEX_TESTS += misc
 HEX_TESTS += preg_alias
 HEX_TESTS += dual_stores

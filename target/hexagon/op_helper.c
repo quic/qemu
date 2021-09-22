@@ -449,6 +449,81 @@ int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
     return PeV;
 }
 
+static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
+{
+    if (!(env->slot_cancelled & (1 << slot))) {
+        size1u_t width = env->mem_log_stores[slot].width;
+        target_ulong va = env->mem_log_stores[slot].va;
+        uintptr_t ra = GETPC();
+        probe_write(env, va, width, mmu_idx, ra);
+    }
+}
+
+/* Called during packet commit when there are two scalar stores */
+void HELPER(probe_pkt_scalar_store_s0)(CPUHexagonState *env, int mmu_idx)
+{
+    probe_store(env, 0, mmu_idx);
+}
+
+void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
+{
+    uintptr_t retaddr = GETPC();
+    int i;
+
+    /* Normal (possibly masked) vector store */
+    for (i = 0; i < VSTORES_MAX; i++) {
+        if (env->vstore_pending[i]) {
+            target_ulong va = env->vstore[i].va;
+            int size = env->vstore[i].size;
+            for (int j = 0; j < size; j++) {
+                if (test_bit(j, env->vstore[i].mask)) {
+                    probe_write(env, va + j, 1, mmu_idx, retaddr);
+                }
+            }
+        }
+    }
+
+    /* Scatter store */
+    if (env->vtcm_pending) {
+        if (env->vtcm_log.op) {
+            /* Need to perform the scatter read/modify/write at commit time */
+            if (env->vtcm_log.op_size == 2) {
+                SCATTER_OP_PROBE_MEM(size2u_t, mmu_idx, retaddr);
+            } else if (env->vtcm_log.op_size == 4) {
+                /* Word Scatter += */
+                SCATTER_OP_PROBE_MEM(size4u_t, mmu_idx, retaddr);
+            } else {
+                g_assert_not_reached();
+            }
+        } else {
+            for (int i = 0; i < env->vtcm_log.size; i++) {
+                if (test_bit(i, env->vtcm_log.mask)) {
+                    probe_write(env, env->vtcm_log.va[i], 1, mmu_idx, retaddr);
+                }
+
+            }
+        }
+    }
+}
+
+void HELPER(probe_pkt_scalar_hvx_stores)(CPUHexagonState *env, int mask,
+                                         int mmu_idx)
+{
+    bool has_st0        = (mask >> 0) & 1;
+    bool has_st1        = (mask >> 1) & 1;
+    bool has_hvx_stores = (mask >> 2) & 1;
+
+    if (has_st0) {
+        probe_store(env, 0, mmu_idx);
+    }
+    if (has_st1) {
+        probe_store(env, 1, mmu_idx);
+    }
+    if (has_hvx_stores) {
+        HELPER(probe_hvx_stores)(env, mmu_idx);
+    }
+}
+
 /* Floating point */
 float64 HELPER(conv_sf2df)(CPUHexagonState *env, float32 RsV)
 {

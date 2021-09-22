@@ -225,6 +225,19 @@
             } \
         } \
     } while (0)
+#define SCATTER_OP_PROBE_MEM(TYPE, MMU_IDX, RETADDR) \
+    do { \
+        for (int i = 0; i < env->vtcm_log.size; i += sizeof(TYPE)) { \
+            if (test_bit(i, env->vtcm_log.mask)) { \
+                for (int j = 0; j < sizeof(TYPE); j++) { \
+                    probe_read(env, env->vtcm_log.va[i + j], 1, \
+                               MMU_IDX, RETADDR); \
+                    probe_write(env, env->vtcm_log.va[i + j], 1, \
+                                MMU_IDX, RETADDR); \
+                } \
+            } \
+        } \
+    } while (0)
 #define SCATTER_FUNCTION(EA, OFFSET, IDX, LEN, ELEM_SIZE, BANK_IDX, QVAL, IN) \
     do { \
         int i0; \
