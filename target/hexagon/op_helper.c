@@ -375,20 +375,6 @@ int32_t HELPER(fcircadd)(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
     return new_ptr;
 }
 
-#if 0 
-/*
- * Hexagon FP operations return ~0 insteat of NaN
- * The hex_check_sfnan/hex_check_dfnan functions perform this check
- */
-static float32 hex_check_sfnan(float32 x)
-{
-    if (float32_is_any_nan(x)) {
-        return make_float32(0xFFFFFFFFU);
-    }
-    return x;
-}
-#endif
-
 static float64 hex_check_dfnan(float64 x)
 {
     if (float64_is_any_nan(x)) {
@@ -2398,41 +2384,6 @@ static inline uint8_t mem_load1(CPUHexagonState *env,
     return retval;
 }
 
-#if 0
-static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
-{
-    size2u_t retval;
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_lduw_data_ra(env, paddr, ra);
-#else
-    hexagon_tools_memory_read(env, paddr, 2, &retval);
-#endif
-    return retval;
-}
-static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
-{
-    size4u_t retval;
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldl_data_ra(env, paddr, ra);
-#else
-    hexagon_tools_memory_read(env, paddr, 4, &retval);
-#endif
-    return retval;
-}
-static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
-{
-    size8u_t retval;
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldq_data_ra(env, paddr, ra);
-#else
-    hexagon_tools_memory_read(env, paddr, 8, &retval);
-#endif
-    return retval;
-}
-#endif
 
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
