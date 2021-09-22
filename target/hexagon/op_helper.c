@@ -2398,6 +2398,7 @@ static inline uint8_t mem_load1(CPUHexagonState *env,
     return retval;
 }
 
+#if 0
 static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
 {
     size2u_t retval;
@@ -2431,7 +2432,7 @@ static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
 #endif
     return retval;
 }
-
+#endif
 
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */

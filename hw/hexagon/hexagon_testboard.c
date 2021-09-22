@@ -256,24 +256,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     rom_add_blob_fixed_as("config_table.rom", config_table,
         sizeof(*config_table), cfgExtensions->cfgbase, &address_space_memory);
-
-    if (machine->kernel_filename) {
-        hexagon_load_kernel(env_0);
-        if (isdb_secure_flag || isdb_trusted_flag) {
-            /* By convention these flags are at offsets 0x30 and 0x34 */
-            uint32_t  mem;
-            cpu_physical_memory_read(isdb_secure_flag, &mem, sizeof(mem));
-            if (mem == 0x0) {
-                mem = 1;
-                cpu_physical_memory_write(isdb_secure_flag, &mem, sizeof(mem));
-            }
-            cpu_physical_memory_read(isdb_trusted_flag, &mem, sizeof(mem));
-            if (mem == 0x0) {
-                mem = 1;
-                cpu_physical_memory_write(isdb_trusted_flag, &mem, sizeof(mem));
-            }
-        }
-    }
 }
 
 void hexagon_read_timer(uint32_t *low, uint32_t *high)
