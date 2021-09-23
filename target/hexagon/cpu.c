@@ -34,6 +34,7 @@
 #include "hex_mmu.h"
 #include "include/hw/hexagon/hexagon.h"
 #include "hw/intc/l2vic.h"
+#include "qemu/main-loop.h"
 #include "sysemu/cpus.h"
 #endif
 
@@ -678,6 +679,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
         target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
         target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
         if (ex) {
+            assert(get_exe_mode(env) != HEX_EXE_MODE_WAIT);
             /*
              * This thread is not interruptible.  We
              * must pend it and assert it later.
@@ -697,7 +699,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
         HEX_DEBUG_LOG("%s: IRQ irq:%d, level:%d\n", __func__, irq, level);
         if (level) {
             if (get_exe_mode(env) == HEX_EXE_MODE_WAIT) {
-                hexagon_resume_thread(env, HEX_EVENT_NONE);
+                hexagon_resume_thread(env, HEX_EVENT_INT0 + irq);
             }
             hexagon_disable_int(env, irq);
             cpu_interrupt(cs, mask[irq]);
@@ -1141,24 +1143,6 @@ static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
                 "got a hard int, full mask is %08x|%d\n",
                 (int)interrupt_request, (int)interrupt_request);
 
-#if CHECK_EX
-        HexagonCPU *cpu = HEXAGON_CPU(cs);
-        CPUHexagonState *env = &cpu->env;
-        const uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-        target_ulong EX = GET_SSR_FIELD(SSR_EX, ssr);
-        const uint32_t tid = ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID);
-        if (hexagon_thread_is_busy(env)) {
-            return false;
-        }
-        if (EX) {
-            printf("got a hard int, full mask is %08x|%d\n",
-                          (int)interrupt_request, (int)interrupt_request);
-            printf("SSR = 0x%x\n", ssr);
-            printf("HTID = 0x%x\n", tid);
-            return false;
-            hexagon_debug(env);
-        }
-#endif
         cs->exception_index = HEX_EVENT_INT2;
         cc->tcg_ops->do_interrupt(cs);
         cs->interrupt_request &= ~CPU_INTERRUPT_HARD;

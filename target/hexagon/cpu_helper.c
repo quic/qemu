@@ -247,12 +247,20 @@ void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr, uint32_t le
 void hexagon_wait_thread(CPUHexagonState *env)
 
 {
+    qemu_mutex_lock_iothread();
+    CPUState *cs = env_cpu(env);
+    HELPER(pending_interrupt)(env);
+    if (cs->exception_index != HEX_EVENT_NONE) {
+        qemu_mutex_unlock_iothread();
+        return;
+    }
     if (get_exe_mode(env) != HEX_EXE_MODE_WAIT) {
         set_wait_mode(env);
     }
     ARCH_SET_THREAD_REG(env, HEX_REG_PC,
        ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
 
+    qemu_mutex_unlock_iothread();
     cpu_stop_current();
 }
 
