@@ -86,18 +86,18 @@ void gen_exception(int excp)
     tcg_temp_free_i32(helper_tmp);
 }
 
-void gen_exception_end_tb(DisasContext *ctx, int excp)
-{
-    gen_exception(excp);
-    ctx->base.is_jmp = DISAS_NORETURN;
-}
-
 static void gen_exception_raw(int excp)
 {
     TCGv_i32 helper_tmp = tcg_const_i32(excp);
     gen_helper_raise_exception(cpu_env, helper_tmp);
     tcg_temp_free_i32(helper_tmp);
 }
+void gen_exception_end_tb(DisasContext *ctx, int excp)
+{
+    gen_exception_raw(excp);
+    ctx->base.is_jmp = DISAS_NORETURN;
+}
+
 
 static void gen_exec_counters(DisasContext *ctx)
 {
@@ -119,18 +119,13 @@ static void gen_end_tb(DisasContext *ctx)
     gen_helper_pending_interrupt(cpu_env);
     gen_helper_resched(cpu_env);
 #endif
-    if (ctx->base.singlestep_enabled) {
-        gen_exception_raw(EXCP_DEBUG);
-    } else {
-        tcg_gen_exit_tb(NULL, 0);
-    }
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
 
 void gen_exception_debug(void)
 {
-    gen_exception(EXCP_DEBUG);
+    gen_exception_raw(EXCP_DEBUG);
 }
 
 #if HEX_DEBUG
@@ -162,7 +157,7 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
     if (!found_end) {
         /* Read too many words without finding the end */
         env->cause_code = HEX_CAUSE_INVALID_PACKET;
-        gen_exception(HEX_EVENT_PRECISE);
+        gen_exception_raw(HEX_EVENT_PRECISE);
         ctx->base.is_jmp = DISAS_NORETURN;
         return 0;
     }
@@ -410,7 +405,7 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
         mark_implicit_pred_writes(ctx, insn);
     } else {
         env->cause_code = HEX_CAUSE_INVALID_PACKET;
-        gen_exception(HEX_EVENT_PRECISE);
+        gen_exception_raw(HEX_EVENT_PRECISE);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }
@@ -858,7 +853,7 @@ static void gen_cpu_limit(void)
     tcg_gen_brcondi_tl(TCG_COND_LT, hex_gpr[HEX_REG_QEMU_CPU_TB_CNT],
         HEXAGON_TB_EXEC_PER_CPU_MAX, label_skip);
 
-    gen_exception(EXCP_YIELD);
+    gen_exception_raw(EXCP_YIELD);
     tcg_gen_movi_tl(hex_gpr[HEX_REG_QEMU_CPU_TB_CNT], 0);
     tcg_gen_exit_tb(NULL, 0);
 
@@ -978,7 +973,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
 
     if (pkt->pkt_has_cof
 #if !defined(CONFIG_USER_ONLY)
-       || pkt->pkt_has_sys_visibility
+        || pkt->pkt_has_sys_visibility
 #endif
         ) {
         gen_end_tb(ctx);
@@ -1009,7 +1004,7 @@ static void decode_and_translate_packet(CPUHexagonState *env,
         gen_commit_packet(env, ctx, &pkt);
         ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
     } else {
-        gen_exception(HEX_CAUSE_INVALID_PACKET);
+        gen_exception_raw(HEX_CAUSE_INVALID_PACKET);
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 }
@@ -1059,7 +1054,7 @@ static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase,
 
     tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
     ctx->base.is_jmp = DISAS_NORETURN;
-    gen_exception_debug();
+    gen_exception_raw(EXCP_DEBUG);
     /*
      * The address covered by the breakpoint must be included in
      * [tb->pc, tb->pc + tb->size) in order to for it to be
@@ -1126,14 +1121,13 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     case DISAS_TOO_MANY:
         gen_exec_counters(ctx);
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
-        if (ctx->base.singlestep_enabled) {
-            gen_exception_debug();
-        } else {
-            tcg_gen_exit_tb(NULL, 0);
-        }
 
     /* Fall through */
     case DISAS_NEXT:
+#ifndef CONFIG_USER_ONLY
+    gen_helper_pending_interrupt(cpu_env);
+    gen_helper_resched(cpu_env);
+#endif
         break;
     case DISAS_NORETURN:
         break;
@@ -1148,6 +1142,11 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         gen_cpu_limit();
     }
 #endif
+    if (ctx->base.singlestep_enabled) {
+        gen_exception_debug();
+    } else {
+        tcg_gen_exit_tb(NULL, 0);
+    }
 }
 
 static void hexagon_tr_disas_log(const DisasContextBase *dcbase, CPUState *cpu)
