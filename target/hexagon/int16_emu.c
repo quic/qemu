@@ -1,8 +1,6 @@
 /* Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved. */
 
-#include <stdio.h>
-#include <assert.h>
-
+#include "qemu/osdep.h"
 #include "int16_emu.h"
 //#pragma GCC diagnostic ignored "-Wmissing-prototypes"
 

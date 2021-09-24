@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 #ifndef HEXAGON_TRANSLATE_H
 #define HEXAGON_TRANSLATE_H
 
+#include "qemu/bitmap.h"
 #include "cpu.h"
 #include "exec/translator.h"
 #include "tcg/tcg-op.h"
@@ -52,14 +53,16 @@ typedef struct DisasContext {
     int qreg_log[NUM_QREGS];
     int qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
+    bool s1_store_processed;
 } DisasContext;
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
 {
+#if HEX_DEBUG
     if (test_bit(rnum, ctx->regs_written)) {
         HEX_DEBUG_LOG("WARNING: Multiple writes to r%d\n", rnum);
     }
-//    printf("%s: idx %d, rnum %d\n", __FUNCTION__, ctx->reg_log_idx, rnum);
+#endif
     ctx->reg_log[ctx->reg_log_idx] = rnum;
     ctx->reg_log_idx++;
     set_bit(rnum, ctx->regs_written);
@@ -202,4 +205,5 @@ bool is_gather_store_insn(Insn *insn, Packet *pkt);
 
 extern void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n);
 
+void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif

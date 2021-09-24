@@ -224,9 +224,14 @@
 #        only returned if VFIO device is present, migration is supported by all
 #        VFIO devices and status is 'active' or 'completed' (since 5.2)
 #
+# @blocked-reasons: A list of reasons an outgoing migration is blocked.
+#                   Present and non-empty when migration is blocked.
+#                   (since 6.0)
+#
 # @blocked: True if outgoing migration is blocked (since 6.0)
 #
-# @blocked-reasons: A list of reasons an outgoing migration is blocked (since 6.0)
+# Features:
+# @deprecated: Member @blocked is deprecated.  Use @blocked-reasons instead.
 #
 # Since: 0.14
 ##
@@ -241,7 +246,7 @@
            '*setup-time': 'int',
            '*cpu-throttle-percentage': 'int',
            '*error-desc': 'str',
-           'blocked': 'bool',
+           'blocked': { 'type': 'bool', 'features': [ 'deprecated' ] },
            '*blocked-reasons': ['str'],
            '*postcopy-blocktime' : 'uint32',
            '*postcopy-vcpu-blocktime': ['uint32'],
@@ -1397,104 +1402,6 @@
 # <- { "return": {} }
 ##
 { 'command': 'migrate-continue', 'data': {'state': 'MigrationStatus'} }
-
-##
-# @migrate_set_downtime:
-#
-# Set maximum tolerated downtime for migration.
-#
-# @value: maximum downtime in seconds
-#
-# Features:
-# @deprecated: This command is deprecated.  Use
-#              'migrate-set-parameters' instead.
-#
-# Returns: nothing on success
-#
-# Since: 0.14
-#
-# Example:
-#
-# -> { "execute": "migrate_set_downtime", "arguments": { "value": 0.1 } }
-# <- { "return": {} }
-#
-##
-{ 'command': 'migrate_set_downtime', 'data': {'value': 'number'},
-  'features': [ 'deprecated' ] }
-
-##
-# @migrate_set_speed:
-#
-# Set maximum speed for migration.
-#
-# @value: maximum speed in bytes per second.
-#
-# Features:
-# @deprecated: This command is deprecated.  Use
-#              'migrate-set-parameters' instead.
-#
-# Returns: nothing on success
-#
-# Since: 0.14
-#
-# Example:
-#
-# -> { "execute": "migrate_set_speed", "arguments": { "value": 1024 } }
-# <- { "return": {} }
-#
-##
-{ 'command': 'migrate_set_speed', 'data': {'value': 'int'},
-  'features': [ 'deprecated' ] }
-
-##
-# @migrate-set-cache-size:
-#
-# Set cache size to be used by XBZRLE migration
-#
-# @value: cache size in bytes
-#
-# Features:
-# @deprecated: This command is deprecated.  Use
-#              'migrate-set-parameters' instead.
-#
-# The size will be rounded down to the nearest power of 2.
-# The cache size can be modified before and during ongoing migration
-#
-# Returns: nothing on success
-#
-# Since: 1.2
-#
-# Example:
-#
-# -> { "execute": "migrate-set-cache-size",
-#      "arguments": { "value": 536870912 } }
-# <- { "return": {} }
-#
-##
-{ 'command': 'migrate-set-cache-size', 'data': {'value': 'int'},
-  'features': [ 'deprecated' ] }
-
-##
-# @query-migrate-cache-size:
-#
-# Query migration XBZRLE cache size
-#
-# Features:
-# @deprecated: This command is deprecated.  Use
-#              'query-migrate-parameters' instead.
-#
-# Returns: XBZRLE cache size in bytes
-#
-# Since: 1.2
-#
-# Example:
-#
-# -> { "execute": "query-migrate-cache-size" }
-# <- { "return": 67108864 }
-#
-##
-{ 'command': 'query-migrate-cache-size', 'returns': 'size',
-  'features': [ 'deprecated' ] }
 
 ##
 # @migrate:

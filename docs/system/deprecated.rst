@@ -21,28 +21,6 @@ deprecated.
 System emulator command line arguments
 --------------------------------------
 
-``-usbdevice`` (since 2.10.0)
-'''''''''''''''''''''''''''''
-
-The ``-usbdevice DEV`` argument is now a synonym for setting
-the ``-device usb-DEV`` argument instead. The deprecated syntax
-would automatically enable USB support on the machine type.
-If using the new syntax, USB support must be explicitly
-enabled via the ``-machine usb=on`` argument.
-
-``-drive file=json:{...{'driver':'file'}}`` (since 3.0)
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-The 'file' driver for drives is no longer appropriate for character or host
-devices and will only accept regular files (S_IFREG). The correct driver
-for these file types is 'host_cdrom' or 'host_device' as appropriate.
-
-``-vnc acl`` (since 4.0.0)
-''''''''''''''''''''''''''
-
-The ``acl`` option to the ``-vnc`` argument has been replaced
-by the ``tls-authz`` and ``sasl-authz`` options.
-
 ``QEMU_AUDIO_`` environment variables and ``-audio-help`` (since 4.0)
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -68,12 +46,11 @@ needs two devices (``-device intel-hda -device hda-duplex``) and
 ``pcspk`` which can be activated using ``-machine
 pcspk-audiodev=<name>``.
 
-``-mon ...,control=readline,pretty=on|off`` (since 4.1)
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''
+``-chardev`` backend aliases ``tty`` and ``parport`` (since 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-The ``pretty=on|off`` switch has no effect for HMP monitors, but is
-silently ignored. Using the switch with HMP monitors will become an
-error in the future.
+``tty`` and ``parport`` are aliases that will be removed. Instead, the
+actual backend names ``serial`` and ``parallel`` should be used.
 
 RISC-V ``-bios`` (since 5.1)
 ''''''''''''''''''''''''''''
@@ -94,45 +71,18 @@ QEMU 5.1 has three options:
       to the user to load all the images they need.
  3. ``-bios <file>`` - Tells QEMU to load the specified file as the firmwrae.
 
-``Configuring floppies with ``-global``
-'''''''''''''''''''''''''''''''''''''''
-
-Use ``-device floppy,...`` instead:
-::
-
-    -global isa-fdc.driveA=...
-    -global sysbus-fdc.driveA=...
-    -global SUNW,fdtwo.drive=...
-
-become
-::
-
-    -device floppy,unit=0,drive=...
-
-and
-::
-
-    -global isa-fdc.driveB=...
-    -global sysbus-fdc.driveB=...
-
-become
-::
-
-    -device floppy,unit=1,drive=...
-
-``-drive`` with bogus interface type
-''''''''''''''''''''''''''''''''''''
-
-Drives with interface types other than ``if=none`` are for onboard
-devices.  It is possible to use drives the board doesn't pick up with
--device.  This usage is now deprecated.  Use ``if=none`` instead.
-
 Short-form boolean options (since 6.0)
 ''''''''''''''''''''''''''''''''''''''
 
 Boolean options such as ``share=on``/``share=off`` could be written
 in short form as ``share`` and ``noshare``.  This is now deprecated
 and will cause a warning.
+
+``delay`` option for socket character devices (since 6.0)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+The replacement for the ``nodelay`` short-form boolean option is ``nodelay=on``
+rather than ``delay=off``.
 
 ``--enable-fips`` (since 6.0)
 '''''''''''''''''''''''''''''
@@ -145,6 +95,56 @@ library enabled as a cryptography provider.
 
 Neither the ``nettle`` library, or the built-in cryptography provider are
 supported on FIPS enabled hosts.
+
+``-writeconfig`` (since 6.0)
+'''''''''''''''''''''''''''''
+
+The ``-writeconfig`` option is not able to serialize the entire contents
+of the QEMU command line.  It is thus considered a failed experiment
+and deprecated, with no current replacement.
+
+Userspace local APIC with KVM (x86, since 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''
+
+Using ``-M kernel-irqchip=off`` with x86 machine types that include a local
+APIC is deprecated.  The ``split`` setting is supported, as is using
+``-M kernel-irqchip=off`` with the ISA PC machine type.
+
+hexadecimal sizes with scaling multipliers (since 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Input parameters that take a size value should only use a size suffix
+(such as 'k' or 'M') when the base is written in decimal, and not when
+the value is hexadecimal.  That is, '0x20M' is deprecated, and should
+be written either as '32M' or as '0x2000000'.
+
+``-spice password=string`` (since 6.0)
+''''''''''''''''''''''''''''''''''''''
+
+This option is insecure because the SPICE password remains visible in
+the process listing. This is replaced by the new ``password-secret``
+option which lets the password be securely provided on the command
+line using a ``secret`` object instance.
+
+``opened`` property of ``rng-*`` objects (since 6.0.0)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+The only effect of specifying ``opened=on`` in the command line or QMP
+``object-add`` is that the device is opened immediately, possibly before all
+other options have been processed.  This will either have no effect (if
+``opened`` was the last option) or cause errors.  The property is therefore
+useless and should not be specified.
+
+``loaded`` property of ``secret`` and ``secret_keyring`` objects (since 6.0.0)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+The only effect of specifying ``loaded=on`` in the command line or QMP
+``object-add`` is that the secret is loaded immediately, possibly before all
+other options have been processed.  This will either have no effect (if
+``loaded`` was the last option) or cause options to be effectively ignored as
+if they were not given.  The property is therefore useless and should not be
+specified.
+
 
 QEMU Machine Protocol (QMP) commands
 ------------------------------------
@@ -169,83 +169,15 @@ Use argument ``id`` instead.
 
 Use argument ``id`` instead.
 
-``migrate_set_downtime`` and ``migrate_set_speed`` (since 2.8.0)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Use ``migrate-set-parameters`` instead.
-
-``query-named-block-nodes`` result ``encryption_key_missing`` (since 2.10.0)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Always false.
-
-``query-block`` result ``inserted.encryption_key_missing`` (since 2.10.0)
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Always false.
-
 ``blockdev-add`` empty string argument ``backing`` (since 2.10.0)
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Use argument value ``null`` instead.
 
-``migrate-set-cache-size`` and ``query-migrate-cache-size`` (since 2.11.0)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Use ``migrate-set-parameters`` and ``query-migrate-parameters`` instead.
-
 ``block-commit`` arguments ``base`` and ``top`` (since 3.1.0)
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Use arguments ``base-node`` and ``top-node`` instead.
-
-``object-add`` option ``props`` (since 5.0)
-'''''''''''''''''''''''''''''''''''''''''''
-
-Specify the properties for the object as top-level arguments instead.
-
-``query-named-block-nodes`` and ``query-block`` result dirty-bitmaps[i].status (since 4.0)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-The ``status`` field of the ``BlockDirtyInfo`` structure, returned by
-these commands is deprecated. Two new boolean fields, ``recording`` and
-``busy`` effectively replace it.
-
-``query-block`` result field ``dirty-bitmaps`` (Since 4.2)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-The ``dirty-bitmaps`` field of the ``BlockInfo`` structure, returned by
-the query-block command is itself now deprecated. The ``dirty-bitmaps``
-field of the ``BlockDeviceInfo`` struct should be used instead, which is the
-type of the ``inserted`` field in query-block replies, as well as the
-type of array items in query-named-block-nodes.
-
-Since the ``dirty-bitmaps`` field is optionally present in both the old and
-new locations, clients must use introspection to learn where to anticipate
-the field if/when it does appear in command output.
-
-``query-cpus`` (since 2.12.0)
-'''''''''''''''''''''''''''''
-
-The ``query-cpus`` command is replaced by the ``query-cpus-fast`` command.
-
-``query-cpus-fast`` ``arch`` output member (since 3.0.0)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-The ``arch`` output member of the ``query-cpus-fast`` command is
-replaced by the ``target`` output member.
-
-``query-events`` (since 4.0)
-''''''''''''''''''''''''''''
-
-The ``query-events`` command has been superseded by the more powerful
-and accurate ``query-qmp-schema`` command.
-
-chardev client socket with ``wait`` option (since 4.0)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Character devices creating sockets in client mode should not specify
-the 'wait' field, which is only applicable to sockets in server mode
 
 ``nbd-server-add`` and ``nbd-server-remove`` (since 5.2)
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -254,15 +186,14 @@ Use the more generic commands ``block-export-add`` and ``block-export-del``
 instead.  As part of this deprecation, where ``nbd-server-add`` used a
 single ``bitmap``, the new ``block-export-add`` uses a list of ``bitmaps``.
 
-Human Monitor Protocol (HMP) commands
--------------------------------------
+System accelerators
+-------------------
 
-``acl_show``, ``acl_reset``, ``acl_policy``, ``acl_add``, ``acl_remove`` (since 4.0.0)
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+MIPS ``Trap-and-Emul`` KVM support (since 6.0)
+''''''''''''''''''''''''''''''''''''''''''''''
 
-The ``acl_show``, ``acl_reset``, ``acl_policy``, ``acl_add``, and
-``acl_remove`` commands are deprecated with no replacement. Authorization
-for VNC should be performed using the pluggable QAuthZ objects.
+The MIPS ``Trap-and-Emul`` KVM host and guest support has been removed
+from Linux upstream kernel, declare it deprecated.
 
 System emulator CPUS
 --------------------
@@ -303,21 +234,6 @@ MIPS ``I7200`` CPU Model (since 5.2)
 The ``I7200`` guest CPU relies on the nanoMIPS ISA, which is deprecated
 (the ISA has never been upstreamed to a compiler toolchain). Therefore
 this CPU is also deprecated.
-
-System emulator devices
------------------------
-
-``ide-drive`` (since 4.2)
-'''''''''''''''''''''''''
-
-The 'ide-drive' device is deprecated. Users should use 'ide-hd' or
-'ide-cd' as appropriate to get an IDE hard disk or CD-ROM as needed.
-
-``scsi-disk`` (since 4.2)
-'''''''''''''''''''''''''
-
-The 'scsi-disk' device is deprecated. Users should use 'scsi-hd' or
-'scsi-cd' as appropriate to get a SCSI hard disk or CD-ROM as needed.
 
 System emulator machines
 ------------------------
@@ -381,14 +297,6 @@ it out of sheepdog volumes into an alternative storage backend.
 
 linux-user mode CPUs
 --------------------
-
-``tilegx`` CPUs (since 5.1.0)
-'''''''''''''''''''''''''''''
-
-The ``tilegx`` guest CPU support (which was only implemented in
-linux-user mode) is deprecated and will be removed in a future version
-of QEMU. Support for this CPU was removed from the upstream Linux
-kernel in 2018, and has also been dropped from glibc.
 
 ``ppc64abi32`` CPUs (since 5.2.0)
 '''''''''''''''''''''''''''''''''

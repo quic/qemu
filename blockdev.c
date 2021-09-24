@@ -57,7 +57,6 @@
 #include "block/block_int.h"
 #include "block/trace.h"
 #include "sysemu/arch_init.h"
-#include "sysemu/qtest.h"
 #include "sysemu/runstate.h"
 #include "sysemu/replay.h"
 #include "qemu/cutils.h"
@@ -240,19 +239,10 @@ DriveInfo *drive_get(BlockInterfaceType type, int bus, int unit)
     return NULL;
 }
 
-void drive_mark_claimed_by_board(void)
-{
-    BlockBackend *blk;
-    DriveInfo *dinfo;
-
-    for (blk = blk_next(NULL); blk; blk = blk_next(blk)) {
-        dinfo = blk_legacy_dinfo(blk);
-        if (dinfo && blk_get_attached_dev(blk)) {
-            dinfo->claimed_by_board = true;
-        }
-    }
-}
-
+/*
+ * Check board claimed all -drive that are meant to be claimed.
+ * Fatal error if any remain unclaimed.
+ */
 void drive_check_orphaned(void)
 {
     BlockBackend *blk;
@@ -262,7 +252,17 @@ void drive_check_orphaned(void)
 
     for (blk = blk_next(NULL); blk; blk = blk_next(blk)) {
         dinfo = blk_legacy_dinfo(blk);
-        if (dinfo->is_default || dinfo->type == IF_NONE) {
+        /*
+         * Ignore default drives, because we create certain default
+         * drives unconditionally, then leave them unclaimed.  Not the
+         * users fault.
+         * Ignore IF_VIRTIO, because it gets desugared into -device,
+         * so we can leave failing to -device.
+         * Ignore IF_NONE, because leaving unclaimed IF_NONE remains
+         * available for device_add is a feature.
+         */
+        if (dinfo->is_default || dinfo->type == IF_VIRTIO
+            || dinfo->type == IF_NONE) {
             continue;
         }
         if (!blk_get_attached_dev(blk)) {
@@ -273,14 +273,6 @@ void drive_check_orphaned(void)
                          if_name[dinfo->type], dinfo->bus, dinfo->unit);
             loc_pop(&loc);
             orphans = true;
-            continue;
-        }
-        if (!dinfo->claimed_by_board && dinfo->type != IF_VIRTIO) {
-            loc_push_none(&loc);
-            qemu_opts_loc_restore(dinfo->opts);
-            warn_report("bogus if=%s is deprecated, use if=none",
-                        if_name[dinfo->type]);
-            loc_pop(&loc);
         }
     }
 
@@ -970,11 +962,7 @@ DriveInfo *drive_new(QemuOpts *all_opts, BlockInterfaceType block_default_type,
         QemuOpts *devopts;
         devopts = qemu_opts_create(qemu_find_opts("device"), NULL, 0,
                                    &error_abort);
-        if (arch_type == QEMU_ARCH_S390X) {
-            qemu_opt_set(devopts, "driver", "virtio-blk-ccw", &error_abort);
-        } else {
-            qemu_opt_set(devopts, "driver", "virtio-blk-pci", &error_abort);
-        }
+        qemu_opt_set(devopts, "driver", "virtio-blk", &error_abort);
         qemu_opt_set(devopts, "drive", qdict_get_str(bs_opts, "id"),
                      &error_abort);
     }
@@ -1515,13 +1503,13 @@ static void external_snapshot_prepare(BlkActionState *common,
             s->has_snapshot_node_name ? s->snapshot_node_name : NULL;
 
         if (node_name && !snapshot_node_name) {
-            error_setg(errp, "New overlay node name missing");
+            error_setg(errp, "New overlay node-name missing");
             goto out;
         }
 
         if (snapshot_node_name &&
             bdrv_lookup_bs(snapshot_node_name, snapshot_node_name, NULL)) {
-            error_setg(errp, "New overlay node name already in use");
+            error_setg(errp, "New overlay node-name already in use");
             goto out;
         }
 
@@ -1825,9 +1813,7 @@ static void drive_backup_prepare(BlkActionState *common, Error **errp)
     aio_context_acquire(aio_context);
 
     if (set_backing_hd) {
-        bdrv_set_backing_hd(target_bs, source, &local_err);
-        if (local_err) {
-            error_propagate(errp, local_err);
+        if (bdrv_set_backing_hd(target_bs, source, errp) < 0) {
             goto unref;
         }
     }
@@ -2415,14 +2401,6 @@ exit:
         qapi_free_TransactionProperties(props);
     }
     job_txn_unref(block_job_txn);
-}
-
-void qmp_block_passwd(bool has_device, const char *device,
-                      bool has_node_name, const char *node_name,
-                      const char *password, Error **errp)
-{
-    error_setg(errp,
-               "Setting block passwords directly is no longer supported");
 }
 
 BlockDirtyBitmapSha256 *qmp_x_debug_block_dirty_bitmap_sha256(const char *node,
@@ -3598,13 +3576,14 @@ void qmp_x_blockdev_reopen(BlockdevOptions *options, Error **errp)
 
     /* Check for the selected node name */
     if (!options->has_node_name) {
-        error_setg(errp, "Node name not specified");
+        error_setg(errp, "node-name not specified");
         goto fail;
     }
 
     bs = bdrv_find_node(options->node_name);
     if (!bs) {
-        error_setg(errp, "Cannot find node named '%s'", options->node_name);
+        error_setg(errp, "Failed to find node with node-name='%s'",
+                   options->node_name);
         goto fail;
     }
 
@@ -3635,7 +3614,7 @@ void qmp_blockdev_del(const char *node_name, Error **errp)
 
     bs = bdrv_find_node(node_name);
     if (!bs) {
-        error_setg(errp, "Cannot find node %s", node_name);
+        error_setg(errp, "Failed to find node with node-name='%s'", node_name);
         return;
     }
     if (bdrv_has_blk(bs)) {
@@ -3758,7 +3737,7 @@ void qmp_x_blockdev_set_iothread(const char *node_name, StrOrNull *iothread,
 
     bs = bdrv_find_node(node_name);
     if (!bs) {
-        error_setg(errp, "Cannot find node %s", node_name);
+        error_setg(errp, "Failed to find node with node-name='%s'", node_name);
         return;
     }
 

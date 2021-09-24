@@ -1387,29 +1387,6 @@ static inline void init_thread(struct target_pt_regs *regs, struct image_info *i
 
 #endif /* TARGET_S390X */
 
-#ifdef TARGET_TILEGX
-
-/* 42 bits real used address, a half for user mode */
-#define ELF_START_MMAP (0x00000020000000000ULL)
-
-#define elf_check_arch(x) ((x) == EM_TILEGX)
-
-#define ELF_CLASS   ELFCLASS64
-#define ELF_DATA    ELFDATA2LSB
-#define ELF_ARCH    EM_TILEGX
-
-static inline void init_thread(struct target_pt_regs *regs,
-                               struct image_info *infop)
-{
-    regs->pc = infop->entry;
-    regs->sp = infop->start_stack;
-
-}
-
-#define ELF_EXEC_PAGESIZE        65536 /* TILE-Gx page size is 64KB */
-
-#endif /* TARGET_TILEGX */
-
 #ifdef TARGET_RISCV
 
 #define ELF_START_MMAP 0x80000000
@@ -2232,9 +2209,8 @@ static uintptr_t pgd_find_hole_fallback(uintptr_t guest_size, uintptr_t brk,
             void * mmap_start = mmap((void *) align_start, guest_size,
                                      PROT_NONE, flags, -1, 0);
             if (mmap_start != MAP_FAILED) {
-                munmap((void *) align_start, guest_size);
-                if (MAP_FIXED_NOREPLACE != 0 ||
-                    mmap_start == (void *) align_start) {
+                munmap(mmap_start, guest_size);
+                if (mmap_start == (void *) align_start) {
                     return (uintptr_t) mmap_start + offset;
                 }
             }
@@ -2259,7 +2235,8 @@ static uintptr_t pgb_find_hole(uintptr_t guest_loaddr, uintptr_t guest_size,
     brk = (uintptr_t)sbrk(0);
 
     if (!maps) {
-        return pgd_find_hole_fallback(guest_size, brk, align, offset);
+        ret = pgd_find_hole_fallback(guest_size, brk, align, offset);
+        return ret == -1 ? -1 : ret - guest_loaddr;
     }
 
     /* The first hole is before the first map entry. */

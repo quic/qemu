@@ -388,6 +388,9 @@ static ssize_t tcp_chr_recv(Chardev *chr, char *buf, size_t len)
 static GSource *tcp_chr_add_watch(Chardev *chr, GIOCondition cond)
 {
     SocketChardev *s = SOCKET_CHARDEV(chr);
+    if (!s->ioc) {
+        return NULL;
+    }
     return qio_channel_create_watch(s->ioc, cond);
 }
 
@@ -398,6 +401,13 @@ static void remove_hup_source(SocketChardev *s)
         g_source_unref(s->hup_source);
         s->hup_source = NULL;
     }
+}
+
+static void char_socket_yank_iochannel(void *opaque)
+{
+    QIOChannel *ioc = QIO_CHANNEL(opaque);
+
+    qio_channel_shutdown(ioc, QIO_CHANNEL_SHUTDOWN_BOTH, NULL);
 }
 
 static void tcp_chr_free_connection(Chardev *chr)
@@ -422,7 +432,7 @@ static void tcp_chr_free_connection(Chardev *chr)
         (s->state == TCP_CHARDEV_STATE_CONNECTING
         || s->state == TCP_CHARDEV_STATE_CONNECTED)) {
         yank_unregister_function(CHARDEV_YANK_INSTANCE(chr->label),
-                                 yank_generic_iochannel,
+                                 char_socket_yank_iochannel,
                                  QIO_CHANNEL(s->sioc));
     }
     object_unref(OBJECT(s->sioc));
@@ -450,7 +460,7 @@ static char *qemu_chr_socket_address(SocketChardev *s, const char *prefix)
                                qemu_chr_socket_protocol(s),
                                s->addr->u.inet.host,
                                s->addr->u.inet.port,
-                               s->is_listen ? ",server" : "");
+                               s->is_listen ? ",server=on" : "");
         break;
     case SOCKET_ADDRESS_TYPE_UNIX:
     {
@@ -468,12 +478,12 @@ static char *qemu_chr_socket_address(SocketChardev *s, const char *prefix)
 
         return g_strdup_printf("%sunix:%s%s%s%s", prefix, sa->path,
                                abstract, tight,
-                               s->is_listen ? ",server" : "");
+                               s->is_listen ? ",server=on" : "");
         break;
     }
     case SOCKET_ADDRESS_TYPE_FD:
         return g_strdup_printf("%sfd:%s%s", prefix, s->addr->u.fd.str,
-                               s->is_listen ? ",server" : "");
+                               s->is_listen ? ",server=on" : "");
         break;
     case SOCKET_ADDRESS_TYPE_VSOCK:
         return g_strdup_printf("%svsock:%s:%s", prefix,
@@ -605,7 +615,7 @@ static char *qemu_chr_compute_filename(SocketChardev *s)
     case AF_UNIX:
         return g_strdup_printf("unix:%s%s",
                                ((struct sockaddr_un *)(ss))->sun_path,
-                               s->is_listen ? ",server" : "");
+                               s->is_listen ? ",server=on" : "");
 #endif
     case AF_INET6:
         left  = "[";
@@ -619,7 +629,7 @@ static char *qemu_chr_compute_filename(SocketChardev *s)
         return g_strdup_printf("%s:%s%s%s:%s%s <-> %s%s%s:%s",
                                qemu_chr_socket_protocol(s),
                                left, shost, right, sserv,
-                               s->is_listen ? ",server" : "",
+                               s->is_listen ? ",server=on" : "",
                                left, phost, right, pserv);
 
     default:
@@ -944,7 +954,7 @@ static int tcp_chr_add_client(Chardev *chr, int fd)
     tcp_chr_set_client_ioc_name(chr, sioc);
     if (s->registered_yank) {
         yank_register_function(CHARDEV_YANK_INSTANCE(chr->label),
-                               yank_generic_iochannel,
+                               char_socket_yank_iochannel,
                                QIO_CHANNEL(sioc));
     }
     ret = tcp_chr_new_client(chr, sioc);
@@ -963,7 +973,7 @@ static void tcp_chr_accept(QIONetListener *listener,
     tcp_chr_set_client_ioc_name(chr, cioc);
     if (s->registered_yank) {
         yank_register_function(CHARDEV_YANK_INSTANCE(chr->label),
-                               yank_generic_iochannel,
+                               char_socket_yank_iochannel,
                                QIO_CHANNEL(cioc));
     }
     tcp_chr_new_client(chr, cioc);
@@ -983,7 +993,7 @@ static int tcp_chr_connect_client_sync(Chardev *chr, Error **errp)
     }
     if (s->registered_yank) {
         yank_register_function(CHARDEV_YANK_INSTANCE(chr->label),
-                               yank_generic_iochannel,
+                               char_socket_yank_iochannel,
                                QIO_CHANNEL(sioc));
     }
     tcp_chr_new_client(chr, sioc);
@@ -1003,7 +1013,7 @@ static void tcp_chr_accept_server_sync(Chardev *chr)
     tcp_chr_set_client_ioc_name(chr, sioc);
     if (s->registered_yank) {
         yank_register_function(CHARDEV_YANK_INSTANCE(chr->label),
-                               yank_generic_iochannel,
+                               char_socket_yank_iochannel,
                                QIO_CHANNEL(sioc));
     }
     tcp_chr_new_client(chr, sioc);
@@ -1117,7 +1127,13 @@ static void char_socket_finalize(Object *obj)
     }
     g_free(s->tls_authz);
     if (s->registered_yank) {
-        yank_unregister_instance(CHARDEV_YANK_INSTANCE(chr->label));
+        /*
+         * In the chardev-change special-case, we shouldn't unregister the yank
+         * instance, as it still may be needed.
+         */
+        if (!chr->handover_yank_instance) {
+            yank_unregister_instance(CHARDEV_YANK_INSTANCE(chr->label));
+        }
     }
 
     qemu_chr_be_event(chr, CHR_EVENT_CLOSED);
@@ -1136,7 +1152,7 @@ static void qemu_chr_socket_connected(QIOTask *task, void *opaque)
         tcp_chr_change_state(s, TCP_CHARDEV_STATE_DISCONNECTED);
         if (s->registered_yank) {
             yank_unregister_function(CHARDEV_YANK_INSTANCE(chr->label),
-                                     yank_generic_iochannel,
+                                     char_socket_yank_iochannel,
                                      QIO_CHANNEL(sioc));
         }
         check_report_connect_error(chr, err);
@@ -1174,7 +1190,7 @@ static void tcp_chr_connect_client_async(Chardev *chr)
     tcp_chr_set_client_ioc_name(chr, sioc);
     if (s->registered_yank) {
         yank_register_function(CHARDEV_YANK_INSTANCE(chr->label),
-                               yank_generic_iochannel,
+                               char_socket_yank_iochannel,
                                QIO_CHANNEL(sioc));
     }
     /*
@@ -1337,14 +1353,10 @@ static bool qmp_chardev_validate_socket(ChardevSocket *sock,
             return false;
         }
         if (sock->has_wait) {
-            warn_report("'wait' option is deprecated with "
-                        "socket in client connect mode");
-            if (sock->wait) {
-                error_setg(errp, "%s",
-                           "'wait' option is incompatible with "
-                           "socket in client connect mode");
-                return false;
-            }
+            error_setg(errp, "%s",
+                       "'wait' option is incompatible with "
+                       "socket in client connect mode");
+            return false;
         }
     }
 
@@ -1425,8 +1437,14 @@ static void qmp_chardev_open_socket(Chardev *chr,
         qemu_chr_set_feature(chr, QEMU_CHAR_FEATURE_FD_PASS);
     }
 
-    if (!yank_register_instance(CHARDEV_YANK_INSTANCE(chr->label), errp)) {
-        return;
+    /*
+     * In the chardev-change special-case, we shouldn't register a new yank
+     * instance, as there already may be one.
+     */
+    if (!chr->handover_yank_instance) {
+        if (!yank_register_instance(CHARDEV_YANK_INSTANCE(chr->label), errp)) {
+            return;
+        }
     }
     s->registered_yank = true;
 
@@ -1476,8 +1494,17 @@ static void qemu_chr_parse_socket(QemuOpts *opts, ChardevBackend *backend,
     sock = backend->u.socket.data = g_new0(ChardevSocket, 1);
     qemu_chr_parse_common(opts, qapi_ChardevSocket_base(sock));
 
-    sock->has_nodelay = qemu_opt_get(opts, "delay");
-    sock->nodelay = !qemu_opt_get_bool(opts, "delay", true);
+    if (qemu_opt_get(opts, "delay") && qemu_opt_get(opts, "nodelay")) {
+        error_setg(errp, "'delay' and 'nodelay' are mutually exclusive");
+        return;
+    }
+    sock->has_nodelay =
+        qemu_opt_get(opts, "delay") ||
+        qemu_opt_get(opts, "nodelay");
+    sock->nodelay =
+        !qemu_opt_get_bool(opts, "delay", true) ||
+        qemu_opt_get_bool(opts, "nodelay", false);
+
     /*
      * We have different default to QMP for 'server', hence
      * we can't just check for existence of 'server'
@@ -1565,6 +1592,8 @@ char_socket_get_connected(Object *obj, Error **errp)
 static void char_socket_class_init(ObjectClass *oc, void *data)
 {
     ChardevClass *cc = CHARDEV_CLASS(oc);
+
+    cc->supports_yank = true;
 
     cc->parse = qemu_chr_parse_socket;
     cc->open = qmp_chardev_open_socket;

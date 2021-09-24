@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,11 +31,6 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #include "insn.h"
 #include <fenv.h>
 
-#ifdef CONFIG_USER_ONLY
-#define TARGET_PAGE_BITS 16     /* 64K pages */
-#else
-#define TARGET_PAGE_BITS 12     /* 4K pages */
-#endif
 #define TARGET_LONG_BITS 32
 #define NUM_TLB_REGS(PROC) NUM_TLB_ENTRIES
 
@@ -354,8 +349,8 @@ typedef struct hmx_mem_access_info {
 #include "xlate_info.h"
 
 typedef struct {
-    vaddr_t vaddr;
-    vaddr_t bad_vaddr;
+    target_ulong vaddr;
+    target_ulong bad_vaddr;
     paddr_t paddr;
     size4u_t range;
     size8u_t lddata;
@@ -451,9 +446,9 @@ struct CPUHexagonState {
     target_ulong next_PC;
     target_ulong cause_code;
 
-    /* For comparing with LLDB on target - see hack_stack_ptrs function */
+    /* For comparing with LLDB on target - see adjust_stack_ptrs function */
+    target_ulong last_pc_dumped;
     target_ulong stack_start;
-    target_ulong stack_adjust;
 
     uint8_t slot_cancelled;
     target_ulong new_value[TOTAL_PER_THREAD_REGS];
@@ -479,11 +474,7 @@ struct CPUHexagonState {
     target_ulong pred_written;
 
     struct MemLog mem_log_stores[STORES_MAX];
-
-#ifndef CONFIG_USER_ONLY
-    int slot;                    /* Needed for exception generation */
-#endif
-
+    target_ulong pkt_has_store_s1;
     target_ulong dczero_addr;
 
     fenv_t fenv;
@@ -536,6 +527,7 @@ struct CPUHexagonState {
     system_t *system_ptr;
     FILE *fp_hmx_debug;
 #ifndef CONFIG_USER_ONLY
+    int slot;                    /* Needed for exception generation */
     systemstate_t systemstate;
     const char *cmdline;
     CPUHexagonTLBContext *hex_tlb;
@@ -583,6 +575,8 @@ typedef struct HexagonCPU {
     uint32_t boot_addr;
     uint32_t boot_evb;
 #endif
+    bool lldb_compat;
+    target_ulong lldb_stack_adjust;
 } HexagonCPU;
 
 static inline HexagonCPU *hexagon_env_get_cpu(CPUHexagonState *env)

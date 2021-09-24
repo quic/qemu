@@ -47,7 +47,7 @@ static int worker_cb(void *opaque)
         err = 1;
     }
 
-    virtio_stw_p(req_data->vdev, &req_data->resp.ret, err);
+    virtio_stl_p(req_data->vdev, &req_data->resp.ret, err);
 
     return 0;
 }
@@ -179,6 +179,7 @@ static void virtio_pmem_class_init(ObjectClass *klass, void *data)
 
     vpc->fill_device_info = virtio_pmem_fill_device_info;
     vpc->get_memory_region = virtio_pmem_get_memory_region;
+    set_bit(DEVICE_CATEGORY_STORAGE, dc->categories);
 }
 
 static TypeInfo virtio_pmem_info = {

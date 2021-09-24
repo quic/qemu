@@ -290,7 +290,6 @@ typedef enum X86Seg {
 #define PG_GLOBAL_MASK   (1 << PG_GLOBAL_BIT)
 #define PG_PSE_PAT_MASK  (1 << PG_PSE_PAT_BIT)
 #define PG_ADDRESS_MASK  0x000ffffffffff000LL
-#define PG_HI_RSVD_MASK  (PG_ADDRESS_MASK & ~PHYS_ADDR_MASK)
 #define PG_HI_USER_MASK  0x7ff0000000000000LL
 #define PG_PKRU_MASK     (15ULL << PG_PKRU_BIT)
 #define PG_NX_MASK       (1ULL << PG_NX_BIT)
@@ -769,6 +768,8 @@ typedef uint64_t FeatureWordArray[FEATURE_WORDS];
 #define CPUID_7_0_ECX_LA57              (1U << 16)
 /* Read Processor ID */
 #define CPUID_7_0_ECX_RDPID             (1U << 22)
+/* Bus Lock Debug Exception */
+#define CPUID_7_0_ECX_BUS_LOCK_DETECT   (1U << 24)
 /* Cache Line Demote Instruction */
 #define CPUID_7_0_ECX_CLDEMOTE          (1U << 25)
 /* Move Doubleword as Direct Store Instruction */
@@ -817,8 +818,12 @@ typedef uint64_t FeatureWordArray[FEATURE_WORDS];
 #define CPUID_8000_0008_EBX_WBNOINVD    (1U << 9)
 /* Indirect Branch Prediction Barrier */
 #define CPUID_8000_0008_EBX_IBPB        (1U << 12)
+/* Indirect Branch Restricted Speculation */
+#define CPUID_8000_0008_EBX_IBRS        (1U << 14)
 /* Single Thread Indirect Branch Predictors */
 #define CPUID_8000_0008_EBX_STIBP       (1U << 15)
+/* Speculative Store Bypass Disable */
+#define CPUID_8000_0008_EBX_AMD_SSBD    (1U << 24)
 
 #define CPUID_XSAVE_XSAVEOPT   (1U << 0)
 #define CPUID_XSAVE_XSAVEC     (1U << 1)

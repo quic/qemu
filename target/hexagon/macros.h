@@ -21,6 +21,7 @@
 #include "cpu.h"
 #include "hex_regs.h"
 #include "reg_fields.h"
+#include "op_helper.h"
 
 #ifdef QEMU_GENERATE
 #define DECL_REG(NAME, NUM, X, OFF) \
@@ -678,44 +679,44 @@
 #define CHECK_NOSHUF(DST, VA, SZ, SIGN) \
     do { \
         if (insn->slot == 0 && pkt->pkt_has_scalar_store_s1) { \
-            gen_helper_merge_inflight_store##SZ##SIGN(DST, cpu_env, VA, DST); \
+            process_store(ctx, pkt, 1); \
         } \
     } while (0)
 
 #define MEM_LOAD1s(DST, VA) \
     do { \
-        tcg_gen_qemu_ld8s(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 1, s); \
+        tcg_gen_qemu_ld8s(DST, VA, ctx->mem_idx); \
     } while (0)
 #define MEM_LOAD1u(DST, VA) \
     do { \
-        tcg_gen_qemu_ld8u(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 1, u); \
+        tcg_gen_qemu_ld8u(DST, VA, ctx->mem_idx); \
     } while (0)
 #define MEM_LOAD2s(DST, VA) \
     do { \
-        tcg_gen_qemu_ld16s(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 2, s); \
+        tcg_gen_qemu_ld16s(DST, VA, ctx->mem_idx); \
     } while (0)
 #define MEM_LOAD2u(DST, VA) \
     do { \
-        tcg_gen_qemu_ld16u(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 2, u); \
+        tcg_gen_qemu_ld16u(DST, VA, ctx->mem_idx); \
     } while (0)
 #define MEM_LOAD4s(DST, VA) \
     do { \
-        tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 4, s); \
+        tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
     } while (0)
 #define MEM_LOAD4u(DST, VA) \
     do { \
-        tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 4, u); \
+        tcg_gen_qemu_ld32s(DST, VA, ctx->mem_idx); \
     } while (0)
 #define MEM_LOAD8u(DST, VA) \
     do { \
-        tcg_gen_qemu_ld64(DST, VA, ctx->mem_idx); \
         CHECK_NOSHUF(DST, VA, 8, u); \
+        tcg_gen_qemu_ld64(DST, VA, ctx->mem_idx); \
     } while (0)
 
 #define MEM_STORE1_FUNC(X) \
@@ -738,8 +739,8 @@
 #define MEM_STORE8(VA, DATA, SLOT) \
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
 #else
-#define MEM_LOAD4u(VA) mem_load4(env, VA)
-#define MEM_LOAD8u(VA) mem_load8(env, VA)
+#define MEM_LOAD4u(VA) mem_load4(env, slot, VA)
+#define MEM_LOAD8u(VA) mem_load8(env, slot, VA)
 
 #define MEM_STORE0(VA, DATA, SLOT) log_store32(env, VA, DATA, 0, SLOT)
 #define MEM_STORE1(VA, DATA, SLOT) log_store32(env, VA, DATA, 1, SLOT)
@@ -1646,17 +1647,17 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
             fSETBIT(j, DST, VAL); \
         } \
     } while (0)
-#define fCOUNTONES_2(VAL) count_ones_2(VAL)
-#define fCOUNTONES_4(VAL) count_ones_4(VAL)
-#define fCOUNTONES_8(VAL) count_ones_8(VAL)
-#define fBREV_8(VAL) reverse_bits_8(VAL)
-#define fBREV_4(VAL) reverse_bits_4(VAL)
-#define fBREV_2(VAL) reverse_bits_2(VAL)
-#define fBREV_1(VAL) reverse_bits_1(VAL)
-#define fCL1_8(VAL) count_leading_ones_8(VAL)
-#define fCL1_4(VAL) count_leading_ones_4(VAL)
-#define fCL1_2(VAL) count_leading_ones_2(VAL)
-#define fCL1_1(VAL) count_leading_ones_1(VAL)
+#define fCOUNTONES_2(VAL) ctpop16(VAL)
+#define fCOUNTONES_4(VAL) ctpop32(VAL)
+#define fCOUNTONES_8(VAL) ctpop64(VAL)
+#define fBREV_8(VAL) revbit64(VAL)
+#define fBREV_4(VAL) revbit32(VAL)
+#define fBREV_2(VAL) revbit16(VAL)
+#define fBREV_1(VAL) revbit8(VAL)
+#define fCL1_8(VAL) clo64(VAL)
+#define fCL1_4(VAL) clo32(VAL)
+#define fCL1_2(VAL) clo16(VAL)
+#define fCL1_1(VAL) clo8(VAL)
 #define fINTERLEAVE(ODD, EVEN) interleave(ODD, EVEN)
 #define fDEINTERLEAVE(MIXED) deinterleave(MIXED)
 #define fNORM16(VAL) \

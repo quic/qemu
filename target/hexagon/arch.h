@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,40 +18,24 @@
 #ifndef HEXAGON_ARCH_H
 #define HEXAGON_ARCH_H
 
-#include "cpu.h"
-#include "hex_arch_types.h"
+#include "qemu/int128.h"
 
-extern size1u_t rLPS_table_64x4[64][4];
-extern size1u_t AC_next_state_MPS_64[64];
-extern size1u_t AC_next_state_LPS_64[64];
-
-extern size4u_t fbrevaddr(size4u_t pointer);
-extern size4u_t count_ones_2(size2u_t src);
-extern size4u_t count_ones_4(size4u_t src);
-extern size4u_t count_ones_8(size8u_t src);
-extern size4u_t count_leading_ones_4(size4u_t src);
-extern size4u_t count_leading_ones_2(size2u_t src);
-extern size4u_t count_leading_ones_1(size1u_t src);
-extern size8u_t reverse_bits_8(size8u_t src);
-extern size4u_t reverse_bits_4(size4u_t src);
-extern size4u_t reverse_bits_2(size2u_t src);
-extern size4u_t reverse_bits_1(size1u_t src);
-extern size8u_t exchange(size8u_t bits, size4u_t cntrl);
-extern size8u_t interleave(size4u_t odd, size4u_t even);
-extern size8u_t deinterleave(size8u_t src);
-extern size4u_t carry_from_add64(size8u_t a, size8u_t b, size4u_t c);
-extern size4s_t conv_round(size4s_t a, int n);
-extern void arch_fpop_start(CPUHexagonState *env);
-extern void arch_fpop_end(CPUHexagonState *env);
-extern void arch_raise_fpflag(unsigned int flags);
-extern int arch_sf_recip_common(float32 *Rs, float32 *Rt, float32 *Rd, int *adjust,
-                         float_status *fp_status);
-extern int arch_sf_invsqrt_common(float32 *Rs, float32 *Rd, int *adjust,
-                           float_status *fp_status);
-extern int arch_recip_lookup(int index);
-extern int arch_invsqrt_lookup(int index);
+uint64_t interleave(uint32_t odd, uint32_t even);
+uint64_t deinterleave(uint64_t src);
+uint32_t carry_from_add64(uint64_t a, uint64_t b, uint32_t c);
+int32_t conv_round(int32_t a, int n);
+void arch_fpop_start(CPUHexagonState *env);
+void arch_fpop_end(CPUHexagonState *env);
+int arch_sf_recip_common(float32 *Rs, float32 *Rt, float32 *Rd,
+                         int *adjust, float_status *fp_status);
+int arch_sf_invsqrt_common(float32 *Rs, float32 *Rd, int *adjust,
+                          float_status *fp_status);
 
 extern const uint8_t recip_lookup_table[128];
+
 extern const uint8_t invsqrt_lookup_table[128];
+extern const size1u_t rLPS_table_64x4[64][4];
+extern const size1u_t AC_next_state_MPS_64[64];
+extern const size1u_t AC_next_state_LPS_64[64];
 
 #endif
