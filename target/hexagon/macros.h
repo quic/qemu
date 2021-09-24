@@ -647,7 +647,7 @@
                    reg_field_info[FIELD].offset)
 
 #define SET_USR_FIELD(FIELD, VAL) \
-    fINSERT_BITS(env->gpr[HEX_REG_USR], reg_field_info[FIELD].width, \
+    fINSERT_BITS(env->new_value[HEX_REG_USR], reg_field_info[FIELD].width, \
                  reg_field_info[FIELD].offset, (VAL))
 #endif
 
@@ -1085,16 +1085,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fCARRY_FROM_ADD(A, B, C) carry_from_add64(A, B, C)
 #endif
 
-#define fSETCV_ADD(A, B, CARRY) \
-    do { \
-        SET_USR_FIELD(USR_C, gen_carry_add((A), (B), ((A) + (B)))); \
-        SET_USR_FIELD(USR_V, gen_overflow_add((A), (B), ((A) + (B)))); \
-    } while (0)
-#define fSETCV_SUB(A, B, CARRY) \
-    do { \
-        SET_USR_FIELD(USR_C, gen_carry_add((A), (B), ((A) - (B)))); \
-        SET_USR_FIELD(USR_V, gen_overflow_add((A), (B), ((A) - (B)))); \
-    } while (0)
 #define fSET_OVERFLOW() SET_USR_FIELD(USR_OVF, 1)
 #define fSET_LPCFG(VAL) SET_USR_FIELD(USR_LPCFG, (VAL))
 #define fGET_LPCFG (GET_USR_FIELD(USR_LPCFG))

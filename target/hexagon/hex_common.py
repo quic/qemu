@@ -118,6 +118,8 @@ def calculate_attribs():
     add_qemu_macro_attrib('fWRITE_P1', 'A_WRITES_PRED_REG')
     add_qemu_macro_attrib('fWRITE_P2', 'A_WRITES_PRED_REG')
     add_qemu_macro_attrib('fWRITE_P3', 'A_WRITES_PRED_REG')
+    add_qemu_macro_attrib('fSET_OVERFLOW', 'A_IMPLICIT_WRITES_USR')
+    add_qemu_macro_attrib('fSET_LPCFG', 'A_IMPLICIT_WRITES_USR')
 
     add_qemu_macro_attrib('fLOAD_LOCKED', 'A_LLSC')
     add_qemu_macro_attrib('fSTORE_LOCKED', 'A_LLSC')
