@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,10 +18,9 @@
 #include "qemu/osdep.h"
 #include "reg_fields.h"
 
-reg_field_t reg_field_info[] = {
-#define DEF_REG_FIELD(TAG, NAME, START, WIDTH, DESCRIPTION)    \
-      {NAME, START, WIDTH, DESCRIPTION},
-#include "reg_fields_def.h"
-      {NULL, 0, 0}
+const RegField reg_field_info[NUM_REG_FIELDS] = {
+#define DEF_REG_FIELD(TAG, START, WIDTH)    \
+      { START, WIDTH },
+#include "reg_fields_def.h.inc"
 #undef DEF_REG_FIELD
 };

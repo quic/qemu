@@ -2,6 +2,15 @@ config APPLESMC
     bool
     depends on ISA_BUS
 
+config ARMSSE_CPUID
+    bool
+
+config ARMSSE_MHU
+    bool
+
+config ARMSSE_CPU_PWRCTRL
+    bool
+
 config MAX111X
     bool
 
@@ -172,6 +181,9 @@ config SIFIVE_U_OTP
     bool
 
 config SIFIVE_U_PRCI
+    bool
+
+config VIRT_CTRL
     bool
 
 source macio/Kconfig

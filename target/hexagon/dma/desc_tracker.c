@@ -148,7 +148,7 @@ desc_unreleased_check ( processor_t *proc, int dmanum)
       	desc = (desc_tracker_entry_t *)((char *)walk - offsetof(desc_tracker_entry_t, node));
         if (desc) {
 			if (desc->pcycle) {
-          		printf("DMA%d: descriptor hasn't been released at exit: desc id:%lld, birth:%lld\n", dmanum, desc->id, desc->pcycle);
+          		printf("DMA%d: descriptor hasn't been released at exit: desc id:%lld, birth:%llu\n", dmanum, desc->id, desc->pcycle);
             	stuck = 1;
 			}
         }
@@ -173,7 +173,7 @@ void desc_tracker_dump_one(const processor_t *proc, const desc_tracker_entry_t *
 	if (entry == NULL) {
 		fputs("null", file);
 	} else{
-		fprintf(file, "{ id:%lld, birth:%lld", entry->id, entry->pcycle);
+		fprintf(file, "{ id:%lld, birth:%llu", entry->id, entry->pcycle);
 		//fprintf(file, ", pc_va:%X, paddr:%llX, pktid:%lld, ma_type:%d",
 		//		desc->ma.pc_va, desc->ma.paddr, entry->uma.packet_id, desc->ma.type);
 		//fprintf(file, ", uma_type: %d", desc->uma.access_type);

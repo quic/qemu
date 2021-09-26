@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,10 +18,6 @@
 #ifndef HEXAGON_ATTRIBS_H
 #define HEXAGON_ATTRIBS_H
 
-#if 0
-#include </local/mnt2/workspace2/qemu/do_qemu_02/include/qemu/bitmap.h>
-#endif
-
 #include "qemu/bitmap.h"
 #include "opcodes.h"
 
@@ -32,6 +28,7 @@ enum {
 };
 
 extern DECLARE_BITMAP(opcode_attribs[XX_LAST_OPCODE], A_ZZ_LASTATTRIB);
+
 #define GET_ATTRIB(opcode, attrib) \
     test_bit(attrib, opcode_attribs[opcode])
 

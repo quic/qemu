@@ -175,19 +175,19 @@ void enable_core_interrupt()
     assign_l2irq_to_l1int(IRQ, 4);
 }
 
+void pause();
 int waste_some_time(int count)
 {
-    /* Don't want the optimizer to stop this */
-    volatile int i, j, k, res = 0;
-    for (i = 0; i < count; i++) {
-        for (j = 0; j < 10; j++) {
-            for (k = 0; k < 100; k++) {
-                res += j;
-            }
-        }
-        res += k;
+    uint64_t delay_cycles = (10000 * count);
+
+    /* This unnatural arithmetic is designed to handle
+     * overflow.
+     */
+    const uint64_t start_time = my_read_pcycles();
+    while ((my_read_pcycles() - delay_cycles) >= start_time) {
+        pause();
     }
-    return res;
+    return delay_cycles;
 }
 
 char __attribute__((aligned(16))) stack1[STACK_SIZE];
@@ -283,9 +283,9 @@ int main()
         for (j = 0; j < 4; j++) {
             *FAST_INTF_VA = (2 << 16) + IRQ[j];
         }
-        waste_some_time(5);
+        waste_some_time(50);
     }
-    waste_some_time(5);
+    waste_some_time(50);
 
     /* Each of the selected HW threads should get at least one interrupt */
     for (i = 1; i < 3; i++) {

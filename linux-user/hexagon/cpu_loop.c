@@ -2,7 +2,7 @@
  *  qemu user cpu loop
  *
  *  Copyright (c) 2003-2008 Fabrice Bellard
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include "qemu/osdep.h"
 #include "qemu.h"
 #include "cpu_loop-common.h"
-#include "internal_helpers.h"
+#include "target/hexagon/internal.h"
 
 void cpu_loop(CPUHexagonState *env)
 {
@@ -78,9 +78,9 @@ void cpu_loop(CPUHexagonState *env)
             case HEX_CAUSE_FETCH_NO_UPAGE:
             case HEX_CAUSE_PRIV_NO_UREAD:
             case HEX_CAUSE_PRIV_NO_UWRITE:
-                signum = TARGET_SIGSEGV;
-                sigcode = TARGET_SEGV_MAPERR;
-               break;
+            signum = TARGET_SIGSEGV;
+            sigcode = TARGET_SEGV_MAPERR;
+            break;
             default:
                 EXCP_DUMP(env, "\nqemu: unhandled CPU precise exception "
                     "%#x/%#x - aborting\n",
@@ -123,4 +123,5 @@ void target_cpu_copy_regs(CPUArchState *env, struct target_pt_regs *regs)
 {
     env->gpr[HEX_REG_PC] = regs->sepc;
     env->gpr[HEX_REG_SP] = regs->sp;
+    env->gpr[HEX_REG_USR] = 0x56000;
 }

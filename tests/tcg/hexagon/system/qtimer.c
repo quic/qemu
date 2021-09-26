@@ -229,7 +229,7 @@ int main()
     init_qtimers(3);
     int last = 1;
 
-    while (qtimer2_cnt < 50) {
+    while (qtimer2_cnt < 25) {
         /* Thread 0 waits for interrupts */
 	if (last == qtimer2_cnt) printf ("tick: %d\n", qtimer2_cnt);
 	last = qtimer2_cnt+1;

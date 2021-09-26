@@ -1,3 +1,4 @@
+#error "delete me"
 /*
  *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *

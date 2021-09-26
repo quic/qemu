@@ -24,6 +24,7 @@ qapi_all_modules = [
   'block-export',
   'char',
   'common',
+  'compat',
   'control',
   'crypto',
   'dump',
@@ -102,11 +103,15 @@ foreach module : qapi_all_modules
     'qapi-types-@0@.h'.format(module),
     'qapi-visit-@0@.c'.format(module),
     'qapi-visit-@0@.h'.format(module),
-    'qapi-events-@0@.c'.format(module),
-    'qapi-events-@0@.h'.format(module),
-    'qapi-commands-@0@.c'.format(module),
-    'qapi-commands-@0@.h'.format(module),
   ]
+  if have_system or have_tools
+    qapi_module_outputs += [
+      'qapi-events-@0@.c'.format(module),
+      'qapi-events-@0@.h'.format(module),
+      'qapi-commands-@0@.c'.format(module),
+      'qapi-commands-@0@.h'.format(module),
+    ]
+  endif
   if module.endswith('-target')
     qapi_specific_outputs += qapi_module_outputs
   else

@@ -39,7 +39,6 @@
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
 #endif
-#include "op_helper.h"
 #include "sysemu/runstate.h"
 
 #ifndef CONFIG_USER_ONLY
@@ -1014,14 +1013,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     qemu_log_mask(CPU_LOG_INT,
             "\t%s: event 0x%x, cause 0x%x\n", __func__,
             cs->exception_index, env->cause_code);
-
-#if CHECK_EX
-    const uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    target_ulong EX = GET_SSR_FIELD(SSR_EX, ssr);
-    if (EX && env->cause_code != HEX_CAUSE_IMPRECISE_NMI) {
-        cpu_abort(cs, "hexagon_cpu_do_interrupt: EX already set, exiting\n");
-    }
-#endif
 
         int int_num = -1;
     switch (cs->exception_index) {

@@ -176,7 +176,7 @@ SRST
 
     ``thread=single|multi``
         Controls number of TCG threads. When the TCG is multi-threaded
-        there will be one thread per vCPU therefor taking advantage of
+        there will be one thread per vCPU therefore taking advantage of
         additional host cores. The default is to enable multi-threading
         where both the back-end and front-ends support it and no
         incompatible TCG features have been enabled (e.g.
@@ -1705,7 +1705,7 @@ ERST
 
 DEFHEADING()
 
-DEFHEADING(USB options:)
+DEFHEADING(USB convenience options:)
 
 DEF("usb", 0, QEMU_OPTION_usb,
     "-usb            enable on-board USB host controller (if not enabled by default)\n",
@@ -1723,9 +1723,28 @@ DEF("usbdevice", HAS_ARG, QEMU_OPTION_usbdevice,
     QEMU_ARCH_ALL)
 SRST
 ``-usbdevice devname``
-    Add the USB device devname. Note that this option is deprecated,
-    please use ``-device usb-...`` instead. See the chapter about
+    Add the USB device devname, and enable an on-board USB controller
+    if possible and necessary (just like it can be done via
+    ``-machine usb=on``). Note that this option is mainly intended for
+    the user's convenience only. More fine-grained control can be
+    achieved by selecting a USB host controller (if necessary) and the
+    desired USB device via the ``-device`` option instead. For example,
+    instead of using ``-usbdevice mouse`` it is possible to use
+    ``-device qemu-xhci -device usb-mouse`` to connect the USB mouse
+    to a USB 3.0 controller instead (at least on machines that support
+    PCI and do not have an USB controller enabled by default yet).
+    For more details, see the chapter about
     :ref:`Connecting USB devices` in the System Emulation Users Guide.
+    Possible devices for devname are:
+
+    ``braille``
+        Braille device. This will use BrlAPI to display the braille
+        output on a real or fake device (i.e. it also creates a
+        corresponding ``braille`` chardev automatically beside the
+        ``usb-braille`` USB device).
+
+    ``keyboard``
+        Standard USB keyboard. Will override the PS/2 keyboard (if present).
 
     ``mouse``
         Virtual Mouse. This will override the PS/2 mouse emulation when
@@ -1737,9 +1756,10 @@ SRST
         position without having to grab the mouse. Also overrides the
         PS/2 mouse emulation when activated.
 
-    ``braille``
-        Braille device. This will use BrlAPI to display the braille
-        output on a real or fake device.
+    ``wacom-tablet``
+        Wacom PenPartner USB tablet.
+
+
 ERST
 
 DEFHEADING()
@@ -1894,16 +1914,18 @@ DEF("spice", HAS_ARG, QEMU_OPTION_spice,
     "-spice [port=port][,tls-port=secured-port][,x509-dir=<dir>]\n"
     "       [,x509-key-file=<file>][,x509-key-password=<file>]\n"
     "       [,x509-cert-file=<file>][,x509-cacert-file=<file>]\n"
-    "       [,x509-dh-key-file=<file>][,addr=addr][,ipv4|ipv6|unix]\n"
+    "       [,x509-dh-key-file=<file>][,addr=addr]\n"
+    "       [,ipv4=on|off][,ipv6=on|off][,unix=on|off]\n"
     "       [,tls-ciphers=<list>]\n"
     "       [,tls-channel=[main|display|cursor|inputs|record|playback]]\n"
     "       [,plaintext-channel=[main|display|cursor|inputs|record|playback]]\n"
-    "       [,sasl][,password=<secret>][,disable-ticketing]\n"
+    "       [,sasl=on|off][,disable-ticketing=on|off]\n"
+    "       [,password=<string>][,password-secret=<secret-id>]\n"
     "       [,image-compression=[auto_glz|auto_lz|quic|glz|lz|off]]\n"
     "       [,jpeg-wan-compression=[auto|never|always]]\n"
     "       [,zlib-glz-wan-compression=[auto|never|always]]\n"
-    "       [,streaming-video=[off|all|filter]][,disable-copy-paste]\n"
-    "       [,disable-agent-file-xfer][,agent-mouse=[on|off]]\n"
+    "       [,streaming-video=[off|all|filter]][,disable-copy-paste=on|off]\n"
+    "       [,disable-agent-file-xfer=on|off][,agent-mouse=[on|off]]\n"
     "       [,playback-compression=[on|off]][,seamless-migration=[on|off]]\n"
     "       [,gl=[on|off]][,rendernode=<file>]\n"
     "   enable spice\n"
@@ -1920,13 +1942,21 @@ SRST
         Set the IP address spice is listening on. Default is any
         address.
 
-    ``ipv4``; \ ``ipv6``; \ ``unix``
+    ``ipv4=on|off``; \ ``ipv6=on|off``; \ ``unix=on|off``
         Force using the specified IP version.
 
-    ``password=<secret>``
+    ``password=<string>``
         Set the password you need to authenticate.
 
-    ``sasl``
+        This option is deprecated and insecure because it leaves the
+        password visible in the process listing. Use ``password-secret``
+        instead.
+
+    ``password-secret=<secret-id>``
+        Set the ID of the ``secret`` object containing the password
+        you need to authenticate.
+
+    ``sasl=on|off``
         Require that the client use SASL to authenticate with the spice.
         The exact choice of authentication method used is controlled
         from the system / user's SASL configuration file for the 'qemu'
@@ -1940,13 +1970,13 @@ SRST
         data encryption preventing compromise of authentication
         credentials.
 
-    ``disable-ticketing``
+    ``disable-ticketing=on|off``
         Allow client connects without authentication.
 
-    ``disable-copy-paste``
+    ``disable-copy-paste=on|off``
         Disable copy paste between the client and the guest.
 
-    ``disable-agent-file-xfer``
+    ``disable-agent-file-xfer=on|off``
         Disable spice-vdagent based file-xfer between the client and the
         guest.
 
@@ -2122,13 +2152,13 @@ SRST
     Following the display value there may be one or more option flags
     separated by commas. Valid options are
 
-    ``reverse``
+    ``reverse=on|off``
         Connect to a listening VNC client via a "reverse" connection.
         The client is specified by the display. For reverse network
         connections (host:d,``reverse``), the d argument is a TCP port
         number, not a display number.
 
-    ``websocket``
+    ``websocket=on|off``
         Opens an additional TCP listening port dedicated to VNC
         Websocket connections. If a bare websocket option is given, the
         Websocket port is 5700+display. An alternative port can be
@@ -2142,7 +2172,7 @@ SRST
         runs in unencrypted mode. If TLS credentials are provided, the
         websocket connection requires encrypted client connections.
 
-    ``password``
+    ``password=on|off``
         Require that password based authentication is used for client
         connections.
 
@@ -2164,6 +2194,11 @@ SRST
         time to allow <protocol> password to expire immediately or never
         expire.
 
+    ``password-secret=<secret-id>``
+        Require that password based authentication is used for client
+        connections, using the password provided by the ``secret``
+        object identified by ``secret-id``.
+
     ``tls-creds=ID``
         Provides the ID of a set of TLS credentials to use to secure the
         VNC server. They will apply to both the normal VNC server socket
@@ -2179,7 +2214,7 @@ SRST
         on the fly while the VNC server is active. If missing, it will
         default to denying access.
 
-    ``sasl``
+    ``sasl=on|off``
         Require that the client use SASL to authenticate with the VNC
         server. The exact choice of authentication method used is
         controlled from the system / user's SASL configuration file for
@@ -2202,7 +2237,7 @@ SRST
         fly while the VNC server is active. If missing, it will default
         to denying access.
 
-    ``acl``
+    ``acl=on|off``
         Legacy method for enabling authorization of clients against the
         x509 distinguished name and SASL username. It results in the
         creation of two ``authz-list`` objects with IDs of
@@ -2212,13 +2247,13 @@ SRST
         This option is deprecated and should no longer be used. The new
         ``sasl-authz`` and ``tls-authz`` options are a replacement.
 
-    ``lossy``
+    ``lossy=on|off``
         Enable lossy compression methods (gradient, JPEG, ...). If this
         option is set, VNC client may receive lossy framebuffer updates
         depending on its encoding settings. Enabling this option can
         save a lot of bandwidth at the expense of quality.
 
-    ``non-adaptive``
+    ``non-adaptive=on|off``
         Disable adaptive encodings. Adaptive encodings are enabled by
         default. An adaptive encoding will try to detect frequently
         updated screen regions, and send updates in these regions using
@@ -2253,7 +2288,7 @@ SRST
         must be omitted, otherwise is must be present and specify a
         valid audiodev.
 
-    ``power-control``
+    ``power-control=on|off``
         Permit the remote client to issue shutdown, reboot or reset power
         control requests.
 ERST
@@ -2405,8 +2440,8 @@ DEFHEADING(Network options:)
 
 DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
 #ifdef CONFIG_SLIRP
-    "-netdev user,id=str[,ipv4[=on|off]][,net=addr[/mask]][,host=addr]\n"
-    "         [,ipv6[=on|off]][,ipv6-net=addr[/int]][,ipv6-host=addr]\n"
+    "-netdev user,id=str[,ipv4=on|off][,net=addr[/mask]][,host=addr]\n"
+    "         [,ipv6=on|off][,ipv6-net=addr[/int]][,ipv6-host=addr]\n"
     "         [,restrict=on|off][,hostname=host][,dhcpstart=addr]\n"
     "         [,dns=addr][,ipv6-dns=addr][,dnssearch=domain][,domainname=domain]\n"
     "         [,tftp=dir][,tftp-server-name=name][,bootfile=f][,hostfwd=rule][,guestfwd=rule]"
@@ -2444,7 +2479,7 @@ DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
     "                use 'vhostfd=h' to connect to an already opened vhost net device\n"
     "                use 'vhostfds=x:y:...:z to connect to multiple already opened vhost net devices\n"
     "                use 'queues=n' to specify the number of queues to be created for multiqueue TAP\n"
-    "                use 'poll-us=n' to speciy the maximum number of microseconds that could be\n"
+    "                use 'poll-us=n' to specify the maximum number of microseconds that could be\n"
     "                spent on busy polling for vhost net\n"
     "-netdev bridge,id=str[,br=bridge][,helper=helper]\n"
     "                configure a host TAP network backend with ID 'str' that is\n"
@@ -2453,8 +2488,8 @@ DEF("netdev", HAS_ARG, QEMU_OPTION_netdev,
 #endif
 #ifdef __linux__
     "-netdev l2tpv3,id=str,src=srcaddr,dst=dstaddr[,srcport=srcport][,dstport=dstport]\n"
-    "         [,rxsession=rxsession],txsession=txsession[,ipv6=on/off][,udp=on/off]\n"
-    "         [,cookie64=on/off][,counter][,pincounter][,txcookie=txcookie]\n"
+    "         [,rxsession=rxsession],txsession=txsession[,ipv6=on|off][,udp=on|off]\n"
+    "         [,cookie64=on|off][,counter][,pincounter][,txcookie=txcookie]\n"
     "         [,rxcookie=rxcookie][,offset=offset]\n"
     "                configure a network backend with ID 'str' connected to\n"
     "                an Ethernet over L2TPv3 pseudowire.\n"
@@ -2883,7 +2918,7 @@ SRST
                          -device e1000,netdev=n1,mac=52:54:00:12:34:56 \\
                          -netdev socket,id=n1,mcast=239.192.168.1:1102,localaddr=1.2.3.4
 
-``-netdev l2tpv3,id=id,src=srcaddr,dst=dstaddr[,srcport=srcport][,dstport=dstport],txsession=txsession[,rxsession=rxsession][,ipv6][,udp][,cookie64][,counter][,pincounter][,txcookie=txcookie][,rxcookie=rxcookie][,offset=offset]``
+``-netdev l2tpv3,id=id,src=srcaddr,dst=dstaddr[,srcport=srcport][,dstport=dstport],txsession=txsession[,rxsession=rxsession][,ipv6=on|off][,udp=on|off][,cookie64][,counter][,pincounter][,txcookie=txcookie][,rxcookie=rxcookie][,offset=offset]``
     Configure a L2TPv3 pseudowire host network backend. L2TPv3 (RFC3931)
     is a popular protocol to transport Ethernet (and other Layer 2) data
     frames between two systems. It is present in routers, firewalls and
@@ -3032,13 +3067,13 @@ DEFHEADING(Character device options:)
 DEF("chardev", HAS_ARG, QEMU_OPTION_chardev,
     "-chardev help\n"
     "-chardev null,id=id[,mux=on|off][,logfile=PATH][,logappend=on|off]\n"
-    "-chardev socket,id=id[,host=host],port=port[,to=to][,ipv4][,ipv6][,nodelay][,reconnect=seconds]\n"
-    "         [,server][,nowait][,telnet][,websocket][,reconnect=seconds][,mux=on|off]\n"
+    "-chardev socket,id=id[,host=host],port=port[,to=to][,ipv4=on|off][,ipv6=on|off][,nodelay=on|off][,reconnect=seconds]\n"
+    "         [,server=on|off][,wait=on|off][,telnet=on|off][,websocket=on|off][,reconnect=seconds][,mux=on|off]\n"
     "         [,logfile=PATH][,logappend=on|off][,tls-creds=ID][,tls-authz=ID] (tcp)\n"
-    "-chardev socket,id=id,path=path[,server][,nowait][,telnet][,websocket][,reconnect=seconds]\n"
+    "-chardev socket,id=id,path=path[,server=on|off][,wait=on|off][,telnet=on|off][,websocket=on|off][,reconnect=seconds]\n"
     "         [,mux=on|off][,logfile=PATH][,logappend=on|off][,abstract=on|off][,tight=on|off] (unix)\n"
     "-chardev udp,id=id[,host=host],port=port[,localaddr=localaddr]\n"
-    "         [,localport=localport][,ipv4][,ipv6][,mux=on|off]\n"
+    "         [,localport=localport][,ipv4=on|off][,ipv6=on|off][,mux=on|off]\n"
     "         [,logfile=PATH][,logappend=on|off]\n"
     "-chardev msmouse,id=id[,mux=on|off][,logfile=PATH][,logappend=on|off]\n"
     "-chardev vc,id=id[[,width=width][,height=height]][[,cols=cols][,rows=rows]]\n"
@@ -3148,21 +3183,21 @@ The available backends are:
     A void device. This device will not emit any data, and will drop any
     data it receives. The null backend does not take any options.
 
-``-chardev socket,id=id[,TCP options or unix options][,server][,nowait][,telnet][,websocket][,reconnect=seconds][,tls-creds=id][,tls-authz=id]``
+``-chardev socket,id=id[,TCP options or unix options][,server=on|off][,wait=on|off][,telnet=on|off][,websocket=on|off][,reconnect=seconds][,tls-creds=id][,tls-authz=id]``
     Create a two-way stream socket, which can be either a TCP or a unix
     socket. A unix socket will be created if ``path`` is specified.
     Behaviour is undefined if TCP options are specified for a unix
     socket.
 
-    ``server`` specifies that the socket shall be a listening socket.
+    ``server=on|off`` specifies that the socket shall be a listening socket.
 
-    ``nowait`` specifies that QEMU should not block waiting for a client
+    ``wait=on|off`` specifies that QEMU should not block waiting for a client
     to connect to a listening socket.
 
-    ``telnet`` specifies that traffic on the socket should interpret
+    ``telnet=on|off`` specifies that traffic on the socket should interpret
     telnet escape sequences.
 
-    ``websocket`` specifies that the socket uses WebSocket protocol for
+    ``websocket=on|off`` specifies that the socket uses WebSocket protocol for
     communication.
 
     ``reconnect`` sets the timeout for reconnecting on non-server
@@ -3183,7 +3218,7 @@ The available backends are:
 
     TCP and unix socket options are given below:
 
-    ``TCP options: port=port[,host=host][,to=to][,ipv4][,ipv6][,nodelay]``
+    ``TCP options: port=port[,host=host][,to=to][,ipv4=on|off][,ipv6=on|off][,nodelay=on|off]``
         ``host`` for a listening socket specifies the local address to
         be bound. For a connecting socket species the remote host to
         connect to. ``host`` is optional for listening sockets. If not
@@ -3199,21 +3234,21 @@ The available backends are:
         bind to subsequent ports up to and including ``to`` until it
         succeeds. ``to`` must be specified as a port number.
 
-        ``ipv4`` and ``ipv6`` specify that either IPv4 or IPv6 must be
-        used. If neither is specified the socket may use either
-        protocol.
+        ``ipv4=on|off`` and ``ipv6=on|off`` specify that either IPv4
+        or IPv6 must be used. If neither is specified the socket may
+        use either protocol.
 
-        ``nodelay`` disables the Nagle algorithm.
+        ``nodelay=on|off`` disables the Nagle algorithm.
 
     ``unix options: path=path[,abstract=on|off][,tight=on|off]``
         ``path`` specifies the local path of the unix socket. ``path``
         is required.
-        ``abstract`` specifies the use of the abstract socket namespace,
+        ``abstract=on|off`` specifies the use of the abstract socket namespace,
         rather than the filesystem.  Optional, defaults to false.
-        ``tight`` sets the socket length of abstract sockets to their minimum,
+        ``tight=on|off`` sets the socket length of abstract sockets to their minimum,
         rather than the full sun_path length.  Optional, defaults to true.
 
-``-chardev udp,id=id[,host=host],port=port[,localaddr=localaddr][,localport=localport][,ipv4][,ipv6]``
+``-chardev udp,id=id[,host=host],port=port[,localaddr=localaddr][,localport=localport][,ipv4=on|off][,ipv6=on|off]``
     Sends all traffic from the guest to a remote host over UDP.
 
     ``host`` specifies the remote host to connect to. If not specified
@@ -3228,7 +3263,7 @@ The available backends are:
     ``localport`` specifies the local port to bind to. If not specified
     any available local port will be used.
 
-    ``ipv4`` and ``ipv6`` specify that either IPv4 or IPv6 must be used.
+    ``ipv4=on|off`` and ``ipv6=on|off`` specify that either IPv4 or IPv6 must be used.
     If neither is specified the device may use either protocol.
 
 ``-chardev msmouse,id=id``
@@ -3469,6 +3504,28 @@ DEFHEADING()
 
 DEFHEADING(Debug/Expert options:)
 
+DEF("compat", HAS_ARG, QEMU_OPTION_compat,
+    "-compat [deprecated-input=accept|reject|crash][,deprecated-output=accept|hide]\n"
+    "                Policy for handling deprecated management interfaces\n",
+    QEMU_ARCH_ALL)
+SRST
+``-compat [deprecated-input=@var{input-policy}][,deprecated-output=@var{output-policy}]``
+    Set policy for handling deprecated management interfaces (experimental):
+
+    ``deprecated-input=accept`` (default)
+        Accept deprecated commands and arguments
+    ``deprecated-input=reject``
+        Reject deprecated commands and arguments
+    ``deprecated-input=crash``
+        Crash on deprecated commands and arguments
+    ``deprecated-output=accept`` (default)
+        Emit deprecated command results and events
+    ``deprecated-output=hide``
+        Suppress deprecated command results and events
+
+    Limitation: covers only syntactic aspects of QMP.
+ERST
+
 DEF("fw_cfg", HAS_ARG, QEMU_OPTION_fwcfg,
     "-fw_cfg [name=]<name>,file=<file>\n"
     "                add named fw_cfg entry with contents from file\n"
@@ -3592,30 +3649,30 @@ SRST
         ``telnet options:``
             localhost 5555
 
-    ``tcp:[host]:port[,server][,nowait][,nodelay][,reconnect=seconds]``
+    ``tcp:[host]:port[,server=on|off][,wait=on|off][,nodelay=on|off][,reconnect=seconds]``
         The TCP Net Console has two modes of operation. It can send the
         serial I/O to a location or wait for a connection from a
         location. By default the TCP Net Console is sent to host at the
-        port. If you use the server option QEMU will wait for a client
+        port. If you use the ``server=on`` option QEMU will wait for a client
         socket application to connect to the port before continuing,
-        unless the ``nowait`` option was specified. The ``nodelay``
-        option disables the Nagle buffering algorithm. The ``reconnect``
-        option only applies if noserver is set, if the connection goes
+        unless the ``wait=on|off`` option was specified. The ``nodelay=on|off``
+        option disables the Nagle buffering algorithm. The ``reconnect=on``
+        option only applies if ``server=no`` is set, if the connection goes
         down it will attempt to reconnect at the given interval. If host
         is omitted, 0.0.0.0 is assumed. Only one TCP connection at a
-        time is accepted. You can use ``telnet`` to connect to the
+        time is accepted. You can use ``telnet=on`` to connect to the
         corresponding character device.
 
         ``Example to send tcp console to 192.168.0.2 port 4444``
             -serial tcp:192.168.0.2:4444
 
         ``Example to listen and wait on port 4444 for connection``
-            -serial tcp::4444,server
+            -serial tcp::4444,server=on
 
         ``Example to not wait and listen on ip 192.168.0.100 port 4444``
-            -serial tcp:192.168.0.100:4444,server,nowait
+            -serial tcp:192.168.0.100:4444,server=on,wait=off
 
-    ``telnet:host:port[,server][,nowait][,nodelay]``
+    ``telnet:host:port[,server=on|off][,wait=on|off][,nodelay=on|off]``
         The telnet protocol is used instead of raw tcp sockets. The
         options work the same as if you had specified ``-serial tcp``.
         The difference is that the port acts like a telnet server or
@@ -3625,11 +3682,11 @@ SRST
         you do it with Control-] and then type "send break" followed by
         pressing the enter key.
 
-    ``websocket:host:port,server[,nowait][,nodelay]``
+    ``websocket:host:port,server=on[,wait=on|off][,nodelay=on|off]``
         The WebSocket protocol is used instead of raw tcp socket. The
         port acts as a WebSocket server. Client mode is not supported.
 
-    ``unix:path[,server][,nowait][,reconnect=seconds]``
+    ``unix:path[,server=on|off][,wait=on|off][,reconnect=seconds]``
         A unix domain socket is used instead of a tcp socket. The option
         works the same as if you had specified ``-serial tcp`` except
         the unix domain socket path is used for connections.
@@ -3642,7 +3699,7 @@ SRST
         multiplex the monitor onto a telnet server listening on port
         4444 would be:
 
-        ``-serial mon:telnet::4444,server,nowait``
+        ``-serial mon:telnet::4444,server=on,wait=off``
 
         When the monitor is multiplexed to stdio in this way, Ctrl+C
         will not terminate QEMU any more but will be passed to the guest
@@ -3702,8 +3759,9 @@ DEF("mon", HAS_ARG, QEMU_OPTION_mon, \
     "-mon [chardev=]name[,mode=readline|control][,pretty[=on|off]]\n", QEMU_ARCH_ALL)
 SRST
 ``-mon [chardev=]name[,mode=readline|control][,pretty[=on|off]]``
-    Setup monitor on chardev name. ``pretty`` turns on JSON pretty
-    printing easing human reading and debugging.
+    Setup monitor on chardev name. ``pretty`` is only valid when
+    ``mode=control``, turning on JSON pretty printing to ease
+    human reading and debugging.
 ERST
 
 DEF("debugcon", HAS_ARG, QEMU_OPTION_debugcon, \
@@ -4134,8 +4192,8 @@ SRST
 ERST
 
 DEF("incoming", HAS_ARG, QEMU_OPTION_incoming, \
-    "-incoming tcp:[host]:port[,to=maxport][,ipv4][,ipv6]\n" \
-    "-incoming rdma:host:port[,ipv4][,ipv6]\n" \
+    "-incoming tcp:[host]:port[,to=maxport][,ipv4=on|off][,ipv6=on|off]\n" \
+    "-incoming rdma:host:port[,ipv4=on|off][,ipv6=on|off]\n" \
     "-incoming unix:socketpath\n" \
     "                prepare for incoming migration, listen on\n" \
     "                specified protocol and socket address\n" \
@@ -4147,9 +4205,9 @@ DEF("incoming", HAS_ARG, QEMU_OPTION_incoming, \
     "                wait for the URI to be specified via migrate_incoming\n",
     QEMU_ARCH_ALL)
 SRST
-``-incoming tcp:[host]:port[,to=maxport][,ipv4][,ipv6]``
+``-incoming tcp:[host]:port[,to=maxport][,ipv4=on|off][,ipv6=on|off]``
   \ 
-``-incoming rdma:host:port[,ipv4][,ipv6]``
+``-incoming rdma:host:port[,ipv4=on|off][,ipv6=on|off]``
     Prepare for incoming migration, listen on a given tcp port.
 
 ``-incoming unix:socketpath``
@@ -4298,12 +4356,12 @@ DEF("sandbox", HAS_ARG, QEMU_OPTION_sandbox, \
     "                use 'obsolete' to allow obsolete system calls that are provided\n" \
     "                    by the kernel, but typically no longer used by modern\n" \
     "                    C library implementations.\n" \
-    "                use 'elevateprivileges' to allow or deny QEMU process to elevate\n" \
-    "                    its privileges by blacklisting all set*uid|gid system calls.\n" \
+    "                use 'elevateprivileges' to allow or deny the QEMU process ability\n" \
+    "                    to elevate privileges using set*uid|gid system calls.\n" \
     "                    The value 'children' will deny set*uid|gid system calls for\n" \
     "                    main QEMU process but will allow forks and execves to run unprivileged\n" \
     "                use 'spawn' to avoid QEMU to spawn new threads or processes by\n" \
-    "                     blacklisting *fork and execve\n" \
+    "                     blocking *fork and execve\n" \
     "                use 'resourcecontrol' to disable process affinity and schedular priority\n",
     QEMU_ARCH_ALL)
 SRST
@@ -4334,13 +4392,8 @@ SRST
 ERST
 DEF("writeconfig", HAS_ARG, QEMU_OPTION_writeconfig,
     "-writeconfig <file>\n"
-    "                read/write config file\n", QEMU_ARCH_ALL)
+    "                read/write config file (deprecated)\n", QEMU_ARCH_ALL)
 SRST
-``-writeconfig file``
-    Write device configuration to file. The file can be either filename
-    to save command line and device configuration into file or dash
-    ``-``) character to print the output to stdout. This can be later
-    used as input file for ``-readconfig`` option.
 ERST
 
 DEF("no-user-config", 0, QEMU_OPTION_nouserconfig,
@@ -4815,11 +4868,11 @@ SRST
             primary:
             -netdev tap,id=hn0,vhost=off,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown
             -device e1000,id=e0,netdev=hn0,mac=52:a4:00:12:78:66
-            -chardev socket,id=mirror0,host=3.3.3.3,port=9003,server,nowait
-            -chardev socket,id=compare1,host=3.3.3.3,port=9004,server,nowait
-            -chardev socket,id=compare0,host=3.3.3.3,port=9001,server,nowait
+            -chardev socket,id=mirror0,host=3.3.3.3,port=9003,server=on,wait=off
+            -chardev socket,id=compare1,host=3.3.3.3,port=9004,server=on,wait=off
+            -chardev socket,id=compare0,host=3.3.3.3,port=9001,server=on,wait=off
             -chardev socket,id=compare0-0,host=3.3.3.3,port=9001
-            -chardev socket,id=compare_out,host=3.3.3.3,port=9005,server,nowait
+            -chardev socket,id=compare_out,host=3.3.3.3,port=9005,server=on,wait=off
             -chardev socket,id=compare_out0,host=3.3.3.3,port=9005
             -object iothread,id=iothread1
             -object filter-mirror,id=m0,netdev=hn0,queue=tx,outdev=mirror0
@@ -4841,13 +4894,13 @@ SRST
             primary:
             -netdev tap,id=hn0,vhost=off,script=/etc/qemu-ifup,downscript=/etc/qemu-ifdown
             -device e1000,id=e0,netdev=hn0,mac=52:a4:00:12:78:66
-            -chardev socket,id=mirror0,host=3.3.3.3,port=9003,server,nowait
-            -chardev socket,id=compare1,host=3.3.3.3,port=9004,server,nowait
-            -chardev socket,id=compare0,host=3.3.3.3,port=9001,server,nowait
+            -chardev socket,id=mirror0,host=3.3.3.3,port=9003,server=on,wait=off
+            -chardev socket,id=compare1,host=3.3.3.3,port=9004,server=on,wait=off
+            -chardev socket,id=compare0,host=3.3.3.3,port=9001,server=on,wait=off
             -chardev socket,id=compare0-0,host=3.3.3.3,port=9001
-            -chardev socket,id=compare_out,host=3.3.3.3,port=9005,server,nowait
+            -chardev socket,id=compare_out,host=3.3.3.3,port=9005,server=on,wait=off
             -chardev socket,id=compare_out0,host=3.3.3.3,port=9005
-            -chardev socket,id=notify_way,host=3.3.3.3,port=9009,server,nowait
+            -chardev socket,id=notify_way,host=3.3.3.3,port=9009,server=on,wait=off
             -object filter-mirror,id=m0,netdev=hn0,queue=tx,outdev=mirror0
             -object filter-redirector,netdev=hn0,id=redire0,queue=rx,indev=compare_out
             -object filter-redirector,netdev=hn0,id=redire1,queue=rx,outdev=compare0

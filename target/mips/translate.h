@@ -131,6 +131,10 @@ void gen_move_low32(TCGv ret, TCGv_i64 arg);
 void gen_move_high32(TCGv ret, TCGv_i64 arg);
 void gen_load_gpr(TCGv t, int reg);
 void gen_store_gpr(TCGv t, int reg);
+#if defined(TARGET_MIPS64)
+void gen_load_gpr_hi(TCGv_i64 t, int reg);
+void gen_store_gpr_hi(TCGv_i64 t, int reg);
+#endif /* TARGET_MIPS64 */
 void gen_load_fpr32(DisasContext *ctx, TCGv_i32 t, int reg);
 void gen_load_fpr64(DisasContext *ctx, TCGv_i64 t, int reg);
 void gen_store_fpr32(DisasContext *ctx, TCGv_i32 t, int reg);
@@ -144,7 +148,13 @@ void gen_op_addr_add(DisasContext *ctx, TCGv ret, TCGv arg0, TCGv arg1);
 bool gen_lsa(DisasContext *ctx, int rd, int rt, int rs, int sa);
 bool gen_dlsa(DisasContext *ctx, int rd, int rt, int rs, int sa);
 
+void gen_rdhwr(DisasContext *ctx, int rt, int rd, int sel);
+
 extern TCGv cpu_gpr[32], cpu_PC;
+#if defined(TARGET_MIPS64)
+extern TCGv_i64 cpu_gpr_hi[32];
+#endif
+extern TCGv cpu_HI[MIPS_DSP_ACC], cpu_LO[MIPS_DSP_ACC];
 extern TCGv_i32 fpu_fcr0, fpu_fcr31;
 extern TCGv_i64 fpu_f64[32];
 extern TCGv bcond;
@@ -170,8 +180,16 @@ extern TCGv bcond;
 /* MSA */
 void msa_translate_init(void);
 
+/* MXU */
+void mxu_translate_init(void);
+bool decode_ase_mxu(DisasContext *ctx, uint32_t insn);
+
 /* decodetree generated */
 bool decode_isa_rel6(DisasContext *ctx, uint32_t insn);
 bool decode_ase_msa(DisasContext *ctx, uint32_t insn);
+bool decode_ext_txx9(DisasContext *ctx, uint32_t insn);
+#if defined(TARGET_MIPS64)
+bool decode_ext_tx79(DisasContext *ctx, uint32_t insn);
+#endif
 
 #endif

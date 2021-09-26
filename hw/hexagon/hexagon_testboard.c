@@ -256,7 +256,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     rom_add_blob_fixed_as("config_table.rom", config_table,
         sizeof(*config_table), cfgExtensions->cfgbase, &address_space_memory);
-
 }
 
 void hexagon_read_timer(uint32_t *low, uint32_t *high)

@@ -37,7 +37,6 @@ semantics_generated = custom_target(
     command: [gen_semantics, '@OUTPUT@'],
 )
 hexagon_ss.add(semantics_generated)
-gen_type = (config_target.has_key('CONFIG_USER_ONLY') ? ['USER'] : ['SYSTEM'])
 
 
 #
@@ -163,7 +162,6 @@ dectree_generated = custom_target(
     command: ['env', 'PYTHONPATH=' + meson.current_build_dir(), files('dectree.py'), '@OUTPUT@'],
 )
 hexagon_ss.add(dectree_generated)
-
 
 hexagon_softmmu_ss = ss.source_set()
 

@@ -219,7 +219,7 @@ void gd_gl_area_scanout_flush(DisplayChangeListener *dcl,
 void gd_gl_area_scanout_dmabuf(DisplayChangeListener *dcl,
                                QemuDmaBuf *dmabuf)
 {
-#ifdef CONFIG_OPENGL_DMABUF
+#ifdef CONFIG_GBM
     VirtualConsole *vc = container_of(dcl, VirtualConsole, gfx.dcl);
 
     gtk_gl_area_make_current(GTK_GL_AREA(vc->gfx.drawing_area));
@@ -237,11 +237,6 @@ void gd_gl_area_scanout_dmabuf(DisplayChangeListener *dcl,
 void gtk_gl_area_init(void)
 {
     display_opengl = 1;
-}
-
-QEMUGLContext gd_gl_area_get_current_context(DisplayChangeListener *dcl)
-{
-    return gdk_gl_context_get_current();
 }
 
 int gd_gl_area_make_current(DisplayChangeListener *dcl,
