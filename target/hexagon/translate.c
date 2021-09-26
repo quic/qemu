@@ -150,8 +150,8 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
 
     memset(words, 0, PACKET_WORDS_MAX * sizeof(uint32_t));
     for (nwords = 0; !found_end && nwords < PACKET_WORDS_MAX; nwords++) {
-        words[nwords] = cpu_ldl_code(env,
-                                ctx->base.pc_next + nwords * sizeof(uint32_t));
+        words[nwords] =
+            translator_ldl(env, ctx->base.pc_next + nwords * sizeof(uint32_t));
         found_end = is_packet_end(words[nwords]);
     }
     if (!found_end) {
@@ -1120,10 +1120,6 @@ static void hexagon_tr_translate_packet(DisasContextBase *dcbase,
         if (hex_cpu->lldb_compat && qemu_loglevel_mask(CPU_LOG_TB_CPU)) {
             ctx->base.is_jmp = DISAS_TOO_MANY;
         }
-#if HEX_DEBUG
-        /* When debugging, only put one packet per TB */
-        ctx->base.is_jmp = DISAS_TOO_MANY;
-#endif
     }
 }
 

@@ -185,9 +185,9 @@
 #define fGEN_TCG_L2_loadrub_pi(SHORTCODE)      SHORTCODE
 #define fGEN_TCG_L2_loadrb_pr(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L2_loadrb_pbr(SHORTCODE)      SHORTCODE
+#define fGEN_TCG_L2_loadruh_pbr(SHORTCODE)     SHORTCODE
 #define fGEN_TCG_L2_loadrb_pi(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L2_loadruh_pr(SHORTCODE)      SHORTCODE
-#define fGEN_TCG_L2_loadruh_pbr(SHORTCODE)     SHORTCODE
 #define fGEN_TCG_L2_loadruh_pi(SHORTCODE)      SHORTCODE
 #define fGEN_TCG_L2_loadrh_pr(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L2_loadrh_pbr(SHORTCODE)      SHORTCODE
