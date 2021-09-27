@@ -54,6 +54,7 @@ HEX_TESTS += vector_add_int
 HEX_TESTS += scatter_gather
 HEX_TESTS += atomics
 HEX_TESTS += fpstuff
+HEX_TESTS += overflow
 HEX_TESTS += hvx_misc
 HEX_TESTS += hvx_histogram
 HEX_TESTS += privcheck

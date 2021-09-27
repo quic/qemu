@@ -532,7 +532,7 @@ static inline void gen_write_new_pc(Packet *pkt, TCGv addr)
 
 static inline void gen_set_usr_field(int field, TCGv val)
 {
-    tcg_gen_deposit_tl(hex_gpr[HEX_REG_USR], hex_gpr[HEX_REG_USR], val,
+    tcg_gen_deposit_tl(hex_new_value[HEX_REG_USR], hex_gpr[HEX_REG_USR], val,
                        reg_field_info[field].offset,
                        reg_field_info[field].width);
 }
