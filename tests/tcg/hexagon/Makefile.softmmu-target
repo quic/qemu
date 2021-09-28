@@ -35,6 +35,7 @@ TESTS += \
 	neg-framelimit \
 	neg-float_excp \
 	neg-hvx_nocoproc \
+	neg-unaligned \
 	pendalot \
 	vid-group \
 	levelint \
@@ -86,6 +87,7 @@ pcycle: pcycle.o
 neg-framelimit: framelimit.o
 neg-float_excp: float_excp.o
 neg-hvx_nocoproc: hvx_nocoproc.o
+neg-unaligned: unaligned.o
 pendalot: pendalot.o
 vid-group: vid-group.o
 levelint: levelint.o
@@ -122,8 +124,9 @@ QEMU_BASE_MACHINE=-M V68N_1024 -cpu v67,count-gcycle-xt=on,usefs=$(SRC_PATH)/tes
 QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel
 
 run-neg-framelimit: neg-framelimit
-run-neg-hvx_nocoproc: neg-hvx_nocoproc
 run-neg-float_excp: neg-float_excp
+run-neg-hvx_nocoproc: neg-hvx_nocoproc
+run-neg-unaligned: neg-unaligned
 
 run-vid-group: vid-group
 run-timer_reg: timer_reg
