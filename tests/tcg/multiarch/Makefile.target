@@ -14,7 +14,7 @@ MULTIARCH_TESTS  =$(filter-out float_helpers, $(MULTIARCH_SRCS:.c=))
 
 # QUIC-specific
 # QTOOL-67204
-MULTIARCH_TESTS  =$(filter-out float_helpers threadcount, $(MULTIARCH_SRCS:.c=))
+MULTIARCH_TESTS  =$(filter-out float_helpers, $(MULTIARCH_SRCS:.c=))
 # QUIC-end
 
 #
@@ -34,6 +34,12 @@ run-float_%: float_%
 testthread: LDFLAGS+=-lpthread
 
 threadcount: LDFLAGS+=-lpthread
+# QUIC-specific
+run-threadcount: threadcount
+	$(call run-test, threadcount, $(QEMU) $< 3, \
+		"$< (default) on $(TARGET_NAME)")
+# QUIC-end
+
 
 # We define the runner for test-mmap after the individual
 # architectures have defined their supported pages sizes. If no

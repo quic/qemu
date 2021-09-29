@@ -524,6 +524,10 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         error_propagate(errp, local_err);
         return;
     }
+    if (cs->cpu_index >= THREADS_MAX) {
+        error_setg(errp, "Out of threads.  Max is: %d, wanted: %d", THREADS_MAX, cs->cpu_index);
+        return;
+    }
 
     qemu_init_vcpu(cs);
 

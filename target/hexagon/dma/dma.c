@@ -1327,17 +1327,14 @@ ARCH_FUNCTION(dma_instruction_latency)(dma_t *dma, dma_cmd_report_t *report, uin
     return 0;
 }
 
+#if !defined(CONFIG_USER_ONLY)
 static void load_dma_descriptor(thread_t *env, uint32_t desc_addr, dma_descriptor_type0_t *desc)
 
 {
-#if !defined(CONFIG_USER_ONLY)
     uint8_t *store_ptr = (uint8_t *)desc;
     for (uint32_t i = 0; i < sizeof(dma_descriptor_type0_t); i += 4) {
         DEBUG_MEMORY_READ(desc_addr + i, 4, store_ptr + i);
     }
-#else
-    g_assert_not_reached();
-#endif
 }
 
 static void preload_buffers(dma_t *dma, uint32_t new)
@@ -1355,6 +1352,7 @@ static void preload_buffers(dma_t *dma, uint32_t new)
         desc_addr = desc.next;
     }
 }
+#endif
 
 void ARCH_FUNCTION(dma_cmd_start)(dma_t *dma, uint32_t new, dma_cmd_report_t *report)
 {
@@ -1381,7 +1379,9 @@ void ARCH_FUNCTION(dma_cmd_start)(dma_t *dma, uint32_t new, dma_cmd_report_t *re
 		DMA_DEBUG_ONLY(ARCH_FUNCTION(dump_dma_status)(dma, " tried to start a null descriptor. nop. <-dma_cmd_start", 0););
         return;
     }
+#if !defined(CONFIG_USER_ONLY)
     preload_buffers(dma, new);
+#endif
 
     DMA_STATUS_INT_SET(udma_ctx, DMA_STATUS_INT_RUNNING);
     udma_ctx->ext_status = DM0_STATUS_RUN;
