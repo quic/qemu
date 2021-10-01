@@ -1104,7 +1104,7 @@ static void gen_vreg_load(DisasContext *ctx, intptr_t dstoff, TCGv src,
         tcg_gen_andi_tl(src, src, ~((int32_t)sizeof(MMVector) - 1));
     }
     for (int i = 0; i < sizeof(MMVector) / 8; i++) {
-        tcg_gen_qemu_ld64(tmp, src, ctx->mem_idx);
+        tcg_gen_qemu_ld_i64(tmp, src, ctx->mem_idx, MO_UNALN | MO_TEQ);
         tcg_gen_addi_tl(src, src, 8);
         tcg_gen_st_i64(tmp, cpu_env, dstoff + i * 8);
     }
