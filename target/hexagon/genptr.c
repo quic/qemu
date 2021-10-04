@@ -567,6 +567,13 @@ static inline void gen_loop0r(Packet *pkt, TCGv RsV, int riV, Insn *insn)
     tcg_temp_free(tmp);
 }
 
+static void gen_loop0i(Packet *pkt, int count, int riV, Insn *insn)
+{
+    TCGv tmp = tcg_const_tl(count);
+    gen_loop0r(pkt, tmp, riV, insn);
+    tcg_temp_free(tmp);
+}
+
 static inline void gen_loop1r(Packet *pkt, TCGv RsV, int riV, Insn *insn)
 {
     TCGv tmp = tcg_temp_new();
@@ -576,6 +583,13 @@ static inline void gen_loop1r(Packet *pkt, TCGv RsV, int riV, Insn *insn)
     tcg_gen_movi_tl(tmp, pkt->pc + riV);
     gen_log_reg_write(HEX_REG_LC1, RsV);
     gen_log_reg_write(HEX_REG_SA1, tmp);
+    tcg_temp_free(tmp);
+}
+
+static void gen_loop1i(Packet *pkt, int count, int riV, Insn *insn)
+{
+    TCGv tmp = tcg_const_tl(count);
+    gen_loop1r(pkt, tmp, riV, insn);
     tcg_temp_free(tmp);
 }
 
@@ -702,6 +716,34 @@ static inline void gen_callr(Packet *pkt, TCGv new_pc)
     gen_write_new_pc(pkt, new_pc);
 }
 
+static void gen_pred_call(Packet *pkt, TCGv pred, bool sense, int pc_off)
+{
+    TCGv lsb = tcg_temp_new();
+    TCGLabel *skip = gen_new_label();
+    tcg_gen_andi_tl(lsb, pred, 1);
+    if (!sense) {
+        tcg_gen_xori_tl(lsb, lsb, 1);
+    }
+    tcg_gen_brcondi_tl(TCG_COND_EQ, lsb, 0, skip);
+    tcg_temp_free(lsb);
+    gen_call(pkt, pc_off);
+    gen_set_label(skip);
+}
+
+static void gen_pred_callr(Packet *pkt, TCGv pred, bool sense, TCGv new_pc)
+{
+    TCGv lsb = tcg_temp_new();
+    TCGLabel *skip = gen_new_label();
+    tcg_gen_andi_tl(lsb, pred, 1);
+    if (!sense) {
+        tcg_gen_xori_tl(lsb, lsb, 1);
+    }
+    tcg_gen_brcondi_tl(TCG_COND_EQ, lsb, 0, skip);
+    tcg_temp_free(lsb);
+    gen_callr(pkt, new_pc);
+    gen_set_label(skip);
+}
+
 static inline void gen_endloop0(Packet *pkt)
 {
     TCGv lpcfg = tcg_temp_local_new();
@@ -767,6 +809,68 @@ static inline void gen_endloop1(Packet *pkt)
         tcg_gen_subi_tl(hex_new_value[HEX_REG_LC1], hex_gpr[HEX_REG_LC1], 1);
     }
     gen_set_label(label);
+}
+
+static void gen_endloop01(Packet *pkt)
+{
+    TCGv lpcfg = tcg_temp_local_new();
+
+    GET_USR_FIELD(USR_LPCFG, lpcfg);
+
+    /*
+     *    if (lpcfg == 1) {
+     *        hex_new_pred_value[3] = 0xff;
+     *        hex_pred_written |= 1 << 3;
+     *    }
+     */
+    TCGLabel *label1 = gen_new_label();
+    tcg_gen_brcondi_tl(TCG_COND_NE, lpcfg, 1, label1);
+    {
+        tcg_gen_movi_tl(hex_new_pred_value[3], 0xff);
+        tcg_gen_ori_tl(hex_pred_written, hex_pred_written, 1 << 3);
+    }
+    gen_set_label(label1);
+
+    /*
+     *    if (lpcfg) {
+     *        SET_USR_FIELD(USR_LPCFG, lpcfg - 1);
+     *    }
+     */
+    TCGLabel *label2 = gen_new_label();
+    tcg_gen_brcondi_tl(TCG_COND_EQ, lpcfg, 0, label2);
+    {
+        tcg_gen_subi_tl(lpcfg, lpcfg, 1);
+        SET_USR_FIELD(USR_LPCFG, lpcfg);
+    }
+    gen_set_label(label2);
+
+    /*
+     *    if (hex_gpr[HEX_REG_LC0] > 1) {
+     *        hex_next_PC = hex_gpr[HEX_REG_SA0];
+     *        hex_new_value[HEX_REG_LC0] = hex_gpr[HEX_REG_LC0] - 1;
+     *    } else {
+     *        if (hex_gpr[HEX_REG_LC1] > 1) {
+     *            hex_next_pc = hex_gpr[HEX_REG_SA1];
+     *            hex_new_value[HEX_REG_LC1] = hex_gpr[HEX_REG_LC1] - 1;
+     *        }
+     *    }
+     */
+    TCGLabel *label3 = gen_new_label();
+    TCGLabel *done = gen_new_label();
+    tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC0], 1, label3);
+    {
+        gen_write_new_pc(pkt, hex_gpr[HEX_REG_SA0]);
+        tcg_gen_subi_tl(hex_new_value[HEX_REG_LC0], hex_gpr[HEX_REG_LC0], 1);
+        tcg_gen_br(done);
+    }
+    gen_set_label(label3);
+    tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC1], 1, done);
+    {
+        gen_write_new_pc(pkt, hex_gpr[HEX_REG_SA1]);
+        tcg_gen_subi_tl(hex_new_value[HEX_REG_LC1], hex_gpr[HEX_REG_LC1], 1);
+    }
+    gen_set_label(done);
+    tcg_temp_free(lpcfg);
 }
 
 static inline void gen_ashiftr_4_4s(TCGv dst, TCGv src, int32_t shift_amt)
@@ -851,6 +955,29 @@ static inline void gen_lshiftr_4_4u(TCGv dst, TCGv src, int32_t shift_amt)
     } else {
         tcg_gen_shri_tl(dst, src, shift_amt);
     }
+}
+
+static void gen_sat(TCGv dst, TCGv src, bool sign, uint32_t bits)
+{
+    uint32_t min = sign ? -(1 << (bits - 1)) : 0;
+    uint32_t max = sign ? (1 << (bits - 1)) - 1 : (1 << bits) - 1;
+    TCGLabel *label = gen_new_label();
+
+    if (sign) {
+        tcg_gen_sextract_tl(dst, src, 0, bits);
+    } else {
+        tcg_gen_extract_tl(dst, src, 0, bits);
+    }
+    tcg_gen_brcond_tl(TCG_COND_EQ, dst, src, label);
+    {
+        TCGv tcg_min = tcg_const_tl(min);
+        TCGv tcg_max = tcg_const_tl(max);
+        tcg_gen_movcond_tl(TCG_COND_LT, dst, src, tcg_min, tcg_min, tcg_max);
+        tcg_temp_free(tcg_min);
+        tcg_temp_free(tcg_max);
+        gen_set_usr_fieldi(USR_OVF, 1);
+    }
+    gen_set_label(label);
 }
 
 static intptr_t vreg_src_off(DisasContext *ctx, int num)

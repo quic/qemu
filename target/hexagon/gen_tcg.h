@@ -1764,15 +1764,30 @@
 #define fGEN_TCG_J2_callr(SHORTCODE) \
     gen_callr(pkt, RsV)
 
+#define fGEN_TCG_J2_callt(SHORTCODE) \
+    gen_pred_call(pkt, PuV, true, riV)
+#define fGEN_TCG_J2_callf(SHORTCODE) \
+    gen_pred_call(pkt, PuV, false, riV)
+#define fGEN_TCG_J2_callrt(SHORTCODE) \
+    gen_pred_callr(pkt, PuV, true, RsV)
+#define fGEN_TCG_J2_callrf(SHORTCODE) \
+    gen_pred_callr(pkt, PuV, false, RsV)
+
 #define fGEN_TCG_J2_loop0r(SHORTCODE) \
     gen_loop0r(pkt, RsV, riV, insn)
 #define fGEN_TCG_J2_loop1r(SHORTCODE) \
     gen_loop1r(pkt, RsV, riV, insn)
+#define fGEN_TCG_J2_loop0i(SHORTCODE) \
+    gen_loop0i(pkt, UiV, riV, insn)
+#define fGEN_TCG_J2_loop1i(SHORTCODE) \
+    gen_loop1i(pkt, UiV, riV, insn)
 
 #define fGEN_TCG_J2_endloop0(SHORTCODE) \
     gen_endloop0(pkt)
 #define fGEN_TCG_J2_endloop1(SHORTCODE) \
     gen_endloop1(pkt)
+#define fGEN_TCG_J2_endloop01(SHORTCODE) \
+    gen_endloop01(pkt)
 
 /*
  * Compound compare and jump instructions
@@ -2489,6 +2504,15 @@
         tcg_gen_add_tl(RxV, RxV, RsV); \
         tcg_gen_add_tl(RxV, RxV, RtV); \
     } while (0)
+
+#define fGEN_TCG_A2_sath(SHORTCODE) \
+    gen_sat(RdV, RsV, true, 16)
+#define fGEN_TCG_A2_satuh(SHORTCODE) \
+    gen_sat(RdV, RsV, false, 16)
+#define fGEN_TCG_A2_satb(SHORTCODE) \
+    gen_sat(RdV, RsV, true, 8)
+#define fGEN_TCG_A2_satub(SHORTCODE) \
+    gen_sat(RdV, RsV, false, 8)
 
 /* Floating point */
 #define fGEN_TCG_F2_conv_sf2df(SHORTCODE) \

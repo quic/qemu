@@ -389,6 +389,49 @@ static void test_extractu(void)
     check64(res64, 1);
 }
 
+static uint32_t satub(uint32_t src, int *ovf_result)
+{
+    uint32_t result;
+    uint32_t usr;
+
+    /*
+     * This instruction can set bit 0 (OVF/overflow) in usr
+     * Clear the bit first, then return that bit to the caller
+     */
+    asm volatile("r2 = usr\n\t"
+                 "r2 = clrbit(r2, #0)\n\t"        /* clear overflow bit */
+                 "usr = r2\n\t"
+                 "%0 = satub(%2)\n\t"
+                 "%1 = usr\n\t"
+                 : "=r"(result), "=r"(usr)
+                 : "r"(src)
+                 : "r2", "usr");
+  *ovf_result = (usr & 1);
+  return result;
+}
+
+static void test_satub(void)
+{
+    uint32_t result;
+    int ovf_result;
+
+    result = satub(0, &ovf_result);
+    check(result, 0);
+    check(ovf_result, 0);
+
+    result = satub(0xff, &ovf_result);
+    check(result, 0xff);
+    check(ovf_result, 0);
+
+    result = satub(0xfff, &ovf_result);
+    check(result, 0xff);
+    check(ovf_result, 1);
+
+    result = satub(-1, &ovf_result);
+    check(result, 0);
+    check(ovf_result, 1);
+}
+
 int main()
 {
     int res;
@@ -534,6 +577,8 @@ int main()
     check(res, 32);
 
     test_extractu();
+
+    test_satub();
 
     puts(err ? "FAIL" : "PASS");
     return err;
