@@ -26,6 +26,11 @@
 
 #include "mmvec_qfloat.h"
 
+#define epsilon 1.0/pow(2,23)
+#define units 1.0*pow(2,23)
+#define epsilon_hf 1.0/pow(2,10)
+#define units_hf 1.0*pow(2,10)
+
 
 //Take one's complement of the mantissa for QF32
 size4s_t negate32(size4s_t in)
