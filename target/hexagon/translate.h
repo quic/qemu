@@ -54,6 +54,8 @@ typedef struct DisasContext {
     int qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
     bool s1_store_processed;
+    bool hvx_check_emitted;
+    bool hmx_check_emitted;
 } DisasContext;
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)

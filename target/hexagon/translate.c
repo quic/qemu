@@ -68,6 +68,7 @@ TCGv hex_cache_tags[CACHE_TAGS_MAX];
 #ifndef CONFIG_USER_ONLY
 TCGv hex_slot;
 TCGv hex_imprecise_exception;
+TCGv hex_cause_code;
 TCGv_i32 hex_last_cpu;
 TCGv_i32 hex_thread_id;
 #endif
@@ -205,6 +206,22 @@ static bool need_pred_written(Packet *pkt)
     return check_for_attrib(pkt, A_WRITES_PRED_REG);
 }
 
+#if !defined(CONFIG_USER_ONLY)
+static void gen_coproc_check(int ssr_field_index, int cause_code) {
+    TCGv xe = tcg_temp_new();
+    TCGLabel *skip_exception = gen_new_label();
+    tcg_gen_extract_tl(xe, hex_t_sreg[HEX_SREG_SSR],
+            reg_field_info[ssr_field_index].offset,
+            reg_field_info[ssr_field_index].width);
+    tcg_gen_brcondi_tl(TCG_COND_NE, xe, 0, skip_exception);
+    tcg_gen_movi_tl(hex_cause_code, cause_code);
+    gen_exception_raw(HEX_EVENT_PRECISE);
+    gen_set_label(skip_exception);
+
+    tcg_temp_free(xe);
+}
+#endif
+
 static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
                              Packet *pkt)
 {
@@ -315,11 +332,13 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     if (hex_cpu->count_gcycle_xt) {
         gen_helper_inc_gcycle_xt(cpu_env);
     }
-    if (pkt->pkt_has_hvx) {
-        gen_helper_check_hvx(cpu_env);
+    if (pkt->pkt_has_hvx && !ctx->hvx_check_emitted) {
+        gen_coproc_check(SSR_XE, HEX_CAUSE_NO_COPROC_ENABLE);
+        ctx->hvx_check_emitted = true;
     }
-    if (pkt->pkt_has_hmx) {
-        gen_helper_check_hmx(cpu_env);
+    if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
+        gen_coproc_check(SSR_XE2, HEX_CAUSE_NO_COPROC2_ENABLE);
+        ctx->hmx_check_emitted = true;
     }
 #endif
 }
@@ -1041,6 +1060,8 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->num_insns = 0;
     ctx->num_hvx_insns = 0;
     ctx->num_hmx_insns = 0;
+    ctx->hvx_check_emitted = false;
+    ctx->hmx_check_emitted = false;
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
@@ -1306,6 +1327,8 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, slot), "slot");
     hex_imprecise_exception = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, imprecise_exception), "imprecise_exception");
+    hex_cause_code = tcg_global_mem_new(cpu_env,
+        offsetof(CPUHexagonState, cause_code), "cause_code");
     hex_last_cpu = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, last_cpu), "last_cpu");
     hex_thread_id = tcg_global_mem_new(cpu_env,
