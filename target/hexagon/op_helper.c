@@ -1603,7 +1603,13 @@ static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
     }
 }
 
-static void probe_hvx_stores(CPUHexagonState *env, int mmu_idx)
+/* Called during packet commit when there are two scalar stores */
+void HELPER(probe_pkt_scalar_store_s0)(CPUHexagonState *env, int mmu_idx)
+{
+    probe_store(env, 0, mmu_idx);
+}
+
+void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
 {
     uintptr_t retaddr = GETPC();
     int i;
@@ -1644,30 +1650,21 @@ static void probe_hvx_stores(CPUHexagonState *env, int mmu_idx)
     }
 }
 
-void HELPER(probe_pkt_stores)(CPUHexagonState *env, int mask, int mmu_idx)
+void HELPER(probe_pkt_scalar_hvx_stores)(CPUHexagonState *env, int mask,
+                                         int mmu_idx)
 {
     bool has_st0        = (mask >> 0) & 1;
     bool has_st1        = (mask >> 1) & 1;
-    bool has_dczeroa    = (mask >> 2) & 1;
-    bool has_hvx_stores = (mask >> 3) & 1;
+    bool has_hvx_stores = (mask >> 2) & 1;
 
-    if (has_st0 && !has_dczeroa) {
+    if (has_st0) {
         probe_store(env, 0, mmu_idx);
     }
-    if (has_st1 && !has_dczeroa) {
+    if (has_st1) {
         probe_store(env, 1, mmu_idx);
     }
-    if (has_dczeroa) {
-        /* Probe 32 bytes starting at (dczero_addr & ~0x1f) */
-        target_ulong va = env->dczero_addr & ~0x1f;
-        uintptr_t ra = GETPC();
-        probe_write(env, va +  0, 8, mmu_idx, ra);
-        probe_write(env, va +  8, 8, mmu_idx, ra);
-        probe_write(env, va + 16, 8, mmu_idx, ra);
-        probe_write(env, va + 24, 8, mmu_idx, ra);
-    }
     if (has_hvx_stores) {
-        probe_hvx_stores(env, mmu_idx);
+        HELPER(probe_hvx_stores)(env, mmu_idx);
     }
 }
 

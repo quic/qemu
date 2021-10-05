@@ -100,8 +100,10 @@ DEF_HELPER_3(sfrecipa, i64, env, f32, f32)
 DEF_HELPER_3(sfsub, f32, env, f32, f32)
 DEF_HELPER_FLAGS_4(vacsh_pred, TCG_CALL_NO_RWG_SE, s32, env, s64, s64, s64)
 DEF_HELPER_4(vacsh_val, s64, env, s64, s64, s64)
-DEF_HELPER_3(probe_pkt_stores, void, env, int, int)
 
+DEF_HELPER_2(probe_pkt_scalar_store_s0, void, env, int)
+DEF_HELPER_2(probe_hvx_stores, void, env, int)
+DEF_HELPER_3(probe_pkt_scalar_hvx_stores, void, env, int, int)
 
 #if !defined(CONFIG_USER_ONLY)
 DEF_HELPER_1(checkforguest, void, env)

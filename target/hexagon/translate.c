@@ -644,7 +644,7 @@ static void process_store_log(DisasContext *ctx, Packet *pkt)
 {
     /*
      *  When a packet has two stores, the hardware processes
-     *  slot 1 and then slot 2.  This will be important when
+     *  slot 1 and then slot 0.  This will be important when
      *  the memory accesses overlap.
      */
     if (pkt->pkt_has_scalar_store_s1 && !pkt->pkt_has_dczeroa) {
@@ -939,33 +939,61 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
      * If there is more than one store in a packet, make sure they are all OK
      * before proceeding with the rest of the packet commit.
      *
+     * dczeroa has to be the only store operation in the packet, so we go
+     * ahead and process that first.
+     *
+     * When there is an HVX store, there can also be a scalar store in either
+     * slot 0 or slot1, so we create a mask for the helper to indicate what
+     * work to do.
+     *
+     * When there are two scalar stores, we probe the one in slot 0.
+     *
      * Note that we don't call the probe helper for packets with only one
      * store.  Therefore, we call process_store_log before anything else
      * involved in committing the packet.
      */
-    if ((pkt->pkt_has_scalar_store_s0 && pkt->pkt_has_scalar_store_s1) ||
-        pkt->pkt_has_dczeroa ||
-        pkt_has_hvx_store(pkt)) {
+    bool has_store_s0 = pkt->pkt_has_scalar_store_s0;
+    bool has_store_s1 = (pkt->pkt_has_scalar_store_s1 &&
+                         !ctx->s1_store_processed);
+    bool has_hvx_store = pkt_has_hvx_store(pkt);
+    if (pkt->pkt_has_dczeroa) {
+        /*
+         * The dczeroa will be the store in slot 0, check that we don't have
+         * a store in slot 1 or an HVX store.
+         */
+        g_assert(has_store_s0 && !has_store_s1 && !has_hvx_store);
+        process_dczeroa(ctx, pkt);
+    } else if (has_hvx_store) {
         TCGv mem_idx = tcg_const_tl(ctx->mem_idx);
-        int mask = 0;
-        TCGv mask_tcgv;
 
-        if (pkt->pkt_has_scalar_store_s0) {
-            mask |= (1 << 0);
+        if (!has_store_s0 && !has_store_s1) {
+            gen_helper_probe_hvx_stores(cpu_env, mem_idx);
+        } else {
+            int mask = 0;
+            TCGv mask_tcgv;
+
+            if (has_store_s0) {
+                mask |= (1 << 0);
+            }
+            if (has_store_s1) {
+                mask |= (1 << 1);
+            }
+            if (has_hvx_store) {
+                mask |= (1 << 2);
+            }
+            mask_tcgv = tcg_const_tl(mask);
+            gen_helper_probe_pkt_scalar_hvx_stores(cpu_env, mask_tcgv, mem_idx);
+            tcg_temp_free(mask_tcgv);
         }
-        if (pkt->pkt_has_scalar_store_s1) {
-            mask |= (1 << 1);
-        }
-        if (pkt->pkt_has_dczeroa) {
-            mask |= (1 << 2);
-        }
-        if (pkt_has_hvx_store(pkt)) {
-            mask |= (1 << 3);
-        }
-        mask_tcgv = tcg_const_tl(mask);
-        gen_helper_probe_pkt_stores(cpu_env, mask_tcgv, mem_idx);
         tcg_temp_free(mem_idx);
-        tcg_temp_free(mask_tcgv);
+    } else if (has_store_s0 && has_store_s1) {
+        /*
+         * process_store_log will execute the slot 1 store first,
+         * so we only have to probe the store in slot 0
+         */
+        TCGv mem_idx = tcg_const_tl(ctx->mem_idx);
+        gen_helper_probe_pkt_scalar_store_s0(cpu_env, mem_idx);
+        tcg_temp_free(mem_idx);
     }
 
     process_store_log(ctx, pkt);
@@ -976,7 +1004,6 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     gen_sreg_writes(env, ctx);
 #endif
     gen_pred_writes(ctx, pkt);
-    process_dczeroa(ctx, pkt);
     if (pkt->pkt_has_hvx) {
         gen_commit_hvx(ctx, pkt);
     }
