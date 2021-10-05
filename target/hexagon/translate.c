@@ -367,7 +367,12 @@ static void mark_implicit_reg_write(DisasContext *ctx, Insn *insn,
                                     int attrib, int rnum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
-        bool is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC);
+        /*
+         * USR is used to set overflow and FP exceptions,
+         * so treat it as conditional
+         */
+        bool is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC) ||
+                             rnum == HEX_REG_USR;
         if (is_predicated && !is_preloaded(ctx, rnum)) {
             tcg_gen_mov_tl(hex_new_value[rnum], hex_gpr[rnum]);
         }
