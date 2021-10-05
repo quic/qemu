@@ -499,7 +499,7 @@ const arch_proc_opt_t arch_proc_opt_v68 = {
     .QDSP6_MX_FP_ACC_NORM = 3,
     .QDSP6_MX_PARALLEL_GRPS = 8,
     .QDSP6_VX_PRESENT = 1,
-    .QDSP6_VX_CONTEXTS = 4,
+    .QDSP6_VX_CONTEXTS = VECTOR_UNIT_MAX,
     .QDSP6_VX_MEM_ENTRIES = 2048,
     .QDSP6_VX_VEC_SZ = 1024,
 };
@@ -508,7 +508,7 @@ struct ProcessorState ProcessorStateV68 = {
     .features = &rev_features_v68,
     .options = &options_struct_v68,
     .arch_proc_options = &arch_proc_opt_v68,
-    .runnable_threads_max = 4,
+    .runnable_threads_max = THREADS_MAX,
     .thread_system_mask = 0xf,
     .shared_extptr = 0,
     .timing_on = 0,

@@ -57,7 +57,8 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define TOTAL_PER_THREAD_REGS 64
 #endif
 
-#define THREADS_MAX 4
+#define THREADS_MAX 8
+#define VECTOR_UNIT_MAX 4
 #define SLOTS_MAX 4
 #define STORES_MAX 2
 #define REG_WRITES_MAX 32

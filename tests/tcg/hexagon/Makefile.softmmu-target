@@ -44,6 +44,7 @@ TESTS += \
 	int_range \
 	fopen \
 	ftrunc \
+	test-thread \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -96,6 +97,7 @@ vid_reg: vid_reg.o
 int_range: int_range.o
 fopen: fopen.o
 ftrunc: ftrunc.o
+test-thread: test-thread.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)

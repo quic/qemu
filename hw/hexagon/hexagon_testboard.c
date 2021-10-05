@@ -40,13 +40,6 @@
 #include "target/hexagon/internal.h"
 #include "libgen.h"
 
-typedef enum {
-  v66_rev = 0xa666,
-  v68_rev = 0x8d68,
-  v69_rev = 0x8c69,
-  v73_rev = 0x8c73,
-} Rev_t;
-
 static hexagon_config_table *cfgTable;
 static hexagon_config_extensions *cfgExtensions;
 static bool syscfg_is_linux = false;
