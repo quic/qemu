@@ -998,13 +998,14 @@ uint32_t ARCH_FUNCTION(step_2d_descriptor)(dma_t *dma)
             }
             CHECK_UWBC_32B(dma, desc_state, src_pa, dst_pa);
 
-            uint8_t buffer[DMA_MAX_TRANSFER_SIZE];
+            uint8_t buffer[DMA_MAX_TRANSFER_SIZE+1];
             if (!constant_fill) {
                 DMA_BUFFER_FILL_LOAD(dma, src_va, src_pa, transfer_size, buffer);
             } else {
                 DMA_BUFFER_FILL_CONSTANT(dma, src_va, src_pa, transfer_size, buffer);
             }
             if (!l2fetch) {
+                g_assert(transfer_size <= DMA_MAX_TRANSFER_SIZE);
                 DMA_BUFFER_WRITE(dma, dst_va, dst_pa, transfer_size, buffer);
             }
 
