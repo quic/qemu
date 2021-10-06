@@ -598,6 +598,63 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         }
     }
     break;
+    case SYS_ACCESS:
+    {
+        char filename[BUFSIZ];
+        size4u_t FileNameAddr;
+        size4u_t BufferMode;
+        int rc;
+
+        i = 0;
+
+        DEBUG_MEMORY_READ(swi_info, 4, &FileNameAddr);
+        do
+        {
+            DEBUG_MEMORY_READ(FileNameAddr + i, 1, &filename[i]);
+            i++;
+        }
+        while((i < BUFSIZ) && (filename[i-1]));
+        filename[i] = 0;
+
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &BufferMode);
+
+        if((rc = access(filename, BufferMode)) != 0)
+        {
+            ARCH_SET_THREAD_REG(env, HEX_REG_R00, -1);
+            ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
+        }
+
+        ARCH_SET_THREAD_REG(env, HEX_REG_R00, rc);
+    }
+    break;
+    case SYS_GETCWD:
+    {
+       char *cwdPtr;
+       size4u_t BufferAddr;
+       size4u_t BufferSize;
+       unsigned int indx = 0;
+
+       DEBUG_MEMORY_READ(swi_info, 4, &BufferAddr);
+       DEBUG_MEMORY_READ(swi_info + 4, 4, &BufferSize);
+
+       if((cwdPtr = (char *)malloc(BufferSize)) == (char *)0)
+       {
+           ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
+           ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
+           break;
+       }
+
+       if(getcwd(cwdPtr, BufferSize) == cwdPtr)
+       {
+           for(indx = 0; indx < BufferSize; indx++)
+           {
+               DEBUG_MEMORY_READ(BufferAddr + indx, 1, &cwdPtr[indx]);
+           }
+           ARCH_SET_THREAD_REG(env, HEX_REG_R00, BufferAddr);
+       }
+       free(cwdPtr);
+    }
+    break;
 
   case SYS_OPENDIR:
     {

@@ -45,6 +45,8 @@ TESTS += \
 	fopen \
 	ftrunc \
 	test-thread \
+	access \
+	getcwd \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -98,6 +100,8 @@ int_range: int_range.o
 fopen: fopen.o
 ftrunc: ftrunc.o
 test-thread: test-thread.o
+access: access.o
+getcwd: getcwd.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -149,6 +153,10 @@ run-ftrunc: ftrunc
 	sleep 1
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
 	stat _testfile_ftrunc | fgrep "Size: 1"
+
+run-access: access
+	echo "valid" > _testfile_access
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
 
 run-hmx_conv_fp16: hmx_conv_fp16
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 hmx_input_fp16.dat hmx_output_fp16.dat","$< on $(TARGET_NAME)")
