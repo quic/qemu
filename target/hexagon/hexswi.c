@@ -97,6 +97,7 @@
 #define SYS_READDIR         0x182
 #define SYS_MKDIR           0x183
 #define SYS_RMDIR           0x184
+#define SYS_EXEC            0x185
 #define SYS_FTRUNC          0x186
 
 static const int DIR_INDEX_OFFSET = 0x0b000;
@@ -653,6 +654,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
            ARCH_SET_THREAD_REG(env, HEX_REG_R00, BufferAddr);
        }
        free(cwdPtr);
+    }
+    break;
+    case SYS_EXEC:
+    {
+        qemu_log_mask(LOG_UNIMP, "SYS_EXEC is deprecated\n");
     }
     break;
 
