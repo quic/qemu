@@ -10,6 +10,7 @@ import multiprocessing as mp
 from glob import glob
 import os.path
 import random
+import pathlib
 
 class TimedoutProcess(object):
     def __init__(self, **args):
@@ -49,7 +50,12 @@ def run_lldb(prog, port_num):
     if os.path.exists(debug_orig):
         prog = debug_orig
 
-    debug_cmd = f'/prj/dsp/qdsp6/release/internal/HEXAGON/branch-8.5/linux64/latest/Tools/bin/hexagon-lldb --batch --source ~bcain/src/qemu/crash_debug.lldb --one-line-before-file "file {prog}" --one-line-before-file "gdb-remote {port_num}"'
+    lldb = pathlib.Path("/prj/dsp/qdsp6/release/internal/HEXAGON/branch-8.5/linux64/latest/Tools/bin/hexagon-lldb");
+    if lldb.exists():
+        debug_cmd = f'/prj/dsp/qdsp6/release/internal/HEXAGON/branch-8.5/linux64/latest/Tools/bin/hexagon-lldb --batch --source ~bcain/src/qemu/crash_debug.lldb --one-line-before-file "file {prog}" --one-line-before-file "gdb-remote {port_num}"'
+    else:
+        debug_cmd = f'/prj/qct/llvm/release/internal/HEXAGON/branch-8.5/linux64/latest/Tools/bin/hexagon-lldb --batch --source ~bcain/src/qemu/crash_debug.lldb --one-line-before-file "file {prog}" --one-line-before-file "gdb-remote {port_num}"'
+
     debug_res = subprocess.run(shlex.split(debug_cmd), timeout=25., stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return debug_res
 
