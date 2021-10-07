@@ -31,6 +31,7 @@ typedef struct SystemState system_t;
 #include "hmx/hmx.h"
 #include "dma/dma.h"
 #include "hw/registerfields.h"
+#include "hw/hexagon/hexagon.h"
 
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
@@ -608,6 +609,16 @@ extern int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 FIELD(TB_FLAGS, IS_TIGHT_LOOP, 0, 1)
 FIELD(TB_FLAGS, MMU_INDEX, 1, 3)
 FIELD(TB_FLAGS, PCYCLE_ENABLED, 4, 1)
+FIELD(TB_FLAGS, HVX_COPROC_ENABLED, 5, 1)
+FIELD(TB_FLAGS, HVX_64B_MODE, 6, 1)
+
+#ifndef CONFIG_USER_ONLY
+static inline bool rev_implements_64b_hvx(CPUHexagonState *env)
+{
+    HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
+    return (hex_cpu->rev_reg & 255) <= (v66_rev & 255);
+}
+#endif
 
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
@@ -618,6 +629,8 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
 #ifndef CONFIG_USER_ONLY
     target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+
     bool pcycle_enabled = extract32(syscfg,
                                     reg_field_info[SYSCFG_PCYCLEEN].offset,
                                     reg_field_info[SYSCFG_PCYCLEEN].width);
@@ -627,6 +640,16 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
     if (pcycle_enabled) {
         hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, PCYCLE_ENABLED, 1);
+    }
+
+    bool hvx_enabled = extract32(ssr, reg_field_info[SSR_XE].offset,
+                                 reg_field_info[SSR_XE].width);
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED, hvx_enabled);
+
+    if (rev_implements_64b_hvx(env)) {
+        int v2x = extract32(syscfg, reg_field_info[SYSCFG_V2X].offset,
+                            reg_field_info[SYSCFG_V2X].width);
+        hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_64B_MODE, !v2x);
     }
 #else
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, MMU_INDEX, MMU_USER_IDX);
