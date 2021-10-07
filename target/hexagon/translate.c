@@ -1092,8 +1092,6 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->num_insns = 0;
     ctx->num_hvx_insns = 0;
     ctx->num_hmx_insns = 0;
-    ctx->hvx_check_emitted = false;
-    ctx->hmx_check_emitted = false;
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
@@ -1105,6 +1103,8 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
         && (!(tb_cflags(ctx->base.tb) & CF_PARALLEL))) {
         gen_cpu_limit_init();
     }
+    ctx->hvx_check_emitted = false;
+    ctx->hmx_check_emitted = false;
 #endif
 }
 
