@@ -139,7 +139,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
     DeviceState *dev;
     int i;
 
-    machine->smp.cpus = THREADS_MAX;
     memset(&hexagon_binfo, 0, sizeof(hexagon_binfo));
     if (machine->kernel_filename) {
         hexagon_binfo.ram_size = machine->ram_size;
@@ -434,7 +433,8 @@ static void v66g_1024_init(ObjectClass *oc, void *data)
     mc->is_default = 0;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->default_cpus = mc->max_cpus = 4;
+    mc->default_cpus = 4;
+    mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
 }
 
@@ -472,7 +472,8 @@ static void v68n_1024_init(ObjectClass *oc, void *data)
     mc->is_default = 1;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->default_cpus = mc->max_cpus = 6;
+    mc->default_cpus = 6;
+    mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
 }
 
@@ -490,8 +491,8 @@ static void v68g_h2_init(ObjectClass *oc, void *data)
     mc->init = v68g_1024_h2_init;
     mc->desc = "Hexagon H2 V68G_1024";
 
-   /* TODO: Remove but, 4 is better tested */
-    mc->default_cpus = mc->max_cpus = 4;
+    mc->default_cpus = 4;
+    mc->max_cpus = THREADS_MAX;
 }
 
 
@@ -511,7 +512,8 @@ static void v69na_1024_init(ObjectClass *oc, void *data)
     mc->is_default = 0;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->default_cpus = mc->max_cpus = 6;
+    mc->default_cpus = 6;
+    mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
 }
 
@@ -538,7 +540,8 @@ static void v73na_1024_linux_init(ObjectClass *oc, void *data)
     mc->is_default = 0;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->default_cpus = mc->max_cpus = 6;
+    mc->default_cpus = 6;
+    mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
 }
 
@@ -551,7 +554,8 @@ static void v73na_1024_init(ObjectClass *oc, void *data)
     mc->is_default = 0;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
-    mc->default_cpus = mc->max_cpus = 6;
+    mc->default_cpus = 6;
+    mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
 }
 
