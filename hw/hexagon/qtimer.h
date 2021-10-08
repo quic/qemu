@@ -47,7 +47,7 @@ struct QuTIMERState {
 
     MemoryRegion iomem;
     uint32_t secure;
-    hex_timer_state *timer[2];
+    hex_timer_state timer[2];
     uint32_t frame_id;
     uint32_t freq;
     int level[2];

@@ -230,13 +230,18 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
     /* This is tightly with the IRQ selected must match the value below
      * or the interrupts will not be seen
      */
-    sysbus_create_varargs("qutimer", 0xfab20000,
-                          NULL);
+    QuTIMERState *qtimer = QuTIMER(
+            sysbus_create_varargs(TYPE_QuTIMER, 0xfab20000, NULL));
+
     unsigned QTMR0_IRQ = syscfg_is_linux ? 2 : 3;
-    sysbus_create_varargs("hextimer", cfgExtensions->qtmr_rg0,
-                          qdev_get_gpio_in(dev, QTMR0_IRQ), NULL);
-    sysbus_create_varargs("hextimer", cfgExtensions->qtmr_rg1,
-                          qdev_get_gpio_in(dev, 4), NULL);
+    sysbus_mmio_map(SYS_BUS_DEVICE(&qtimer->timer[0]), 0,
+                    cfgExtensions->qtmr_rg0);
+    sysbus_connect_irq(SYS_BUS_DEVICE(&qtimer->timer[0]), 0,
+                       qdev_get_gpio_in(dev, QTMR0_IRQ));
+    sysbus_mmio_map(SYS_BUS_DEVICE(&qtimer->timer[1]), 0,
+                    cfgExtensions->qtmr_rg1);
+    sysbus_connect_irq(SYS_BUS_DEVICE(&qtimer->timer[1]), 0,
+                       qdev_get_gpio_in(dev, 4));
 
     hexagon_config_table *config_table = cfgTable;
 

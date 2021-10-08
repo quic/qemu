@@ -53,8 +53,8 @@ static void qutimer_set_irq(void *opaque, int irq, int level)
     QuTIMERState *s = (QuTIMERState *)opaque;
 
     s->level[irq] = level;
-    s->timer[0]->int_level = level;
-    s->timer[1]->int_level = level;
+    s->timer[0].int_level = level;
+    s->timer[1].int_level = level;
     qemu_set_irq(s->irq, s->level[0] || s->level[1]);
 }
 
@@ -80,9 +80,9 @@ static uint64_t qutimer_read(void *opaque, hwaddr offset,
         case QTMR_AC_CNTTID:
            return 0x11; /* Only frame 0 and frame 1 are implemented. */
         case QTMR_AC_CNTACR_0:
-            return s->timer[0]->cnt_ctrl;
+            return s->timer[0].cnt_ctrl;
         case QTMR_AC_CNTACR_1:
-            return s->timer[1]->cnt_ctrl;
+            return s->timer[1].cnt_ctrl;
         case QTMR_VERSION:
             return 0x10000000;
         default:
@@ -116,10 +116,10 @@ static void qutimer_write(void *opaque, hwaddr offset,
                 s->secure = value;
             return;
         case QTMR_AC_CNTACR_0:
-            s->timer[0]->cnt_ctrl = value;
+            s->timer[0].cnt_ctrl = value;
             return;
         case QTMR_AC_CNTACR_1:
-            s->timer[1]->cnt_ctrl = value;
+            s->timer[1].cnt_ctrl = value;
             return;
         default:
             qemu_log_mask(LOG_GUEST_ERROR, "%s: QTMR_AC_CNT: Bad offset %x\n",
@@ -147,11 +147,9 @@ static const VMStateDescription vmstate_qutimer = {
     }
 };
 
-static QuTIMERState *QuTimerBase;
 static void qutimer_init(Object *obj)
 {
     QuTIMERState *s = QuTIMER(obj);
-    QuTimerBase = s;
 
     object_property_add_uint32_ptr(obj, "secure", &s->secure, OBJ_PROP_FLAG_READ);
     object_property_add_uint32_ptr(obj, "frame_id", &s->frame_id, OBJ_PROP_FLAG_READ);
@@ -163,11 +161,21 @@ static void qutimer_realize(DeviceState *dev, Error **errp)
 {
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
     QuTIMERState *s = QuTIMER(dev);
+    unsigned int i;
 
     memory_region_init_io(&s->iomem, OBJECT(sbd), &qutimer_ops, s,
                           "qutimer", QTIMER_MEM_SIZE_BYTES);
     sysbus_init_mmio(sbd, &s->iomem);
     sysbus_init_irq(sbd, &s->irq);
+
+    for (i = 0; i < 2; i++) {
+        /* if needed we can initialize the children in ..._init() function */
+        object_initialize_child(OBJECT(s), "timer[*]", &s->timer[i], TYPE_HexTIMER);
+        qdev_prop_set_uint32(DEVICE(&s->timer[i]), "devid", i);
+        if (!sysbus_realize(SYS_BUS_DEVICE(&s->timer[i]), errp)) {
+            return;
+        }
+    }
 }
 
 static Property qutimer_properties[] = {
@@ -380,16 +388,6 @@ static void hex_timer_realize(DeviceState *dev, Error **errp)
     memory_region_init_io(&s->iomem, OBJECT(sbd), &hex_timer_ops, s,
                           "hextimer", QTIMER_MEM_REGION_SIZE_BYTES);
     sysbus_init_mmio(sbd, &s->iomem);
-    if (QuTimerBase) {
-        if (QuTimerBase->timer[0] == NULL) {
-            QuTimerBase->timer[0] = s;
-            s->devid = 0;
-        }
-        else {
-            QuTimerBase->timer[1] = s;
-            s->devid = 1;
-        }
-    }
 
     s->timer = ptimer_init(hex_timer_tick, s, PTIMER_POLICY_DEFAULT);
     vmstate_register(NULL, VMSTATE_INSTANCE_ID_ANY, &vmstate_hex_timer, s);
@@ -403,6 +401,7 @@ static void hex_timer_realize(DeviceState *dev, Error **errp)
 }
 
 static Property hex_timer_properties[] = {
+    DEFINE_PROP_UINT32("devid", hex_timer_state, devid, 0),
     DEFINE_PROP_UINT32("freq", hex_timer_state, freq, QTIMER_DEFAULT_FREQ_HZ),
     DEFINE_PROP_END_OF_LIST(),
 };
