@@ -230,8 +230,8 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
     /* This is tightly with the IRQ selected must match the value below
      * or the interrupts will not be seen
      */
-    QuTIMERState *qtimer = QuTIMER(
-            sysbus_create_varargs(TYPE_QuTIMER, 0xfab20000, NULL));
+    QCTQtimerState *qtimer = QCT_QTIMER(
+            sysbus_create_varargs(TYPE_QCT_QTIMER, 0xfab20000, NULL));
 
     unsigned QTMR0_IRQ = syscfg_is_linux ? 2 : 3;
     sysbus_mmio_map(SYS_BUS_DEVICE(&qtimer->timer[0]), 0,

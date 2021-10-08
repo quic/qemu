@@ -49,7 +49,7 @@
 #define LOW_32(val) (0x0ffffffffULL & val)
 
 /* Merge the IRQs from the two component devices.  */
-static void qutimer_set_irq(QuTIMERState *s, int irq, int level)
+static void qutimer_set_irq(QCTQtimerState *s, int irq, int level)
 {
     s->level[irq] = level;
     /*
@@ -60,7 +60,7 @@ static void qutimer_set_irq(QuTIMERState *s, int irq, int level)
     qemu_set_irq(s->irq, s->level[0] || s->level[1]);
 }
 
-/* qutimer_read/write:
+/* qct_qtimer_read/write:
  * if offset < 0x1000 read restricted registers:
  * QTMR_AC_CNTFREQ/CNTSR/CNTTID/CNTACR/CNTOFF_(LO/HI)/QTMR_VERSION
  * else if offset < 0x2000
@@ -68,10 +68,10 @@ static void qutimer_set_irq(QuTIMERState *s, int irq, int level)
  * else
  *     - Reference timer 2
  */
-static uint64_t qutimer_read(void *opaque, hwaddr offset,
+static uint64_t qct_qtimer_read(void *opaque, hwaddr offset,
                            unsigned size)
 {
-    QuTIMERState *s = (QuTIMERState *)opaque;
+    QCTQtimerState *s = (QCTQtimerState *)opaque;
 
     if (offset < 0x1000) {
         switch (offset) {
@@ -100,10 +100,10 @@ static uint64_t qutimer_read(void *opaque, hwaddr offset,
     return 0;
 }
 
-static void qutimer_write(void *opaque, hwaddr offset,
+static void qct_qtimer_write(void *opaque, hwaddr offset,
                         uint64_t value, unsigned size)
 {
-    QuTIMERState *s = (QuTIMERState *)opaque;
+    QCTQtimerState *s = (QCTQtimerState *)opaque;
 
     if (offset < 0x1000) {
         switch (offset) {
@@ -133,25 +133,25 @@ static void qutimer_write(void *opaque, hwaddr offset,
         qemu_log_mask(LOG_GUEST_ERROR, "%s: Bad offset %x\n", __func__, (int)offset);
 }
 
-static const MemoryRegionOps qutimer_ops = {
-    .read = qutimer_read,
-    .write = qutimer_write,
+static const MemoryRegionOps qct_qtimer_ops = {
+    .read = qct_qtimer_read,
+    .write = qct_qtimer_write,
     .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
-static const VMStateDescription vmstate_qutimer = {
-    .name = "qutimer",
+static const VMStateDescription vmstate_qct_qtimer = {
+    .name = "qct-qtimer",
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (VMStateField[]) {
-        VMSTATE_INT32_ARRAY(level, QuTIMERState, 2),
+        VMSTATE_INT32_ARRAY(level, QCTQtimerState, 2),
         VMSTATE_END_OF_LIST()
     }
 };
 
-static void qutimer_init(Object *obj)
+static void qct_qtimer_init(Object *obj)
 {
-    QuTIMERState *s = QuTIMER(obj);
+    QCTQtimerState *s = QCT_QTIMER(obj);
 
     object_property_add_uint32_ptr(obj, "secure", &s->secure, OBJ_PROP_FLAG_READ);
     object_property_add_uint32_ptr(obj, "frame_id", &s->frame_id, OBJ_PROP_FLAG_READ);
@@ -159,20 +159,20 @@ static void qutimer_init(Object *obj)
     s->secure = QTMR_AC_CNTSR_NSN_1 | QTMR_AC_CNTSR_NSN_2;
 }
 
-static void qutimer_realize(DeviceState *dev, Error **errp)
+static void qct_qtimer_realize(DeviceState *dev, Error **errp)
 {
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
-    QuTIMERState *s = QuTIMER(dev);
+    QCTQtimerState *s = QCT_QTIMER(dev);
     unsigned int i;
 
-    memory_region_init_io(&s->iomem, OBJECT(sbd), &qutimer_ops, s,
+    memory_region_init_io(&s->iomem, OBJECT(sbd), &qct_qtimer_ops, s,
                           "qutimer", QTIMER_MEM_SIZE_BYTES);
     sysbus_init_mmio(sbd, &s->iomem);
     sysbus_init_irq(sbd, &s->irq);
 
     for (i = 0; i < 2; i++) {
         /* if needed we can initialize the children in ..._init() function */
-        object_initialize_child(OBJECT(s), "timer[*]", &s->timer[i], TYPE_HexTIMER);
+        object_initialize_child(OBJECT(s), "timer[*]", &s->timer[i], TYPE_QCT_HEXTIMER);
         qdev_prop_set_uint32(DEVICE(&s->timer[i]), "devid", i);
         /* FIXME: maybe we should set up a (weak) link ? */
         s->timer[i].qtimer = s;
@@ -182,31 +182,31 @@ static void qutimer_realize(DeviceState *dev, Error **errp)
     }
 }
 
-static Property qutimer_properties[] = {
-    DEFINE_PROP_UINT32("freq", QuTIMERState, freq, QTIMER_DEFAULT_FREQ_HZ),
+static Property qct_qtimer_properties[] = {
+    DEFINE_PROP_UINT32("freq", QCTQtimerState, freq, QTIMER_DEFAULT_FREQ_HZ),
     DEFINE_PROP_END_OF_LIST(),
 };
 
-static void qutimer_class_init(ObjectClass *klass, void *data)
+static void qct_qtimer_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *k = DEVICE_CLASS(klass);
 
-    device_class_set_props(k, qutimer_properties);
-    k->realize = qutimer_realize;
-    k->vmsd = &vmstate_qutimer;
+    device_class_set_props(k, qct_qtimer_properties);
+    k->realize = qct_qtimer_realize;
+    k->vmsd = &vmstate_qct_qtimer;
 }
 
 
-static const TypeInfo qutimer_info = {
-    .name          = TYPE_QuTIMER,
+static const TypeInfo qct_qtimer_info = {
+    .name          = TYPE_QCT_QTIMER,
     .parent        = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(QuTIMERState),
-    .instance_init = qutimer_init,
-    .class_init    = qutimer_class_init,
+    .instance_size = sizeof(QCTQtimerState),
+    .instance_init = qct_qtimer_init,
+    .class_init    = qct_qtimer_class_init,
 };
 
 
-static void hex_timer_update(hex_timer_state *s)
+static void hex_timer_update(QCTHextimerState *s)
 {
     /* Update interrupts.  */
     int level = s->int_level && (s->control & QTMR_CNTP_CTL_ENABLE);
@@ -216,7 +216,7 @@ static void hex_timer_update(hex_timer_state *s)
 
 static uint64_t hex_timer_read(void *opaque, hwaddr offset, unsigned size)
 {
-    hex_timer_state *s = (hex_timer_state *)opaque;
+    QCTHextimerState *s = (QCTHextimerState *)opaque;
 
     switch (offset) {
         case (QTMR_CNT_FREQ): /* Ticks/Second */
@@ -247,7 +247,7 @@ static uint64_t hex_timer_read(void *opaque, hwaddr offset, unsigned size)
  * Reset the timer limit after settings have changed.
  * May only be called from inside a ptimer transaction block.
  */
-static void hex_timer_recalibrate(hex_timer_state *s, int reload)
+static void hex_timer_recalibrate(QCTHextimerState *s, int reload)
 {
     uint64_t limit;
     /* Periodic.  */
@@ -258,7 +258,7 @@ static void hex_timer_recalibrate(hex_timer_state *s, int reload)
 static void hex_timer_write(void *opaque, hwaddr offset,
                             uint64_t value, unsigned size)
 {
-    hex_timer_state *s = (hex_timer_state *)opaque;
+    QCTHextimerState *s = (QCTHextimerState *)opaque;
     HEX_TIMER_LOG("\ta timer write: %lu, %lu\n", offset, value);
 
     switch (offset) {
@@ -332,7 +332,7 @@ static void hex_timer_write(void *opaque, hwaddr offset,
 
 static void hex_timer_tick(void *opaque)
 {
-    hex_timer_state *s = (hex_timer_state *)opaque;
+    QCTHextimerState *s = (QCTHextimerState *)opaque;
     s->cntpct += s->limit;
     if (s->cntpct >= s->cntval) {
         s->int_level = 1;
@@ -353,19 +353,19 @@ static const VMStateDescription vmstate_hex_timer = {
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (VMStateField[]) {
-        VMSTATE_UINT32(control, hex_timer_state),
-        VMSTATE_UINT32(cnt_ctrl, hex_timer_state),
-        VMSTATE_UINT64(cntpct, hex_timer_state),
-        VMSTATE_UINT64(cntval, hex_timer_state),
-        VMSTATE_UINT64(limit, hex_timer_state),
-        VMSTATE_UINT32(int_level, hex_timer_state),
-        VMSTATE_PTIMER(timer, hex_timer_state),
+        VMSTATE_UINT32(control, QCTHextimerState),
+        VMSTATE_UINT32(cnt_ctrl, QCTHextimerState),
+        VMSTATE_UINT64(cntpct, QCTHextimerState),
+        VMSTATE_UINT64(cntval, QCTHextimerState),
+        VMSTATE_UINT64(limit, QCTHextimerState),
+        VMSTATE_UINT32(int_level, QCTHextimerState),
+        VMSTATE_PTIMER(timer, QCTHextimerState),
         VMSTATE_END_OF_LIST()
     }
 };
 
-static void hex_instance_init(Object *obj) {
-    hex_timer_state *s = HexTIMER(obj);
+static void hex_timer_instance_init(Object *obj) {
+    QCTHextimerState *s = QCT_HEXTIMER(obj);
 
     object_property_add_uint32_ptr(obj, "control", &s->control, OBJ_PROP_FLAG_READ);
     object_property_add_uint32_ptr(obj, "cnt_ctrl", &s->cnt_ctrl, OBJ_PROP_FLAG_READ);
@@ -383,7 +383,7 @@ static void hex_instance_init(Object *obj) {
 
 static void hex_timer_realize(DeviceState *dev, Error **errp)
 {
-    hex_timer_state *s = HexTIMER(dev);
+    QCTHextimerState *s = QCT_HEXTIMER(dev);
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
 
     if (!s->qtimer) {
@@ -406,8 +406,8 @@ static void hex_timer_realize(DeviceState *dev, Error **errp)
 }
 
 static Property hex_timer_properties[] = {
-    DEFINE_PROP_UINT32("devid", hex_timer_state, devid, 0),
-    DEFINE_PROP_UINT32("freq", hex_timer_state, freq, QTIMER_DEFAULT_FREQ_HZ),
+    DEFINE_PROP_UINT32("devid", QCTHextimerState, devid, 0),
+    DEFINE_PROP_UINT32("freq",  QCTHextimerState, freq, QTIMER_DEFAULT_FREQ_HZ),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -421,17 +421,17 @@ static void hex_timer_class_init(ObjectClass *klass, void *data)
 }
 
 static const TypeInfo hex_timer_info = {
-        .name          = TYPE_HexTIMER,
+        .name          = TYPE_QCT_HEXTIMER,
         .parent        = TYPE_SYS_BUS_DEVICE,
-        .instance_size = sizeof(hex_timer_state),
-        .instance_init = hex_instance_init,
+        .instance_size = sizeof(QCTHextimerState),
+        .instance_init = hex_timer_instance_init,
         .class_init    = hex_timer_class_init,
 };
 
-static void qutimer_register_types(void)
+static void qct_qtimer_register_types(void)
 {
     type_register_static(&hex_timer_info);
-    type_register_static(&qutimer_info);
+    type_register_static(&qct_qtimer_info);
 }
 
-type_init(qutimer_register_types)
+type_init(qct_qtimer_register_types)

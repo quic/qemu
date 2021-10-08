@@ -1,7 +1,7 @@
 /*
  * Qualcomm QCT QTimer
  *
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,15 +22,15 @@
 #include "hw/sysbus.h"
 #include "hw/ptimer.h"
 
-#define TYPE_QuTIMER "qutimer"
-#define TYPE_HexTIMER "hextimer"
-OBJECT_DECLARE_SIMPLE_TYPE(QuTIMERState, QuTIMER)
-OBJECT_DECLARE_SIMPLE_TYPE(hex_timer_state, HexTIMER)
+#define TYPE_QCT_QTIMER "qct-qtimer"
+#define TYPE_QCT_HEXTIMER "qct-hextimer"
+OBJECT_DECLARE_SIMPLE_TYPE(QCTQtimerState, QCT_QTIMER)
+OBJECT_DECLARE_SIMPLE_TYPE(QCTHextimerState, QCT_HEXTIMER)
 
-struct hex_timer_state {
+struct QCTHextimerState {
     SysBusDevice parent_obj;
     MemoryRegion iomem;
-    QuTIMERState *qtimer;
+    QCTQtimerState *qtimer;
     ptimer_state *timer;
     uint64_t cntval;       /* Physical timer compare value interrupt when cntpct > cntval */
     uint64_t cntpct;       /* Physical counter */
@@ -43,12 +43,12 @@ struct hex_timer_state {
     qemu_irq irq;
 };
 
-struct QuTIMERState {
+struct QCTQtimerState {
     SysBusDevice parent_obj;
 
     MemoryRegion iomem;
     uint32_t secure;
-    hex_timer_state timer[2];
+    struct QCTHextimerState timer[2];
     uint32_t frame_id;
     uint32_t freq;
     int level[2];
