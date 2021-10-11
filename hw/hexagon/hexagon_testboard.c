@@ -258,8 +258,8 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
 void hexagon_read_timer(uint32_t *low, uint32_t *high)
 {
-    const hwaddr low_addr  = cfgExtensions->qtmr_rg0 + QTMR_CNTPCT_LO;
-    const hwaddr high_addr = cfgExtensions->qtmr_rg0 + QTMR_CNTPCT_HI;
+    const hwaddr low_addr  = cfgExtensions->qtmr_rg0 + QCT_QTIMER_CNTPCT_LO;
+    const hwaddr high_addr = cfgExtensions->qtmr_rg0 + QCT_QTIMER_CNTPCT_HI;
 
     cpu_physical_memory_read(low_addr, low, sizeof(*low));
     cpu_physical_memory_read(high_addr, high, sizeof(*high));

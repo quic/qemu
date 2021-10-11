@@ -62,7 +62,7 @@ static void qutimer_set_irq(QCTQtimerState *s, int irq, int level)
 
 /* qct_qtimer_read/write:
  * if offset < 0x1000 read restricted registers:
- * QTMR_AC_CNTFREQ/CNTSR/CNTTID/CNTACR/CNTOFF_(LO/HI)/QTMR_VERSION
+ * QCT_QTIMER_AC_CNTFREQ/CNTSR/CNTTID/CNTACR/CNTOFF_(LO/HI)/QCT_QTIMER_VERSION
  * else if offset < 0x2000
  *     - Reference timer 1
  * else
@@ -75,21 +75,21 @@ static uint64_t qct_qtimer_read(void *opaque, hwaddr offset,
 
     if (offset < 0x1000) {
         switch (offset) {
-        case QTMR_AC_CNTFRQ:
+        case QCT_QTIMER_AC_CNTFRQ:
            return s->freq;
-        case QTMR_AC_CNTSR:
+        case QCT_QTIMER_AC_CNTSR:
            return s->secure;
-        case QTMR_AC_CNTTID:
+        case QCT_QTIMER_AC_CNTTID:
            return 0x11; /* Only frame 0 and frame 1 are implemented. */
-        case QTMR_AC_CNTACR_0:
+        case QCT_QTIMER_AC_CNTACR_0:
             return s->timer[0].cnt_ctrl;
-        case QTMR_AC_CNTACR_1:
+        case QCT_QTIMER_AC_CNTACR_1:
             return s->timer[1].cnt_ctrl;
-        case QTMR_VERSION:
+        case QCT_QTIMER_VERSION:
             return 0x10000000;
         default:
                 qemu_log_mask(LOG_GUEST_ERROR,
-                              "%s: QTMR_AC_CNT: Bad offset %x\n",
+                              "%s: QCT_QTIMER_AC_CNT: Bad offset %x\n",
                               __func__, (int) offset);
             return 0x0;
         }
@@ -107,24 +107,24 @@ static void qct_qtimer_write(void *opaque, hwaddr offset,
 
     if (offset < 0x1000) {
         switch (offset) {
-        case QTMR_AC_CNTFRQ:
+        case QCT_QTIMER_AC_CNTFRQ:
             s->freq = value;
             return;
-        case QTMR_AC_CNTSR:
+        case QCT_QTIMER_AC_CNTSR:
             if (value > 3)
-                qemu_log_mask(LOG_GUEST_ERROR, "%s: QTMR_AC_CNTSR: Bad value %x\n",
+                qemu_log_mask(LOG_GUEST_ERROR, "%s: QCT_QTIMER_AC_CNTSR: Bad value %x\n",
                               __func__, (int) value);
             else
                 s->secure = value;
             return;
-        case QTMR_AC_CNTACR_0:
+        case QCT_QTIMER_AC_CNTACR_0:
             s->timer[0].cnt_ctrl = value;
             return;
-        case QTMR_AC_CNTACR_1:
+        case QCT_QTIMER_AC_CNTACR_1:
             s->timer[1].cnt_ctrl = value;
             return;
         default:
-            qemu_log_mask(LOG_GUEST_ERROR, "%s: QTMR_AC_CNT: Bad offset %x\n",
+            qemu_log_mask(LOG_GUEST_ERROR, "%s: QCT_QTIMER_AC_CNT: Bad offset %x\n",
                           __func__, (int) offset);
             return;
         }
@@ -156,7 +156,7 @@ static void qct_qtimer_init(Object *obj)
     object_property_add_uint32_ptr(obj, "secure", &s->secure, OBJ_PROP_FLAG_READ);
     object_property_add_uint32_ptr(obj, "frame_id", &s->frame_id, OBJ_PROP_FLAG_READ);
 
-    s->secure = QTMR_AC_CNTSR_NSN_1 | QTMR_AC_CNTSR_NSN_2;
+    s->secure = QCT_QTIMER_AC_CNTSR_NSN_1 | QCT_QTIMER_AC_CNTSR_NSN_2;
 }
 
 static void qct_qtimer_realize(DeviceState *dev, Error **errp)
@@ -209,7 +209,7 @@ static const TypeInfo qct_qtimer_info = {
 static void hex_timer_update(QCTHextimerState *s)
 {
     /* Update interrupts.  */
-    int level = s->int_level && (s->control & QTMR_CNTP_CTL_ENABLE);
+    int level = s->int_level && (s->control & QCT_QTIMER_CNTP_CTL_ENABLE);
     qemu_set_irq(s->irq, level);
     qutimer_set_irq(s->qtimer, s->devid, level);
 }
@@ -219,22 +219,22 @@ static uint64_t hex_timer_read(void *opaque, hwaddr offset, unsigned size)
     QCTHextimerState *s = (QCTHextimerState *)opaque;
 
     switch (offset) {
-        case (QTMR_CNT_FREQ): /* Ticks/Second */
+        case (QCT_QTIMER_CNT_FREQ): /* Ticks/Second */
             return s->freq;
-        case (QTMR_CNTP_CVAL_LO): /* TimerLoad */
+        case (QCT_QTIMER_CNTP_CVAL_LO): /* TimerLoad */
             return LOW_32((s->cntval));
-        case (QTMR_CNTP_CVAL_HI): /* TimerLoad */
+        case (QCT_QTIMER_CNTP_CVAL_HI): /* TimerLoad */
             return HIGH_32((s->cntval));
-        case QTMR_CNTPCT_LO:
+        case QCT_QTIMER_CNTPCT_LO:
             return LOW_32((s->cntpct + (ptimer_get_count(s->timer))));
-        case QTMR_CNTPCT_HI:
+        case QCT_QTIMER_CNTPCT_HI:
             return HIGH_32((s->cntpct + (ptimer_get_count(s->timer))));
-        case (QTMR_CNTP_TVAL): /* CVAL - CNTP */
+        case (QCT_QTIMER_CNTP_TVAL): /* CVAL - CNTP */
             return (s->cntval -
                     (HIGH_32((s->cntpct + (ptimer_get_count(s->timer)))) +
                      LOW_32((s->cntpct + (ptimer_get_count(s->timer))))));
 
-        case (QTMR_CNTP_CTL): /* TimerMIS */
+        case (QCT_QTIMER_CNTP_CTL): /* TimerMIS */
             return s->int_level;
         default:
             qemu_log_mask(LOG_GUEST_ERROR,
@@ -262,7 +262,7 @@ static void hex_timer_write(void *opaque, hwaddr offset,
     HEX_TIMER_LOG("\ta timer write: %lu, %lu\n", offset, value);
 
     switch (offset) {
-        case (QTMR_CNTP_CVAL_LO): /* TimerLoad */
+        case (QCT_QTIMER_CNTP_CVAL_LO): /* TimerLoad */
             /*HEX_TIMER_LOG ("A s->limit        = %d\n", s->limit);
               HEX_TIMER_LOG ("B s->limit        = %d\n", s->limit);
               HEX_TIMER_LOG ("value             = %d\n",value);
@@ -275,41 +275,41 @@ static void hex_timer_write(void *opaque, hwaddr offset,
             s->int_level = 0;
             s->cntval = value;
             ptimer_transaction_begin(s->timer);
-            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+            if (s->control & QCT_QTIMER_CNTP_CTL_ENABLE) {
                 /* Pause the timer if it is running.  This may cause some
                    inaccuracy due to rounding, but avoids other issues. */
                 ptimer_stop(s->timer);
             }
             hex_timer_recalibrate(s, 1);
-            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+            if (s->control & QCT_QTIMER_CNTP_CTL_ENABLE) {
                 ptimer_run(s->timer, 0);
             }
             ptimer_transaction_commit(s->timer);
             break;
-        case (QTMR_CNTP_CVAL_HI):
+        case (QCT_QTIMER_CNTP_CVAL_HI):
             qemu_log_mask(LOG_GUEST_ERROR,
-                          "%s: QTMR_CNTP_CVAL_HI is read-only\n", __func__);
+                          "%s: QCT_QTIMER_CNTP_CVAL_HI is read-only\n", __func__);
             break;
-        case (QTMR_CNTP_CTL): /* Timer control register */
+        case (QCT_QTIMER_CNTP_CTL): /* Timer control register */
             HEX_TIMER_LOG("\tctl write: %lu\n", value);
             ptimer_transaction_begin(s->timer);
-            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+            if (s->control & QCT_QTIMER_CNTP_CTL_ENABLE) {
                 /* Pause the timer if it is running.  This may cause some
                    inaccuracy due to rounding, but avoids other issues. */
                 ptimer_stop(s->timer);
             }
             s->control = value;
-            hex_timer_recalibrate(s, s->control & QTMR_CNTP_CTL_ENABLE);
+            hex_timer_recalibrate(s, s->control & QCT_QTIMER_CNTP_CTL_ENABLE);
             ptimer_set_freq(s->timer, s->freq);
             ptimer_set_period(s->timer, 1);
-            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+            if (s->control & QCT_QTIMER_CNTP_CTL_ENABLE) {
                 ptimer_run(s->timer, 0);
             }
             ptimer_transaction_commit(s->timer);
             break;
-        case (QTMR_CNTP_TVAL): /* CVAL - CNTP */
+        case (QCT_QTIMER_CNTP_TVAL): /* CVAL - CNTP */
             ptimer_transaction_begin(s->timer);
-            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+            if (s->control & QCT_QTIMER_CNTP_CTL_ENABLE) {
                 /* Pause the timer if it is running.  This may cause some
                    inaccuracy due to rounding, but avoids other issues. */
                 ptimer_stop(s->timer);
@@ -317,7 +317,7 @@ static void hex_timer_write(void *opaque, hwaddr offset,
             s->cntval = s->cntpct + value;
             ptimer_set_freq(s->timer, s->freq);
             ptimer_set_period(s->timer, 1);
-            if (s->control & QTMR_CNTP_CTL_ENABLE) {
+            if (s->control & QCT_QTIMER_CNTP_CTL_ENABLE) {
                 ptimer_run(s->timer, 0);
             }
             ptimer_transaction_commit(s->timer);
@@ -375,10 +375,10 @@ static void hex_timer_instance_init(Object *obj) {
     object_property_add_uint32_ptr(obj, "int_level", &s->int_level, OBJ_PROP_FLAG_READ);
 
     s->limit = 1;
-    s->control = QTMR_CNTP_CTL_ENABLE;
-    s->cnt_ctrl = (QTMR_AC_CNTACR_RWPT | QTMR_AC_CNTACR_RWVT |
-                   QTMR_AC_CNTACR_RVOFF | QTMR_AC_CNTACR_RFRQ |
-                   QTMR_AC_CNTACR_RPVCT | QTMR_AC_CNTACR_RPCT);
+    s->control = QCT_QTIMER_CNTP_CTL_ENABLE;
+    s->cnt_ctrl = (QCT_QTIMER_AC_CNTACR_RWPT | QCT_QTIMER_AC_CNTACR_RWVT |
+                   QCT_QTIMER_AC_CNTACR_RVOFF | QCT_QTIMER_AC_CNTACR_RFRQ |
+                   QCT_QTIMER_AC_CNTACR_RPVCT | QCT_QTIMER_AC_CNTACR_RPCT);
 }
 
 static void hex_timer_realize(DeviceState *dev, Error **errp)
@@ -400,8 +400,8 @@ static void hex_timer_realize(DeviceState *dev, Error **errp)
     vmstate_register(NULL, VMSTATE_INSTANCE_ID_ANY, &vmstate_hex_timer, s);
 #if 0
     /* auto start qtimer */
-    hex_timer_write(s, QTMR_CNTP_TVAL, 27428, 0);
-    hex_timer_write(s, QTMR_CNTP_CTL, 1, 0);
+    hex_timer_write(s, QCT_QTIMER_CNTP_TVAL, 27428, 0);
+    hex_timer_write(s, QCT_QTIMER_CNTP_CTL, 1, 0);
 #endif
 }
 

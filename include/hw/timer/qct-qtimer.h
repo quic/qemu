@@ -55,29 +55,29 @@ struct QCTQtimerState {
     qemu_irq irq;
 };
 
-#define QTMR_AC_CNTFRQ (0x000)
-#define QTMR_AC_CNTSR (0x004)
-#define QTMR_AC_CNTSR_NSN_1 (1 << 0)
-#define QTMR_AC_CNTSR_NSN_2 (1 << 1)
-#define QTMR_AC_CNTTID (0x08)
-#define QTMR_AC_CNTACR_0 (0x40)
-#define QTMR_AC_CNTACR_1 (0x44)
-#define QTMR_AC_CNTACR_RWPT (1 << 5) /* R/W of CNTP_* regs */
-#define QTMR_AC_CNTACR_RWVT (1 << 4) /* R/W of CNTV_* regs */
-#define QTMR_AC_CNTACR_RVOFF (1 << 3) /* R/W of CNTVOFF register */
-#define QTMR_AC_CNTACR_RFRQ (1 << 2) /* R/W of CNTFRQ register */
-#define QTMR_AC_CNTACR_RPVCT (1 << 1) /* R/W of CNTVCT register */
-#define QTMR_AC_CNTACR_RPCT (1 << 0) /* R/W of CNTPCT register */
-#define QTMR_VERSION (0x0fd0)
-#define QTMR_CNTPCT_LO (0x000)
-#define QTMR_CNTPCT_HI (0x004)
-#define QTMR_CNT_FREQ (0x010)
-#define QTMR_CNTP_CVAL_LO (0x020)
-#define QTMR_CNTP_CVAL_HI (0x024)
-#define QTMR_CNTP_TVAL (0x028)
-#define QTMR_CNTP_CTL (0x02c)
-#define QTMR_CNTP_CTL_ISTAT (1 << 2)
-#define QTMR_CNTP_CTL_INTEN (1 << 1)
-#define QTMR_CNTP_CTL_ENABLE (1 << 0)
+#define QCT_QTIMER_AC_CNTFRQ (0x000)
+#define QCT_QTIMER_AC_CNTSR (0x004)
+#define QCT_QTIMER_AC_CNTSR_NSN_1 (1 << 0)
+#define QCT_QTIMER_AC_CNTSR_NSN_2 (1 << 1)
+#define QCT_QTIMER_AC_CNTTID (0x08)
+#define QCT_QTIMER_AC_CNTACR_0 (0x40)
+#define QCT_QTIMER_AC_CNTACR_1 (0x44)
+#define QCT_QTIMER_AC_CNTACR_RWPT (1 << 5) /* R/W of CNTP_* regs */
+#define QCT_QTIMER_AC_CNTACR_RWVT (1 << 4) /* R/W of CNTV_* regs */
+#define QCT_QTIMER_AC_CNTACR_RVOFF (1 << 3) /* R/W of CNTVOFF register */
+#define QCT_QTIMER_AC_CNTACR_RFRQ (1 << 2) /* R/W of CNTFRQ register */
+#define QCT_QTIMER_AC_CNTACR_RPVCT (1 << 1) /* R/W of CNTVCT register */
+#define QCT_QTIMER_AC_CNTACR_RPCT (1 << 0) /* R/W of CNTPCT register */
+#define QCT_QTIMER_VERSION (0x0fd0)
+#define QCT_QTIMER_CNTPCT_LO (0x000)
+#define QCT_QTIMER_CNTPCT_HI (0x004)
+#define QCT_QTIMER_CNT_FREQ (0x010)
+#define QCT_QTIMER_CNTP_CVAL_LO (0x020)
+#define QCT_QTIMER_CNTP_CVAL_HI (0x024)
+#define QCT_QTIMER_CNTP_TVAL (0x028)
+#define QCT_QTIMER_CNTP_CTL (0x02c)
+#define QCT_QTIMER_CNTP_CTL_ISTAT (1 << 2)
+#define QCT_QTIMER_CNTP_CTL_INTEN (1 << 1)
+#define QCT_QTIMER_CNTP_CTL_ENABLE (1 << 0)
 
 #endif /* TIMER_QCT_QTIMER_H */
