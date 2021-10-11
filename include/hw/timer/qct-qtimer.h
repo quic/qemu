@@ -16,8 +16,8 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef QTIMER_TIMER_H
-#define QTIMER_TIMER_H
+#ifndef TIMER_QCT_QTIMER_H
+#define TIMER_QCT_QTIMER_H
 
 #include "hw/sysbus.h"
 #include "hw/ptimer.h"
@@ -80,4 +80,4 @@ struct QuTIMERState {
 #define QTMR_CNTP_CTL_INTEN (1 << 1)
 #define QTMR_CNTP_CTL_ENABLE (1 << 0)
 
-#endif
+#endif /* TIMER_QCT_QTIMER_H */

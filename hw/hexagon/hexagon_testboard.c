@@ -24,7 +24,7 @@
 #include "hw/boards.h"
 #include "hw/qdev-properties.h"
 #include "hw/hexagon/hexagon.h"
-#include "hw/hexagon/qtimer.h"
+#include "hw/timer/qct-qtimer.h"
 #include "hw/hexagon/machine_configs.h"
 #include "hw/intc/l2vic.h"
 #include "hw/loader.h"

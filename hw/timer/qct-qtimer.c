@@ -21,7 +21,7 @@
 #include "qemu/osdep.h"
 #include "hw/irq.h"
 #include "hw/qdev-properties.h"
-#include "hw/hexagon/qtimer.h"
+#include "hw/timer/qct-qtimer.h"
 #include "migration/vmstate.h"
 #include "qemu/log.h"
 #include "qemu/module.h"

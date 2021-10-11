@@ -39,4 +39,4 @@ softmmu_ss.add(when: 'CONFIG_XILINX', if_true: files('xilinx_timer.c'))
 
 specific_ss.add(when: 'CONFIG_AVR_TIMER16', if_true: files('avr_timer16.c'))
 
-specific_ss.add(when: 'CONFIG_HEXAGON', if_true: files('qtimer.c'))
+specific_ss.add(when: 'CONFIG_HEXAGON', if_true: files('qct-qtimer.c'))
