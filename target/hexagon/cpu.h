@@ -585,6 +585,22 @@ typedef struct HexagonCPU {
 #define cpu_signal_handler cpu_hexagon_signal_handler
 extern int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 
+#ifndef CONFIG_USER_ONLY
+enum {
+    PCYCLE_ENABLED_FLAGS_BIT = 3,
+};
+
+static inline void set_pcycle_enabled_flag(uint32_t *flags)
+{
+    *flags |= (1 << PCYCLE_ENABLED_FLAGS_BIT);
+}
+
+static inline bool get_pcycle_enabled_flag(uint32_t flags)
+{
+    return (flags >> PCYCLE_ENABLED_FLAGS_BIT) & 1;
+}
+#endif
+
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
 {
@@ -593,7 +609,16 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 #ifdef CONFIG_USER_ONLY
     *flags = 0;
 #else
+    target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    bool pcycle_enabled = extract32(syscfg,
+                                    reg_field_info[SYSCFG_PCYCLEEN].offset,
+                                    reg_field_info[SYSCFG_PCYCLEEN].width);
+
     *flags = cpu_mmu_index(env, false);
+
+    if (pcycle_enabled) {
+        set_pcycle_enabled_flag(flags);
+    }
 #endif
 }
 

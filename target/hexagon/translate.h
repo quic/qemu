@@ -56,6 +56,7 @@ typedef struct DisasContext {
     bool s1_store_processed;
     bool hvx_check_emitted;
     bool hmx_check_emitted;
+    bool pcycle_enabled;
 } DisasContext;
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)

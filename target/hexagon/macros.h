@@ -216,6 +216,9 @@
             TCGv_i32 num = tcg_const_i32(NUM);        \
             gen_helper_sreg_write(cpu_env, num, VAL); \
             tcg_temp_free_i32(num);                   \
+            if ((NUM) == HEX_SREG_SYSCFG) {           \
+                ctx->base.is_jmp = DISAS_TOO_MANY;    \
+            }                                         \
         }                                             \
     } while (0)
 #if 1
@@ -574,6 +577,9 @@
             TCGv_i32 num = tcg_const_i32(NUM);             \
             gen_helper_sreg_write_pair(cpu_env, num, VAL); \
             tcg_temp_free_i32(num);                        \
+            if ((NUM) == HEX_SREG_SYSCFG) {                \
+                ctx->base.is_jmp = DISAS_TOO_MANY;         \
+            }                                              \
         }                                                  \
     } while (0)
 #define WRITE_SREG_dd(NUM, VAL)          WRITE_SREG_PAIR(NUM, VAL)

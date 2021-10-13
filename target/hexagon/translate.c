@@ -295,16 +295,15 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     /*
      * Increment PCYCLEHI/PCYCLELO (global sreg)
      * Only if SYSCFG[PCYCLEEN] is set
+     *     Note that we check SYSCFG[PCYCLEEN] in cpu_get_tb_cpu_state,
+     *     and we set ctx->pcycle_enabled in hexagon_tr_tb_start.
+     *     This means, we'll generate code for the TB differently
+     *     depending on the value.
      *
      * The implication of counting pcycles at the start of a packet
      * is that we'll count the number of times it is replayed.
      */
-    TCGv syscfg_pcycleen = tcg_temp_new();
-    TCGLabel *skip = gen_new_label();
-
-    GET_SYSCFG_FIELD(syscfg_pcycleen, SYSCFG_PCYCLEEN);
-    tcg_gen_brcondi_tl(TCG_COND_EQ, syscfg_pcycleen, 0, skip);
-    {
+    if (ctx->pcycle_enabled) {
         TCGv pcyclelo = tcg_temp_new();
         TCGv pcyclehi = tcg_temp_new();
         TCGv_i64 val64 = tcg_temp_new_i64();
@@ -324,8 +323,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         tcg_temp_free_i64(val64);
         tcg_temp_free(val32);
     }
-    gen_set_label(skip);
-    tcg_temp_free(syscfg_pcycleen);
 
     HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
 
@@ -1105,6 +1102,7 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     }
     ctx->hvx_check_emitted = false;
     ctx->hmx_check_emitted = false;
+    ctx->pcycle_enabled = get_pcycle_enabled_flag(db->tb->flags);
 #endif
 }
 
