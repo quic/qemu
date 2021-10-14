@@ -38,11 +38,7 @@
 
 size4u_t count_leading_ones_8(size8u_t src)
 {
-    int ret;
-    for (ret = 0; src & 0x8000000000000000LL; src <<= 1) {
-        ret++;
-    }
-    return ret;
+    return clo64(src);
 }
 
 #define BITS_MASK_8 0x5555555555555555ULL

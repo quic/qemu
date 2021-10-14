@@ -64,11 +64,7 @@ DEBUG_PRINT_XFP("%s : stat {z:%x inf:%x neg:%x under:%x} exp=0x%04x sig raw=0x%0
 #endif
 #endif
 
-#ifdef USE_SLOW_CLZLL
-#define COUNT_LEADING_ZEROS_8(X)  count_leading_zero_8(X)
-#else
-#define COUNT_LEADING_ZEROS_8(X)  (X ? __builtin_clzll(X) : 64)
-#endif
+#define COUNT_LEADING_ZEROS_8(X) clz64(X)
 
 static inline exp_range_t get_exp_range_unbiased(int32_t exp_bits) {
 	exp_range_t out;

@@ -17,6 +17,7 @@
 
 #include "kvx_ieee.h"
 #include "kvx_mac_reduce.c"
+#include "qemu/host-utils.h"
 
 uint32_t shiftRightJam32( uint32_t a, uint_fast16_t dist )
 {
@@ -26,34 +27,7 @@ uint32_t shiftRightJam32( uint32_t a, uint_fast16_t dist )
 
 uint_fast8_t countLeadingZeros16( uint16_t a )
 {
-    uint_fast8_t count;
-    const uint_least8_t countLeadingZeros8[256] = {
-        8, 7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4,
-        3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    };
-
-    count = 8;
-    if ( 0x100 <= a ) {
-        count = 0;
-        a >>= 8;
-    }
-    count += countLeadingZeros8[a];
-    return count;
-
+    return clz16(a);
 }
 
 struct exp8_sig16 normSubnormalF16Sig( uint_fast16_t sig )
