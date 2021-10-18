@@ -38,7 +38,7 @@ struct hex_timer_state {
     uint64_t limit;
     uint32_t freq;
     uint32_t devid;
-    int int_level;
+    uint32_t int_level;
     qemu_irq irq;
 };
 

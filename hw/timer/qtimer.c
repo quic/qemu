@@ -339,7 +339,7 @@ static const VMStateDescription vmstate_hex_timer = {
         VMSTATE_UINT64(cntpct, hex_timer_state),
         VMSTATE_UINT64(cntval, hex_timer_state),
         VMSTATE_UINT64(limit, hex_timer_state),
-        VMSTATE_INT32(int_level, hex_timer_state),
+        VMSTATE_UINT32(int_level, hex_timer_state),
         VMSTATE_PTIMER(timer, hex_timer_state),
         VMSTATE_END_OF_LIST()
     }
@@ -347,10 +347,28 @@ static const VMStateDescription vmstate_hex_timer = {
 
 static void hex_instance_init(Object *obj) {
     hex_timer_state *s = HexTIMER(obj);
-    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
+
+    object_property_add_uint32_ptr(obj, "control", &s->control, OBJ_PROP_FLAG_READ);
+    object_property_add_uint32_ptr(obj, "cnt_ctrl", &s->cnt_ctrl, OBJ_PROP_FLAG_READ);
+    object_property_add_uint64_ptr(obj, "cntval", &s->cntval, OBJ_PROP_FLAG_READ);
+    object_property_add_uint64_ptr(obj, "cntpct", &s->cntpct, OBJ_PROP_FLAG_READ);
+    object_property_add_uint64_ptr(obj, "limit", &s->limit, OBJ_PROP_FLAG_READ);
+    object_property_add_uint32_ptr(obj, "int_level", &s->int_level, OBJ_PROP_FLAG_READ);
+
+    s->limit = 1;
+    s->control = QTMR_CNTP_CTL_ENABLE;
+    s->cnt_ctrl = (QTMR_AC_CNTACR_RWPT | QTMR_AC_CNTACR_RWVT |
+                   QTMR_AC_CNTACR_RVOFF | QTMR_AC_CNTACR_RFRQ |
+                   QTMR_AC_CNTACR_RPVCT | QTMR_AC_CNTACR_RPCT);
+}
+
+static void hex_timer_realize(DeviceState *dev, Error **errp)
+{
+    hex_timer_state *s = HexTIMER(dev);
+    SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
 
     sysbus_init_irq(sbd, &s->irq);
-    memory_region_init_io(&s->iomem, obj, &hex_timer_ops, s,
+    memory_region_init_io(&s->iomem, OBJECT(sbd), &hex_timer_ops, s,
                           "hextimer", QTIMER_MEM_REGION_SIZE_BYTES);
     sysbus_init_mmio(sbd, &s->iomem);
     if (QuTimerBase) {
@@ -363,15 +381,6 @@ static void hex_instance_init(Object *obj) {
             s->devid = 1;
         }
     }
-}
-
-static hex_timer_state *hex_timer_init(hex_timer_state *s, uint32_t freq)
-{
-    s->freq = freq;
-    s->control = QTMR_CNTP_CTL_ENABLE;
-    s->cnt_ctrl = (QTMR_AC_CNTACR_RWPT | QTMR_AC_CNTACR_RWVT |
-                   QTMR_AC_CNTACR_RVOFF | QTMR_AC_CNTACR_RFRQ |
-                   QTMR_AC_CNTACR_RPVCT | QTMR_AC_CNTACR_RPCT);
 
     s->timer = ptimer_init(hex_timer_tick, s, PTIMER_POLICY_DEFAULT);
     vmstate_register(NULL, VMSTATE_INSTANCE_ID_ANY, &vmstate_hex_timer, s);
@@ -381,24 +390,11 @@ static hex_timer_state *hex_timer_init(hex_timer_state *s, uint32_t freq)
     hex_timer_write(s, QTMR_CNTP_CTL, 1, 0);
 #endif
 
-    return s;
-}
-
-static void hex_timer_realize(DeviceState *dev, Error **errp)
-{
-    hex_timer_state *s = HexTIMER(dev);
-
-    s = hex_timer_init(s, QTIMER_DEFAULT_FREQ_HZ);
     s->irq = qemu_allocate_irq(qutimer_set_irq, s, 0);
 }
 
 static Property hex_timer_properties[] = {
-    DEFINE_PROP_UINT32("control", hex_timer_state, control, 0),
-    DEFINE_PROP_UINT32("cnt_ctrl", hex_timer_state, cnt_ctrl, 0),
-    DEFINE_PROP_UINT64("cntval", hex_timer_state, cntval, 0),
-    DEFINE_PROP_UINT64("cntpct", hex_timer_state, cntpct, 0),
-    DEFINE_PROP_UINT64("limit", hex_timer_state, limit, 1),
-    DEFINE_PROP_INT32("int_level", hex_timer_state, int_level, 0),
+    DEFINE_PROP_UINT32("freq", hex_timer_state, freq, QTIMER_DEFAULT_FREQ_HZ),
     DEFINE_PROP_END_OF_LIST(),
 };
 
