@@ -152,17 +152,25 @@ static void qutimer_init(Object *obj)
 {
     QuTIMERState *s = QuTIMER(obj);
     QuTimerBase = s;
-    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
 
-    memory_region_init_io(&s->iomem, obj, &qutimer_ops, s,
+    object_property_add_uint32_ptr(obj, "secure", &s->secure, OBJ_PROP_FLAG_READ);
+    object_property_add_uint32_ptr(obj, "frame_id", &s->frame_id, OBJ_PROP_FLAG_READ);
+
+    s->secure = QTMR_AC_CNTSR_NSN_1 | QTMR_AC_CNTSR_NSN_2;
+}
+
+static void qutimer_realize(DeviceState *dev, Error **errp)
+{
+    SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
+    QuTIMERState *s = QuTIMER(dev);
+
+    memory_region_init_io(&s->iomem, OBJECT(sbd), &qutimer_ops, s,
                           "qutimer", QTIMER_MEM_SIZE_BYTES);
     sysbus_init_mmio(sbd, &s->iomem);
+    sysbus_init_irq(sbd, &s->irq);
 }
 
 static Property qutimer_properties[] = {
-    DEFINE_PROP_UINT32("secure", QuTIMERState, secure,
-                   (QTMR_AC_CNTSR_NSN_1 | QTMR_AC_CNTSR_NSN_2)),
-    DEFINE_PROP_UINT32("frame_id", QuTIMERState, frame_id, 0),
     DEFINE_PROP_UINT32("freq", QuTIMERState, freq, QTIMER_DEFAULT_FREQ_HZ),
     DEFINE_PROP_END_OF_LIST(),
 };
@@ -172,6 +180,7 @@ static void qutimer_class_init(ObjectClass *klass, void *data)
     DeviceClass *k = DEVICE_CLASS(klass);
 
     device_class_set_props(k, qutimer_properties);
+    k->realize = qutimer_realize;
     k->vmsd = &vmstate_qutimer;
 }
 
