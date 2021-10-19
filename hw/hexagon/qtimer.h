@@ -79,17 +79,4 @@ struct QuTIMERState {
 #define QTMR_CNTP_CTL_INTEN (1 << 1)
 #define QTMR_CNTP_CTL_ENABLE (1 << 0)
 
-#define QTIMER_MEM_SIZE_BYTES 0x1000
-#define QTIMER_MEM_REGION_SIZE_BYTES 0x1000
-
-#define HEX_TIMER_DEBUG 0
-#define HEX_TIMER_LOG(...) \
-    do { \
-        if (HEX_TIMER_DEBUG) { \
-            rcu_read_lock(); \
-            fprintf(stderr, __VA_ARGS__); \
-            rcu_read_unlock(); \
-        } \
-    } while (0)
-
 #endif

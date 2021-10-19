@@ -28,9 +28,20 @@
 #include "qemu/timer.h"
 #include "sysemu/runstate.h"
 
+#define HEX_TIMER_DEBUG 0
+#define HEX_TIMER_LOG(...) \
+    do { \
+        if (HEX_TIMER_DEBUG) { \
+            rcu_read_lock(); \
+            fprintf(stderr, __VA_ARGS__); \
+            rcu_read_unlock(); \
+        } \
+    } while (0)
+
 /* Common timer implementation.  */
 
-//#define QTIMER_DEFAULT_FREQ_HZ 19200000ULL
+#define QTIMER_MEM_SIZE_BYTES 0x1000
+#define QTIMER_MEM_REGION_SIZE_BYTES 0x1000
 #define QTIMER_DEFAULT_FREQ_HZ   19200000ULL
 #define QTMR_TIMER_INDEX_MASK (0xf000)
 #define HIGH_32(val) (0x0ffffffffULL & (val >> 32))
