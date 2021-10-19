@@ -27,6 +27,7 @@
 #include "qemu/module.h"
 #include "qemu/timer.h"
 #include "sysemu/runstate.h"
+#include "qapi/error.h"
 
 #define HEX_TIMER_DEBUG 0
 #define HEX_TIMER_LOG(...) \
@@ -48,13 +49,14 @@
 #define LOW_32(val) (0x0ffffffffULL & val)
 
 /* Merge the IRQs from the two component devices.  */
-static void qutimer_set_irq(void *opaque, int irq, int level)
+static void qutimer_set_irq(QuTIMERState *s, int irq, int level)
 {
-    QuTIMERState *s = (QuTIMERState *)opaque;
-
     s->level[irq] = level;
-    s->timer[0].int_level = level;
-    s->timer[1].int_level = level;
+    /*
+     * FIXME: Do we really want to do this ?
+     * s->timer[0].int_level = level;
+     * s->timer[1].int_level = level;
+     */
     qemu_set_irq(s->irq, s->level[0] || s->level[1]);
 }
 
@@ -172,6 +174,8 @@ static void qutimer_realize(DeviceState *dev, Error **errp)
         /* if needed we can initialize the children in ..._init() function */
         object_initialize_child(OBJECT(s), "timer[*]", &s->timer[i], TYPE_HexTIMER);
         qdev_prop_set_uint32(DEVICE(&s->timer[i]), "devid", i);
+        /* FIXME: maybe we should set up a (weak) link ? */
+        s->timer[i].qtimer = s;
         if (!sysbus_realize(SYS_BUS_DEVICE(&s->timer[i]), errp)) {
             return;
         }
@@ -205,11 +209,9 @@ static const TypeInfo qutimer_info = {
 static void hex_timer_update(hex_timer_state *s)
 {
     /* Update interrupts.  */
-    if (s->int_level && (s->control & QTMR_CNTP_CTL_ENABLE)) {
-        qemu_irq_raise(s->irq);
-    } else {
-        qemu_irq_lower(s->irq);
-    }
+    int level = s->int_level && (s->control & QTMR_CNTP_CTL_ENABLE);
+    qemu_set_irq(s->irq, level);
+    qutimer_set_irq(s->qtimer, s->devid, level);
 }
 
 static uint64_t hex_timer_read(void *opaque, hwaddr offset, unsigned size)
@@ -384,6 +386,11 @@ static void hex_timer_realize(DeviceState *dev, Error **errp)
     hex_timer_state *s = HexTIMER(dev);
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
 
+    if (!s->qtimer) {
+        error_setg(errp, "qtimer must be set");
+        return;
+    }
+
     sysbus_init_irq(sbd, &s->irq);
     memory_region_init_io(&s->iomem, OBJECT(sbd), &hex_timer_ops, s,
                           "hextimer", QTIMER_MEM_REGION_SIZE_BYTES);
@@ -396,8 +403,6 @@ static void hex_timer_realize(DeviceState *dev, Error **errp)
     hex_timer_write(s, QTMR_CNTP_TVAL, 27428, 0);
     hex_timer_write(s, QTMR_CNTP_CTL, 1, 0);
 #endif
-
-    s->irq = qemu_allocate_irq(qutimer_set_irq, s, 0);
 }
 
 static Property hex_timer_properties[] = {

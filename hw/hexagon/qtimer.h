@@ -30,6 +30,7 @@ OBJECT_DECLARE_SIMPLE_TYPE(hex_timer_state, HexTIMER)
 struct hex_timer_state {
     SysBusDevice parent_obj;
     MemoryRegion iomem;
+    QuTIMERState *qtimer;
     ptimer_state *timer;
     uint64_t cntval;       /* Physical timer compare value interrupt when cntpct > cntval */
     uint64_t cntpct;       /* Physical counter */
