@@ -184,13 +184,6 @@ static const TypeInfo qutimer_info = {
     .class_init    = qutimer_class_init,
 };
 
-static void qutimer_timer_register_types(void)
-{
-    type_register_static(&qutimer_info);
-}
-
-type_init(qutimer_timer_register_types)
-
 
 static void hex_timer_update(hex_timer_state *s)
 {
@@ -426,9 +419,10 @@ static const TypeInfo hex_timer_info = {
         .class_init    = hex_timer_class_init,
 };
 
-static void hex_timer_timer_register_types(void)
+static void qutimer_register_types(void)
 {
     type_register_static(&hex_timer_info);
+    type_register_static(&qutimer_info);
 }
 
-type_init(hex_timer_timer_register_types)
+type_init(qutimer_register_types)
