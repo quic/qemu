@@ -304,24 +304,15 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
      * is that we'll count the number of times it is replayed.
      */
     if (ctx->pcycle_enabled) {
-        TCGv pcyclelo = tcg_temp_new();
-        TCGv pcyclehi = tcg_temp_new();
         TCGv_i64 val64 = tcg_temp_new_i64();
-        TCGv val32 = tcg_temp_new();
+        TCGv num = tcg_const_tl(HEX_SREG_PCYCLELO);
 
-        READ_SREG(pcyclelo, HEX_SREG_PCYCLELO);
-        READ_SREG(pcyclehi, HEX_SREG_PCYCLEHI);
-        tcg_gen_concat_i32_i64(val64, pcyclelo, pcyclehi);
+        gen_helper_sreg_read_pair(val64, cpu_env, num);
         tcg_gen_addi_i64(val64, val64, 3);
-        tcg_gen_extrl_i64_i32(val32, val64);
-        WRITE_SREG(HEX_SREG_PCYCLELO, val32);
-        tcg_gen_extrh_i64_i32(val32, val64);
-        WRITE_SREG(HEX_SREG_PCYCLEHI, val32);
+        gen_helper_sreg_write_pair(cpu_env, num, val64);
 
-        tcg_temp_free(pcyclelo);
-        tcg_temp_free(pcyclehi);
         tcg_temp_free_i64(val64);
-        tcg_temp_free(val32);
+        tcg_temp_free(num);
     }
 
     HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);

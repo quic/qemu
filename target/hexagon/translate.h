@@ -86,8 +86,12 @@ static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
 
 static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
 {
-    ctx->sreg_log[ctx->sreg_log_idx] = rnum;
-    ctx->sreg_log_idx++;
+    if (rnum < HEX_SREG_GLB_START) {
+        ctx->sreg_log[ctx->sreg_log_idx] = rnum;
+        ctx->sreg_log_idx++;
+    } else if (rnum == HEX_SREG_SYSCFG) {
+        ctx->base.is_jmp = DISAS_TOO_MANY;
+    }
 }
 
 static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
@@ -187,18 +191,6 @@ static inline void gen_slot_cancelled_check(TCGv check, int slot_num)
     tcg_temp_free(one);
     tcg_temp_free(zero);
     tcg_temp_free(mask);
-}
-
-static inline TCGv gen_read_sreg(TCGv result, int num)
-{
-    tcg_gen_mov_tl(result, hex_t_sreg[num]);
-    return result;
-}
-
-static inline void gen_log_sreg_write(int snum, TCGv val)
-
-{
-    tcg_gen_mov_tl(hex_t_sreg_new_value[snum], val);
 }
 
 extern void gen_exception(int excp);

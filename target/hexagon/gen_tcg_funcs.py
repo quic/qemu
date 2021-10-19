@@ -202,29 +202,21 @@ def genptr_decl(f, tag, regtype, regid, regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "G"):
         if (regid in {"dd"}):
-            f.write("    /* Declare %s%s pair here */\n" % \
-                (regtype, regid))
             f.write("    TCGv_i64 %s%sV = tcg_temp_local_new_i64();\n" % \
                 (regtype, regid))
             f.write("    const int %s = insn->regno[%d];\n" % \
                 (regN, regno))
         elif (regid in {"d"}):
-            f.write("    /* Declare %s%s here */\n" % \
-                (regtype, regid))
             f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
                 (regtype, regid))
             f.write("    const int %s = insn->regno[%d];\n" % \
                 (regN, regno))
         elif (regid in {"ss"}):
-            f.write("    /* Declare %s%s pair here */\n" % \
-                (regtype, regid))
             f.write("    TCGv_i64 %s%sV = tcg_temp_local_new_i64();\n" % \
                 (regtype, regid))
             f.write("    const int %s = insn->regno[%d];\n" % \
                 (regN, regno))
         elif (regid in {"s"}):
-            f.write("    /* Declare %s%s here */\n" % \
-                (regtype, regid))
             f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
                 (regtype, regid))
             f.write("    const int %s = insn->regno[%d];\n" % \
@@ -233,29 +225,21 @@ def genptr_decl(f, tag, regtype, regid, regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "S"):
         if (regid in {"dd"}):
-            f.write("    /* Declare %s%s pair here */\n" % \
-                (regtype, regid))
             f.write("    TCGv_i64 %s%sV = tcg_temp_local_new_i64();\n" % \
                 (regtype, regid))
             f.write("    const int %s = insn->regno[%d];\n" % \
                 (regN, regno))
         elif (regid in {"d"}):
-            f.write("    /* Declare %s%s here */\n" % \
-                (regtype, regid))
             f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
                 (regtype, regid))
             f.write("    const int %s = insn->regno[%d];\n" % \
                 (regN, regno))
         elif (regid in {"ss"}):
-            f.write("    /* Declare %s%s pair here */\n" % \
-                (regtype, regid))
             f.write("    TCGv_i64 %s%sV = tcg_temp_local_new_i64();\n" % \
                 (regtype, regid))
             f.write("    const int %s = insn->regno[%d];\n" % \
                 (regN, regno))
         elif (regid in {"s"}):
-            f.write("    /* Declare %s%s here */\n" % \
-                (regtype, regid))
             f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
                 (regtype, regid))
             f.write("    const int %s = insn->regno[%d];\n" % \
@@ -361,39 +345,23 @@ def genptr_free(f,tag,regtype,regid,regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "G"):
         if (regid in {"dd"}):
-            f.write("    /* Free %s%s pair here */\n" % \
-                (regtype, regid))
             f.write("    tcg_temp_free_i64(%s%sV);\n" % (regtype, regid))
         elif (regid in {"d"}):
-            f.write("    /* Free %s%s here */\n" % \
-                (regtype, regid))
             f.write("    tcg_temp_free(%s%sV);\n" % (regtype, regid))
         elif (regid in {"ss"}):
-            f.write("    /* Free %s%s pair here */\n" % \
-                (regtype, regid))
             f.write("    tcg_temp_free_i64(%s%sV);\n" % (regtype, regid))
         elif (regid in {"s"}):
-            f.write("    /* Free %s%s here */\n" % \
-                (regtype, regid))
             f.write("    tcg_temp_free(%s%sV);\n" % (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "S"):
         if (regid in {"dd"}):
-            f.write("    /* Free %s%s pair here */\n" % \
-                (regtype, regid))
             f.write("    tcg_temp_free_i64(%s%sV);\n" % (regtype, regid))
         elif (regid in {"d"}):
-            f.write("    /* Free %s%s here */\n" % \
-                (regtype, regid))
             f.write("    tcg_temp_free(%s%sV);\n" % (regtype, regid))
         elif (regid in {"ss"}):
-            f.write("    /* Free %s%s pair here */\n" % \
-                (regtype, regid))
             f.write("    tcg_temp_free_i64(%s%sV);\n" % (regtype, regid))
         elif (regid in {"s"}):
-            f.write("    /* Free %s%s here */\n" % \
-                (regtype, regid))
             f.write("    tcg_temp_free(%s%sV);\n" % (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
@@ -504,25 +472,19 @@ def genptr_src_read(f,tag,regtype,regid):
     elif (regtype == "G"):
         regN="%s%sN" % (regtype,regid)
         if (regid in {"ss"}):
-            f.write("    READ_GREG_ss(%s%sV, %s);\n" % (regtype, regid, regN))
-            #f.write("    /* Read %s%s pair here */\n" % (regtype, regid))
-            #f.write("    g_assert_not_reached(); /* FIXME 1 */\n")
+            f.write("    gen_read_greg_pair(%s%sV, %s);\n" % \
+                (regtype, regid, regN))
         elif (regid in {"s"}):
-            f.write("    READ_GREG_s(%s%sV, %s);\n" % (regtype, regid, regN))
-            #f.write("    /* Read %s%s here */\n" % (regtype, regid))
-            #f.write("    g_assert_not_reached(); /* FIXME 2 */\n")
+            f.write("    gen_read_greg(%s%sV, %s);\n" % (regtype, regid, regN))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "S"):
         regN="%s%sN" % (regtype,regid)
         if (regid in {"ss"}):
-            f.write("    READ_SREG_ss(%s%sV, %s);\n" % (regtype, regid, regN))
-            #f.write("    /* Read %s%s pair here */\n" % (regtype, regid))
-            #f.write("    g_assert_not_reached(); /* FIXME 3 */\n")
+            f.write("    gen_read_sreg_pair(%s%sV, %s);\n" % \
+                (regtype, regid, regN))
         elif (regid in {"s"}):
-            f.write("    READ_SREG_s(%s%sV, %s);\n" % (regtype, regid, regN))
-            #f.write("    /* Read %s%s here */\n" % (regtype, regid))
-            #f.write("    g_assert_not_reached(); /* FIXME 4 */\n")
+            f.write("    gen_read_sreg(%s%sV, %s);\n" % (regtype, regid, regN))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
@@ -624,25 +586,27 @@ def genptr_dst_write(f, tag, regtype, regid):
     elif (regtype == "G"):
         regN="%s%sN" % (regtype,regid)
         if (regid == "dd"):
-            f.write("    WRITE_GREG_dd(%s, %s%sV);\n" % (regN, regtype, regid))
-            #f.write("    /* Write %s%s pair here */\n" % (regtype, regid))
-            #f.write("    g_assert_not_reached(); /* FIXME 5 */\n")
+            f.write("    gen_log_greg_write_pair(%s, %s%sV);\n" % \
+                (regN, regtype, regid))
+            f.write("    ctx_log_greg_write(ctx, %s);\n" % (regN))
+            f.write("    ctx_log_greg_write(ctx, %s + 1);\n" % (regN))
         elif (regid == "d"):
-            f.write("    WRITE_GREG_d(%s, %s%sV);\n" % (regN, regtype, regid))
-            #f.write("    /* Write %s%s here */\n" % (regtype, regid))
-            #f.write("    g_assert_not_reached(); /* FIXME 6 */\n")
+            f.write("    gen_log_greg_write(%s, %s%sV);\n" % \
+                (regN, regtype, regid))
+            f.write("    ctx_log_greg_write(ctx, %s);\n" % (regN))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "S"):
         regN="%s%sN" % (regtype,regid)
         if (regid == "dd"):
-            f.write("    WRITE_SREG_dd(%s, %s%sV);\n" % (regN, regtype, regid))
-            #f.write("    /* Write %s%s pair here */\n" % (regtype, regid))
-            #f.write("    g_assert_not_reached(); /* FIXME 7 */\n")
+            f.write("    gen_log_sreg_write_pair(%s, %s%sV);\n" % \
+                (regN, regtype, regid))
+            f.write("    ctx_log_sreg_write(ctx, %s);\n" % (regN))
+            f.write("    ctx_log_sreg_write(ctx, %s + 1);\n" % (regN))
         elif (regid == "d"):
-            f.write("    WRITE_SREG_d(%s, %s%sV);\n" % (regN, regtype, regid))
-            #f.write("    /* Write %s%s here */\n" % (regtype, regid))
-            #f.write("    g_assert_not_reached(); /* FIXME 8 */\n")
+            f.write("    gen_log_sreg_write(%s, %s%sV);\n" % \
+                (regN, regtype, regid))
+            f.write("    ctx_log_sreg_write(ctx, %s);\n" % (regN))
         else:
             print("Bad register parse: ", regtype, regid)
     else:
