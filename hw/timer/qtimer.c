@@ -21,13 +21,11 @@
 #include "qemu/osdep.h"
 #include "hw/irq.h"
 #include "hw/qdev-properties.h"
-#include "hw/sysbus.h"
 #include "hw/hexagon/qtimer.h"
 #include "migration/vmstate.h"
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "qemu/timer.h"
-#include "hw/ptimer.h"
 #include "sysemu/runstate.h"
 
 /* Common timer implementation.  */
@@ -37,39 +35,6 @@
 #define QTMR_TIMER_INDEX_MASK (0xf000)
 #define HIGH_32(val) (0x0ffffffffULL & (val >> 32))
 #define LOW_32(val) (0x0ffffffffULL & val)
-
-typedef struct {
-    SysBusDevice parent_obj;
-    MemoryRegion iomem;
-    ptimer_state *timer;
-    uint64_t cntval;       /* Physical timer compare value interrupt when cntpct > cntval */
-    uint64_t cntpct;       /* Physical counter */
-    uint32_t control;
-    uint32_t cnt_ctrl;
-    uint64_t limit;
-    uint32_t freq;
-    uint32_t devid;
-    int int_level;
-    qemu_irq irq;
-} hex_timer_state;
-
-typedef struct QuTIMERState {
-    SysBusDevice parent_obj;
-
-    MemoryRegion iomem;
-    uint32_t secure;
-    hex_timer_state *timer[2];
-    uint32_t frame_id;
-    uint32_t freq;
-    int level[2];
-    qemu_irq irq;
-} QuTIMERState;
-
-
-#define TYPE_QuTIMER "qutimer"
-#define TYPE_HexTIMER "hextimer"
-#define QuTIMER(obj) OBJECT_CHECK(QuTIMERState, (obj), TYPE_QuTIMER)
-#define HexTIMER(obj) OBJECT_CHECK(hex_timer_state, (obj), TYPE_HexTIMER)
 
 /* Merge the IRQs from the two component devices.  */
 static void qutimer_set_irq(void *opaque, int irq, int level)

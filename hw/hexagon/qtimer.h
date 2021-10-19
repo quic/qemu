@@ -19,6 +19,41 @@
 #ifndef QTIMER_TIMER_H
 #define QTIMER_TIMER_H
 
+#include "hw/sysbus.h"
+#include "hw/ptimer.h"
+
+#define TYPE_QuTIMER "qutimer"
+#define TYPE_HexTIMER "hextimer"
+OBJECT_DECLARE_SIMPLE_TYPE(QuTIMERState, QuTIMER)
+OBJECT_DECLARE_SIMPLE_TYPE(hex_timer_state, HexTIMER)
+
+struct hex_timer_state {
+    SysBusDevice parent_obj;
+    MemoryRegion iomem;
+    ptimer_state *timer;
+    uint64_t cntval;       /* Physical timer compare value interrupt when cntpct > cntval */
+    uint64_t cntpct;       /* Physical counter */
+    uint32_t control;
+    uint32_t cnt_ctrl;
+    uint64_t limit;
+    uint32_t freq;
+    uint32_t devid;
+    int int_level;
+    qemu_irq irq;
+};
+
+struct QuTIMERState {
+    SysBusDevice parent_obj;
+
+    MemoryRegion iomem;
+    uint32_t secure;
+    hex_timer_state *timer[2];
+    uint32_t frame_id;
+    uint32_t freq;
+    int level[2];
+    qemu_irq irq;
+};
+
 #define QTMR_AC_CNTFRQ (0x000)
 #define QTMR_AC_CNTSR (0x004)
 #define QTMR_AC_CNTSR_NSN_1 (1 << 0)
