@@ -1575,7 +1575,7 @@ linux-user/xtensa
 .mailmap
 MAINTAINERS
 memory_ldst.c.inc
-meson/
+qemu-project/meson.git
 migration
 module-common.c
 monitor/hmp.c
