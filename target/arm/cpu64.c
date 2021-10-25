@@ -112,7 +112,10 @@ static const ARMCPRegInfo cortex_a76_n1_cp_reginfo[] = {
       .opc0 = 3, .opc1 = 1, .crn = 15, .crm = 0, .opc2 = 0,
       .access = PL1_RW, .type = ARM_CP_CONST, .resetvalue = 0 },
     { .name = "CPUACTLR_EL1", .state = ARM_CP_STATE_AA64,
-      .opc0 = 3, .opc1 = 1, .crn = 15, .crm = 2, .opc2 = 0,
+      .opc0 = 3, .opc1 = 0, .crn = 15, .crm = 1, .opc2 = 0,
+      .access = PL1_RW, .type = ARM_CP_CONST, .resetvalue = 0 },
+    { .name = "CPUACTLR_EL2", .state = ARM_CP_STATE_AA64,
+      .opc0 = 3, .opc1 = 0, .crn = 15, .crm = 1, .opc2 = 1,
       .access = PL1_RW, .type = ARM_CP_CONST, .resetvalue = 0 },
     { .name = "CPUACTLR",
       .cp = 15, .opc1 = 0, .crm = 15,
@@ -139,6 +142,15 @@ static const ARMCPRegInfo cortex_a76_n1_cp_reginfo[] = {
       .opc0 = 3, .opc1 = 0, .crn = 12, .crm = 1, .opc2 = 1,
       .state = ARM_CP_STATE_AA64,
       .access = PL1_W, .type = ARM_CP_NOP, .writefn = arm_cp_write_ignore},
+    { .name = "CLUSTERCFR_EL1", .state = ARM_CP_STATE_AA64,
+      .opc0 = 3, .opc1 = 0, .crn = 15, .crm = 3, .opc2 = 0,
+      .access = PL1_RW, .type = ARM_CP_CONST, .resetvalue = 0x4608 },
+    { .name = "CLUSTERIDR_EL1", .state = ARM_CP_STATE_AA64,
+      .opc0 = 3, .opc1 = 0, .crn = 15, .crm = 3, .opc2 = 1,
+      .access = PL1_RW, .type = ARM_CP_CONST, .resetvalue = 0x41 },
+    { .name = "CLUSTERACTLR_EL1", .state = ARM_CP_STATE_AA64,
+      .opc0 = 3, .opc1 = 0, .crn = 15, .crm = 3, .opc2 = 2,
+      .access = PL1_RW, .type = ARM_CP_CONST, .resetvalue = 0 },
     REGINFO_SENTINEL
 };
 
