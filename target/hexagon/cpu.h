@@ -65,7 +65,6 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define GREG_WRITES_MAX 32
 #define SREG_WRITES_MAX 64
 #define PRED_WRITES_MAX 5                   /* 4 insns + endloop */
-#define CACHE_TAGS_MAX 32
 #define VSTORES_MAX 2
 
 #define TYPE_HEXAGON_CPU "hexagon-cpu"
@@ -476,7 +475,6 @@ struct CPUHexagonState {
     target_ulong pred_written;
 
     struct MemLog mem_log_stores[STORES_MAX];
-    target_ulong pkt_has_store_s1;
     target_ulong dczero_addr;
 
     fenv_t fenv;
@@ -485,8 +483,6 @@ struct CPUHexagonState {
     target_ulong llsc_addr;
     target_ulong llsc_val;
     uint64_t     llsc_val_i64;
-
-    target_ulong gather_issued;
 
     mmvector_t VRegs[NUM_VREGS] QEMU_ALIGNED(16);
     mmvector_t future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
@@ -520,7 +516,6 @@ struct CPUHexagonState {
     mmvector_t temp_vregs[TEMP_VECTORS_MAX];
     mmqreg_t temp_qregs[TEMP_VECTORS_MAX];
 
-    target_ulong cache_tags[CACHE_TAGS_MAX];
     unsigned int timing_on;
 
     size8u_t pktid;

@@ -166,7 +166,6 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
     // Temp Reg gets updated
     // This allows Store .new to grab the correct result
     mmvecx->VRegs_updated_tmp = 0xFFFFFFFF;
-    mmvecx->gather_issued = 1;
 
     return;
 }

@@ -26,34 +26,32 @@
 
 typedef struct DisasContext {
     DisasContextBase base;
+    uint32_t mem_idx;
     uint32_t num_packets;
     uint32_t num_insns;
     uint32_t num_hvx_insns;
     uint32_t num_hmx_insns;
-    uint32_t mem_idx;
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
-    DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);    // mgl needs init
+    DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
     int greg_log[GREG_WRITES_MAX];
     int greg_log_idx;
     int sreg_log[SREG_WRITES_MAX];
     int sreg_log_idx;
     int preg_log[PRED_WRITES_MAX];
     int preg_log_idx;
-    DECLARE_BITMAP(pregs_written, NUM_PREGS);   // mgl needs init
+    DECLARE_BITMAP(pregs_written, NUM_PREGS);
     uint8_t store_width[STORES_MAX];
-    int ctx_temp_vregs_idx;
-    int ctx_temp_qregs_idx;
-    int vreg_log[NUM_VREGS];
-    int vreg_is_predicated[NUM_VREGS];
-    int vreg_log_idx;
-    DECLARE_BITMAP(vregs_updated_tmp, NUM_VREGS);   // mgl needs init
-    DECLARE_BITMAP(vregs_updated, NUM_VREGS);       // mgl needs init
-    DECLARE_BITMAP(vregs_select, NUM_VREGS);        // mgl needs init
-    int qreg_log[NUM_QREGS];
-    int qreg_is_predicated[NUM_QREGS];
-    int qreg_log_idx;
     bool s1_store_processed;
+    int vreg_log[NUM_VREGS];
+    bool vreg_is_predicated[NUM_VREGS];
+    int vreg_log_idx;
+    DECLARE_BITMAP(vregs_updated_tmp, NUM_VREGS);
+    DECLARE_BITMAP(vregs_updated, NUM_VREGS);
+    DECLARE_BITMAP(vregs_select, NUM_VREGS);
+    int qreg_log[NUM_QREGS];
+    bool qreg_is_predicated[NUM_QREGS];
+    int qreg_log_idx;
     bool hvx_check_emitted;
     bool hmx_check_emitted;
     bool pcycle_enabled;
@@ -61,11 +59,9 @@ typedef struct DisasContext {
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
 {
-#if HEX_DEBUG
     if (test_bit(rnum, ctx->regs_written)) {
         HEX_DEBUG_LOG("WARNING: Multiple writes to r%d\n", rnum);
     }
-#endif
     ctx->reg_log[ctx->reg_log_idx] = rnum;
     ctx->reg_log_idx++;
     set_bit(rnum, ctx->regs_written);
@@ -73,8 +69,8 @@ static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
 
 static inline void ctx_log_reg_write_pair(DisasContext *ctx, int rnum)
 {
-    ctx_log_reg_write(ctx, rnum ^ 0);
-    ctx_log_reg_write(ctx, rnum ^ 1);
+    ctx_log_reg_write(ctx, rnum);
+    ctx_log_reg_write(ctx, rnum + 1);
 }
 
 static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
@@ -134,7 +130,7 @@ static inline void ctx_log_vreg_write_pair(DisasContext *ctx,
 }
 
 static inline void ctx_log_qreg_write(DisasContext *ctx,
-                                      int rnum, int is_predicated)
+                                      int rnum, bool is_predicated)
 {
     ctx->qreg_log[ctx->qreg_log_idx] = rnum;
     ctx->qreg_is_predicated[ctx->qreg_log_idx] = is_predicated;
@@ -159,7 +155,6 @@ extern TCGv hex_dczero_addr;
 extern TCGv hex_llsc_addr;
 extern TCGv hex_llsc_val;
 extern TCGv_i64 hex_llsc_val_i64;
-extern TCGv hex_gather_issued;
 extern TCGv hex_VRegs_updated_tmp;
 extern TCGv hex_VRegs_updated;
 extern TCGv hex_VRegs_select;
@@ -170,7 +165,6 @@ extern TCGv hex_greg_written[NUM_GREGS];
 extern TCGv hex_t_sreg[NUM_SREGS];
 extern TCGv hex_t_sreg_new_value[NUM_SREGS];
 extern TCGv hex_t_sreg_written[NUM_SREGS];
-extern TCGv hex_cache_tags[CACHE_TAGS_MAX];
 extern TCGv hex_vstore_addr[VSTORES_MAX];
 extern TCGv hex_vstore_size[VSTORES_MAX];
 extern TCGv hex_vstore_pending[VSTORES_MAX];
@@ -179,23 +173,9 @@ extern TCGv hex_slot;
 extern TCGv hex_imprecise_exception;
 #endif
 
-static inline void gen_slot_cancelled_check(TCGv check, int slot_num)
-{
-    TCGv mask = tcg_const_tl(1 << slot_num);
-    TCGv one = tcg_const_tl(1);
-    TCGv zero = tcg_const_tl(0);
-
-    tcg_gen_and_tl(mask, hex_slot_cancelled, mask);
-    tcg_gen_movcond_tl(TCG_COND_NE, check, mask, zero, one, zero);
-
-    tcg_temp_free(one);
-    tcg_temp_free(zero);
-    tcg_temp_free(mask);
-}
-
-extern void gen_exception(int excp);
-extern void gen_exception_end_tb(DisasContext *ctx, int excp);
-extern void gen_exception_debug(void);
+void gen_exception(int excp);
+void gen_exception_end_tb(DisasContext *ctx, int excp);
+void gen_exception_debug(void);
 bool is_gather_store_insn(Insn *insn, Packet *pkt);
 void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif
