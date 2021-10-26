@@ -34,10 +34,12 @@ typedef struct DisasContext {
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
     DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
+#ifndef CONFIG_USER_ONLY
     int greg_log[GREG_WRITES_MAX];
     int greg_log_idx;
     int sreg_log[SREG_WRITES_MAX];
     int sreg_log_idx;
+#endif
     int preg_log[PRED_WRITES_MAX];
     int preg_log_idx;
     DECLARE_BITMAP(pregs_written, NUM_PREGS);
@@ -73,12 +75,12 @@ static inline void ctx_log_reg_write_pair(DisasContext *ctx, int rnum)
     ctx_log_reg_write(ctx, rnum + 1);
 }
 
+#ifndef CONFIG_USER_ONLY
 static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
 {
     ctx->greg_log[ctx->greg_log_idx] = rnum;
     ctx->greg_log_idx++;
 }
-
 
 static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
 {
@@ -89,6 +91,7 @@ static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
         ctx->base.is_jmp = DISAS_TOO_MANY;
     }
 }
+#endif
 
 static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
 {
@@ -159,12 +162,14 @@ extern TCGv hex_VRegs_updated_tmp;
 extern TCGv hex_VRegs_updated;
 extern TCGv hex_VRegs_select;
 extern TCGv hex_QRegs_updated;
+#ifndef CONFIG_USER_ONLY
 extern TCGv hex_greg[NUM_GREGS];
 extern TCGv hex_greg_new_value[NUM_GREGS];
 extern TCGv hex_greg_written[NUM_GREGS];
 extern TCGv hex_t_sreg[NUM_SREGS];
 extern TCGv hex_t_sreg_new_value[NUM_SREGS];
 extern TCGv hex_t_sreg_written[NUM_SREGS];
+#endif
 extern TCGv hex_vstore_addr[VSTORES_MAX];
 extern TCGv hex_vstore_size[VSTORES_MAX];
 extern TCGv hex_vstore_pending[VSTORES_MAX];

@@ -964,9 +964,13 @@ size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new, size4u_t dummy,
 		dma_adapter_report_exception(dma);
 	} else {
 		if (new != 0) {
+#ifndef CONFIG_USER_ONLY
             uint32_t ssr = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_SSR);
 			fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width, reg_field_info[SSR_ASID].offset, (GET_SSR_FIELD(SSR_ASID, ssr)));
             ARCH_SET_SYSTEM_REG(thread, HEX_SREG_SSR, ssr);
+#else
+            g_assert_not_reached();
+#endif
 		}
 	}
 
@@ -990,9 +994,13 @@ size4u_t dma_adapter_cmd_link(thread_t *thread, size4u_t tail, size4u_t new, dma
 		dma_adapter_report_exception(dma);
 	} else {
 		if (new != 0) {
+#ifndef CONFIG_USER_ONLY
             uint32_t ssr = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_SSR);
 			fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width, reg_field_info[SSR_ASID].offset, (GET_SSR_FIELD(SSR_ASID, ssr)));
             ARCH_SET_SYSTEM_REG(thread, HEX_SREG_SSR, ssr);
+#else
+            g_assert_not_reached();
+#endif
 		}
 	}
 

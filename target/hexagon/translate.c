@@ -53,15 +53,15 @@ TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
 TCGv hex_VRegs_select;
 TCGv hex_QRegs_updated;
+#ifndef CONFIG_USER_ONLY
 TCGv hex_greg[NUM_GREGS];
 TCGv hex_greg_new_value[NUM_GREGS];
 TCGv hex_t_sreg[NUM_SREGS];
 TCGv hex_t_sreg_new_value[NUM_SREGS];
-#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+#if HEX_DEBUG
 TCGv hex_greg_written[NUM_GREGS];
 TCGv hex_t_sreg_written[NUM_SREGS];
 #endif
-#ifndef CONFIG_USER_ONLY
 TCGv hex_slot;
 TCGv hex_imprecise_exception;
 TCGv hex_cause_code;
@@ -241,8 +241,10 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     /* Clear out the disassembly context */
     ctx->reg_log_idx = 0;
     bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
+#ifndef CONFIG_USER_ONLY
     ctx->greg_log_idx = 0;
     ctx->sreg_log_idx = 0;
+#endif
     ctx->preg_log_idx = 0;
     bitmap_zero(ctx->pregs_written, NUM_PREGS);
     ctx->vreg_log_idx = 0;
@@ -363,14 +365,15 @@ static void mark_implicit_reg_write(DisasContext *ctx, Insn *insn,
     }
 }
 
+#ifndef CONFIG_USER_ONLY
 static void mark_implicit_sreg_write(DisasContext *ctx, Insn *insn,
                                      int attrib, int snum)
 {
     if (GET_ATTRIB(insn->opcode, attrib)) {
-        ctx->sreg_log[ctx->sreg_log_idx] = snum;
-        ctx->sreg_log_idx++;
+        ctx_log_sreg_write(ctx, snum);
     }
 }
+#endif
 
 static void mark_implicit_pred_write(DisasContext *ctx, Insn *insn,
                                      int attrib, int pnum)
@@ -392,9 +395,11 @@ static void mark_implicit_reg_writes(DisasContext *ctx, Insn *insn)
     mark_implicit_reg_write(ctx, insn, A_IMPLICIT_WRITES_USR, HEX_REG_USR);
     mark_implicit_reg_write(ctx, insn, A_FPOP, HEX_REG_USR);
 
+#ifndef CONFIG_USER_ONLY
     mark_implicit_sreg_write(ctx, insn, A_IMPLICIT_WRITES_SGP0, HEX_SREG_SGP0);
     mark_implicit_sreg_write(ctx, insn, A_IMPLICIT_WRITES_SGP1, HEX_SREG_SGP1);
     mark_implicit_sreg_write(ctx, insn, A_IMPLICIT_WRITES_SSR, HEX_SREG_SSR);
+#endif
 }
 
 static void mark_implicit_pred_writes(DisasContext *ctx, Insn *insn)
@@ -1185,6 +1190,7 @@ void hexagon_translate_init(void)
                 reg_written_names[i]);
         }
     }
+#ifndef CONFIG_USER_ONLY
     for (i = 0; i < NUM_GREGS; i++) {
             hex_greg[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, greg[i]),
@@ -1192,7 +1198,7 @@ void hexagon_translate_init(void)
             hex_greg_new_value[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, greg_new_value[i]),
                 "new_greg_value");
-#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+#if HEX_DEBUG
             hex_greg_written[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, greg_written[i]), "greg_written");
 #endif
@@ -1205,12 +1211,13 @@ void hexagon_translate_init(void)
             hex_t_sreg_new_value[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, t_sreg_new_value[i]),
                 "new_sreg_value");
-#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+#if HEX_DEBUG
             hex_t_sreg_written[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, t_sreg_written[i]), "sreg_written");
 #endif
         }
     }
+#endif
     for (i = 0; i < NUM_PREGS; i++) {
         hex_pred[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, pred[i]),

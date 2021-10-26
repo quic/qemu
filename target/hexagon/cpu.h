@@ -49,12 +49,12 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #endif
 
 #define NUM_PREGS 4
+#define TOTAL_PER_THREAD_REGS 64
+#ifndef CONFIG_USER_ONLY
 #define NUM_SREGS 64
 #define NUM_GREGS 32
-#ifdef CONFIG_USER_ONLY
-#define TOTAL_PER_THREAD_REGS 64
-#else
-#define TOTAL_PER_THREAD_REGS 64
+#define GREG_WRITES_MAX 32
+#define SREG_WRITES_MAX 64
 #endif
 
 #define THREADS_MAX 8
@@ -62,8 +62,6 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define SLOTS_MAX 4
 #define STORES_MAX 2
 #define REG_WRITES_MAX 32
-#define GREG_WRITES_MAX 32
-#define SREG_WRITES_MAX 64
 #define PRED_WRITES_MAX 5                   /* 4 insns + endloop */
 #define VSTORES_MAX 2
 
@@ -454,6 +452,7 @@ struct CPUHexagonState {
     uint8_t slot_cancelled;
     target_ulong new_value[TOTAL_PER_THREAD_REGS];
 
+#ifndef CONFIG_USER_ONLY
     /* some system registers are per thread and some are global */
     target_ulong t_sreg[NUM_SREGS];
     target_ulong t_sreg_new_value[NUM_SREGS];
@@ -463,6 +462,7 @@ struct CPUHexagonState {
     target_ulong greg[NUM_GREGS];
     target_ulong greg_new_value[NUM_GREGS];
     target_ulong greg_written[NUM_GREGS];
+#endif
 
     /*
      * Only used when HEX_DEBUG is on, but unconditionally included

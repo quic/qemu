@@ -79,6 +79,7 @@ static inline void gen_log_reg_write(int rnum, TCGv val)
     }
 }
 
+#ifndef CONFIG_USER_ONLY
 static inline void gen_log_greg_write(int rnum, TCGv val)
 {
     g_assert(rnum <= HEX_GREG_G3);
@@ -88,6 +89,7 @@ static inline void gen_log_greg_write(int rnum, TCGv val)
         tcg_gen_movi_tl(hex_greg_written[rnum], 1);
     }
 }
+#endif
 
 static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot)
 {

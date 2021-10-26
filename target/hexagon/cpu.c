@@ -583,7 +583,6 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
 #else
-    env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
     env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
     hmx_configure_state(env);
 #endif
