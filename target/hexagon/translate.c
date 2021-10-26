@@ -602,16 +602,14 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
         size_t size = sizeof(MMVector);
 
         if (is_predicated) {
-            TCGv cmp = tcg_temp_local_new();
+            TCGv cmp = tcg_temp_new();
             TCGLabel *label_skip = gen_new_label();
 
             tcg_gen_andi_tl(cmp, hex_VRegs_updated, 1 << rnum);
             tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            {
-                tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
-            }
-            gen_set_label(label_skip);
             tcg_temp_free(cmp);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
+            gen_set_label(label_skip);
         } else {
             tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
         }
@@ -637,16 +635,14 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
         size_t size = sizeof(MMQReg);
 
         if (is_predicated) {
-            TCGv cmp = tcg_temp_local_new();
+            TCGv cmp = tcg_temp_new();
             TCGLabel *label_skip = gen_new_label();
 
             tcg_gen_andi_tl(cmp, hex_QRegs_updated, 1 << rnum);
             tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            {
-                tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
-            }
-            gen_set_label(label_skip);
             tcg_temp_free(cmp);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
+            gen_set_label(label_skip);
         } else {
             tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
         }
