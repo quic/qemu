@@ -60,7 +60,7 @@ void mem_vector_gather_init(CPUHexagonState *env,
         env->vtcm_log.va[i] = 0;
         env->tmp_VRegs[0].ub[i] = 0;
     }
-    bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES / 8);
+    bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
     env->vtcm_log.op = false;
     env->vtcm_log.op_size = 0;
 }

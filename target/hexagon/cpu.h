@@ -57,7 +57,7 @@ typedef struct {
 typedef struct {
     target_ulong va;
     int size;
-    DECLARE_BITMAP(mask, MAX_VEC_SIZE_BYTES / 8) QEMU_ALIGNED(16);
+    DECLARE_BITMAP(mask, MAX_VEC_SIZE_BYTES) QEMU_ALIGNED(16);
     MMVector data QEMU_ALIGNED(16);
 } VStoreLog;
 
