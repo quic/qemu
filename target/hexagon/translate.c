@@ -670,67 +670,6 @@ static void process_dczeroa(DisasContext *ctx, Packet *pkt)
     }
 }
 
-void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n)
-{
-    TCGv_ptr d = tcg_temp_new_ptr();
-    TCGv_ptr s = tcg_temp_new_ptr();
-    int i;
-
-    tcg_gen_addi_ptr(d, dest, 0);
-    tcg_gen_addi_ptr(s, src, 0);
-    if (n % 8 == 0) {
-        TCGv_i64 temp = tcg_temp_new_i64();
-        for (i = 0; i < n / 8; i++) {
-            tcg_gen_ld_i64(temp, s, 0);
-            tcg_gen_st_i64(temp, d, 0);
-            tcg_gen_addi_ptr(s, s, 8);
-            tcg_gen_addi_ptr(d, d, 8);
-        }
-        tcg_temp_free_i64(temp);
-    } else if (n % 4 == 0) {
-        TCGv temp = tcg_temp_new();
-        for (i = 0; i < n / 4; i++) {
-            tcg_gen_ld32u_tl(temp, s, 0);
-            tcg_gen_st32_tl(temp, d, 0);
-            tcg_gen_addi_ptr(s, s, 4);
-            tcg_gen_addi_ptr(d, d, 4);
-        }
-        tcg_temp_free(temp);
-    } else if (n % 2 == 0) {
-        TCGv temp = tcg_temp_new();
-        for (i = 0; i < n / 2; i++) {
-            tcg_gen_ld16u_tl(temp, s, 0);
-            tcg_gen_st16_tl(temp, d, 0);
-            tcg_gen_addi_ptr(s, s, 2);
-            tcg_gen_addi_ptr(d, d, 2);
-        }
-        tcg_temp_free(temp);
-    } else {
-        TCGv temp = tcg_temp_new();
-        for (i = 0; i < n; i++) {
-            tcg_gen_ld8u_tl(temp, s, 0);
-            tcg_gen_st8_tl(temp, d, 0);
-            tcg_gen_addi_ptr(s, s, 1);
-            tcg_gen_addi_ptr(d, d, 1);
-        }
-        tcg_temp_free(temp);
-    }
-
-    tcg_temp_free_ptr(d);
-    tcg_temp_free_ptr(s);
-}
-
-static void gen_vec_copy(intptr_t dstoff, intptr_t srcoff, size_t size)
-{
-    TCGv_ptr src = tcg_temp_new_ptr();
-    TCGv_ptr dst = tcg_temp_new_ptr();
-    tcg_gen_addi_ptr(src, cpu_env, srcoff);
-    tcg_gen_addi_ptr(dst, cpu_env, dstoff);
-    gen_memcpy(dst, src, size);
-    tcg_temp_free_ptr(src);
-    tcg_temp_free_ptr(dst);
-}
-
 static bool pkt_has_hvx_store(Packet *pkt)
 {
     int i;
@@ -752,21 +691,19 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
      * They potentially write the entire vector register file
      */
     if (pkt->pkt_has_vhist) {
-        TCGv cmp = tcg_temp_local_new();
         size_t size = sizeof(mmvector_t);
         for (i = 0; i < NUM_VREGS; i++) {
             intptr_t dstoff = offsetof(CPUHexagonState, VRegs[i]);
             intptr_t srcoff = offsetof(CPUHexagonState, future_VRegs[i]);
+            TCGv cmp = tcg_temp_new();
             TCGLabel *label_skip = gen_new_label();
 
             tcg_gen_andi_tl(cmp, hex_VRegs_updated, 1 << i);
             tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            {
-                gen_vec_copy(dstoff, srcoff, size);
-            }
+            tcg_temp_free(cmp);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
             gen_set_label(label_skip);
         }
-        tcg_temp_free(cmp);
         return;
     }
 
@@ -790,18 +727,16 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
         size_t size = sizeof(mmvector_t);
 
         if (is_predicated) {
-            TCGv cmp = tcg_temp_local_new();
+            TCGv cmp = tcg_temp_new();
             TCGLabel *label_skip = gen_new_label();
 
             tcg_gen_andi_tl(cmp, hex_VRegs_updated, 1 << rnum);
             tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            {
-                gen_vec_copy(dstoff, srcoff, size);
-            }
-            gen_set_label(label_skip);
             tcg_temp_free(cmp);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
+            gen_set_label(label_skip);
         } else {
-            gen_vec_copy(dstoff, srcoff, size);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
         }
     }
 
@@ -825,18 +760,16 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
         size_t size = sizeof(mmqreg_t);
 
         if (is_predicated) {
-            TCGv cmp = tcg_temp_local_new();
+            TCGv cmp = tcg_temp_new();
             TCGLabel *label_skip = gen_new_label();
 
             tcg_gen_andi_tl(cmp, hex_QRegs_updated, 1 << rnum);
             tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            {
-                gen_vec_copy(dstoff, srcoff, size);
-            }
-            gen_set_label(label_skip);
             tcg_temp_free(cmp);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
+            gen_set_label(label_skip);
         } else {
-            gen_vec_copy(dstoff, srcoff, size);
+            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
         }
     }
 

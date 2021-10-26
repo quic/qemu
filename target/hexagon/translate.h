@@ -197,8 +197,5 @@ extern void gen_exception(int excp);
 extern void gen_exception_end_tb(DisasContext *ctx, int excp);
 extern void gen_exception_debug(void);
 bool is_gather_store_insn(Insn *insn, Packet *pkt);
-
-extern void gen_memcpy(TCGv_ptr dest, TCGv_ptr src, size_t n);
-
 void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif
