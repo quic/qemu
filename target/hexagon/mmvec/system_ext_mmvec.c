@@ -63,7 +63,7 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot)
     memcpy(&env->vstore[slot].data.ub[0], &env->tmp_VRegs[0], size);
 
     /* On a gather store, overwrite the store mask to emulate dropped gathers */
-    memcpy(&env->vstore[slot].mask.ub[0], &env->vtcm_log.mask.ub[0], size);
+    bitmap_copy(env->vstore[slot].mask, env->vtcm_log.mask, size);
 }
 
 void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, int length, int element_size)
@@ -98,9 +98,9 @@ void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, 
     for(i = 0; i < fVECSIZE(); i++) {
         mmvecx->vtcm_log.offsets.ub[i] = 0; // Mark invalid
         mmvecx->vtcm_log.data.ub[i] = 0;
-        mmvecx->vtcm_log.mask.ub[i] = 0;
         mmvecx->vtcm_log.pa[i] = 0;
     }
+    bitmap_zero(mmvecx->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
     mmvecx->vtcm_log.va_base = base_vaddr;
     mmvecx->vtcm_log.pa_base = base_paddr;
 
@@ -152,10 +152,10 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
     }
     for(i = 0; i < fVECSIZE(); i++) {
         mmvecx->vtcm_log.data.ub[i] = 0;
-        mmvecx->vtcm_log.mask.ub[i] = 0;
         mmvecx->vtcm_log.pa[i] = 0;
         mmvecx->tmp_VRegs[0].ub[i] = 0;
     }
+    bitmap_zero(mmvecx->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
     mmvecx->vtcm_log.oob_access = 0;
     mmvecx->vtcm_log.op = 0;
     mmvecx->vtcm_log.op_size = 0;

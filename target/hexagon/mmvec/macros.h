@@ -268,7 +268,11 @@ static bool readonly_ok(Insn *insn)
 #define LOG_VTCM_BYTE(VA, MASK, VAL, IDX) \
     do { \
         env->vtcm_log.data.ub[IDX] = (VAL); \
-        env->vtcm_log.mask.ub[IDX] = (MASK); \
+       if (MASK) { \
+            set_bit((IDX), env->vtcm_log.mask); \
+        } else { \
+            clear_bit((IDX), env->vtcm_log.mask); \
+        } \
         env->vtcm_log.va[IDX] = (VA); \
     } while (0)
 
@@ -365,7 +369,7 @@ static inline void mem_store_release(thread_t* thread, Insn * insn, int size, va
 #define SCATTER_OP_WRITE_TO_MEM(TYPE) \
     do { \
         for (int i = 0; i < env->vtcm_log.size; i += sizeof(TYPE)) { \
-            if (env->vtcm_log.mask.ub[i] != 0) { \
+            if (test_bit(i, env->vtcm_log.mask)) { \
                 TYPE dst = 0; \
                 TYPE inc = 0; \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
@@ -373,7 +377,7 @@ static inline void mem_store_release(thread_t* thread, Insn * insn, int size, va
                     hexagon_load_byte(env, &val, env->vtcm_log.va[i + j]); \
                     dst |= val << (8 * j); \
                     inc |= env->vtcm_log.data.ub[j + i] << (8 * j); \
-                    env->vtcm_log.mask.ub[j + i] = 0; \
+                    clear_bit(j + i, env->vtcm_log.mask); \
                     env->vtcm_log.data.ub[j + i] = 0; \
                     env->vtcm_log.offsets.ub[j + i] = 0; \
                 } \
@@ -388,7 +392,7 @@ static inline void mem_store_release(thread_t* thread, Insn * insn, int size, va
 #define SCATTER_OP_PROBE_MEM(TYPE, MMU_IDX, RETADDR) \
     do { \
         for (int i = 0; i < env->vtcm_log.size; i += sizeof(TYPE)) { \
-            if (env->vtcm_log.mask.ub[i] != 0) { \
+            if (test_bit(i, env->vtcm_log.mask)) { \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
                     probe_read(env, env->vtcm_log.va[i + j], 1, \
                                MMU_IDX, RETADDR); \

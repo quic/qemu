@@ -1302,7 +1302,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
             target_ulong va = env->vstore[i].va;
             int size = env->vstore[i].size;
             for (int j = 0; j < size; j++) {
-                if (env->vstore[i].mask.ub[j]) {
+                if (test_bit(j, env->vstore[i].mask)) {
                     hexagon_store_byte(env, env->vstore[i].data.ub[j], va + j);
                 }
             }
@@ -1324,10 +1324,10 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
             }
         } else {
             for (int i = 0; i < env->vtcm_log.size; i++) {
-                if (env->vtcm_log.mask.ub[i] != 0) {
+                if (test_bit(i, env->vtcm_log.mask)) {
                     hexagon_store_byte(env, env->vtcm_log.data.ub[i],
                         env->vtcm_log.va[i]);
-                    env->vtcm_log.mask.ub[i] = 0;
+                    clear_bit(i, env->vtcm_log.mask);
                     env->vtcm_log.data.ub[i] = 0;
                     env->vtcm_log.offsets.ub[i] = 0;
                 }
@@ -1481,7 +1481,7 @@ void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
             target_ulong va = env->vstore[i].va;
             int size = env->vstore[i].size;
             for (int j = 0; j < size; j++) {
-                if (env->vstore[i].mask.ub[j]) {
+                if (test_bit(j, env->vstore[i].mask)) {
                     probe_write(env, va + j, 1, mmu_idx, retaddr);
                 }
             }
@@ -1502,7 +1502,7 @@ void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
             }
         } else {
             for (int i = 0; i < env->vtcm_log.size; i++) {
-                if (env->vtcm_log.mask.ub[i] != 0) {
+                if (test_bit(i, env->vtcm_log.mask)) {
                     probe_write(env, env->vtcm_log.va[i], 1, mmu_idx, retaddr);
                 }
 

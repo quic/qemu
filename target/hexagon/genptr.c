@@ -1185,16 +1185,12 @@ static void gen_vreg_store(DisasContext *ctx, Insn *insn, Packet *pkt,
     /* Copy the data to the vstore buffer */
     tcg_gen_gvec_mov(MO_64, dstoff, srcoff, sizeof(MMVector), sizeof(MMVector));
     /* Set the mask to all 1's */
-    tcg_gen_gvec_dup_imm(MO_64, maskoff, sizeof(MMVector), sizeof(MMVector),
-                         ~0LL);
+    tcg_gen_gvec_dup_imm(MO_64, maskoff, sizeof(MMQReg), sizeof(MMQReg), ~0LL);
 }
 
 static void gen_vreg_masked_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
                                   intptr_t bitsoff, int slot, bool invert)
 {
-    TCGv_i64 tmp = tcg_temp_new_i64();
-    TCGv_i64 bit = tcg_temp_new_i64();
-    TCGv_i64 mask = tcg_temp_new_i64();
     intptr_t dstoff = offsetof(CPUHexagonState, vstore[slot].data);
     intptr_t maskoff = offsetof(CPUHexagonState, vstore[slot].mask);
 
@@ -1205,23 +1201,12 @@ static void gen_vreg_masked_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
 
     /* Copy the data to the vstore buffer */
     tcg_gen_gvec_mov(MO_64, dstoff, srcoff, sizeof(MMVector), sizeof(MMVector));
-
-    /* Convert the array of bits to an array of bytes */
-    for (int i = 0; i < sizeof(MMVector) / 8; i++) {
-        tcg_gen_ld_i64(tmp, cpu_env, bitsoff + i);
-        tcg_gen_movi_i64(mask, 0);
-        for (int j = 0; j < 8; j++) {
-            tcg_gen_extract_i64(bit, tmp, j, 1);
-            if (invert) {
-                tcg_gen_xori_i64(bit, bit, 1);
-            }
-            tcg_gen_deposit_i64(mask, mask, bit, j * 8, 1);
-        }
-        tcg_gen_st_i64(mask, cpu_env, maskoff + i * 8);
+    /* Copy the mask */
+    tcg_gen_gvec_mov(MO_64, maskoff, bitsoff, sizeof(MMQReg), sizeof(MMQReg));
+    if (invert) {
+        tcg_gen_gvec_not(MO_64, maskoff, maskoff,
+                         sizeof(MMQReg), sizeof(MMQReg));
     }
-    tcg_temp_free_i64(tmp);
-    tcg_temp_free_i64(bit);
-    tcg_temp_free_i64(mask);
 }
 
 static void vec_to_qvec(size_t size, intptr_t dstoff, intptr_t srcoff)

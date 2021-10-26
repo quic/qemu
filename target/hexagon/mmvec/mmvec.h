@@ -119,17 +119,12 @@ typedef union {
 	size2s_t  h[MAX_VEC_SIZE_BYTES/2/8];
 	size1u_t ub[MAX_VEC_SIZE_BYTES/1/8];
 	size1s_t  b[MAX_VEC_SIZE_BYTES/1/8];
-    size4s_t qf32[MAX_VEC_SIZE_BYTES/4];
-	size2s_t qf16[MAX_VEC_SIZE_BYTES/2];
-	size4s_t sf[MAX_VEC_SIZE_BYTES/4];
-	size2s_t hf[MAX_VEC_SIZE_BYTES/2];
-	size2s_t bf[MAX_VEC_SIZE_BYTES/2];
 } mmqreg_t;
 typedef mmqreg_t MMQReg;
 
 typedef struct {
     mmvector_t data;
-    mmvector_t mask;
+    DECLARE_BITMAP(mask, MAX_VEC_SIZE_BYTES);
     mmvector_pair_t offsets;
     paddr_t pa[MAX_VEC_SIZE_BYTES];
     int size;
