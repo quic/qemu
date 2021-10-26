@@ -1062,7 +1062,7 @@ static intptr_t vreg_src_off(DisasContext *ctx, int num)
 
 static void gen_log_vreg_write(intptr_t srcoff, int num,
                                VRegWriteType type, int slot_num,
-                               bool is_predicated, bool has_vhist)
+                               bool is_predicated)
 {
     TCGLabel *label_end = NULL;
     intptr_t dstoff;
@@ -1078,25 +1078,15 @@ static void gen_log_vreg_write(intptr_t srcoff, int num,
     }
 
     if (type != EXT_TMP) {
-        tcg_gen_ori_tl(hex_VRegs_updated, hex_VRegs_updated, 1 << num);
-    }
-    if (has_vhist && type == EXT_NEW) {
-        tcg_gen_ori_tl(hex_VRegs_select, hex_VRegs_select, 1 << num);
-    }
-    if (has_vhist && type == EXT_TMP) {
-        tcg_gen_ori_tl(hex_VRegs_updated_tmp, hex_VRegs_updated_tmp, 1 << num);
-    }
-
-    dstoff = offsetof(CPUHexagonState, future_VRegs[num]);
-    if (dstoff != srcoff) {
+        dstoff = offsetof(CPUHexagonState, future_VRegs[num]);
         tcg_gen_gvec_mov(MO_64, dstoff, srcoff,
                          sizeof(MMVector), sizeof(MMVector));
-    }
-
-    if (type == EXT_TMP) {
+        tcg_gen_ori_tl(hex_VRegs_updated, hex_VRegs_updated, 1 << num);
+    } else {
         dstoff = offsetof(CPUHexagonState, tmp_VRegs[num]);
         tcg_gen_gvec_mov(MO_64, dstoff, srcoff,
                          sizeof(MMVector), sizeof(MMVector));
+        tcg_gen_ori_tl(hex_VRegs_updated_tmp, hex_VRegs_updated_tmp, 1 << num);
     }
 
     if (is_predicated) {
@@ -1106,13 +1096,11 @@ static void gen_log_vreg_write(intptr_t srcoff, int num,
 
 static void gen_log_vreg_write_pair(intptr_t srcoff, int num,
                                     VRegWriteType type, int slot_num,
-                                    bool is_predicated, bool has_vhist)
+                                    bool is_predicated)
 {
-    gen_log_vreg_write(srcoff, num ^ 0, type, slot_num,
-                       is_predicated, has_vhist);
+    gen_log_vreg_write(srcoff, num ^ 0, type, slot_num, is_predicated);
     srcoff += sizeof(MMVector);
-    gen_log_vreg_write(srcoff, num ^ 1, type, slot_num,
-                       is_predicated, has_vhist);
+    gen_log_vreg_write(srcoff, num ^ 1, type, slot_num, is_predicated);
 }
 
 static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,

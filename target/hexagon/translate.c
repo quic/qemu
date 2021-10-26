@@ -51,7 +51,6 @@ TCGv hex_llsc_val;
 TCGv_i64 hex_llsc_val_i64;
 TCGv hex_VRegs_updated_tmp;
 TCGv hex_VRegs_updated;
-TCGv hex_VRegs_select;
 TCGv hex_QRegs_updated;
 #ifndef CONFIG_USER_ONLY
 TCGv hex_greg[NUM_GREGS];
@@ -256,6 +255,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         ctx->store_width[i] = 0;
     }
     ctx->s1_store_processed = false;
+    ctx->pre_commit = true;
 
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
@@ -282,7 +282,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     if (pkt->pkt_has_hvx) {
         tcg_gen_movi_tl(hex_VRegs_updated_tmp, 0);
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
-        tcg_gen_movi_tl(hex_VRegs_select, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
     }
 
@@ -680,27 +679,6 @@ static void gen_commit_hvx(DisasContext *ctx, Packet *pkt)
     int i;
 
     /*
-     * vhist instructions need special handling
-     * They potentially write the entire vector register file
-     */
-    if (pkt->pkt_has_vhist) {
-        size_t size = sizeof(mmvector_t);
-        for (i = 0; i < NUM_VREGS; i++) {
-            intptr_t dstoff = offsetof(CPUHexagonState, VRegs[i]);
-            intptr_t srcoff = offsetof(CPUHexagonState, future_VRegs[i]);
-            TCGv cmp = tcg_temp_new();
-            TCGLabel *label_skip = gen_new_label();
-
-            tcg_gen_andi_tl(cmp, hex_VRegs_updated, 1 << i);
-            tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            tcg_temp_free(cmp);
-            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
-            gen_set_label(label_skip);
-        }
-        return;
-    }
-
-    /*
      *    for (i = 0; i < ctx->vreg_log_idx; i++) {
      *        int rnum = ctx->vreg_log[i];
      *        if (ctx->vreg_is_predicated[i]) {
@@ -943,6 +921,11 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
 
         tcg_temp_free(has_st0);
         tcg_temp_free(has_st1);
+    }
+
+    if (pkt->vhist_insn != NULL) {
+        ctx->pre_commit = false;
+        pkt->vhist_insn->generate(env, ctx, pkt->vhist_insn, pkt);
     }
 
 #if !defined(CONFIG_USER_ONLY)
@@ -1251,8 +1234,6 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, VRegs_updated_tmp), "VRegs_updated_tmp");
     hex_VRegs_updated = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, VRegs_updated), "VRegs_updated");
-    hex_VRegs_select = tcg_global_mem_new(cpu_env,
-        offsetof(CPUHexagonState, VRegs_select), "VRegs_select");
     hex_QRegs_updated = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, QRegs_updated), "QRegs_updated");
 

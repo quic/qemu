@@ -46,29 +46,6 @@
 #define QxV      (*(mmqreg_t *)(QxV_void))
 #endif
 
-#define NEW_WRITTEN(NUM) ((env->VRegs_select >> (NUM)) & 1)
-#define TMP_WRITTEN(NUM) ((env->VRegs_updated_tmp >> (NUM)) & 1)
-
-#define LOG_VREG_WRITE_FUNC(X) \
-    _Generic((X), void * : log_vreg_write, mmvector_t : log_mmvector_write)
-#define LOG_VREG_WRITE(NUM, VAR, VNEW) \
-    LOG_VREG_WRITE_FUNC(VAR)(env, NUM, VAR, VNEW, slot)
-
-#define READ_EXT_VREG(NUM, VAR, VTMP) \
-    do { \
-        VAR = ((NEW_WRITTEN(NUM)) ? env->future_VRegs[NUM] \
-                                  : env->VRegs[NUM]); \
-        VAR = ((TMP_WRITTEN(NUM)) ? env->tmp_VRegs[NUM] : VAR); \
-        if (VTMP == EXT_TMP) { \
-            if (env->VRegs_updated & ((VRegMask)1) << (NUM)) { \
-                VAR = env->future_VRegs[NUM]; \
-                env->VRegs_updated ^= ((VRegMask)1) << (NUM); \
-            } \
-        } \
-    } while (0)
-
-#define WRITE_EXT_VREG(NUM, VAR, VNEW)   LOG_VREG_WRITE(NUM, VAR, VNEW)
-
 #define LOG_VTCM_BYTE(VA, MASK, VAL, IDX) \
     do { \
         env->vtcm_log.data.ub[IDX] = (VAL); \
@@ -86,19 +63,6 @@
         env->vtcm_log.offsets.uh[IDX]  = (VAL & 0xFFF); \
         env->vtcm_log.offsets.uh[IDX] |= ((MASK & 0xF) << 12) ; \
     } while (0)
-
-static inline mmvector_t mmvec_vtmp_data(CPUHexagonState *env)
-{
-    VRegMask vsel = env->VRegs_updated_tmp;
-    mmvector_t ret;
-    int idx = clo32(~revbit32(vsel));
-    if (vsel == 0) {
-        printf("[UNDEFINED] no .tmp load when implicitly required...");
-    }
-    ret = env->tmp_VRegs[idx];
-    env->VRegs_updated_tmp = 0;
-    return ret;
-}
 
 #define fVLOG_VTCM_WORD_INCREMENT(EA, OFFSET, INC, IDX, ALIGNMENT, LEN) \
     do { \

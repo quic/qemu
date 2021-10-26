@@ -94,6 +94,18 @@ DEF_HELPER_3(sfsub, f32, env, f32, f32)
 DEF_HELPER_FLAGS_4(vacsh_pred, TCG_CALL_NO_RWG_SE, s32, env, s64, s64, s64)
 DEF_HELPER_4(vacsh_val, s64, env, s64, s64, s64)
 
+/* Histogram instructions */
+DEF_HELPER_1(vhist, void, env)
+DEF_HELPER_1(vhistq, void, env)
+DEF_HELPER_1(vwhist256, void, env)
+DEF_HELPER_1(vwhist256q, void, env)
+DEF_HELPER_1(vwhist256_sat, void, env)
+DEF_HELPER_1(vwhist256q_sat, void, env)
+DEF_HELPER_1(vwhist128, void, env)
+DEF_HELPER_1(vwhist128q, void, env)
+DEF_HELPER_2(vwhist128m, void, env, s32)
+DEF_HELPER_2(vwhist128qm, void, env, s32)
+
 DEF_HELPER_2(probe_pkt_scalar_store_s0, void, env, int)
 DEF_HELPER_2(probe_hvx_stores, void, env, int)
 DEF_HELPER_3(probe_pkt_scalar_hvx_stores, void, env, int, int)

@@ -490,7 +490,6 @@ struct CPUHexagonState {
 
     VRegMask VRegs_updated_tmp;
     VRegMask VRegs_updated;
-    VRegMask VRegs_select;
 
     mmqreg_t QRegs[NUM_QREGS] QEMU_ALIGNED(16);
     mmqreg_t future_QRegs[NUM_QREGS] QEMU_ALIGNED(16);
@@ -502,6 +501,7 @@ struct CPUHexagonState {
                  VuuV QEMU_ALIGNED(16),
                  VvvV QEMU_ALIGNED(16),
                  VxxV QEMU_ALIGNED(16);
+    MMQReg       qtmp QEMU_ALIGNED(16);
 
     VStoreLog vstore[VSTORES_MAX];
     uint8_t store_pending[VSTORES_MAX];

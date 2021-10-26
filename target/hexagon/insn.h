@@ -172,7 +172,7 @@ struct Packet {
 
     uint32_t pkt_has_hvx:1;
     uint32_t pkt_has_hmx:1;
-    bool pkt_has_vhist;
+    Insn *vhist_insn;
     uint32_t pkt_has_extension:1;
 
 

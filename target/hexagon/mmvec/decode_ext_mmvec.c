@@ -249,12 +249,12 @@ decode_shuffle_for_execution_vops(Packet *pkt)
 static void
 check_for_vhist(Packet *pkt)
 {
-    pkt->pkt_has_vhist = false;
+    pkt->vhist_insn = NULL;
     for (int i = 0; i < pkt->num_insns; i++) {
         Insn *insn = &pkt->insn[i];
         int opcode = insn->opcode;
         if (GET_ATTRIB(opcode, A_CVI) && GET_ATTRIB(opcode, A_CVI_4SLOT)) {
-                pkt->pkt_has_vhist = true;
+                pkt->vhist_insn = insn;
                 return;
         }
     }
