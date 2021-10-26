@@ -101,37 +101,6 @@ static size8u_t hexagon_swi_mem_read8(CPUHexagonState *env, target_ulong paddr)
     return data;
 }
 
-static void hexagon_swi_mem_write1(CPUHexagonState *env, target_ulong paddr,
-    size1u_t value)
-
-{
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    cpu_stb_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
-}
-
-static void hexagon_swi_mem_write2(CPUHexagonState *env, target_ulong paddr,
-    size2u_t value)
-
-{
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    cpu_stw_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
-}
-
-static void hexagon_swi_mem_write4(CPUHexagonState *env, target_ulong paddr,
-    target_ulong value)
-
-{
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    cpu_stl_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
-}
-
-static void hexagon_swi_mem_write8(CPUHexagonState *env, target_ulong paddr,
-    size8u_t value)
-{
-    unsigned mmu_idx = cpu_mmu_index(env, false);
-    cpu_stq_mmuidx_ra(env, paddr, value, mmu_idx, GETPC());
-}
-
 void hexagon_tools_memory_read(CPUHexagonState *env, target_ulong vaddr,
     int size, void *retptr)
 
@@ -163,23 +132,21 @@ void hexagon_tools_memory_write(CPUHexagonState *env, target_ulong vaddr,
 {
     CPUState *cs = env_cpu(env);
     paddr_t paddr = vaddr;
+    unsigned mmu_idx = cpu_mmu_index(env, false);
+    uintptr_t ra = GETPC();
 
     switch (size) {
     case 1:
-        hexagon_swi_mem_write1(env, paddr, (size1u_t) data);
-        log_store32(env, paddr, (size4u_t)data, 1, 0);
+        cpu_stb_mmuidx_ra(env, paddr, data, mmu_idx, ra);
         break;
     case 2:
-        hexagon_swi_mem_write2(env, paddr, (size2u_t) data);
-        log_store32(env, paddr, (size4u_t)data, 2, 0);
+        cpu_stw_mmuidx_ra(env, paddr, data, mmu_idx, ra);
         break;
     case 4:
-        hexagon_swi_mem_write4(env, paddr, (target_ulong) data);
-        log_store32(env, paddr, (size4u_t)data, 4, 0);
+        cpu_stl_mmuidx_ra(env, paddr, data, mmu_idx, ra);
         break;
     case 8:
-        hexagon_swi_mem_write8(env, paddr, (size8u_t) data);
-        log_store32(env, paddr, data, 8, 0);
+        cpu_stq_mmuidx_ra(env, paddr, data, mmu_idx, ra);
         break;
     default:
         cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
@@ -205,31 +172,6 @@ int hexagon_tools_memory_read_locked(CPUHexagonState *env, target_ulong vaddr,
         cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
         break;
      }
-
-    return ret;
-}
-
-int hexagon_tools_memory_write_locked(CPUHexagonState *env, target_ulong vaddr,
-    int size, size8u_t data)
-
-{
-    CPUState *cs = env_cpu(env);
-    paddr_t paddr = vaddr;
-    int ret = 0;
-
-    switch (size) {
-    case 4:
-        hexagon_swi_mem_write4(env, paddr, (target_ulong) data);
-        log_store32(env, vaddr, (size4u_t)data, 4, 0);
-        break;
-    case 8:
-        hexagon_swi_mem_write8(env, paddr, (size8u_t) data);
-        log_store64(env, vaddr, data, 8, 0);
-        break;
-    default:
-        cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
-        break;
-    }
 
     return ret;
 }

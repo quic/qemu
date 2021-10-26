@@ -35,8 +35,6 @@
     hexagon_tools_memory_read_locked(env, ADDR, SIZE, PTR)
 #define DEBUG_MEMORY_WRITE(ADDR,SIZE,DATA) \
     hexagon_tools_memory_write(env,ADDR,SIZE,(size8u_t)DATA)
-#define DEBUG_MEMORY_WRITE_LOCKED(ADDR,SIZE,DATA) \
-    hexagon_tools_memory_write_locked(env,ADDR,SIZE,(size8u_t)DATA)
 
 extern void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr,
     int size, void *retptr);
@@ -44,8 +42,6 @@ extern void hexagon_tools_memory_write(CPUHexagonState *env, vaddr_t vaddr,
     int size, size8u_t data);
 extern int hexagon_tools_memory_read_locked(CPUHexagonState *env, vaddr_t vaddr,
     int size, void *retptr);
-extern int hexagon_tools_memory_write_locked(CPUHexagonState *env, vaddr_t vaddr,
-    int size, size8u_t data);
 extern void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr, uint32_t length);
 
 extern void hexagon_wait_thread(CPUHexagonState *env);

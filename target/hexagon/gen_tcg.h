@@ -2632,4 +2632,22 @@
         RsV = RsV; \
     } while (0)
 
+#define fGEN_TCG_L2_loadw_aq(SHORTCODE)                 SHORTCODE
+#define fGEN_TCG_L4_loadd_aq(SHORTCODE)                 SHORTCODE
+
+/* Nothing to do for these in qemu, need to suppress compiler warnings */
+#define fGEN_TCG_R6_release_at_vi(SHORTCODE) \
+    do { \
+        RsV = RsV; \
+    } while (0)
+#define fGEN_TCG_R6_release_st_vi(SHORTCODE) \
+    do { \
+        RsV = RsV; \
+    } while (0)
+
+#define fGEN_TCG_S2_storew_rl_at_vi(SHORTCODE)          SHORTCODE
+#define fGEN_TCG_S4_stored_rl_at_vi(SHORTCODE)          SHORTCODE
+#define fGEN_TCG_S2_storew_rl_st_vi(SHORTCODE)          SHORTCODE
+#define fGEN_TCG_S4_stored_rl_st_vi(SHORTCODE)          SHORTCODE
+
 #endif

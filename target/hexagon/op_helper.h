@@ -22,28 +22,6 @@
 #include "exec/cpu_ldst.h"
 #include "exec/exec-all.h"
 
-static inline void log_store32(CPUHexagonState *env, target_ulong addr,
-                               target_ulong val, int width, int slot)
-{
-    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx
-                  ", %" PRId32 " [0x08%" PRIx32 "])\n",
-                  width, addr, val, val);
-    env->mem_log_stores[slot].va = addr;
-    env->mem_log_stores[slot].width = width;
-    env->mem_log_stores[slot].data32 = val;
-}
-
-static inline void log_store64(CPUHexagonState *env, target_ulong addr,
-                               int64_t val, int width, int slot)
-{
-    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx
-                  ", %" PRId64 " [0x016%" PRIx64 "])\n",
-                   width, addr, val, val);
-    env->mem_log_stores[slot].va = addr;
-    env->mem_log_stores[slot].width = width;
-    env->mem_log_stores[slot].data64 = val;
-}
-
 #if 1
 static inline size1u_t mem_read1(CPUHexagonState *env, paddr_t paddr)
 {

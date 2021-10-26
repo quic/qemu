@@ -178,14 +178,11 @@ static inline int32_t new_pred_value(CPUHexagonState *env, int pnum)
 
 void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
 {
-#ifdef CONFIG_USER_ONLY
     uintptr_t ra = GETPC();
-#endif
     target_ulong va = env->mem_log_stores[slot_num].va;
     uint8_t width = env->mem_log_stores[slot_num].width;
 
     switch (width) {
-#ifdef CONFIG_USER_ONLY
     case 1:
         cpu_stb_data_ra(env, va, env->mem_log_stores[slot_num].data32, ra);
         break;
@@ -198,21 +195,6 @@ void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
     case 8:
         cpu_stq_data_ra(env, va, env->mem_log_stores[slot_num].data64, ra);
         break;
-#else
-    case 1:
-    case 2:
-    case 4:
-        hexagon_tools_memory_write(env,
-            va, width,
-            env->mem_log_stores[slot_num].data32);
-        break;
-
-    case 8:
-        hexagon_tools_memory_write(env,
-            va, width,
-            env->mem_log_stores[slot_num].data64);
-        break;
-#endif
 
     default:
         g_assert_not_reached();

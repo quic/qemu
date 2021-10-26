@@ -192,15 +192,6 @@
     _Generic((X), int64_t : gen_store8i, TCGv_i64 : gen_store8)
 #define MEM_STORE8(VA, DATA, SLOT) \
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
-#else
-#define MEM_LOAD4u(VA) mem_load4(env, slot, VA)
-#define MEM_LOAD8u(VA) mem_load8(env, slot, VA)
-
-#define MEM_STORE0(VA, DATA, SLOT) log_store32(env, VA, DATA, 0, SLOT)
-#define MEM_STORE1(VA, DATA, SLOT) log_store32(env, VA, DATA, 1, SLOT)
-#define MEM_STORE2(VA, DATA, SLOT) log_store32(env, VA, DATA, 2, SLOT)
-#define MEM_STORE4(VA, DATA, SLOT) log_store32(env, VA, DATA, 4, SLOT)
-#define MEM_STORE8(VA, DATA, SLOT) log_store64(env, VA, DATA, 8, SLOT)
 #endif
 
 #ifdef QEMU_GENERATE
