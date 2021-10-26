@@ -366,63 +366,6 @@ static float64 hex_check_dfnan(float64 x)
     return x;
 }
 
-/*
- * mem_noshuf
- * Section 5.5 of the Hexagon V67 Programmer's Reference Manual
- *
- * If the load is in slot 0 and there is a store in slot1 (that
- * wasn't cancelled), we have to do the store first.
- */
-static void check_noshuf(CPUHexagonState *env, uint32_t slot)
-{
-    if (slot == 0 && env->pkt_has_store_s1 &&
-        ((env->slot_cancelled & (1 << 1)) == 0)) {
-        HELPER(commit_store)(env, 1);
-    }
-}
-
-static inline uint16_t mem_load2(CPUHexagonState *env, uint32_t slot,
-                                 target_ulong vaddr)
-{
-    uint16_t retval;
-    check_noshuf(env, slot);
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_lduw_data_ra(env, vaddr, ra);
-#else
-    hexagon_tools_memory_read(env, vaddr, 2, &retval);
-#endif
-    return retval;
-}
-
-static inline uint32_t mem_load4(CPUHexagonState *env, uint32_t slot,
-                                 target_ulong vaddr)
-{
-    uint32_t retval;
-    check_noshuf(env, slot);
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldl_data_ra(env, vaddr, ra);
-#else
-    hexagon_tools_memory_read(env, vaddr, 4, &retval);
-#endif
-    return retval;
-}
-
-static inline uint64_t mem_load8(CPUHexagonState *env, uint32_t slot,
-                                 target_ulong vaddr)
-{
-    uint64_t retval;
-    check_noshuf(env, slot);
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldq_data_ra(env, vaddr, ra);
-#else
-    hexagon_tools_memory_read(env, vaddr, 8, &retval);
-#endif
-    return retval;
-}
-
 /* Floating point */
 float64 HELPER(conv_sf2df)(CPUHexagonState *env, float32 RsV)
 {
