@@ -19,13 +19,10 @@
 #define HEXAGON_SYSTEM_EXT_MMVEC_H
 
 #define thread_t CPUHexagonState
-extern void mem_load_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t lookup_vaddr, int slot, int size, size1u_t* data, int etm_size, int use_full_va);
-extern void mem_store_vector_oddva(thread_t* thread, Insn * insn, vaddr_t vaddr, vaddr_t lookup_vaddr, int slot, int size, size1u_t* data, size1u_t* mask, unsigned invert, int use_full_va);
 extern void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, int length, int element_size);
 extern void mem_vector_scatter_finish(thread_t* thread, Insn * insn, int op);
 extern void mem_vector_gather_finish(thread_t* thread, Insn * insn);
 extern void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  int length, int element_size);
-extern void mem_gather_store(CPUHexagonState *env, target_ulong vaddr,
-                      int slot, uint8_t *data);
+void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot);
 
 #endif

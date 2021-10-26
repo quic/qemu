@@ -1168,11 +1168,8 @@ static void gen_vreg_store(DisasContext *ctx, Insn *insn, Packet *pkt,
 
     if (is_gather_store_insn(insn, pkt)) {
         TCGv sl = tcg_const_tl(slot);
-        TCGv_ptr src = tcg_temp_new_ptr();
-        tcg_gen_addi_ptr(src, cpu_env, srcoff);
-        gen_helper_gather_store(cpu_env, EA, src, sl);
+        gen_helper_gather_store(cpu_env, EA, sl);
         tcg_temp_free(sl);
-        tcg_temp_free_ptr(src);
         return;
     }
 

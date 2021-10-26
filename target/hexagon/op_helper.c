@@ -1275,10 +1275,9 @@ void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte,
 }
 
 
-void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, void *srcptr,
-                          int slot)
+void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, int slot)
 {
-    mem_gather_store(env, addr, slot, srcptr);
+    mem_gather_store(env, addr, slot);
 }
 
 void HELPER(debug_print_vec)(CPUHexagonState *env, int rnum, void *vecptr)
