@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,8 +23,7 @@
 #include "mmvec/system_ext_mmvec.h"
 #include "q6v_defines.h"
 
-#ifdef QEMU_GENERATE
-#else
+#ifndef QEMU_GENERATE
 #define VdV      (*(mmvector_t *)(VdV_void))
 #define VsV      (*(mmvector_t *)(VsV_void))
 #define VuV      (*(mmvector_t *)(VuV_void))
@@ -47,183 +46,6 @@
 #define QxV      (*(mmqreg_t *)(QxV_void))
 #endif
 
-
-#ifdef QEMU_GENERATE
-#define DECL_VREG(VAR, NUM, X, OFF) \
-    TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
-    size1u_t NUM = REGNO(X) + OFF; \
-    do { \
-        uint32_t offset = new_temp_vreg_offset(ctx, 1); \
-        tcg_gen_addi_ptr(VAR, cpu_env, offset); \
-    } while (0)
-
-/*
- * Certain instructions appear to have readonly operands, but
- * in reality they do not.
- *     vdelta instructions overwrite their VuV operand
- */
-#if 0
-static bool readonly_ok(Insn *insn)
-{
-    uint32_t opcode = insn->opcode;
-    if (opcode == V6_vdelta ||
-        opcode == V6_vrdelta) {
-        return false;
-    }
-    return true;
-}
-#endif
-
-#define DECL_VREG_READONLY(VAR, NUM, X, OFF) \
-    TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
-    size1u_t NUM = REGNO(X) + OFF; \
-    if (!readonly_ok(insn)) { \
-        uint32_t offset = new_temp_vreg_offset(ctx, 1); \
-        tcg_gen_addi_ptr(VAR, cpu_env, offset); \
-    }
-
-#define DECL_VREG_d(VAR, NUM, X, OFF) \
-    DECL_VREG(VAR, NUM, X, OFF)
-#define DECL_VREG_s(VAR, NUM, X, OFF) \
-    DECL_VREG_READONLY(VAR, NUM, X, OFF)
-#define DECL_VREG_u(VAR, NUM, X, OFF) \
-    DECL_VREG_READONLY(VAR, NUM, X, OFF)
-#define DECL_VREG_v(VAR, NUM, X, OFF) \
-    DECL_VREG_READONLY(VAR, NUM, X, OFF)
-#define DECL_VREG_w(VAR, NUM, X, OFF) \
-    DECL_VREG_READONLY(VAR, NUM, X, OFF)
-#define DECL_VREG_x(VAR, NUM, X, OFF) \
-    DECL_VREG(VAR, NUM, X, OFF)
-#define DECL_VREG_y(VAR, NUM, X, OFF) \
-    DECL_VREG(VAR, NUM, X, OFF)
-
-#define DECL_VREG_PAIR(VAR, NUM, X, OFF) \
-    TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
-    size1u_t NUM = REGNO(X) + OFF; \
-    do { \
-        uint32_t offset = new_temp_vreg_offset(ctx, 2); \
-        tcg_gen_addi_ptr(VAR, cpu_env, offset); \
-    } while (0)
-
-#define DECL_VREG_dd(VAR, NUM, X, OFF) \
-    DECL_VREG_PAIR(VAR, NUM, X, OFF)
-#define DECL_VREG_uu(VAR, NUM, X, OFF) \
-    DECL_VREG_PAIR(VAR, NUM, X, OFF)
-#define DECL_VREG_vv(VAR, NUM, X, OFF) \
-    DECL_VREG_PAIR(VAR, NUM, X, OFF)
-#define DECL_VREG_xx(VAR, NUM, X, OFF) \
-    DECL_VREG_PAIR(VAR, NUM, X, OFF)
-
-#define DECL_QREG(VAR, NUM, X, OFF) \
-    TCGv_ptr VAR = tcg_temp_local_new_ptr(); \
-    size1u_t NUM = REGNO(X) + OFF; \
-    do { \
-        uint32_t __offset = new_temp_qreg_offset(ctx); \
-        tcg_gen_addi_ptr(VAR, cpu_env, __offset); \
-    } while (0)
-
-#define DECL_QREG_d(VAR, NUM, X, OFF) \
-    DECL_QREG(VAR, NUM, X, OFF)
-#define DECL_QREG_e(VAR, NUM, X, OFF) \
-    DECL_QREG(VAR, NUM, X, OFF)
-#define DECL_QREG_s(VAR, NUM, X, OFF) \
-    DECL_QREG(VAR, NUM, X, OFF)
-#define DECL_QREG_t(VAR, NUM, X, OFF) \
-    DECL_QREG(VAR, NUM, X, OFF)
-#define DECL_QREG_u(VAR, NUM, X, OFF) \
-    DECL_QREG(VAR, NUM, X, OFF)
-#define DECL_QREG_v(VAR, NUM, X, OFF) \
-    DECL_QREG(VAR, NUM, X, OFF)
-#define DECL_QREG_x(VAR, NUM, X, OFF) \
-    DECL_QREG(VAR, NUM, X, OFF)
-
-#define FREE_VREG(VAR)          tcg_temp_free_ptr(VAR)
-#define FREE_VREG_d(VAR)        FREE_VREG(VAR)
-#define FREE_VREG_s(VAR)        FREE_VREG(VAR)
-#define FREE_VREG_u(VAR)        FREE_VREG(VAR)
-#define FREE_VREG_v(VAR)        FREE_VREG(VAR)
-#define FREE_VREG_w(VAR)        FREE_VREG(VAR)
-#define FREE_VREG_x(VAR)        FREE_VREG(VAR)
-#define FREE_VREG_y(VAR)        FREE_VREG(VAR)
-
-#define FREE_VREG_PAIR(VAR)     tcg_temp_free_ptr(VAR)
-#define FREE_VREG_dd(VAR)       FREE_VREG_PAIR(VAR)
-#define FREE_VREG_uu(VAR)       FREE_VREG_PAIR(VAR)
-#define FREE_VREG_vv(VAR)       FREE_VREG_PAIR(VAR)
-#define FREE_VREG_xx(VAR)       FREE_VREG_PAIR(VAR)
-
-#define FREE_QREG(VAR)          tcg_temp_free_ptr(VAR)
-#define FREE_QREG_d(VAR)        FREE_QREG(VAR)
-#define FREE_QREG_e(VAR)        FREE_QREG(VAR)
-#define FREE_QREG_s(VAR)        FREE_QREG(VAR)
-#define FREE_QREG_t(VAR)        FREE_QREG(VAR)
-#define FREE_QREG_u(VAR)        FREE_QREG(VAR)
-#define FREE_QREG_v(VAR)        FREE_QREG(VAR)
-#define FREE_QREG_x(VAR)        FREE_QREG(VAR)
-
-#define READ_VREG(VAR, NUM) \
-    gen_read_vreg(VAR, NUM, 0)
-#define READ_VREG_READONLY(VAR, NUM) \
-    do { \
-        if (readonly_ok(insn)) { \
-            gen_read_vreg_readonly(VAR, NUM, 0); \
-        } else { \
-            gen_read_vreg(VAR, NUM, 0); \
-        } \
-    } while (0)
-
-#define READ_VREG_s(VAR, NUM)    READ_VREG_READONLY(VAR, NUM)
-#define READ_VREG_u(VAR, NUM)    READ_VREG_READONLY(VAR, NUM)
-#define READ_VREG_v(VAR, NUM)    READ_VREG_READONLY(VAR, NUM)
-#define READ_VREG_w(VAR, NUM)    READ_VREG_READONLY(VAR, NUM)
-#define READ_VREG_x(VAR, NUM)    READ_VREG(VAR, NUM)
-#define READ_VREG_y(VAR, NUM)    READ_VREG(VAR, NUM)
-
-#define READ_VREG_PAIR(VAR, NUM) \
-    gen_read_vreg_pair(VAR, NUM, 0)
-#define READ_VREG_uu(VAR, NUM)   READ_VREG_PAIR(VAR, NUM)
-#define READ_VREG_vv(VAR, NUM)   READ_VREG_PAIR(VAR, NUM)
-#define READ_VREG_xx(VAR, NUM)   READ_VREG_PAIR(VAR, NUM)
-
-#define READ_QREG(VAR, NUM) \
-    gen_read_qreg(VAR, NUM, 0)
-#define READ_QREG_s(VAR, NUM)     READ_QREG(VAR, NUM)
-#define READ_QREG_t(VAR, NUM)     READ_QREG(VAR, NUM)
-#define READ_QREG_u(VAR, NUM)     READ_QREG(VAR, NUM)
-#define READ_QREG_v(VAR, NUM)     READ_QREG(VAR, NUM)
-#define READ_QREG_x(VAR, NUM)     READ_QREG(VAR, NUM)
-
-#define DECL_NEW_OREG(TYPE, NAME, NUM, X, OFF) \
-    TYPE NAME; \
-    int NUM = REGNO(X) + OFF
-
-#define READ_NEW_OREG(tmp, i) (tmp = tcg_const_tl(i))
-
-#define FREE_NEW_OREG(NAME) \
-    tcg_temp_free(NAME)
-
-#define LOG_VREG_WRITE(NUM, VAR, VNEW) \
-    do { \
-        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
-        gen_log_vreg_write(VAR, NUM, VNEW, insn->slot); \
-        ctx_log_vreg_write(ctx, (NUM), is_predicated); \
-    } while (0)
-
-#define LOG_VREG_WRITE_PAIR(NUM, VAR, VNEW) \
-    do { \
-        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
-        gen_log_vreg_write_pair(VAR, NUM, VNEW, insn->slot); \
-        ctx_log_vreg_write(ctx, (NUM) ^ 0, is_predicated); \
-        ctx_log_vreg_write(ctx, (NUM) ^ 1, is_predicated); \
-    } while (0)
-
-#define LOG_QREG_WRITE(NUM, VAR, VNEW) \
-    do { \
-        int is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC); \
-        gen_log_qreg_write(VAR, NUM, VNEW, insn->slot); \
-        ctx_log_qreg_write(ctx, (NUM), is_predicated); \
-    } while (0)
-#else
 #define NEW_WRITTEN(NUM) ((env->VRegs_select >> (NUM)) & 1)
 #define TMP_WRITTEN(NUM) ((env->VRegs_updated_tmp >> (NUM)) & 1)
 
@@ -245,25 +67,7 @@ static bool readonly_ok(Insn *insn)
         } \
     } while (0)
 
-#define READ_EXT_VREG_PAIR(NUM, VAR, VTMP) \
-    do { \
-        READ_EXT_VREG((NUM) ^ 0, VAR.v[0], VTMP); \
-        READ_EXT_VREG((NUM) ^ 1, VAR.v[1], VTMP) \
-    } while (0)
-#endif
-
 #define WRITE_EXT_VREG(NUM, VAR, VNEW)   LOG_VREG_WRITE(NUM, VAR, VNEW)
-#define WRITE_VREG_d(NUM, VAR, VNEW)     LOG_VREG_WRITE(NUM, VAR, VNEW)
-#define WRITE_VREG_x(NUM, VAR, VNEW)     LOG_VREG_WRITE(NUM, VAR, VNEW)
-#define WRITE_VREG_y(NUM, VAR, VNEW)     LOG_VREG_WRITE(NUM, VAR, VNEW)
-
-#define WRITE_VREG_dd(NUM, VAR, VNEW)    LOG_VREG_WRITE_PAIR(NUM, VAR, VNEW)
-#define WRITE_VREG_xx(NUM, VAR, VNEW)    LOG_VREG_WRITE_PAIR(NUM, VAR, VNEW)
-#define WRITE_VREG_yy(NUM, VAR, VNEW)    LOG_VREG_WRITE_PAIR(NUM, VAR, VNEW)
-
-#define WRITE_QREG_d(NUM, VAR, VNEW)     LOG_QREG_WRITE(NUM, VAR, VNEW)
-#define WRITE_QREG_e(NUM, VAR, VNEW)     LOG_QREG_WRITE(NUM, VAR, VNEW)
-#define WRITE_QREG_x(NUM, VAR, VNEW)     LOG_QREG_WRITE(NUM, VAR, VNEW)
 
 #define LOG_VTCM_BYTE(VA, MASK, VAL, IDX) \
     do { \
@@ -283,12 +87,6 @@ static bool readonly_ok(Insn *insn)
         env->vtcm_log.offsets.uh[IDX] |= ((MASK & 0xF) << 12) ; \
     } while (0)
 
-static inline mmvector_t mmvec_zero_vector(void)
-{
-    mmvector_t ret;
-    memset(&ret, 0, sizeof(ret));
-    return ret;
-}
 static inline mmvector_t mmvec_vtmp_data(CPUHexagonState *env)
 {
     VRegMask vsel = env->VRegs_updated_tmp;
@@ -301,18 +99,6 @@ static inline mmvector_t mmvec_vtmp_data(CPUHexagonState *env)
     env->VRegs_updated_tmp = 0;
     return ret;
 }
-#ifdef QEMU_GENERATE
-#else
-/*
- * Loads should never be executed from a helper, but they are needed so
- * the helpers will compile.  All the instructions with loads must be
- * implemented under QEMU_GENERATE
- */
-
-static inline void mem_store_release(thread_t* thread, Insn * insn, int size, vaddr_t vaddr, vaddr_t lookup_vaddr, int type, int use_full_va)
-{
-}
-#endif
 
 #define fVLOG_VTCM_WORD_INCREMENT(EA, OFFSET, INC, IDX, ALIGNMENT, LEN) \
     do { \
@@ -417,6 +203,4 @@ static inline void mem_store_release(thread_t* thread, Insn * insn, int size, va
         } \
         LOG_VTCM_BANK(va, log_bank, BANK_IDX); \
     } while (0)
-#define fUSE_LOOKUP_ADDRESS_BY_REV(PROC) true
-#define fUSE_LOOKUP_ADDRESS() 1
 #endif
