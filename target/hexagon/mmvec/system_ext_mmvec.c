@@ -162,12 +162,6 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
 
     mmvecx->vtcm_log.va_base = base_vaddr;
     mmvecx->vtcm_log.pa_base = base_paddr;
-
-    // Temp Reg gets updated
-    // This allows Store .new to grab the correct result
-    mmvecx->VRegs_updated_tmp = 0xFFFFFFFF;
-
-    return;
 }
 
 

@@ -18,8 +18,15 @@
 #ifndef HEXAGON_GEN_TCG_HVX_H
 #define HEXAGON_GEN_TCG_HVX_H
 
+static inline void assert_vhist_tmp(DisasContext *ctx)
+{
+    /* vhist instructions require exactly one .tmp to be defined */
+    g_assert(ctx->tmp_vregs_idx == 1);
+}
+
 #define fGEN_TCG_V6_vhist(SHORTCODE) \
     if (!ctx->pre_commit) { \
+        assert_vhist_tmp(ctx); \
         gen_helper_vhist(cpu_env); \
     }
 #define fGEN_TCG_V6_vhistq(SHORTCODE) \
@@ -29,11 +36,13 @@
             tcg_gen_gvec_mov(MO_64, dstoff, QvV_off, \
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
+            assert_vhist_tmp(ctx); \
             gen_helper_vhistq(cpu_env); \
         } \
     } while (0)
 #define fGEN_TCG_V6_vwhist256(SHORTCODE) \
     if (!ctx->pre_commit) { \
+        assert_vhist_tmp(ctx); \
         gen_helper_vwhist256(cpu_env); \
     }
 #define fGEN_TCG_V6_vwhist256q(SHORTCODE) \
@@ -43,11 +52,13 @@
             tcg_gen_gvec_mov(MO_64, dstoff, QvV_off, \
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
+            assert_vhist_tmp(ctx); \
             gen_helper_vwhist256q(cpu_env); \
         } \
     } while (0)
 #define fGEN_TCG_V6_vwhist256_sat(SHORTCODE) \
     if (!ctx->pre_commit) { \
+        assert_vhist_tmp(ctx); \
         gen_helper_vwhist256_sat(cpu_env); \
     }
 #define fGEN_TCG_V6_vwhist256q_sat(SHORTCODE) \
@@ -57,11 +68,13 @@
             tcg_gen_gvec_mov(MO_64, dstoff, QvV_off, \
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
+            assert_vhist_tmp(ctx); \
             gen_helper_vwhist256q_sat(cpu_env); \
         } \
     } while (0)
 #define fGEN_TCG_V6_vwhist128(SHORTCODE) \
     if (!ctx->pre_commit) { \
+        assert_vhist_tmp(ctx); \
         gen_helper_vwhist128(cpu_env); \
     }
 #define fGEN_TCG_V6_vwhist128q(SHORTCODE) \
@@ -71,12 +84,14 @@
             tcg_gen_gvec_mov(MO_64, dstoff, QvV_off, \
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
+            assert_vhist_tmp(ctx); \
             gen_helper_vwhist128q(cpu_env); \
         } \
     } while (0)
 #define fGEN_TCG_V6_vwhist128m(SHORTCODE) \
     if (!ctx->pre_commit) { \
         TCGv tcgv_uiV = tcg_const_tl(uiV); \
+        assert_vhist_tmp(ctx); \
         gen_helper_vwhist128m(cpu_env, tcgv_uiV); \
         tcg_temp_free(tcgv_uiV); \
     }
@@ -88,6 +103,7 @@
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
             TCGv tcgv_uiV = tcg_const_tl(uiV); \
+            assert_vhist_tmp(ctx); \
             gen_helper_vwhist128qm(cpu_env, tcgv_uiV); \
             tcg_temp_free(tcgv_uiV); \
         } \

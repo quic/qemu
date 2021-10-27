@@ -399,8 +399,8 @@ typedef struct {
 #define CLEAR_EXCEPTION         (env->status &= (~EXEC_STATUS_EXCEPTION))
 #define SET_EXCEPTION           (env->status |= EXEC_STATUS_EXCEPTION)
 
-/* This needs to be large enough for all the reads and writes in a packet */
-#define TEMP_VECTORS_MAX        25
+/* Maximum number of vector temps in a packet */
+#define VECTOR_TEMPS_MAX            4
 
 /* TODO: Update for Hexagon: Meanings of the ARMCPU object's four inbound GPIO lines */
 #define HEXAGON_CPU_IRQ_0 0
@@ -485,10 +485,9 @@ struct CPUHexagonState {
     uint64_t     llsc_val_i64;
 
     mmvector_t VRegs[NUM_VREGS] QEMU_ALIGNED(16);
-    mmvector_t future_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
-    mmvector_t tmp_VRegs[NUM_VREGS] QEMU_ALIGNED(16);
+    mmvector_t future_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
+    mmvector_t tmp_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
 
-    VRegMask VRegs_updated_tmp;
     VRegMask VRegs_updated;
 
     mmqreg_t QRegs[NUM_QREGS] QEMU_ALIGNED(16);
@@ -512,9 +511,6 @@ struct CPUHexagonState {
 
     int status;
     size1u_t bq_on;
-
-    mmvector_t temp_vregs[TEMP_VECTORS_MAX];
-    mmqreg_t temp_qregs[TEMP_VECTORS_MAX];
 
     unsigned int timing_on;
 

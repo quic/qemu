@@ -1687,21 +1687,9 @@ void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
 
 /* Histogram instructions */
 
-static inline MMVector *vhist_input(CPUHexagonState *env)
-{
-    /*
-     * The rules for histogram instructions are that there can only
-     * be one tmp register assigned in the packet.
-     */
-    VRegMask vsel = env->VRegs_updated_tmp;
-    g_assert(ctpop32(vsel) == 1);
-    env->VRegs_updated_tmp = 0;
-    return &env->tmp_VRegs[31 - clz32(vsel)];
-}
-
 void HELPER(vhist)(CPUHexagonState *env)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int lane = 0; lane < 8; lane++) {
         for (int i = 0; i < sizeof(MMVector) / 8; ++i) {
@@ -1716,7 +1704,7 @@ void HELPER(vhist)(CPUHexagonState *env)
 
 void HELPER(vhistq)(CPUHexagonState *env)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int lane = 0; lane < 8; lane++) {
         for (int i = 0; i < sizeof(MMVector) / 8; ++i) {
@@ -1734,7 +1722,7 @@ void HELPER(vhistq)(CPUHexagonState *env)
 
 void HELPER(vwhist256)(CPUHexagonState *env)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int i = 0; i < (sizeof(MMVector) / 2); i++) {
         unsigned int bucket = fGETUBYTE(0, input->h[i]);
@@ -1749,7 +1737,7 @@ void HELPER(vwhist256)(CPUHexagonState *env)
 
 void HELPER(vwhist256q)(CPUHexagonState *env)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int i = 0; i < (sizeof(MMVector) / 2); i++) {
         unsigned int bucket = fGETUBYTE(0, input->h[i]);
@@ -1766,7 +1754,7 @@ void HELPER(vwhist256q)(CPUHexagonState *env)
 
 void HELPER(vwhist256_sat)(CPUHexagonState *env)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int i = 0; i < (sizeof(MMVector) / 2); i++) {
         unsigned int bucket = fGETUBYTE(0, input->h[i]);
@@ -1781,7 +1769,7 @@ void HELPER(vwhist256_sat)(CPUHexagonState *env)
 
 void HELPER(vwhist256q_sat)(CPUHexagonState *env)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int i = 0; i < (sizeof(MMVector) / 2); i++) {
         unsigned int bucket = fGETUBYTE(0, input->h[i]);
@@ -1798,7 +1786,7 @@ void HELPER(vwhist256q_sat)(CPUHexagonState *env)
 
 void HELPER(vwhist128)(CPUHexagonState *env)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int i = 0; i < (sizeof(MMVector) / 2); i++) {
         unsigned int bucket = fGETUBYTE(0, input->h[i]);
@@ -1813,7 +1801,7 @@ void HELPER(vwhist128)(CPUHexagonState *env)
 
 void HELPER(vwhist128q)(CPUHexagonState *env)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int i = 0; i < (sizeof(MMVector) / 2); i++) {
         unsigned int bucket = fGETUBYTE(0, input->h[i]);
@@ -1830,7 +1818,7 @@ void HELPER(vwhist128q)(CPUHexagonState *env)
 
 void HELPER(vwhist128m)(CPUHexagonState *env, int32_t uiV)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int i = 0; i < (sizeof(MMVector) / 2); i++) {
         unsigned int bucket = fGETUBYTE(0, input->h[i]);
@@ -1847,7 +1835,7 @@ void HELPER(vwhist128m)(CPUHexagonState *env, int32_t uiV)
 
 void HELPER(vwhist128qm)(CPUHexagonState *env, int32_t uiV)
 {
-    MMVector *input = vhist_input(env);
+    MMVector *input = &env->tmp_VRegs[0];
 
     for (int i = 0; i < (sizeof(MMVector) / 2); i++) {
         unsigned int bucket = fGETUBYTE(0, input->h[i]);

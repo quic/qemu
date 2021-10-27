@@ -129,8 +129,13 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid, regno))
             f.write("    const intptr_t %s%sV_off =\n" %\
                  (regtype, regid))
-            f.write("        offsetof(CPUHexagonState, %s%sV);\n" % \
-                 (regtype, regid))
+            if (hex_common.is_tmp_result(tag)):
+                f.write("        ctx_tmp_vreg_off(ctx, %s%sN, 2, true);\n" % \
+                     (regtype, regid))
+            else:
+                f.write("        ctx_future_vreg_off(ctx, %s%sN," % \
+                     (regtype, regid))
+                f.write(" 2, true);\n")
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                     (regtype, regid))
@@ -163,9 +168,13 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 (regtype, regid, regno))
             f.write("    const intptr_t %s%sV_off =\n" % \
                 (regtype, regid))
-            f.write("        offsetof(CPUHexagonState,\n")
-            f.write("                 future_VRegs[%s%sN]);\n" % \
-                (regtype, regid))
+            if (hex_common.is_tmp_result(tag)):
+                f.write("        ctx_tmp_vreg_off(ctx, %s%sN, 1, true);\n" % \
+                    (regtype, regid))
+            else:
+                f.write("        ctx_future_vreg_off(ctx, %s%sN," % \
+                    (regtype, regid))
+                f.write(" 1, true);\n");
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                     (regtype, regid))
@@ -269,13 +278,9 @@ def genptr_decl_new(f,tag,regtype,regid,regno):
             if (hex_common.skip_qemu_helper(tag)):
                 f.write("    const intptr_t %s%sN_off =\n" % \
                     (regtype, regid))
-                f.write("        test_bit(%s%sN_num, ctx->vregs_updated)\n" % \
+                f.write("         ctx_future_vreg_off(ctx, %s%sN_num," % \
                     (regtype, regid))
-                f.write("            ? offsetof(CPUHexagonState, ")
-                f.write("future_VRegs[%s%sN_num])\n" % \
-                    (regtype, regid))
-                f.write("            : offsetof(CPUHexagonState, ")
-                f.write("zero_vector);\n")
+                f.write(" 1, true);\n")
             else:
                 f.write("    TCGv %s%sN = tcg_const_tl(%s%sN_num);\n" % \
                     (regtype, regid, regtype, regid))
@@ -619,7 +624,7 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
                 is_predicated = "true"
             else:
                 is_predicated = "false"
-            f.write("    gen_log_vreg_write_pair(%s%sV_off, %s%sN, " % \
+            f.write("    gen_log_vreg_write_pair(ctx, %s%sV_off, %s%sN, " % \
                 (regtype, regid, regtype, regid))
             f.write("%s, insn->slot, %s);\n" % \
                 (newv, is_predicated))
@@ -631,7 +636,7 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
                 is_predicated = "true"
             else:
                 is_predicated = "false"
-            f.write("    gen_log_vreg_write(%s%sV_off, %s%sN, %s, " % \
+            f.write("    gen_log_vreg_write(ctx, %s%sV_off, %s%sN, %s, " % \
                 (regtype, regid, regtype, regid, newv))
             f.write("insn->slot, %s);\n" % \
                 (is_predicated))
