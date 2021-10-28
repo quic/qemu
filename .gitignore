@@ -14,3 +14,5 @@ GTAGS
 *.ast_raw
 *.depend_raw
 *.swp
+.vscode
+build
