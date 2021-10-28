@@ -1216,6 +1216,7 @@ size4u_t dma_adapter_cmd(thread_t *thread, dma_cmd_t opcode,
 			// completeness checker back.
 			dma_insn_checker_ptr insn_checker = NULL;
 
+	        assert(thread->processor_ptr->dma[thread->threadId]);
 			ret_val = (*impl)(thread, arg1, arg2, &insn_checker);
 
 			// If the engine gave us an instruction completeness checker, let's set up
