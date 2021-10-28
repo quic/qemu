@@ -136,8 +136,8 @@ static void hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
 
 static void hexagon_common_init(MachineState *machine, Rev_t rev)
 {
-    DeviceState *dev;
-    int i;
+    MachineClass *mc = MACHINE_GET_CLASS(qdev_get_machine());
+    ProcessorStateV68.runnable_threads_max = mc->default_cpus;
 
     memset(&hexagon_binfo, 0, sizeof(hexagon_binfo));
     if (machine->kernel_filename) {
@@ -181,7 +181,8 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     HexagonCPU *cpu_0 = NULL;
     Error **errp = NULL;
-    for (i = 0; i < machine->smp.cpus; i++) {
+
+    for (int i = 0; i < machine->smp.cpus; i++) {
         HexagonCPU *cpu = HEXAGON_CPU(object_new(machine->cpu_type));
         CPUHexagonState *env = &cpu->env;
         qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr", cfgExtensions->cfgbase);
@@ -212,6 +213,7 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
     }
 
     HexagonCPU *cpu = cpu_0;
+    DeviceState *dev;
     dev = sysbus_create_varargs("l2vic", cfgExtensions->l2vic_base,
                                              /* IRQ#, Evnt#,CauseCode */
         qdev_get_gpio_in(DEVICE(cpu), 0), /* IRQ 0, 16, 0xc0 */
