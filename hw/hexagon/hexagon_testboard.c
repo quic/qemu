@@ -136,8 +136,7 @@ static void hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
 
 static void hexagon_common_init(MachineState *machine, Rev_t rev)
 {
-    MachineClass *mc = MACHINE_GET_CLASS(qdev_get_machine());
-    ProcessorStateV68.runnable_threads_max = mc->default_cpus;
+    ProcessorStateV68.runnable_threads_max = machine->smp.cpus;
 
     memset(&hexagon_binfo, 0, sizeof(hexagon_binfo));
     if (machine->kernel_filename) {
