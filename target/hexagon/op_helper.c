@@ -222,7 +222,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
                 g_assert_not_reached();
             }
         } else {
-            for (i = 0; i < env->vtcm_log.size; i++) {
+            for (i = 0; i < sizeof(MMVector); i++) {
                 if (test_bit(i, env->vtcm_log.mask)) {
                     cpu_stb_data_ra(env, env->vtcm_log.va[i],
                                     env->vtcm_log.data.ub[i], ra);
@@ -496,7 +496,7 @@ void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
                 g_assert_not_reached();
             }
         } else {
-            for (int i = 0; i < env->vtcm_log.size; i++) {
+            for (int i = 0; i < sizeof(MMVector); i++) {
                 if (test_bit(i, env->vtcm_log.mask)) {
                     probe_write(env, env->vtcm_log.va[i], 1, mmu_idx, retaddr);
                 }

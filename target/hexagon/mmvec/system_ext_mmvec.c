@@ -32,35 +32,16 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot)
     bitmap_copy(env->vstore[slot].mask, env->vtcm_log.mask, size);
 }
 
-void mem_vector_scatter_init(CPUHexagonState *env, int slot,
-                             target_ulong base_vaddr,
-                             int length, int element_size)
+void mem_vector_scatter_init(CPUHexagonState *env)
 {
-    int i;
-
-    for (i = 0; i < sizeof(MMVector); i++) {
-        env->vtcm_log.data.ub[i] = 0;
-    }
     bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
 
     env->vtcm_pending = true;
     env->vtcm_log.op = false;
     env->vtcm_log.op_size = 0;
-    env->vtcm_log.size = sizeof(MMVector);
 }
 
-void mem_vector_gather_init(CPUHexagonState *env,
-                            target_ulong base_vaddr,
-                            int length, int element_size)
+void mem_vector_gather_init(CPUHexagonState *env)
 {
-    int i;
-
-    for (i = 0; i < sizeof(MMVector); i++) {
-        env->vtcm_log.data.ub[i] = 0;
-        env->vtcm_log.va[i] = 0;
-        env->tmp_VRegs[0].ub[i] = 0;
-    }
     bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
-    env->vtcm_log.op = false;
-    env->vtcm_log.op_size = 0;
 }

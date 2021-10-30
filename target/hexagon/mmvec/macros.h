@@ -111,9 +111,9 @@
         warn("aligning misaligned vector. EA=%08x", (EA)); \
     }
 #define fSCATTER_INIT(REGION_START, LENGTH, ELEMENT_SIZE) \
-    mem_vector_scatter_init(env, slot, REGION_START, LENGTH, ELEMENT_SIZE)
+    mem_vector_scatter_init(env)
 #define fGATHER_INIT(REGION_START, LENGTH, ELEMENT_SIZE) \
-    mem_vector_gather_init(env, REGION_START, LENGTH, ELEMENT_SIZE)
+    mem_vector_gather_init(env)
 #define fSCATTER_FINISH(OP)
 #define fGATHER_FINISH()
 #define fLOG_SCATTER_OP(SIZE) \
@@ -205,7 +205,7 @@
 #define SCATTER_OP_WRITE_TO_MEM(TYPE) \
     do { \
         uintptr_t ra = GETPC(); \
-        for (int i = 0; i < env->vtcm_log.size; i += sizeof(TYPE)) { \
+        for (int i = 0; i < sizeof(MMVector); i += sizeof(TYPE)) { \
             if (test_bit(i, env->vtcm_log.mask)) { \
                 TYPE dst = 0; \
                 TYPE inc = 0; \
@@ -227,7 +227,7 @@
     } while (0)
 #define SCATTER_OP_PROBE_MEM(TYPE, MMU_IDX, RETADDR) \
     do { \
-        for (int i = 0; i < env->vtcm_log.size; i += sizeof(TYPE)) { \
+        for (int i = 0; i < sizeof(MMVector); i += sizeof(TYPE)) { \
             if (test_bit(i, env->vtcm_log.mask)) { \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
                     probe_read(env, env->vtcm_log.va[i + j], 1, \
