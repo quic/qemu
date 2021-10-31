@@ -125,7 +125,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "V"):
         if (regid in {"dd"}):
-            f.write("    const int %s%sN = insn->regno[%d];\n" %\
+            f.write("    const int %s%sN = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
             f.write("    const intptr_t %s%sV_off =\n" %\
                  (regtype, regid))
@@ -142,7 +142,7 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 f.write("    tcg_gen_addi_ptr(%s%sV, cpu_env, %s%sV_off);\n" % \
                     (regtype, regid, regtype, regid))
         elif (regid in {"uu", "vv", "xx"}):
-            f.write("    const int %s%sN = insn->regno[%d];\n" %\
+            f.write("    const int %s%sN = insn->regno[%d];\n" % \
                 (regtype, regid, regno))
             f.write("    const intptr_t %s%sV_off =\n" % \
                  (regtype, regid))
@@ -617,7 +617,7 @@ def genptr_dst_write(f, tag, regtype, regid):
     else:
         print("Bad register parse: ", regtype, regid)
 
-def genptr_dst_write_ext(f, tag, regtype, regid, newv="0"):
+def genptr_dst_write_ext(f, tag, regtype, regid, newv="EXT_DFL"):
     if (regtype == "V"):
         if (regid in {"dd", "xx", "yy"}):
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
