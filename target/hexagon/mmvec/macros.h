@@ -58,11 +58,15 @@
     } while (0)
 
 /* VTCM Banks */
+#ifdef CONFIG_USER_ONLY
+#define LOG_VTCM_BANK(VAL, MASK, IDX)
+#else
 #define LOG_VTCM_BANK(VAL, MASK, IDX) \
     do { \
         env->vtcm_log.offsets.uh[IDX]  = (VAL & 0xFFF); \
         env->vtcm_log.offsets.uh[IDX] |= ((MASK & 0xF) << 12) ; \
     } while (0)
+#endif
 
 #define fVLOG_VTCM_WORD_INCREMENT(EA, OFFSET, INC, IDX, ALIGNMENT, LEN) \
     do { \
@@ -116,9 +120,17 @@
         } \
         LOG_VTCM_BANK(va, log_bank, BANK_IDX); \
     } while (0)
+#ifdef CONFIG_USER_ONLY
+#define CLEAR_OFFSETS(IDX)
+#else
+#define CLEAR_OFFSETS(IDX) \
+    do { \
+        env->vtcm_log.offsets.ub[IDX] = 0; \
+    } while (0)
+#endif
 #define SCATTER_OP_WRITE_TO_MEM(TYPE) \
     do { \
-        for (int i = 0; i < env->vtcm_log.size; i += sizeof(TYPE)) { \
+        for (int i = 0; i < sizeof(MMVector); i += sizeof(TYPE)) { \
             if (test_bit(i, env->vtcm_log.mask)) { \
                 TYPE dst = 0; \
                 TYPE inc = 0; \
@@ -129,7 +141,7 @@
                     inc |= env->vtcm_log.data.ub[j + i] << (8 * j); \
                     clear_bit(j + i, env->vtcm_log.mask); \
                     env->vtcm_log.data.ub[j + i] = 0; \
-                    env->vtcm_log.offsets.ub[j + i] = 0; \
+                    CLEAR_OFFSETS(j + i); \
                 } \
                 dst += inc; \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
@@ -141,7 +153,7 @@
     } while (0)
 #define SCATTER_OP_PROBE_MEM(TYPE, MMU_IDX, RETADDR) \
     do { \
-        for (int i = 0; i < env->vtcm_log.size; i += sizeof(TYPE)) { \
+        for (int i = 0; i < sizeof(MMVector); i += sizeof(TYPE)) { \
             if (test_bit(i, env->vtcm_log.mask)) { \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
                     probe_read(env, env->vtcm_log.va[i + j], 1, \

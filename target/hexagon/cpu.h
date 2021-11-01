@@ -266,10 +266,12 @@ struct MemLog {
 
 typedef struct {
     target_ulong va;
-    paddr_t pa;
     int size;
     DECLARE_BITMAP(mask, MAX_VEC_SIZE_BYTES) QEMU_ALIGNED(16);
     mmvector_t data QEMU_ALIGNED(16);
+#ifndef CONFIG_USER_ONLY
+    paddr_t pa;
+#endif
 } VStoreLog;
 
 struct dma_state;
@@ -506,7 +508,7 @@ struct CPUHexagonState {
     VStoreLog vstore[VSTORES_MAX];
     uint8_t store_pending[VSTORES_MAX];
     uint8_t vstore_pending[VSTORES_MAX];
-    uint8_t vtcm_pending;
+    bool vtcm_pending;
     VTCMStoreLog vtcm_log;
     mem_access_info_t mem_access[SLOTS_MAX];
 

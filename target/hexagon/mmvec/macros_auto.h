@@ -73,8 +73,13 @@
 #define fV_AL_CHECK(EA,MASK) if ((EA) & (MASK)) { warn("aligning misaligned vector. PC=%08x EA=%08x",thread->Regs[REG_PC],(EA)); }
 #define fSCATTER_INIT( REGION_START, LENGTH, ELEMENT_SIZE) { mem_vector_scatter_init(thread, insn, REGION_START, LENGTH, ELEMENT_SIZE); if (EXCEPTION_DETECTED) return; }
 #define fGATHER_INIT( REGION_START, LENGTH, ELEMENT_SIZE) { mem_vector_gather_init(thread, insn, REGION_START, LENGTH, ELEMENT_SIZE); if (EXCEPTION_DETECTED) return; }
+#ifdef CONFIG_USER_ONLY
+#define fSCATTER_FINISH(OP)
+#define fGATHER_FINISH()
+#else
 #define fSCATTER_FINISH(OP) { if (EXCEPTION_DETECTED) return; mem_vector_scatter_finish(thread, insn, OP); }
 #define fGATHER_FINISH() { if (EXCEPTION_DETECTED) return; mem_vector_gather_finish(thread, insn); }
+#endif
 #define CHECK_VTCM_PAGE(FLAG, BASE, LENGTH, OFFSET, ALIGNMENT) { int slot = insn->slot; paddr_t pa = thread->mem_access[slot].paddr+OFFSET; pa = pa & ~(ALIGNMENT-1); FLAG = (pa < (thread->mem_access[slot].paddr+LENGTH)); }
 #define COUNT_OUT_OF_BOUNDS(FLAG, SIZE) { if (!FLAG) { THREAD2STRUCT->vtcm_log.oob_access += SIZE; warn("Scatter/Gather out of bounds of region"); } }
 #define fLOG_SCATTER_OP(SIZE) { thread->vtcm_log.op = 1; thread->vtcm_log.op_size = SIZE; }

@@ -125,15 +125,16 @@ typedef mmqreg_t MMQReg;
 typedef struct {
     mmvector_t data;
     DECLARE_BITMAP(mask, MAX_VEC_SIZE_BYTES);
+    target_ulong va[MAX_VEC_SIZE_BYTES];
+    bool op;
+    int op_size;
+#ifndef CONFIG_USER_ONLY
     mmvector_pair_t offsets;
     paddr_t pa[MAX_VEC_SIZE_BYTES];
-    int size;
     paddr_t pa_base;
     target_ulong va_base;
-    target_ulong va[MAX_VEC_SIZE_BYTES];
     int oob_access;
-    int op;
-    int op_size;
+#endif
 } VTCMStoreLog;
 
 

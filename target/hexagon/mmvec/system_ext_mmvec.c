@@ -30,6 +30,7 @@
 #endif
 #include "target/hexagon/internal.h"
 
+#ifndef CONFIG_USER_ONLY
 #define thread_t CPUHexagonState
 #define FATAL_REPLAY
 #ifdef EXCEPTION_DETECTED
@@ -52,6 +53,7 @@ static int check_scatter_gather_page_cross(thread_t* thread, vaddr_t base, int l
 
     return 0;
 }
+#endif
 
 void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot)
 {
@@ -66,8 +68,11 @@ void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot)
     bitmap_copy(env->vstore[slot].mask, env->vtcm_log.mask, size);
 }
 
-void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, int length, int element_size)
+void mem_vector_scatter_init(CPUHexagonState *env, Insn *insn,
+                             vaddr_t base_vaddr, int length, int element_size)
 {
+#ifndef CONFIG_USER_ONLY
+    thread_t *thread = env;
     enum ext_mem_access_types access_type=access_type_vscatter_store;
     // Translation for Store Address on Slot 1 - maybe any slot?
     int slot = insn->slot;
@@ -100,21 +105,24 @@ void mem_vector_scatter_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr, 
         mmvecx->vtcm_log.data.ub[i] = 0;
         mmvecx->vtcm_log.pa[i] = 0;
     }
-    bitmap_zero(mmvecx->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
+
     mmvecx->vtcm_log.va_base = base_vaddr;
     mmvecx->vtcm_log.pa_base = base_paddr;
-
-    mmvecx->vtcm_pending = 1;
     mmvecx->vtcm_log.oob_access = 0;
-    mmvecx->vtcm_log.op = 0;
-    mmvecx->vtcm_log.op_size = 0;
-    return;
+#endif
+    bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
+
+    env->vtcm_pending = true;
+    env->vtcm_log.op = false;
+    env->vtcm_log.op_size = 0;
 }
 
 
-void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  int length, int element_size)
+void mem_vector_gather_init(CPUHexagonState *env, Insn *insn,
+                            vaddr_t base_vaddr,  int length, int element_size)
 {
-
+#ifndef CONFIG_USER_ONLY
+    thread_t *thread = env;
     int slot = insn->slot;
     enum ext_mem_access_types access_type = access_type_vgather_load;
     mem_init_access(thread, slot, base_vaddr, 1,  (enum mem_access_types) access_type, TYPE_LOAD);
@@ -155,25 +163,26 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
         mmvecx->vtcm_log.pa[i] = 0;
         mmvecx->tmp_VRegs[0].ub[i] = 0;
     }
-    bitmap_zero(mmvecx->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
+
     mmvecx->vtcm_log.oob_access = 0;
-    mmvecx->vtcm_log.op = 0;
+    mmvecx->vtcm_log.op = false;
     mmvecx->vtcm_log.op_size = 0;
 
     mmvecx->vtcm_log.va_base = base_vaddr;
     mmvecx->vtcm_log.pa_base = base_paddr;
+#endif
+    bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
 }
 
 
 
+#ifndef CONFIG_USER_ONLY
 void mem_vector_scatter_finish(thread_t* thread, Insn * insn, int op)
 {
-
     int slot = insn->slot;
     mmvecx_t *mmvecx = THREAD2STRUCT;
     thread->store_pending[slot] = 0;
     mmvecx->vstore_pending[slot] = 0;
-    mmvecx->vtcm_log.size = fVECSIZE();
 
 
     memcpy(thread->mem_access[slot].cdata, &mmvecx->vtcm_log.offsets.ub[0], 256);
@@ -196,3 +205,4 @@ void mem_vector_gather_finish(thread_t* thread, Insn * insn)
 
 
 }
+#endif

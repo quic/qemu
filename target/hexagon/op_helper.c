@@ -1311,7 +1311,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 
     /* Scatter store */
     if (env->vtcm_pending) {
-        env->vtcm_pending = 0;
+        env->vtcm_pending = false;
         if (env->vtcm_log.op) {
             /* Need to perform the scatter read/modify/write at commit time */
             if (env->vtcm_log.op_size == 2) {
@@ -1323,13 +1323,15 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
                 g_assert_not_reached();
             }
         } else {
-            for (int i = 0; i < env->vtcm_log.size; i++) {
+            for (int i = 0; i < sizeof(MMVector); i++) {
                 if (test_bit(i, env->vtcm_log.mask)) {
                     hexagon_store_byte(env, env->vtcm_log.data.ub[i],
                         env->vtcm_log.va[i]);
                     clear_bit(i, env->vtcm_log.mask);
                     env->vtcm_log.data.ub[i] = 0;
+#ifndef CONFIG_USER_ONLY
                     env->vtcm_log.offsets.ub[i] = 0;
+#endif
                 }
 
             }
@@ -1501,7 +1503,7 @@ void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
                 g_assert_not_reached();
             }
         } else {
-            for (int i = 0; i < env->vtcm_log.size; i++) {
+            for (int i = 0; i < sizeof(MMVector); i++) {
                 if (test_bit(i, env->vtcm_log.mask)) {
                     probe_write(env, env->vtcm_log.va[i], 1, mmu_idx, retaddr);
                 }
