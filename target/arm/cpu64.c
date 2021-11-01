@@ -385,7 +385,7 @@ static void aarch64_n1_initfn(Object *obj)
      * Note that the A76 only supports AA32 at EL0, so the
      * AA32-only EL1 id registers do not exist.
      */
-    cpu->midr = 0x413fd0c1;
+    cpu->midr = 0x414FD0C1;
     cpu->revidr = 0x00000000;
     cpu->ctr = 0x8444C004;
     cpu->reset_sctlr = 0x30d50838;
@@ -402,16 +402,16 @@ static void aarch64_n1_initfn(Object *obj)
     cpu->isar.id_isar1 = 0x13112111;
     cpu->isar.id_isar2 = 0x21232042;
     cpu->isar.id_isar3 = 0x01112131;
-    cpu->isar.id_isar4 = 0x00011142;
+    cpu->isar.id_isar4 = 0x00010142;
     cpu->isar.id_isar5 = 0x00011121;
     cpu->isar.id_isar6 = 0x00000010;
     cpu->isar.id_aa64pfr0 = 0x1100000010111112ull;
-    cpu->isar.id_aa64dfr0 = 0x10305408;
+    cpu->isar.id_aa64dfr0 = 0x110305408;
     cpu->isar.id_aa64isar0 = 0x0000100010211120ull;
     cpu->isar.id_aa64isar1 = 0x00100001;
-    cpu->isar.id_aa64mmfr0 = 0x00101122;
+    cpu->isar.id_aa64mmfr0 = 0x00101125;
     cpu->isar.id_aa64mmfr1 = 0x10212122;
-    cpu->isar.id_aa64mmfr2 = 0x00001011;
+    cpu->isar.id_aa64mmfr2 = 0x0100000000001011;
     cpu->clidr = 0x08200023;
     cpu->ccsidr[0] = 0x701fe00a; /* 32KB L1 dcache */
     cpu->ccsidr[1] = 0x201fe012; /* 48KB L1 icache */
