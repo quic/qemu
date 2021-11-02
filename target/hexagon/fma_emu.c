@@ -19,7 +19,6 @@
 #include "qemu/int128.h"
 #include "fpu/softfloat.h"
 #include "macros.h"
-#include "conv_emu.h"
 #include "fma_emu.h"
 
 #define DF_INF_EXP     0x7ff
@@ -190,7 +189,8 @@ static Accum accum_norm_left(Accum a)
     return a;
 }
 
-static Accum accum_norm_right(Accum a, int amt)
+/* This function is marked inline for performance reasons */
+static inline Accum accum_norm_right(Accum a, int amt)
 {
     if (amt > 130) {
         a.sticky |=
@@ -527,7 +527,7 @@ static bool is_inf_prod(float64 a, float64 b)
 }
 
 static float64 special_fma(float64 a, float64 b, float64 c,
-                                  float_status *fp_status)
+                           float_status *fp_status)
 {
     float64 ret = make_float64(0);
 
@@ -587,7 +587,7 @@ static float64 special_fma(float64 a, float64 b, float64 c,
 }
 
 static float32 special_fmaf(float32 a, float32 b, float32 c,
-                                 float_status *fp_status)
+                            float_status *fp_status)
 {
     float64 aa, bb, cc;
     aa = float32_to_float64(a, fp_status);
