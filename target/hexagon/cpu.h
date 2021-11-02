@@ -500,6 +500,7 @@ struct CPUHexagonState {
                  VuuV QEMU_ALIGNED(16),
                  VvvV QEMU_ALIGNED(16),
                  VxxV QEMU_ALIGNED(16);
+    MMVector     vtmp QEMU_ALIGNED(16);
     MMQReg       qtmp QEMU_ALIGNED(16);
 
     VStoreLog vstore[VSTORES_MAX];
