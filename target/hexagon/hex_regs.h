@@ -78,7 +78,9 @@ enum {
     HEX_REG_QEMU_INSN_CNT     = 53,
     HEX_REG_QEMU_HVX_CNT      = 54,
     HEX_REG_QEMU_HMX_CNT      = 55,
+  #ifndef CONFIG_USER_ONLY
     HEX_REG_QEMU_CPU_TB_CNT   = 56,
+  #endif
     HEX_REG_UTIMERLO          = 62,
     HEX_REG_UTIMERHI          = 63,
 };

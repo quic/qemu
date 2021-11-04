@@ -108,13 +108,14 @@
         int i0; \
         vaddr_t va = EA; \
         vaddr_t va_high = EA + LEN; \
+        uintptr_t ra = GETPC(); \
         int log_bank = 0; \
         int log_byte = 0; \
         for (i0 = 0; i0 < ELEMENT_SIZE; i0++) { \
             log_byte = ((va + i0) <= va_high) && QVAL; \
             log_bank |= (log_byte << i0); \
             size1u_t B; \
-            hexagon_load_byte(env, &B, EA + i0); \
+            B = cpu_ldub_data_ra(env, EA + i0, ra); \
             env->tmp_VRegs[0].ub[ELEMENT_SIZE * IDX + i0] = B; \
             LOG_VTCM_BYTE(va + i0, log_byte, B, ELEMENT_SIZE * IDX + i0); \
         } \
@@ -130,13 +131,14 @@
 #endif
 #define SCATTER_OP_WRITE_TO_MEM(TYPE) \
     do { \
+        uintptr_t ra = GETPC(); \
         for (int i = 0; i < sizeof(MMVector); i += sizeof(TYPE)) { \
             if (test_bit(i, env->vtcm_log.mask)) { \
                 TYPE dst = 0; \
                 TYPE inc = 0; \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
                     size1u_t val; \
-                    hexagon_load_byte(env, &val, env->vtcm_log.va[i + j]); \
+                    val = cpu_ldub_data_ra(env, env->vtcm_log.va[i + j], ra); \
                     dst |= val << (8 * j); \
                     inc |= env->vtcm_log.data.ub[j + i] << (8 * j); \
                     clear_bit(j + i, env->vtcm_log.mask); \
@@ -145,8 +147,8 @@
                 } \
                 dst += inc; \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
-                    hexagon_store_byte(env, (dst >> (8 * j)) & 0xFF, \
-                        env->vtcm_log.va[i + j]);  \
+                    cpu_stb_data_ra(env, env->vtcm_log.va[i + j], \
+                                    (dst >> (8 * j)) & 0xFF, ra); \
                 } \
             } \
         } \

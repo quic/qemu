@@ -16,26 +16,17 @@
  */
 
 #include "qemu/osdep.h"
-#include "fpu/softfloat.h"
-#include "cpu.h"
-#include "sysemu/cpus.h"
-#ifdef CONFIG_USER_ONLY
-#include "qemu.h"
-#include "exec/helper-proto.h"
-#else
-#include "hw/boards.h"
-#include "hw/hexagon/hexagon.h"
-#endif
+#include "qemu/log.h"
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
-#include "qemu/log.h"
-#include "tcg/tcg-op.h"
+#include "exec/helper-proto.h"
+#include "fpu/softfloat.h"
+#include "cpu.h"
 #include "internal.h"
-#include "stall.h"
 #include "macros.h"
 #include "arch.h"
+#include "hex_arch_types.h"
 #include "fma_emu.h"
-#include "conv_emu.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/macros_auto.h"
 #include "arch_options_calc.h"
@@ -45,15 +36,13 @@
 #include "hmx/hmx_int_ops.h"
 #include "system.h"
 #include "dma_adapter.h"
-#include "fma_emu.h"
-#include "myfenv.h"
-#include "conv_emu.h"
 #ifndef CONFIG_USER_ONLY
+#include "sysemu/cpus.h"
+#include "hw/boards.h"
+#include "hw/hexagon/hexagon.h"
 #include "hex_mmu.h"
-#endif
 #include "hw/intc/l2vic.h"
-
-#include "hex_arch_types.h"
+#endif
 
 #define SF_BIAS        127
 #define SF_MANTBITS    23
@@ -67,7 +56,7 @@ typedef struct {
 } HelperCount;
 
 HelperCount helper_counts[] = {
-#define OPCODE(TAG)    { 0, #TAG },
+#define OPCODE(TAG)    { 0, #TAG }
 #include "opcodes_def_generated.h.inc"
 #undef OPCODE
     { 0, NULL }
@@ -100,45 +89,41 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
 {
     CPUState *cs = env_cpu(env);
 
-    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08lx, tbl =%d\n", __func__, exception,
-            env->gpr[HEX_REG_PC],
-        pc, env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
+#ifdef CONFIG_USER_ONLY
+    qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
+#else
+    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08lx, tbl =%d\n", __func__,
+                  exception, env->gpr[HEX_REG_PC], pc,
+                  env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
+#endif
 
     cs->exception_index = exception;
     cpu_loop_exit_restore(cs, pc);
-#ifndef CONFIG_USER_ONLY
-    while(1)
-      ;
-#endif
 }
-
-uint32_t HELPER(fbrev)(uint32_t addr)
-{
-    /*
-     *  Bit reverse the low 16 bits of the address
-     */
-    return deposit32(addr, 0, 16, revbit16(addr));
-}
-
-static float32 build_float32(uint8_t sign, uint32_t exp, uint32_t mant)
-{
-    return make_float32(
-        ((sign & 1) << 31) |
-        ((exp & 0xff) << SF_MANTBITS) |
-        (mant & ((1 << SF_MANTBITS) - 1)));
-}
-
-
-/* Exceptions processing helpers */
 
 void QEMU_NORETURN HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
 {
     do_raise_exception_err(env, excp, 0);
 }
 
+static void log_reg_write(CPUHexagonState *env, int rnum,
+                          target_ulong val, uint32_t slot)
+{
+    HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
+                  rnum, val, val);
+    if (val == env->gpr[rnum]) {
+        HEX_DEBUG_LOG(" NO CHANGE");
+    }
+    HEX_DEBUG_LOG("\n");
 
-static void log_pred_write(CPUHexagonState *env, int pnum,
-                                  target_ulong val)
+    env->new_value[rnum] = val;
+    if (HEX_DEBUG) {
+        /* Do this so HELPER(debug_commit_end) will know */
+        env->reg_written[rnum] = 1;
+    }
+}
+
+static void log_pred_write(CPUHexagonState *env, int pnum, target_ulong val)
 {
     HEX_DEBUG_LOG("log_pred_write[%d] = " TARGET_FMT_ld
                   " (0x" TARGET_FMT_lx ")\n",
@@ -171,16 +156,48 @@ static void write_new_pc(CPUHexagonState *env, target_ulong addr)
     }
 }
 
-static inline int32_t new_pred_value(CPUHexagonState *env, int pnum)
+/* Handy place to set a breakpoint */
+void HELPER(debug_start_packet)(CPUHexagonState *env)
 {
-    return env->new_pred_value[pnum];
+#ifdef CONFIG_USER_ONLY
+    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx "\n",
+                  env->gpr[HEX_REG_PC]);
+#else
+    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " tid = %d\n",
+                  env->gpr[HEX_REG_PC], env->threadId);
+#endif
+
+    for (int i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
+        env->reg_written[i] = 0;
+    }
+#ifndef CONFIG_USER_ONLY
+    for (int i = 0; i < NUM_GREGS; i++) {
+        env->greg_written[i] = 0;
+    }
+
+    for (int i = 0; i < NUM_SREGS; i++) {
+        if (i < HEX_SREG_GLB_START) {
+            env->t_sreg_written[i] = 0;
+        }
+    }
+#endif
+}
+
+/* Checks for bookkeeping errors between disassembly context and runtime */
+void HELPER(debug_check_store_width)(CPUHexagonState *env, int slot, int check)
+{
+    if (env->mem_log_stores[slot].width != check) {
+        HEX_DEBUG_LOG("ERROR: %d != %d\n",
+                      env->mem_log_stores[slot].width, check);
+        g_assert_not_reached();
+    }
 }
 
 void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
 {
     uintptr_t ra = GETPC();
-    target_ulong va = env->mem_log_stores[slot_num].va;
     uint8_t width = env->mem_log_stores[slot_num].width;
+    target_ulong va = env->mem_log_stores[slot_num].va;
 
     switch (width) {
     case 1:
@@ -195,9 +212,62 @@ void HELPER(commit_store)(CPUHexagonState *env, int slot_num)
     case 8:
         cpu_stq_data_ra(env, va, env->mem_log_stores[slot_num].data64, ra);
         break;
-
     default:
         g_assert_not_reached();
+    }
+}
+
+void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, int slot)
+{
+    mem_gather_store(env, addr, slot);
+}
+
+void HELPER(commit_hvx_stores)(CPUHexagonState *env)
+{
+    uintptr_t ra = GETPC();
+    int i;
+
+    /* Normal (possibly masked) vector store */
+    for (i = 0; i < VSTORES_MAX; i++) {
+        if (env->vstore_pending[i]) {
+            env->vstore_pending[i] = 0;
+            target_ulong va = env->vstore[i].va;
+            int size = env->vstore[i].size;
+            for (int j = 0; j < size; j++) {
+                if (test_bit(j, env->vstore[i].mask)) {
+                    cpu_stb_data_ra(env, va + j, env->vstore[i].data.ub[j], ra);
+                }
+            }
+        }
+    }
+
+    /* Scatter store */
+    if (env->vtcm_pending) {
+        env->vtcm_pending = false;
+        if (env->vtcm_log.op) {
+            /* Need to perform the scatter read/modify/write at commit time */
+            if (env->vtcm_log.op_size == 2) {
+                SCATTER_OP_WRITE_TO_MEM(uint16_t);
+            } else if (env->vtcm_log.op_size == 4) {
+                /* Word Scatter += */
+                SCATTER_OP_WRITE_TO_MEM(uint32_t);
+            } else {
+                g_assert_not_reached();
+            }
+        } else {
+            for (i = 0; i < sizeof(MMVector); i++) {
+                if (test_bit(i, env->vtcm_log.mask)) {
+                    cpu_stb_data_ra(env, env->vtcm_log.va[i],
+                                    env->vtcm_log.data.ub[i], ra);
+                    clear_bit(i, env->vtcm_log.mask);
+                    env->vtcm_log.data.ub[i] = 0;
+#ifndef CONFIG_USER_ONLY
+                    env->vtcm_log.offsets.ub[i] = 0;
+#endif
+                }
+
+            }
+        }
     }
 }
 
@@ -240,10 +310,14 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     bool pred_printed = false;
     int i;
 
+#ifdef CONFIG_USER_ONLY
+    HEX_DEBUG_LOG("Packet committed: pc = 0x" TARGET_FMT_lx "\n",
+                  env->this_PC);
+#else
     HEX_DEBUG_LOG("Packet committed: tid = %d, pc = 0x" TARGET_FMT_lx "\n",
                   env->threadId, env->this_PC);
-    if (env->slot_cancelled)
-      HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
+#endif
+    HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
 
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         if (env->reg_written[i]) {
@@ -256,7 +330,7 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
         }
     }
 
-#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
+#ifndef CONFIG_USER_ONLY
     bool greg_printed = false;
     for (i = 0; i < NUM_GREGS; i++) {
         if (env->greg_written[i]) {
@@ -294,9 +368,8 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
                 HEX_DEBUG_LOG("Predicates written\n");
                 pred_printed = true;
             }
-            char flag = (env->pred_written & (1 << i)) ? '*' : ' ';
-            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx " %c\n",
-                    i, env->new_pred_value[i], flag);
+            HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx "\n",
+                          i, env->new_pred_value[i]);
         }
     }
 
@@ -310,7 +383,11 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
         }
     }
 
+#ifdef CONFIG_USER_ONLY
+    HEX_DEBUG_LOG("Next PC = " TARGET_FMT_lx "\n", env->next_PC);
+#else
     HEX_DEBUG_LOG("tid[%d], Next PC = 0x%x\n", env->threadId, env->next_PC);
+#endif
     HEX_DEBUG_LOG("Exec counters: pkt = " TARGET_FMT_lx
                   ", insn = " TARGET_FMT_lx
                   ", hvx = " TARGET_FMT_lx "\n",
@@ -320,33 +397,25 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
 
 }
 
-static int32_t fcircadd_v4(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
-{
-    int32_t length = M & 0x0001ffff;
-    uint32_t new_ptr = RxV + offset;
-    uint32_t start_addr = CS;
-    uint32_t end_addr = start_addr + length;
-
-    if (new_ptr >= end_addr) {
-        new_ptr -= length;
-    } else if (new_ptr < start_addr) {
-        new_ptr += length;
-    }
-
-    return new_ptr;
-}
-
 int32_t HELPER(fcircadd)(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
 {
-    int32_t K_const = (M >> 24) & 0xf;
-    int32_t length = M & 0x1ffff;
-    int32_t mask = (1 << (K_const + 2)) - 1;
+    int32_t K_const = sextract32(M, 24, 4);
+    int32_t length = sextract32(M, 0, 17);
     uint32_t new_ptr = RxV + offset;
-    uint32_t start_addr = RxV & (~mask);
-    uint32_t end_addr = start_addr | length;
+    uint32_t start_addr;
+    uint32_t end_addr;
 
     if (K_const == 0 && length >= 4) {
-        return fcircadd_v4(RxV, offset, M, CS);
+        start_addr = CS;
+        end_addr = start_addr + length;
+    } else {
+        /*
+         * Versions v3 and earlier used the K value to specify a power-of-2 size
+         * 2^(K+2) that is greater than the buffer length
+         */
+        int32_t mask = (1 << (K_const + 2)) - 1;
+        start_addr = RxV & (~mask);
+        end_addr = start_addr | length;
     }
 
     if (new_ptr >= end_addr) {
@@ -358,12 +427,178 @@ int32_t HELPER(fcircadd)(int32_t RxV, int32_t offset, int32_t M, int32_t CS)
     return new_ptr;
 }
 
-static float64 hex_check_dfnan(float64 x)
+uint32_t HELPER(fbrev)(uint32_t addr)
 {
-    if (float64_is_any_nan(x)) {
-        return make_float64(0xFFFFFFFFFFFFFFFFULL);
+    /*
+     *  Bit reverse the low 16 bits of the address
+     */
+    return deposit32(addr, 0, 16, revbit16(addr));
+}
+
+static float32 build_float32(uint8_t sign, uint32_t exp, uint32_t mant)
+{
+    return make_float32(
+        ((sign & 1) << 31) |
+        ((exp & 0xff) << SF_MANTBITS) |
+        (mant & ((1 << SF_MANTBITS) - 1)));
+}
+
+/*
+ * sfrecipa, sfinvsqrta have two 32-bit results
+ *     r0,p0=sfrecipa(r1,r2)
+ *     r0,p0=sfinvsqrta(r1)
+ *
+ * Since helpers can only return a single value, we pack the two results
+ * into a 64-bit value.
+ */
+uint64_t HELPER(sfrecipa)(CPUHexagonState *env, float32 RsV, float32 RtV)
+{
+    int32_t PeV = 0;
+    float32 RdV;
+    int idx;
+    int adjust;
+    int mant;
+    int exp;
+
+    arch_fpop_start(env);
+    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
+        PeV = adjust;
+        idx = (RtV >> 16) & 0x7f;
+        mant = (recip_lookup_table[idx] << 15) | 1;
+        exp = SF_BIAS - (float32_getexp(RtV) - SF_BIAS) - 1;
+        RdV = build_float32(extract32(RtV, 31, 1), exp, mant);
     }
-    return x;
+    arch_fpop_end(env);
+    return ((uint64_t)RdV << 32) | PeV;
+}
+
+uint64_t HELPER(sfinvsqrta)(CPUHexagonState *env, float32 RsV)
+{
+    int PeV = 0;
+    float32 RdV;
+    int idx;
+    int adjust;
+    int mant;
+    int exp;
+
+    arch_fpop_start(env);
+    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
+        PeV = adjust;
+        idx = (RsV >> 17) & 0x7f;
+        mant = (invsqrt_lookup_table[idx] << 15);
+        exp = SF_BIAS - ((float32_getexp(RsV) - SF_BIAS) >> 1) - 1;
+        RdV = build_float32(extract32(RsV, 31, 1), exp, mant);
+    }
+    arch_fpop_end(env);
+    return ((uint64_t)RdV << 32) | PeV;
+}
+
+int64_t HELPER(vacsh_val)(CPUHexagonState *env,
+                           int64_t RxxV, int64_t RssV, int64_t RttV)
+{
+    for (int i = 0; i < 4; i++) {
+        int xv = sextract64(RxxV, i * 16, 16);
+        int sv = sextract64(RssV, i * 16, 16);
+        int tv = sextract64(RttV, i * 16, 16);
+        int max;
+        xv = xv + tv;
+        sv = sv - tv;
+        max = xv > sv ? xv : sv;
+        /* Note that fSATH can set the OVF bit in usr */
+        RxxV = deposit64(RxxV, i * 16, 16, fSATH(max));
+    }
+    return RxxV;
+}
+
+int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
+                           int64_t RxxV, int64_t RssV, int64_t RttV)
+{
+    int32_t PeV = 0;
+    for (int i = 0; i < 4; i++) {
+        int xv = sextract64(RxxV, i * 16, 16);
+        int sv = sextract64(RssV, i * 16, 16);
+        int tv = sextract64(RttV, i * 16, 16);
+        xv = xv + tv;
+        sv = sv - tv;
+        PeV = deposit32(PeV, i * 2, 1, (xv > sv));
+        PeV = deposit32(PeV, i * 2 + 1, 1, (xv > sv));
+    }
+    return PeV;
+}
+
+static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
+{
+    if (!(env->slot_cancelled & (1 << slot))) {
+        size1u_t width = env->mem_log_stores[slot].width;
+        target_ulong va = env->mem_log_stores[slot].va;
+        uintptr_t ra = GETPC();
+        probe_write(env, va, width, mmu_idx, ra);
+    }
+}
+
+/* Called during packet commit when there are two scalar stores */
+void HELPER(probe_pkt_scalar_store_s0)(CPUHexagonState *env, int mmu_idx)
+{
+    probe_store(env, 0, mmu_idx);
+}
+
+void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
+{
+    uintptr_t retaddr = GETPC();
+    int i;
+
+    /* Normal (possibly masked) vector store */
+    for (i = 0; i < VSTORES_MAX; i++) {
+        if (env->vstore_pending[i]) {
+            target_ulong va = env->vstore[i].va;
+            int size = env->vstore[i].size;
+            for (int j = 0; j < size; j++) {
+                if (test_bit(j, env->vstore[i].mask)) {
+                    probe_write(env, va + j, 1, mmu_idx, retaddr);
+                }
+            }
+        }
+    }
+
+    /* Scatter store */
+    if (env->vtcm_pending) {
+        if (env->vtcm_log.op) {
+            /* Need to perform the scatter read/modify/write at commit time */
+            if (env->vtcm_log.op_size == 2) {
+                SCATTER_OP_PROBE_MEM(size2u_t, mmu_idx, retaddr);
+            } else if (env->vtcm_log.op_size == 4) {
+                /* Word Scatter += */
+                SCATTER_OP_PROBE_MEM(size4u_t, mmu_idx, retaddr);
+            } else {
+                g_assert_not_reached();
+            }
+        } else {
+            for (int i = 0; i < sizeof(MMVector); i++) {
+                if (test_bit(i, env->vtcm_log.mask)) {
+                    probe_write(env, env->vtcm_log.va[i], 1, mmu_idx, retaddr);
+                }
+
+            }
+        }
+    }
+}
+
+void HELPER(probe_pkt_scalar_hvx_stores)(CPUHexagonState *env, int mask,
+                                         int mmu_idx)
+{
+    bool has_st0        = (mask >> 0) & 1;
+    bool has_st1        = (mask >> 1) & 1;
+    bool has_hvx_stores = (mask >> 2) & 1;
+
+    if (has_st0) {
+        probe_store(env, 0, mmu_idx);
+    }
+    if (has_st1) {
+        probe_store(env, 1, mmu_idx);
+    }
+    if (has_hvx_stores) {
+        HELPER(probe_hvx_stores)(env, mmu_idx);
+    }
 }
 
 /* Floating point */
@@ -372,7 +607,6 @@ float64 HELPER(conv_sf2df)(CPUHexagonState *env, float32 RsV)
     float64 out_f64;
     arch_fpop_start(env);
     out_f64 = float32_to_float64(RsV, &env->fp_status);
-    out_f64 = hex_check_dfnan(out_f64);
     arch_fpop_end(env);
     return out_f64;
 }
@@ -1141,37 +1375,6 @@ void HELPER(raise_stack_overflow)(CPUHexagonState *env, uint32_t slot,
 }
 #endif
 
-static void log_reg_write(CPUHexagonState *env, int rnum,
-                                 target_ulong val, uint32_t slot)
-{
-    HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld
-      " (0x" TARGET_FMT_lx ")", rnum, val, val);
-    if (env->slot_cancelled & (1 << slot)) {
-        HEX_DEBUG_LOG(" CANCELLED");
-    }
-    if (val == env->gpr[rnum]) {
-        HEX_DEBUG_LOG(" NO CHANGE");
-    }
-    HEX_DEBUG_LOG("\n");
-    if (!(env->slot_cancelled & (1 << slot))) {
-        HEX_DEBUG_LOG("\treg register set to 0x%x\n", val);
-        env->new_value[rnum] = val;
-#if HEX_DEBUG
-        /* Do this so HELPER(debug_commit_end) will know */
-        env->reg_written[rnum] = 1;
-#endif
-    }
-}
-
-static __attribute__((unused))
-inline void log_reg_write_pair(CPUHexagonState *env, int rnum,
-                                      int64_t val, uint32_t slot)
-{
-    HEX_DEBUG_LOG("log_reg_write_pair[%d:%d] = %ld\n", rnum + 1, rnum, val);
-    log_reg_write(env, rnum, val & 0xFFFFFFFF, slot);
-    log_reg_write(env, rnum + 1, (val >> 32) & 0xFFFFFFFF, slot);
-}
-
 #ifndef CONFIG_USER_ONLY
 static void log_sreg_write(CPUHexagonState *env, int rnum,
                                  target_ulong val, uint32_t slot)
@@ -1201,85 +1404,6 @@ static void log_sreg_write(CPUHexagonState *env, int rnum,
 
 #endif
 
-
-/* Handy place to set a breakpoint */
-void HELPER(debug_start_packet)(CPUHexagonState *env)
-{
-    HEX_DEBUG_LOG("Start packet: pc = 0x" TARGET_FMT_lx " tid = %d\n",
-                  env->gpr[HEX_REG_PC], env->threadId);
-
-    int i;
-    for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
-        env->reg_written[i] = 0;
-    }
-#if !defined(CONFIG_USER_ONLY) && HEX_DEBUG
-    for (i = 0; i < NUM_GREGS; i++) {
-        env->greg_written[i] = 0;
-    }
-
-    for (i = 0; i < NUM_SREGS; i++) {
-        if (i < HEX_SREG_GLB_START)
-            env->t_sreg_written[i] = 0;
-    }
-#endif
-}
-
-/* Checks for bookkeeping errors between disassembly context and runtime */
-void HELPER(debug_check_store_width)(CPUHexagonState *env, int slot, int check)
-{
-    if (env->mem_log_stores[slot].width != check) {
-        HEX_DEBUG_LOG("ERROR: %d != %d\n",
-                      env->mem_log_stores[slot].width, check);
-        g_assert_not_reached();
-    }
-}
-
-void hexagon_load_byte(CPUHexagonState *env, uint8_t *load_byte,
-    target_ulong src_vaddr)
-
-{
-#ifdef CONFIG_USER_ONLY
-  uint8_t B;
-  get_user_u8(B, src_vaddr);
-  *load_byte = B;
-#else
-#if 1
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  *load_byte = cpu_ldub_mmuidx_ra(env, src_vaddr, mmu_idx, GETPC());
-#else
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  uint8_t *hostaddr = (uint_8_t *)tlb_vaddr_to_host(env,
-                                                    src_vaddr,
-                                                    MMU_DATA_LOAD,
-                                                    mmu_idx);
-  if (hostaddr)
-    *load_byte = *hostaddr;
-  else {
-    TCGMemOpIdx oi = make_memop_idx(MO_UB, mmu_idx);
-    *load_byte = helper_ret_ldub_mmu(env, src_vaddr, oi, GETPC());
-  }
-#endif
-#endif
-}
-
-void hexagon_store_byte(CPUHexagonState *env, uint8_t store_byte,
-    target_ulong dst_vaddr)
-
-{
-#ifdef CONFIG_USER_ONLY
-  put_user_u8(store_byte, dst_vaddr);
-#else
-  unsigned mmu_idx = cpu_mmu_index(env, false);
-  cpu_stb_mmuidx_ra(env, dst_vaddr, store_byte, mmu_idx, GETPC());
-#endif
-}
-
-
-void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, int slot)
-{
-    mem_gather_store(env, addr, slot);
-}
-
 void HELPER(debug_print_vec)(CPUHexagonState *env, int rnum, void *vecptr)
 
 {
@@ -1291,147 +1415,7 @@ void HELPER(debug_print_vec)(CPUHexagonState *env, int rnum, void *vecptr)
     printf("\n");
 }
 
-void HELPER(commit_hvx_stores)(CPUHexagonState *env)
-{
-    int i;
 
-    /* Normal (possibly masked) vector store */
-    for (i = 0; i < VSTORES_MAX; i++) {
-        if (env->vstore_pending[i]) {
-            env->vstore_pending[i] = 0;
-            target_ulong va = env->vstore[i].va;
-            int size = env->vstore[i].size;
-            for (int j = 0; j < size; j++) {
-                if (test_bit(j, env->vstore[i].mask)) {
-                    hexagon_store_byte(env, env->vstore[i].data.ub[j], va + j);
-                }
-            }
-        }
-    }
-
-    /* Scatter store */
-    if (env->vtcm_pending) {
-        env->vtcm_pending = false;
-        if (env->vtcm_log.op) {
-            /* Need to perform the scatter read/modify/write at commit time */
-            if (env->vtcm_log.op_size == 2) {
-                SCATTER_OP_WRITE_TO_MEM(size2u_t);
-            } else if (env->vtcm_log.op_size == 4) {
-                /* Word Scatter += */
-                SCATTER_OP_WRITE_TO_MEM(size4u_t);
-            } else {
-                g_assert_not_reached();
-            }
-        } else {
-            for (int i = 0; i < sizeof(MMVector); i++) {
-                if (test_bit(i, env->vtcm_log.mask)) {
-                    hexagon_store_byte(env, env->vtcm_log.data.ub[i],
-                        env->vtcm_log.va[i]);
-                    clear_bit(i, env->vtcm_log.mask);
-                    env->vtcm_log.data.ub[i] = 0;
-#ifndef CONFIG_USER_ONLY
-                    env->vtcm_log.offsets.ub[i] = 0;
-#endif
-                }
-
-            }
-        }
-    }
-}
-
-/*
- * sfrecipa, sfinvsqrta have two 32-bit results
- *     r0,p0=sfrecipa(r1,r2)
- *     r0,p0=sfinvsqrta(r1)
- *
- * Since helpers can only return a single value, we pack the two results
- * into a 64-bit value.
- */
-uint64_t HELPER(sfrecipa)(CPUHexagonState *env, float32 RsV, float32 RtV)
-{
-    int32_t PeV = 0;
-    float32 RdV;
-    int idx;
-    int adjust;
-    int mant;
-    int exp;
-
-    arch_fpop_start(env);
-    if (arch_sf_recip_common(&RsV, &RtV, &RdV, &adjust, &env->fp_status)) {
-        PeV = adjust;
-        idx = (RtV >> 16) & 0x7f;
-        mant = (recip_lookup_table[idx] << 15) | 1;
-        exp = SF_BIAS - (float32_getexp(RtV) - SF_BIAS) - 1;
-        RdV = build_float32(extract32(RtV, 31, 1), exp, mant);
-    }
-    arch_fpop_end(env);
-    return ((uint64_t)RdV << 32) | PeV;
-}
-
-uint64_t HELPER(sfinvsqrta)(CPUHexagonState *env, float32 RsV)
-{
-    int PeV = 0;
-    float32 RdV;
-    int idx;
-    int adjust;
-    int mant;
-    int exp;
-
-    arch_fpop_start(env);
-    if (arch_sf_invsqrt_common(&RsV, &RdV, &adjust, &env->fp_status)) {
-        PeV = adjust;
-        idx = (RsV >> 17) & 0x7f;
-        mant = (invsqrt_lookup_table[idx] << 15);
-        exp = SF_BIAS - ((float32_getexp(RsV) - SF_BIAS) >> 1) - 1;
-        RdV = build_float32(extract32(RsV, 31, 1), exp, mant);
-    }
-    arch_fpop_end(env);
-    return ((uint64_t)RdV << 32) | PeV;
-}
-
-
-
-int64_t HELPER(vacsh_val)(CPUHexagonState *env,
-                           int64_t RxxV, int64_t RssV, int64_t RttV)
-{
-    int32_t PeV = 0;
-    fHIDE(int i;)
-    fHIDE(int xv;)
-    fHIDE(int sv;)
-    fHIDE(int tv;)
-    for (i = 0; i < 4; i++) {
-        xv = (int)fGETHALF(i, RxxV);
-        sv = (int)fGETHALF(i, RssV);
-        tv = (int)fGETHALF(i, RttV);
-        xv = xv + tv;
-        sv = sv - tv;
-        fSETBIT(i * 2, PeV, (xv > sv));
-        fSETBIT(i * 2 + 1, PeV, (xv > sv));
-        fSETHALF(i, RxxV, fSATH(fMAX(xv, sv)));
-    }
-    return RxxV;
-}
-
-int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
-                           int64_t RxxV, int64_t RssV, int64_t RttV)
-{
-    int32_t PeV = 0;
-    fHIDE(int i;)
-    fHIDE(int xv;)
-    fHIDE(int sv;)
-    fHIDE(int tv;)
-    for (i = 0; i < 4; i++) {
-        xv = (int)fGETHALF(i, RxxV);
-        sv = (int)fGETHALF(i, RssV);
-        tv = (int)fGETHALF(i, RttV);
-        xv = xv + tv;
-        sv = sv - tv;
-        fSETBIT(i * 2, PeV, (xv > sv));
-        fSETBIT(i * 2 + 1, PeV, (xv > sv));
-        fSETHALF(i, RxxV, fSATH(fMAX(xv, sv)));
-    }
-    return PeV;
-}
 
 #ifndef CONFIG_USER_ONLY
 void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
@@ -1456,80 +1440,6 @@ void HELPER(checkforpriv)(CPUHexagonState *env)
 }
 #endif
 
-static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
-{
-    if (!(env->slot_cancelled & (1 << slot))) {
-        size1u_t width = env->mem_log_stores[slot].width;
-        target_ulong va = env->mem_log_stores[slot].va;
-        uintptr_t ra = GETPC();
-        probe_write(env, va, width, mmu_idx, ra);
-    }
-}
-
-/* Called during packet commit when there are two scalar stores */
-void HELPER(probe_pkt_scalar_store_s0)(CPUHexagonState *env, int mmu_idx)
-{
-    probe_store(env, 0, mmu_idx);
-}
-
-void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
-{
-    uintptr_t retaddr = GETPC();
-    int i;
-
-    /* Normal (possibly masked) vector store */
-    for (i = 0; i < VSTORES_MAX; i++) {
-        if (env->vstore_pending[i]) {
-            target_ulong va = env->vstore[i].va;
-            int size = env->vstore[i].size;
-            for (int j = 0; j < size; j++) {
-                if (test_bit(j, env->vstore[i].mask)) {
-                    probe_write(env, va + j, 1, mmu_idx, retaddr);
-                }
-            }
-        }
-    }
-
-    /* Scatter store */
-    if (env->vtcm_pending) {
-        if (env->vtcm_log.op) {
-            /* Need to perform the scatter read/modify/write at commit time */
-            if (env->vtcm_log.op_size == 2) {
-                SCATTER_OP_PROBE_MEM(size2u_t, mmu_idx, retaddr);
-            } else if (env->vtcm_log.op_size == 4) {
-                /* Word Scatter += */
-                SCATTER_OP_PROBE_MEM(size4u_t, mmu_idx, retaddr);
-            } else {
-                g_assert_not_reached();
-            }
-        } else {
-            for (int i = 0; i < sizeof(MMVector); i++) {
-                if (test_bit(i, env->vtcm_log.mask)) {
-                    probe_write(env, env->vtcm_log.va[i], 1, mmu_idx, retaddr);
-                }
-
-            }
-        }
-    }
-}
-
-void HELPER(probe_pkt_scalar_hvx_stores)(CPUHexagonState *env, int mask,
-                                         int mmu_idx)
-{
-    bool has_st0        = (mask >> 0) & 1;
-    bool has_st1        = (mask >> 1) & 1;
-    bool has_hvx_stores = (mask >> 2) & 1;
-
-    if (has_st0) {
-        probe_store(env, 0, mmu_idx);
-    }
-    if (has_st1) {
-        probe_store(env, 1, mmu_idx);
-    }
-    if (has_hvx_stores) {
-        HELPER(probe_hvx_stores)(env, mmu_idx);
-    }
-}
 
 #ifndef CONFIG_USER_ONLY
 #if HEX_DEBUG
@@ -1854,7 +1764,11 @@ void HELPER(vwhist128qm)(CPUHexagonState *env, int32_t uiV)
 
 static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 {
+#ifdef CONFIG_USER_ONLY
+    HEX_DEBUG_LOG("Slot %d cancelled\n", slot);
+#else
     HEX_DEBUG_LOG("op_helper: slot_cancelled = %d: pc = 0x%x\n", slot, env->gpr[HEX_REG_PC]);
+#endif
     env->slot_cancelled |= (1 << slot);
 }
 
@@ -2357,29 +2271,11 @@ void HELPER(commit_hmx)(CPUHexagonState *env)
     hmx_ext_commit_mem(env, 0, 0);
 }
 
-static inline uint8_t mem_load1(CPUHexagonState *env,
-                                uint32_t slot,
-                                target_ulong vaddr)
-{
-    uint8_t retval;
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldub_data_ra(env, vaddr, ra);
-#else
-    hexagon_tools_memory_read(env, vaddr, 1, &retval);
-#endif
-    return retval;
-}
-
-
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();
 #define thread env
 #define THREAD2STRUCT ((hmx_state_t*)env->processor_ptr->shared_extptr)
-
-#define BOGUS_HELPER(tag) \
-    printf("ERROR: bogus helper: " #tag "\n")
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
