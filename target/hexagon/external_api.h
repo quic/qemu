@@ -1,4 +1,6 @@
-/* Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved. */
+/*
+ * Copyright (c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ */
 
 /*
  * This file defines the API that is exported by the architecture implementation
@@ -23,7 +25,6 @@ typedef void system_t;
 typedef struct SystemState system_t;
 #endif
 
-#include "global_types.h"
 #include <stdio.h>
 #include <stddef.h>
 

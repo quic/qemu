@@ -19,6 +19,7 @@
 #define HEXAGON_ARCH_TYPES_H
 
 #include "qemu/osdep.h"
+#include "mmvec/mmvec.h"
 #include "qemu/int128.h"
 
 /*
@@ -31,15 +32,10 @@ typedef uint16_t    size2u_t;
 typedef int16_t     size2s_t;
 typedef uint32_t    size4u_t;
 typedef int32_t     size4s_t;
-#if 0
-/* FIXME: investigate whether there is a stdint type that applies here
- */
-typedef uint64_t    size8u_t;
-typedef int64_t     size8s_t;
-#else
-typedef unsigned long long int size8u_t;
-typedef long long int size8s_t;
-#endif
+
+typedef uint64_t size8u_t;
+typedef int64_t size8s_t;
+
 typedef uint64_t    paddr_t;
 typedef uint32_t    vaddr_t;
 
@@ -51,9 +47,10 @@ typedef struct size16s {
         };
         uint32_t w[4];
     };
-} Size16s;
+} size16s_t;
 
-typedef Size16s size16s_t;
-
+typedef MMVector          mmvector_t;
+typedef MMVectorPair      mmvector_pair_t;
+typedef MMQReg            mmqreg_t;
 
 #endif

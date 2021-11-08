@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
 
 #ifndef _ARCH_OPTIONS_CALC_H_
 #define _ARCH_OPTIONS_CALC_H_
-
-#include "global_types.h"
 
 #define in_vtcm_space(proc, paddr, warning) 1
 

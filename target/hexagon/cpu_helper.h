@@ -1,6 +1,6 @@
 
 /*
- *  Copyright (c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@
 #ifndef HEXAGON_CPU_HELPER_H
 #define HEXAGON_CPU_HELPER_H
 
-#include "hex_arch_types.h"
-
 #define ARCH_GET_THREAD_REG(ENV,REG)     ((ENV)->gpr[(REG)])
 #define ARCH_SET_THREAD_REG(ENV,REG,VAL) ((ENV)->gpr[(REG)] = (VAL))
 #define ARCH_GET_SYSTEM_REG(ENV,REG)     (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
@@ -34,15 +32,17 @@
 #define DEBUG_MEMORY_READ_LOCKED(ADDR,SIZE,PTR) \
     hexagon_tools_memory_read_locked(env, ADDR, SIZE, PTR)
 #define DEBUG_MEMORY_WRITE(ADDR,SIZE,DATA) \
-    hexagon_tools_memory_write(env,ADDR,SIZE,(size8u_t)DATA)
+    hexagon_tools_memory_write(env, ADDR, SIZE, (uint64_t)DATA)
 
-extern void hexagon_tools_memory_read(CPUHexagonState *env, vaddr_t vaddr,
+extern void hexagon_tools_memory_read(CPUHexagonState *env, target_ulong vaddr,
     int size, void *retptr);
-extern void hexagon_tools_memory_write(CPUHexagonState *env, vaddr_t vaddr,
-    int size, size8u_t data);
-extern int hexagon_tools_memory_read_locked(CPUHexagonState *env, vaddr_t vaddr,
-    int size, void *retptr);
-extern void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr, uint32_t length);
+extern void hexagon_tools_memory_write(CPUHexagonState *env, target_ulong vaddr,
+    int size, uint64_t data);
+extern int hexagon_tools_memory_read_locked(CPUHexagonState *env,
+                                            target_ulong vaddr, int size,
+                                            void *retptr);
+extern void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
+                                 uint32_t length);
 
 extern void hexagon_wait_thread(CPUHexagonState *env);
 extern void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei);

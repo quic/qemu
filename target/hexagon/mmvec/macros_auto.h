@@ -62,7 +62,7 @@
 #define fVLASTBYTE(ADDR, LOG2_ALIGNMENT) ( ADDR = ADDR | (LOG2_ALIGNMENT-1))
 #define fVELEM(WIDTH) ((fVECSIZE()*8)/WIDTH)
 // mgl was thread not 0
-#define fVECLOGSIZE() (mmvec_current_veclogsize((void *)0))
+#define fVECLOGSIZE() (MAX_VEC_SIZE_LOGBYTES)
 #define fVBUF_IDX(EA) (((EA) >> fVECLOGSIZE()) & 0xFF)
 #define fREAD_VBUF(IDX,WIDX) READ_VBUF(IDX,WIDX)
 #define fLOG_VBUF(IDX,VAL,WIDX) LOG_VBUF(IDX,VAL,WIDX)
@@ -178,6 +178,7 @@
 #define fCARRY_FROM_ADD32(A,B,C) (((fZXTN(32,64,A)+fZXTN(32,64,B)+C) >> 32) & 1)
 #define fUARCH_NOTE_PUMP_4X()
 #define fUARCH_NOTE_PUMP_2X()
+#define UNLIKELY(X) __builtin_expect((X), 0)
 #define fVDOCHKPAGECROSS(BASE,SUM) if (UNLIKELY(thread->timing_on)) { thread->mem_access[slot].check_page_crosses = 1; thread->mem_access[slot].page_cross_base = BASE; thread->mem_access[slot].page_cross_sum = SUM; }
 #define fPARSEQF32(A) parse_qf32(A)
 #define fRNDSATQF32(A,B,C) rnd_sat_qf32(A,B,C)

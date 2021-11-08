@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #ifndef XLATE_INFO_H
 #define XLATE_INFO_H 1
 
-#include "global_types.h"
+#include "hex_arch_types.h"
 
 typedef union {
 	size2u_t raw;

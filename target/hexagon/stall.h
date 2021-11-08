@@ -1,4 +1,6 @@
-/* Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved. */
+/*
+ * Copyright (c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ */
 
 /*
  *
@@ -12,7 +14,6 @@
 #ifndef _STALL_H_
 #define _STALL_H_
 
-#include "global_types.h"
 #include <stdio.h>
 
 struct ProcessorState;

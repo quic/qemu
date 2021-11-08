@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "hex_arch_types.h"
 
 //Double precision
 #define signF64UI( a ) ((bool) ((uint64_t) (a)>>63))

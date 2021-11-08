@@ -29,6 +29,7 @@
 #include "fma_emu.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/macros_auto.h"
+#include "mmvec/mmvec_qfloat.h"
 #include "arch_options_calc.h"
 #include "hmx/hmx.h"
 #include "hmx/macros_auto.h"

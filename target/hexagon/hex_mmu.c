@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 #include "sysemu/cpus.h"
 #include "internal.h"
 #include "exec/exec-all.h"
-#include "hex_arch_types.h"
 #include "hex_mmu.h"
 #include "macros.h"
 #include "reg_fields.h"

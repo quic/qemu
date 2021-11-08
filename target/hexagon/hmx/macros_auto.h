@@ -57,6 +57,7 @@
 #define fMX_OPERAND_READY() { int hmx_power_off = (thread->processor_ptr->arch_proc_options->hmx_power_config == 0) ? thread->bq_on : 0; if ((THREAD2HMXSTRUCT->operand_ready!=3) || hmx_power_off) { if (THREAD2HMXSTRUCT->y_tap == 0) { thread->mem_access[1].cancelled = 1; thread->mem_access[0].cancelled = 1; thread->mem_access[1].valid = 0; thread->mem_access[0].valid = 0; } return; } if (EXCEPTION_DETECTED) return; }
 #define fMX_CHECK_OPERANDS_SETUP_ACC() { fMX_OPERAND_READY(); if (!THREAD2HMXSTRUCT->is_flt) { memcpy(THREAD2HMXSTRUCT->future_accum_fxp, THREAD2HMXSTRUCT->accum_fxp, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL); } else { memcpy(THREAD2HMXSTRUCT->future_accum_flt, THREAD2HMXSTRUCT->accum_flt, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL); } }
 #define fMX_DONOTHING(VAL) { VAL = VAL; }
+#define UNLIKELY(X) __builtin_expect((X), 0)
 #define fVDOCHKPAGECROSS(BASE,SUM) if (UNLIKELY(thread->timing_on)) { thread->mem_access[slot].check_page_crosses = 1; thread->mem_access[slot].page_cross_base = BASE; thread->mem_access[slot].page_cross_sum = SUM; }
 #define fALIGN_CVT(ADDR, FORMAT) ADDR &= (~((1<<(fMX_GETCHANNELSIZE(thread->processor_ptr)+2))-1)) << FORMAT
 #define fALIGN_FXP_DEPTH(ADDR,SCALE) ADDR &= ~((thread->processor_ptr->arch_proc_options->QDSP6_MX_COLS*4*SCALE) - 1)

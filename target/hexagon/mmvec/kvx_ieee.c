@@ -15,6 +15,8 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "qemu/osdep.h"
+#include "cpu.h"
 #include "kvx_ieee.h"
 #include "kvx_mac_reduce.c"
 #include "qemu/host-utils.h"

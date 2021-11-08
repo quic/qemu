@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -46,7 +46,9 @@
 //#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 //#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
-#include "global_types.h"
+#include "qemu/osdep.h"
+#include "cpu.h"
+#include "hex_arch_types.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

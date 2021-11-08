@@ -16,9 +16,6 @@
  */
 
 #include <assert.h>
-#ifndef STANDALONE
-#include "../arch_types.h"
-#endif
 #include "kvx_ieee.h"
 
 #ifdef STANDALONE

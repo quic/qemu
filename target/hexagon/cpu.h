@@ -20,50 +20,45 @@
 
 /* Forward declaration needed by some of the header files */
 typedef struct CPUHexagonState CPUHexagonState;
+typedef struct ProcessorState processor_t;
+typedef struct SystemState system_t;
+
 #include "fpu/softfloat-types.h"
 
+#include "qemu-common.h"
+#include "exec/cpu-defs.h"
+#include "hex_regs.h"
+#include "mmvec/mmvec.h"
+#include "hmx/hmx.h"
+#include "dma/dma.h"
+
 #ifndef CONFIG_USER_ONLY
+#include "cpu_helper.h"
 #include "reg_fields.h"
 typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
+#define NUM_SREGS 64
+#define NUM_GREGS 32
+#define GREG_WRITES_MAX 32
+#define SREG_WRITES_MAX 64
+#define NUM_TLB_REGS(PROC) NUM_TLB_ENTRIES
 #endif
 
-#include "hex_arch_types.h"
-#include "insn.h"
-#include <fenv.h>
-
 #define TARGET_LONG_BITS 32
-#define NUM_TLB_REGS(PROC) NUM_TLB_ENTRIES
 
 /* Hexagon processors have a strong memory model.
 */
 #define TCG_GUEST_DEFAULT_MO      (TCG_MO_ALL)
 
-#include <time.h>
-#include "qemu/compiler.h"
-#include "qemu-common.h"
-#include "exec/cpu-defs.h"
-#include "hex_regs.h"
-
-#ifndef CONFIG_USER_ONLY
-#include "cpu_helper.h"
-#endif
-
 #define NUM_PREGS 4
 #define TOTAL_PER_THREAD_REGS 64
-#ifndef CONFIG_USER_ONLY
-#define NUM_SREGS 64
-#define NUM_GREGS 32
-#define GREG_WRITES_MAX 32
-#define SREG_WRITES_MAX 64
-#endif
 
-#define THREADS_MAX 8
-#define VECTOR_UNIT_MAX 4
 #define SLOTS_MAX 4
 #define STORES_MAX 2
 #define REG_WRITES_MAX 32
 #define PRED_WRITES_MAX 5                   /* 4 insns + endloop */
 #define VSTORES_MAX 2
+#define THREADS_MAX 8
+#define VECTOR_UNIT_MAX 4
 
 #define TYPE_HEXAGON_CPU "hexagon-cpu"
 
@@ -79,12 +74,14 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define VTCM_SIZE              0x40000LL
 #define VTCM_OFFSET            0x200000LL
 
+#ifndef CONFIG_USER_ONLY
 /*
  * Represents the maximum number of consecutive
  * translation blocks to execute on a CPU before yielding
  * to another CPU.
  */
 #define HEXAGON_TB_EXEC_PER_CPU_MAX 2000
+#endif
 
 #define HEXAGON_CPU_TYPE_SUFFIX "-" TYPE_HEXAGON_CPU
 #define HEXAGON_CPU_TYPE_NAME(name) (name HEXAGON_CPU_TYPE_SUFFIX)
@@ -98,24 +95,36 @@ typedef struct {
   int unused;
 } rev_features_t;
 
-typedef struct ProcessorState processor_t;
-typedef struct SystemState system_t;
-
 typedef void (*hmx_mac_fxp_callback_t) (void * sys, processor_t * proc,
     int pktid, int row_idx, int col_idx, int acc_idx, int in_idx, int wgt,
     int act, int acc, int x_tap, int y_tap, int block_idx, int deep_block_idx);
 typedef void (*hmx_mac_flt_callback_t) (void *, ...);
-typedef void (*hmx_cvt_fxp_state_callback_t) (system_t * sys, processor_t * proc, size4u_t pktid, size4u_t row_idx, size4u_t col_idx, size4u_t acc_idx, size4u_t val);
+typedef void (*hmx_cvt_fxp_state_callback_t) (system_t *sys,
+                                              processor_t *proc,
+                                              uint32_t pktid,
+                                              uint32_t row_idx,
+                                              uint32_t col_idx,
+                                              uint32_t acc_idx,
+                                              uint32_t val);
 typedef void (*hmx_cvt_state_transfer_callback_t) (void *, ...);
-typedef void (*hmx_cvt_state_write_callback_t)    (system_t * sys, processor_t * proc,
-                                                   size4u_t pktid, size4u_t age, size4u_t row_idx,
-                                                   size4u_t col_idx, size4u_t acc_idx, size4u_t val);
-typedef void (*hmx_wgt_decomp_callback_t) (system_t * sys, processor_t * proc,
-					   int block_idx, int pktid, int lane_idx, int vector_idx, paddr_t metadata_addr, int meta_addr_valid,
-                                   	   size2u_t meta_16bits, size8u_t val_hi_8_bytes, size8u_t val_lo_8_bytes);
+typedef void (*hmx_cvt_state_write_callback_t)(system_t *sys,
+                                               processor_t *proc,
+                                               uint32_t pktid, uint32_t age,
+                                               uint32_t row_idx,
+                                               uint32_t col_idx,
+                                               uint32_t acc_idx,
+                                               uint32_t val);
+typedef void (*hmx_wgt_decomp_callback_t)(system_t *sys, processor_t *proc,
+                                          int block_idx, int pktid,
+                                          int lane_idx, int vector_idx,
+                                          uint64_t metadata_addr,
+                                          int meta_addr_valid,
+                                          uint16_t meta_16bits,
+                                          uint64_t val_hi_8_bytes,
+                                          uint64_t val_lo_8_bytes);
 
 typedef struct {
-    paddr_t l2tcm_base;
+    uint64_t l2tcm_base;
     hmx_mac_fxp_callback_t hmx_mac_fxp_callback;
     hmx_mac_flt_callback_t hmx_mac_flt_callback;
 	hmx_cvt_fxp_state_callback_t hmx_cvt_fxp_state_callback;
@@ -147,8 +156,8 @@ typedef struct arch_proc_opt {
     int xfp_inexact_enable;
     int xfp_cvt_frac;
     int xfp_cvt_int;
-    paddr_t vtcm_size;
-    paddr_t vtcm_offset;
+    uint64_t vtcm_size;
+    uint64_t vtcm_offset;
     int vtcm_original_mem_entries;
     int QDSP6_DMA_PRESENT;
     int QDSP6_DMA_EXTENDED_VA_PRESENT;
@@ -254,31 +263,25 @@ enum mem_access_types {
 	NUM_CORE_ACCESS_TYPES
 };
 
-struct MemLog {
+typedef struct {
     target_ulong va;
     uint8_t width;
     uint32_t data32;
     uint64_t data64;
-};
-
-#include "max.h"
-#include "mmvec/mmvec.h"
+} MemLog;
 
 typedef struct {
     target_ulong va;
     int size;
     DECLARE_BITMAP(mask, MAX_VEC_SIZE_BYTES) QEMU_ALIGNED(16);
-    mmvector_t data QEMU_ALIGNED(16);
+    MMVector data QEMU_ALIGNED(16);
 #ifndef CONFIG_USER_ONLY
-    paddr_t pa;
+    uint64_t pa;
 #endif
 } VStoreLog;
 
 struct dma_state;
 typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *);
-
-#include "hmx/hmx.h"
-#include "dma/dma.h"
 
 struct ProcessorState {
     const rev_features_t *features;
@@ -290,9 +293,9 @@ struct ProcessorState {
 
     /* Useful information of the DMA engine per thread. */
     struct dma_adapter_engine_info * dma_engine_info[THREADS_MAX];
-    struct dma_state *dma[DMA_MAX]; // same as dma_t
+    struct dma_state *dma[DMA_MAX]; /* same as dma_t */
     dma_insn_checker_ptr dma_insn_checker[DMA_MAX];
-	size8u_t monotonic_pcycles;	/* never reset */
+    uint64_t monotonic_pcycles; /* never reset */
 
     /* one hmx unit shared among all threads */
     hmx_state_t *shared_extptr;
@@ -304,47 +307,47 @@ typedef struct HexagonCPU ArchCPU;
 
 
 typedef struct hmx_mem_access_info {
-    size4s_t dY;
-    size2u_t blocks;
-    size4u_t fx;
-    size4u_t fy;
-    size4u_t x_offset;
-    size4u_t y_offset;
-	size4u_t tile_x_mask;
-	size4u_t tile_y_mask;
-	size4u_t tile_y_inc;
-    size4u_t y_start;
-    size4u_t y_stop;
-    size4u_t x_start;
-    size4u_t x_stop;
-    size1u_t y_tap;
-    size1u_t x_tap;
-    size1u_t ch_start;
-    size1u_t ch_stop;
-	size1u_t group_size;
-	size1u_t group_count;
-	size1u_t group_count_ratio;
-    size1u_t block_type:3;
-    size1u_t format:2;
-    size1u_t acc_select:1;
-    size1u_t acc_range:1;
-    size1u_t flt:1;
-    size1u_t x_dilate:1;
-    size1u_t y_dilate:1;
-    size1u_t deep:1;
-    size1u_t wgt_deep:1;
-    size1u_t drop:1;
-    size1u_t batch:1;
-    size1s_t weight_count;
-    size1u_t bias_32bit;
-    size1u_t cvt_wr_only:1;
-    size1u_t weight_bits;
-    size1u_t enable16x16;
-    size1u_t outputselect16x16;
-    size1u_t act_reuse;
-    size4u_t wgt_size;
-	size2u_t egy_mpy_acc[HMX_MAX_EGY_CYCLE];
-	size1u_t egy_cvt;
+    int32_t dY;
+    uint16_t blocks;
+    uint32_t fx;
+    uint32_t fy;
+    uint32_t x_offset;
+    uint32_t y_offset;
+    uint32_t tile_x_mask;
+    uint32_t tile_y_mask;
+    uint32_t tile_y_inc;
+    uint32_t y_start;
+    uint32_t y_stop;
+    uint32_t x_start;
+    uint32_t x_stop;
+    uint8_t y_tap;
+    uint8_t x_tap;
+    uint8_t ch_start;
+    uint8_t ch_stop;
+    uint8_t group_size;
+    uint8_t group_count;
+    uint8_t group_count_ratio;
+    uint8_t block_type:3;
+    uint8_t format:2;
+    uint8_t acc_select:1;
+    uint8_t acc_range:1;
+    uint8_t flt:1;
+    uint8_t x_dilate:1;
+    uint8_t y_dilate:1;
+    uint8_t deep:1;
+    uint8_t wgt_deep:1;
+    uint8_t drop:1;
+    uint8_t batch:1;
+    int8_t weight_count;
+    uint8_t bias_32bit;
+    uint8_t cvt_wr_only:1;
+    uint8_t weight_bits;
+    uint8_t enable16x16;
+    uint8_t outputselect16x16;
+    uint8_t act_reuse;
+    uint32_t wgt_size;
+    uint16_t egy_mpy_acc[HMX_MAX_EGY_CYCLE];
+    uint8_t egy_cvt;
 } hmx_mem_access_info_t;
 
 #include "xlate_info.h"
@@ -352,26 +355,26 @@ typedef struct hmx_mem_access_info {
 typedef struct {
     target_ulong vaddr;
     target_ulong bad_vaddr;
-    paddr_t paddr;
-    size4u_t range;
-    size8u_t lddata;
-    size8u_t stdata;
+    uint64_t paddr;
+    uint32_t range;
+    uint64_t lddata;
+    uint64_t stdata;
     int cancelled;
     int tnum;
     enum mem_access_types type;
     unsigned char cdata[512];
-    size4u_t width;
-    size4u_t page_cross_base;
-    size4u_t page_cross_sum;
-    size2u_t slot;
-    size1u_t check_page_crosses;
+    uint32_t width;
+    uint32_t page_cross_base;
+    uint32_t page_cross_sum;
+    uint16_t slot;
+    uint8_t check_page_crosses;
     xlate_info_t xlate_info;
     hmx_mem_access_info_t hmx_ma;
-    size1u_t is_dealloc:1;
-    size1u_t is_memop:1;
-    size1u_t valid:1;
-    size1u_t log_as_tag:1;
-    size1u_t no_deriveumaptr:1;
+    uint8_t is_dealloc:1;
+    uint8_t is_memop:1;
+    uint8_t valid:1;
+    uint8_t log_as_tag:1;
+    uint8_t no_deriveumaptr:1;
 } mem_access_info_t;
 
 #ifndef CONFIG_USER_ONLY
@@ -386,8 +389,10 @@ typedef struct {
 #endif
 
 #define MMU_USER_IDX         0
+#ifndef CONFIG_USER_ONLY
 #define MMU_GUEST_IDX        1
 #define MMU_KERNEL_IDX       2
+#endif
 
 #define EXEC_STATUS_OK          0x0000
 #define EXEC_STATUS_STOP        0x0002
@@ -404,6 +409,7 @@ typedef struct {
 /* Maximum number of vector temps in a packet */
 #define VECTOR_TEMPS_MAX            4
 
+#ifndef CONFIG_USER_ONLY
 /* TODO: Update for Hexagon: Meanings of the ARMCPU object's four inbound GPIO lines */
 #define HEXAGON_CPU_IRQ_0 0
 #define HEXAGON_CPU_IRQ_1 1
@@ -414,7 +420,6 @@ typedef struct {
 #define HEXAGON_CPU_IRQ_6 6
 #define HEXAGON_CPU_IRQ_7 7
 
-#ifndef CONFIG_USER_ONLY
 typedef enum {
     HEX_LOCK_UNLOCKED       = 0,
     HEX_LOCK_WAITING        = 1,
@@ -424,17 +429,17 @@ typedef enum {
 #endif
 
 struct Einfo {
-  size1u_t valid;
-  size1u_t type;
-  size1u_t cause;
-  size1u_t bvs:1;
-  size1u_t bv0:1;       /* valid for badva0 */
-  size1u_t bv1:1;       /* valid for badva1 */
-  size4u_t badva0;
-  size4u_t badva1;
-  size4u_t elr;
-  size2u_t diag;
-  size2u_t de_slotmask;
+  uint8_t valid;
+  uint8_t type;
+  uint8_t cause;
+  uint8_t bvs:1;
+  uint8_t bv0:1;       /* valid for badva0 */
+  uint8_t bv1:1;       /* valid for badva1 */
+  uint32_t badva0;
+  uint32_t badva1;
+  uint32_t elr;
+  uint16_t diag;
+  uint16_t de_slotmask;
 };
 typedef struct Einfo exception_info;
 typedef struct Instruction Insn;
@@ -476,48 +481,45 @@ struct CPUHexagonState {
     target_ulong new_pred_value[NUM_PREGS];
     target_ulong pred_written;
 
-    struct MemLog mem_log_stores[STORES_MAX];
+    MemLog mem_log_stores[STORES_MAX];
     target_ulong dczero_addr;
 
-    fenv_t fenv;
     float_status fp_status;
 
     target_ulong llsc_addr;
     target_ulong llsc_val;
     uint64_t     llsc_val_i64;
 
-    mmvector_t VRegs[NUM_VREGS] QEMU_ALIGNED(16);
-    mmvector_t future_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
-    mmvector_t tmp_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
+    MMVector VRegs[NUM_VREGS] QEMU_ALIGNED(16);
+    MMVector future_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
+    MMVector tmp_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
 
     VRegMask VRegs_updated;
 
-    mmqreg_t QRegs[NUM_QREGS] QEMU_ALIGNED(16);
-    mmqreg_t future_QRegs[NUM_QREGS] QEMU_ALIGNED(16);
+    MMQReg QRegs[NUM_QREGS] QEMU_ALIGNED(16);
+    MMQReg future_QRegs[NUM_QREGS] QEMU_ALIGNED(16);
     QRegMask QRegs_updated;
 
     /* Temporaries used within instructions */
-    mmvector_t zero_vector QEMU_ALIGNED(16);
-    mmvector_pair_t VddV QEMU_ALIGNED(16),
-                 VuuV QEMU_ALIGNED(16),
-                 VvvV QEMU_ALIGNED(16),
-                 VxxV QEMU_ALIGNED(16);
+    MMVectorPair VuuV QEMU_ALIGNED(16);
+    MMVectorPair VvvV QEMU_ALIGNED(16);
+    MMVectorPair VxxV QEMU_ALIGNED(16);
     MMVector     vtmp QEMU_ALIGNED(16);
     MMQReg       qtmp QEMU_ALIGNED(16);
 
     VStoreLog vstore[VSTORES_MAX];
-    uint8_t store_pending[VSTORES_MAX];
-    uint8_t vstore_pending[VSTORES_MAX];
+    uint8_t store_pending[VSTORES_MAX];          /* FIXME - Is this needed? */
+    target_ulong vstore_pending[VSTORES_MAX];
     bool vtcm_pending;
     VTCMStoreLog vtcm_log;
     mem_access_info_t mem_access[SLOTS_MAX];
 
     int status;
-    size1u_t bq_on;
+    uint8_t bq_on;
 
     unsigned int timing_on;
 
-    size8u_t pktid;
+    uint64_t pktid;
     processor_t *processor_ptr;
     unsigned int threadId;
     system_t *system_ptr;

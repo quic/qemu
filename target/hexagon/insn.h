@@ -100,10 +100,10 @@ struct Packet {
     uint32_t pkt_has_jumpr_return:1;  /* indirect jump that is a return */
     uint32_t pkt_has_hinted_cof:1;    /* CallRH/JumpRH */
     /* Pre-decodes about SLOTS (4 bits, one per slot) */
-    size1u_t valid_slots:4;
-    size1u_t valid_slots_ld:4;
-    size1u_t valid_slots_st:4;
-    size1u_t valid_slots_non_mem:4;
+    uint8_t valid_slots:4;
+    uint8_t valid_slots_ld:4;
+    uint8_t valid_slots_st:4;
+    uint8_t valid_slots_non_mem:4;
 
     /* Pre-decodes about SLOTS */
     uint32_t slot0_valid:1;
@@ -153,13 +153,16 @@ struct Packet {
     uint32_t pkt_nonvmem_nonzmem_ld_ct:2; /* pkt has how many non vmem and non zmem loads */
     uint32_t pkt_hmx_st_ct:2; /* pkt has how many non vmem stores */
     uint32_t pkt_hmx_ld_ct:2; /* pkt has how many non vmem and non zmem loads */
-    size1u_t pkt_memport_ct:2; /*pkt use number of mem ports*/
-    size1u_t pkt_memport_s0:1; /*pkt use mem port by instruction on slot 0*/
-    size1u_t pkt_memport_s1:1; /*pkt use mem port by instruction on slot 1*/
-	size1u_t invalid_new_target:1; /* Packet loads a new value from invalid instr (likely .tmp) */
+    uint8_t pkt_memport_ct:2; /*pkt use number of mem ports*/
+    uint8_t pkt_memport_s0:1; /*pkt use mem port by instruction on slot 0*/
+    uint8_t pkt_memport_s1:1; /*pkt use mem port by instruction on slot 1*/
+    uint8_t invalid_new_target:1; /*
+                                   * Packet loads a new value from invalid instr
+                                   * (likely .tmp)
+                                   */
 
-    size1u_t pkt_has_dword_store:1;
-    size1u_t pkt_has_dword_load:1;
+    uint8_t pkt_has_dword_store:1;
+    uint8_t pkt_has_dword_load:1;
     uint32_t pkt_hvx_va:4;
     uint32_t pkt_hvx_vx:4;
     uint32_t pkt_hvx_vp:4;

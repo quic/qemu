@@ -21,10 +21,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "hex_arch_types.h"
 #include "int16_emu.h"
 #include "mpy_hmx_support.h"
 
 #define ThreadState thread_t
+#define thread_t CPUHexagonState
+
 struct HMX_State;
 union hmx_bias;
 union hmx_cvt_rs_reg;
