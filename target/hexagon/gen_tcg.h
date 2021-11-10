@@ -185,9 +185,9 @@
 #define fGEN_TCG_L2_loadrub_pi(SHORTCODE)      SHORTCODE
 #define fGEN_TCG_L2_loadrb_pr(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L2_loadrb_pbr(SHORTCODE)      SHORTCODE
-#define fGEN_TCG_L2_loadruh_pbr(SHORTCODE)     SHORTCODE
 #define fGEN_TCG_L2_loadrb_pi(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L2_loadruh_pr(SHORTCODE)      SHORTCODE
+#define fGEN_TCG_L2_loadruh_pbr(SHORTCODE)     SHORTCODE
 #define fGEN_TCG_L2_loadruh_pi(SHORTCODE)      SHORTCODE
 #define fGEN_TCG_L2_loadrh_pr(SHORTCODE)       SHORTCODE
 #define fGEN_TCG_L2_loadrh_pbr(SHORTCODE)      SHORTCODE
@@ -1433,15 +1433,13 @@
 /* dczeroa clears the 32 byte cache line at the address given */
 #define fGEN_TCG_Y2_dczeroa(SHORTCODE) SHORTCODE
 
-
 /* We have to brute force allocframe because it has C math in the semantics */
 #define fGEN_TCG_S2_allocframe(SHORTCODE) \
     do { \
         TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
-        tcg_gen_movi_i64(scramble_tmp, 0); \
         { fEA_RI(RxV, -8); \
-          fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
-                                           fCAST4_4u(fREAD_FP()))); \
+          gen_frame_scramble(scramble_tmp); \
+          fSTORE(1, 8, EA, scramble_tmp); \
           gen_log_reg_write(HEX_REG_FP, EA); \
           ctx_log_reg_write(ctx, HEX_REG_FP); \
           fFRAMECHECK(EA - uiV, EA); \
@@ -1452,12 +1450,11 @@
 
 #define fGEN_TCG_SS2_allocframe(SHORTCODE) \
     do { \
-          TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
-          tcg_gen_movi_i64(scramble_tmp, 0); \
-          TCGv tmp = tcg_temp_new(); \
+        TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
+        TCGv tmp = tcg_temp_new(); \
         { tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_SP], -8); \
-          fSTORE(1, 8, EA, fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | \
-                                           fCAST4_4u(fREAD_FP()))); \
+          gen_frame_scramble(scramble_tmp); \
+          fSTORE(1, 8, EA, scramble_tmp); \
           gen_log_reg_write(HEX_REG_FP, EA); \
           ctx_log_reg_write(ctx, HEX_REG_FP); \
           fFRAMECHECK(EA - uiV, EA); \
@@ -1477,7 +1474,7 @@
         { \
           fEA_REG(RsV); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          tcg_gen_mov_i64(RddV, fFRAME_UNSCRAMBLE(tmp_i64)); \
+          tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
           ctx_log_reg_write(ctx, HEX_REG_SP); \
@@ -1494,7 +1491,7 @@
         { \
           fEA_REG(fREAD_FP()); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          fFRAME_UNSCRAMBLE(tmp_i64); \
+          gen_frame_unscramble(tmp_i64); \
           gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
           ctx_log_reg_write(ctx, HEX_REG_LR); \
           gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
@@ -1516,7 +1513,7 @@
         { \
           fEA_REG(RsV); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          tcg_gen_mov_i64(RddV, fFRAME_UNSCRAMBLE(tmp_i64)); \
+          tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
           ctx_log_reg_write(ctx, HEX_REG_SP); \
@@ -1535,11 +1532,10 @@
         { \
           fEA_REG(fREAD_FP()); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          fFRAME_UNSCRAMBLE(tmp_i64); \
+          gen_frame_unscramble(tmp_i64); \
           gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
           ctx_log_reg_write(ctx, HEX_REG_LR); \
           gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
-          ctx_log_reg_write(ctx, HEX_REG_FP); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
           ctx_log_reg_write(ctx, HEX_REG_SP); \
@@ -1569,7 +1565,7 @@
         PRED; \
         tcg_gen_extu_i32_i64(LSB_i64, LSB); \
         fLOAD(1, 8, u, EA, tmp_i64); \
-        tcg_gen_mov_i64(unscramble, fFRAME_UNSCRAMBLE(tmp_i64)); \
+        tcg_gen_mov_i64(unscramble, gen_frame_unscramble(tmp_i64)); \
         tcg_gen_concat_i32_i64(RddV, hex_gpr[HEX_REG_FP], \
                                      hex_gpr[HEX_REG_LR]); \
         tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, zero_i64, \
@@ -1622,7 +1618,7 @@
         PRED; \
         tcg_gen_extu_i32_i64(LSB_i64, LSB); \
         fLOAD(1, 8, u, EA, tmp_i64); \
-        tcg_gen_mov_i64(unscramble, fFRAME_UNSCRAMBLE(tmp_i64)); \
+        tcg_gen_mov_i64(unscramble, gen_frame_unscramble(tmp_i64)); \
         tcg_gen_concat_i32_i64(RddV, hex_gpr[HEX_REG_FP], \
                                      hex_gpr[HEX_REG_LR]); \
         tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, zero_i64, \
@@ -1768,15 +1764,30 @@
 #define fGEN_TCG_J2_callr(SHORTCODE) \
     gen_callr(RsV)
 
+#define fGEN_TCG_J2_callt(SHORTCODE) \
+    gen_pred_call(PuV, true, riV)
+#define fGEN_TCG_J2_callf(SHORTCODE) \
+    gen_pred_call(PuV, false, riV)
+#define fGEN_TCG_J2_callrt(SHORTCODE) \
+    gen_pred_callr(PuV, true, RsV)
+#define fGEN_TCG_J2_callrf(SHORTCODE) \
+    gen_pred_callr(PuV, false, RsV)
+
 #define fGEN_TCG_J2_loop0r(SHORTCODE) \
     gen_loop0r(RsV, riV, insn)
 #define fGEN_TCG_J2_loop1r(SHORTCODE) \
     gen_loop1r(RsV, riV, insn)
+#define fGEN_TCG_J2_loop0i(SHORTCODE) \
+    gen_loop0i(UiV, riV, insn)
+#define fGEN_TCG_J2_loop1i(SHORTCODE) \
+    gen_loop1i(UiV, riV, insn)
 
 #define fGEN_TCG_J2_endloop0(SHORTCODE) \
     gen_endloop0()
 #define fGEN_TCG_J2_endloop1(SHORTCODE) \
     gen_endloop1()
+#define fGEN_TCG_J2_endloop01(SHORTCODE) \
+    gen_endloop01()
 
 /*
  * Compound compare and jump instructions
@@ -2499,6 +2510,15 @@
         tcg_gen_add_tl(RxV, RxV, RsV); \
         tcg_gen_add_tl(RxV, RxV, RtV); \
     } while (0)
+
+#define fGEN_TCG_A2_sath(SHORTCODE) \
+    gen_sat(RdV, RsV, true, 16)
+#define fGEN_TCG_A2_satuh(SHORTCODE) \
+    gen_sat(RdV, RsV, false, 16)
+#define fGEN_TCG_A2_satb(SHORTCODE) \
+    gen_sat(RdV, RsV, true, 8)
+#define fGEN_TCG_A2_satub(SHORTCODE) \
+    gen_sat(RdV, RsV, false, 8)
 
 /* Floating point */
 #define fGEN_TCG_F2_conv_sf2df(SHORTCODE) \

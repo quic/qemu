@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -912,7 +912,6 @@ static inline TCGv_i64 gen_frame_scramble(TCGv_i64 result)
     tcg_temp_free_i64(FRAMEKEY_i64);
     return result;
 }
-#define fFRAME_SCRAMBLE(VAL) gen_frame_scramble(scramble_tmp)
 static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 {
     TCGv_i64 FRAMEKEY_i64 = tcg_temp_new_i64();
@@ -922,11 +921,8 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     tcg_temp_free_i64(FRAMEKEY_i64);
     return frame;
 }
-#define fFRAME_UNSCRAMBLE(VAL) gen_frame_unscramble(VAL)
 #else
 #define fGET_FRAMEKEY()         g_assert_not_reached() //READ_REG(HEX_REG_FRAMEKEY)
-#define fFRAME_SCRAMBLE(VAL)    g_assert_not_reached()
-#define fFRAME_UNSCRAMBLE(VAL)  g_assert_not_reached()
 #endif
 
 #ifdef CONFIG_USER_ONLY
