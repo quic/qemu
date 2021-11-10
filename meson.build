@@ -3007,7 +3007,7 @@ foreach target : target_dirs
                  win_subsystem: exe['win_subsystem'])
     endif
 
-    if targetos == 'darwin'
+    if targetos == 'darwin' and not build_libqemu
       icon = 'pc-bios/qemu.rsrc'
       build_input = [emulator, files(icon)]
       install_input = [
