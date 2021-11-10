@@ -1592,12 +1592,6 @@ void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
     HEX_DEBUG_LOG("mgl: value_i64 = 0x%lx\n", value);
 }
 
-void HELPER(invalid_width)(CPUHexagonState *env, uint32_t value, uint32_t pc)
-{
-  cpu_abort(env_cpu(env), "invalid width in store: width %d, PC 0x%x\n", value, pc);
-  g_assert_not_reached();
-}
-
 /* Histogram instructions */
 
 void HELPER(vhist)(CPUHexagonState *env)
