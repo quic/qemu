@@ -16,20 +16,18 @@
  */
 
 #include "qemu/osdep.h"
-#include "exec/exec-all.h"
-#include "migration/vmstate.h"
-#include "qapi/error.h"
-#include "qemu/log.h"
 #include "qemu/qemu-print.h"
 #include "cpu.h"
-#include "cpu_helper.h"
 #include "internal.h"
-#include "gdb_qreginfo.h"
+#include "exec/exec-all.h"
+#include "qapi/error.h"
 #include "hw/qdev-properties.h"
 #include "fpu/softfloat-helpers.h"
+#include "gdb_qreginfo.h"
 #include "hmx/ext_hmx.h"
 
 #if !defined(CONFIG_USER_ONLY)
+#include "migration/vmstate.h"
 #include "macros.h"
 #include "hex_mmu.h"
 #include "include/hw/hexagon/hexagon.h"
@@ -95,6 +93,7 @@ const char * const hexagon_regnames[TOTAL_PER_THREAD_REGS] = {
     "c24", "c25", "c26", "c27", "c28",  "c29", "utimerlo", "utimerhi",
 };
 
+#ifndef CONFIG_USER_ONLY
 const char * const hexagon_sregnames[] = {
     "sgp0",       "sgp1",       "stid",       "elr",        "badva0",
     "badva1",     "ssr",        "ccr",        "htid",       "badva",
@@ -121,6 +120,7 @@ const char * const hexagon_gregnames[] = {
     "gpcyclelo",  "gpcyclehi",  "gpmucnt0", "gpmucnt1",
     "gpmucnt2",   "gpmucnt3",   "rsv30",    "rsv31"
 };
+#endif
 
 /*
  * One of the main debugging techniques is to use "-d cpu" and compare against
@@ -131,7 +131,6 @@ const char * const hexagon_gregnames[] = {
 static target_ulong adjust_stack_ptrs(CPUHexagonState *env, target_ulong addr)
 {
     HexagonCPU *cpu = env_archcpu(env);
-
     target_ulong stack_adjust = cpu->lldb_stack_adjust;
     target_ulong stack_start = env->stack_start;
     target_ulong stack_size = 0x10000;
@@ -172,8 +171,8 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
                             : env->gpr[regnum];
     }
 
-    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n", hexagon_regnames[regnum],
-                 value);
+    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
+                 hexagon_regnames[regnum], value);
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -206,58 +205,66 @@ static void print_greg(FILE *f, CPUHexagonState *env, int regnum)
 }
 #endif
 
-static void print_vreg(FILE *f, CPUHexagonState *env, int regnum)
+static void print_vreg(FILE *f, CPUHexagonState *env, int regnum,
+                       bool skip_if_zero)
 {
-    bool nonzero_found = false;
-    int i;
-    qemu_fprintf(f, "  v%d = ( ", regnum);
-    qemu_fprintf(f, "0x%02x", env->VRegs[regnum].ub[MAX_VEC_SIZE_BYTES - 1]);
-    for (i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
-        if (env->VRegs[regnum].ub[i] != 0) {
-            nonzero_found = true;
-            break;
+    if (skip_if_zero) {
+        bool nonzero_found = false;
+        for (int i = 0; i < MAX_VEC_SIZE_BYTES; i++) {
+            if (env->VRegs[regnum].ub[i] != 0) {
+                nonzero_found = true;
+                break;
+            }
+        }
+        if (!nonzero_found) {
+            return;
         }
     }
-    if (nonzero_found) {
-        for (i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
-            qemu_fprintf(f, ", 0x%02x", env->VRegs[regnum].ub[i]);
-        }
+
+    qemu_fprintf(f, "  v%d = ( ", regnum);
+    qemu_fprintf(f, "0x%02x", env->VRegs[regnum].ub[MAX_VEC_SIZE_BYTES - 1]);
+    for (int i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
+        qemu_fprintf(f, ", 0x%02x", env->VRegs[regnum].ub[i]);
     }
     qemu_fprintf(f, " )\n");
 }
 
 void hexagon_debug_vreg(CPUHexagonState *env, int regnum)
 {
-    print_vreg(stdout, env, regnum);
+    print_vreg(stdout, env, regnum, false);
 }
 
-static void print_qreg(FILE *f, CPUHexagonState *env, int regnum)
+static void print_qreg(FILE *f, CPUHexagonState *env, int regnum,
+                       bool skip_if_zero)
 {
-    bool nonzero_found = false;
-    int i;
+    if (skip_if_zero) {
+        bool nonzero_found = false;
+        for (int i = 0; i < MAX_VEC_SIZE_BYTES / 8; i++) {
+            if (env->QRegs[regnum].ub[i] != 0) {
+                nonzero_found = true;
+                break;
+            }
+        }
+        if (!nonzero_found) {
+            return;
+        }
+    }
+
     qemu_fprintf(f, "  q%d = ( ", regnum);
     qemu_fprintf(f, "0x%02x",
                  env->QRegs[regnum].ub[MAX_VEC_SIZE_BYTES / 8 - 1]);
-    for (i = MAX_VEC_SIZE_BYTES / 8 - 2; i >= 0; i--) {
-        if (env->QRegs[regnum].ub[i] != 0) {
-            nonzero_found = true;
-            break;
-        }
-    }
-    if (nonzero_found) {
-        for (i = MAX_VEC_SIZE_BYTES / 8 - 2; i >= 0; i--) {
-            qemu_fprintf(f, ", 0x%02x", env->QRegs[regnum].ub[i]);
-        }
+    for (int i = MAX_VEC_SIZE_BYTES / 8 - 2; i >= 0; i--) {
+        qemu_fprintf(f, ", 0x%02x", env->QRegs[regnum].ub[i]);
     }
     qemu_fprintf(f, " )\n");
 }
 
 void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
 {
-    print_qreg(stdout, env, regnum);
+    print_qreg(stdout, env, regnum, false);
 }
 
-void hexagon_dump(CPUHexagonState *env, FILE *f)
+void hexagon_dump(CPUHexagonState *env, FILE *f, int flags)
 {
     HexagonCPU *cpu = env_archcpu(env);
 
@@ -281,12 +288,12 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     for (int i = 0; i < 32; i++) {
         print_reg(f, env, i);
     }
-
-#ifdef CONFIG_USER_ONLY
     print_reg(f, env, HEX_REG_SA0);
     print_reg(f, env, HEX_REG_LC0);
     print_reg(f, env, HEX_REG_SA1);
     print_reg(f, env, HEX_REG_LC1);
+
+#ifdef CONFIG_USER_ONLY
     print_reg(f, env, HEX_REG_M0);
     print_reg(f, env, HEX_REG_M1);
     print_reg(f, env, HEX_REG_USR);
@@ -303,10 +310,6 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
     qemu_fprintf(f, "  cs0 = 0x00000000\n");
     qemu_fprintf(f, "  cs1 = 0x00000000\n");
 #else
-    print_reg(f, env, HEX_REG_SA0);
-    print_reg(f, env, HEX_REG_LC0);
-    print_reg(f, env, HEX_REG_SA1);
-    print_reg(f, env, HEX_REG_LC1);
     print_reg(f, env, HEX_REG_P3_0);
     print_reg(f, env, HEX_REG_M0);
     print_reg(f, env, HEX_REG_M1);
@@ -355,21 +358,16 @@ void hexagon_dump(CPUHexagonState *env, FILE *f)
 #endif
     qemu_fprintf(f, "}\n");
 
-/*
- * The HVX register dump takes up a ton of space in the log
- * Don't print it unless it is needed
- */
-#define DUMP_HVX 0
-#if DUMP_HVX
-    qemu_fprintf(f, "Vector Registers = {\n");
-    for (int i = 0; i < NUM_VREGS; i++) {
-        print_vreg(f, env, i);
+    if (flags & CPU_DUMP_FPU) {
+        qemu_fprintf(f, "Vector Registers = {\n");
+        for (int i = 0; i < NUM_VREGS; i++) {
+            print_vreg(f, env, i, true);
+        }
+        for (int i = 0; i < NUM_QREGS; i++) {
+            print_qreg(f, env, i, true);
+        }
+        qemu_fprintf(f, "}\n");
     }
-    for (int i = 0; i < NUM_QREGS; i++) {
-        print_qreg(f, env, i);
-    }
-    qemu_fprintf(f, "}\n");
-#endif
 }
 
 static void hexagon_dump_state(CPUState *cs, FILE *f, int flags)
@@ -377,12 +375,12 @@ static void hexagon_dump_state(CPUState *cs, FILE *f, int flags)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    hexagon_dump(env, f);
+    hexagon_dump(env, f, flags);
 }
 
 void hexagon_debug(CPUHexagonState *env)
 {
-    hexagon_dump(env, stdout);
+    hexagon_dump(env, stdout, CPU_DUMP_FPU);
 }
 
 static void hexagon_cpu_set_pc(CPUState *cs, vaddr value)

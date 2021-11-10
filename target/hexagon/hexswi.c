@@ -848,7 +848,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
           break;
       }
       printf("\nRegister Dump:\n");
-      hexagon_dump(env, stdout);
+      hexagon_dump(env, stdout, 0);
       break;
 
     case SYS_FTELL:
