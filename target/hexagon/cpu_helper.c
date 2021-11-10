@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,7 +36,6 @@
 #include "macros.h"
 #include "arch.h"
 #include "fma_emu.h"
-#include "conv_emu.h"
 #include "mmvec/mmvec.h"
 #include "mmvec/macros_auto.h"
 #ifndef CONFIG_USER_ONLY

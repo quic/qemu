@@ -53,7 +53,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <math.h>
-#include "myfenv.h"
 
 typedef struct{
   int sign;
