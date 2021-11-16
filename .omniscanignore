@@ -285,6 +285,7 @@ gitdm.config
 .gitmodules
 .gitpublish
 google/brotli.git
+hillbig/esaxx.git
 hw/9pfs/
 hw/acpi/
 hw/adc/
@@ -1487,6 +1488,7 @@ io/trace.h
 job-qmp.c
 Kconfig
 kkos/oniguruma.git
+krb5/krb5.git
 libdecnumber/decContext.c
 libdecnumber/decNumber.c
 libdecnumber/dpd/decimal128.c
@@ -1852,3 +1854,4 @@ util/unicode.c
 VERSION
 version.rc
 version.texi.in
+y-256/libdivsufsort.git
