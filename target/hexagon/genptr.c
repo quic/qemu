@@ -25,6 +25,7 @@
 #include "translate.h"
 #define QEMU_GENERATE       /* Used internally by macros.h */
 #include "macros.h"
+#include "sys_macros.h"
 #include "mmvec/macros.h"
 #include "mmvec/macros_auto.h"
 #undef QEMU_GENERATE

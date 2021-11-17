@@ -15,6 +15,7 @@
 
 //#include "thread.h"
 #include "macros.h"
+#include "sys_macros.h"
 #include "xlate_info.h"
 #include "iclass.h"
 //#include "memwrap.h"

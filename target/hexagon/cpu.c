@@ -29,6 +29,7 @@
 #if !defined(CONFIG_USER_ONLY)
 #include "migration/vmstate.h"
 #include "macros.h"
+#include "sys_macros.h"
 #include "hex_mmu.h"
 #include "include/hw/hexagon/hexagon.h"
 #include "hw/intc/l2vic.h"

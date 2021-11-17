@@ -1,0 +1,332 @@
+/*
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef HEXAGON_SYS_MACROS_H
+#define HEXAGON_SYS_MACROS_H
+
+/*
+ * Macro definitions for Hexagon system mode
+ */
+
+#ifndef CONFIG_USER_ONLY
+
+#define READ_SREG(NUM) ARCH_GET_SYSTEM_REG(env, NUM)
+#define READ_SGP0()    ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP0)
+#define READ_SGP1()    ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP1)
+#define READ_SGP10()   ((uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP0) | \
+    ((uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_SGP1) << 32))
+
+#define WRITE_SREG(NUM, VAL)      log_sreg_write(env, NUM, VAL, slot)
+#define WRITE_SGP0(VAL)           log_sreg_write(env, HEX_SREG_SGP0, VAL, slot)
+#define WRITE_SGP1(VAL)           log_sreg_write(env, HEX_SREG_SGP1, VAL, slot)
+#define WRITE_SGP10(VAL) \
+    do { \
+        log_sreg_write(env, HEX_SREG_SGP0, (VAL) & 0xFFFFFFFF, slot); \
+        log_sreg_write(env, HEX_SREG_SGP1, (VAL) >> 32, slot); \
+    } while (0)
+
+#ifdef QEMU_GENERATE
+#define GET_SSR_FIELD(RES, FIELD) \
+    GET_FIELD(RES, FIELD, hex_t_sreg[HEX_SREG_SSR])
+#else
+
+#define GET_SSR_FIELD(FIELD, REGIN) \
+    (uint32_t)GET_FIELD(FIELD, REGIN)
+#define GET_SYSCFG_FIELD(FIELD, REGIN) \
+    (uint32_t)GET_FIELD(FIELD, REGIN)
+#define SET_SYSTEM_FIELD(ENV, REG, FIELD, VAL) \
+    do { \
+        uint32_t regval = ARCH_GET_SYSTEM_REG(ENV, REG); \
+        fINSERT_BITS(regval, reg_field_info[FIELD].width, \
+                     reg_field_info[FIELD].offset, (VAL)); \
+        ARCH_SET_SYSTEM_REG(ENV, REG, regval); \
+    } while (0)
+#define SET_SSR_FIELD(ENV, FIELD, VAL) \
+    SET_SYSTEM_FIELD(ENV, HEX_SREG_SSR, FIELD, VAL)
+#define SET_SYSCFG_FIELD(ENV, FIELD, VAL) \
+    SET_SYSTEM_FIELD(ENV, HEX_SREG_SYSCFG, FIELD, VAL)
+
+#endif
+
+#define fREAD_ELR() (READ_SREG(HEX_SREG_ELR))
+
+#define fLOAD_PHYS(NUM, SIZE, SIGN, SRC1, SRC2, DST) { \
+  const uintptr_t rs = ((unsigned long)(unsigned)(SRC1)) & 0x7ff; \
+  const uintptr_t rt = ((unsigned long)(unsigned)(SRC2)) << 11; \
+  const uintptr_t addr = rs + rt;         \
+  cpu_physical_memory_read(addr, &DST, sizeof(uint32_t)); \
+}
+
+#ifdef QEMU_GENERATE
+#define fCHECKFORPRIV() gen_helper_checkforpriv(cpu_env)
+#define fCHECKFORGUEST() gen_helper_checkforguest(cpu_env)
+#endif
+
+#define fPOW2_HELP_ROUNDUP(VAL) \
+    ((VAL) | \
+     ((VAL) >> 1) | \
+     ((VAL) >> 2) | \
+     ((VAL) >> 4) | \
+     ((VAL) >> 8) | \
+     ((VAL) >> 16))
+#define fPOW2_ROUNDUP(VAL) (fPOW2_HELP_ROUNDUP((VAL) - 1) + 1)
+
+#ifdef QEMU_GENERATE
+#ifdef FIXME
+/* FIXME - Need to enable this check */
+#define fFRAMECHECK(ADDR, EA) \
+    do { \
+        TCGLabel *ok = gen_new_label(); \
+        tcg_gen_brcond_tl(TCG_COND_GEU, ADDR, hex_gpr[HEX_REG_FRAMELIMIT], \
+                          ok); \
+        TCGv_i32 slot = tcg_const_i32(insn->slot); \
+        gen_helper_raise_stack_overflow(cpu_env, slot, EA); \
+        gen_set_label(ok); \
+    } while (0)
+#else
+#define fFRAMECHECK(ADDR, EA)
+#endif
+#endif
+
+#define fTRAP(TRAPTYPE, IMM) \
+    register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM)
+
+/*
+ * FIXME - Fix the implementation of trap1
+ *
+ * The fVIRTINSN_* macros should do the right thing
+ *
+ * The fTRAP1_VIRTINSN macro should be
+ *     ((fIN_GUEST_MODE())
+ *        && (fGRE_ENABLED())
+ *        && (   ((IMM) == 1)
+ *            || ((IMM) == 3)
+ *            || ((IMM) == 4)
+ *            || ((IMM) == 6)))
+ * The fIN_GUEST_MODE() check is missing
+ */
+#define fVIRTINSN_SPSWAP(IMM, REG)
+#define fVIRTINSN_GETIE(IMM, REG) { REG = 0xdeafbeef; }
+#define fVIRTINSN_SETIE(IMM, REG)
+#define fVIRTINSN_RTE(IMM, REG)
+#define fGRE_ENABLED() GET_FIELD(CCR_GRE, READ_SREG(HEX_SREG_CCR))
+#define fTRAP1_VIRTINSN(IMM) \
+    (fGRE_ENABLED() && \
+        (((IMM) == 1) || ((IMM) == 3) || ((IMM) == 4) || ((IMM) == 6)))
+
+#define fICINVIDX(REG)
+#define fICKILL()
+#define fDCKILL()
+#define fL2KILL()
+#define fL2UNLOCK()
+#define fL2CLEAN()
+#define fL2CLEANINV()
+#define fL2CLEANPA(REG)
+#define fL2CLEANINVPA(REG)
+#define fL2CLEANINVIDX(REG)
+#define fL2CLEANIDX(REG)
+#define fL2INVIDX(REG)
+#define fL2TAGR(INDEX, DST, DSTREG)
+#define fL2UNLOCKA(VA)
+#define fL2TAGW(INDEX, PART2)
+#define fDCCLEANIDX(REG)
+#define fDCCLEANINVIDX(REG)
+
+/* Always succeed: */
+#define fL2LOCKA(EA, PDV, PDN) (PDV = 0xFF)
+#define fCLEAR_RTE_EX() \
+    do { \
+        uint32_t tmp = 0; \
+        tmp = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR); \
+        fINSERT_BITS(tmp, reg_field_info[SSR_EX].width, \
+                     reg_field_info[SSR_EX].offset, 0); \
+        log_sreg_write(env, HEX_SREG_SSR, tmp, slot); \
+    } while (0)
+
+#define fDCINVIDX(REG)
+#define fDCINVA(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
+
+#define fSET_TLB_LOCK()       hex_tlb_lock(env);
+#define fCLEAR_TLB_LOCK()     hex_tlb_unlock(env);
+
+#define fSET_K0_LOCK()        hex_k0_lock(env);
+#define fCLEAR_K0_LOCK()      hex_k0_unlock(env);
+
+#define fGET_TNUM()               thread->threadId
+#define fSTART(REG)               helper_fstart(env, REG)
+#define fRESUME(REG)              helper_fresume(env, REG)
+#define fCLEAR_RUN_MODE(x)        helper_clear_run_mode(env, (x))
+#define READ_IMASK(TID)           helper_getimask(env, TID)
+#define WRITE_IMASK(PRED, MASK)   helper_setimask(env, PRED, MASK)
+#define WRITE_PRIO(TH, PRIO)      helper_setprio(env, TH, PRIO)
+
+#define fTLB_IDXMASK(INDEX) \
+    ((INDEX) & (fPOW2_ROUNDUP(fCAST4u(NUM_TLB_ENTRIES)) - 1))
+
+#define fTLB_NONPOW2WRAP(INDEX) \
+    (((INDEX) >= NUM_TLB_ENTRIES) ? ((INDEX) - NUM_TLB_ENTRIES) : (INDEX))
+
+#define fTLBW(INDEX, VALUE) \
+    hex_tlbw(env, (INDEX), (VALUE))
+#define fTLBW_EXTENDED(INDEX, VALUE) \
+    hex_tlbw(env, (INDEX), (VALUE))
+#define fTLB_ENTRY_OVERLAP(VALUE, INDEX) \
+    (hex_tlb_check_overlap(env, VALUE, INDEX) != -2)
+#define fTLB_ENTRY_OVERLAP_IDX(VALUE, INDEX) \
+    hex_tlb_check_overlap(env, VALUE, INDEX)
+#define fTLBR(INDEX) \
+    (env->hex_tlb->entries[fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX))])
+#define fTLBR_EXTENDED(INDEX) \
+    (env->hex_tlb->entries[fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX))])
+#define fTLBP(TLBHI) \
+    hex_tlb_lookup(env, ((TLBHI) >> 12), ((TLBHI) << 12))
+
+/* FIXME - Update these when properly implementing stop instruction */
+
+#define fSET_WAIT_MODE(TNUM)      helper_fwait(env, TNUM)
+
+#define fIN_DEBUG_MODE(TNUM) \
+    0    /* FIXME */
+#define fIN_DEBUG_MODE_NO_ISDB(TNUM) \
+    0    /* FIXME */
+#define fIN_DEBUG_MODE_WARN(TNUM)
+
+#ifdef QEMU_GENERATE
+
+#define DO_IASSIGNR(RS, RD)                   \
+    do {                                      \
+        gen_helper_iassignr(RD, cpu_env, RS); \
+    } while (0)
+#define DO_IASSIGNW(RS)                   \
+    do {                                  \
+        gen_helper_iassignw(cpu_env, RS); \
+    } while (0)
+
+#define DO_SIAD(RS) \
+    do { \
+        TCGv tmp = tcg_temp_new(); \
+        gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp); \
+        tcg_gen_ori_tl(tmp, tmp, not_rs); \
+        gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp);  \
+    } while (0)
+
+#define DO_CSWI(RS) \
+    do { \
+        TCGv tmp = tcg_temp_new(); \
+        TCGv not_rs = tcg_temp_new(); \
+        tcg_gen_not_i32(not_rs, (RS)); \
+        gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IPEND, tmp); \
+        tcg_gen_andi_tl(tmp, tmp, not_rs); \
+        gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IPEND, tmp);  \
+    } while (0)
+
+#else
+
+#define DO_IASSIGNR(RS, RD)            \
+    do {                               \
+        RD = helper_iassignr(env, RS); \
+    } while (0)
+#define DO_IASSIGNW(RS)           \
+    do {                          \
+        helper_iassignw(env, RS); \
+    } while (0)
+
+#define DO_CIAD(RS)                   \
+    do {                                  \
+        helper_ciad(env, RS); \
+    } while (0)
+
+#define DO_SIAD(RS) \
+    do { \
+        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
+        uint32_t iad = fGET_FIELD(tmp, IPENDAD_IAD); \
+        fSET_FIELD(tmp, IPENDAD_IAD, iad | RS); \
+        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
+    } while (0)
+
+#define DO_CSWI(RS) \
+    do { \
+        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
+        uint32_t ipend = fGET_FIELD(tmp, IPENDAD_IPEND); \
+        fSET_FIELD(tmp, IPENDAD_IPEND, tmp & ~ipend); \
+        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
+    } while (0)
+#endif
+
+#define DO_SWI(RS)  helper_swi(env, RS)
+
+#define fDO_NMI(RS) helper_nmi(env, RS);
+
+#ifdef QEMU_GENERATE
+
+/*
+ * Read tags back as zero for now:
+ *
+ * tag value in RD[31:10] for 32k, RD[31:9] for 16k
+ */
+#define fICTAGR(RS, RD, RD2) \
+    do { \
+        TCGv zero = tcg_const_tl(0); \
+        RD = zero; \
+        tcg_temp_free(zero); \
+    } while (0)
+#define fICTAGW(RS, RD)
+#define fICDATAR(RS, RD) \
+    do { \
+        TCGv zero = tcg_const_tl(0); \
+        RD = zero; \
+        tcg_temp_free(zero); \
+    } while (0)
+#define fICDATAW(RS, RD)
+
+#define fDCTAGW(RS, RT)
+/* tag: RD[23:0], state: RD[30:29] */
+#define fDCTAGR(INDEX, DST, DST_REG_NUM) \
+    do { \
+        TCGv zero = tcg_const_tl(0); \
+        DST = zero; \
+        tcg_temp_free(zero); \
+    } while (0)
+#else
+
+/*
+ * Read tags back as zero for now:
+ *
+ * tag value in RD[31:10] for 32k, RD[31:9] for 16k
+ */
+#define fICTAGR(RS, RD, RD2) \
+    do { \
+        RD = 0x00; \
+    } while (0)
+#define fICTAGW(RS, RD)
+#define fICDATAR(RS, RD) \
+    do { \
+        RD = 0x00; \
+    } while (0)
+#define fICDATAW(RS, RD)
+
+#define fDCTAGW(RS, RT)
+/* tag: RD[23:0], state: RD[30:29] */
+#define fDCTAGR(INDEX, DST, DST_REG_NUM) \
+    do { \
+        DST = HEX_DC_STATE_INVALID | 0x00; \
+    } while (0)
+#endif
+
+#endif
+
+#endif

@@ -23,6 +23,7 @@
 #include "exec/exec-all.h"
 #include "hex_mmu.h"
 #include "macros.h"
+#include "sys_macros.h"
 #include "reg_fields.h"
 
 #define GET_TLB_FIELD(ENTRY, FIELD) \

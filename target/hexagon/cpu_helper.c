@@ -34,6 +34,7 @@
 #include "tcg/tcg-op.h"
 #include "internal.h"
 #include "macros.h"
+#include "sys_macros.h"
 #include "arch.h"
 #include "fma_emu.h"
 #include "mmvec/mmvec.h"
