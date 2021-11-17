@@ -1,4 +1,5 @@
 {
+  libqemu_init;
   qemu_plugin_uninstall;
   qemu_plugin_reset;
   qemu_plugin_register_vcpu_init_cb;
