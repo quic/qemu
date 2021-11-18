@@ -31,7 +31,6 @@
 #include "macros.h"
 #include "sys_macros.h"
 #include "hex_mmu.h"
-#include "include/hw/hexagon/hexagon.h"
 #include "hw/intc/l2vic.h"
 #include "qemu/main-loop.h"
 #include "sysemu/cpus.h"
@@ -70,6 +69,7 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_BOOL("virtual-platform-mode", HexagonCPU, vp_mode, false),
     DEFINE_PROP_UINT32("start-evb", HexagonCPU, boot_evb, 0x0),
     DEFINE_PROP_UINT32("exec-start-addr", HexagonCPU, boot_addr, 0x0),
+    DEFINE_PROP_UINT32("l2vic-base-addr", HexagonCPU, l2vic_base_addr, 0x0),
 #endif
     DEFINE_PROP_BOOL("lldb-compat", HexagonCPU, lldb_compat, false),
     DEFINE_PROP_UNSIGNED("lldb-stack-adjust", HexagonCPU, lldb_stack_adjust,
@@ -541,6 +541,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->threadId);
     env->system_ptr = NULL;
 
+#define HEXAGON_CFG_ADDR_BASE(addr) ((addr >> 16) & 0x0fffff)
 #ifndef CONFIG_USER_ONLY
     if (cs->cpu_index == 0) {
         env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
@@ -745,6 +746,20 @@ void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
     hexagon_raise_interrupt_resume(env, thread, int_num, vid_int_pending, 0);
 }
 
+static void hexagon_clear_l2vic_pending(CPUHexagonState *env, int int_num)
+{
+    uint32_t val;
+    target_ulong vidval;
+    uint32_t slice = (int_num / 32) * 4;
+    val = 1 << (int_num % 32);
+
+    CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    const hwaddr addr = cpu->l2vic_base_addr + L2VIC_INT_PENDINGn;
+    cpu_physical_memory_read(addr + slice, &vidval, sizeof(vidval));
+    vidval &= ~val;
+    cpu_physical_memory_write(addr + slice, &vidval, sizeof(vidval));
+}
 void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
                                     uint32_t int_num, int vid_int_pending,
                                     target_ulong resume_pc)
@@ -761,7 +776,7 @@ void hexagon_raise_interrupt_resume(CPUHexagonState *env, HexagonCPU *thread,
     cs->exception_index = HEX_EVENT_INT0 + int_num;
     thread_env->cause_code = HEX_CAUSE_INT0 + int_num;
     if (vid_int_pending != L2VIC_NO_PENDING) {
-        hexagon_clear_l2vic_pending(vid_int_pending);
+        hexagon_clear_l2vic_pending(env, vid_int_pending);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_VID, vid_int_pending);
     }
 

@@ -1845,6 +1845,22 @@ uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
     }
     return dest_reg;
 }
+
+static void hexagon_set_vid(CPUHexagonState *env, uint32_t offset, int val) {
+    assert ((offset == L2VIC_VID_0) || (offset == L2VIC_VID_1));
+    CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    const hwaddr pend_mem = cpu->l2vic_base_addr + offset;
+    cpu_physical_memory_write(pend_mem, &val, sizeof(val));
+}
+
+static void hexagon_clear_last_irq(CPUHexagonState *env, uint32_t offset) {
+    /* currently only l2vic is the only attached it uses vid0, remove
+     * the assert below if anther is added */
+    hexagon_set_vid(env, offset, L2VIC_NO_PENDING);
+}
+
+
 void HELPER(ciad)(CPUHexagonState *env, uint32_t src)
 {
     HEX_DEBUG_LOG("%s: tid %d, src 0x%x\n",
@@ -1852,7 +1868,7 @@ void HELPER(ciad)(CPUHexagonState *env, uint32_t src)
     uint32_t ipend = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
     ipend &= ~(src << 16);
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipend);
-    hexagon_clear_last_irq(L2VIC_VID_0);
+    hexagon_clear_last_irq(env, L2VIC_VID_0);
     return;
 }
 
@@ -1970,7 +1986,7 @@ void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
 
 {
     if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
-        hexagon_set_vid((reg == HEX_SREG_VID) ? L2VIC_VID_0 : L2VIC_VID_1,
+        hexagon_set_vid(env, (reg == HEX_SREG_VID) ? L2VIC_VID_0 : L2VIC_VID_1,
                          val);
         ARCH_SET_SYSTEM_REG(env, reg, val);
     } else if (reg == HEX_SREG_SYSCFG) {

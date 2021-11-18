@@ -186,6 +186,7 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         CPUHexagonState *env = &cpu->env;
         qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr", cfgExtensions->cfgbase);
         qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
+        qdev_prop_set_uint32(DEVICE(cpu), "l2vic-base-addr", cfgExtensions->l2vic_base);
 
         /* CPU #0 is the only CPU running at boot, others must be
          * explicitly enabled via start instruction.
@@ -275,29 +276,6 @@ uint32_t hexagon_find_last_irq(uint32_t vid)
     return irq;
 }
 
-void hexagon_set_vid(uint32_t offset, int val) {
-    assert ((offset == L2VIC_VID_0) || (offset == L2VIC_VID_1));
-    const hwaddr pend_mem = cfgExtensions->l2vic_base + offset;
-    cpu_physical_memory_write(pend_mem, &val, sizeof(val));
-}
-
-void hexagon_clear_last_irq(uint32_t offset) {
-    /* currently only l2vic is the only attached it uses vid0, remove
-     * the assert below if anther is added */
-    hexagon_set_vid(offset, L2VIC_NO_PENDING);
-}
-
-void hexagon_clear_l2vic_pending(int int_num)
-{
-    uint32_t val;
-    target_ulong vidval;
-    uint32_t slice = (int_num / 32) * 4;
-    val = 1 << (int_num % 32);
-    const hwaddr addr = cfgExtensions->l2vic_base + L2VIC_INT_PENDINGn;
-    cpu_physical_memory_read(addr + slice, &vidval, sizeof(vidval));
-    vidval &= ~val;
-    cpu_physical_memory_write(addr + slice, &vidval, sizeof(vidval));
-}
 
 
 int hexagon_find_l2vic_pending(void)
