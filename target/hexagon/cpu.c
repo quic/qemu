@@ -1032,7 +1032,12 @@ static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA, int slot,
     switch (access_type) {
     case MMU_INST_FETCH:
         cs->exception_index = HEX_EVENT_TLB_MISS_X;
-        env->cause_code = HEX_CAUSE_TLBMISSX_CAUSE_NORMAL;
+        if ((VA & ~TARGET_PAGE_MASK) == 0) {
+          env->cause_code = HEX_CAUSE_TLBMISSX_CAUSE_NEXTPAGE;
+        }
+        else {
+          env->cause_code = HEX_CAUSE_TLBMISSX_CAUSE_NORMAL;
+        }
         break;
     case MMU_DATA_LOAD:
         cs->exception_index = HEX_EVENT_TLB_MISS_RW;

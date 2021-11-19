@@ -1072,17 +1072,18 @@ static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase,
 
 static bool pkt_crosses_page(CPUHexagonState *env, DisasContext *ctx)
 {
-    target_ulong page_start = ctx->base.pc_first & TARGET_PAGE_MASK;
     bool found_end = false;
     int nwords;
 
     for (nwords = 0; !found_end && nwords < PACKET_WORDS_MAX; nwords++) {
-        uint32_t word = cpu_ldl_code(env,
-                            ctx->base.pc_next + nwords * sizeof(uint32_t));
+        target_ulong src = ctx->base.pc_next + nwords * sizeof(uint32_t);
+        if ((src & ~TARGET_PAGE_MASK) == 0) {
+            return true;
+        }
+        uint32_t word = cpu_ldl_code(env, src);
         found_end = is_packet_end(word);
     }
-    uint32_t next_ptr =  ctx->base.pc_next + nwords * sizeof(uint32_t);
-    return found_end && next_ptr - page_start >= TARGET_PAGE_SIZE;
+    return !found_end;
 }
 
 static void hexagon_tr_translate_packet(DisasContextBase *dcbase, CPUState *cpu)
