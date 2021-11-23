@@ -31,7 +31,6 @@ backends/trace.h
 backends/vhost-user.c
 boringssl.googlesource.com/boringssl.git
 bsd-user
-capstone/
 Changelog
 chardev/baum.c
 chardev/char-console.c
@@ -1054,7 +1053,6 @@ include/crypto/secret_common.h
 include/crypto/secret_keyring.h
 include/crypto/tls-cipher-suites.h
 include/crypto/tlscredsanon.h
-include/disas/capstone.h
 include/exec/gen-icount.h
 include/exec/memory-internal.h
 include/exec/memory_ldst_cached.h.inc
@@ -1616,8 +1614,13 @@ python/qemu/machine.py
 python/qemu/pylintrc
 python/qemu/qmp.py
 python/qemu/qtest.py
+qemu-project/berkeley-softfloat-3.git
+qemu-project/berkeley-testfloat-3.git
+qemu-project/capstone.git
+qemu-project/dtc.git
 qemu-project/edk2.git
 qemu-project/ipxe.git
+qemu-project/libslirp.git
 qemu-project/meson.git
 qemu-project/openbios.git
 qemu-project/opensbi.git
