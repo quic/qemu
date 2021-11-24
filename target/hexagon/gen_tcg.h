@@ -80,7 +80,7 @@
         gen_helper_fcircadd(RxV, RxV, ireg, MuV, hex_gpr[HEX_REG_CS0 + MuN]); \
         tcg_temp_free(ireg); \
     } while (0)
-#if 0
+#if 1
 
 /* Byte load instructions */
 #define fGEN_TCG_L2_loadrub_io(SHORTCODE)      SHORTCODE
@@ -630,7 +630,7 @@
         tcg_temp_free(BYTE); \
     } while (0)
 
-#if 0
+#if 1
 #define fGEN_TCG_STORE_ap(STORE) \
     do { \
         TCGv HALF = tcg_temp_new(); \
@@ -660,13 +660,13 @@
         tcg_temp_free(BYTE); \
     } while (0)
 
-#if 0
+#if 1
 #define fGEN_TCG_S2_storerb_io(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storerb_pi(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerb_ap(SHORTCODE) \
-    fGEN_TCG_STORE_ap(fSTORE(1, 1, EA, fGETBYTE(0, RtV)))
+    fGEN_1CG_STORE_ap(fSTORE(1, 1, EA, fGETBYTE(0, RtV)))
 #define fGEN_TCG_S2_storerb_pr(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerb_ur(SHORTCODE) \
@@ -679,8 +679,8 @@
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storerb_pcr(SHORTCODE) \
     fGEN_TCG_STORE_pcr(0, fSTORE(1, 1, EA, fGETBYTE(0, RtV)))
-#if 0
-#define fGEN_TCG_S4_storerb_rr(SHORTCODE) \
+#if 1
+#define fGEN_TCG_S4_1torerb_rr(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerbnew_rr(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
@@ -1789,7 +1789,7 @@
         tcg_temp_free(right); \
         tcg_temp_free(tmp); \
     } while (0)
-#if 0
+#if 1
 
 #define fGEN_TCG_J2_call(SHORTCODE) \
     gen_call(riV)
@@ -2685,7 +2685,7 @@
         RsV = RsV; \
     } while (0)
 
-#if 0
+#if 1
 #define fGEN_TCG_L2_loadw_aq(SHORTCODE)                 SHORTCODE
 #define fGEN_TCG_L4_loadd_aq(SHORTCODE)                 SHORTCODE
 
