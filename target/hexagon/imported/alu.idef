@@ -155,20 +155,16 @@ Q6INSN(A2_subp,"Rdd32=sub(Rtt32,Rss32)",ATTRIBS(),
 
 /* 64-bit with carry */
 
-Q6INSN(A4_addp_c,"Rdd32=add(Rss32,Rtt32,Px4):carry",ATTRIBS(A_RESTRICT_LATEPRED,A_NOTE_LATEPRED),"Add with Carry",
+Q6INSN(A4_addp_c,"Rdd32=add(Rss32,Rtt32,Px4):carry",ATTRIBS(),"Add with Carry",
 {
-  fPREDUSE_TIMING();
   RddV = RssV + RttV + fLSBOLD(PxV);
   PxV = f8BITSOF(fCARRY_FROM_ADD(RssV,RttV,fLSBOLD(PxV)));
-  fHIDE(MARK_LATE_PRED_WRITE(PxN))
 })
 
-Q6INSN(A4_subp_c,"Rdd32=sub(Rss32,Rtt32,Px4):carry",ATTRIBS(A_RESTRICT_LATEPRED,A_NOTE_LATEPRED),"Sub with Carry",
+Q6INSN(A4_subp_c,"Rdd32=sub(Rss32,Rtt32,Px4):carry",ATTRIBS(),"Sub with Carry",
 {
-  fPREDUSE_TIMING();
   RddV = RssV + ~RttV + fLSBOLD(PxV);
   PxV = f8BITSOF(fCARRY_FROM_ADD(RssV,~RttV,fLSBOLD(PxV)));
-  fHIDE(MARK_LATE_PRED_WRITE(PxN))
 })
 
 
@@ -1261,7 +1257,7 @@ MINMAX(uw,WORD,UWORD,2)
 #undef VMINORMAX3
 
 
-Q6INSN(A5_ACS,"Rxx32,Pe4=vacsh(Rss32,Rtt32)",ATTRIBS(A_NOTE_LATEPRED,A_RESTRICT_LATEPRED),
+Q6INSN(A5_ACS,"Rxx32,Pe4=vacsh(Rss32,Rtt32)",ATTRIBS(),
 "Add Compare and Select elements of two vectors, record the maximums and the decisions ",
 {
         fHIDE(int i;)
@@ -1280,7 +1276,7 @@ Q6INSN(A5_ACS,"Rxx32,Pe4=vacsh(Rss32,Rtt32)",ATTRIBS(A_NOTE_LATEPRED,A_RESTRICT_
         }
 })
 
-Q6INSN(A6_vminub_RdP,"Rdd32,Pe4=vminub(Rtt32,Rss32)",ATTRIBS(A_NOTE_LATEPRED,A_RESTRICT_LATEPRED),
+Q6INSN(A6_vminub_RdP,"Rdd32,Pe4=vminub(Rtt32,Rss32)",ATTRIBS(),
 "Vector minimum of bytes, records minimum and decision vector",
 {
         fHIDE(int i;)

@@ -347,7 +347,6 @@ DEF_MACRO(
     ()
 )
 
-
 DEF_MACRO(
     fREAD_LR, /* read link register */
     (READ_RREG(REG_LR)),          /* behavior */

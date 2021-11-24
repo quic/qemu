@@ -41,6 +41,7 @@ struct Instruction {
 
     uint32_t iclass:6;
     uint32_t slot:3;
+#if 0
 
     uint32_t which_extended:1;    /* If has an extender, which immediate */
     uint32_t new_value_producer_slot:4;
@@ -61,6 +62,17 @@ struct Instruction {
     uint32_t is_endloop:1;   /* This is an end of loop */
     uint32_t is_2nd_jump:1;  /* This is the second jump of a dual-jump packet */
     uint32_t hvx_resource:8;
+#else
+    uint32_t which_extended:1;    /* If has an extender, which immediate */
+    uint32_t new_value_producer_slot:4;
+
+    bool part1;              /*
+                              * cmp-jumps are split into two insns.
+                              * set for the compare and clear for the jump
+                              */
+    bool extension_valid;   /* Has a constant extender attached */
+    bool is_endloop;   /* This is an end of loop */
+#endif
     int32_t immed[IMMEDS_MAX];    /* immediate field */
 };
 
@@ -79,6 +91,7 @@ struct Packet {
     uint32_t memop_or_nvstore:1;
 
     /* Pre-decodes about COF */
+#if 0
     uint32_t pkt_has_cof:1;          /* Has any change-of-flow */
     uint32_t pkt_has_dual_jump:1;
     uint32_t pkt_has_initloop:1;
@@ -177,6 +190,21 @@ struct Packet {
     uint32_t pkt_has_hmx:1;
     Insn *vhist_insn;
     uint32_t pkt_has_extension:1;
+#else
+    bool pkt_has_cof;          /* Has any change-of-flow */
+    bool pkt_has_endloop;
+
+    bool pkt_has_dczeroa;
+
+    bool pkt_has_load_s0;
+    bool pkt_has_load_s1;
+    bool pkt_has_scalar_store_s0;
+    bool pkt_has_scalar_store_s1;
+    Insn *vhist_insn;
+    bool pkt_has_hvx;
+    bool pkt_has_hvx_vs_3src;
+    bool pkt_has_hmx;
+#endif
 
 
 	uint32_t native_pkt:1;

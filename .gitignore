@@ -16,3 +16,4 @@ GTAGS
 *.swp
 .vscode
 build
+*.patch

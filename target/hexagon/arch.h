@@ -20,9 +20,12 @@
 
 #include "qemu/int128.h"
 
+extern const uint8_t rLPS_table_64x4[64][4];
+extern const uint8_t AC_next_state_MPS_64[64];
+extern const uint8_t AC_next_state_LPS_64[64];
+
 uint64_t interleave(uint32_t odd, uint32_t even);
 uint64_t deinterleave(uint64_t src);
-uint32_t carry_from_add64(uint64_t a, uint64_t b, uint32_t c);
 int32_t conv_round(int32_t a, int n);
 void arch_fpop_start(CPUHexagonState *env);
 void arch_fpop_end(CPUHexagonState *env);
@@ -34,8 +37,5 @@ int arch_sf_invsqrt_common(float32 *Rs, float32 *Rd, int *adjust,
 extern const uint8_t recip_lookup_table[128];
 
 extern const uint8_t invsqrt_lookup_table[128];
-extern const size1u_t rLPS_table_64x4[64][4];
-extern const size1u_t AC_next_state_MPS_64[64];
-extern const size1u_t AC_next_state_LPS_64[64];
 
 #endif

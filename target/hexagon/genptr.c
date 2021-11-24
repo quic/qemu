@@ -41,12 +41,6 @@ static inline TCGv gen_read_reg(TCGv result, int num)
     return result;
 }
 
-static inline TCGv gen_read_preg(TCGv pred, uint8_t num)
-{
-    tcg_gen_mov_tl(pred, hex_pred[num]);
-    return pred;
-}
-
 static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot)
 {
     TCGv zero = tcg_const_tl(0);
@@ -196,6 +190,7 @@ static void gen_log_sreg_write_pair(int rnum, TCGv_i64 val)
 static inline void gen_log_pred_write(DisasContext *ctx, int pnum, TCGv val)
 {
     TCGv base_val = tcg_temp_new();
+
     tcg_gen_andi_tl(base_val, val, 0xff);
 
     /*
@@ -459,6 +454,32 @@ static inline void gen_write_ctrl_reg_pair(DisasContext *ctx, int reg_num,
     }
 }
 
+static TCGv gen_get_word(TCGv result, int N, TCGv_i64 src, bool sign)
+{
+    if (N == 0) {
+        tcg_gen_extrl_i64_i32(result, src);
+    } else if (N == 1) {
+        tcg_gen_extrh_i64_i32(result, src);
+    } else {
+      g_assert_not_reached();
+    }
+    return result;
+}
+
+static TCGv_i64 gen_get_word_i64(TCGv_i64 result, int N, TCGv_i64 src,
+                                        bool sign)
+{
+    TCGv word = tcg_temp_new();
+    gen_get_word(word, N, src, sign);
+    if (sign) {
+        tcg_gen_ext_i32_i64(result, word);
+    } else {
+        tcg_gen_extu_i32_i64(result, word);
+    }
+    tcg_temp_free(word);
+    return result;
+}
+
 static TCGv gen_get_byte(TCGv result, int N, TCGv src, bool sign)
 {
     if (sign) {
@@ -512,32 +533,6 @@ static void gen_set_byte_i64(int N, TCGv_i64 result, TCGv src)
     tcg_gen_extu_i32_i64(src64, src);
     tcg_gen_deposit_i64(result, result, src64, N * 8, 8);
     tcg_temp_free_i64(src64);
-}
-
-static TCGv gen_get_word(TCGv result, int N, TCGv_i64 src, bool sign)
-{
-    if (N == 0) {
-        tcg_gen_extrl_i64_i32(result, src);
-    } else if (N == 1) {
-        tcg_gen_extrh_i64_i32(result, src);
-    } else {
-      g_assert_not_reached();
-    }
-    return result;
-}
-
-static TCGv_i64 gen_get_word_i64(TCGv_i64 result, int N, TCGv_i64 src,
-                                        bool sign)
-{
-    TCGv word = tcg_temp_new();
-    gen_get_word(word, N, src, sign);
-    if (sign) {
-        tcg_gen_ext_i32_i64(result, word);
-    } else {
-        tcg_gen_extu_i32_i64(result, word);
-    }
-    tcg_temp_free(word);
-    return result;
 }
 
 static inline void gen_load_locked4u(TCGv dest, TCGv vaddr, int mem_index)

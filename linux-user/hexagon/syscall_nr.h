@@ -317,6 +317,7 @@
 #define TARGET_NR_fsmount 432
 #define TARGET_NR_fspick 433
 #define TARGET_NR_pidfd_open 434
+
 #define TARGET_NR_openat2 437
 #define TARGET_NR_pidfd_getfd 438
 #define TARGET_NR_open 1024
@@ -376,6 +377,5 @@
 #define TARGET_NR__sysctl 1078
 #define TARGET_NR_fork 1079
 #define TARGET_NR_syscalls 1080
-
 
 #endif /* LINUX_USER_HEXAGON_SYSCALL_NR_H */

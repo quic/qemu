@@ -188,7 +188,6 @@ extern TCGv hex_imprecise_exception;
 
 void gen_exception(int excp);
 void gen_exception_end_tb(DisasContext *ctx, int excp);
-void gen_exception_debug(void);
 bool is_gather_store_insn(Insn *insn, Packet *pkt);
 void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
 #endif

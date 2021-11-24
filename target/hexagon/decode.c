@@ -16,7 +16,6 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu/log.h"
 #include "iclass.h"
 #include "opcodes.h"
 #include "attribs.h"
@@ -347,8 +346,8 @@ static void decode_split_cmpjump(Packet *pkt)
         if (GET_ATTRIB(pkt->insn[i].opcode, A_NEWCMPJUMP)) {
             last = pkt->num_insns;
             pkt->insn[last] = pkt->insn[i];    /* copy the instruction */
-            pkt->insn[last].part1 = 1;    /* last instruction does the CMP */
-            pkt->insn[i].part1 = 0;    /* existing instruction does the JUMP */
+            pkt->insn[last].part1 = true;      /* last insn does the CMP */
+            pkt->insn[i].part1 = false;        /* existing insn does the JUMP */
             pkt->num_insns++;
         }
     }
@@ -361,7 +360,7 @@ static void decode_split_cmpjump(Packet *pkt)
     }
 }
 
-static int decode_opcode_can_jump(int opcode)
+static bool decode_opcode_can_jump(int opcode)
 {
     if ((GET_ATTRIB(opcode, A_JUMP)) ||
         (GET_ATTRIB(opcode, A_CALL)) ||
@@ -371,15 +370,15 @@ static int decode_opcode_can_jump(int opcode)
         (opcode == J2_pause)) {
         /* Exception to A_JUMP attribute */
         if (opcode == J4_hintjumpr) {
-            return 0;
+            return false;
         }
-        return 1;
+        return true;
     }
 
-    return 0;
+    return false;
 }
 
-static int decode_opcode_ends_loop(int opcode)
+static bool decode_opcode_ends_loop(int opcode)
 {
     return GET_ATTRIB(opcode, A_HWLOOP0_END) ||
            GET_ATTRIB(opcode, A_HWLOOP1_END);
@@ -390,10 +389,11 @@ static void decode_set_insn_attr_fields(Packet *pkt)
 {
     int i;
     int numinsns = pkt->num_insns;
-    size2u_t opcode;
+    uint16_t opcode;
+#if 0
+    int canjump;
     int loads = 0;
     int stores = 0;
-    int canjump;
     int total_slots_valid = 0;
 
     pkt->num_rops = 0;
@@ -412,9 +412,17 @@ static void decode_set_insn_attr_fields(Packet *pkt)
     pkt->memop_or_nvstore = 0;
     pkt->pkt_has_dczeroa = 0;
     pkt->pkt_has_dealloc_return = 0;
+#endif
+
 #ifndef CONFIG_USER_ONLY
     pkt->pkt_has_sys_visibility = 0;
     pkt->can_do_io = 0;
+#endif
+    pkt->pkt_has_cof = false;
+    pkt->pkt_has_endloop = false;
+
+#if 0
+    pkt->pkt_has_dczeroa = false;
 #endif
 
     for (i = 0; i < numinsns; i++) {
@@ -423,21 +431,10 @@ static void decode_set_insn_attr_fields(Packet *pkt)
             continue;    /* Skip compare of cmp-jumps */
         }
 
-        if (GET_ATTRIB(opcode, A_ROPS_3)) {
-            pkt->num_rops += 3;
-        } else if (GET_ATTRIB(opcode, A_ROPS_2)) {
-            pkt->num_rops += 2;
-        } else {
-            pkt->num_rops++;
+        if (GET_ATTRIB(opcode, A_DCZEROA)) {
+            pkt->pkt_has_dczeroa = true;
         }
-        if (pkt->insn[i].extension_valid) {
-            pkt->num_rops += 2;
-        }
-
-        if (GET_ATTRIB(opcode, A_MEMOP) ||
-            GET_ATTRIB(opcode, A_NVSTORE)) {
-            pkt->memop_or_nvstore = 1;
-        }
+#if 0
 
         if (GET_ATTRIB(opcode, A_CACHEOP)) {
             pkt->pkt_has_cacheop = 1;
@@ -463,7 +460,6 @@ static void decode_set_insn_attr_fields(Packet *pkt)
                 pkt->pkt_has_l2flushop = 1;
             }
         }
-
         if (GET_ATTRIB(opcode, A_DEALLOCRET)) {
             pkt->pkt_has_dealloc_return = 1;
         }
@@ -492,9 +488,9 @@ static void decode_set_insn_attr_fields(Packet *pkt)
             }
 
             if (pkt->insn[i].slot == 0) {
-                pkt->pkt_has_load_s0 = 1;
+                pkt->pkt_has_load_s0 = true;
             } else {
-                pkt->pkt_has_load_s1 = 1;
+                pkt->pkt_has_load_s1 = true;
             }
         }
         if (GET_ATTRIB(opcode, A_CVI_GATHER) ||
@@ -512,6 +508,8 @@ static void decode_set_insn_attr_fields(Packet *pkt)
             GET_ATTRIB(opcode, A_DCTAGOP)) {
             pkt->insn[i].is_dcop = 1;
         }
+#endif
+
 #ifndef CONFIG_USER_ONLY
         uint32_t could_halt = 0;
         uint32_t triggers_int = 0;
@@ -546,6 +544,7 @@ static void decode_set_insn_attr_fields(Packet *pkt)
         }
 #endif
 
+#if 0
         pkt->pkt_has_call |= GET_ATTRIB(opcode, A_CALL);
         pkt->pkt_has_jumpr |= GET_ATTRIB(opcode, A_INDIRECT) &&
                               !GET_ATTRIB(opcode, A_HINTJR);
@@ -567,9 +566,11 @@ static void decode_set_insn_attr_fields(Packet *pkt)
         } else {
             pkt->pkt_has_cof |= canjump;
         }
+#endif
 
+
+#if 0
         pkt->insn[i].is_endloop = decode_opcode_ends_loop(opcode);
-
         pkt->pkt_has_endloop |= pkt->insn[i].is_endloop;
         pkt->pkt_has_endloop0 |= GET_ATTRIB(opcode, A_HWLOOP0_END) &&
                                  !GET_ATTRIB(opcode, A_HWLOOP1_END);
@@ -579,7 +580,9 @@ static void decode_set_insn_attr_fields(Packet *pkt)
                                  !GET_ATTRIB(opcode, A_HWLOOP0_END);
 
         pkt->pkt_has_cof |= pkt->pkt_has_endloop;
+#endif
 
+#if 0
         /* Now create slot valids */
         if (pkt->insn[i].is_endloop)    /* Don't count endloops */
             continue;
@@ -601,13 +604,7 @@ static void decode_set_insn_attr_fields(Packet *pkt)
             g_assert_not_reached();
         }
         total_slots_valid++;
-
-        /* And track #loads/stores */
-        if (pkt->insn[i].is_store) {
-            stores++;
-        } else if (pkt->insn[i].is_load) {
-            loads++;
-        }
+#endif
 
 #ifndef CONFIG_USER_ONLY
         pkt->pkt_has_sys_visibility |=
@@ -636,6 +633,7 @@ static void decode_set_insn_attr_fields(Packet *pkt)
         pkt->pkt_has_cof |= pkt->pkt_has_endloop;
     }
 
+#if 0
     if (stores == 2) {
         pkt->dual_store = 1;
     } else if (loads == 2) {
@@ -649,7 +647,7 @@ static void decode_set_insn_attr_fields(Packet *pkt)
     } else if (loads > 2 || stores > 2) {
         g_assert_not_reached();
     }
-
+#endif
 }
 
 /*
@@ -659,9 +657,9 @@ static void decode_set_insn_attr_fields(Packet *pkt)
  */
 static void decode_shuffle_for_execution(Packet *packet)
 {
-    int changed = 0;
+    bool changed = false;
     int i;
-    int flag;    /* flag means we've seen a non-memory instruction */
+    bool flag;    /* flag means we've seen a non-memory instruction */
     int n_mems;
     int last_insn = packet->num_insns - 1;
 
@@ -674,7 +672,7 @@ static void decode_shuffle_for_execution(Packet *packet)
     }
 
     do {
-        changed = 0;
+        changed = false;
         /*
          * Stores go last, must not reorder.
          * Cannot shuffle stores past loads, either.
@@ -682,13 +680,13 @@ static void decode_shuffle_for_execution(Packet *packet)
          * then a store, shuffle the store to the front.  Don't shuffle
          * stores wrt each other or a load.
          */
-        for (flag = n_mems = 0, i = last_insn; i >= 0; i--) {
+        for (flag = false, n_mems = 0, i = last_insn; i >= 0; i--) {
             int opcode = packet->insn[i].opcode;
 
             if (flag && GET_ATTRIB(opcode, A_STORE)) {
                 decode_send_insn_to(packet, i, last_insn - n_mems);
                 n_mems++;
-                changed = 1;
+                changed = true;
             } else if (GET_ATTRIB(opcode, A_STORE)) {
                 n_mems++;
             } else if (GET_ATTRIB(opcode, A_LOAD)) {
@@ -703,7 +701,7 @@ static void decode_shuffle_for_execution(Packet *packet)
                  * a .new value
                  */
             } else {
-                flag = 1;
+                flag = true;
             }
         }
 
@@ -711,7 +709,7 @@ static void decode_shuffle_for_execution(Packet *packet)
             continue;
         }
         /* Compares go first, may be reordered wrt each other */
-        for (flag = 0, i = 0; i < last_insn + 1; i++) {
+        for (flag = false, i = 0; i < last_insn + 1; i++) {
             int opcode = packet->insn[i].opcode;
 
             if ((strstr(opcode_wregs[opcode], "Pd4") ||
@@ -720,7 +718,7 @@ static void decode_shuffle_for_execution(Packet *packet)
                 /* This should be a compare (not a store conditional) */
                 if (flag) {
                     decode_send_insn_to(packet, i, 0);
-                    changed = 1;
+                    changed = true;
                     continue;
                 }
             } else if (GET_ATTRIB(opcode, A_IMPLICIT_WRITES_P3) &&
@@ -732,7 +730,7 @@ static void decode_shuffle_for_execution(Packet *packet)
                  */
                 if (flag) {
                     decode_send_insn_to(packet, i, 0);
-                    changed = 1;
+                    changed = true;
                     continue;
                 }
             } else if (GET_ATTRIB(opcode, A_IMPLICIT_WRITES_P0) &&
@@ -740,11 +738,11 @@ static void decode_shuffle_for_execution(Packet *packet)
                 /* CABAC instruction */
                 if (flag) {
                     decode_send_insn_to(packet, i, 0);
-                    changed = 1;
+                    changed = true;
                     continue;
                 }
             } else {
-                flag = 1;
+                flag = true;
             }
         }
         if (changed) {
@@ -1087,7 +1085,7 @@ static void decode_add_endloop_insn(Insn *insn, int loopnum)
     }
 }
 
-static int decode_parsebits_is_loopend(uint32_t encoding32)
+static bool decode_parsebits_is_loopend(uint32_t encoding32)
 {
     uint32_t bits = parse_bits(encoding32);
     return bits == 0x2;
@@ -1098,8 +1096,11 @@ decode_set_slot_number(Packet *pkt)
 {
     int slot;
     int i;
-    int hit_mem_insn = 0;
-    int hit_duplex = 0;
+    bool hit_mem_insn = false;
+    bool hit_duplex = false;
+    bool slot0_found = false;
+    bool slot1_found = false;
+    int slot1_iidx = 0;
 
     /*
      * The slots are encoded in reverse order
@@ -1124,7 +1125,7 @@ decode_set_slot_number(Packet *pkt)
         if ((GET_ATTRIB(pkt->insn[i].opcode, A_MEMLIKE) ||
              GET_ATTRIB(pkt->insn[i].opcode, A_MEMLIKE_PACKET_RULES)) &&
             !hit_mem_insn) {
-            hit_mem_insn = 1;
+            hit_mem_insn = true;
             pkt->insn[i].slot = 0;
             continue;
         }
@@ -1141,7 +1142,7 @@ decode_set_slot_number(Packet *pkt)
     for (i = pkt->num_insns - 1; i >= 0; i--) {
         /* First subinsn always goes to slot 0 */
         if (GET_ATTRIB(pkt->insn[i].opcode, A_SUBINSN) && !hit_duplex) {
-            hit_duplex = 1;
+            hit_duplex = true;
             pkt->insn[i].slot = 0;
             continue;
         }
@@ -1153,13 +1154,10 @@ decode_set_slot_number(Packet *pkt)
     }
 
     /* Fix the exceptions - slot 1 is never empty, always aligns to slot 0 */
-    int slot0_found = 0;
-    int slot1_found = 0;
-    int slot1_iidx = 0;
     for (i = pkt->num_insns - 1; i >= 0; i--) {
         /* Is slot0 used? */
         if (pkt->insn[i].slot == 0) {
-            int is_endloop = (pkt->insn[i].opcode == J2_endloop01);
+            bool is_endloop = (pkt->insn[i].opcode == J2_endloop01);
             is_endloop |= (pkt->insn[i].opcode == J2_endloop0);
             is_endloop |= (pkt->insn[i].opcode == J2_endloop1);
 
@@ -1168,17 +1166,17 @@ decode_set_slot_number(Packet *pkt)
              * slot0 for endloop
              */
             if (!is_endloop) {
-                slot0_found = 1;
+                slot0_found = true;
             }
         }
         /* Is slot1 used? */
         if (pkt->insn[i].slot == 1) {
-            slot1_found = 1;
+            slot1_found = true;
             slot1_iidx = i;
         }
     }
     /* Is slot0 empty and slot1 used? */
-    if ((slot0_found == 0) && (slot1_found == 1)) {
+    if ((!slot0_found) && slot1_found) {
         /* Then push it to slot0 */
         pkt->insn[slot1_iidx].slot = 0;
     }
@@ -1196,7 +1194,7 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
 {
     int num_insns = 0;
     int words_read = 0;
-    int end_of_packet = 0;
+    bool end_of_packet = false;
     int new_insns = 0;
     int i;
     uint32_t encoding32;
@@ -1213,7 +1211,7 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
          * decode works
          */
         if (pkt->insn[num_insns].opcode == A4_ext) {
-            pkt->insn[num_insns + 1].extension_valid = 1;
+            pkt->insn[num_insns + 1].extension_valid = true;
         }
         num_insns += new_insns;
         words_read++;
@@ -1244,7 +1242,7 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         decode_add_endloop_insn(&pkt->insn[pkt->num_insns++], 0);
     }
     if (words_read >= 3) {
-        uint32_t has_loop0, has_loop1;
+        bool has_loop0, has_loop1;
         has_loop0 = decode_parsebits_is_loopend(words[0]);
         has_loop1 = decode_parsebits_is_loopend(words[1]);
         if (has_loop0 && has_loop1) {

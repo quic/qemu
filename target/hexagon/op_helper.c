@@ -91,7 +91,6 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
                                           uintptr_t pc)
 {
     CPUState *cs = env_cpu(env);
-
 #ifdef CONFIG_USER_ONLY
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
 #else

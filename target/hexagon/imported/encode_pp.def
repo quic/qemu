@@ -1193,7 +1193,6 @@ MPY_ENC(F2_dfmin,            "1000","ddddd","0","0","1","1","11")
 MPY_ENC(F2_dfmax,            "1000","ddddd","0","1","0","0","11")
 MPY_ENC(F2_dfmpyll,          "1000","ddddd","0","1","0","1","11")
 #ifdef ADD_DP_OPS
-MPY_ENC(F2_dfdivcheat,       "1000","ddddd","0","0","0","1","00")
 
 MPY_ENC(F2_dffixupn,         "1000","ddddd","0","1","0","1","11")
 MPY_ENC(F2_dffixupd,         "1000","ddddd","0","1","1","0","11")
@@ -1302,7 +1301,6 @@ MPY_ENC(F2_sfsub,            "1011","ddddd","0","0","0","0","01")
 MPY_ENC(F2_sfmax,            "1011","ddddd","0","0","0","1","00")
 MPY_ENC(F2_sfmin,            "1011","ddddd","0","0","0","1","01")
 MPY_ENC(F2_sfmpy,            "1011","ddddd","0","0","1","0","00")
-MPY_ENC(F2_sfdivcheat,       "1011","ddddd","0","0","1","0","11")
 MPY_ENC(F2_sffixupn,         "1011","ddddd","0","0","1","1","00")
 MPY_ENC(F2_sffixupd,         "1011","ddddd","0","0","1","1","01")
 MPY_ENC(F2_sfrecipa,         "1011","ddddd","1","1","1","1","ee")
@@ -1821,7 +1819,6 @@ SH2_RR_ENC(F2_conv_ud2df,     "0000","111","0","0 10","ddddd")
 SH2_RR_ENC(F2_conv_d2df,      "0000","111","0","0 11","ddddd")
 #ifdef ADD_DP_OPS
 SH2_RR_ENC(F2_dffixupr,       "0000","111","0","1 00","ddddd")
-SH2_RR_ENC(F2_dfsqrtcheat,    "0000","111","0","1 01","ddddd")
 #endif
 SH2_RR_ENC(F2_conv_df2d_chop, "0000","111","0","1 10","ddddd")
 SH2_RR_ENC(F2_conv_df2ud_chop,"0000","111","0","1 11","ddddd")
@@ -1952,7 +1949,6 @@ SH2_RR_ENC(F2_conv_sf2w,          "1011","100","-","000","ddddd")
 SH2_RR_ENC(F2_conv_sf2uw_chop,    "1011","011","-","001","ddddd")
 SH2_RR_ENC(F2_conv_sf2w_chop,     "1011","100","-","001","ddddd")
 SH2_RR_ENC(F2_sffixupr,           "1011","101","-","000","ddddd")
-SH2_RR_ENC(F2_sfsqrtcheat,        "1011","110","-","111","ddddd")
 SH2_RR_ENC(F2_sfinvsqrta,         "1011","111","-","0ee","ddddd")
 
 
@@ -2066,9 +2062,8 @@ SH_RRR_ENC(S2_cabacdecbin,      "0001","11-","-","11-","ddddd") /* implicit P0 w
 DEF_FIELDROW_DESC32(ICLASS_S3op" 0010 -------- PP------ --------","[#2] Rdd=(Rss,Rtt,Pu)")
 SH_RRR_ENC(S2_valignrb,         "0010","0--","-","-uu","ddddd")
 SH_RRR_ENC(S2_vsplicerb,        "0010","100","-","-uu","ddddd")
-SH_RRR_ENC(S2_cabacencbin,      "0010","101","-","-uu","ddddd")
-SH_RRR_ENC(A4_addp_c,	    	"0010","110","-","-xx","ddddd")
-SH_RRR_ENC(A4_subp_c,		"0010","111","-","-xx","ddddd")
+SH_RRR_ENC(A4_addp_c,           "0010","110","-","-xx","ddddd")
+SH_RRR_ENC(A4_subp_c,           "0010","111","-","-xx","ddddd")
 
 
 DEF_FIELDROW_DESC32(ICLASS_S3op" 0011 -------- PP------ --------","[#3] Rdd=(Rss,Rt)")
