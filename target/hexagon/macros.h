@@ -22,17 +22,6 @@
 #include "hex_regs.h"
 #include "reg_fields.h"
 
-#ifdef QEMU_GENERATE
-#define READ_REG(dest, NUM)              gen_read_reg(dest, NUM)
-#define READ_PREG(dest, NUM)             gen_read_preg(dest, (NUM))
-#else
-#define READ_REG(NUM)                    (env->gpr[(NUM)])
-#define READ_PREG(NUM)                   (env->pred[NUM])
-
-#define WRITE_RREG(NUM, VAL)             log_reg_write(env, NUM, VAL)
-#define WRITE_PREG(NUM, VAL)             log_pred_write(env, NUM, VAL)
-#endif
-
 #define PCALIGN 4
 #define PCALIGN_MASK (PCALIGN - 1)
 
@@ -194,8 +183,6 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
     gen_pred_cancel(PRED, insn->is_endloop ? 4 : insn->slot)
 #endif
 
-#define STORE_CANCEL(EA) { env->slot_cancelled |= (1 << slot); }
-
 #define fMAX(A, B) (((A) > (B)) ? (A) : (B))
 
 #define fMIN(A, B) (((A) < (B)) ? (A) : (B))
@@ -354,90 +341,31 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 
     return result;
 }
-#define fREAD_IREG(VAL, SHIFT) gen_read_ireg(ireg, (VAL), (SHIFT))
-#define fREAD_LR() (READ_REG(tmp, HEX_REG_LR))
-#define fREAD_SSR() (READ_REG(tmp, HEX_REG_SSR))
-#else
-#define fREAD_IREG(VAL) \
-    (fSXTN(11, 64, (((VAL) & 0xf0000000) >> 21) | ((VAL >> 17) & 0x7f)))
-#define fREAD_LR() (READ_REG(HEX_REG_LR))
-#define fREAD_SSR() (READ_REG(HEX_REG_SSR))
 #endif
+#define fREAD_LR() (env->gpr[HEX_REG_LR])
 
-#define fWRITE_LR(A) WRITE_RREG(HEX_REG_LR, A)
-#define fWRITE_FP(A) WRITE_RREG(HEX_REG_FP, A)
-#define fWRITE_SP(A) WRITE_RREG(HEX_REG_SP, A)
-#define fWRITE_GOSP(A) WRITE_RREG(HEX_REG_GOSP, A)
-
-#ifdef QEMU_GENERATE
-#define fREAD_GOSP() (READ_REG(tmp, HEX_REG_GOSP))
-#define fREAD_GELR() (READ_REG(tmp, HEX_REG_GELR))
-#define fREAD_GEVB() (READ_REG(tmp, HEX_REG_GEVB))
-#define fREAD_FP() (READ_REG(tmp, HEX_REG_FP))
-#else
-#define fREAD_SP() (READ_REG(HEX_REG_SP))
-#define fREAD_GOSP() (READ_REG(HEX_REG_GOSP))
-#define fREAD_GELR() (READ_REG(HEX_REG_GELR))
-#define fREAD_GEVB() (READ_REG(HEX_REG_GEVB))
-#define fREAD_LC0 (READ_REG(HEX_REG_LC0))
-#define fREAD_LC1 (READ_REG(HEX_REG_LC1))
-#define fREAD_SA0 (READ_REG(HEX_REG_SA0))
-#define fREAD_SA1 (READ_REG(HEX_REG_SA1))
-#define fREAD_FP() (READ_REG(HEX_REG_FP))
 #define fREAD_PC() (PC)
-#endif
-
-#define fREAD_NPC() (next_PC & (0xfffffffe))
-
-#ifdef QEMU_GENERATE
-#define fREAD_P0() (READ_PREG(tmp, 0))
-#define fREAD_P3() (READ_PREG(tmp, 3))
-#else
-#define fREAD_P0() (READ_PREG(0))
-#define fREAD_P3() (READ_PREG(3))
-#endif
-
+#define fREAD_P0() (env->pred[0])
 #define fCHECK_PCALIGN(A)
 
-#ifdef QEMU_GENERATE
-#define fWRITE_NPC(A) gen_write_new_pc(pkt, A)
-#else
 #define fWRITE_NPC(A) write_new_pc(env, pkt_has_multi_cof != 0, A)
-#endif
 
 #define fBRANCH(LOC, TYPE)          fWRITE_NPC(LOC)
 #define fJUMPR(REGNO, TARGET, TYPE) fBRANCH(TARGET, COF_TYPE_JUMPR)
 #define fHINTJR(TARGET) { /* Not modelled in qemu */}
-#define fCALL(A) \
-    do { \
-        fWRITE_LR(fREAD_NPC()); \
-        fBRANCH(A, COF_TYPE_CALL); \
-    } while (0)
-#define fCALLR(A) \
-    do { \
-        fWRITE_LR(fREAD_NPC()); \
-        fBRANCH(A, COF_TYPE_CALLR); \
-    } while (0)
 #define fWRITE_LOOP_REGS0(START, COUNT) \
     do { \
-        WRITE_RREG(HEX_REG_LC0, COUNT);  \
-        WRITE_RREG(HEX_REG_SA0, START); \
+        log_reg_write(env, HEX_REG_LC0, COUNT);  \
+        log_reg_write(env, HEX_REG_SA0, START); \
     } while (0)
-#define fWRITE_LOOP_REGS1(START, COUNT) \
-    do { \
-        WRITE_RREG(HEX_REG_LC1, COUNT);  \
-        WRITE_RREG(HEX_REG_SA1, START);\
-    } while (0)
-#define fWRITE_LC0(VAL) WRITE_RREG(HEX_REG_LC0, VAL)
-#define fWRITE_LC1(VAL) WRITE_RREG(HEX_REG_LC1, VAL)
 
 #define fSET_OVERFLOW() SET_USR_FIELD(USR_OVF, 1)
 #define fSET_LPCFG(VAL) SET_USR_FIELD(USR_LPCFG, (VAL))
 #define fGET_LPCFG (GET_USR_FIELD(USR_LPCFG))
-#define fWRITE_P0(VAL) WRITE_PREG(0, VAL)
-#define fWRITE_P1(VAL) WRITE_PREG(1, VAL)
-#define fWRITE_P2(VAL) WRITE_PREG(2, VAL)
-#define fWRITE_P3(VAL) WRITE_PREG(3, VAL)
+#define fWRITE_P0(VAL) log_pred_write(env, 0, VAL)
+#define fWRITE_P1(VAL) log_pred_write(env, 1, VAL)
+#define fWRITE_P2(VAL) log_pred_write(env, 2, VAL)
+#define fWRITE_P3(VAL) log_pred_write(env, 3, VAL)
 #define fPART1(WORK) if (part1) { WORK; return; }
 #define fCAST4u(A) ((uint32_t)(A))
 #define fCAST4s(A) ((int32_t)(A))
@@ -545,7 +473,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #else
 #define fEA_IMM(IMM)        do { EA = (IMM); } while (0)
 #define fEA_REG(REG)        do { EA = (REG); } while (0)
-#define fEA_GPI(IMM)        do { EA = (fREAD_GP() + (IMM)); } while (0)
 #define fPM_I(REG, IMM)     do { REG = REG + (IMM); } while (0)
 #define fPM_M(REG, MVAL)    do { REG = REG + (MVAL); } while (0)
 #endif
@@ -617,7 +544,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fMEMOP(NUM, SIZE, SIGN, EA, FNTYPE, VALUE)
 
 #ifdef QEMU_GENERATE
-#define fGET_FRAMEKEY() READ_REG(tmp, HEX_REG_FRAMEKEY)
+#define fGET_FRAMEKEY() gen_read_reg(tmp, HEX_REG_FRAMEKEY)
 static inline TCGv_i64 gen_frame_scramble(TCGv_i64 result)
 {
     /* ((LR << 32) | FP) ^ (FRAMEKEY << 32)) */
@@ -641,10 +568,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
     tcg_temp_free_i64(FRAMEKEY_i64);
     return frame;
 }
-#else
-#define fGET_FRAMEKEY() READ_REG(HEX_REG_FRAMEKEY)
-#define fFRAME_SCRAMBLE(VAL) ((VAL) ^ (fCAST8u(fGET_FRAMEKEY()) << 32))
-#define fFRAME_UNSCRAMBLE(VAL) fFRAME_SCRAMBLE(VAL)
 #endif
 
 #ifdef CONFIG_USER_ONLY
@@ -769,8 +692,6 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
                    reg_field_info[FIELD].width, \
                    reg_field_info[FIELD].offset)
 #define fREAD_GLOBAL_REG_FIELD(REG, FIELD)
-#define fGET_FIELD(VAL, FIELD)
-#define fSET_FIELD(VAL, FIELD, NEWVAL)
 #define fPOW2_HELP_ROUNDUP(VAL) \
     ((VAL) | \
      ((VAL) >> 1) | \

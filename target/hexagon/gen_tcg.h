@@ -1489,7 +1489,7 @@
         TCGv tmp = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
         { \
-          fEA_REG(fREAD_FP()); \
+          fEA_REG(gen_read_reg(tmp, HEX_REG_FP)); \
           fLOAD(1, 8, u, EA, tmp_i64); \
           gen_frame_unscramble(tmp_i64); \
           gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
@@ -1517,7 +1517,7 @@
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
           ctx_log_reg_write(ctx, HEX_REG_SP); \
-          fJUMPR(REG_LR, fGETWORD(1, RddV), COF_TYPE_JUMPR);\
+          gen_write_new_pc(pkt, fGETWORD(1, RddV)); \
         } \
         tcg_temp_free(tmp); \
         tcg_temp_free_i64(tmp_i64); \
@@ -1530,7 +1530,7 @@
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
         TCGv WORD = tcg_temp_new(); \
         { \
-          fEA_REG(fREAD_FP()); \
+          fEA_REG(gen_read_reg(tmp, HEX_REG_FP)); \
           fLOAD(1, 8, u, EA, tmp_i64); \
           gen_frame_unscramble(tmp_i64); \
           gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
@@ -1539,7 +1539,7 @@
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
           ctx_log_reg_write(ctx, HEX_REG_SP); \
-          fJUMPR(REG_LR, fGETWORD(1, tmp_i64), COF_TYPE_JUMPR);\
+          gen_write_new_pc(pkt, fGETWORD(1, tmp_i64)); \
         } \
         tcg_temp_free(tmp); \
         tcg_temp_free_i64(tmp_i64); \
@@ -1614,7 +1614,7 @@
         TCGv SP = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
         TCGv tmp = tcg_temp_new(); \
-        fEA_REG(fREAD_FP()); \
+        fEA_REG(gen_read_reg(tmp, HEX_REG_FP)); \
         PRED; \
         tcg_gen_extu_i32_i64(LSB_i64, LSB); \
         fLOAD(1, 8, u, EA, tmp_i64); \
@@ -1645,9 +1645,9 @@
     } while (0)
 
 #define fGEN_TCG_SL2_return_t(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(fLSBOLD(fREAD_P0()))
+    fGEN_TCG_COND_RETURN_SUBINSN(fLSBOLD(gen_read_preg(tmp, 0)))
 #define fGEN_TCG_SL2_return_f(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(fLSBOLDNOT(fREAD_P0()))
+    fGEN_TCG_COND_RETURN_SUBINSN(fLSBOLDNOT(gen_read_preg(tmp, 0)))
 #define fGEN_TCG_SL2_return_tnew(SHORTCODE) \
     fGEN_TCG_COND_RETURN_SUBINSN(fLSBNEW0)
 #define fGEN_TCG_SL2_return_fnew(SHORTCODE) \
