@@ -208,16 +208,12 @@ static bool check_for_opcode(Packet *pkt, uint16_t opcode)
 
 static bool need_slot_cancelled(Packet *pkt)
 {
-    /*
-     * We only need slot_cancelled for conditional instructions
-     * Further, we don't need it for conditional jumps unless the
-     * jump is part of a conditional dealloc_return which sets SP
-     */
+    /* We only need slot_cancelled for conditional store and HVX instructions */
     for (int i = 0; i < pkt->num_insns; i++) {
         uint16_t opcode = pkt->insn[i].opcode;
         if (GET_ATTRIB(opcode, A_CONDEXEC) &&
-            (!GET_ATTRIB(opcode, A_JUMP) ||
-             GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SP))) {
+            (GET_ATTRIB(opcode, A_STORE) ||
+             GET_ATTRIB(opcode, A_CVI))) {
             return true;
         }
     }
@@ -723,6 +719,12 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
             if (has_hvx_store) {
                 mask |= (1 << 2);
             }
+            if (has_store_s0 && slot_is_predicated(pkt, 0)) {
+                mask |= (1 << 3);
+            }
+            if (has_store_s1 && slot_is_predicated(pkt, 1)) {
+                mask |= (1 << 4);
+            }
             mask_tcgv = tcg_const_tl(mask);
             gen_helper_probe_pkt_scalar_hvx_stores(cpu_env, mask_tcgv, mem_idx);
             tcg_temp_free(mask_tcgv);
@@ -733,9 +735,13 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
          * process_store_log will execute the slot 1 store first,
          * so we only have to probe the store in slot 0
          */
-        TCGv mem_idx = tcg_const_tl(ctx->mem_idx);
-        gen_helper_probe_pkt_scalar_store_s0(cpu_env, mem_idx);
-        tcg_temp_free(mem_idx);
+        int args = ctx->mem_idx;
+        if (slot_is_predicated(pkt, 0)) {
+            args |= (1 << 2);
+        }
+        TCGv args_tcgv = tcg_const_tl(args);
+        gen_helper_probe_pkt_scalar_store_s0(cpu_env, args_tcgv);
+        tcg_temp_free(args_tcgv);
     }
 
     process_store_log(ctx, pkt);

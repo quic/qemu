@@ -156,7 +156,7 @@
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
 #endif
 
-#define CANCEL cancel_slot(env, slot)
+#define CANCEL do { } while (0)
 
 #define LOAD_CANCEL(EA) do { CANCEL; } while (0)
 

@@ -207,9 +207,9 @@ def is_new_val(regtype, regid, tag):
     return regtype+regid+'N' in semdict[tag]
 
 def need_slot(tag):
-    if (('A_CONDEXEC' in attribdict[tag] and
-         'A_JUMP' not in attribdict[tag]) or
-        'A_STORE' in attribdict[tag]):
+    if ('A_CONDEXEC' in attribdict[tag] and
+        ('A_STORE' in attribdict[tag] or
+         'A_CVI' in attribdict[tag])):
         return 1
     else:
         return 0
