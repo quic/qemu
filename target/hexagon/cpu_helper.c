@@ -565,4 +565,5 @@ void hexagon_enable_int(CPUHexagonState *env, uint32_t int_num)
     fSET_FIELD(ipendad, IPENDAD_IAD, ipendad_iad & ~(1 << int_num));
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
 }
+
 #endif

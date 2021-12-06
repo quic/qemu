@@ -170,20 +170,6 @@
             gen_store8, (void)0))
 #define MEM_STORE8(VA, DATA, SLOT) \
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
-#else
-#define MEM_LOAD1s(VA) ((int8_t)mem_load1(env, slot, VA))
-#define MEM_LOAD1u(VA) ((uint8_t)mem_load1(env, slot, VA))
-#define MEM_LOAD2s(VA) ((int16_t)mem_load2(env, slot, VA))
-#define MEM_LOAD2u(VA) ((uint16_t)mem_load2(env, slot, VA))
-#define MEM_LOAD4s(VA) ((int32_t)mem_load4(env, slot, VA))
-#define MEM_LOAD4u(VA) ((uint32_t)mem_load4(env, slot, VA))
-#define MEM_LOAD8s(VA) ((int64_t)mem_load8(env, slot, VA))
-#define MEM_LOAD8u(VA) ((uint64_t)mem_load8(env, slot, VA))
-
-#define MEM_STORE1(VA, DATA, SLOT) log_store32(env, VA, DATA, 1, SLOT)
-#define MEM_STORE2(VA, DATA, SLOT) log_store32(env, VA, DATA, 2, SLOT)
-#define MEM_STORE4(VA, DATA, SLOT) log_store32(env, VA, DATA, 4, SLOT)
-#define MEM_STORE8(VA, DATA, SLOT) log_store64(env, VA, DATA, 8, SLOT)
 #endif
 
 #define CANCEL cancel_slot(env, slot)
@@ -263,13 +249,11 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
         tcg_gen_andi_tl(LSB, (PNUM), 1); \
         tcg_gen_xori_tl(LSB, LSB, 1); \
     } while (0)
-#if 0
 #define fLSBNEW0NOT \
     do { \
         tcg_gen_andi_tl(LSB, hex_new_pred_value[0], 1); \
         tcg_gen_xori_tl(LSB, LSB, 1); \
     } while (0)
-#endif
 #else
 #define fLSBNEWNOT(PNUM) (!fLSBNEW(PNUM))
 #define fLSBOLDNOT(VAL) (!fLSBOLD(VAL))

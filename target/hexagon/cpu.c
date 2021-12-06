@@ -994,7 +994,7 @@ static void find_qemu_subpage(vaddr *addr, hwaddr *phys,
     *phys += offset;
 }
 
-#if 0
+#ifndef CONFIG_USER_ONLY
 static hwaddr hexagon_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
@@ -1146,10 +1146,11 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
 #endif
 }
 
-#if 0
-static const VMStateDescription vmstate_hexagon_cpu = {
-    .name = "cpu",
-    .unmigratable = 1,
+#ifndef CONFIG_USER_ONLY
+#include "hw/core/sysemu-cpu-ops.h"
+
+static const struct SysemuCPUOps hexagon_sysemu_ops = {
+    .get_phys_page_debug = hexagon_cpu_get_phys_page_debug,
 };
 #endif
 
@@ -1251,6 +1252,9 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 #endif
     cc->gdb_stop_before_watchpoint = true;
     cc->disas_set_info = hexagon_cpu_disas_set_info;
+#ifndef CONFIG_USER_ONLY
+    cc->sysemu_ops = &hexagon_sysemu_ops;
+#endif
 #ifdef CONFIG_TCG
     cc->tcg_ops = &hexagon_tcg_ops;
 #endif
