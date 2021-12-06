@@ -855,14 +855,18 @@
         TCGv LSB = tcg_temp_local_new(); \
         TCGv BYTE = tcg_temp_local_new(); \
         TCGv HALF = tcg_temp_local_new(); \
-        TCGLabel *label = gen_new_label(); \
+        TCGLabel *false_label = gen_new_label(); \
+        TCGLabel *end_label = gen_new_label(); \
         GET_EA; \
         PRED;  \
-        PRED_STORE_CANCEL(LSB, EA); \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-            INC; \
-            fSTORE(1, SIZE, EA, SRC); \
-        gen_set_label(label); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, false_label); \
+        INC; \
+        fSTORE(1, SIZE, EA, SRC); \
+        tcg_gen_br(end_label); \
+        gen_set_label(false_label); \
+        tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, \
+                       1 << insn->slot); \
+        gen_set_label(end_label); \
         tcg_temp_free(LSB); \
         tcg_temp_free(BYTE); \
         tcg_temp_free(HALF); \
