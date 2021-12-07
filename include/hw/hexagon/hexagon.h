@@ -158,7 +158,5 @@ typedef struct {
 } hexagon_config_extensions;
 
 void hexagon_read_timer(uint32_t *low, uint32_t *high);
-int hexagon_find_l2vic_pending(void);
-uint32_t hexagon_find_last_irq(uint32_t);
 
 #endif

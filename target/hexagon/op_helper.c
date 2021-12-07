@@ -1860,6 +1860,40 @@ static void hexagon_clear_last_irq(CPUHexagonState *env, uint32_t offset) {
     hexagon_set_vid(env, offset, L2VIC_NO_PENDING);
 }
 
+static uint32_t hexagon_find_last_irq(CPUHexagonState *env, uint32_t vid)
+{
+    int offset = (vid ==  HEX_SREG_VID) ? L2VIC_VID_0 : L2VIC_VID_1;
+    CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    const hwaddr pend_mem = cpu->l2vic_base_addr + offset;
+    uint32_t irq;
+    cpu_physical_memory_read(pend_mem, &irq, sizeof(irq));
+    return irq;
+}
+
+static int hexagon_find_l2vic_pending(CPUHexagonState *env)
+{
+    int intnum = 0;
+    CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    const hwaddr pend = cpu->l2vic_base_addr + L2VIC_INT_STATUSn;
+    uint64_t pending[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
+    cpu_physical_memory_read(pend, pending, sizeof(pending));
+
+    const hwaddr stat = cpu->l2vic_base_addr + L2VIC_INT_STATUSn;
+    uint64_t status[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
+    cpu_physical_memory_read(stat, status, sizeof(status));
+
+    intnum = find_next_bit(pending, L2VIC_INTERRUPT_MAX, intnum);
+    while (intnum < L2VIC_INTERRUPT_MAX) {
+        /* Pending is set but status isn't the interrupt is pending */
+        if (!test_bit(intnum, status)) {
+            break;
+        }
+        intnum = find_next_bit(pending, L2VIC_INTERRUPT_MAX, intnum+1);
+    }
+    return (intnum < L2VIC_INTERRUPT_MAX) ? intnum : L2VIC_NO_PENDING;
+}
 
 void HELPER(ciad)(CPUHexagonState *env, uint32_t src)
 {
@@ -1928,7 +1962,7 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 {
     if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
-        uint32_t vid = hexagon_find_last_irq(reg);
+        uint32_t vid = hexagon_find_last_irq(env, reg);
         ARCH_SET_SYSTEM_REG(env, reg, vid);
     } else if ((reg == HEX_SREG_TIMERLO) || (reg == HEX_SREG_TIMERHI)) {
         uint32_t low = 0;
@@ -2260,7 +2294,7 @@ void HELPER(pending_interrupt)(CPUHexagonState *env)
         if (!hexagon_thread_is_interruptible(thread_env, intnum)) {
             continue;
         }
-        int vid_num = hexagon_find_l2vic_pending();
+        int vid_num = hexagon_find_l2vic_pending(env);
         hexagon_raise_interrupt(thread_env, int_thread, intnum, vid_num);
     }
 }
