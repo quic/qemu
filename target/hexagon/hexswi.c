@@ -124,15 +124,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_HEAPINFO:
     {
         HEX_DEBUG_LOG("%s:%d: SYS_HEAPINFO\n", __FUNCTION__, __LINE__);
-#if 0
-        size4u_t bufptr;
-
-        DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
-         DEBUG_MEMORY_WRITE(bufptr+0, 4, 0);
-        DEBUG_MEMORY_WRITE(bufptr+1, 4, 0);
-        DEBUG_MEMORY_WRITE(bufptr+2, 4, 0);
-         DEBUG_MEMORY_WRITE(bufptr+3, 4, 0);
-#endif
     }
     break;
 
@@ -709,12 +700,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             sizeof(int32_t) /* Index entry */ ;
         if (host_dir_entry) {
             vaddr_t guest_dir_ptr = guest_dir_entry;
-#if 0
-            DEBUG_MEMORY_WRITE(guest_dir_ptr,
-                sizeof(host_dir_entry->d_ino),
-                host_dir_entry->d_ino);
-            guest_dir_ptr += sizeof(host_dir_entry->d_ino);
-#endif
 
             for (i = 0; i < sizeof(host_dir_entry->d_name); i++) {
                 DEBUG_MEMORY_WRITE(guest_dir_ptr + i, 1,
