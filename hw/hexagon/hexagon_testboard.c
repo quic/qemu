@@ -60,7 +60,12 @@ static GString *get_exe_dir(GString *exe_dir)
     if (exe_length == -1) {
         return NULL;
     }
-    return g_string_new(g_path_get_dirname(exe_name));
+    exe_name[sizeof(exe_name) - 1] = '\0';
+
+    gchar *dir_name = g_path_get_dirname(exe_name);
+    g_string_assign(exe_dir, dir_name);
+    free(dir_name);
+    return exe_dir;
 #else
 #error "No host implementation for get_exe_dir() provided"
 #endif
