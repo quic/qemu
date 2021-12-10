@@ -11,6 +11,7 @@ from glob import glob
 import os.path
 import random
 import pathlib
+import socket
 
 THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 THIS_DIR = str(pathlib.Path(__file__).resolve().parent)
@@ -23,6 +24,7 @@ HEX_LLDB = os.path.join(LATEST_HEX_TOOLS_BIN, 'hexagon-lldb')
 DEFAULT_TEST_DIR = '/prj/qct/llvm/scratch/users/bcain/qemu/qurt_kona_tests'
 if not os.path.exists(DEFAULT_TEST_DIR):
     DEFAULT_TEST_DIR = '/prj/qct/coredev/hexagon/austin/scratch/users/bcain/qemu/qurt_kona_tests'
+LOCALHOST = '127.0.0.1'
 
 class TimedoutProcess(object):
     def __init__(self, **args):
@@ -64,7 +66,6 @@ def run_lldb(prog, port_num):
 
     debug_cmd = f'{HEX_LLDB} --batch --source {THIS_DIR}/crash_debug.lldb --one-line-before-file "file {prog}" --one-line-before-file "gdb-remote {port_num}"'
 
-    print('about to run', debug_cmd)
     debug_res = subprocess.run(shlex.split(debug_cmd), timeout=25.,
         cwd=THIS_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return debug_res
@@ -195,10 +196,25 @@ if __name__ == '__main__':
     if not os.path.exists(prog):
         raise Exception(f'could not find QEMU binary at "{prog}"')
 
+    def listening_port_in_use(port_num):
+        '''Returns true if the TCP listening port is in accepting
+           connections locally.  Note that using this to decide whether
+           to open a port has remaining risks because of TOCTOU.
+        '''
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            rc = s.connect_ex((LOCALHOST, port_num))
+            return rc == 0
+
+    def get_avail_port():
+        while True:
+            port_num = random.randint(1235, 60000)
+            if not listening_port_in_use(port_num):
+                return port_num
+
     def run_tests(t_cfg):
         (t, timeout_sec) = t_cfg
 
-        port_num = random.randint(1235, 60000)
+        port_num = get_avail_port()
         cmd = '{} -gdb tcp::{} -display none -monitor none -m 4G -no-reboot -kernel {}'.format(prog, port_num, t)
 
         if args.icount != None:
