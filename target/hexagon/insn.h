@@ -41,26 +41,15 @@ struct Instruction {
 
     uint32_t iclass:6;
     uint32_t slot:3;
-
     uint32_t which_extended:1;    /* If has an extender, which immediate */
     uint32_t new_value_producer_slot:4;
-    uint32_t part1:1;              /*
+
+    bool part1;              /*
                               * cmp-jumps are split into two insns.
                               * set for the compare and clear for the jump
                               */
-    uint32_t extension_valid:1;   /* Has a constant extender attached */
-    uint32_t is_dcop:1;      /* Is a dcacheop */
-    uint32_t is_dcfetch:1;   /* Has an A_DCFETCH attribute */
-    uint32_t is_load:1;      /* Has A_LOAD attribute */
-    uint32_t is_store:1;     /* Has A_STORE attribute */
-    uint32_t is_vmem_ld:1;   /* Has an A_LOAD and an A_VMEM attribute */
-    uint32_t is_scatgath:1;  /* Has an A_CVI_GATHER or A_CVI_SCATTER attr */
-    uint32_t is_memop:1;     /* Has A_MEMOP attribute */
-    uint32_t is_dealloc:1;   /* Is a dealloc return or dealloc frame */
-    uint32_t is_aia:1;       /* Is a post increment */
-    uint32_t is_endloop:1;   /* This is an end of loop */
-    uint32_t is_2nd_jump:1;  /* This is the second jump of a dual-jump packet */
-    uint32_t hvx_resource:8;
+    bool extension_valid;   /* Has a constant extender attached */
+    bool is_endloop;   /* This is an end of loop */
     int32_t immed[IMMEDS_MAX];    /* immediate field */
 };
 
@@ -83,12 +72,10 @@ struct Packet {
     bool pkt_has_scalar_store_s0;
     bool pkt_has_scalar_store_s1;
 
-    uint32_t pkt_hmx_st_ct:2; /* pkt has how many non vmem stores */
-    uint32_t pkt_hmx_ld_ct:2; /* pkt has how many non vmem and non zmem loads */
-
-    bool pkt_has_hvx;
-    bool pkt_has_hmx;
     Insn *vhist_insn;
+    bool pkt_has_hvx;
+    bool pkt_has_hvx_vs_3src;
+    bool pkt_has_hmx;
 
 #ifndef CONFIG_USER_ONLY
     bool pkt_has_sys_visibility;

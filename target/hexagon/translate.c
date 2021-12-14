@@ -155,9 +155,20 @@ static void gen_end_tb(DisasContext *ctx)
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
+static void gen_exception_debug(DisasContext *ctx)
+{
+    if (ctx->base.singlestep_enabled) {
+        gen_exception_raw(EXCP_DEBUG);
+    } else {
+        tcg_gen_exit_tb(NULL, 0);
+    }
+    ctx->base.is_jmp = DISAS_NORETURN;
+}
+
 void gen_exception_end_tb(DisasContext *ctx, int excp)
 {
     gen_exec_counters(ctx);
+    tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
 #ifdef CONFIG_USER_ONLY
     gen_exception_raw(excp);
 #else
@@ -165,11 +176,6 @@ void gen_exception_end_tb(DisasContext *ctx, int excp)
     gen_exception_raw(HEX_EVENT_PRECISE);
 #endif
     ctx->base.is_jmp = DISAS_NORETURN;
-}
-
-void gen_exception_debug(void)
-{
-    gen_exception_raw(EXCP_DEBUG);
 }
 
 #define PACKET_BUFFER_LEN              1028
@@ -296,11 +302,12 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     bitmap_zero(ctx->vregs_updated, NUM_VREGS);
     bitmap_zero(ctx->vregs_select, NUM_VREGS);
     ctx->qreg_log_idx = 0;
+    ctx->pre_commit = true;
+
     for (i = 0; i < STORES_MAX; i++) {
         ctx->store_width[i] = 0;
     }
     ctx->s1_store_processed = false;
-    ctx->pre_commit = true;
 
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
@@ -315,7 +322,11 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     if (need_slot_cancelled(pkt)) {
         tcg_gen_movi_tl(hex_slot_cancelled, 0);
     }
+#if 0
     if (pkt->pkt_has_cof || pkt->pkt_has_fp_op) {
+#else
+    if (pkt->pkt_has_cof) {
+#endif
         tcg_gen_movi_tl(hex_branch_taken, 0);
     }
     // FIXME: this was moved out of the conditional init above:
@@ -1052,6 +1063,7 @@ static void hexagon_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
     tcg_gen_insn_start(ctx->base.pc_next);
 }
 
+#if 0
 static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase,
     CPUState *cpu, const CPUBreakpoint *bp)
 {
@@ -1069,6 +1081,7 @@ static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase,
     ctx->base.pc_next += 4;
     return true;
 }
+#endif
 
 static bool pkt_crosses_page(CPUHexagonState *env, DisasContext *ctx)
 {
@@ -1144,7 +1157,7 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     }
 #endif
     if (ctx->base.singlestep_enabled) {
-        gen_exception_debug();
+        gen_exception_debug(ctx);
     } else {
         tcg_gen_exit_tb(NULL, 0);
     }
@@ -1163,7 +1176,6 @@ static const TranslatorOps hexagon_tr_ops = {
     .init_disas_context = hexagon_tr_init_disas_context,
     .tb_start           = hexagon_tr_tb_start,
     .insn_start         = hexagon_tr_insn_start,
-    .breakpoint_check   = hexagon_tr_breakpoint_check,
     .translate_insn     = hexagon_tr_translate_packet,
     .tb_stop            = hexagon_tr_tb_stop,
     .disas_log          = hexagon_tr_disas_log,

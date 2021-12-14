@@ -33,7 +33,7 @@ all:
 -include ../../../config-host.mak
 -include ../config-$(TARGET).mak
 ifeq ($(CONFIG_USER_ONLY),y)
--include $(SRC_PATH)/default-configs/targets/$(TARGET).mak
+-include $(SRC_PATH)/configs/targets/$(TARGET).mak
 endif
 
 # for including , in command strings
@@ -44,11 +44,15 @@ quiet-command-neg = $(call quiet-command, $(1); if [ $$? -ne 0 ] ; then /bin/tru
 
 # $1 = test name, $2 = cmd, $3 = desc
 ifdef CONFIG_USER_ONLY
-run-test = $(call quiet-command, timeout $(TIMEOUT) $2 > $1.out,"TEST",$3)
-run-test-neg = $(call quiet-command-neg, timeout $(TIMEOUT) $2 > $1.out,"TEST",$3)
+run-test = $(call quiet-command, timeout --foreground $(TIMEOUT) $2 > $1.out, \
+	"TEST",$3)
+run-test-neg = $(call quiet-command-neg, timeout --foreground $(TIMEOUT) $2 > $1.out, \
+	"TEST",$3)
 else
-run-test = $(call quiet-command, timeout $(TIMEOUT) $2,"TEST",$3)
-run-test-neg = $(call quiet-command-neg, timeout $(TIMEOUT) $2,"TEST",$3)
+run-test = $(call quiet-command, timeout --foreground $(TIMEOUT) $2,"TEST", \
+	$3)
+run-test-neg = $(call quiet-command-neg, timeout --foreground $(TIMEOUT) $2, \
+	"TEST",$3)
 endif
 
 # $1 = test name, $2 = reference
@@ -83,8 +87,10 @@ LDFLAGS=
 QEMU_OPTS=
 
 
-# If TCG debugging is enabled things are a lot slower
-ifeq ($(CONFIG_DEBUG_TCG),y)
+# If TCG debugging, or TCI is enabled things are a lot slower
+ifneq ($(CONFIG_TCG_INTERPRETER),)
+TIMEOUT=90
+else ifneq ($(CONFIG_DEBUG_TCG),)
 TIMEOUT=60
 else
 TIMEOUT=15

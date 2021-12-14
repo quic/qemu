@@ -356,6 +356,9 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
     return result;
 }
 #define fREAD_IREG(VAL, SHIFT) gen_read_ireg(ireg, (VAL), (SHIFT))
+#else
+#define fREAD_IREG(VAL) \
+    (fSXTN(11, 64, (((VAL) & 0xf0000000) >> 21) | ((VAL >> 17) & 0x7f)))
 #endif
 
 #define fREAD_LR() (READ_REG(HEX_REG_LR))

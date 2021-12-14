@@ -994,6 +994,7 @@ static void find_qemu_subpage(vaddr *addr, hwaddr *phys,
     *phys += offset;
 }
 
+#ifndef CONFIG_USER_ONLY
 static hwaddr hexagon_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
@@ -1012,6 +1013,7 @@ static hwaddr hexagon_cpu_get_phys_page_debug(CPUState *cs, vaddr addr)
 
     return -1;
 }
+#endif
 
 #define INVALID_BADVA                                      0xbadabada
 
@@ -1144,10 +1146,11 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
 #endif
 }
 
-#if !defined(CONFIG_USER_ONLY)
-static const VMStateDescription vmstate_hexagon_cpu = {
-    .name = "cpu",
-    .unmigratable = 1,
+#ifndef CONFIG_USER_ONLY
+#include "hw/core/sysemu-cpu-ops.h"
+
+static const struct SysemuCPUOps hexagon_sysemu_ops = {
+    .get_phys_page_debug = hexagon_cpu_get_phys_page_debug,
 };
 #endif
 
@@ -1249,10 +1252,8 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 #endif
     cc->gdb_stop_before_watchpoint = true;
     cc->disas_set_info = hexagon_cpu_disas_set_info;
-#if !defined(CONFIG_USER_ONLY)
-    cc->get_phys_page_debug = hexagon_cpu_get_phys_page_debug;
-    /* For now, mark unmigratable: */
-    cc->vmsd = &vmstate_hexagon_cpu;
+#ifndef CONFIG_USER_ONLY
+    cc->sysemu_ops = &hexagon_sysemu_ops;
 #endif
 #ifdef CONFIG_TCG
     cc->tcg_ops = &hexagon_tcg_ops;
