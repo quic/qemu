@@ -72,6 +72,12 @@ int read_usr_overflow(void)
     return result & 1;
 }
 
+int read_usr_fp_invalid(void)
+{
+    int result;
+    asm volatile("%0 = usr\n\t" : "=r"(result));
+    return (result >> 1) & 1;
+}
 
 jmp_buf jmp_env;
 int usr_overflow;
@@ -80,6 +86,31 @@ static void sig_segv(int sig, siginfo_t *info, void *puc)
 {
     usr_overflow = read_usr_overflow();
     longjmp(jmp_env, 1);
+}
+
+static void test_packet(void)
+{
+    int convres;
+    int satres;
+    int usr;
+
+    asm("r2 = usr\n\t"
+        "r2 = clrbit(r2, #0)\n\t"        /* clear overflow bit */
+        "r2 = clrbit(r2, #1)\n\t"        /* clear FP invalid bit */
+        "usr = r2\n\t"
+        "{\n\t"
+        "    %0 = convert_sf2uw(%3):chop\n\t"
+        "    %1 = satb(%4)\n\t"
+        "}\n\t"
+        "%2 = usr\n\t"
+        : "=r"(convres), "=r"(satres), "=r"(usr)
+        : "r"(0x6a051b86), "r"(0x0410eec0)
+        : "r2", "usr");
+
+    check(convres, 0xffffffff);
+    check(satres, 0x7f);
+    check(read_usr_overflow(), 1);
+    check(read_usr_fp_invalid(), 1);
 }
 
 int main()
@@ -101,6 +132,8 @@ int main()
     act.sa_flags = 0;
 
     check(usr_overflow, 0);
+
+    test_packet();
 
     puts(err ? "FAIL" : "PASS");
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
