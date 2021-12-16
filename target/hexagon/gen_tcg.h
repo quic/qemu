@@ -1441,7 +1441,6 @@
           gen_frame_scramble(scramble_tmp); \
           fSTORE(1, 8, EA, scramble_tmp); \
           gen_log_reg_write(HEX_REG_FP, EA); \
-          ctx_log_reg_write(ctx, HEX_REG_FP); \
           fFRAMECHECK(EA - uiV, EA); \
           tcg_gen_subi_tl(RxV, EA, uiV); \
         } \
@@ -1456,11 +1455,9 @@
           gen_frame_scramble(scramble_tmp); \
           fSTORE(1, 8, EA, scramble_tmp); \
           gen_log_reg_write(HEX_REG_FP, EA); \
-          ctx_log_reg_write(ctx, HEX_REG_FP); \
           fFRAMECHECK(EA - uiV, EA); \
           tcg_gen_subi_tl(tmp, EA, uiV); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
-          ctx_log_reg_write(ctx, HEX_REG_SP); \
         } \
         tcg_temp_free_i64(scramble_tmp); \
         tcg_temp_free(tmp); \
@@ -1477,7 +1474,6 @@
           tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
-          ctx_log_reg_write(ctx, HEX_REG_SP); \
         } \
         tcg_temp_free(tmp); \
         tcg_temp_free_i64(tmp_i64); \
@@ -1493,12 +1489,9 @@
           fLOAD(1, 8, u, EA, tmp_i64); \
           gen_frame_unscramble(tmp_i64); \
           gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
-          ctx_log_reg_write(ctx, HEX_REG_LR); \
           gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
-          ctx_log_reg_write(ctx, HEX_REG_FP); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
-          ctx_log_reg_write(ctx, HEX_REG_SP); \
         } \
         tcg_temp_free(WORD); \
         tcg_temp_free(tmp); \
@@ -1516,7 +1509,6 @@
           tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
-          ctx_log_reg_write(ctx, HEX_REG_SP); \
           gen_write_new_pc(pkt, fGETWORD(1, RddV)); \
         } \
         tcg_temp_free(tmp); \
@@ -1534,11 +1526,9 @@
           fLOAD(1, 8, u, EA, tmp_i64); \
           gen_frame_unscramble(tmp_i64); \
           gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
-          ctx_log_reg_write(ctx, HEX_REG_LR); \
           gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
-          ctx_log_reg_write(ctx, HEX_REG_SP); \
           gen_write_new_pc(pkt, fGETWORD(1, tmp_i64)); \
         } \
         tcg_temp_free(tmp); \
@@ -1574,7 +1564,6 @@
         tcg_gen_addi_tl(tmp, EA, 8); \
         tcg_gen_movcond_tl(TCG_COND_NE, SP, LSB, zero, tmp, SP); \
         gen_log_predicated_reg_write(HEX_REG_SP, SP, insn->slot); \
-        ctx_log_reg_write(ctx, HEX_REG_SP); \
         gen_cond_return(pkt, LSB, fGETWORD(1, RddV)); \
         tcg_temp_free(LSB); \
         tcg_temp_free_i64(LSB_i64); \
@@ -1627,10 +1616,7 @@
         tcg_gen_addi_tl(tmp, EA, 8); \
         tcg_gen_movcond_tl(TCG_COND_NE, SP, LSB, zero, tmp, SP); \
         gen_log_predicated_reg_write(HEX_REG_SP, SP, insn->slot); \
-        ctx_log_reg_write(ctx, HEX_REG_SP); \
         gen_log_predicated_reg_write_pair(HEX_REG_FP, RddV, insn->slot); \
-        ctx_log_reg_write(ctx, HEX_REG_FP); \
-        ctx_log_reg_write(ctx, HEX_REG_LR); \
         gen_cond_return(pkt, LSB, fGETWORD(1, RddV)); \
         tcg_temp_free(LSB); \
         tcg_temp_free_i64(LSB_i64); \
