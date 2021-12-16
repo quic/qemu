@@ -174,9 +174,6 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
     tcg_temp_free(tmp);
     tcg_temp_free(zero);
 }
-#define PRED_LOAD_CANCEL(PRED, EA) \
-    gen_pred_cancel(PRED, insn->is_endloop ? 4 : insn->slot)
-
 #define PRED_STORE_CANCEL(PRED, EA) \
     gen_pred_cancel(PRED, insn->is_endloop ? 4 : insn->slot)
 #endif

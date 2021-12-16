@@ -53,16 +53,23 @@ def genptr_decl_pair_writable(f, tag, regtype, regid, regno):
         f.write("        tcg_gen_mov_tl(hex_new_value[%s + 1], hex_gpr[%s + 1]);\n" % \
                              (regN, regN))
         f.write("    }\n")
+        f.write("    tcg_gen_concat_i32_i64(%s%sV, hex_new_value[%s], " % \
+                         (regtype, regid, regN))
+        f.write("hex_new_value[%s + 1]);\n" % (regN))
 
 def genptr_decl_writable(f, tag, regtype, regid, regno):
     regN="%s%sN" % (regtype,regid)
-    f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
-        (regtype, regid))
     if (regtype == "C"):
         f.write("    const int %s = insn->regno[%d] + HEX_REG_SA0;\n" % \
             (regN, regno))
     else:
         f.write("    const int %s = insn->regno[%d];\n" % (regN, regno))
+    if (regtype == "R"):
+        f.write("    TCGv %s%sV = hex_new_value[%s];\n" % \
+            (regtype, regid, regN))
+    else:
+        f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
+            (regtype, regid))
     if ('A_CONDEXEC' in hex_common.attribdict[tag]):
         f.write("    if (!is_preloaded(ctx, %s)) {\n" % regN)
         f.write("        tcg_gen_mov_tl(hex_new_value[%s], hex_gpr[%s]);\n" % \
@@ -325,9 +332,7 @@ def genptr_free(f, tag, regtype, regid, regno):
     if (regtype == "R"):
         if (regid in {"dd", "ss", "tt", "xx", "yy"}):
             f.write("    tcg_temp_free_i64(%s%sV);\n" % (regtype, regid))
-        elif (regid in {"d", "e", "x", "y"}):
-            f.write("    tcg_temp_free(%s%sV);\n" % (regtype, regid))
-        elif (regid not in {"s", "t", "u", "v"}):
+        elif (regid not in {"d", "e", "x", "y", "s", "t", "u", "v"}):
             print("Bad register parse: ",regtype,regid)
     elif (regtype == "P"):
         if (regid in {"d", "e", "x"}):
@@ -577,12 +582,8 @@ def gen_helper_free_imm(f,immlett):
     f.write("    tcg_temp_free(tcgv_%s);\n" % hex_common.imm_name(immlett))
 
 def genptr_dst_write_pair(f, tag, regtype, regid):
-    if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-        f.write("    gen_log_predicated_reg_write_pair(%s%sN, %s%sV, insn->slot);\n" % \
-            (regtype, regid, regtype, regid))
-    else:
-        f.write("    gen_log_reg_write_pair(%s%sN, %s%sV);\n" % \
-            (regtype, regid, regtype, regid))
+    f.write("    gen_log_reg_write_pair(%s%sN, %s%sV);\n" % \
+        (regtype, regid, regtype, regid))
     f.write("    ctx_log_reg_write_pair(ctx, %s%sN);\n" % \
         (regtype, regid))
 
@@ -591,13 +592,8 @@ def genptr_dst_write(f, tag, regtype, regid):
         if (regid in {"dd", "xx", "yy"}):
             genptr_dst_write_pair(f, tag, regtype, regid)
         elif (regid in {"d", "e", "x", "y"}):
-            if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    gen_log_predicated_reg_write(%s%sN, %s%sV,\n" % \
-                    (regtype, regid, regtype, regid))
-                f.write("                                 insn->slot);\n")
-            else:
-                f.write("    gen_log_reg_write(%s%sN, %s%sV);\n" % \
-                    (regtype, regid, regtype, regid))
+            f.write("    gen_log_reg_write(%s%sN, %s%sV);\n" % \
+                (regtype, regid, regtype, regid))
             f.write("    ctx_log_reg_write(ctx, %s%sN);\n" % \
                 (regtype, regid))
         else:
@@ -800,6 +796,14 @@ def gen_tcg_func(f, tag, regs, imms):
         if (i > 0): f.write(", ")
         f.write("cpu_env")
         i=1
+        ## For conditional instructions, we pass in the destination register
+        if 'A_CONDEXEC' in hex_common.attribdict[tag]:
+            for regtype, regid, toss, numregs in regs:
+                if (hex_common.is_written(regid) and
+                    not hex_common.is_hvx_reg(regtype)):
+                    gen_helper_call_opn(f, tag, regtype, regid, toss, \
+                                        numregs, i)
+                    i += 1
         for regtype,regid,toss,numregs in regs:
             if (hex_common.is_written(regid)):
                 if (not hex_common.is_hvx_reg(regtype)):

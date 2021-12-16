@@ -385,16 +385,14 @@
  */
 #define fGEN_TCG_PRED_LOAD(GET_EA, PRED, SIZE, SIGN) \
     do { \
-        TCGv LSB = tcg_temp_local_new(); \
+        TCGv LSB = tcg_temp_new(); \
         TCGLabel *label = gen_new_label(); \
-        GET_EA; \
         PRED;  \
-        PRED_LOAD_CANCEL(LSB, EA); \
-        tcg_gen_movi_tl(RdV, 0); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-            fLOAD(1, SIZE, SIGN, EA, RdV); \
-        gen_set_label(label); \
         tcg_temp_free(LSB); \
+        GET_EA; \
+        fLOAD(1, SIZE, SIGN, EA, RdV); \
+        gen_set_label(label); \
     } while (0)
 
 #define fGEN_TCG_L2_ploadrubt_io(SHORTCODE) \
@@ -564,16 +562,14 @@
 /* Predicated loads into a register pair */
 #define fGEN_TCG_PRED_LOAD_PAIR(GET_EA, PRED) \
     do { \
-        TCGv LSB = tcg_temp_local_new(); \
+        TCGv LSB = tcg_temp_new(); \
         TCGLabel *label = gen_new_label(); \
-        GET_EA; \
         PRED;  \
-        PRED_LOAD_CANCEL(LSB, EA); \
-        tcg_gen_movi_i64(RddV, 0); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-            fLOAD(1, 8, u, EA, RddV); \
-        gen_set_label(label); \
         tcg_temp_free(LSB); \
+        GET_EA; \
+        fLOAD(1, 8, u, EA, RddV); \
+        gen_set_label(label); \
     } while (0)
 
 #define fGEN_TCG_L2_ploadrdt_io(SHORTCODE) \
@@ -1543,37 +1539,23 @@
 #define fGEN_TCG_COND_RETURN(PRED) \
     do { \
         TCGv LSB = tcg_temp_new(); \
-        TCGv_i64 LSB_i64 = tcg_temp_new_i64(); \
-        TCGv zero = tcg_const_tl(0); \
-        TCGv_i64 zero_i64 = tcg_const_i64(0); \
-        TCGv_i64 unscramble = tcg_temp_new_i64(); \
-        TCGv WORD = tcg_temp_local_new(); \
-        TCGv SP = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
         TCGv tmp = tcg_temp_new(); \
+        TCGv WORD = tcg_temp_new(); \
+        TCGLabel *skip = gen_new_label(); \
         fEA_REG(RsV); \
         PRED; \
-        tcg_gen_extu_i32_i64(LSB_i64, LSB); \
-        fLOAD(1, 8, u, EA, tmp_i64); \
-        tcg_gen_mov_i64(unscramble, gen_frame_unscramble(tmp_i64)); \
-        tcg_gen_concat_i32_i64(RddV, hex_gpr[HEX_REG_FP], \
-                                     hex_gpr[HEX_REG_LR]); \
-        tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, zero_i64, \
-                            unscramble, RddV); \
-        tcg_gen_mov_tl(SP, hex_gpr[HEX_REG_SP]); \
-        tcg_gen_addi_tl(tmp, EA, 8); \
-        tcg_gen_movcond_tl(TCG_COND_NE, SP, LSB, zero, tmp, SP); \
-        gen_log_predicated_reg_write(HEX_REG_SP, SP, insn->slot); \
-        gen_cond_return(pkt, LSB, fGETWORD(1, RddV)); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, skip); \
         tcg_temp_free(LSB); \
-        tcg_temp_free_i64(LSB_i64); \
-        tcg_temp_free(zero); \
-        tcg_temp_free_i64(zero_i64); \
-        tcg_temp_free_i64(unscramble); \
-        tcg_temp_free(WORD); \
-        tcg_temp_free(SP); \
+        fLOAD(1, 8, u, EA, tmp_i64); \
+        tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
+        tcg_gen_addi_tl(tmp, EA, 8); \
+        gen_log_reg_write(HEX_REG_SP, tmp); \
+        gen_write_new_pc(pkt, fGETWORD(1, RddV)); \
         tcg_temp_free_i64(tmp_i64); \
         tcg_temp_free(tmp); \
+        tcg_temp_free(WORD); \
+        gen_set_label(skip); \
     } while (0)
 
 #define fGEN_TCG_L4_return_t(SHORTCODE) \
@@ -1594,40 +1576,26 @@
 #define fGEN_TCG_COND_RETURN_SUBINSN(PRED) \
     do { \
         TCGv LSB = tcg_temp_new(); \
-        TCGv_i64 LSB_i64 = tcg_temp_new_i64(); \
-        TCGv zero = tcg_const_tl(0); \
-        TCGv_i64 zero_i64 = tcg_const_i64(0); \
-        TCGv_i64 unscramble = tcg_temp_new_i64(); \
         TCGv_i64 RddV = tcg_temp_new_i64(); \
-        TCGv WORD = tcg_temp_local_new(); \
-        TCGv SP = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
         TCGv tmp = tcg_temp_new(); \
+        TCGv WORD = tcg_temp_new(); \
+        TCGLabel *skip = gen_new_label(); \
         fEA_REG(gen_read_reg(tmp, HEX_REG_FP)); \
         PRED; \
-        tcg_gen_extu_i32_i64(LSB_i64, LSB); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, skip); \
         fLOAD(1, 8, u, EA, tmp_i64); \
-        tcg_gen_mov_i64(unscramble, gen_frame_unscramble(tmp_i64)); \
-        tcg_gen_concat_i32_i64(RddV, hex_gpr[HEX_REG_FP], \
-                                     hex_gpr[HEX_REG_LR]); \
-        tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, zero_i64, \
-                            unscramble, RddV); \
-        tcg_gen_mov_tl(SP, hex_gpr[HEX_REG_SP]); \
-        tcg_gen_addi_tl(tmp, EA, 8); \
-        tcg_gen_movcond_tl(TCG_COND_NE, SP, LSB, zero, tmp, SP); \
-        gen_log_predicated_reg_write(HEX_REG_SP, SP, insn->slot); \
-        gen_log_predicated_reg_write_pair(HEX_REG_FP, RddV, insn->slot); \
-        gen_cond_return(pkt, LSB, fGETWORD(1, RddV)); \
+        tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
         tcg_temp_free(LSB); \
-        tcg_temp_free_i64(LSB_i64); \
-        tcg_temp_free(zero); \
-        tcg_temp_free_i64(zero_i64); \
-        tcg_temp_free_i64(unscramble); \
+        tcg_gen_addi_tl(tmp, EA, 8); \
+        gen_log_reg_write(HEX_REG_SP, tmp); \
+        gen_write_new_pc(pkt, fGETWORD(1, RddV)); \
+        gen_log_reg_write_pair(HEX_REG_FP, RddV); \
         tcg_temp_free_i64(RddV); \
-        tcg_temp_free(WORD); \
-        tcg_temp_free(SP); \
         tcg_temp_free_i64(tmp_i64); \
         tcg_temp_free(tmp); \
+        tcg_temp_free(WORD); \
+        gen_set_label(skip); \
     } while (0)
 
 #define fGEN_TCG_SL2_return_t(SHORTCODE) \
@@ -2224,16 +2192,10 @@
 /* if (p0.new) r0 = #0 */
 #define fGEN_TCG_SA1_clrtnew(SHORTCODE) \
     do { \
-        TCGv mask = tcg_temp_new(); \
-        TCGv zero = tcg_const_tl(0); \
+        TCGLabel *skip = gen_new_label(); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, hex_new_pred_value[0], 0, skip); \
         tcg_gen_movi_tl(RdV, 0); \
-        tcg_gen_movi_tl(mask, 1 << insn->slot); \
-        tcg_gen_or_tl(mask, hex_slot_cancelled, mask); \
-        tcg_gen_movcond_tl(TCG_COND_EQ, hex_slot_cancelled, \
-                           hex_new_pred_value[0], zero, \
-                           mask, hex_slot_cancelled); \
-        tcg_temp_free(mask); \
-        tcg_temp_free(zero); \
+        gen_set_label(skip); \
     } while (0)
 
 /* r0 = add(r1 , mpyi(#6, r2)) */
@@ -2247,17 +2209,12 @@
 #define GEN_TCG_padd(PRED, ADD) \
     do { \
         TCGv LSB = tcg_temp_new(); \
-        TCGv mask = tcg_temp_new(); \
-        TCGv zero = tcg_const_tl(0); \
+        TCGLabel *skip = gen_new_label(); \
         PRED; \
-        ADD; \
-        tcg_gen_movi_tl(mask, 1 << insn->slot); \
-        tcg_gen_or_tl(mask, hex_slot_cancelled, mask); \
-        tcg_gen_movcond_tl(TCG_COND_NE, hex_slot_cancelled, LSB, zero, \
-                           hex_slot_cancelled, mask); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, skip); \
         tcg_temp_free(LSB); \
-        tcg_temp_free(mask); \
-        tcg_temp_free(zero); \
+        ADD; \
+        gen_set_label(skip); \
     } while (0)
 
 #define fGEN_TCG_A2_paddt(SHORTCODE) \
@@ -2280,29 +2237,22 @@
     GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_xor_tl(RdV, RsV, RtV))
 
 /* Conditional move instructions */
-#define fGEN_TCG_COND_MOVE(VAL, COND) \
+#define fGEN_TCG_COND_MOVE(VAL) \
     do { \
         TCGv LSB = tcg_temp_new(); \
-        TCGv zero = tcg_const_tl(0); \
-        TCGv mask = tcg_temp_new(); \
-        TCGv value = tcg_const_tl(siV); \
+        TCGLabel *skip = gen_new_label(); \
         VAL; \
-        tcg_gen_movcond_tl(COND, RdV, LSB, zero, value, zero); \
-        tcg_gen_movi_tl(mask, 1 << insn->slot); \
-        tcg_gen_movcond_tl(TCG_COND_EQ, mask, LSB, zero, mask, zero); \
-        tcg_gen_or_tl(hex_slot_cancelled, hex_slot_cancelled, mask); \
-        tcg_temp_free(LSB); \
-        tcg_temp_free(zero); \
-        tcg_temp_free(mask); \
-        tcg_temp_free(value); \
+        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, skip); \
+        tcg_gen_movi_tl(RdV, siV); \
+        gen_set_label(skip); \
     } while (0)
 
 #define fGEN_TCG_C2_cmoveit(SHORTCODE) \
-    fGEN_TCG_COND_MOVE(fLSBOLD(PuV), TCG_COND_NE)
+    fGEN_TCG_COND_MOVE(fLSBOLD(PuV))
 #define fGEN_TCG_C2_cmovenewit(SHORTCODE) \
-    fGEN_TCG_COND_MOVE(fLSBNEW(PuN), TCG_COND_NE)
+    fGEN_TCG_COND_MOVE(fLSBNEW(PuN))
 #define fGEN_TCG_C2_cmovenewif(SHORTCODE) \
-    fGEN_TCG_COND_MOVE(fLSBNEWNOT(PuN), TCG_COND_NE)
+    fGEN_TCG_COND_MOVE(fLSBNEWNOT(PuN))
 
 /* r0 = mux(p0, #3, #5) */
 #define fGEN_TCG_C2_muxii(SHORTCODE) \

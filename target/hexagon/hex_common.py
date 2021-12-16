@@ -240,6 +240,13 @@ def need_pkt_has_multi_cof(tag):
         return True
     return False
 
+def need_condexec_reg(tag, regs):
+    if 'A_CONDEXEC' in attribdict[tag]:
+        for regtype, regid, toss, numregs in regs:
+            if is_written(regid) and not is_hvx_reg(regtype):
+                return True
+    return False
+
 def skip_qemu_helper(tag):
     return tag in overrides.keys()
 

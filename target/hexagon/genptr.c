@@ -42,30 +42,6 @@ static TCGv gen_read_preg(TCGv pred, uint8_t num)
     return pred;
 }
 
-static void gen_log_predicated_reg_write(int rnum, TCGv val, int slot)
-{
-    TCGv zero = tcg_const_tl(0);
-    TCGv slot_mask = tcg_temp_new();
-
-    tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, zero,
-                           val, hex_new_value[rnum]);
-    if (HEX_DEBUG) {
-        /*
-         * Do this so HELPER(debug_commit_end) will know
-         *
-         * Note that slot_mask indicates the value is not written
-         * (i.e., slot was cancelled), so we create a true/false value before
-         * or'ing with hex_reg_written[rnum].
-         */
-        tcg_gen_setcond_tl(TCG_COND_EQ, slot_mask, slot_mask, zero);
-        tcg_gen_or_tl(hex_reg_written[rnum], hex_reg_written[rnum], slot_mask);
-    }
-
-    tcg_temp_free(zero);
-    tcg_temp_free(slot_mask);
-}
-
 static void gen_log_reg_write(int rnum, TCGv val)
 {
     tcg_gen_mov_tl(hex_new_value[rnum], val);
@@ -73,42 +49,6 @@ static void gen_log_reg_write(int rnum, TCGv val)
         /* Do this so HELPER(debug_commit_end) will know */
         tcg_gen_movi_tl(hex_reg_written[rnum], 1);
     }
-}
-
-static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot)
-{
-    TCGv val32 = tcg_temp_new();
-    TCGv zero = tcg_const_tl(0);
-    TCGv slot_mask = tcg_temp_new();
-
-    tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
-    /* Low word */
-    tcg_gen_extrl_i64_i32(val32, val);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum],
-                       slot_mask, zero,
-                       val32, hex_new_value[rnum]);
-    /* High word */
-    tcg_gen_extrh_i64_i32(val32, val);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum + 1],
-                       slot_mask, zero,
-                       val32, hex_new_value[rnum + 1]);
-    if (HEX_DEBUG) {
-        /*
-         * Do this so HELPER(debug_commit_end) will know
-         *
-         * Note that slot_mask indicates the value is not written
-         * (i.e., slot was cancelled), so we create a true/false value before
-         * or'ing with hex_reg_written[rnum].
-         */
-        tcg_gen_setcond_tl(TCG_COND_EQ, slot_mask, slot_mask, zero);
-        tcg_gen_or_tl(hex_reg_written[rnum], hex_reg_written[rnum], slot_mask);
-        tcg_gen_or_tl(hex_reg_written[rnum + 1], hex_reg_written[rnum + 1],
-                      slot_mask);
-    }
-
-    tcg_temp_free(val32);
-    tcg_temp_free(zero);
-    tcg_temp_free(slot_mask);
 }
 
 static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
@@ -541,16 +481,6 @@ static void gen_set_usr_fieldi(int field, int x)
     TCGv val = tcg_const_tl(x);
     gen_set_usr_field(field, val);
     tcg_temp_free(val);
-}
-
-static void gen_cond_return(Packet *pkt, TCGv pred, TCGv addr)
-{
-    TCGLabel *skip = gen_new_label();
-    tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, skip);
-
-    gen_write_new_pc(pkt, addr);
-
-    gen_set_label(skip);
 }
 
 static void gen_loop0r(Packet *pkt, TCGv RsV, int riV, Insn *insn)

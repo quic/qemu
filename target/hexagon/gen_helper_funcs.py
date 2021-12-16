@@ -225,6 +225,14 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     print("Bad register parse: ",regtype,regid,toss,numregs)
                 i += 1
 
+        ## For conditional instructions, we pass in the destination register
+        if 'A_CONDEXEC' in hex_common.attribdict[tag]:
+            for regtype, regid, toss, numregs in regs:
+                if (hex_common.is_written(regid) and
+                    not hex_common.is_hvx_reg(regtype)):
+                    gen_helper_arg_opn(f, regtype, regid, i, tag)
+                    i += 1
+
         ## Arguments to the helper function are the source regs and immediates
         for regtype,regid,toss,numregs in regs:
             if (hex_common.is_read(regid)):
@@ -259,10 +267,11 @@ def gen_helper_function(f, tag, tagregs, tagimms):
         if hex_common.need_ea(tag): gen_decl_ea(f)
         ## Declare the return variable
         i=0
-        for regtype,regid,toss,numregs in regs:
-            if (hex_common.is_writeonly(regid)):
-                gen_helper_dest_decl_opn(f,regtype,regid,i)
-            i += 1
+        if 'A_CONDEXEC' not in hex_common.attribdict[tag]:
+            for regtype,regid,toss,numregs in regs:
+                if (hex_common.is_writeonly(regid)):
+                    gen_helper_dest_decl_opn(f,regtype,regid,i)
+                i += 1
 
         for regtype,regid,toss,numregs in regs:
             if (hex_common.is_read(regid)):
