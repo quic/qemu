@@ -106,4 +106,4 @@ DEF_HELPER_2(vwhist128qm, void, env, s32)
 
 DEF_HELPER_2(probe_pkt_scalar_store_s0, void, env, int)
 DEF_HELPER_2(probe_hvx_stores, void, env, int)
-DEF_HELPER_3(probe_pkt_scalar_hvx_stores, void, env, int, int)
+DEF_HELPER_2(probe_pkt_scalar_hvx_stores, void, env, int)

@@ -702,34 +702,34 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
         g_assert(has_store_s0 && !has_store_s1 && !has_hvx_store);
         process_dczeroa(ctx, pkt);
     } else if (has_hvx_store) {
-        TCGv mem_idx = tcg_const_tl(ctx->mem_idx);
 
         if (!has_store_s0 && !has_store_s1) {
+            TCGv mem_idx = tcg_const_tl(ctx->mem_idx);
             gen_helper_probe_hvx_stores(cpu_env, mem_idx);
+            tcg_temp_free(mem_idx);
         } else {
-            int mask = 0;
-            TCGv mask_tcgv;
+            int args = ctx->mem_idx;
+            TCGv args_tcgv;
 
             if (has_store_s0) {
-                mask |= (1 << 0);
+                args |= (1 << 2);
             }
             if (has_store_s1) {
-                mask |= (1 << 1);
+                args |= (1 << 3);
             }
             if (has_hvx_store) {
-                mask |= (1 << 2);
+                args |= (1 << 4);
             }
             if (has_store_s0 && slot_is_predicated(pkt, 0)) {
-                mask |= (1 << 3);
+                args |= (1 << 5);
             }
             if (has_store_s1 && slot_is_predicated(pkt, 1)) {
-                mask |= (1 << 4);
+                args |= (1 << 6);
             }
-            mask_tcgv = tcg_const_tl(mask);
-            gen_helper_probe_pkt_scalar_hvx_stores(cpu_env, mask_tcgv, mem_idx);
-            tcg_temp_free(mask_tcgv);
+            args_tcgv = tcg_const_tl(args);
+            gen_helper_probe_pkt_scalar_hvx_stores(cpu_env, args_tcgv);
+            tcg_temp_free(args_tcgv);
         }
-        tcg_temp_free(mem_idx);
     } else if (has_store_s0 && has_store_s1) {
         /*
          * process_store_log will execute the slot 1 store first,

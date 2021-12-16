@@ -509,14 +509,14 @@ void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
     }
 }
 
-void HELPER(probe_pkt_scalar_hvx_stores)(CPUHexagonState *env, int mask,
-                                         int mmu_idx)
+void HELPER(probe_pkt_scalar_hvx_stores)(CPUHexagonState *env, int args)
 {
-    bool has_st0        = (mask >> 0) & 1;
-    bool has_st1        = (mask >> 1) & 1;
-    bool has_hvx_stores = (mask >> 2) & 1;
-    bool s0_is_pred     = (mask >> 3) & 1;
-    bool s1_is_pred     = (mask >> 4) & 1;
+    int mmu_idx         = (args >> 0) & 0x3;
+    bool has_st0        = (args >> 2) & 1;
+    bool has_st1        = (args >> 3) & 1;
+    bool has_hvx_stores = (args >> 4) & 1;
+    bool s0_is_pred     = (args >> 5) & 1;
+    bool s1_is_pred     = (args >> 6) & 1;
 
     if (has_st0) {
         probe_store(env, 0, mmu_idx, s0_is_pred);
