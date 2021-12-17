@@ -157,6 +157,4 @@ typedef struct {
     uint32_t qtmr_rg1;
 } hexagon_config_extensions;
 
-void hexagon_read_timer(uint32_t *low, uint32_t *high);
-
 #endif

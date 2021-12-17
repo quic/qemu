@@ -573,6 +573,7 @@ typedef struct HexagonCPU {
     uint32_t boot_addr;
     uint32_t boot_evb;
     uint32_t l2vic_base_addr;
+    uint32_t qtimer_base_addr;
 #endif
     bool lldb_compat;
     target_ulong lldb_stack_adjust;

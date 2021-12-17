@@ -191,6 +191,7 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr", cfgExtensions->cfgbase);
         qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
         qdev_prop_set_uint32(DEVICE(cpu), "l2vic-base-addr", cfgExtensions->l2vic_base);
+        qdev_prop_set_uint32(DEVICE(cpu), "qtimer-base-addr", cfgExtensions->qtmr_rg0);
 
         /* CPU #0 is the only CPU running at boot, others must be
          * explicitly enabled via start instruction.
@@ -267,15 +268,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
 
     rom_add_blob_fixed_as("config_table.rom", config_table,
         sizeof(*config_table), cfgExtensions->cfgbase, &address_space_memory);
-}
-
-void hexagon_read_timer(uint32_t *low, uint32_t *high)
-{
-    const hwaddr low_addr  = cfgExtensions->qtmr_rg0 + QCT_QTIMER_CNTPCT_LO;
-    const hwaddr high_addr = cfgExtensions->qtmr_rg0 + QCT_QTIMER_CNTPCT_HI;
-
-    cpu_physical_memory_read(low_addr, low, sizeof(*low));
-    cpu_physical_memory_read(high_addr, high, sizeof(*high));
 }
 
 #define TYPE_FASTL2VIC "fastl2vic"
