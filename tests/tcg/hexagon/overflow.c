@@ -72,11 +72,19 @@ int read_usr_overflow(void)
     return result & 1;
 }
 
-int read_usr_fp_invalid(void)
+int get_usr_overflow(int usr)
 {
-    int result;
-    asm volatile("%0 = usr\n\t" : "=r"(result));
-    return (result >> 1) & 1;
+    return usr & 1;
+}
+
+int get_usr_fp_invalid(int usr)
+{
+    return (usr >> 1) & 1;
+}
+
+int get_usr_lpcfg(int usr)
+{
+    return (usr >> 8) & 0x3;
 }
 
 jmp_buf jmp_env;
@@ -109,8 +117,26 @@ static void test_packet(void)
 
     check(convres, 0xffffffff);
     check(satres, 0x7f);
-    check(read_usr_overflow(), 1);
-    check(read_usr_fp_invalid(), 1);
+    check(get_usr_overflow(usr), 1);
+    check(get_usr_fp_invalid(usr), 1);
+
+    asm("r2 = usr\n\t"
+        "r2 = clrbit(r2, #0)\n\t"        /* clear overflow bit */
+        "usr = r2\n\t"
+        "%2 = r2\n\t"
+        "p3 = sp3loop0(1f, #1)\n\t"
+        "1:\n\t"
+        "{\n\t"
+        "    %0 = satb(%2)\n\t"
+        "}:endloop0\n\t"
+        "%1 = usr\n\t"
+        : "=r"(satres), "=r"(usr)
+        : "r"(0x0410eec0)
+        : "r2", "usr", "p3", "sa0", "lc0");
+
+    check(satres, 0x7f);
+    check(get_usr_overflow(usr), 1);
+    check(get_usr_lpcfg(usr), 2);
 }
 
 int main()
