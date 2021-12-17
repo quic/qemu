@@ -45,6 +45,7 @@ typedef struct L2VICState {
 
     QemuMutex active;
     MemoryRegion iomem;
+    MemoryRegion fast_iomem;
     uint32_t level;
     uint32_t vid_group[4]; /* offset 0:vid group 0 etc, 10 bits in each group are used. */
     bool     vidpending;
@@ -319,6 +320,47 @@ static const MemoryRegionOps l2vic_ops = {
     .valid.unaligned = false,
 };
 
+#define FASTL2VIC_ENABLE 0x0
+#define FASTL2VIC_DISABLE 0x1
+#define FASTL2VIC_INT 0x2
+
+static void fastl2vic_write(void *opaque, hwaddr offset,
+                        uint64_t val, unsigned size)
+{
+    if (offset == 0) {
+
+        uint32_t cmd = (val >> 16) & 0x3;
+        uint32_t irq = val & 0x3ff;
+        uint32_t slice = (irq / 32) * 4;
+        val = 1 << (irq % 32);
+
+        if (cmd == FASTL2VIC_ENABLE) {
+            l2vic_write(opaque, L2VIC_INT_ENABLE_SETn + slice, val, size);
+        } else if (cmd == FASTL2VIC_DISABLE) {
+            l2vic_write(opaque, L2VIC_INT_ENABLE_CLEARn + slice, val, size);
+        } else if (cmd == FASTL2VIC_INT) {
+            l2vic_write(opaque, L2VIC_SOFT_INTn + slice, val, size);
+        }
+        /* RESERVED */
+        else if (cmd == 0x3) {
+            g_assert(0);
+        }
+        return;
+    }
+    qemu_log_mask(LOG_GUEST_ERROR, "%s: invalid write offset 0x%08x\n",
+        __func__, (unsigned int)offset);
+    /* Address zero is the only legal spot to write */
+    g_assert(0);
+}
+
+static const MemoryRegionOps fastl2vic_ops = {
+    .write = fastl2vic_write,
+    .endianness = DEVICE_NATIVE_ENDIAN,
+    .valid.min_access_size = 4,
+    .valid.max_access_size = 4,
+    .valid.unaligned = false,
+};
+
 static void l2vic_reset(DeviceState *d)
 {
     L2VICState *s = L2VIC(d);
@@ -347,6 +389,9 @@ static void l2vic_init(Object *obj)
 
     memory_region_init_io(&s->iomem, obj, &l2vic_ops, s, "l2vic", 0x1000);
     sysbus_init_mmio(sbd, &s->iomem);
+    memory_region_init_io(&s->fast_iomem, obj, &fastl2vic_ops, s, "fast", 0x10000);
+    sysbus_init_mmio(sbd, &s->fast_iomem);
+
     qdev_init_gpio_in(dev, l2vic_set_irq, L2VIC_INTERRUPT_MAX);
     for (i=0; i<8; i++)
         sysbus_init_irq(sbd, &s->irq[i]);
