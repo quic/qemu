@@ -45,6 +45,7 @@
 #include "hw/hexagon/hexagon.h"
 #include "hex_mmu.h"
 #include "hw/intc/l2vic.h"
+#include "hw/timer/qct-qtimer.h"
 #endif
 
 #define SF_BIAS        127
@@ -1905,6 +1906,18 @@ void HELPER(ciad)(CPUHexagonState *env, uint32_t src)
     return;
 }
 
+
+static void hexagon_read_timer(CPUHexagonState *env, uint32_t *low, uint32_t *high)
+{
+    CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    const hwaddr low_addr  = cpu->qtimer_base_addr + QCT_QTIMER_CNTPCT_LO;
+    const hwaddr high_addr = cpu->qtimer_base_addr + QCT_QTIMER_CNTPCT_HI;
+
+    cpu_physical_memory_read(low_addr, low, sizeof(*low));
+    cpu_physical_memory_read(high_addr, high, sizeof(*high));
+}
+
 uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
 {
     uint32_t low, high;
@@ -1918,12 +1931,12 @@ uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
         ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTHI, high);
         return high;
     case HEX_REG_UTIMERLO:
-        hexagon_read_timer(&low, &high);
+        hexagon_read_timer(env, &low, &high);
         ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
         ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
         return low;
     case HEX_REG_UTIMERHI:
-        hexagon_read_timer(&low, &high);
+        hexagon_read_timer(env, &low, &high);
         ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
         ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
         return high;
@@ -1949,7 +1962,7 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
         ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTHI, high);
         return low | (uint64_t)high << 32;
     } else if (reg == HEX_REG_UTIMERLO) {
-        hexagon_read_timer(&low, &high);
+        hexagon_read_timer(env, &low, &high);
         ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
         ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
         return low | (uint64_t)high << 32;
@@ -1966,7 +1979,7 @@ uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
     } else if ((reg == HEX_SREG_TIMERLO) || (reg == HEX_SREG_TIMERHI)) {
         uint32_t low = 0;
         uint32_t high = 0;
-        hexagon_read_timer(&low, &high);
+        hexagon_read_timer(env, &low, &high);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERLO, low);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERHI, high);
     } else if (reg == HEX_SREG_BADVA) {
@@ -1984,7 +1997,7 @@ uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
     if (reg == HEX_SREG_TIMERLO) {
         uint32_t low = 0;
         uint32_t high = 0;
-        hexagon_read_timer(&low, &high);
+        hexagon_read_timer(env, &low, &high);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERLO, low);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERHI, high);
     }
