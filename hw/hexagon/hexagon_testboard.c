@@ -238,8 +238,7 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         qdev_get_gpio_in(DEVICE(cpu), 6), /* IRQ 6, 22, 0xc6 */
         qdev_get_gpio_in(DEVICE(cpu), 7), /* IRQ 7, 23, 0xc7 */
         NULL);
-
-    sysbus_create_varargs("fastl2vic", cfgTable->fastl2vic_base, NULL);
+    sysbus_mmio_map(SYS_BUS_DEVICE(dev), 1, cfgTable->fastl2vic_base);
 
     /* This is tightly with the IRQ selected must match the value below
      * or the interrupts will not be seen
@@ -269,101 +268,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
     rom_add_blob_fixed_as("config_table.rom", config_table,
         sizeof(*config_table), cfgExtensions->cfgbase, &address_space_memory);
 }
-
-#define TYPE_FASTL2VIC "fastl2vic"
-#define FASTL2VIC(obj) OBJECT_CHECK(FastL2VICState, (obj), TYPE_FASTL2VIC)
-#define FASTL2VIC_ENABLE 0x0
-#define FASTL2VIC_DISABLE 0x1
-#define FASTL2VIC_INT 0x2
-
-typedef struct FastL2VICState {
-    SysBusDevice parent_obj;
-    MemoryRegion iomem;
-} FastL2VICState;
-
-#define L2VICA(s, n) \
-    (s[(n) >> 2])
-
-static void fastl2vic_write(void *opaque, hwaddr offset,
-                        uint64_t val, unsigned size) {
-
-    if (offset == 0) {
-
-        uint32_t cmd = (val >> 16) & 0x3;
-        uint32_t irq = val & 0x3ff;
-        uint32_t slice = (irq / 32) * 4;
-        val = 1 << (irq % 32);
-
-        if (cmd == FASTL2VIC_ENABLE) {
-            const hwaddr addr = cfgExtensions->l2vic_base
-                                + L2VIC_INT_ENABLE_SETn;
-            cpu_physical_memory_write(addr + slice, &val, size);
-        } else if (cmd == FASTL2VIC_DISABLE) {
-            const hwaddr addr = cfgExtensions->l2vic_base
-                                + L2VIC_INT_ENABLE_CLEARn;
-            cpu_physical_memory_write(addr + slice, &val, size);
-        } else if (cmd == FASTL2VIC_INT) {
-            const hwaddr addr = cfgExtensions->l2vic_base
-                                + L2VIC_SOFT_INTn;
-            cpu_physical_memory_write(addr + slice, &val, size);
-        }
-        /* RESERVED */
-        else if (cmd == 0x3) {
-            g_assert(0);
-        }
-        return;
-    }
-    qemu_log_mask(LOG_GUEST_ERROR, "%s: invalid write offset 0x%08x\n",
-        __func__, (unsigned int)offset);
-    /* Address zero is the only legal spot to write */
-    g_assert(0);
-}
-
-static const MemoryRegionOps fastl2vic_ops = {
-    .write = fastl2vic_write,
-    .endianness = DEVICE_NATIVE_ENDIAN,
-    .valid.min_access_size = 4,
-    .valid.max_access_size = 4,
-    .valid.unaligned = false,
-};
-
-static void fastl2vic_init(Object *obj)
-{
-    FastL2VICState *s = FASTL2VIC(obj);
-    SysBusDevice *sbd = SYS_BUS_DEVICE(obj);
-
-    memory_region_init_io(&s->iomem, obj, &fastl2vic_ops, s,
-                          "fastl2vic", 0x10000);
-    sysbus_init_mmio(sbd, &s->iomem);
-}
-
-static const VMStateDescription vmstate_fastl2vic = {
-    .name = "fastl2vic",
-    .version_id = 1,
-    .minimum_version_id = 1,
-};
-
-static void fastl2vic_class_init(ObjectClass *klass, void *data)
-{
-    DeviceClass *dc = DEVICE_CLASS(klass);
-
-    dc->vmsd = &vmstate_fastl2vic;
-}
-
-static const TypeInfo fastl2vic_info = {
-    .name          = "fastl2vic",
-    .parent        = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(FastL2VICState),
-    .instance_init = fastl2vic_init,
-    .class_init    = fastl2vic_class_init,
-};
-
-static void fastl2vic_register_types(void)
-{
-    type_register_static(&fastl2vic_info);
-}
-
-type_init(fastl2vic_register_types)
 
 /* ----------------------------------------------------------------- */
 /* Core-specific configuration settings are defined below this line. */
