@@ -37,6 +37,8 @@
 #include "sysemu/cpus.h"
 #endif
 
+#define INVALID_REG_VAL (0xababababULL)
+
 static void hexagon_common_cpu_init(Object *obj)
 {
 }
@@ -434,6 +436,9 @@ static void hexagon_cpu_reset(DeviceState *dev)
     set_float_detect_tininess(float_tininess_before_rounding, &env->fp_status);
     hmx_reset(env->processor_ptr, env);
 
+    env->t_packet_count = 0;
+    *(env->g_pcycle_base) = 0;
+
 #ifndef CONFIG_USER_ONLY
     clear_wait_mode(env);
 
@@ -559,6 +564,18 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
             HEXAGON_CFG_ADDR_BASE(cpu->config_table_addr);
         env->g_sreg[HEX_SREG_REV] = cpu->rev_reg;
         env->g_sreg[HEX_SREG_MODECTL] = 0x1;
+        env->g_pcycle_base = g_malloc0(sizeof(*env->g_pcycle_base));
+
+        /*
+         * These register indices are placeholders in these arrays
+         * and their actual values are synthesized from state elsewhere.
+         * We can initialize these with invalid values so that if we
+         * mistakenly generate reads, they will look obviously wrong.
+         */
+        env->g_sreg[HEX_SREG_PCYCLELO] = INVALID_REG_VAL;
+        env->g_sreg[HEX_SREG_PCYCLEHI] = INVALID_REG_VAL;
+        env->g_sreg[HEX_SREG_TIMERLO]  = INVALID_REG_VAL;
+        env->g_sreg[HEX_SREG_TIMERHI]  = INVALID_REG_VAL;
     }
     else {
         CPUState *cpu0_s = NULL;
@@ -574,6 +591,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->cmdline = env0->cmdline;
         env->lib_search_dir = env0->lib_search_dir;
         env->processor_ptr->shared_extptr = env0->processor_ptr->shared_extptr;
+        env->g_pcycle_base = env0->g_pcycle_base;
 
         dma_t *dma_ptr = env->processor_ptr->dma[env->threadId];
         udma_ctx_t *udma_ctx = (udma_ctx_t *)dma_ptr->udma_ctx;
@@ -591,11 +609,19 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 #else
     env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
     hmx_configure_state(env);
+    env->g_pcycle_base = g_malloc0(sizeof(*env->g_pcycle_base));
 #endif
     cpu_reset(cs);
 #if !defined(CONFIG_USER_ONLY)
     env->g_sreg[HEX_SREG_EVB] = cpu->boot_evb;
     env->gpr[HEX_REG_PC] = cpu->boot_addr;
+
+    env->gpr[HEX_REG_UPCYCLELO] = INVALID_REG_VAL;
+    env->gpr[HEX_REG_UPCYCLEHI] = INVALID_REG_VAL;
+    env->gpr[HEX_REG_UTIMERLO]  = INVALID_REG_VAL;
+    env->gpr[HEX_REG_UTIMERHI]  = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPCYCLELO] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPCYCLEHI] = INVALID_REG_VAL;
 #endif
 
     mcc->parent_realize(dev, errp);
@@ -1289,10 +1315,10 @@ uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg)
         return ssr_pe ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_GCYCLE_1T + off) : 0;
 
     case HEX_GREG_GPCYCLELO:
-        return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO) : 0;
+        return ssr_ce ? hexagon_get_sys_pcycle_count_low(env) : 0;
 
     case HEX_GREG_GPCYCLEHI:
-        return ssr_ce ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI) : 0;
+        return ssr_ce ? hexagon_get_sys_pcycle_count_high(env) : 0;
 
     case HEX_GREG_GPMUCNT0:
     case HEX_GREG_GPMUCNT1:

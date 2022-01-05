@@ -568,4 +568,56 @@ void hexagon_enable_int(CPUHexagonState *env, uint32_t int_num)
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
 }
 
+static const int PCYCLES_PER_PACKET = 3;
+uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env)
+{
+    uint64_t packets = 0;
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *env_ = &cpu->env;
+        packets += env_->t_packet_count;
+    }
+    return *(env->g_pcycle_base) + (packets * PCYCLES_PER_PACKET);
+}
+
+uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env)
+{
+    return hexagon_get_sys_pcycle_count(env) >> 32;
+}
+
+uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env)
+{
+    return extract64(hexagon_get_sys_pcycle_count(env), 0, 32);
+}
+
+void hexagon_set_sys_pcycle_count_high(CPUHexagonState *env,
+        uint32_t cycles_hi)
+{
+    uint64_t cur_cycles = hexagon_get_sys_pcycle_count(env);
+    uint64_t cycles = ((uint64_t)cycles_hi << 32)
+        | extract64(cur_cycles, 0, 32);
+    hexagon_set_sys_pcycle_count(env, cycles);
+}
+
+void hexagon_set_sys_pcycle_count_low(CPUHexagonState *env,
+        uint32_t cycles_lo)
+{
+    uint64_t cur_cycles = hexagon_get_sys_pcycle_count(env);
+    uint64_t cycles = extract64(cur_cycles, 32, 32) | cycles_lo;
+    hexagon_set_sys_pcycle_count(env, cycles);
+}
+
+void hexagon_set_sys_pcycle_count(CPUHexagonState *env, uint64_t cycles)
+{
+    *(env->g_pcycle_base) = cycles;
+
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *env_ = &cpu->env;
+        env_->t_packet_count = 0;
+    }
+}
+
 #endif

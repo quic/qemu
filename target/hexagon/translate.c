@@ -68,6 +68,7 @@ TCGv hex_cause_code;
 TCGv_i32 hex_last_cpu;
 TCGv_i32 hex_thread_id;
 #endif
+TCGv_i64 hex_packet_count;
 TCGv hex_vstore_addr[VSTORES_MAX];
 TCGv hex_vstore_size[VSTORES_MAX];
 TCGv hex_vstore_pending[VSTORES_MAX];
@@ -140,6 +141,23 @@ static void gen_exec_counters(DisasContext *ctx)
                     hex_gpr[HEX_REG_QEMU_HVX_CNT], ctx->num_hvx_insns);
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HMX_CNT],
                     hex_gpr[HEX_REG_QEMU_HMX_CNT], ctx->num_hmx_insns);
+
+    /*
+     * Increment packet count in order to model PCYCLE (global sreg)
+     * Only if SYSCFG[PCYCLEEN] is set
+     *     Note that we check SYSCFG[PCYCLEEN] in cpu_get_tb_cpu_state,
+     *     and we set ctx->pcycle_enabled in hexagon_tr_tb_start.
+     *     This means, we'll generate code for the TB differently
+     *     depending on the value.
+     *
+     * The implications of counting pcycles at the end of a translation
+     * block are that we will not count the number of times it is replayed,
+     * and a read of the pcycles mid-TB will not reflect the pcycles
+     * accumulated during the TB.
+     */
+    if (ctx->pcycle_enabled) {
+        tcg_gen_addi_i64(hex_packet_count, hex_packet_count, ctx->num_packets);
+    }
 }
 
 static void gen_end_tb(DisasContext *ctx)
@@ -351,28 +369,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
 
 
 #ifndef CONFIG_USER_ONLY
-    /*
-     * Increment PCYCLEHI/PCYCLELO (global sreg)
-     * Only if SYSCFG[PCYCLEEN] is set
-     *     Note that we check SYSCFG[PCYCLEEN] in cpu_get_tb_cpu_state,
-     *     and we set ctx->pcycle_enabled in hexagon_tr_tb_start.
-     *     This means, we'll generate code for the TB differently
-     *     depending on the value.
-     *
-     * The implication of counting pcycles at the start of a packet
-     * is that we'll count the number of times it is replayed.
-     */
-    if (ctx->pcycle_enabled) {
-        TCGv_i64 val64 = tcg_temp_new_i64();
-        TCGv num = tcg_constant_tl(HEX_SREG_PCYCLELO);
-
-        gen_helper_sreg_read_pair(val64, cpu_env, num);
-        tcg_gen_addi_i64(val64, val64, 3);
-        gen_helper_sreg_write_pair(cpu_env, num, val64);
-
-        tcg_temp_free_i64(val64);
-    }
-
     HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
 
     if (hex_cpu->count_gcycle_xt) {
@@ -1037,6 +1033,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->zero64 = tcg_constant_i64(0);
     ctx->ones = tcg_constant_tl(0xff);
     ctx->ones64 = tcg_constant_i64(0xff);
+    ctx->pcycle_enabled = false;
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
@@ -1050,7 +1047,7 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     }
     ctx->hvx_check_emitted = false;
     ctx->hmx_check_emitted = false;
-    ctx->pcycle_enabled = get_pcycle_enabled_flag(db->tb->flags);
+    ctx->pcycle_enabled = get_pcycle_enabled_flag(db->tb->flags) != 0;
 #endif
 }
 
@@ -1255,6 +1252,8 @@ void hexagon_translate_init(void)
 #endif
         }
     }
+    hex_packet_count = tcg_global_mem_new_i64(cpu_env,
+            offsetof(CPUHexagonState, t_packet_count), "t_packet_count");
 #endif
     for (i = 0; i < NUM_PREGS; i++) {
         hex_pred[i] = tcg_global_mem_new(cpu_env,

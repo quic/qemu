@@ -1984,15 +1984,15 @@ uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
         high = 0;
         ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTHI, high);
         return high;
+    case HEX_REG_UPCYCLELO:
+        return hexagon_get_sys_pcycle_count_low(env);
+    case HEX_REG_UPCYCLEHI:
+        return hexagon_get_sys_pcycle_count_high(env);
     case HEX_REG_UTIMERLO:
         hexagon_read_timer(env, &low, &high);
-        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
-        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
         return low;
     case HEX_REG_UTIMERHI:
         hexagon_read_timer(env, &low, &high);
-        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
-        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
         return high;
     default:
         g_assert_not_reached();
@@ -2004,11 +2004,8 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
     uint32_t low = 0, high = 0;
     if (reg == HEX_REG_UPCYCLELO) {
         target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-        if (GET_SSR_FIELD(SSR_CE, ssr)) {
-          low = ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO);
-          high = ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI);
-        }
-        return low | (uint64_t)high << 32;
+        int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
+        return ssr_ce ? hexagon_get_sys_pcycle_count(env) : 0;
     } else if (reg == HEX_REG_PKTCNTLO) {
         low = ARCH_GET_THREAD_REG(env, HEX_REG_QEMU_PKT_CNT);
         high = 0;
@@ -2036,6 +2033,10 @@ uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
         hexagon_read_timer(env, &low, &high);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERLO, low);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERHI, high);
+    } else if (reg == HEX_SREG_PCYCLELO) {
+        return hexagon_get_sys_pcycle_count_low(env);
+    } else if (reg == HEX_SREG_PCYCLEHI) {
+        return hexagon_get_sys_pcycle_count_high(env);
     } else if (reg == HEX_SREG_BADVA) {
         target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
         if (GET_SSR_FIELD(SSR_BVS, ssr)) {
@@ -2054,6 +2055,8 @@ uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
         hexagon_read_timer(env, &low, &high);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERLO, low);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERHI, high);
+    } else if (reg == HEX_SREG_PCYCLELO) {
+        return hexagon_get_sys_pcycle_count(env);
     }
     return   (uint64_t)ARCH_GET_SYSTEM_REG(env, reg) |
            (((uint64_t)ARCH_GET_SYSTEM_REG(env, reg+1)) << 32);
@@ -2076,9 +2079,13 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
     uint32_t old = env->g_sreg[HEX_SREG_SYSCFG];
     uint8_t old_en = GET_SYSCFG_FIELD(SYSCFG_PCYCLEEN, old);
     uint8_t new_en = GET_SYSCFG_FIELD(SYSCFG_PCYCLEEN, val);
+    CPUState *cs;
     if (old_en == 0 && new_en == 1) {
-        env->g_sreg[HEX_SREG_PCYCLELO] = 0;
-        env->g_sreg[HEX_SREG_PCYCLEHI] = 0;
+        CPU_FOREACH(cs) {
+            HexagonCPU *cpu = HEXAGON_CPU(cs);
+            CPUHexagonState *env = &cpu->env;
+            env->t_packet_count = 0;
+        }
     }
 }
 
@@ -2091,10 +2098,17 @@ void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
         ARCH_SET_SYSTEM_REG(env, reg, val);
     } else if (reg == HEX_SREG_SYSCFG) {
         modify_syscfg(env, val);
+        ARCH_SET_SYSTEM_REG(env, reg, val);
     } else if (reg == HEX_SREG_IMASK) {
         val = GET_FIELD(IMASK_MASK, val);
+        ARCH_SET_SYSTEM_REG(env, reg, val);
+    } else if (reg == HEX_SREG_PCYCLELO) {
+        hexagon_set_sys_pcycle_count_low(env, val);
+    } else if (reg == HEX_SREG_PCYCLEHI) {
+        hexagon_set_sys_pcycle_count_high(env, val);
+    } else {
+        ARCH_SET_SYSTEM_REG(env, reg, val);
     }
-    ARCH_SET_SYSTEM_REG(env, reg, val);
 }
 
 void HELPER(sreg_write_pair)(CPUHexagonState *env, uint32_t reg, uint64_t val)
@@ -2124,9 +2138,7 @@ uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
         {
             target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
             int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
-            target_ulong pcyclelo = ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLELO);
-            target_ulong pcyclehi = ARCH_GET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI);
-            return ssr_ce ? (uint64_t)pcyclelo | (uint64_t)pcyclehi << 32 : 0;
+            return ssr_ce ? hexagon_get_sys_pcycle_count(env) : 0;
         }
         case HEX_GREG_GPMUCNT0:
         case HEX_GREG_GPMUCNT2:

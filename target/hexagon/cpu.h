@@ -528,6 +528,8 @@ typedef struct CPUArchState {
     unsigned int threadId;
     system_t *system_ptr;
     FILE *fp_hmx_debug;
+    uint64_t t_packet_count;
+    uint64_t *g_pcycle_base;
 #ifndef CONFIG_USER_ONLY
     int slot;                    /* Needed for exception generation */
     systemstate_t systemstate;

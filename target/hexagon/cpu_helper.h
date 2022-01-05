@@ -80,4 +80,10 @@ extern int get_exe_mode(CPUHexagonState *env);
 extern const char *get_exe_mode_str(CPUHexagonState *env);
 extern void set_wait_mode(CPUHexagonState *env);
 extern void clear_wait_mode(CPUHexagonState *env);
+uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env);
+uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env);
+uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env);
+void hexagon_set_sys_pcycle_count(CPUHexagonState *env, uint64_t);
+void hexagon_set_sys_pcycle_count_low(CPUHexagonState *env, uint32_t);
+void hexagon_set_sys_pcycle_count_high(CPUHexagonState *env, uint32_t);
 #endif

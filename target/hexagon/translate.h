@@ -183,6 +183,7 @@ extern TCGv hex_greg_written[NUM_GREGS];
 extern TCGv hex_t_sreg[NUM_SREGS];
 extern TCGv hex_t_sreg_new_value[NUM_SREGS];
 extern TCGv hex_t_sreg_written[NUM_SREGS];
+extern TCGv_i64 hex_packet_count;
 #endif
 extern TCGv hex_vstore_addr[VSTORES_MAX];
 extern TCGv hex_vstore_size[VSTORES_MAX];

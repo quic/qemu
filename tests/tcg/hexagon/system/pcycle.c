@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #define SYSCFG_PCYCLEEN_BIT             6
 #define SSR_CE_BIT                      23
@@ -28,7 +29,8 @@ int err;
 static inline void __check_range(uint32_t val, uint32_t min, uint32_t max, int line)
 {
     if (val < min || val > max) {
-        printf("ERROR at line %d: %lu not in [%lu, %lu]\n", line, val, min, max);
+        printf("ERROR at line %d: %" PRIu32 " not in [%" PRIu32 ", %" PRIu32 "]\n",
+            line, val, min, max);
         err++;
     }
 }
@@ -38,7 +40,7 @@ static inline void __check_range(uint32_t val, uint32_t min, uint32_t max, int l
 static inline void __check(uint32_t val, uint32_t expect, int line)
 {
     if (val != expect) {
-        printf("ERROR at line %d: %lu != %lu\n", line, val, expect);
+        printf("ERROR at line %d: %" PRIu32 " != %" PRIu32 " \n", line, val, expect);
         err++;
     }
 }
@@ -47,22 +49,25 @@ static inline void __check(uint32_t val, uint32_t expect, int line)
 
 static void test_pcycle(void)
 {
+    uint64_t pcycle;
     uint32_t pcyclelo, pcyclehi;
 
     asm volatile("r2 = syscfg\n\t"
-                 "r2 = clrbit(r2, #%2)\n\t"
+                 "r2 = clrbit(r2, #%3)\n\t"
                  "syscfg = r2\n\t"
-                 "r2 = setbit(r2, #%2)\n\t"
+                 "r2 = setbit(r2, #%3)\n\t"
                  "syscfg = r2\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
-                 "r3:2 = s31:30\n\t"
-                 "%0 = r3\n\t"
-                 "%1 = r2\n\t"
-                 : "=r"(pcyclehi), "=r"(pcyclelo)
+                 "syncht\n\t" /* flush TB */
+                 "%0 = pcycle\n\t"
+                 "%1 = pcyclehi\n\t"
+                 "%2 = pcyclelo\n\t"
+                 : "=r"(pcycle),  "=r"(pcyclehi),
+                   "=r"(pcyclelo)
                  : "i"(SYSCFG_PCYCLEEN_BIT)
                  : "r2", "r3");
 
@@ -71,24 +76,40 @@ static void test_pcycle(void)
      * So, we check a range of pcycles to make the same test pass on both.
      */
     check(pcyclehi, 0);
+    check_range(pcycle, 6, 6 * MAX_HW_THREADS);
     check_range(pcyclelo, 6, 6 * MAX_HW_THREADS);
 }
 
 #define read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi) \
-    asm volatile("%0 = pcyclelo\n\t" \
+    asm volatile("syncht\n\t" \
+                 "%0 = pcyclelo\n\t" \
                  "%1 = pcyclehi\n\t" \
                  "%2 = upcyclelo\n\t" \
                  "%3 = upcyclehi\n\t" \
                  : "=r"(pcyclelo), "=r"(pcyclehi), \
                    "=r"(upcyclelo), "=r"(upcyclehi))
 
+#define read_upcycle_reg_pair(pcycle, upcycle) \
+    asm volatile("syncht\n\t" \
+                 "%0 = pcycle\n\t" \
+                 "%1 = upcycle\n\t" \
+                 : "=r"(pcycle), "=r"(upcycle)) \
+
+
 #define read_gpcycle_regs(pcyclelo, pcyclehi, gpcyclelo, gpcyclehi) \
-    asm volatile("%0 = pcyclelo\n\t" \
+    asm volatile("syncht\n\t" \
+                 "%0 = pcyclelo\n\t" \
                  "%1 = pcyclehi\n\t" \
                  "%2 = gpcyclelo\n\t" \
                  "%3 = gpcyclehi\n\t" \
                  : "=r"(pcyclelo), "=r"(pcyclehi), \
                    "=r"(gpcyclelo), "=r"(gpcyclehi))
+
+#define read_gpcycle_reg_pair(pcycle, gpcycle) \
+    asm volatile("syncht\n\t" \
+                 "%0 = pcycle\n\t" \
+                 "%1 = g25:24\n\t" \
+                 : "=r"(pcycle), "=r"(gpcycle)) \
 
 static void clr_ssr_ce(void)
 {
@@ -110,6 +131,7 @@ static void test_upcycle(void)
 {
     uint32_t pcyclelo, pcyclehi;
     uint32_t upcyclelo, upcyclehi;
+    uint64_t pcycle, upcycle;
 
     /*
      * Before SSR[CE] is set, upcycle registers should be zero
@@ -119,19 +141,26 @@ static void test_upcycle(void)
     check(upcyclelo, 0);
     check(upcyclehi, 0);
 
+    read_upcycle_reg_pair(pcycle, upcycle);
+    check(upcycle, 0);
+
     /*
      * After SSR[CE] is set, upcycle registers should match pcycle
      */
     set_ssr_ce();
     read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
-    check_range(upcyclelo, pcyclelo + 2, pcyclelo + 2 * MAX_HW_THREADS);
+    check_range(upcyclelo, pcyclelo, pcyclelo * MAX_HW_THREADS);
     check(upcyclehi, pcyclehi);
+
+    read_upcycle_reg_pair(pcycle, upcycle);
+    check_range(upcycle, pcycle, pcycle * MAX_HW_THREADS);
 }
 
 static void test_gpcycle(void)
 {
     uint32_t pcyclelo, pcyclehi;
     uint32_t gpcyclelo, gpcyclehi;
+    uint64_t pcycle, gpcycle;
 
     /*
      * Before SSR[CE] is set, gpcycle registers should be zero
@@ -141,19 +170,25 @@ static void test_gpcycle(void)
     check(gpcyclelo, 0);
     check(gpcyclehi, 0);
 
+    read_gpcycle_reg_pair(pcycle, gpcycle);
+    check(gpcycle, 0);
+
     /*
      * After SSR[CE] is set, gpcycle registers should match pcycle
      */
     set_ssr_ce();
     read_gpcycle_regs(pcyclelo, pcyclehi, gpcyclelo, gpcyclehi);
-    check_range(gpcyclelo, pcyclelo + 2, pcyclelo + 2 * MAX_HW_THREADS);
+    check_range(gpcyclelo, pcyclelo, pcyclelo * MAX_HW_THREADS);
     check(gpcyclehi, pcyclehi);
 
+    read_gpcycle_reg_pair(pcycle, gpcycle);
+    check_range(gpcycle, pcycle, pcycle * MAX_HW_THREADS);
 }
 
 #define read_gcycle_xt_regs(gcycle_1t, gcycle_2t, gcycle_3t, \
                             gcycle_4t, gcycle_5t, gcycle_6t) \
-    asm volatile("%0 = gpcycle1t\n\t" \
+    asm volatile("syncht\n\t" \
+                 "%0 = gpcycle1t\n\t" \
                  "%1 = gpcycle2t\n\t" \
                  "%2 = gpcycle3t\n\t" \
                  "%3 = gpcycle4t\n\t" \
@@ -227,10 +262,12 @@ int main()
 {
     puts("Check the pcyclehi/pcyclelo counters in qemu");
 
+#if !defined(__linux__)
     test_gcycle_xt();
     test_pcycle();
-    test_upcycle();
     test_gpcycle();
+#endif
+    test_upcycle();
 
     puts(err ? "FAIL" : "PASS");
     return err;
