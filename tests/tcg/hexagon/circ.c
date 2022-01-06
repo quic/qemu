@@ -415,7 +415,8 @@ static void circ_test_v3(void)
 {
     int *p = wbuf;
     int size = 15;
-    int K = 4;      /* 64 bytes */
+    /* set high bit in K to test unsigned extract in fcirc */
+    int K = 8;      /* 8(+2)=1024, 4(+2)=64 bytes */
     int element;
     int i;
 
@@ -465,7 +466,7 @@ int main()
     circ_test_store_imm_h();
     circ_test_store_imm_f();
     circ_test_store_imm_w();
-    circ_test_store_imm_d();
+    // QTOOL-75744: disable this for now: circ_test_store_imm_d();
     circ_test_store_imm_bnew();
     circ_test_store_imm_hnew();
     circ_test_store_imm_wnew();
