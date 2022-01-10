@@ -32,6 +32,7 @@ HEX_TESTS = first
 HEX_TESTS += exec_counters
 HEX_TESTS += hex_sigsegv
 HEX_TESTS += misc
+HEX_TESTS += usr
 HEX_TESTS += preg_alias
 HEX_TESTS += dual_stores
 HEX_TESTS += clrtnew
@@ -61,6 +62,10 @@ TESTS += $(HEX_TESTS)
 
 hvx_misc: CFLAGS += -mhvx
 hvx_histogram: CFLAGS += -mhvx -Wno-gnu-folding-constant
+
+# This test has to be compiled for the -mv67t target
+usr: usr.c
+	$(CC) $(CFLAGS) -mv67t -O2 $< -o $@ $(LDFLAGS)
 
 hvx_histogram: hvx_histogram.c hvx_histogram_row.S
 	$(CC) $(CFLAGS) $(CROSS_CC_GUEST_CFLAGS) $^ -o $@
