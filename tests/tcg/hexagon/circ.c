@@ -415,7 +415,8 @@ static void circ_test_v3(void)
 {
     int *p = wbuf;
     int size = 15;
-    int K = 4;      /* 64 bytes */
+    /* set high bit in K to test unsigned extract in fcirc */
+    int K = 8;      /* 1024 bytes */
     int element;
     int i;
 
