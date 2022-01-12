@@ -136,6 +136,31 @@ FUNC_x_OP_xx(uint32_t, uint64_t, uint32_t, NAME, INSN, BIT)
 #define FUNC_P_OP_PR(NAME, INSN, BIT) \
 FUNC_x_OP_xx(uint64_t, uint64_t, uint32_t, NAME, INSN, BIT)
 
+/* Template for compare instructions with two register operands */
+#define FUNC_CMP_xx(SRC1TYPE, SRC2TYPE, NAME, INSN, BIT) \
+static uint32_t NAME(SRC1TYPE src1, SRC2TYPE src2, uint32_t *usr_result) \
+{ \
+    uint32_t result; \
+    uint32_t usr; \
+    asm("r2 = usr\n\t" \
+        "r2 = clrbit(r2, #%4)\n\t" \
+        "usr = r2\n\t" \
+        INSN "\n\t" \
+        "%0 = p1\n\t" \
+        "%1 = usr\n\t" \
+        : "=&r"(result), "+r"(usr) \
+        : "r"(src1), "r"(src2), "i"(BIT) \
+        : "p1", "r2", "usr"); \
+    *usr_result = ((usr >> (BIT)) & 1); \
+    return result; \
+}
+
+#define FUNC_CMP_RR(NAME, INSN, BIT) \
+FUNC_CMP_xx(uint32_t, uint32_t, NAME, INSN, BIT)
+
+#define FUNC_CMP_PP(NAME, INSN, BIT) \
+FUNC_CMP_xx(uint64_t, uint64_t, NAME, INSN, BIT)
+
 /*
  * Function declarations using the templates
  */
@@ -207,6 +232,9 @@ FUNC_P_OP_PP(vnavgwr,           "%0 = vnavgw(%2, %3):rnd:sat",      USR_OVF_BIT)
 FUNC_R_OP_R(round_ri_sat,       "%0 = round(%2, #2):sat",           USR_OVF_BIT)
 FUNC_R_OP_RR(asr_r_r_sat,       "%0 = asr(%2, %3):sat",             USR_OVF_BIT)
 
+FUNC_CMP_RR(sfcmpuo,            "p1 = sfcmp.uo(%2, %3)",         USR_FPINVF_BIT)
+FUNC_CMP_PP(dfcmpuo,            "p1 = dfcmp.uo(%2, %3)",         USR_FPINVF_BIT)
+
 /*
  * Templates for test cases
  *
@@ -266,6 +294,24 @@ TEST_x_OP_xx(uint32_t, check32, uint64_t, uint32_t, \
 #define TEST_P_OP_PR(FUNC, SRC1, SRC2, RES, USR_RES) \
 TEST_x_OP_xx(uint64_t, check64, uint64_t, uint32_t, \
              FUNC, SRC1, SRC2, RES, USR_RES)
+
+#define TEST_CMP_xx(SRC1TYPE, SRC2TYPE, \
+                    FUNC, SRC1, SRC2, RES, USR_RES) \
+    do { \
+        uint32_t result; \
+        SRC1TYPE src1 = SRC1; \
+        SRC2TYPE src2 = SRC2; \
+        uint32_t usr_result; \
+        result = FUNC(src1, src2, &usr_result); \
+        check(result, RES); \
+        check(usr_result, USR_RES); \
+    } while (0)
+
+#define TEST_CMP_RR(FUNC, SRC1, SRC2, RES, USR_RES) \
+TEST_CMP_xx(uint32_t, uint32_t, FUNC, SRC1, SRC2, RES, USR_RES)
+
+#define TEST_CMP_PP(FUNC, SRC1, SRC2, RES, USR_RES) \
+TEST_CMP_xx(uint64_t, uint64_t, FUNC, SRC1, SRC2, RES, USR_RES)
 
 int main()
 {
@@ -448,6 +494,18 @@ int main()
     TEST_R_OP_RR(asr_r_r_sat, 0x0000ffff, 0x00000002, 0x00003fff, 0);
     TEST_R_OP_RR(asr_r_r_sat, 0x00ffffff, 0xfffffff5, 0x7fffffff, 1);
     TEST_R_OP_RR(asr_r_r_sat, 0x80000000, 0xfffffff5, 0x80000000, 1);
+
+    TEST_CMP_RR(sfcmpuo, 0x3f800000, 0x5afa572e, 0x00, 0);
+    TEST_CMP_RR(sfcmpuo, 0x7f800000, 0x5afa572e, 0x00, 0);
+    TEST_CMP_RR(sfcmpuo, 0x7fc00000, 0x5afa572e, 0xff, 0);
+    TEST_CMP_RR(sfcmpuo, 0x7f800001, 0x5afa572e, 0xff, 1);
+    TEST_CMP_RR(sfcmpuo, 0xff800001, 0x5afa572e, 0xff, 1);
+
+    TEST_CMP_PP(dfcmpuo, 0xbd731f7500000000ULL, 0x3f80000000000000ULL, 0x00, 0);
+    TEST_CMP_PP(dfcmpuo, 0x7f80000000000001ULL, 0x3f80000000000000ULL, 0x00, 0);
+    TEST_CMP_PP(dfcmpuo, 0x7ff8000000000000ULL, 0x3f80000000000000ULL, 0xff, 0);
+    TEST_CMP_PP(dfcmpuo, 0x7ff0000000000001ULL, 0x3f80000000000000ULL, 0xff, 1);
+    TEST_CMP_PP(dfcmpuo, 0x7ff7000000000000ULL, 0x3f80000000000000ULL, 0xff, 1);
 
     puts(err ? "FAIL" : "PASS");
     return err;
