@@ -62,6 +62,27 @@ static void __check64(int line, uint64_t val, uint64_t expect)
 #define USR_FPUNFF_BIT       4        /* IEEE FP underflow sticky flag */
 #define USR_FPINPF_BIT       5        /* IEEE FP inexact sticky flag */
 
+/* Some useful floating point values */
+const uint32_t SF_INF =                        0x7f800000;
+const uint32_t SF_QNaN =                       0x7fc00000;
+const uint32_t SF_SNaN =                       0x7fb00000;
+const uint32_t SF_QNaN_neg =                   0xffc00000;
+const uint32_t SF_SNaN_neg =                   0xffb00000;
+const uint32_t SF_HEX_NaN =                    0xffffffff;
+const uint32_t SF_zero =                       0x00000000;
+const uint32_t SF_one =                        0x3f800000;
+const uint32_t SF_small_neg =                  0xab98fba8;
+const uint32_t SF_large_pos =                  0x5afa572e;
+
+const uint64_t DF_QNaN =                 0x7ff8000000000000ULL;
+const uint64_t DF_SNaN =                 0x7ff7000000000000ULL;
+const uint64_t DF_QNaN_neg =             0xfff8000000000000ULL;
+const uint64_t DF_SNaN_neg =             0xfff7000000000000ULL;
+const uint64_t DF_HEX_NaN =              0xffffffffffffffffULL;
+const uint64_t DF_any =                  0x3f80000000000000ULL;
+const uint64_t DF_small_neg =            0xbd731f7500000000ULL;
+const uint64_t DF_large_pos =            0x7f80000000000001ULL;
+
 /*
  * Templates for functions to execute an instruction
  *
@@ -232,6 +253,10 @@ FUNC_P_OP_PP(vnavgwr,           "%0 = vnavgw(%2, %3):rnd:sat",      USR_OVF_BIT)
 FUNC_R_OP_R(round_ri_sat,       "%0 = round(%2, #2):sat",           USR_OVF_BIT)
 FUNC_R_OP_RR(asr_r_r_sat,       "%0 = asr(%2, %3):sat",             USR_OVF_BIT)
 
+FUNC_R_OP_RR(sfmin,             "%0 = sfmin(%2, %3)",            USR_FPINVF_BIT)
+FUNC_R_OP_RR(sfmax,             "%0 = sfmax(%2, %3)",            USR_FPINVF_BIT)
+FUNC_P_OP_PP(dfmin,             "%0 = dfmin(%2, %3)",            USR_FPINVF_BIT)
+FUNC_P_OP_PP(dfmax,             "%0 = dfmax(%2, %3)",            USR_FPINVF_BIT)
 FUNC_CMP_RR(sfcmpuo,            "p1 = sfcmp.uo(%2, %3)",         USR_FPINVF_BIT)
 FUNC_CMP_PP(dfcmpuo,            "p1 = dfcmp.uo(%2, %3)",         USR_FPINVF_BIT)
 
@@ -495,17 +520,55 @@ int main()
     TEST_R_OP_RR(asr_r_r_sat, 0x00ffffff, 0xfffffff5, 0x7fffffff, 1);
     TEST_R_OP_RR(asr_r_r_sat, 0x80000000, 0xfffffff5, 0x80000000, 1);
 
-    TEST_CMP_RR(sfcmpuo, 0x3f800000, 0x5afa572e, 0x00, 0);
-    TEST_CMP_RR(sfcmpuo, 0x7f800000, 0x5afa572e, 0x00, 0);
-    TEST_CMP_RR(sfcmpuo, 0x7fc00000, 0x5afa572e, 0xff, 0);
-    TEST_CMP_RR(sfcmpuo, 0x7f800001, 0x5afa572e, 0xff, 1);
-    TEST_CMP_RR(sfcmpuo, 0xff800001, 0x5afa572e, 0xff, 1);
+    TEST_R_OP_RR(sfmin, SF_one,     SF_small_neg,    SF_small_neg,    0);
+    TEST_R_OP_RR(sfmin, SF_one,     SF_SNaN,         SF_one,          1);
+    TEST_R_OP_RR(sfmin, SF_SNaN,    SF_one,          SF_one,          1);
+    TEST_R_OP_RR(sfmin, SF_one,     SF_QNaN,         SF_one,          0);
+    TEST_R_OP_RR(sfmin, SF_QNaN,    SF_one,          SF_one,          0);
+    TEST_R_OP_RR(sfmin, SF_SNaN,    SF_QNaN,         SF_HEX_NaN,      1);
+    TEST_R_OP_RR(sfmin, SF_QNaN,    SF_SNaN,         SF_HEX_NaN,      1);
 
-    TEST_CMP_PP(dfcmpuo, 0xbd731f7500000000ULL, 0x3f80000000000000ULL, 0x00, 0);
-    TEST_CMP_PP(dfcmpuo, 0x7f80000000000001ULL, 0x3f80000000000000ULL, 0x00, 0);
-    TEST_CMP_PP(dfcmpuo, 0x7ff8000000000000ULL, 0x3f80000000000000ULL, 0xff, 0);
-    TEST_CMP_PP(dfcmpuo, 0x7ff0000000000001ULL, 0x3f80000000000000ULL, 0xff, 1);
-    TEST_CMP_PP(dfcmpuo, 0x7ff7000000000000ULL, 0x3f80000000000000ULL, 0xff, 1);
+    TEST_R_OP_RR(sfmax, SF_one,     SF_small_neg,    SF_one,          0);
+    TEST_R_OP_RR(sfmax, SF_one,     SF_SNaN,         SF_one,          1);
+    TEST_R_OP_RR(sfmax, SF_SNaN,    SF_one,          SF_one,          1);
+    TEST_R_OP_RR(sfmax, SF_one,     SF_QNaN,         SF_one,          0);
+    TEST_R_OP_RR(sfmax, SF_QNaN,    SF_one,          SF_one,          0);
+    TEST_R_OP_RR(sfmax, SF_SNaN,    SF_QNaN,         SF_HEX_NaN,      1);
+    TEST_R_OP_RR(sfmax, SF_QNaN,    SF_SNaN,         SF_HEX_NaN,      1);
+
+    TEST_P_OP_PP(dfmin, DF_any,     DF_small_neg,    DF_small_neg,    0);
+    TEST_P_OP_PP(dfmin, DF_any,     DF_SNaN,         DF_any,          1);
+    TEST_P_OP_PP(dfmin, DF_SNaN,    DF_any,          DF_any,          1);
+    TEST_P_OP_PP(dfmin, DF_any,     DF_QNaN,         DF_any,          1);
+    TEST_P_OP_PP(dfmin, DF_QNaN,    DF_any,          DF_any,          1);
+    TEST_P_OP_PP(dfmin, DF_SNaN,    DF_QNaN,         DF_HEX_NaN,      1);
+    TEST_P_OP_PP(dfmin, DF_QNaN,    DF_SNaN,         DF_HEX_NaN,      1);
+
+    TEST_P_OP_PP(dfmax, DF_any,     DF_small_neg,    DF_any,          0);
+    TEST_P_OP_PP(dfmax, DF_any,     DF_SNaN,         DF_any,          1);
+    TEST_P_OP_PP(dfmax, DF_SNaN,    DF_any,          DF_any,          1);
+    TEST_P_OP_PP(dfmax, DF_any,     DF_QNaN,         DF_any,          1);
+    TEST_P_OP_PP(dfmax, DF_QNaN,    DF_any,          DF_any,          1);
+    TEST_P_OP_PP(dfmax, DF_SNaN,    DF_QNaN,         DF_HEX_NaN,      1);
+    TEST_P_OP_PP(dfmax, DF_QNaN,    DF_SNaN,         DF_HEX_NaN,      1);
+
+    TEST_CMP_RR(sfcmpuo, SF_one,       SF_large_pos,    0x00,    0);
+    TEST_CMP_RR(sfcmpuo, SF_INF,       SF_large_pos,    0x00,    0);
+    TEST_CMP_RR(sfcmpuo, SF_QNaN,      SF_large_pos,    0xff,    0);
+    TEST_CMP_RR(sfcmpuo, SF_QNaN_neg,  SF_large_pos,    0xff,    0);
+    TEST_CMP_RR(sfcmpuo, SF_SNaN,      SF_large_pos,    0xff,    1);
+    TEST_CMP_RR(sfcmpuo, SF_SNaN_neg,  SF_large_pos,    0xff,    1);
+    TEST_CMP_RR(sfcmpuo, SF_QNaN,      SF_QNaN,         0xff,    0);
+    TEST_CMP_RR(sfcmpuo, SF_QNaN,      SF_SNaN,         0xff,    1);
+
+    TEST_CMP_PP(dfcmpuo, DF_small_neg, DF_any,          0x00,    0);
+    TEST_CMP_PP(dfcmpuo, DF_large_pos, DF_any,          0x00,    0);
+    TEST_CMP_PP(dfcmpuo, DF_QNaN,      DF_any,          0xff,    0);
+    TEST_CMP_PP(dfcmpuo, DF_QNaN_neg,  DF_any,          0xff,    0);
+    TEST_CMP_PP(dfcmpuo, DF_SNaN,      DF_any,          0xff,    1);
+    TEST_CMP_PP(dfcmpuo, DF_SNaN_neg,  DF_any,          0xff,    1);
+    TEST_CMP_PP(dfcmpuo, DF_QNaN,      DF_QNaN,         0xff,    0);
+    TEST_CMP_PP(dfcmpuo, DF_QNaN,      DF_SNaN,         0xff,    1);
 
     puts(err ? "FAIL" : "PASS");
     return err;
