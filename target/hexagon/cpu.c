@@ -25,6 +25,7 @@
 #include "fpu/softfloat-helpers.h"
 #include "gdb_qreginfo.h"
 #include "hmx/ext_hmx.h"
+#include "trace.h"
 
 #if !defined(CONFIG_USER_ONLY)
 #include "migration/vmstate.h"
@@ -629,6 +630,8 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
     CPUHexagonState *env = &cpu->env;
     CPUState *cs = CPU(cpu);
 
+    trace_hexagon_irq_line(irq, level);
+
     target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     target_ulong gbit = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
     if (!gbit && level) {
@@ -666,6 +669,7 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
         memset(threads, 0, sizeof(threads));
         hexagon_find_int_threads(env, irq, threads, &threads_count);
         if (threads_count < 1) {
+            trace_hexagon_irq_thread_candidates(0, -1, -1);
             /*
              * No unmasked thread is available for this interrupt.  We
              * must pend it and assert it later.
@@ -686,6 +690,8 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 
         target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
         target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
+        trace_hexagon_irq_thread_candidates(threads_count, cs->cpu_index, !ex);
+
         if (ex) {
             assert(get_exe_mode(env) != HEX_EXE_MODE_WAIT);
             /*
