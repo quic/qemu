@@ -717,6 +717,11 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
             }
             hexagon_disable_int(env, irq);
             cpu_interrupt(cs, mask[irq]);
+        } else {
+            //FIXME: do something better for the level=0 path
+            //The following line was always clearing CPU_INTERRUPT_HARD
+            //on the thread 0. At least some thread look up must be done.
+            //cpu_reset_interrupt(cs, mask[irq]);
         }
         break;
     default:

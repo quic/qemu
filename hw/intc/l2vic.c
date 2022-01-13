@@ -164,6 +164,16 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
         s->vid0 = irq;
         s->vid_group[vid] = irq;
     }
+#if 0
+    printf("NACK, irq:level = %d, %d\n", irq, level);
+    printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
+                L2VICA(s->int_enable, 4 * (irq / 32)));
+    printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
+    printf("\tIRQBIT(irq) & enable = 0x%x\n", IRQBIT(irq) & L2VICA(s->int_enable, 4 * (irq / 32)));
+#endif
+
+    //FIXME: it's probably wrong to always update on the '0' irq line
+    //return l2vic_update (s, 0, 0);
 }
 
 static void l2vic_write(void *opaque, hwaddr offset,
