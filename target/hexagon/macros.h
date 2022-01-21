@@ -267,7 +267,7 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
 
 #define fVSATUVALN(N, VAL) \
     ({ \
-        (((int)(VAL)) < 0) ? 0 : ((1LL << (N)) - 1); \
+        (((int64_t)(VAL)) < 0) ? 0 : ((1LL << (N)) - 1); \
     })
 #define fSATUVALN(N, VAL) \
     ({ \
@@ -285,6 +285,7 @@ static inline void gen_pred_cancel(TCGv pred, int slot_num)
     })
 #define fZXTN(N, M, VAL) (((N) != 0) ? extract64((VAL), 0, (N)) : 0LL)
 #define fSXTN(N, M, VAL) (((N) != 0) ? sextract64((VAL), 0, (N)) : 0LL)
+
 #define fSATN(N, VAL) \
     ((fSXTN(N, 64, VAL) == (VAL)) ? (VAL) : fSATVALN(N, VAL))
 #define fVSATN(N, VAL) \

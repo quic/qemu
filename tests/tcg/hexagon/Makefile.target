@@ -56,6 +56,7 @@ HEX_TESTS += lsbnew
 HEX_TESTS += privcheck
 HEX_TESTS += guestcheck
 HEX_TESTS += hvx_histogram
+HEX_TESTS += hvx_sat
 #HEX_TESTS += hmx
 
 TESTS += $(HEX_TESTS)
