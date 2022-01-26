@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -909,8 +909,7 @@ int32_t HELPER(sfcmpuo)(CPUHexagonState *env, float32 RsV, float32 RtV)
 {
     int32_t PdV;
     arch_fpop_start(env);
-    PdV = f8BITSOF(float32_is_any_nan(RsV) ||
-                   float32_is_any_nan(RtV));
+    PdV = f8BITSOF(float32_unordered_quiet(RsV, RtV, &env->fp_status));
     arch_fpop_end(env);
     return PdV;
 }
@@ -1068,8 +1067,7 @@ int32_t HELPER(dfcmpuo)(CPUHexagonState *env, float64 RssV, float64 RttV)
 {
     int32_t PdV;
     arch_fpop_start(env);
-    PdV = f8BITSOF(float64_is_any_nan(RssV) ||
-                   float64_is_any_nan(RttV));
+    PdV = f8BITSOF(float64_unordered_quiet(RssV, RttV, &env->fp_status));
     arch_fpop_end(env);
     return PdV;
 }
