@@ -171,4 +171,8 @@ config SIFIVE_U_PRCI
 config VIRT_CTRL
     bool
 
+config ARM_SMMU
+    bool
+    select REGISTER
+
 source macio/Kconfig
