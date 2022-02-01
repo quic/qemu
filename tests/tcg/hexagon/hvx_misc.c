@@ -23,11 +23,11 @@
 
 int err;
 
-static void __check(int line, uint64_t result, uint64_t expect)
+static void __check(int line, int i, int j, uint64_t result, uint64_t expect)
 {
     if (result != expect) {
-        printf("ERROR at line %d: 0x%016llx != 0x%016llx\n",
-               line, result, expect);
+        printf("ERROR at line %d: [%d][%d] 0x%016llx != 0x%016llx\n",
+               line, i, j, result, expect);
         err++;
     }
 }
@@ -62,7 +62,7 @@ static void check_output_##FIELD(int line, size_t num_vectors) \
 { \
     for (int i = 0; i < num_vectors; i++) { \
         for (int j = 0; j < MAX_VEC_SIZE_BYTES / FIELDSZ; j++) { \
-            __check(line, output[i].FIELD[j], expect[i].FIELD[j]); \
+            __check(line, i, j, output[i].FIELD[j], expect[i].FIELD[j]); \
         } \
     } \
 }
