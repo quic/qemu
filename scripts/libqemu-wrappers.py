@@ -89,7 +89,7 @@ class ExportedType:
 class ExportedFct:
     fcts = {}
 
-    def __init__(self, pub, ret, args, priv = None, on_iothread = False, iothread_locked = False, arch = None, config = None):
+    def __init__(self, pub, ret, args, priv = None, on_iothread = False, iothread_locked = False, arch = None):
         priv = pub if priv is None else priv
 
         self.pub = pub
@@ -100,7 +100,7 @@ class ExportedFct:
         self.iothread_locked = iothread_locked
         self.wrapped = on_iothread or iothread_locked
         self.arch = arch
-        self.config = config
+
         self.fcts[priv] = self
 
     def get_pub_typedef_name(self):
@@ -218,14 +218,8 @@ def gen_fill_fct():
     indent_push()
 
     for f in ExportedFct.fcts.values():
-        define = ''
-        if f.config:
-            define = f.config
-        elif f.arch:
-            define = 'TARGET_' + f.arch.upper()
-
-        if f.arch or f.config:
-            gen_c('#ifdef {}'.format(define))
+        if f.arch:
+            gen_c('#ifdef TARGET_{}'.format(f.arch.upper()))
 
         gen_c('exports->{name} = ({cast}) {target};'.format(
             name = f.pub,
@@ -233,7 +227,7 @@ def gen_fill_fct():
             target = f.get_priv_target())
         )
 
-        if f.arch or f.config:
+        if f.arch:
             gen_c('#else')
             gen_c('exports->{name} = NULL;'.format(name = f.pub))
             gen_c('#endif')

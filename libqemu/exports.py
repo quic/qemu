@@ -156,10 +156,8 @@ ExportedFct('sysbus_connect_gpio_out', 'void', [ 'SysBusDevice *', 'int', 'struc
         priv = 'sysbus_connect_irq')
 
 PrivateInclude('libqemu/wrappers/gpex.h')
-
 ExportedFct('gpex_set_irq_num', 'int', [ 'SysBusDevice *', 'int', 'int' ],
-            priv = 'libqemu_gpex_set_irq_num',
-            config = 'CONFIG_PCI_EXPRESS_GENERIC_BRIDGE')
+            priv = 'libqemu_gpex_set_irq_num')
 
 PublicInclude('libqemu/wrappers/cpu.h')
 PrivateInclude('exec/exec-all.h')
