@@ -406,7 +406,12 @@ static void aarch64_n1_initfn(Object *obj)
     cpu->isar.id_isar5 = 0x00011121;
     cpu->isar.id_isar6 = 0x00000010;
     cpu->isar.id_aa64pfr0 = 0x1100000010111112ull;
-    cpu->isar.id_aa64dfr0 = 0x110305408;
+    /*
+     * id_aa64dfr0 should be 0x110305408 but instead set [35:32] field
+     * "PMSVer" to 0x0 because statiscal profiling registers are not
+     * supported in QEMU.
+     */
+    cpu->isar.id_aa64dfr0 = 0x010305408;
     cpu->isar.id_aa64isar0 = 0x0000100010211120ull;
     cpu->isar.id_aa64isar1 = 0x00100001;
     cpu->isar.id_aa64mmfr0 = 0x00101125;
