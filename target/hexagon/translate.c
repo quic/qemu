@@ -17,6 +17,8 @@
 
 #define QEMU_GENERATE
 #include "qemu/osdep.h"
+#include "iclass.h"
+#include "opcodes.h"
 #include "cpu.h"
 #include "tcg/tcg-op.h"
 #include "tcg/tcg-op-gvec.h"
@@ -238,6 +240,15 @@ static bool check_for_attrib(Packet *pkt, int attrib)
     return false;
 }
 
+static bool check_for_opcode(Packet *pkt, uint16_t opcode)
+{
+    for (int i = 0; i < pkt->num_insns; i++) {
+        if (pkt->insn[i].opcode == opcode) {
+            return true;
+        }
+    }
+    return false;
+}
 static bool need_pc(Packet *pkt)
 {
     return true; // return check_for_attrib(pkt, A_IMPLICIT_READS_PC);
@@ -250,7 +261,7 @@ static bool need_slot_cancelled(Packet *pkt)
 
 static bool need_pred_written(Packet *pkt)
 {
-    return check_for_attrib(pkt, A_WRITES_PRED_REG);
+    return (check_for_attrib(pkt, A_WRITES_PRED_REG) || check_for_opcode(pkt, A2_tfrrcr));
 }
 
 #if !defined(CONFIG_USER_ONLY)
