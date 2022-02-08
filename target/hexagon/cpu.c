@@ -711,8 +711,6 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
             }
             hexagon_disable_int(env, irq);
             cpu_interrupt(cs, mask[irq]);
-        } else {
-            cpu_reset_interrupt(cs, mask[irq]);
         }
         break;
     default:

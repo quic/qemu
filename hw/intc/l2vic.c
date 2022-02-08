@@ -123,12 +123,16 @@ static int get_vid(L2VICState *s, int irq)
 }
 static void l2vic_update(L2VICState *s, int irq, int level)
 {
-    int vid = get_vid(s, irq);
-    return qemu_set_irq(s->irq[vid + 2], level);
+    if (level) {
+        int vid = get_vid(s, irq);
+        //ensure the irq line goes low after going high
+        qemu_irq_pulse(s->irq[vid + 2]);
+    }
 }
 
 static void l2vic_set_irq(void *opaque, int irq, int level)
 {
+    int vid;
     L2VICState *s = (L2VICState *) opaque;
     s->level = level;
 
@@ -153,22 +157,12 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
         */
         clear_bit(irq, (unsigned long *)s->int_enable);
 
-        l2vic_update (s, irq, level);
+        vid = get_vid(s,irq);
+        qemu_irq_pulse(s->irq[vid + 2]);
         s->vidpending = TRUE;
         s->vid0 = irq;
-        s->vid_group[get_vid(s, irq)] = irq;
-        return;
-
+        s->vid_group[vid] = irq;
     }
-#if 0
-    printf("NACK, irq:level = %d, %d\n", irq, level);
-    printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
-                L2VICA(s->int_enable, 4 * (irq / 32)));
-    printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
-    printf("\tIRQBIT(irq) & enable = 0x%x\n", IRQBIT(irq) & L2VICA(s->int_enable, 4 * (irq / 32)));
-#endif
-
-    return l2vic_update (s, 0, 0);
 }
 
 static void l2vic_write(void *opaque, hwaddr offset,
