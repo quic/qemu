@@ -1,3 +1,4 @@
+=====================================
 QEMU Disk Network Block Device Server
 =====================================
 
@@ -30,14 +31,14 @@ driver options if ``--image-opts`` is specified.
 
 *dev* is an NBD device.
 
-.. option:: --object type,id=ID,...props...
+.. option:: --object type,id=ID,...
 
   Define a new instance of the *type* object class identified by *ID*.
   See the :manpage:`qemu(1)` manual page for full details of the properties
   supported. The common object types that it makes sense to define are the
   ``secret`` object, which is used to supply passwords and/or encryption
   keys, and the ``tls-creds`` object, which is used to supply TLS
-  credentials for the qemu-nbd server or client.
+  credentials for the ``qemu-nbd`` server or client.
 
 .. option:: -p, --port=PORT
 
@@ -98,8 +99,10 @@ driver options if ``--image-opts`` is specified.
 
 .. option:: --cache=CACHE
 
-  The cache mode to be used with the file.  See the documentation of
-  the emulator's ``-drive cache=...`` option for allowed values.
+  The cache mode to be used with the file. Valid values are:
+  ``none``, ``writeback`` (the default), ``writethrough``,
+  ``directsync`` and ``unsafe``. See the documentation of
+  the emulator's ``-drive cache=...`` option for more info.
 
 .. option:: -n, --nocache
 
@@ -235,7 +238,7 @@ daemon:
 Expose the guest-visible contents of a qcow2 file via a block device
 /dev/nbd0 (and possibly creating /dev/nbd0p1 and friends for
 partitions found within), then disconnect the device when done.
-Access to bind qemu-nbd to an /dev/nbd device generally requires root
+Access to bind ``qemu-nbd`` to a /dev/nbd device generally requires root
 privileges, and may also require the execution of ``modprobe nbd``
 to enable the kernel NBD client module.  *CAUTION*: Do not use
 this method to mount filesystems from an untrusted guest image - a

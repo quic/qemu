@@ -679,7 +679,7 @@ static inline bool vtd_pe_type_check(X86IOMMUState *x86_iommu,
         }
         break;
     default:
-        /* Unknwon type */
+        /* Unknown type */
         return false;
     }
     return true;
@@ -692,7 +692,7 @@ static inline bool vtd_pdire_present(VTDPASIDDirEntry *pdire)
 
 /**
  * Caller of this function should check present bit if wants
- * to use pdir entry for futher usage except for fpd bit check.
+ * to use pdir entry for further usage except for fpd bit check.
  */
 static int vtd_get_pdire_from_pdir_table(dma_addr_t pasid_dir_base,
                                          uint32_t pasid,
@@ -746,7 +746,7 @@ static int vtd_get_pe_in_pasid_leaf_table(IntelIOMMUState *s,
 
 /**
  * Caller of this function should check present bit if wants
- * to use pasid entry for futher usage except for fpd bit check.
+ * to use pasid entry for further usage except for fpd bit check.
  */
 static int vtd_get_pe_from_pdire(IntelIOMMUState *s,
                                  uint32_t pasid,
@@ -1105,7 +1105,7 @@ static int vtd_page_walk_one(IOMMUTLBEvent *event, vtd_page_walk_info *info)
         .translated_addr = entry->translated_addr,
         .perm = entry->perm,
     };
-    DMAMap *mapped = iova_tree_find(as->iova_tree, &target);
+    const DMAMap *mapped = iova_tree_find(as->iova_tree, &target);
 
     if (event->type == IOMMU_NOTIFIER_UNMAP && !info->notify_unmap) {
         trace_vtd_page_walk_one_skip_unmap(entry->iova, entry->addr_mask);
@@ -1507,7 +1507,7 @@ static int vtd_sync_shadow_page_table(VTDAddressSpace *vtd_as)
 }
 
 /*
- * Check if specific device is configed to bypass address
+ * Check if specific device is configured to bypass address
  * translation for DMA requests. In Scalable Mode, bypass
  * 1st-level translation or 2nd-level translation, it depends
  * on PGTT setting.
@@ -3629,6 +3629,12 @@ static void vtd_init(IntelIOMMUState *s)
     vtd_spte_rsvd_large[3] = VTD_SPTE_LPAGE_L3_RSVD_MASK(s->aw_bits,
                                                          x86_iommu->dt_supported);
 
+    if (s->scalable_mode) {
+        vtd_spte_rsvd[1] &= ~VTD_SPTE_SNP;
+        vtd_spte_rsvd_large[2] &= ~VTD_SPTE_SNP;
+        vtd_spte_rsvd_large[3] &= ~VTD_SPTE_SNP;
+    }
+
     if (x86_iommu_ir_supported(x86_iommu)) {
         s->ecap |= VTD_ECAP_IR | VTD_ECAP_MHMV;
         if (s->intr_eim == ON_OFF_AUTO_ON) {
@@ -3806,9 +3812,6 @@ static void vtd_realize(DeviceState *dev, Error **errp)
     X86MachineState *x86ms = X86_MACHINE(ms);
     PCIBus *bus = pcms->bus;
     IntelIOMMUState *s = INTEL_IOMMU_DEVICE(dev);
-    X86IOMMUState *x86_iommu = X86_IOMMU_DEVICE(dev);
-
-    x86_iommu->type = TYPE_INTEL;
 
     if (!vtd_decide_config(s, errp)) {
         return;

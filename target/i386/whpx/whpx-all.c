@@ -1346,10 +1346,8 @@ int whpx_init_vcpu(CPUState *cpu)
                "State blocked due to non-migratable CPUID feature support,"
                "dirty memory tracking support, and XSAVE/XRSTOR support");
 
-        (void)migrate_add_blocker(whpx_migration_blocker, &local_error);
-        if (local_error) {
+        if (migrate_add_blocker(whpx_migration_blocker, &local_error) < 0) {
             error_report_err(local_error);
-            migrate_del_blocker(whpx_migration_blocker);
             error_free(whpx_migration_blocker);
             ret = -EINVAL;
             goto error;
@@ -1600,6 +1598,7 @@ static void whpx_log_sync(MemoryListener *listener,
 }
 
 static MemoryListener whpx_memory_listener = {
+    .name = "whpx",
     .begin = whpx_transaction_begin,
     .commit = whpx_transaction_commit,
     .region_add = whpx_region_add,

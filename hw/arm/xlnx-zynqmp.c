@@ -20,6 +20,7 @@
 #include "qemu/module.h"
 #include "hw/arm/xlnx-zynqmp.h"
 #include "hw/intc/arm_gic_common.h"
+#include "hw/misc/unimp.h"
 #include "hw/boards.h"
 #include "sysemu/kvm.h"
 #include "sysemu/sysemu.h"
@@ -56,11 +57,20 @@
 #define DPDMA_ADDR          0xfd4c0000
 #define DPDMA_IRQ           116
 
+#define APU_ADDR            0xfd5c0000
+#define APU_SIZE            0x100
+
 #define IPI_ADDR            0xFF300000
 #define IPI_IRQ             64
 
 #define RTC_ADDR            0xffa60000
 #define RTC_IRQ             26
+
+#define BBRAM_ADDR          0xffcd0000
+#define BBRAM_IRQ           11
+
+#define EFUSE_ADDR          0xffcc0000
+#define EFUSE_IRQ           87
 
 #define SDHCI_CAPABILITIES  0x280737ec6481 /* Datasheet: UG1085 (v1.7) */
 
@@ -220,6 +230,73 @@ static void xlnx_zynqmp_create_rpu(MachineState *ms, XlnxZynqMPState *s,
     }
 
     qdev_realize(DEVICE(&s->rpu_cluster), NULL, &error_fatal);
+}
+
+static void xlnx_zynqmp_create_bbram(XlnxZynqMPState *s, qemu_irq *gic)
+{
+    SysBusDevice *sbd;
+
+    object_initialize_child_with_props(OBJECT(s), "bbram", &s->bbram,
+                                       sizeof(s->bbram), TYPE_XLNX_BBRAM,
+                                       &error_fatal,
+                                       "crc-zpads", "1",
+                                       NULL);
+    sbd = SYS_BUS_DEVICE(&s->bbram);
+
+    sysbus_realize(sbd, &error_fatal);
+    sysbus_mmio_map(sbd, 0, BBRAM_ADDR);
+    sysbus_connect_irq(sbd, 0, gic[BBRAM_IRQ]);
+}
+
+static void xlnx_zynqmp_create_efuse(XlnxZynqMPState *s, qemu_irq *gic)
+{
+    Object *bits = OBJECT(&s->efuse);
+    Object *ctrl = OBJECT(&s->efuse_ctrl);
+    SysBusDevice *sbd;
+
+    object_initialize_child(OBJECT(s), "efuse-ctrl", &s->efuse_ctrl,
+                            TYPE_XLNX_ZYNQMP_EFUSE);
+
+    object_initialize_child_with_props(ctrl, "xlnx-efuse@0", bits,
+                                       sizeof(s->efuse),
+                                       TYPE_XLNX_EFUSE, &error_abort,
+                                       "efuse-nr", "3",
+                                       "efuse-size", "2048",
+                                       NULL);
+
+    qdev_realize(DEVICE(bits), NULL, &error_abort);
+    object_property_set_link(ctrl, "efuse", bits, &error_abort);
+
+    sbd = SYS_BUS_DEVICE(ctrl);
+    sysbus_realize(sbd, &error_abort);
+    sysbus_mmio_map(sbd, 0, EFUSE_ADDR);
+    sysbus_connect_irq(sbd, 0, gic[EFUSE_IRQ]);
+}
+
+static void xlnx_zynqmp_create_unimp_mmio(XlnxZynqMPState *s)
+{
+    static const struct UnimpInfo {
+        const char *name;
+        hwaddr base;
+        hwaddr size;
+    } unimp_areas[ARRAY_SIZE(s->mr_unimp)] = {
+        { .name = "apu", APU_ADDR, APU_SIZE },
+    };
+    unsigned int nr;
+
+    for (nr = 0; nr < ARRAY_SIZE(unimp_areas); nr++) {
+        const struct UnimpInfo *info = &unimp_areas[nr];
+        DeviceState *dev = qdev_new(TYPE_UNIMPLEMENTED_DEVICE);
+        SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
+
+        assert(info->name && info->base && info->size > 0);
+        qdev_prop_set_string(dev, "name", info->name);
+        qdev_prop_set_uint64(dev, "size", info->size);
+        object_property_add_child(OBJECT(s), info->name, OBJECT(dev));
+
+        sysbus_realize_and_unref(sbd, &error_fatal);
+        sysbus_mmio_map(sbd, 0, info->base);
+    }
 }
 
 static void xlnx_zynqmp_init(Object *obj)
@@ -570,26 +647,6 @@ static void xlnx_zynqmp_realize(DeviceState *dev, Error **errp)
         g_free(bus_name);
     }
 
-    if (!sysbus_realize(SYS_BUS_DEVICE(&s->qspi), errp)) {
-        return;
-    }
-    sysbus_mmio_map(SYS_BUS_DEVICE(&s->qspi), 0, QSPI_ADDR);
-    sysbus_mmio_map(SYS_BUS_DEVICE(&s->qspi), 1, LQSPI_ADDR);
-    sysbus_connect_irq(SYS_BUS_DEVICE(&s->qspi), 0, gic_spi[QSPI_IRQ]);
-
-    for (i = 0; i < XLNX_ZYNQMP_NUM_QSPI_BUS; i++) {
-        gchar *bus_name;
-        gchar *target_bus;
-
-        /* Alias controller SPI bus to the SoC itself */
-        bus_name = g_strdup_printf("qspi%d", i);
-        target_bus = g_strdup_printf("spi%d", i);
-        object_property_add_alias(OBJECT(s), bus_name,
-                                  OBJECT(&s->qspi), target_bus);
-        g_free(bus_name);
-        g_free(target_bus);
-    }
-
     if (!sysbus_realize(SYS_BUS_DEVICE(&s->dp), errp)) {
         return;
     }
@@ -616,9 +673,17 @@ static void xlnx_zynqmp_realize(DeviceState *dev, Error **errp)
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->rtc), 0, RTC_ADDR);
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->rtc), 0, gic_spi[RTC_IRQ]);
 
+    xlnx_zynqmp_create_bbram(s, gic_spi);
+    xlnx_zynqmp_create_efuse(s, gic_spi);
+    xlnx_zynqmp_create_unimp_mmio(s);
+
     for (i = 0; i < XLNX_ZYNQMP_NUM_GDMA_CH; i++) {
         if (!object_property_set_uint(OBJECT(&s->gdma[i]), "bus-width", 128,
                                       errp)) {
+            return;
+        }
+        if (!object_property_set_link(OBJECT(&s->gdma[i]), "dma",
+                                      OBJECT(system_memory), errp)) {
             return;
         }
         if (!sysbus_realize(SYS_BUS_DEVICE(&s->gdma[i]), errp)) {
@@ -631,6 +696,10 @@ static void xlnx_zynqmp_realize(DeviceState *dev, Error **errp)
     }
 
     for (i = 0; i < XLNX_ZYNQMP_NUM_ADMA_CH; i++) {
+        if (!object_property_set_link(OBJECT(&s->adma[i]), "dma",
+                                      OBJECT(system_memory), errp)) {
+            return;
+        }
         if (!sysbus_realize(SYS_BUS_DEVICE(&s->adma[i]), errp)) {
             return;
         }
@@ -640,14 +709,36 @@ static void xlnx_zynqmp_realize(DeviceState *dev, Error **errp)
                            gic_spi[adma_ch_intr[i]]);
     }
 
+    if (!object_property_set_link(OBJECT(&s->qspi_dma), "dma",
+                                  OBJECT(system_memory), errp)) {
+        return;
+    }
     if (!sysbus_realize(SYS_BUS_DEVICE(&s->qspi_dma), errp)) {
         return;
     }
 
     sysbus_mmio_map(SYS_BUS_DEVICE(&s->qspi_dma), 0, QSPI_DMA_ADDR);
     sysbus_connect_irq(SYS_BUS_DEVICE(&s->qspi_dma), 0, gic_spi[QSPI_IRQ]);
-    object_property_set_link(OBJECT(&s->qspi), "stream-connected-dma",
-                             OBJECT(&s->qspi_dma), errp);
+
+    if (!object_property_set_link(OBJECT(&s->qspi), "stream-connected-dma",
+                                  OBJECT(&s->qspi_dma), errp)) {
+         return;
+    }
+    if (!sysbus_realize(SYS_BUS_DEVICE(&s->qspi), errp)) {
+        return;
+    }
+    sysbus_mmio_map(SYS_BUS_DEVICE(&s->qspi), 0, QSPI_ADDR);
+    sysbus_mmio_map(SYS_BUS_DEVICE(&s->qspi), 1, LQSPI_ADDR);
+    sysbus_connect_irq(SYS_BUS_DEVICE(&s->qspi), 0, gic_spi[QSPI_IRQ]);
+
+    for (i = 0; i < XLNX_ZYNQMP_NUM_QSPI_BUS; i++) {
+        g_autofree gchar *bus_name = g_strdup_printf("qspi%d", i);
+        g_autofree gchar *target_bus = g_strdup_printf("spi%d", i);
+
+        /* Alias controller SPI bus to the SoC itself */
+        object_property_add_alias(OBJECT(s), bus_name,
+                                  OBJECT(&s->qspi), target_bus);
+    }
 }
 
 static Property xlnx_zynqmp_props[] = {

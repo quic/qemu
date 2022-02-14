@@ -20,7 +20,9 @@
 #include "qemu/osdep.h"
 #include "qemu-common.h"
 #include "qemu.h"
+#include "user-internals.h"
 #include "cpu_loop-common.h"
+#include "signal-common.h"
 
 void cpu_loop(CPUM68KState *env)
 {
@@ -87,16 +89,6 @@ void cpu_loop(CPUM68KState *env)
             break;
         case EXCP_INTERRUPT:
             /* just indicate that signals should be handled asap */
-            break;
-        case EXCP_ACCESS:
-            {
-                info.si_signo = TARGET_SIGSEGV;
-                info.si_errno = 0;
-                /* XXX: check env->error_code */
-                info.si_code = TARGET_SEGV_MAPERR;
-                info._sifields._sigfault._addr = env->mmu.ar;
-                queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
-            }
             break;
         case EXCP_DEBUG:
             info.si_signo = TARGET_SIGTRAP;

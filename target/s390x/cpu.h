@@ -674,11 +674,6 @@ QEMU_BUILD_BUG_ON(sizeof(SysIB) != 4096);
 #define SIGP_STAT_INVALID_ORDER     0x00000002UL
 #define SIGP_STAT_RECEIVER_CHECK    0x00000001UL
 
-/* SIGP SET ARCHITECTURE modes */
-#define SIGP_MODE_ESA_S390 0
-#define SIGP_MODE_Z_ARCH_TRANS_ALL_PSW 1
-#define SIGP_MODE_Z_ARCH_TRANS_CUR_PSW 2
-
 /* SIGP order code mask corresponding to bit positions 56-63 */
 #define SIGP_ORDER_MASK 0x000000ff
 
@@ -808,13 +803,6 @@ void s390_set_qemu_cpu_model(uint16_t type, uint8_t gen, uint8_t ec_ga,
 #define S390_CPU_TYPE_SUFFIX "-" TYPE_S390_CPU
 #define S390_CPU_TYPE_NAME(name) (name S390_CPU_TYPE_SUFFIX)
 #define CPU_RESOLVING_TYPE TYPE_S390_CPU
-
-/* you can call this signal handler from your SIGBUS and SIGSEGV
-   signal handlers to inform the virtual CPU of exceptions. non zero
-   is returned if the signal was handled by the virtual CPU.  */
-int cpu_s390x_signal_handler(int host_signum, void *pinfo, void *puc);
-#define cpu_signal_handler cpu_s390x_signal_handler
-
 
 /* interrupt.c */
 #define RA_IGNORED                  0

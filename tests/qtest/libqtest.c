@@ -301,7 +301,9 @@ QTestState *qtest_init_without_qmp_handshake(const char *extra_args)
     s->expected_status = 0;
     s->qemu_pid = fork();
     if (s->qemu_pid == 0) {
-        g_setenv("QEMU_AUDIO_DRV", "none", true);
+        if (!g_setenv("QEMU_AUDIO_DRV", "none", true)) {
+            exit(1);
+        }
         execlp("/bin/sh", "sh", "-c", command, NULL);
         exit(1);
     }
@@ -918,6 +920,33 @@ const char *qtest_get_arch(void)
     }
 
     return end + 1;
+}
+
+bool qtest_has_accel(const char *accel_name)
+{
+    if (g_str_equal(accel_name, "tcg")) {
+#if defined(CONFIG_TCG)
+        return true;
+#else
+        return false;
+#endif
+    } else if (g_str_equal(accel_name, "kvm")) {
+        int i;
+        const char *arch = qtest_get_arch();
+        const char *targets[] = { CONFIG_KVM_TARGETS };
+
+        for (i = 0; i < ARRAY_SIZE(targets); i++) {
+            if (!strncmp(targets[i], arch, strlen(arch))) {
+                if (!access("/dev/kvm", R_OK | W_OK)) {
+                    return true;
+                }
+            }
+        }
+    } else {
+        /* not implemented */
+        g_assert_not_reached();
+    }
+    return false;
 }
 
 bool qtest_get_irq(QTestState *s, int num)

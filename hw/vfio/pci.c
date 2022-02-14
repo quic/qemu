@@ -29,10 +29,10 @@
 #include "hw/qdev-properties.h"
 #include "hw/qdev-properties-system.h"
 #include "migration/vmstate.h"
+#include "qapi/qmp/qdict.h"
 #include "qemu/error-report.h"
 #include "qemu/main-loop.h"
 #include "qemu/module.h"
-#include "qemu/option.h"
 #include "qemu/range.h"
 #include "qemu/units.h"
 #include "sysemu/kvm.h"
@@ -941,7 +941,7 @@ static void vfio_pci_size_rom(VFIOPCIDevice *vdev)
     }
 
     if (vfio_opt_rom_in_denylist(vdev)) {
-        if (dev->opts && qemu_opt_get(dev->opts, "rombar")) {
+        if (dev->opts && qdict_haskey(dev->opts, "rombar")) {
             warn_report("Device at %s is known to cause system instability"
                         " issues during option rom execution",
                         vdev->vbasedev.name);
@@ -1364,7 +1364,7 @@ static void vfio_pci_relocate_msix(VFIOPCIDevice *vdev, Error **errp)
          * TODO: Lookup table for known devices.
          *
          * Logically we might use an algorithm here to select the BAR adding
-         * the least additional MMIO space, but we cannot programatically
+         * the least additional MMIO space, but we cannot programmatically
          * predict the driver dependency on BAR ordering or sizing, therefore
          * 'auto' becomes a lookup for combinations reported to work.
          */
@@ -2158,7 +2158,7 @@ static void vfio_pci_pre_reset(VFIOPCIDevice *vdev)
     }
 
     /*
-     * Stop any ongoing DMA by disconecting I/O, MMIO, and bus master.
+     * Stop any ongoing DMA by disconnecting I/O, MMIO, and bus master.
      * Also put INTx Disable in known state.
      */
     cmd = vfio_pci_read_config(pdev, PCI_COMMAND, 2);
@@ -2384,7 +2384,7 @@ out_single:
 }
 
 /*
- * We want to differentiate hot reset of mulitple in-use devices vs hot reset
+ * We want to differentiate hot reset of multiple in-use devices vs hot reset
  * of a single in-use device.  VFIO_DEVICE_RESET will already handle the case
  * of doing hot resets when there is only a single device per bus.  The in-use
  * here refers to how many VFIODevices are affected.  A hot reset that affects
@@ -2453,7 +2453,12 @@ static int vfio_pci_load_config(VFIODevice *vbasedev, QEMUFile *f)
 {
     VFIOPCIDevice *vdev = container_of(vbasedev, VFIOPCIDevice, vbasedev);
     PCIDevice *pdev = &vdev->pdev;
-    int ret;
+    pcibus_t old_addr[PCI_NUM_REGIONS - 1];
+    int bar, ret;
+
+    for (bar = 0; bar < PCI_ROM_SLOT; bar++) {
+        old_addr[bar] = pdev->io_regions[bar].addr;
+    }
 
     ret = vmstate_load_state(f, &vmstate_vfio_pci_config, vdev, 1);
     if (ret) {
@@ -2462,6 +2467,18 @@ static int vfio_pci_load_config(VFIODevice *vbasedev, QEMUFile *f)
 
     vfio_pci_write_config(pdev, PCI_COMMAND,
                           pci_get_word(pdev->config + PCI_COMMAND), 2);
+
+    for (bar = 0; bar < PCI_ROM_SLOT; bar++) {
+        /*
+         * The address may not be changed in some scenarios
+         * (e.g. the VF driver isn't loaded in VM).
+         */
+        if (old_addr[bar] != pdev->io_regions[bar].addr &&
+            vdev->bars[bar].region.size > 0 &&
+            vdev->bars[bar].region.size < qemu_real_host_page_size) {
+            vfio_sub_page_bar_update_mapping(pdev, bar);
+        }
+    }
 
     if (msi_enabled(pdev)) {
         vfio_msi_enable(vdev);

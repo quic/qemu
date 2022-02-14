@@ -654,7 +654,7 @@ static uint64_t icv_iar_read(CPUARMState *env, const ARMCPRegInfo *ri)
 
         if (thisgrp == grp && icv_hppi_can_preempt(cs, lr)) {
             intid = ich_lr_vintid(lr);
-            if (intid < INTID_SECURE) {
+            if (!gicv3_intid_is_special(intid)) {
                 icv_activate_irq(cs, idx, grp);
             } else {
                 /* Interrupt goes from Pending to Invalid */
@@ -901,10 +901,12 @@ static void icc_activate_irq(GICv3CPUState *cs, int irq)
         cs->gicr_iactiver0 = deposit32(cs->gicr_iactiver0, irq, 1, 1);
         cs->gicr_ipendr0 = deposit32(cs->gicr_ipendr0, irq, 1, 0);
         gicv3_redist_update(cs);
-    } else {
+    } else if (irq < GICV3_LPI_INTID_START) {
         gicv3_gicd_active_set(cs->gic, irq);
         gicv3_gicd_pending_clear(cs->gic, irq);
         gicv3_update(cs->gic, irq, 1);
+    } else {
+        gicv3_redist_lpi_pending(cs, irq, 0);
     }
 }
 
@@ -996,7 +998,7 @@ static uint64_t icc_iar0_read(CPUARMState *env, const ARMCPRegInfo *ri)
         intid = icc_hppir0_value(cs, env);
     }
 
-    if (!(intid >= INTID_SECURE && intid <= INTID_SPURIOUS)) {
+    if (!gicv3_intid_is_special(intid)) {
         icc_activate_irq(cs, intid);
     }
 
@@ -1019,7 +1021,7 @@ static uint64_t icc_iar1_read(CPUARMState *env, const ARMCPRegInfo *ri)
         intid = icc_hppir1_value(cs, env);
     }
 
-    if (!(intid >= INTID_SECURE && intid <= INTID_SPURIOUS)) {
+    if (!gicv3_intid_is_special(intid)) {
         icc_activate_irq(cs, intid);
     }
 
@@ -1264,8 +1266,7 @@ static void icv_eoir_write(CPUARMState *env, const ARMCPRegInfo *ri,
     trace_gicv3_icv_eoir_write(ri->crm == 8 ? 0 : 1,
                                gicv3_redist_affid(cs), value);
 
-    if (irq >= GICV3_MAXIRQ) {
-        /* Also catches special interrupt numbers and LPIs */
+    if (gicv3_intid_is_special(irq)) {
         return;
     }
 
@@ -1320,7 +1321,8 @@ static void icc_eoir_write(CPUARMState *env, const ARMCPRegInfo *ri,
     trace_gicv3_icc_eoir_write(is_eoir0 ? 0 : 1,
                                gicv3_redist_affid(cs), value);
 
-    if (irq >= cs->gic->num_irq) {
+    if ((irq >= cs->gic->num_irq) &&
+        !(cs->gic->lpi_enable && (irq >= GICV3_LPI_INTID_START))) {
         /* This handles two cases:
          * 1. If software writes the ID of a spurious interrupt [ie 1020-1023]
          * to the GICC_EOIR, the GIC ignores that write.

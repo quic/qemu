@@ -136,8 +136,8 @@ Extended attribute (xattr) mapping
 By default the name of xattr's used by the client are passed through to the server
 file system.  This can be a problem where either those xattr names are used
 by something on the server (e.g. selinux client/server confusion) or if the
-virtiofsd is running in a container with restricted privileges where it cannot
-access some attributes.
+``virtiofsd`` is running in a container with restricted privileges where it
+cannot access some attributes.
 
 Mapping syntax
 ~~~~~~~~~~~~~~
@@ -179,6 +179,12 @@ Using ':' as the separator a rule is of the form:
 
 - 'bad' - If a client tries to use a name matching 'key' it's
   denied using EPERM; when the server passes an attribute
+  name matching 'prepend' it's hidden.  In many ways it's use is very like
+  'ok' as either an explicit terminator or for special handling of certain
+  patterns.
+
+- 'unsupported' - If a client tries to use a name matching 'key' it's
+  denied using ENOTSUP; when the server passes an attribute
   name matching 'prepend' it's hidden.  In many ways it's use is very like
   'ok' as either an explicit terminator or for special handling of certain
   patterns.

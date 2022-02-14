@@ -49,6 +49,8 @@
 #include "qemu/timer.h"
 #include "qemu/cutils.h"
 #include "qemu/id.h"
+#include "qemu/range.h"
+#include "qemu/rcu.h"
 #include "block/coroutines.h"
 
 #ifdef CONFIG_BSD
@@ -82,8 +84,13 @@ static BlockDriverState *bdrv_open_inherit(const char *filename,
                                            BdrvChildRole child_role,
                                            Error **errp);
 
-static void bdrv_replace_child_noperm(BdrvChild *child,
-                                      BlockDriverState *new_bs);
+static bool bdrv_recurse_has_child(BlockDriverState *bs,
+                                   BlockDriverState *child);
+
+static void bdrv_child_free(BdrvChild *child);
+static void bdrv_replace_child_noperm(BdrvChild **child,
+                                      BlockDriverState *new_bs,
+                                      bool free_empty_child);
 static void bdrv_remove_file_or_backing_child(BlockDriverState *bs,
                                               BdrvChild *child,
                                               Transaction *tran);
@@ -400,6 +407,9 @@ BlockDriverState *bdrv_new(void)
     bs->aio_context = qemu_get_aio_context();
 
     qemu_co_queue_init(&bs->flush_queue);
+
+    qemu_co_mutex_init(&bs->bsc_modify_lock);
+    bs->block_status_cache = g_new0(BdrvBlockStatusCache, 1);
 
     for (i = 0; i < bdrv_drain_all_count; i++) {
         bdrv_drained_begin(bs);
@@ -1379,6 +1389,8 @@ static void bdrv_child_cb_attach(BdrvChild *child)
 {
     BlockDriverState *bs = child->opaque;
 
+    QLIST_INSERT_HEAD(&bs->children, child, next);
+
     if (child->role & BDRV_CHILD_COW) {
         bdrv_backing_attach(child);
     }
@@ -1395,6 +1407,8 @@ static void bdrv_child_cb_detach(BdrvChild *child)
     }
 
     bdrv_unapply_subtree_drain(child, bs);
+
+    QLIST_REMOVE(child, next);
 }
 
 static int bdrv_child_cb_update_filename(BdrvChild *c, BlockDriverState *base,
@@ -1599,16 +1613,26 @@ open_failed:
     return ret;
 }
 
-BlockDriverState *bdrv_new_open_driver(BlockDriver *drv, const char *node_name,
-                                       int flags, Error **errp)
+/*
+ * Create and open a block node.
+ *
+ * @options is a QDict of options to pass to the block drivers, or NULL for an
+ * empty set of options. The reference to the QDict belongs to the block layer
+ * after the call (even on failure), so if the caller intends to reuse the
+ * dictionary, it needs to use qobject_ref() before calling bdrv_open.
+ */
+BlockDriverState *bdrv_new_open_driver_opts(BlockDriver *drv,
+                                            const char *node_name,
+                                            QDict *options, int flags,
+                                            Error **errp)
 {
     BlockDriverState *bs;
     int ret;
 
     bs = bdrv_new();
     bs->open_flags = flags;
-    bs->explicit_options = qdict_new();
-    bs->options = qdict_new();
+    bs->options = options ?: qdict_new();
+    bs->explicit_options = qdict_clone_shallow(bs->options);
     bs->opaque = NULL;
 
     update_options_from_flags(bs->options, flags);
@@ -1624,6 +1648,13 @@ BlockDriverState *bdrv_new_open_driver(BlockDriver *drv, const char *node_name,
     }
 
     return bs;
+}
+
+/* Create and open a block node. */
+BlockDriverState *bdrv_new_open_driver(BlockDriver *drv, const char *node_name,
+                                       int flags, Error **errp)
+{
+    return bdrv_new_open_driver_opts(drv, node_name, NULL, flags, errp);
 }
 
 QemuOptsList bdrv_runtime_opts = {
@@ -2225,13 +2256,18 @@ static int bdrv_drv_set_perm(BlockDriverState *bs, uint64_t perm,
 
 typedef struct BdrvReplaceChildState {
     BdrvChild *child;
+    BdrvChild **childp;
     BlockDriverState *old_bs;
+    bool free_empty_child;
 } BdrvReplaceChildState;
 
 static void bdrv_replace_child_commit(void *opaque)
 {
     BdrvReplaceChildState *s = opaque;
 
+    if (s->free_empty_child && !s->child->bs) {
+        bdrv_child_free(s->child);
+    }
     bdrv_unref(s->old_bs);
 }
 
@@ -2240,8 +2276,34 @@ static void bdrv_replace_child_abort(void *opaque)
     BdrvReplaceChildState *s = opaque;
     BlockDriverState *new_bs = s->child->bs;
 
-    /* old_bs reference is transparently moved from @s to @s->child */
-    bdrv_replace_child_noperm(s->child, s->old_bs);
+    /*
+     * old_bs reference is transparently moved from @s to s->child.
+     *
+     * Pass &s->child here instead of s->childp, because:
+     * (1) s->old_bs must be non-NULL, so bdrv_replace_child_noperm() will not
+     *     modify the BdrvChild * pointer we indirectly pass to it, i.e. it
+     *     will not modify s->child.  From that perspective, it does not matter
+     *     whether we pass s->childp or &s->child.
+     * (2) If new_bs is not NULL, s->childp will be NULL.  We then cannot use
+     *     it here.
+     * (3) If new_bs is NULL, *s->childp will have been NULLed by
+     *     bdrv_replace_child_tran()'s bdrv_replace_child_noperm() call, and we
+     *     must not pass a NULL *s->childp here.
+     *
+     * So whether new_bs was NULL or not, we cannot pass s->childp here; and in
+     * any case, there is no reason to pass it anyway.
+     */
+    bdrv_replace_child_noperm(&s->child, s->old_bs, true);
+    /*
+     * The child was pre-existing, so s->old_bs must be non-NULL, and
+     * s->child thus must not have been freed
+     */
+    assert(s->child != NULL);
+    if (!new_bs) {
+        /* As described above, *s->childp was cleared, so restore it */
+        assert(s->childp != NULL);
+        *s->childp = s->child;
+    }
     bdrv_unref(new_bs);
 }
 
@@ -2257,22 +2319,46 @@ static TransactionActionDrv bdrv_replace_child_drv = {
  * Note: real unref of old_bs is done only on commit.
  *
  * The function doesn't update permissions, caller is responsible for this.
+ *
+ * (*childp)->bs must not be NULL.
+ *
+ * Note that if new_bs == NULL, @childp is stored in a state object attached
+ * to @tran, so that the old child can be reinstated in the abort handler.
+ * Therefore, if @new_bs can be NULL, @childp must stay valid until the
+ * transaction is committed or aborted.
+ *
+ * If @free_empty_child is true and @new_bs is NULL, the BdrvChild is
+ * freed (on commit).  @free_empty_child should only be false if the
+ * caller will free the BDrvChild themselves (which may be important
+ * if this is in turn called in another transactional context).
  */
-static void bdrv_replace_child_tran(BdrvChild *child, BlockDriverState *new_bs,
-                                    Transaction *tran)
+static void bdrv_replace_child_tran(BdrvChild **childp,
+                                    BlockDriverState *new_bs,
+                                    Transaction *tran,
+                                    bool free_empty_child)
 {
     BdrvReplaceChildState *s = g_new(BdrvReplaceChildState, 1);
     *s = (BdrvReplaceChildState) {
-        .child = child,
-        .old_bs = child->bs,
+        .child = *childp,
+        .childp = new_bs == NULL ? childp : NULL,
+        .old_bs = (*childp)->bs,
+        .free_empty_child = free_empty_child,
     };
     tran_add(tran, &bdrv_replace_child_drv, s);
+
+    /* The abort handler relies on this */
+    assert(s->old_bs != NULL);
 
     if (new_bs) {
         bdrv_ref(new_bs);
     }
-    bdrv_replace_child_noperm(child, new_bs);
-    /* old_bs reference is transparently moved from @child to @s */
+    /*
+     * Pass free_empty_child=false, we will free the child (if
+     * necessary) in bdrv_replace_child_commit() (if our
+     * @free_empty_child parameter was true).
+     */
+    bdrv_replace_child_noperm(childp, new_bs, false);
+    /* old_bs reference is transparently moved from *childp to @s */
 }
 
 /*
@@ -2643,14 +2729,30 @@ uint64_t bdrv_qapi_perm_to_blk_perm(BlockPermission qapi_perm)
     return permissions[qapi_perm];
 }
 
-static void bdrv_replace_child_noperm(BdrvChild *child,
-                                      BlockDriverState *new_bs)
+/**
+ * Replace (*childp)->bs by @new_bs.
+ *
+ * If @new_bs is NULL, *childp will be set to NULL, too: BDS parents
+ * generally cannot handle a BdrvChild with .bs == NULL, so clearing
+ * BdrvChild.bs should generally immediately be followed by the
+ * BdrvChild pointer being cleared as well.
+ *
+ * If @free_empty_child is true and @new_bs is NULL, the BdrvChild is
+ * freed.  @free_empty_child should only be false if the caller will
+ * free the BdrvChild themselves (this may be important in a
+ * transactional context, where it may only be freed on commit).
+ */
+static void bdrv_replace_child_noperm(BdrvChild **childp,
+                                      BlockDriverState *new_bs,
+                                      bool free_empty_child)
 {
+    BdrvChild *child = *childp;
     BlockDriverState *old_bs = child->bs;
     int new_bs_quiesce_counter;
     int drain_saldo;
 
     assert(!child->frozen);
+    assert(old_bs != new_bs);
 
     if (old_bs && new_bs) {
         assert(bdrv_get_aio_context(old_bs) == bdrv_get_aio_context(new_bs));
@@ -2679,6 +2781,9 @@ static void bdrv_replace_child_noperm(BdrvChild *child,
     }
 
     child->bs = new_bs;
+    if (!new_bs) {
+        *childp = NULL;
+    }
 
     if (new_bs) {
         QLIST_INSERT_HEAD(&new_bs->parents, child, next_parent);
@@ -2708,21 +2813,25 @@ static void bdrv_replace_child_noperm(BdrvChild *child,
         bdrv_parent_drained_end_single(child);
         drain_saldo++;
     }
+
+    if (free_empty_child && !child->bs) {
+        bdrv_child_free(child);
+    }
 }
 
-static void bdrv_child_free(void *opaque)
-{
-    BdrvChild *c = opaque;
-
-    g_free(c->name);
-    g_free(c);
-}
-
-static void bdrv_remove_empty_child(BdrvChild *child)
+/**
+ * Free the given @child.
+ *
+ * The child must be empty (i.e. `child->bs == NULL`) and it must be
+ * unused (i.e. not in a children list).
+ */
+static void bdrv_child_free(BdrvChild *child)
 {
     assert(!child->bs);
-    QLIST_SAFE_REMOVE(child, next);
-    bdrv_child_free(child);
+    assert(!child->next.le_prev); /* not in children list */
+
+    g_free(child->name);
+    g_free(child);
 }
 
 typedef struct BdrvAttachChildCommonState {
@@ -2737,27 +2846,35 @@ static void bdrv_attach_child_common_abort(void *opaque)
     BdrvChild *child = *s->child;
     BlockDriverState *bs = child->bs;
 
-    bdrv_replace_child_noperm(child, NULL);
+    /*
+     * Pass free_empty_child=false, because we still need the child
+     * for the AioContext operations on the parent below; those
+     * BdrvChildClass methods all work on a BdrvChild object, so we
+     * need to keep it as an empty shell (after this function, it will
+     * not be attached to any parent, and it will not have a .bs).
+     */
+    bdrv_replace_child_noperm(s->child, NULL, false);
 
     if (bdrv_get_aio_context(bs) != s->old_child_ctx) {
         bdrv_try_set_aio_context(bs, s->old_child_ctx, &error_abort);
     }
 
     if (bdrv_child_get_parent_aio_context(child) != s->old_parent_ctx) {
-        GSList *ignore = g_slist_prepend(NULL, child);
+        GSList *ignore;
 
+        /* No need to ignore `child`, because it has been detached already */
+        ignore = NULL;
         child->klass->can_set_aio_ctx(child, s->old_parent_ctx, &ignore,
                                       &error_abort);
         g_slist_free(ignore);
-        ignore = g_slist_prepend(NULL, child);
-        child->klass->set_aio_ctx(child, s->old_parent_ctx, &ignore);
 
+        ignore = NULL;
+        child->klass->set_aio_ctx(child, s->old_parent_ctx, &ignore);
         g_slist_free(ignore);
     }
 
     bdrv_unref(bs);
-    bdrv_remove_empty_child(child);
-    *s->child = NULL;
+    bdrv_child_free(child);
 }
 
 static TransactionActionDrv bdrv_attach_child_common_drv = {
@@ -2829,13 +2946,15 @@ static int bdrv_attach_child_common(BlockDriverState *child_bs,
 
         if (ret < 0) {
             error_propagate(errp, local_err);
-            bdrv_remove_empty_child(new_child);
+            bdrv_child_free(new_child);
             return ret;
         }
     }
 
     bdrv_ref(child_bs);
-    bdrv_replace_child_noperm(new_child, child_bs);
+    bdrv_replace_child_noperm(&new_child, child_bs, true);
+    /* child_bs was non-NULL, so new_child must not have been freed */
+    assert(new_child != NULL);
 
     *child = new_child;
 
@@ -2870,6 +2989,12 @@ static int bdrv_attach_child_noperm(BlockDriverState *parent_bs,
 
     assert(parent_bs->drv);
 
+    if (bdrv_recurse_has_child(child_bs, parent_bs)) {
+        error_setg(errp, "Making '%s' a %s child of '%s' would create a cycle",
+                   child_bs->node_name, child_name, parent_bs->node_name);
+        return -EINVAL;
+    }
+
     bdrv_get_cumulative_perm(parent_bs, &perm, &shared_perm);
     bdrv_child_perm(parent_bs, child_bs, NULL, child_role, NULL,
                     perm, shared_perm, &perm, &shared_perm);
@@ -2881,21 +3006,14 @@ static int bdrv_attach_child_noperm(BlockDriverState *parent_bs,
         return ret;
     }
 
-    QLIST_INSERT_HEAD(&parent_bs->children, *child, next);
-    /*
-     * child is removed in bdrv_attach_child_common_abort(), so don't care to
-     * abort this change separately.
-     */
-
     return 0;
 }
 
-static void bdrv_detach_child(BdrvChild *child)
+static void bdrv_detach_child(BdrvChild **childp)
 {
-    BlockDriverState *old_bs = child->bs;
+    BlockDriverState *old_bs = (*childp)->bs;
 
-    bdrv_replace_child_noperm(child, NULL);
-    bdrv_remove_empty_child(child);
+    bdrv_replace_child_noperm(childp, NULL, true);
 
     if (old_bs) {
         /*
@@ -3001,7 +3119,7 @@ void bdrv_root_unref_child(BdrvChild *child)
     BlockDriverState *child_bs;
 
     child_bs = child->bs;
-    bdrv_detach_child(child);
+    bdrv_detach_child(&child);
     bdrv_unref(child_bs);
 }
 
@@ -4694,6 +4812,8 @@ static void bdrv_close(BlockDriverState *bs)
     bs->explicit_options = NULL;
     qobject_unref(bs->full_open_options);
     bs->full_open_options = NULL;
+    g_free(bs->block_status_cache);
+    bs->block_status_cache = NULL;
 
     bdrv_release_named_dirty_bitmaps(bs);
     assert(QLIST_EMPTY(&bs->dirty_bitmaps));
@@ -4809,6 +4929,7 @@ static bool should_update_child(BdrvChild *c, BlockDriverState *to)
 
 typedef struct BdrvRemoveFilterOrCowChild {
     BdrvChild *child;
+    BlockDriverState *bs;
     bool is_backing;
 } BdrvRemoveFilterOrCowChild;
 
@@ -4817,7 +4938,6 @@ static void bdrv_remove_filter_or_cow_child_abort(void *opaque)
     BdrvRemoveFilterOrCowChild *s = opaque;
     BlockDriverState *parent_bs = s->child->opaque;
 
-    QLIST_INSERT_HEAD(&parent_bs->children, s->child, next);
     if (s->is_backing) {
         parent_bs->backing = s->child;
     } else {
@@ -4839,10 +4959,19 @@ static void bdrv_remove_filter_or_cow_child_commit(void *opaque)
     bdrv_child_free(s->child);
 }
 
+static void bdrv_remove_filter_or_cow_child_clean(void *opaque)
+{
+    BdrvRemoveFilterOrCowChild *s = opaque;
+
+    /* Drop the bs reference after the transaction is done */
+    bdrv_unref(s->bs);
+    g_free(s);
+}
+
 static TransactionActionDrv bdrv_remove_filter_or_cow_child_drv = {
     .abort = bdrv_remove_filter_or_cow_child_abort,
     .commit = bdrv_remove_filter_or_cow_child_commit,
-    .clean = g_free,
+    .clean = bdrv_remove_filter_or_cow_child_clean,
 };
 
 /*
@@ -4853,31 +4982,41 @@ static void bdrv_remove_file_or_backing_child(BlockDriverState *bs,
                                               BdrvChild *child,
                                               Transaction *tran)
 {
+    BdrvChild **childp;
     BdrvRemoveFilterOrCowChild *s;
-
-    assert(child == bs->backing || child == bs->file);
 
     if (!child) {
         return;
     }
 
+    /*
+     * Keep a reference to @bs so @childp will stay valid throughout the
+     * transaction (required by bdrv_replace_child_tran())
+     */
+    bdrv_ref(bs);
+    if (child == bs->backing) {
+        childp = &bs->backing;
+    } else if (child == bs->file) {
+        childp = &bs->file;
+    } else {
+        g_assert_not_reached();
+    }
+
     if (child->bs) {
-        bdrv_replace_child_tran(child, NULL, tran);
+        /*
+         * Pass free_empty_child=false, we will free the child in
+         * bdrv_remove_filter_or_cow_child_commit()
+         */
+        bdrv_replace_child_tran(childp, NULL, tran, false);
     }
 
     s = g_new(BdrvRemoveFilterOrCowChild, 1);
     *s = (BdrvRemoveFilterOrCowChild) {
         .child = child,
-        .is_backing = (child == bs->backing),
+        .bs = bs,
+        .is_backing = (childp == &bs->backing),
     };
     tran_add(tran, &bdrv_remove_filter_or_cow_child_drv, s);
-
-    QLIST_SAFE_REMOVE(child, next);
-    if (s->is_backing) {
-        bs->backing = NULL;
-    } else {
-        bs->file = NULL;
-    }
 }
 
 /*
@@ -4898,6 +5037,8 @@ static int bdrv_replace_node_noperm(BlockDriverState *from,
 {
     BdrvChild *c, *next;
 
+    assert(to != NULL);
+
     QLIST_FOREACH_SAFE(c, &from->parents, next_parent, next) {
         assert(c->bs == from);
         if (!should_update_child(c, to)) {
@@ -4913,7 +5054,12 @@ static int bdrv_replace_node_noperm(BlockDriverState *from,
                        c->name, from->node_name);
             return -EPERM;
         }
-        bdrv_replace_child_tran(c, to, tran);
+
+        /*
+         * Passing a pointer to the local variable @c is fine here, because
+         * @to is not NULL, and so &c will not be attached to the transaction.
+         */
+        bdrv_replace_child_tran(&c, to, tran, true);
     }
 
     return 0;
@@ -4928,6 +5074,8 @@ static int bdrv_replace_node_noperm(BlockDriverState *from,
  *
  * With @detach_subchain=true @to must be in a backing chain of @from. In this
  * case backing link of the cow-parent of @to is removed.
+ *
+ * @to must not be NULL.
  */
 static int bdrv_replace_node_common(BlockDriverState *from,
                                     BlockDriverState *to,
@@ -4939,6 +5087,8 @@ static int bdrv_replace_node_common(BlockDriverState *from,
     g_autoptr(GSList) refresh_list = NULL;
     BlockDriverState *to_cow_parent = NULL;
     int ret;
+
+    assert(to != NULL);
 
     if (detach_subchain) {
         assert(bdrv_chain_contains(from, to));
@@ -4995,6 +5145,9 @@ out:
     return ret;
 }
 
+/**
+ * Replace node @from by @to (where neither may be NULL).
+ */
 int bdrv_replace_node(BlockDriverState *from, BlockDriverState *to,
                       Error **errp)
 {
@@ -5048,6 +5201,39 @@ out:
     return ret;
 }
 
+/* Not for empty child */
+int bdrv_replace_child_bs(BdrvChild *child, BlockDriverState *new_bs,
+                          Error **errp)
+{
+    int ret;
+    Transaction *tran = tran_new();
+    g_autoptr(GHashTable) found = NULL;
+    g_autoptr(GSList) refresh_list = NULL;
+    BlockDriverState *old_bs = child->bs;
+
+    bdrv_ref(old_bs);
+    bdrv_drained_begin(old_bs);
+    bdrv_drained_begin(new_bs);
+
+    bdrv_replace_child_tran(&child, new_bs, tran, true);
+    /* @new_bs must have been non-NULL, so @child must not have been freed */
+    assert(child != NULL);
+
+    found = g_hash_table_new(NULL, NULL);
+    refresh_list = bdrv_topological_dfs(refresh_list, found, old_bs);
+    refresh_list = bdrv_topological_dfs(refresh_list, found, new_bs);
+
+    ret = bdrv_list_refresh_perms(refresh_list, NULL, tran, errp);
+
+    tran_finalize(tran, ret);
+
+    bdrv_drained_end(old_bs);
+    bdrv_drained_end(new_bs);
+    bdrv_unref(old_bs);
+
+    return ret;
+}
+
 static void bdrv_delete(BlockDriverState *bs)
 {
     assert(bdrv_op_blocker_is_empty(bs));
@@ -5064,29 +5250,61 @@ static void bdrv_delete(BlockDriverState *bs)
     g_free(bs);
 }
 
-BlockDriverState *bdrv_insert_node(BlockDriverState *bs, QDict *node_options,
+
+/*
+ * Replace @bs by newly created block node.
+ *
+ * @options is a QDict of options to pass to the block drivers, or NULL for an
+ * empty set of options. The reference to the QDict belongs to the block layer
+ * after the call (even on failure), so if the caller intends to reuse the
+ * dictionary, it needs to use qobject_ref() before calling bdrv_open.
+ */
+BlockDriverState *bdrv_insert_node(BlockDriverState *bs, QDict *options,
                                    int flags, Error **errp)
 {
-    BlockDriverState *new_node_bs;
-    Error *local_err = NULL;
+    ERRP_GUARD();
+    int ret;
+    BlockDriverState *new_node_bs = NULL;
+    const char *drvname, *node_name;
+    BlockDriver *drv;
 
-    new_node_bs = bdrv_open(NULL, NULL, node_options, flags, errp);
-    if (new_node_bs == NULL) {
+    drvname = qdict_get_try_str(options, "driver");
+    if (!drvname) {
+        error_setg(errp, "driver is not specified");
+        goto fail;
+    }
+
+    drv = bdrv_find_format(drvname);
+    if (!drv) {
+        error_setg(errp, "Unknown driver: '%s'", drvname);
+        goto fail;
+    }
+
+    node_name = qdict_get_try_str(options, "node-name");
+
+    new_node_bs = bdrv_new_open_driver_opts(drv, node_name, options, flags,
+                                            errp);
+    options = NULL; /* bdrv_new_open_driver() eats options */
+    if (!new_node_bs) {
         error_prepend(errp, "Could not create node: ");
-        return NULL;
+        goto fail;
     }
 
     bdrv_drained_begin(bs);
-    bdrv_replace_node(bs, new_node_bs, &local_err);
+    ret = bdrv_replace_node(bs, new_node_bs, errp);
     bdrv_drained_end(bs);
 
-    if (local_err) {
-        bdrv_unref(new_node_bs);
-        error_propagate(errp, local_err);
-        return NULL;
+    if (ret < 0) {
+        error_prepend(errp, "Could not replace node: ");
+        goto fail;
     }
 
     return new_node_bs;
+
+fail:
+    qobject_unref(options);
+    bdrv_unref(new_node_bs);
+    return NULL;
 }
 
 /*
@@ -6288,6 +6506,7 @@ static int bdrv_inactivate_recurse(BlockDriverState *bs)
 {
     BdrvChild *child, *parent;
     int ret;
+    uint64_t cumulative_perms, cumulative_shared_perms;
 
     if (!bs->drv) {
         return -ENOMEDIUM;
@@ -6316,6 +6535,13 @@ static int bdrv_inactivate_recurse(BlockDriverState *bs)
                 return ret;
             }
         }
+    }
+
+    bdrv_get_cumulative_perm(bs, &cumulative_perms,
+                             &cumulative_shared_perms);
+    if (cumulative_perms & (BLK_PERM_WRITE | BLK_PERM_WRITE_UNCHANGED)) {
+        /* Our inactive parents still need write access. Inactivation failed. */
+        return -EPERM;
     }
 
     bs->open_flags |= BDRV_O_INACTIVE;
@@ -7652,4 +7878,77 @@ BlockDriverState *bdrv_skip_filters(BlockDriverState *bs)
 BlockDriverState *bdrv_backing_chain_next(BlockDriverState *bs)
 {
     return bdrv_skip_filters(bdrv_cow_bs(bdrv_skip_filters(bs)));
+}
+
+/**
+ * Check whether [offset, offset + bytes) overlaps with the cached
+ * block-status data region.
+ *
+ * If so, and @pnum is not NULL, set *pnum to `bsc.data_end - offset`,
+ * which is what bdrv_bsc_is_data()'s interface needs.
+ * Otherwise, *pnum is not touched.
+ */
+static bool bdrv_bsc_range_overlaps_locked(BlockDriverState *bs,
+                                           int64_t offset, int64_t bytes,
+                                           int64_t *pnum)
+{
+    BdrvBlockStatusCache *bsc = qatomic_rcu_read(&bs->block_status_cache);
+    bool overlaps;
+
+    overlaps =
+        qatomic_read(&bsc->valid) &&
+        ranges_overlap(offset, bytes, bsc->data_start,
+                       bsc->data_end - bsc->data_start);
+
+    if (overlaps && pnum) {
+        *pnum = bsc->data_end - offset;
+    }
+
+    return overlaps;
+}
+
+/**
+ * See block_int.h for this function's documentation.
+ */
+bool bdrv_bsc_is_data(BlockDriverState *bs, int64_t offset, int64_t *pnum)
+{
+    RCU_READ_LOCK_GUARD();
+
+    return bdrv_bsc_range_overlaps_locked(bs, offset, 1, pnum);
+}
+
+/**
+ * See block_int.h for this function's documentation.
+ */
+void bdrv_bsc_invalidate_range(BlockDriverState *bs,
+                               int64_t offset, int64_t bytes)
+{
+    RCU_READ_LOCK_GUARD();
+
+    if (bdrv_bsc_range_overlaps_locked(bs, offset, bytes, NULL)) {
+        qatomic_set(&bs->block_status_cache->valid, false);
+    }
+}
+
+/**
+ * See block_int.h for this function's documentation.
+ */
+void bdrv_bsc_fill(BlockDriverState *bs, int64_t offset, int64_t bytes)
+{
+    BdrvBlockStatusCache *new_bsc = g_new(BdrvBlockStatusCache, 1);
+    BdrvBlockStatusCache *old_bsc;
+
+    *new_bsc = (BdrvBlockStatusCache) {
+        .valid = true,
+        .data_start = offset,
+        .data_end = offset + bytes,
+    };
+
+    QEMU_LOCK_GUARD(&bs->bsc_modify_lock);
+
+    old_bsc = qatomic_rcu_read(&bs->block_status_cache);
+    qatomic_rcu_set(&bs->block_status_cache, new_bsc);
+    if (old_bsc) {
+        g_free_rcu(old_bsc, rcu);
+    }
 }

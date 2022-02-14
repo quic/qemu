@@ -204,7 +204,8 @@ static int read_packet_words(CPUHexagonState *env, DisasContext *ctx,
     memset(words, 0, PACKET_WORDS_MAX * sizeof(uint32_t));
     for (nwords = 0; !found_end && nwords < PACKET_WORDS_MAX; nwords++) {
         words[nwords] =
-            translator_ldl(env, ctx->base.pc_next + nwords * sizeof(uint32_t));
+            translator_ldl(env, &ctx->base,
+                           ctx->base.pc_next + nwords * sizeof(uint32_t));
         found_end = is_packet_end(words[nwords]);
     }
     if (!found_end) {
@@ -318,7 +319,10 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     for (i = 0; i < STORES_MAX; i++) {
         ctx->store_width[i] = 0;
     }
+    // mgl new
+    //tcg_gen_movi_tl(hex_pkt_has_store_s1, pkt->pkt_has_store_s1);
     ctx->s1_store_processed = false;
+    ctx->pre_commit = true;
 
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */

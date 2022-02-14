@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -811,9 +811,6 @@ ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(32,vasr_into,"Vxx32.w=vasrinto(Vu32.w,Vv32
     VxxV.v[1].w[i] = ((result >> 32) & 0xffffffff);
     VxxV.v[0].w[i] = (result & 0xffffffff))
 
-
-
-
 #define NARROWING_SHIFT(ITERSIZE,TAG,DSTM,DSTTYPE,SRCTYPE,SYNOPTS,SATFUNC,RNDFUNC,SHAMTMASK) \
 ITERATOR_INSN_SHIFT_SLOT(ITERSIZE,TAG, \
 "Vd32." #DSTTYPE "=vasr(Vu32." #SRCTYPE ",Vv32." #SRCTYPE ",Rt8)" #SYNOPTS, \
@@ -836,9 +833,6 @@ NARROWING_SHIFT(32,vasrwhsat,fSETHALF,h,w,:sat,fVSATH,fVNOROUND,0xF)
 NARROWING_SHIFT(32,vasrwhrndsat,fSETHALF,h,w,:rnd:sat,fVSATH,fVROUND,0xF)
 NARROWING_SHIFT(32,vasrwuhrndsat,fSETHALF,uh,w,:rnd:sat,fVSATUH,fVROUND,0xF)
 NARROWING_SHIFT(32,vasrwuhsat,fSETHALF,uh,w,:sat,fVSATUH,fVNOROUND,0xF)
-
-
-
 NARROWING_SHIFT(16,vasrhubsat,fSETBYTE,ub,h,:sat,fVSATUB,fVNOROUND,0x7)
 NARROWING_SHIFT(16,vasrhubrndsat,fSETBYTE,ub,h,:rnd:sat,fVSATUB,fVROUND,0x7)
 NARROWING_SHIFT(16,vasrhbsat,fSETBYTE,b,h,:sat,fVSATB,fVNOROUND,0x7)

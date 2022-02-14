@@ -37,12 +37,12 @@
 #include "semihosting/console.h"
 #include "semihosting/common-semi.h"
 #include "qemu/timer.h"
+#include "exec/gdbstub.h"
 #ifdef CONFIG_USER_ONLY
 #include "qemu.h"
 
 #define COMMON_SEMI_HEAP_SIZE (128 * 1024 * 1024)
 #else
-#include "exec/gdbstub.h"
 #include "qemu/cutils.h"
 #ifdef TARGET_ARM
 #include "hw/arm/boot.h"
@@ -775,7 +775,7 @@ static inline bool is_64bit_semihosting(CPUArchState *env)
 #if defined(TARGET_ARM)
     return is_a64(env);
 #elif defined(TARGET_RISCV)
-    return !riscv_cpu_is_32bit(env);
+    return riscv_cpu_mxl(env) != MXL_RV32;
 #else
 #error un-handled architecture
 #endif

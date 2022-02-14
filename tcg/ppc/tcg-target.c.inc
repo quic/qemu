@@ -25,9 +25,24 @@
 #include "elf.h"
 #include "../tcg-pool.c.inc"
 
-#if defined _CALL_DARWIN || defined __APPLE__
-#define TCG_TARGET_CALL_DARWIN
-#endif
+/*
+ * Standardize on the _CALL_FOO symbols used by GCC:
+ * Apple XCode does not define _CALL_DARWIN.
+ * Clang defines _CALL_ELF (64-bit) but not _CALL_SYSV (32-bit).
+ */
+#if !defined(_CALL_SYSV) && \
+    !defined(_CALL_DARWIN) && \
+    !defined(_CALL_AIX) && \
+    !defined(_CALL_ELF)
+# if defined(__APPLE__)
+#  define _CALL_DARWIN
+# elif defined(__ELF__) && TCG_TARGET_REG_BITS == 32
+#  define _CALL_SYSV
+# else
+#  error "Unknown ABI"
+# endif
+#endif 
+
 #ifdef _CALL_SYSV
 # define TCG_TARGET_CALL_ALIGN_ARGS   1
 #endif
@@ -169,7 +184,7 @@ static const int tcg_target_call_oarg_regs[] = {
 };
 
 static const int tcg_target_callee_save_regs[] = {
-#ifdef TCG_TARGET_CALL_DARWIN
+#ifdef _CALL_DARWIN
     TCG_REG_R11,
 #endif
     TCG_REG_R14,
@@ -1916,7 +1931,7 @@ static void tcg_out_call(TCGContext *s, const tcg_insn_unit *target)
 #endif
 }
 
-static const uint32_t qemu_ldx_opc[16] = {
+static const uint32_t qemu_ldx_opc[(MO_SSIZE + MO_BSWAP) + 1] = {
     [MO_UB] = LBZX,
     [MO_UW] = LHZX,
     [MO_UL] = LWZX,
@@ -1929,7 +1944,7 @@ static const uint32_t qemu_ldx_opc[16] = {
     [MO_BSWAP | MO_Q]  = LDBRX,
 };
 
-static const uint32_t qemu_stx_opc[16] = {
+static const uint32_t qemu_stx_opc[(MO_SIZE + MO_BSWAP) + 1] = {
     [MO_UB] = STBX,
     [MO_UW] = STHX,
     [MO_UL] = STWX,
@@ -1950,7 +1965,7 @@ static const uint32_t qemu_exts_opc[4] = {
 /* helper signature: helper_ld_mmu(CPUState *env, target_ulong addr,
  *                                 int mmu_idx, uintptr_t ra)
  */
-static void * const qemu_ld_helpers[16] = {
+static void * const qemu_ld_helpers[(MO_SIZE | MO_BSWAP) + 1] = {
     [MO_UB]   = helper_ret_ldub_mmu,
     [MO_LEUW] = helper_le_lduw_mmu,
     [MO_LEUL] = helper_le_ldul_mmu,
@@ -1963,7 +1978,7 @@ static void * const qemu_ld_helpers[16] = {
 /* helper signature: helper_st_mmu(CPUState *env, target_ulong addr,
  *                                 uintxx_t val, int mmu_idx, uintptr_t ra)
  */
-static void * const qemu_st_helpers[16] = {
+static void * const qemu_st_helpers[(MO_SIZE | MO_BSWAP) + 1] = {
     [MO_UB]   = helper_ret_stb_mmu,
     [MO_LEUW] = helper_le_stw_mmu,
     [MO_LEUL] = helper_le_stl_mmu,
@@ -2088,7 +2103,7 @@ static TCGReg tcg_out_tlb_read(TCGContext *s, MemOp opc,
 /* Record the context of a call to the out of line helper code for the slow
    path for a load or store, so that we can later generate the correct
    helper code.  */
-static void add_qemu_ldst_label(TCGContext *s, bool is_ld, TCGMemOpIdx oi,
+static void add_qemu_ldst_label(TCGContext *s, bool is_ld, MemOpIdx oi,
                                 TCGReg datalo_reg, TCGReg datahi_reg,
                                 TCGReg addrlo_reg, TCGReg addrhi_reg,
                                 tcg_insn_unit *raddr, tcg_insn_unit *lptr)
@@ -2107,7 +2122,7 @@ static void add_qemu_ldst_label(TCGContext *s, bool is_ld, TCGMemOpIdx oi,
 
 static bool tcg_out_qemu_ld_slow_path(TCGContext *s, TCGLabelQemuLdst *lb)
 {
-    TCGMemOpIdx oi = lb->oi;
+    MemOpIdx oi = lb->oi;
     MemOp opc = get_memop(oi);
     TCGReg hi, lo, arg = TCG_REG_R3;
 
@@ -2154,7 +2169,7 @@ static bool tcg_out_qemu_ld_slow_path(TCGContext *s, TCGLabelQemuLdst *lb)
 
 static bool tcg_out_qemu_st_slow_path(TCGContext *s, TCGLabelQemuLdst *lb)
 {
-    TCGMemOpIdx oi = lb->oi;
+    MemOpIdx oi = lb->oi;
     MemOp opc = get_memop(oi);
     MemOp s_bits = opc & MO_SIZE;
     TCGReg hi, lo, arg = TCG_REG_R3;
@@ -2218,7 +2233,7 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args, bool is_64)
 {
     TCGReg datalo, datahi, addrlo, rbase;
     TCGReg addrhi __attribute__((unused));
-    TCGMemOpIdx oi;
+    MemOpIdx oi;
     MemOp opc, s_bits;
 #ifdef CONFIG_SOFTMMU
     int mem_index;
@@ -2293,7 +2308,7 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is_64)
 {
     TCGReg datalo, datahi, addrlo, rbase;
     TCGReg addrhi __attribute__((unused));
-    TCGMemOpIdx oi;
+    MemOpIdx oi;
     MemOp opc, s_bits;
 #ifdef CONFIG_SOFTMMU
     int mem_index;
@@ -2372,7 +2387,7 @@ static void tcg_out_nop_fill(tcg_insn_unit *p, int count)
 # define LINK_AREA_SIZE                (6 * SZR)
 # define LR_OFFSET                     (1 * SZR)
 # define TCG_TARGET_CALL_STACK_OFFSET  (LINK_AREA_SIZE + 8 * SZR)
-#elif defined(TCG_TARGET_CALL_DARWIN)
+#elif defined(_CALL_DARWIN)
 # define LINK_AREA_SIZE                (6 * SZR)
 # define LR_OFFSET                     (2 * SZR)
 #elif TCG_TARGET_REG_BITS == 64

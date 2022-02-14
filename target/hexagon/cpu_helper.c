@@ -45,6 +45,27 @@
 #include "sysemu/runstate.h"
 
 
+unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
+{
+#ifndef CONFIG_USER_ONLY
+    uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    uint8_t mmuen = GET_SYSCFG_FIELD(SYSCFG_MMUEN, syscfg);
+    if (!mmuen) {
+      return MMU_KERNEL_IDX;
+    }
+
+    int cpu_mode = get_cpu_mode(env);
+    if (cpu_mode == HEX_CPU_MODE_MONITOR) {
+      return MMU_KERNEL_IDX;
+    }
+    else if (cpu_mode == HEX_CPU_MODE_GUEST) {
+      return MMU_GUEST_IDX;
+    }
+#endif
+
+    return MMU_USER_IDX;
+}
+
 #ifndef CONFIG_USER_ONLY
 static size1u_t hexagon_swi_mem_read1(CPUHexagonState *env, target_ulong paddr)
 
@@ -475,24 +496,6 @@ void clear_wait_mode(CPUHexagonState *env)
     SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_W,thread_wait_mask);
 }
 
-unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
-{
-    uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
-    uint8_t mmuen = GET_SYSCFG_FIELD(SYSCFG_MMUEN, syscfg);
-    if (!mmuen) {
-      return MMU_KERNEL_IDX;
-    }
-
-    int cpu_mode = get_cpu_mode(env);
-    if (cpu_mode == HEX_CPU_MODE_MONITOR) {
-      return MMU_KERNEL_IDX;
-    }
-    else if (cpu_mode == HEX_CPU_MODE_GUEST) {
-      return MMU_GUEST_IDX;
-    }
-
-    return MMU_USER_IDX;
-}
 
 void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause)
 {

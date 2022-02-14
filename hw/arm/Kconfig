@@ -25,9 +25,7 @@ config ARM_VIRT
     select ACPI_PCI
     select MEM_DEVICE
     select DIMM
-    select ACPI_MEMORY_HOTPLUG
     select ACPI_HW_REDUCED
-    select ACPI_NVDIMM
     select ACPI_APEI
 
 config CHEETAH
@@ -237,6 +235,7 @@ config STELLARIS
     select SSI_SD
     select STELLARIS_INPUT
     select STELLARIS_ENET # ethernet
+    select STELLARIS_GPTM # general purpose timer module
     select UNIMP
 
 config STM32VLDISCOVERY
@@ -382,6 +381,8 @@ config XLNX_VERSAL
     select XLNX_ZDMA
     select XLNX_ZYNQMP
     select OR_IRQ
+    select XLNX_BBRAM
+    select XLNX_EFUSE_VERSAL
 
 config NPCM7XX
     bool
@@ -429,6 +430,7 @@ config ASPEED_SOC
     select DS1338
     select FTGMAC100
     select I2C
+    select DPS310
     select PCA9552
     select SERIAL
     select SMBUS_EEPROM

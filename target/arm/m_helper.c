@@ -1930,7 +1930,7 @@ static bool do_v7m_function_return(ARMCPU *cpu)
 
     {
         bool threadmode, spsel;
-        TCGMemOpIdx oi;
+        MemOpIdx oi;
         ARMMMUIdx mmu_idx;
         uint32_t *frame_sp_p;
         uint32_t frameptr;
@@ -1947,9 +1947,9 @@ static bool do_v7m_function_return(ARMCPU *cpu)
          * do them as secure, so work out what MMU index that is.
          */
         mmu_idx = arm_v7m_mmu_idx_for_secstate(env, true);
-        oi = make_memop_idx(MO_LE, arm_to_core_mmu_idx(mmu_idx));
-        newpc = helper_le_ldul_mmu(env, frameptr, oi, 0);
-        newpsr = helper_le_ldul_mmu(env, frameptr + 4, oi, 0);
+        oi = make_memop_idx(MO_LEUL, arm_to_core_mmu_idx(mmu_idx));
+        newpc = cpu_ldl_le_mmu(env, frameptr, oi, 0);
+        newpsr = cpu_ldl_le_mmu(env, frameptr + 4, oi, 0);
 
         /* Consistency checks on new IPSR */
         newpsr_exc = newpsr & XPSR_EXCP;
@@ -2251,6 +2251,10 @@ void arm_v7m_cpu_do_interrupt(CPUState *cs)
         /* Unaligned faults reported by M-profile aware code */
         armv7m_nvic_set_pending(env->nvic, ARMV7M_EXCP_USAGE, env->v7m.secure);
         env->v7m.cfsr[env->v7m.secure] |= R_V7M_CFSR_UNALIGNED_MASK;
+        break;
+    case EXCP_DIVBYZERO:
+        armv7m_nvic_set_pending(env->nvic, ARMV7M_EXCP_USAGE, env->v7m.secure);
+        env->v7m.cfsr[env->v7m.secure] |= R_V7M_CFSR_DIVBYZERO_MASK;
         break;
     case EXCP_SWI:
         /* The PC already points to the next instruction.  */
