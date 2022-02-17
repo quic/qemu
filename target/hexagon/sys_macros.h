@@ -93,7 +93,7 @@
         TCGLabel *ok = gen_new_label(); \
         tcg_gen_brcond_tl(TCG_COND_GEU, ADDR, hex_gpr[HEX_REG_FRAMELIMIT], \
                           ok); \
-        TCGv_i32 slot = tcg_const_i32(insn->slot); \
+        TCGv_i32 slot = tcg_constant_i32(insn->slot); \
         gen_helper_raise_stack_overflow(cpu_env, slot, EA); \
         gen_set_label(ok); \
     } while (0)
@@ -280,16 +280,14 @@
  */
 #define fICTAGR(RS, RD, RD2) \
     do { \
-        TCGv zero = tcg_const_tl(0); \
+        TCGv zero = tcg_constant_tl(0); \
         RD = zero; \
-        tcg_temp_free(zero); \
     } while (0)
 #define fICTAGW(RS, RD)
 #define fICDATAR(RS, RD) \
     do { \
-        TCGv zero = tcg_const_tl(0); \
+        TCGv zero = tcg_constant_tl(0); \
         RD = zero; \
-        tcg_temp_free(zero); \
     } while (0)
 #define fICDATAW(RS, RD)
 
@@ -297,9 +295,8 @@
 /* tag: RD[23:0], state: RD[30:29] */
 #define fDCTAGR(INDEX, DST, DST_REG_NUM) \
     do { \
-        TCGv zero = tcg_const_tl(0); \
+        TCGv zero = tcg_constant_tl(0); \
         DST = zero; \
-        tcg_temp_free(zero); \
     } while (0)
 #else
 
