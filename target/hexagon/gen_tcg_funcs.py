@@ -284,7 +284,7 @@ def genptr_decl_new(f,tag,regtype,regid,regno):
                     (regtype, regid))
                 f.write(" 1, true);\n")
             else:
-                f.write("    TCGv %s%sN = tcg_const_tl(%s%sN_num);\n" % \
+                f.write("    TCGv %s%sN = tcg_constant_tl(%s%sN_num);\n" % \
                     (regtype, regid, regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
