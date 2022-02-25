@@ -106,9 +106,8 @@ static inline void assert_vhist_tmp(DisasContext *ctx)
     } while (0)
 #define fGEN_TCG_V6_vwhist128m(SHORTCODE) \
     if (!ctx->pre_commit) { \
-        TCGv tcgv_uiV = tcg_constant_tl(uiV); \
         assert_vhist_tmp(ctx); \
-        gen_helper_vwhist128m(cpu_env, tcgv_uiV); \
+        gen_helper_vwhist128m(cpu_env, tcg_constant_tl(uiV)); \
     }
 #define fGEN_TCG_V6_vwhist128qm(SHORTCODE) \
     do { \
@@ -117,9 +116,8 @@ static inline void assert_vhist_tmp(DisasContext *ctx)
             tcg_gen_gvec_mov(MO_64, dstoff, QvV_off, \
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
-            TCGv tcgv_uiV = tcg_constant_tl(uiV); \
             assert_vhist_tmp(ctx); \
-            gen_helper_vwhist128qm(cpu_env, tcgv_uiV); \
+            gen_helper_vwhist128qm(cpu_env, tcg_constant_tl(uiV)); \
         } \
     } while (0)
 
@@ -409,7 +407,7 @@ static inline void assert_vhist_tmp(DisasContext *ctx)
         intptr_t tmpoff = offsetof(CPUHexagonState, vtmp); \
         tcg_gen_gvec_cmp(COND, TYPE, tmpoff, VuV_off, VvV_off, \
                          sizeof(MMVector), sizeof(MMVector)); \
-        vec_to_qvec(SIZE, QdV_off, tmpoff); \
+        vec_to_qvec(SIZE, QdV_off, tmpoff, ctx->zero64); \
     } while (0)
 
 #define fGEN_TCG_V6_vgtw(SHORTCODE) \
@@ -439,7 +437,7 @@ static inline void assert_vhist_tmp(DisasContext *ctx)
         intptr_t qoff = offsetof(CPUHexagonState, qtmp); \
         tcg_gen_gvec_cmp(COND, TYPE, tmpoff, VuV_off, VvV_off, \
                          sizeof(MMVector), sizeof(MMVector)); \
-        vec_to_qvec(SIZE, qoff, tmpoff); \
+        vec_to_qvec(SIZE, qoff, tmpoff, ctx->zero64); \
         OP(MO_64, QxV_off, QxV_off, qoff, sizeof(MMQReg), sizeof(MMQReg)); \
     } while (0)
 
