@@ -122,14 +122,12 @@ intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
 
 void gen_exception(int excp)
 {
-    TCGv_i32 excp_num = tcg_constant_i32(excp);
-    gen_helper_raise_exception(cpu_env, excp_num);
+    gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
 }
 
 static void gen_exception_raw(int excp)
 {
-    TCGv_i32 excp_num = tcg_constant_i32(excp);
-    gen_helper_raise_exception(cpu_env, excp_num);
+    gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
 }
 
 static void gen_exec_counters(DisasContext *ctx)
@@ -565,14 +563,13 @@ static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
      * write of the predicates.
      */
     if (pkt->pkt_has_endloop) {
-        TCGv zero = tcg_constant_tl(0);
         TCGv pred_written = tcg_temp_new();
         for (i = 0; i < ctx->preg_log_idx; i++) {
             int pred_num = ctx->preg_log[i];
 
             tcg_gen_andi_tl(pred_written, hex_pred_written, 1 << pred_num);
             tcg_gen_movcond_tl(TCG_COND_NE, hex_pred[pred_num],
-                               pred_written, zero,
+                               pred_written, ctx->zero,
                                hex_new_pred_value[pred_num],
                                hex_pred[pred_num]);
         }
@@ -593,9 +590,9 @@ static void gen_pred_writes(DisasContext *ctx, Packet *pkt)
 static void gen_check_store_width(DisasContext *ctx, int slot_num)
 {
     if (HEX_DEBUG) {
-        TCGv slot = tcg_constant_tl(slot_num);
-        TCGv check = tcg_constant_tl(ctx->store_width[slot_num]);
-        gen_helper_debug_check_store_width(cpu_env, slot, check);
+        gen_helper_debug_check_store_width(cpu_env,
+            tcg_constant_tl(slot_num),
+            tcg_constant_tl(ctx->store_width[slot_num]));
     }
 }
 
@@ -677,8 +674,8 @@ void process_store(DisasContext *ctx, Packet *pkt, int slot_num)
                  * TCG generation time, we'll use a helper to
                  * avoid branching based on the width at runtime.
                  */
-                TCGv slot = tcg_constant_tl(slot_num);
-                gen_helper_commit_store(cpu_env, slot);
+                gen_helper_commit_store(cpu_env,
+                    tcg_constant_tl(slot_num));
             }
         }
         tcg_temp_free(address);
@@ -709,16 +706,15 @@ static void process_dczeroa(DisasContext *ctx, Packet *pkt)
     if (pkt->pkt_has_dczeroa) {
         /* Store 32 bytes of zero starting at (addr & ~0x1f) */
         TCGv addr = tcg_temp_new();
-        TCGv_i64 zero = tcg_constant_i64(0);
 
         tcg_gen_andi_tl(addr, hex_dczero_addr, ~0x1f);
-        tcg_gen_qemu_st64(zero, addr, ctx->mem_idx);
+        tcg_gen_qemu_st64(ctx->zero64, addr, ctx->mem_idx);
         tcg_gen_addi_tl(addr, addr, 8);
-        tcg_gen_qemu_st64(zero, addr, ctx->mem_idx);
+        tcg_gen_qemu_st64(ctx->zero64, addr, ctx->mem_idx);
         tcg_gen_addi_tl(addr, addr, 8);
-        tcg_gen_qemu_st64(zero, addr, ctx->mem_idx);
+        tcg_gen_qemu_st64(ctx->zero64, addr, ctx->mem_idx);
         tcg_gen_addi_tl(addr, addr, 8);
-        tcg_gen_qemu_st64(zero, addr, ctx->mem_idx);
+        tcg_gen_qemu_st64(ctx->zero64, addr, ctx->mem_idx);
 
         tcg_temp_free(addr);
     }
@@ -929,7 +925,6 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
             gen_helper_probe_hvx_stores(cpu_env, mem_idx);
         } else {
             int mask = 0;
-            TCGv mask_tcgv;
 
             if (has_store_s0) {
                 mask |= (1 << 0);
@@ -940,16 +935,16 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
             if (has_hvx_store) {
                 mask |= (1 << 2);
             }
-            mask_tcgv = tcg_constant_tl(mask);
-            gen_helper_probe_pkt_scalar_hvx_stores(cpu_env, mask_tcgv, mem_idx);
+            gen_helper_probe_pkt_scalar_hvx_stores(cpu_env,
+                tcg_constant_tl(mask), mem_idx);
         }
     } else if (has_store_s0 && has_store_s1) {
         /*
          * process_store_log will execute the slot 1 store first,
          * so we only have to probe the store in slot 0
          */
-        TCGv mem_idx = tcg_constant_tl(ctx->mem_idx);
-        gen_helper_probe_pkt_scalar_store_s0(cpu_env, mem_idx);
+        gen_helper_probe_pkt_scalar_store_s0(cpu_env,
+            tcg_constant_tl(ctx->mem_idx));
     }
 
     process_store_log(ctx, pkt);
@@ -1040,6 +1035,10 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->num_insns = 0;
     ctx->num_hvx_insns = 0;
     ctx->num_hmx_insns = 0;
+    ctx->zero = tcg_constant_tl(0);
+    ctx->zero64 = tcg_constant_i64(0);
+    ctx->ones = tcg_constant_tl(0xff);
+    ctx->ones64 = tcg_constant_i64(0xff);
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
