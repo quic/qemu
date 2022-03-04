@@ -21,7 +21,7 @@ LATEST_HEX_TOOLS_REL_BASE = os.path.join(HEX_TOOLS_REL_BASE, 'branch-8.6/linux64
 LATEST_HEX_TOOLS_BIN = os.path.join(LATEST_HEX_TOOLS_REL_BASE, 'bin')
 HEX_LLDB = os.path.join(LATEST_HEX_TOOLS_BIN, 'hexagon-lldb')
 
-DEFAULT_TEST_DIR = '/prj/qct/llvm/scratch/users/bcain/qemu/qurt_kona_tests'
+DEFAULT_TEST_DIR = '/prj/qct/llvm/scratch/llvmops_users/bcain/qemu/qurt_kona_tests'
 if not os.path.exists(DEFAULT_TEST_DIR):
     DEFAULT_TEST_DIR = '/prj/qct/coredev/hexagon/austin/scratch/users/bcain/qemu/qurt_kona_tests'
 LOCALHOST = '127.0.0.1'
