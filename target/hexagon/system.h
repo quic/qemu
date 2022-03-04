@@ -49,7 +49,7 @@ paddr_t mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 paddr_t mem_init_access_unaligned(thread_t * thread, int slot, size4u_t vaddr, size4u_t realvaddr, int size,
 		enum mem_access_types mtype, int type_for_xlate);
 
-int sys_xlate_dma(thread_t *thread, size8u_t va, int access_type, int maptr_type, int slot, size4u_t align_mask, xlate_info_t *xinfo, exception_info *einfo, int extended_va, int vtcm_invalid, int dlbc);
+int sys_xlate_dma(thread_t *thread, size8u_t va, int access_type, int maptr_type, int slot, size4u_t align_mask, xlate_info_t *xinfo, exception_info *einfo, int extended_va, int vtcm_invalid, int dlbc, int forget);
 void register_dma_error_exception(thread_t * thread, exception_info *einfo, size4u_t va);
 void iic_flush_cache(processor_t * proc);
 void mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, int slot);

@@ -120,7 +120,7 @@ mem_init_access_unaligned(thread_t *thread, int slot, size4u_t vaddr, size4u_t r
 }
 
 int
-sys_xlate_dma(thread_t *thread, size8u_t va, int access_type, int maptr_type, int slot, size4u_t align_mask, xlate_info_t *xinfo, exception_info *einfo, int extended_va, int vtcm_invalid, int dlbc)
+sys_xlate_dma(thread_t *thread, size8u_t va, int access_type, int maptr_type, int slot, size4u_t align_mask, xlate_info_t *xinfo, exception_info *einfo, int extended_va, int vtcm_invalid, int dlbc, int forget)
 {
   int ret = 1;
 

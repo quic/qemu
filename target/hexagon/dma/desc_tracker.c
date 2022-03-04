@@ -98,13 +98,14 @@ int desc_tracker_release(processor_t *proc, int dmanum, desc_tracker_entry_t * e
 static desc_tracker_entry_t * desc_tracker_getnext(processor_t *proc, int dmanum)
 {
 	desc_tracker_t * const tracker = get_desc_tracker(proc, dmanum);
-	desc_tracker_entry_t * entry = desc_tracker_calloc(tracker, sizeof(*entry));
+	desc_tracker_entry_t * entry = (desc_tracker_entry_t *) desc_tracker_calloc(tracker, sizeof(*entry));
 	assert(entry && "calloc failure");
 	dll_insert_after(&tracker->valid_list, &entry->node);
 	tracker->valid_list_num++;
 	return entry;
 }
 
+void desc_tracker_free_list(processor_t *proc, desc_tracker_t *tracker, dll_node_t *list);
 void desc_tracker_free_list(processor_t *proc, desc_tracker_t *tracker, dll_node_t *list)
 {
 	dll_node_t *walk = list->next;
@@ -137,6 +138,7 @@ void desc_tracker_init(processor_t * proc, int dmanum)
 	object_pool_init( &tracker->pool, (char *)&tracker->entry_storage, sizeof(tracker->entry_storage[0]), DESC_TABLESIZE);
 }
 
+int desc_unreleased_check ( processor_t *proc, int dmanum);
 int
 desc_unreleased_check ( processor_t *proc, int dmanum)
 {
@@ -148,9 +150,9 @@ desc_unreleased_check ( processor_t *proc, int dmanum)
       	desc = (desc_tracker_entry_t *)((char *)walk - offsetof(desc_tracker_entry_t, node));
         if (desc) {
             if (desc->pcycle) {
-                printf("DMA%d: descriptor hasn't been released at exit: "
-                       "desc id:%lld, birth:%lu\n",
-                       dmanum, desc->id, desc->pcycle);
+				#ifndef VERIFICATION
+          		printf("DMA%d: descriptor hasn't been released at exit: desc id:%lld, birth:%ld va:%x\n", dmanum, desc->id, desc->pcycle, desc->desc.va);
+				#endif
                 stuck = 1;
             }
         }
@@ -170,12 +172,13 @@ void desc_tracker_free(processor_t * proc, int dmanum)
 }
 
 
+void desc_tracker_dump_one(const processor_t *proc, const desc_tracker_entry_t * entry, FILE *file);
 void desc_tracker_dump_one(const processor_t *proc, const desc_tracker_entry_t * entry, FILE *file)
 {
 	if (entry == NULL) {
 		fputs("null", file);
 	} else{
-            fprintf(file, "{ id:%lld, birth:%lu", entry->id, entry->pcycle);
+		fprintf(file, "{ id:%lld, birth:%ld", entry->id, entry->pcycle);
 		//fprintf(file, ", pc_va:%X, paddr:%llX, pktid:%lld, ma_type:%d",
 		//		desc->ma.pc_va, desc->ma.paddr, entry->uma.packet_id, desc->ma.type);
 		//fprintf(file, ", uma_type: %d", desc->uma.access_type);
@@ -183,6 +186,7 @@ void desc_tracker_dump_one(const processor_t *proc, const desc_tracker_entry_t *
 	}
 }
 
+void desc_tracker_dump_all(processor_t *proc, int dmanum, FILE *file);
 void desc_tracker_dump_all(processor_t *proc, int dmanum, FILE *file)
 {
 	desc_tracker_t * const tracker = get_desc_tracker(proc, dmanum);

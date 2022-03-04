@@ -90,6 +90,7 @@ typedef uint64_t pa_t;
 #define DESC_PADDING_MASK           0xF0000000
 #define DESC_PADDING_SHIFT          28
 
+#define DESC_RDALLOC_FORGET         0x7
 typedef uint32_t vaddr_t; // this is already in global types
 
 
@@ -133,15 +134,16 @@ typedef enum dma_descriptor_state_t {
 
 
 typedef enum dma_2d_desc_type {
-    DMA_DESC_32BIT_VA_TYPE = 0,
-    DMA_DESC_38BIT_VA_TYPE = 2,
-    DMA_DESC_32BIT_VA_L2FETCH_TYPE = 3,
-    DMA_DESC_32BIT_VA_GATHER_TYPE = 4,
-    DMA_DESC_38BIT_VA_GATHER_TYPE = 5,
-    DMA_DESC_32BIT_VA_EXPANSION_TYPE = 6,
-    DMA_DESC_32BIT_VA_COMPRESSION_TYPE = 7,
-    DMA_DESC_32BIT_VA_CONSTANT_FILL_TYPE = 8,
-    DMA_DESC_32BIT_VA_WIDE_TYPE = 9,
+   DMA_DESC_32BIT_VA_TYPE               = 0,
+   DMA_DESC_38BIT_VA_TYPE               = 2,
+   DMA_DESC_32BIT_VA_L2FETCH_TYPE       = 3,
+   DMA_DESC_32BIT_VA_GATHER_TYPE        = 4,
+   DMA_DESC_38BIT_VA_GATHER_TYPE        = 5,
+   DMA_DESC_32BIT_VA_EXPANSION_TYPE     = 6,
+   DMA_DESC_32BIT_VA_COMPRESSION_TYPE   = 7,
+   DMA_DESC_32BIT_VA_CONSTANT_FILL_TYPE = 8,
+   DMA_DESC_32BIT_VA_WIDE_TYPE          = 9,
+   DMA_DESC_38BIT_VA_WIDE_TYPE          = 10
 } dma_2d_desc_type_t;
 
 // Mapping common fields of all descriptor types.
@@ -230,8 +232,8 @@ typedef union {
             };
             uint8_t         blockSize              ; // Expansion/Compression
         };
-        uint8_t         allocation                : 2;
-        uint8_t         undefined_w4_b26          : 2;   // == 2'b00
+		uint8_t wr_alloc  : 1;
+		uint8_t rd_alloc  : 3;
         uint8_t         transform                 : 4;
 
 
@@ -241,19 +243,25 @@ typedef union {
                 uint16_t    width                  ;
                 uint16_t    height                 ;
             };
+			union {
             struct {
                 uint32_t    width_wide             : 24;
                 uint32_t    height_lo              : 8;
             };
+				uint8_t width_wide_height_lo[4];
+			};
         };
         union {
             struct {
                 uint16_t    srcStride              ;
                 uint16_t    dstStride              ;
             };
+			union {
             struct {
-                uint32_t    srcStride_wide         : 24;
-                uint32_t    height_hi              : 8;
+                    uint32_t    height_hi          : 8;
+					uint32_t srcStride_wide : 24;
+				};
+				uint8_t height_hi_srcStride_wide[4];
             };
         };
         union {
@@ -262,7 +270,7 @@ typedef union {
                 uint16_t    dstWidthOffset         ;
             };
             struct {
-                uint32_t    offset                 : 24;
+				uint32_t width_offset    : 24;
                 uint32_t    undefined_w7_24        : 8;
             };
         };
@@ -330,6 +338,7 @@ typedef struct dma_decoded_descriptor {
     uint32_t gather_addr;   // just for debug
 	uint32_t valid;
     uint32_t extended_va;
+	uint32_t wide;
     uint32_t exception;
     uint32_t pause;
     uint32_t state;

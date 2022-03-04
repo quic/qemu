@@ -73,10 +73,5 @@ int desc_tracker_cycle(struct ProcessorState *proc, int dmanum);
 void desc_tracker_init(struct ProcessorState *proc, int dmanum);
 void desc_tracker_free(struct ProcessorState *proc, int dmanum);
 
-void desc_tracker_free_list(processor_t *proc, desc_tracker_t *tracker, dll_node_t *list);
-int desc_unreleased_check ( processor_t *proc, int dmanum);
-void desc_tracker_dump_one(const processor_t *proc, const desc_tracker_entry_t * entry, FILE *file);
-void desc_tracker_dump_all(processor_t *proc, int dmanum, FILE *file);
-
 #endif
 

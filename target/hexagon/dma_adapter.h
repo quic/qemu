@@ -121,7 +121,7 @@ struct dma_addr_range_t* dma_adapter_find_mem(paddr_t paddr);
 //! @param store 0 for load type, and non-0 for store type.
 //! @return 1 for success, and 0 for exception
 
-uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memaccess_info_t * dma_mem_access, uint32_t width, uint32_t store, uint32_t extended_va, uint32_t except_vtcm, uint32_t is_dlbc);
+uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memaccess_info_t * dma_mem_access, uint32_t width, uint32_t store, uint32_t extended_va, uint32_t except_vtcm, uint32_t is_dlbc, uint32_t is_forget);
 uint32_t dma_adapter_xlate_desc_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_memaccess_info_t * dma_mem_access);
 
 //! @return 1 for success, and 0 for running into exception.

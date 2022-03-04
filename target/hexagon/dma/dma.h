@@ -53,17 +53,17 @@ typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *dma);
 
 #define DMA_MAX_DESC_SIZE           32
 
-#define DMA_CFG0_SYNDRONE_CODE___DMSTART_DMRESUME_IN_RUNSTATE   0
-#define DMA_CFG0_SYNDRONE_CODE___DESCRIPTOR_INVALID_ALIGNMENT   1
-#define DMA_CFG0_SYNDRONE_CODE___DESCRIPTOR_INVALID_TYPE        2
-#define DMA_CFG0_SYNDRONE_CODE___UNSUPPORTED_ADDRESS            3
-#define DMA_CFG0_SYNDRONE_CODE___UNSUPPORTED_BYPASS_MODE        4
-#define DMA_CFG0_SYNDRONE_CODE___UNSUPPORTED_COMP_MODE          5
-#define DMA_CFG0_SYNDRONE_CODE___DESCRIPTOR_ROI_ERROR           6
-#define DMA_CFG0_SYNDRONE_CODE___INVALID_ACCESS_RIGHTS          102
-#define DMA_CFG0_SYNDRONE_CODE___DATA_TIMEOUT                   103
-#define DMA_CFG0_SYNDRONE_CODE___DATA_ABORT                     104
-#define DMA_CFG0_SYNDRONE_CODE___UBWC_D                         12
+#define DMA_CFG0_SYNDROME_CODE___DMSTART_DMRESUME_IN_RUNSTATE   0
+#define DMA_CFG0_SYNDROME_CODE___DESCRIPTOR_INVALID_ALIGNMENT   1
+#define DMA_CFG0_SYNDROME_CODE___DESCRIPTOR_INVALID_TYPE        2
+#define DMA_CFG0_SYNDROME_CODE___UNSUPPORTED_ADDRESS            3
+#define DMA_CFG0_SYNDROME_CODE___UNSUPPORTED_BYPASS_MODE        4
+#define DMA_CFG0_SYNDROME_CODE___UNSUPPORTED_COMP_MODE          5
+#define DMA_CFG0_SYNDROME_CODE___DESCRIPTOR_ROI_ERROR           6
+#define DMA_CFG0_SYNDROME_CODE___INVALID_ACCESS_RIGHTS          102
+#define DMA_CFG0_SYNDROME_CODE___DATA_TIMEOUT                   103
+#define DMA_CFG0_SYNDROME_CODE___DATA_ABORT                     104
+#define DMA_CFG0_SYNDROME_CODE___UBWC_D                         12
 
 #define INSN_TIMER_IDLE             0
 #define INSN_TIMER_ACTIVE           1
@@ -97,12 +97,14 @@ typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *dma);
 #define DMA_DESC_32BIT_VA_COMPRESSION_TYPE 7
 #define DMA_DESC_32BIT_VA_CONSTANT_FILL_TYPE 8
 #define DMA_DESC_32BIT_VA_WIDE_TYPE 9
+#define DMA_DESC_38BIT_VA_WIDE_TYPE 10
 
 #define DMA_CACHE_ALLOCATION_NONE 0
 #define DMA_CACHE_ALLOCATION_WR_ONLY 1
 #define DMA_CACHE_ALLOCATION_RD_ONLY 2
 #define DMA_CACHE_ALLOCATION_RD_WR 3
 
+#define DMA_MAX_REG 13
 
 typedef struct dma_state {
     int num;                          // DMA instance identification index (num).

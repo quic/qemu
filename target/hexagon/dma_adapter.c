@@ -80,12 +80,22 @@
 	{NAME(__VA_ARGS__); }
 #endif
 
+/* defines to reduce compare differences */
+#define Regs gpr
+#define REG_PC HEX_REG_PC
+#define EXCEPT_TYPE_PRECISE           HEX_EVENT_PRECISE
+#define PRECISE_CAUSE_PRIV_NO_UWRITE  HEX_CAUSE_PRIV_NO_UWRITE
+#define PRECISE_CAUSE_PRIV_NO_WRITE   HEX_CAUSE_PRIV_NO_WRITE
+#define PRECISE_CAUSE_PRIV_NO_UREAD   HEX_CAUSE_PRIV_NO_UREAD
+#define PRECISE_CAUSE_PRIV_NO_READ    HEX_CAUSE_PRIV_NO_READ
+
+
 //! Function pointer type of DMA instruction (command) implementation.
 typedef size4u_t (*dma_adapter_cmd_impl_t)(thread_t*, size4u_t, size4u_t, dma_insn_checker_ptr*);
 
 // List of the user-DMA instruction (command) implementation functions.
-static size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new, size4u_t dummy, dma_insn_checker_ptr *insn_checker);
-static size4u_t dma_adapter_cmd_link(thread_t *thread, size4u_t tail, size4u_t new, dma_insn_checker_ptr *insn_checker);
+static size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new_dma, size4u_t dummy, dma_insn_checker_ptr *insn_checker);
+static size4u_t dma_adapter_cmd_link(thread_t *thread, size4u_t tail, size4u_t new_dma, dma_insn_checker_ptr *insn_checker);
 static size4u_t dma_adapter_cmd_poll(thread_t *thread, size4u_t dummy1, size4u_t dummy2, dma_insn_checker_ptr *insn_checker);
 static size4u_t dma_adapter_cmd_wait(thread_t *thread, size4u_t dummy1, size4u_t dummy2, dma_insn_checker_ptr *insn_checker);
 static size4u_t dma_adapter_cmd_pause(thread_t *thread, size4u_t dummy1, size4u_t dummy2, dma_insn_checker_ptr *insn_checker);
@@ -176,7 +186,7 @@ int dma_adapter_register_addr_range(void* owner, paddr_t base, paddr_t size) {
 		}
 	}
 
-	dma_addr_tab = realloc(dma_addr_tab,
+	dma_addr_tab = (struct dma_addr_range_t *) realloc(dma_addr_tab,
 	                       (dma_addr_tab_cnt + 1) * sizeof(struct dma_addr_range_t));
 
 	dma_addr_tab[dma_addr_tab_cnt] = key;
@@ -191,7 +201,7 @@ int dma_adapter_register_addr_range(void* owner, paddr_t base, paddr_t size) {
 struct dma_addr_range_t* dma_adapter_find_mem(paddr_t paddr) {
 	if (dma_addr_tab == NULL) { return NULL; }
 
-	struct dma_addr_range_t* mem =
+	struct dma_addr_range_t* mem = (struct dma_addr_range_t *)
 		bsearch(&paddr, dma_addr_tab, dma_addr_tab_cnt,
 		        sizeof(struct dma_addr_range_t), dma_adapter_addr_find_cmp);
 
@@ -215,7 +225,7 @@ static inline dma_adapter_engine_info_t* dma_retrieve_dma_adapter(dma_t *dma) {
 //! Function to request stalling. The DMA engine calls this function to stall
 //! an instruction stream.
 static int dma_adapter_set_staller(dma_t *dma, dma_insn_checker_ptr insn_checker) {
-	//thread_t* thread = dma_adapter_retrieve_thread(dma);
+	thread_t* thread __attribute__((unused)) = dma_adapter_retrieve_thread(dma);
 #ifdef VERIFICATION
 	PRINTF(dma, "DMA %d Tick %8lli: ADAPTER  dma_adapter_set_staller. ", dma->num,  (long long int)dma_get_tick_count(dma));
 #endif
@@ -266,9 +276,7 @@ FILE * dma_adapter_debug_log(dma_t *dma) {
 	return thread->processor_ptr->arch_proc_options->dmadebugfile;
 }
 FILE * uarch_dma_adapter_debug_log(dma_t *dma) {
-	//thread_t* thread = dma_adapter_retrieve_thread(dma);
-	return (FILE *)0; //thread->processor_ptr->arch_proc_options->uarchdmadebugfile;
-}
+	return (FILE *)0;}
 int dma_adapter_debug_verbosity(dma_t *dma) {
 	thread_t* thread = dma_adapter_retrieve_thread(dma);
 	return thread->processor_ptr->arch_proc_options->dmadebug_verbosity;
@@ -284,7 +292,7 @@ void do_callback(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info,
 	dma_descriptor_callback_info_t info = {0};
 	info.dmano = dma->num;
 	info.desc_va = desc_va;
-	info.callback_state = callback_state;
+	info.callback_state = (dma_callback_state_t)callback_state;
 	info.type = (uint32_t)get_dma_desc_desctype((void*)desc_info);
 	info.state = (uint32_t)get_dma_desc_dstate((void*)desc_info);
 	info.src_va = (uint32_t)get_dma_desc_src((void*)desc_info);
@@ -329,7 +337,7 @@ void dma_adapter_set_target_descriptor(thread_t *thread, uint32_t dm0,  uint32_t
 
 
 int dma_adapter_match_tlb_entry (dma_t *dma, uint64_t entry, uint32_t asid, uint32_t va ) {
-	return 0; //tlb_match_entry( entry,  asid, va);
+	return 0;
 }
 
 
@@ -356,7 +364,7 @@ uint32_t dma_adapter_xlate_desc_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_me
 	exception_info e_info = {0};     // Storage to retrieve an exception if it occurs.
 	thread_t * thread = dma_adapter_retrieve_thread(dma);
 
-	uint32_t ret = sys_xlate_dma(thread, (uint32_t)va, TYPE_DMA_FETCH,  access_type_load,  0, 0, &xlate_task, &e_info, 0, 0, 0);
+	uint32_t ret = sys_xlate_dma(thread, (uint32_t)va, TYPE_DMA_FETCH,  access_type_load,  0, 0, &xlate_task, &e_info, 0, 0, 0, 0);
 
 	(*pa) = xlate_task.pa;
 	dma_access_rights_t * perm = &dma_memaccess_info->perm;
@@ -403,7 +411,7 @@ void dma_adapter_mask_badva(dma_t *dma, uint32_t mask) {
 }
 
 
- uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memaccess_info_t * dma_memaccess_info, uint32_t width, uint32_t store, uint32_t extended_va, uint32_t except_vtcm, uint32_t is_dlbc) {
+uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memaccess_info_t * dma_memaccess_info, uint32_t width, uint32_t store, uint32_t extended_va, uint32_t except_vtcm, uint32_t is_dlbc, uint32_t is_forget) {
 
 	// Decode Access type
 
@@ -419,7 +427,7 @@ void dma_adapter_mask_badva(dma_t *dma, uint32_t mask) {
 	exception_info e_info = {0};      // Storage to retrieve an exception if it occurs.
 	thread_t * thread = dma_adapter_retrieve_thread(dma);
 
-	uint32_t ret = sys_xlate_dma(thread, va, access_type, maptr_type, 0, width-1, &xlate_task, &e_info, extended_va, except_vtcm, is_dlbc);
+	uint32_t ret = sys_xlate_dma(thread, va, access_type, maptr_type, 0, width-1, &xlate_task, &e_info, extended_va, except_vtcm, is_dlbc, is_forget);
 	// If an exception occurs, keep it for future.
 	// Retrieve a PA.
 
@@ -507,24 +515,24 @@ int dma_adapter_register_perm_exception(dma_t *dma, uint32_t va,  dma_access_rig
 	exception_info e_info;
 
 	e_info.valid = 1;
-	e_info.type = HEX_EVENT_PRECISE;
+	e_info.type = EXCEPT_TYPE_PRECISE;
 
 
 	if (store) {
-		e_info.cause = (access_rights.w)  ?  HEX_CAUSE_PRIV_NO_UWRITE : HEX_CAUSE_PRIV_NO_WRITE;
+		e_info.cause = (access_rights.w)  ?  PRECISE_CAUSE_PRIV_NO_UWRITE : PRECISE_CAUSE_PRIV_NO_WRITE;
 	} else {
-		e_info.cause =  (access_rights.r) ?  HEX_CAUSE_PRIV_NO_UREAD : HEX_CAUSE_PRIV_NO_READ;
+		e_info.cause =  (access_rights.r) ?  PRECISE_CAUSE_PRIV_NO_UREAD : PRECISE_CAUSE_PRIV_NO_READ;
 	}
 
 	e_info.badva0 = va;
 #if !defined(CONFIG_USER_ONLY)
-	e_info.badva1 = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1); //thread->t_sreg[HEX_SREG_BADVA1];
+	e_info.badva1 = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1);
 #endif
 	e_info.bv0 = 1;
 	e_info.bv1 = 0;
 	e_info.bvs = 0;
 
-	e_info.elr = thread->gpr[HEX_REG_PC];
+	e_info.elr = thread->Regs[REG_PC];
 	e_info.diag = 0;
 	e_info.de_slotmask = 1;
 
@@ -665,13 +673,13 @@ dma_t *dma_adapter_init(processor_t *proc, int dmanum) {
 	dma_t *dma = NULL;
 	dma_adapter_engine_info_t *dma_adapter = NULL;
 
-	if ((dma = calloc(1, sizeof(dma_t))) == NULL) {
+	if ((dma = (dma_t *) calloc(1, sizeof(dma_t))) == NULL) {
 		sim_err_fatal(proc->system_ptr, proc, 0, (char *) __FUNCTION__,
 		              __FILE__, __LINE__, "cannot create dma");
 		return NULL;
 	}
 
-	if ((dma_adapter = calloc(1, sizeof(dma_adapter_engine_info_t))) == NULL) {
+	if ((dma_adapter = (dma_adapter_engine_info_t *) calloc(1, sizeof(dma_adapter_engine_info_t))) == NULL) {
 		sim_err_fatal(proc->system_ptr, proc, 0, (char *) __FUNCTION__,
 		              __FILE__, __LINE__, "cannot create dma_adapter");
 		return NULL;
@@ -932,9 +940,9 @@ static int dma_adapter_report_exception(dma_t *dma) {
 	// the exception is resolved, we come to hit the DMSTART again, which is
 	// not correct. Since the exception is exposed to DMPOLL or DMWAIT,
 	// elr should be adjusted to be a PC of DMPOLL or DMWAIT.
-	dma_info->einfo.elr = thread->gpr[HEX_REG_PC];
+	dma_info->einfo.elr = thread->Regs[REG_PC];
 #if !defined(CONFIG_USER_ONLY)
-	dma_info->einfo.badva1 = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1); //thread->t_sreg[HEX_SREG_BADVA1];
+	dma_info->einfo.badva1 = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1);
 #endif
 
 	// Take an owner thread an exception.
@@ -949,24 +957,26 @@ static int dma_adapter_report_exception(dma_t *dma) {
 
 
 //! dmstart implementation.
-size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new, size4u_t dummy,
+size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new_dma, size4u_t dummy,
                                dma_insn_checker_ptr *insn_checker) {
 	// Obtain a current DMA instance from a thread ID.
 	dma_t *dma = thread->processor_ptr->dma[thread->threadId];
 	dma_cmd_report_t report = {.excpt = 0, .insn_checker = NULL};
-	dma->pc = thread->gpr[HEX_REG_PC];
+	dma->pc = thread->Regs[REG_PC];
 
-	CALL_DMA_CMD(dma_cmd_start, dma, new, &report);
+	CALL_DMA_CMD(dma_cmd_start, dma, new_dma, &report);
 
 	if (report.excpt == 1) {
 		// If the command ran into an exception, we have to report it to an owner
 		// thread, so that the command can be replayed again later.
 		dma_adapter_report_exception(dma);
 	} else {
-		if (new != 0) {
+		if (new_dma != 0) {
 #ifndef CONFIG_USER_ONLY
             uint32_t ssr = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_SSR);
-			fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width, reg_field_info[SSR_ASID].offset, (GET_SSR_FIELD(SSR_ASID, ssr)));
+			fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width,
+                reg_field_info[SSR_ASID].offset,
+                (GET_SSR_FIELD(SSR_ASID, ssr)));
             ARCH_SET_SYSTEM_REG(thread, HEX_SREG_SSR, ssr);
 #else
             g_assert_not_reached();
@@ -980,23 +990,25 @@ size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new, size4u_t dummy,
 }
 
 //! dmlink and its variants' implementation.
-size4u_t dma_adapter_cmd_link(thread_t *thread, size4u_t tail, size4u_t new, dma_insn_checker_ptr *insn_checker) {
+size4u_t dma_adapter_cmd_link(thread_t *thread, size4u_t tail, size4u_t new_dma, dma_insn_checker_ptr *insn_checker) {
 	// Obtain a current DMA instance from a thread ID.
 	dma_t *dma = thread->processor_ptr->dma[thread->threadId];
 	dma_cmd_report_t report = {.excpt = 0, .insn_checker = NULL};
-	dma->pc = thread->gpr[HEX_REG_PC];
+	dma->pc = thread->Regs[REG_PC];
 
-	CALL_DMA_CMD(dma_cmd_link, dma, tail, new, thread->mem_access[0].paddr, thread->mem_access[0].xlate_info.memtype.invalid_dma, &report);
+	CALL_DMA_CMD(dma_cmd_link, dma, tail, new_dma, thread->mem_access[0].paddr, thread->mem_access[0].xlate_info.memtype.invalid_dma, &report);
 
 	if (report.excpt == 1) {
 		// If the command ran into an exception, we have to report it to an owner
 		// thread, so that the command can be replayed again later.
 		dma_adapter_report_exception(dma);
 	} else {
-		if (new != 0) {
+		if (new_dma != 0) {
 #ifndef CONFIG_USER_ONLY
             uint32_t ssr = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_SSR);
-			fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width, reg_field_info[SSR_ASID].offset, (GET_SSR_FIELD(SSR_ASID, ssr)));
+			fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width,
+                reg_field_info[SSR_ASID].offset,
+                (GET_SSR_FIELD(SSR_ASID, ssr)));
             ARCH_SET_SYSTEM_REG(thread, HEX_SREG_SSR, ssr);
 #else
             g_assert_not_reached();
@@ -1204,7 +1216,7 @@ size4u_t dma_adapter_cmd(thread_t *thread, dma_cmd_t opcode,
 	/* Check if DMA is present. If there is none, just do a noop */
 	if(!thread->processor_ptr->arch_proc_options->QDSP6_DMA_PRESENT) {
 		if(!sys_in_monitor_mode(thread)) {
-			decode_error(thread, &einfo, HEX_CAUSE_INVALID_PACKET);
+			decode_error(thread, &einfo, PRECISE_CAUSE_INVALID_PACKET);
 			register_einfo(thread,&einfo);
 		}
 		return 0;
