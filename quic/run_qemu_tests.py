@@ -253,10 +253,10 @@ if __name__ == '__main__':
         )
         if args.enable_yield:
             if test in yield_needers:
-                cmd += ' -cpu generic,sched-limit=on'
+                cmd += ' -cpu any,sched-limit=on'
                 print(f'MODIFIED CMDLINE ARGS FOR "{test}": {cmd}')
         elif args.extra_cpu_args:
-            cmd += f' -cpu generic,{args.extra_cpu_args}'
+            cmd += f' -cpu any,{args.extra_cpu_args}'
         t0 = time.time()
         try:
             res = run_one(t, port_num, shlex.split(cmd), timeout_sec, stdout=PIPE, stderr=PIPE)
