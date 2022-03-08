@@ -1046,10 +1046,6 @@ float64 HELPER(dfmax)(CPUHexagonState *env, float64 RssV, float64 RttV)
         float_raise(float_flag_invalid, &env->fp_status);
     } else {
         RddV = float64_maxnum(RssV, RttV, &env->fp_status);
-        if (float64_is_quiet_nan(RssV, &env->fp_status) ||
-            float64_is_quiet_nan(RttV, &env->fp_status)) {
-            float_raise(float_flag_invalid, &env->fp_status);
-        }
     }
     arch_fpop_end(env);
     return RddV;
@@ -1069,10 +1065,6 @@ float64 HELPER(dfmin)(CPUHexagonState *env, float64 RssV, float64 RttV)
         float_raise(float_flag_invalid, &env->fp_status);
     } else {
         RddV = float64_minnum(RssV, RttV, &env->fp_status);
-        if (float64_is_quiet_nan(RssV, &env->fp_status) ||
-            float64_is_quiet_nan(RttV, &env->fp_status)) {
-            float_raise(float_flag_invalid, &env->fp_status);
-        }
     }
     arch_fpop_end(env);
     return RddV;
