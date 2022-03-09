@@ -268,6 +268,8 @@ static Property riscv_aclint_mtimer_properties[] = {
         aperture_size, RISCV_ACLINT_DEFAULT_MTIMER_SIZE),
     DEFINE_PROP_UINT32("timebase-freq", RISCVAclintMTimerState,
         timebase_freq, 0),
+    DEFINE_PROP_BOOL("provide-rdtime", RISCVAclintMTimerState,
+        provide_rdtime, false),
     DEFINE_PROP_END_OF_LIST(),
 };
 
@@ -285,11 +287,28 @@ static void riscv_aclint_mtimer_realize(DeviceState *dev, Error **errp)
 
     /* Claim timer interrupt bits */
     for (i = 0; i < s->num_harts; i++) {
-        RISCVCPU *cpu = RISCV_CPU(qemu_get_cpu(s->hartid_base + i));
-        if (riscv_cpu_claim_interrupts(cpu, MIP_MTIP) < 0) {
-            error_report("MTIP already claimed");
-            exit(1);
+        CPUState *cpu = qemu_get_cpu(s->hartid_base + i);
+        RISCVCPU *rvcpu = RISCV_CPU(cpu);
+        CPURISCVState *env = cpu ? cpu->env_ptr : NULL;
+        riscv_aclint_mtimer_callback *cb =
+            g_new0(riscv_aclint_mtimer_callback,1);
+
+        if (!env) {
+            g_free(cb);
+            continue;
         }
+        if (s->provide_rdtime) {
+            riscv_cpu_set_rdtime_fn(env, cpu_riscv_read_rtc, dev);
+        }
+
+        cb->s = RISCV_ACLINT_MTIMER(dev);
+        cb->num = i;
+        env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
+                                  &riscv_aclint_mtimer_cb, cb);
+        env->timecmp = 0;
+
+        qdev_connect_gpio_out(dev, i,
+                               qdev_get_gpio_in(DEVICE(rvcpu), IRQ_M_TIMER));
     }
 }
 
@@ -333,7 +352,6 @@ DeviceState *riscv_aclint_mtimer_create(hwaddr addr, hwaddr size,
     uint32_t timecmp_base, uint32_t time_base, uint32_t timebase_freq,
     bool provide_rdtime)
 {
-    int i;
     DeviceState *dev = qdev_new(TYPE_RISCV_ACLINT_MTIMER);
 
     assert(num_harts <= RISCV_ACLINT_MAX_HARTS);
@@ -347,33 +365,9 @@ DeviceState *riscv_aclint_mtimer_create(hwaddr addr, hwaddr size,
     qdev_prop_set_uint32(dev, "time-base", time_base);
     qdev_prop_set_uint32(dev, "aperture-size", size);
     qdev_prop_set_uint32(dev, "timebase-freq", timebase_freq);
+    qdev_prop_set_bit(dev, "provide-rdtime", provide_rdtime);
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, addr);
-
-    for (i = 0; i < num_harts; i++) {
-        CPUState *cpu = qemu_get_cpu(hartid_base + i);
-        RISCVCPU *rvcpu = RISCV_CPU(cpu);
-        CPURISCVState *env = cpu ? cpu->env_ptr : NULL;
-        riscv_aclint_mtimer_callback *cb =
-            g_new0(riscv_aclint_mtimer_callback, 1);
-
-        if (!env) {
-            g_free(cb);
-            continue;
-        }
-        if (provide_rdtime) {
-            riscv_cpu_set_rdtime_fn(env, cpu_riscv_read_rtc, dev);
-        }
-
-        cb->s = RISCV_ACLINT_MTIMER(dev);
-        cb->num = i;
-        env->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL,
-                                  &riscv_aclint_mtimer_cb, cb);
-        env->timecmp = 0;
-
-        qdev_connect_gpio_out(dev, i,
-                              qdev_get_gpio_in(DEVICE(rvcpu), IRQ_M_TIMER));
-    }
 
     return dev;
 }
@@ -467,6 +461,9 @@ static void riscv_aclint_swi_realize(DeviceState *dev, Error **errp)
             error_report("MSIP already claimed");
             exit(1);
         }
+        qdev_connect_gpio_out(dev, i,
+                              qdev_get_gpio_in(DEVICE(cpu),
+                                  (swi->sswi) ? IRQ_S_SOFT : IRQ_M_SOFT));
     }
 }
 
@@ -511,7 +508,6 @@ static const TypeInfo riscv_aclint_swi_info = {
 DeviceState *riscv_aclint_swi_create(hwaddr addr, uint32_t hartid_base,
     uint32_t num_harts, bool sswi)
 {
-    int i;
     DeviceState *dev = qdev_new(TYPE_RISCV_ACLINT_SWI);
 
     assert(num_harts <= RISCV_ACLINT_MAX_HARTS);
@@ -522,15 +518,6 @@ DeviceState *riscv_aclint_swi_create(hwaddr addr, uint32_t hartid_base,
     qdev_prop_set_uint32(dev, "sswi", sswi ? true : false);
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, addr);
-
-    for (i = 0; i < num_harts; i++) {
-        CPUState *cpu = qemu_get_cpu(hartid_base + i);
-        RISCVCPU *rvcpu = RISCV_CPU(cpu);
-
-        qdev_connect_gpio_out(dev, i,
-                              qdev_get_gpio_in(DEVICE(rvcpu),
-                                  (sswi) ? IRQ_S_SOFT : IRQ_M_SOFT));
-    }
 
     return dev;
 }
