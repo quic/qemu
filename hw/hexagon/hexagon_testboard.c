@@ -17,7 +17,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #include "qemu/osdep.h"
 #include "qemu/units.h"
 #include "exec/address-spaces.h"
@@ -416,6 +415,47 @@ static void v73na_1024_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 4 * GiB;
 }
 
+static void v75na_1024_config_init(MachineState *machine)
+{
+    cfgTable = &v75na_1024_cfgtable;
+    cfgExtensions = &v75na_1024_extensions;
+    hexagon_common_init(machine, v75_rev);
+}
+
+static void v75na_1024_linux_config_init(MachineState *machine)
+{
+    syscfg_is_linux = true;
+
+    v75na_1024_config_init(machine);
+}
+
+static void v75na_1024_linux_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon Linux V75NA_1024";
+    mc->init = v75na_1024_linux_config_init;
+    mc->is_default = 0;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
+    mc->default_cpus = 6;
+    mc->max_cpus = THREADS_MAX;
+    mc->default_ram_size = 4 * GiB;
+}
+
+static void v75na_1024_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon V75NA_1024";
+    mc->init = v75na_1024_config_init;
+    mc->is_default = 0;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
+    mc->default_cpus = 6;
+    mc->max_cpus = THREADS_MAX;
+    mc->default_ram_size = 4 * GiB;
+}
 static const TypeInfo hexagon_machine_types[] = {
     {
         .name = MACHINE_TYPE_NAME("V66G_1024"),
@@ -437,6 +477,14 @@ static const TypeInfo hexagon_machine_types[] = {
         .name = MACHINE_TYPE_NAME("V73_Linux"),
         .parent = TYPE_MACHINE,
         .class_init = v73na_1024_linux_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("V75NA_1024"),
+        .parent = TYPE_MACHINE,
+        .class_init = v75na_1024_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("V75_Linux"),
+        .parent = TYPE_MACHINE,
+        .class_init = v75na_1024_linux_init,
     }, {
         .name = MACHINE_TYPE_NAME("V66_Linux"),
         .parent = TYPE_MACHINE,
