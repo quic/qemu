@@ -319,7 +319,7 @@ static void sifive_plic_irq_request(void *opaque, int irq, int level)
 static void sifive_plic_realize(DeviceState *dev, Error **errp)
 {
     SiFivePLICState *s = SIFIVE_PLIC(dev);
-    int i;
+    int i,j = 0;
 
     memory_region_init_io(&s->mmio, OBJECT(dev), &sifive_plic_ops, s,
                           TYPE_SIFIVE_PLIC, s->aperture_size);
@@ -357,6 +357,22 @@ static void sifive_plic_realize(DeviceState *dev, Error **errp)
     }
 
     msi_nonbroken = true;
+
+    for (i = 0; i < s->num_harts; i++) {
+        CPUState *cpu = qemu_get_cpu(s->hartid_base + i);
+
+        if (s->addr_config[j].mode == PLICMode_M) {
+            j++;
+            qdev_connect_gpio_out(dev, s->num_harts + i,
+                                  qdev_get_gpio_in(DEVICE(cpu), IRQ_M_EXT));
+        }
+
+        if (s->addr_config[j].mode == PLICMode_S) {
+            j++;
+            qdev_connect_gpio_out(dev, i,
+                                  qdev_get_gpio_in(DEVICE(cpu), IRQ_S_EXT));
+        }
+    }
 }
 
 static const VMStateDescription vmstate_sifive_plic = {
@@ -431,8 +447,6 @@ DeviceState *sifive_plic_create(hwaddr addr, char *hart_config,
     uint32_t context_stride, uint32_t aperture_size)
 {
     DeviceState *dev = qdev_new(TYPE_SIFIVE_PLIC);
-    int i, j = 0;
-    SiFivePLICState *plic;
 
     assert(enable_stride == (enable_stride & -enable_stride));
     assert(context_stride == (context_stride & -context_stride));
@@ -449,23 +463,6 @@ DeviceState *sifive_plic_create(hwaddr addr, char *hart_config,
     qdev_prop_set_uint32(dev, "aperture-size", aperture_size);
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, addr);
-
-    plic = SIFIVE_PLIC(dev);
-    for (i = 0; i < num_harts; i++) {
-        CPUState *cpu = qemu_get_cpu(hartid_base + i);
-
-        if (plic->addr_config[j].mode == PLICMode_M) {
-            j++;
-            qdev_connect_gpio_out(dev, num_harts + i,
-                                  qdev_get_gpio_in(DEVICE(cpu), IRQ_M_EXT));
-        }
-
-        if (plic->addr_config[j].mode == PLICMode_S) {
-            j++;
-            qdev_connect_gpio_out(dev, i,
-                                  qdev_get_gpio_in(DEVICE(cpu), IRQ_S_EXT));
-        }
-    }
 
     return dev;
 }
