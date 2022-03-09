@@ -633,8 +633,11 @@ apply_extender(Packet *pkt, int i, uint32_t extender)
     uint32_t base_immed;
 
     immed_num = opcode_which_immediate_is_extended(pkt->insn[i].opcode);
-    base_immed = pkt->insn[i].immed[immed_num];
+    if (immed_num < 0) {
+        return;
+    }
 
+    base_immed = pkt->insn[i].immed[immed_num];
     pkt->insn[i].immed[immed_num] = extender | fZXTN(6, 32, base_immed);
 }
 
@@ -777,7 +780,10 @@ decode_op(Insn *insn, Opcode tag, uint32_t encoding)
     insn->immed[1] = 0;
     insn->opcode = tag;
     if (insn->extension_valid) {
-        insn->which_extended = opcode_which_immediate_is_extended(tag);
+        int immed_num = opcode_which_immediate_is_extended(tag);
+        if (immed_num >= 0) {
+            insn->which_extended = immed_num;
+        }
     }
 
     switch (tag) {

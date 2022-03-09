@@ -27,8 +27,11 @@ VPATH += $(HEX_SRC)
 
 first: $(HEX_SRC)/first.S
 	$(CC) -static -mv69 -nostdlib $^ -o $@
+invalid_immext: $(HEX_SRC)/invalid_immext.S
+	$(CC) -static -mv69 -mhvx -mhvx-ieee-fp -nostdlib $^ -o $@
 
 HEX_TESTS = first
+HEX_TESTS += invalid_immext
 HEX_TESTS += exec_counters
 HEX_TESTS += hex_sigsegv
 HEX_TESTS += misc

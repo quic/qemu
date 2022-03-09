@@ -23,6 +23,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/log.h"
 #include "attribs.h"
 #include "decode.h"
 
@@ -121,7 +122,11 @@ int opcode_which_immediate_is_extended(Opcode opcode)
 {
     const char *p;
     g_assert(opcode < XX_LAST_OPCODE);
-    g_assert(GET_ATTRIB(opcode, A_EXTENDABLE));
+
+    if (!GET_ATTRIB(opcode, A_EXTENDABLE)) {
+        qemu_log_mask(LOG_GUEST_ERROR, "Instruction cannot have extender: opcode 0x%x\n", opcode);
+        return -1;
+    }
 
     p = opcode_short_semantics[opcode];
     p = strstr(p, NEEDLE);
