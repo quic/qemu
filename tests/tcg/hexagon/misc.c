@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -432,6 +432,53 @@ static void test_satub(void)
     check(ovf_result, 1);
 }
 
+#define insert(RET, SRC, WIDTH, OFFSET) \
+    asm("%0 = insert(%1, #%2, #%3)\n\t" \
+        : "+r"(RET) : "r"(SRC), "i"(WIDTH), "i"(OFFSET))
+
+static void test_insert(void)
+{
+    int res;
+
+    res = 0x12345678;
+    insert(res, 0xff, 8, 0);
+    check(res, 0x123456ff);
+
+    res = 0x12345678;
+    insert(res, 0xff, 0, 0);
+    check(res, 0x12345678);
+
+    res = 0x12345678;
+    insert(res, 0xff, 1, 31);
+    check(res, 0x92345678);
+
+    res = 0x12345678;
+    insert(res, 0xff, 2, 31);
+    check(res, 0x92345678);
+
+    res = 0x12345678;
+    insert(res, 0xff, 31, 31);
+    check(res, 0x92345678);
+}
+
+#define bitspliti(RET, SRC, BITS) \
+    asm("%0 = bitsplit(%1, #%2)\n\t" \
+        : "=r"(RET) : "r"(SRC), "i"(BITS))
+
+static void test_bitspliti(void)
+{
+    long long res64;
+
+    bitspliti(res64, 0x12345678, 0);
+    check64(res64, 0x1234567800000000ULL);
+
+    bitspliti(res64, 0x12345678, 8);
+    check64(res64, 0x0012345600000078ULL);
+
+    bitspliti(res64, 0x12345678, 31);
+    check64(res64, 0x0000000012345678ULL);
+}
+
 int main()
 {
     int res;
@@ -579,6 +626,10 @@ int main()
     test_extractu();
 
     test_satub();
+
+    test_insert();
+
+    test_bitspliti();
 
     puts(err ? "FAIL" : "PASS");
     return err;
