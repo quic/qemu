@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -2133,7 +2133,16 @@
     tcg_gen_movi_tl(RdV, uiV)
 
 #define fGEN_TCG_S2_insert(SHORTCODE) \
-    tcg_gen_deposit_i32(RxV, RxV, RsV, UiV, uiV)
+    do { \
+        int width = uiV; \
+        int offset = UiV; \
+        if (width != 0) { \
+            if (offset + width > 32) { \
+                width = 32 - offset; \
+            } \
+            tcg_gen_deposit_i32(RxV, RxV, RsV, offset, width); \
+        } \
+    } while (0)
 
 #define fGEN_TCG_S2_extractu(SHORTCODE) \
     do { \
@@ -2372,13 +2381,19 @@
 /* r3:2 = bitsplit(r1, #5) */
 #define fGEN_TCG_A4_bitspliti(SHORTCODE) \
     do { \
-        TCGv lo = tcg_temp_new(); \
-        TCGv hi = tcg_temp_new(); \
-        tcg_gen_extract_tl(lo, RsV, 0, uiV); \
-        tcg_gen_extract_tl(hi, RsV, uiV, 32 - uiV); \
-        tcg_gen_concat_i32_i64(RddV, lo, hi); \
-        tcg_temp_free(lo); \
-        tcg_temp_free(hi); \
+        int bits = uiV; \
+        if (bits == 0) { \
+            tcg_gen_extu_i32_i64(RddV, RsV); \
+            tcg_gen_shli_i64(RddV, RddV, 32); \
+        } else { \
+            TCGv lo = tcg_temp_new(); \
+            TCGv hi = tcg_temp_new(); \
+            tcg_gen_extract_tl(lo, RsV, 0, bits); \
+            tcg_gen_extract_tl(hi, RsV, bits, 32 - bits); \
+            tcg_gen_concat_i32_i64(RddV, lo, hi); \
+            tcg_temp_free(lo); \
+            tcg_temp_free(hi); \
+        } \
     } while (0)
 
 #define fGEN_TCG_SL2_jumpr31(SHORTCODE) \
