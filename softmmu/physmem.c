@@ -2934,6 +2934,14 @@ void cpu_physical_memory_rw(hwaddr addr, void *buf,
                      buf, len, is_write);
 }
 
+void cpu_physical_memory_rw_debug(hwaddr addr, uint8_t *buf,
+                            hwaddr len, bool is_write)
+{
+    MemTxAttrs attrs = MEMTXATTRS_UNSPECIFIED;
+    attrs.debug = 1;
+    address_space_rw(&address_space_memory, addr, attrs, buf, len, is_write);
+}
+
 enum write_rom_type {
     WRITE_DATA,
     FLUSH_CACHE,
@@ -2960,6 +2968,11 @@ static inline MemTxResult address_space_write_rom_internal(AddressSpace *as,
         if (!(memory_region_is_ram(mr) ||
               memory_region_is_romd(mr))) {
             l = memory_access_size(mr, l, addr1);
+            /*
+             * Debug accesses on virtual addresses on I/O region
+             * end up there so do them.
+             */
+            address_space_write(as, addr, attrs, buf, l);
         } else {
             /* ROM/RAM case */
             ram_ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
@@ -3439,6 +3452,7 @@ int cpu_memory_rw_debug(CPUState *cpu, target_ulong addr,
         if (l > len)
             l = len;
         phys_addr += (addr & ~TARGET_PAGE_MASK);
+        attrs.debug = 1;
         if (is_write) {
             res = address_space_write_rom(cpu->cpu_ases[asidx].as, phys_addr,
                                           attrs, buf, l);

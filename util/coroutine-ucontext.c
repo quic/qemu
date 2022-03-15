@@ -328,5 +328,10 @@ Coroutine *qemu_coroutine_self(void)
 
 bool qemu_in_coroutine(void)
 {
-    return current && current->caller;
+    return current && current->caller && !current->cpu;
+}
+
+bool qemu_in_coroutine_cpu(void)
+{
+    return current && current->caller && current->cpu;
 }

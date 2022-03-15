@@ -13,6 +13,10 @@ cc = meson.get_compiler('c')
 config_host = keyval.load(meson.current_build_dir() / 'config-host.mak')
 enable_modules = 'CONFIG_MODULES' in config_host
 enable_static = 'CONFIG_STATIC' in config_host
+enable_libqemu = get_option('libqemu')
+if enable_libqemu and not get_option('b_staticpic')
+  error('b_staticpic required for libqemu support')
+endif
 
 # Allow both shared and static libraries unless --enable-static
 static_kwargs = enable_static ? {'static': true} : {}
@@ -1427,6 +1431,7 @@ config_host_data.set('CONFIG_BRLAPI', brlapi.found())
 config_host_data.set('CONFIG_COCOA', cocoa.found())
 config_host_data.set('CONFIG_FUZZ', get_option('fuzzing'))
 config_host_data.set('CONFIG_GCOV', get_option('b_coverage'))
+config_host_data.set('CONFIG_LIBQEMU', get_option('libqemu'))
 config_host_data.set('CONFIG_LIBUDEV', libudev.found())
 config_host_data.set('CONFIG_LZO', lzo.found())
 config_host_data.set('CONFIG_MPATH', mpathpersist.found())
@@ -2369,6 +2374,7 @@ common_ss = ss.source_set()
 crypto_ss = ss.source_set()
 hwcore_ss = ss.source_set()
 io_ss = ss.source_set()
+libqemu_ss = ss.source_set()
 linux_user_ss = ss.source_set()
 qmp_ss = ss.source_set()
 qom_ss = ss.source_set()
@@ -2613,6 +2619,10 @@ subdir('plugins')
 subdir('bsd-user')
 subdir('linux-user')
 subdir('ebpf')
+
+#libqemu (maybe we can directly put files in specific_ss ?)
+subdir('libqemu')
+specific_ss.add_all(libqemu_ss)
 
 specific_ss.add_all(when: 'CONFIG_BSD_USER', if_true: bsd_user_ss)
 
@@ -2975,17 +2985,29 @@ foreach target : target_dirs
       exe_name += '-unsigned'
     endif
 
-    emulator = executable(exe_name, exe['sources'],
-               install: true,
-               c_args: c_args,
-               dependencies: arch_deps + deps + exe['dependencies'],
-               objects: lib.extract_all_objects(recursive: true),
-               link_language: link_language,
-               link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
-               link_args: link_args,
-               win_subsystem: exe['win_subsystem'])
+    if enable_libqemu
+      emulator = shared_library(exe_name, exe['sources'],
+                 install: true,
+                 c_args: c_args,
+                 dependencies: arch_deps + deps + exe['dependencies'],
+                 objects: lib.extract_all_objects(recursive: true),
+                 link_language: link_language,
+                 link_depends: [block_syms, qemu_syms, 'libqemu/libqemu.version']
+                               + exe.get('link_depends', []),
+                 link_args: link_args)
+    else
+      emulator = executable(exe_name, exe['sources'],
+                 install: true,
+                 c_args: c_args,
+                 dependencies: arch_deps + deps + exe['dependencies'],
+                 objects: lib.extract_all_objects(recursive: true),
+                 link_language: link_language,
+                 link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
+                 link_args: link_args,
+                 win_subsystem: exe['win_subsystem'])
+    endif
 
-    if targetos == 'darwin'
+    if targetos == 'darwin' and not build_libqemu
       icon = 'pc-bios/qemu.rsrc'
       build_input = [emulator, files(icon)]
       install_input = [
@@ -3268,6 +3290,7 @@ endif
 summary_info += {'strip binaries':    get_option('strip')}
 summary_info += {'sparse':            sparse}
 summary_info += {'mingw32 support':   targetos == 'windows'}
+summary_info += {'libqemu support':   get_option('libqemu')}
 
 # snarf the cross-compilation information for tests
 foreach target: target_dirs

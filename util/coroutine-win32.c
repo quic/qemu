@@ -92,11 +92,19 @@ Coroutine *qemu_coroutine_self(void)
     if (!current) {
         current = &leader.base;
         leader.fiber = ConvertThreadToFiber(NULL);
+	if (leader.fiber == NULL && GetLastError() == ERROR_ALREADY_FIBER) {
+	    leader.fiber = GetCurrentFiber();
+	}
     }
     return current;
 }
 
 bool qemu_in_coroutine(void)
 {
-    return current && current->caller;
+    return current && current->caller && !current->cpu;
+}
+
+bool qemu_in_coroutine_cpu(void)
+{
+    return current && current->caller && current->cpu;
 }

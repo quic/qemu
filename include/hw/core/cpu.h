@@ -31,6 +31,7 @@
 #include "qemu/thread.h"
 #include "qemu/plugin.h"
 #include "qom/object.h"
+#include "qemu/coroutine.h"
 
 typedef int (*WriteCoreDumpFunction)(const void *buf, size_t size,
                                      void *opaque);
@@ -252,6 +253,28 @@ typedef void (*run_on_cpu_func)(CPUState *cpu, run_on_cpu_data data);
 
 struct qemu_work_item;
 
+typedef enum CPUCoroutineYieldReason {
+    YIELD_LOOP_END,
+    YIELD_IO
+} CPUCoroutineYieldReason;
+
+typedef struct CPUCoroutineIOInfo {
+    bool is_read;
+    hwaddr addr;
+    uint64_t *data;
+    unsigned int size;
+    MemTxAttrs *attrs;
+    void *opaque;
+    bool done;
+
+    MemTxResult result;
+} CPUCoroutineIOInfo;
+
+typedef struct CPUCoroutineYieldInfo {
+    CPUCoroutineYieldReason reason;
+    CPUCoroutineIOInfo io_info;
+} CPUCoroutineYieldInfo;
+
 #define CPU_UNSET_NUMA_NODE_ID -1
 #define CPU_TRACE_DSTATE_MAX_EVENTS 32
 
@@ -320,6 +343,8 @@ struct CPUState {
     int nr_threads;
 
     struct QemuThread *thread;
+    Coroutine *coroutine;
+    CPUCoroutineYieldInfo coroutine_yield_info;
 #ifdef _WIN32
     HANDLE hThread;
 #endif
@@ -330,6 +355,7 @@ struct CPUState {
     bool created;
     bool stop;
     bool stopped;
+    bool soft_stopped;
 
     /* Should CPU start in powered-off state? */
     bool start_powered_off;
@@ -453,6 +479,8 @@ static inline void cpu_tb_jmp_cache_clear(CPUState *cpu)
  */
 extern bool mttcg_enabled;
 #define qemu_tcg_mttcg_enabled() (mttcg_enabled)
+
+extern bool coroutine_tcg;
 
 /**
  * cpu_paging_enabled:

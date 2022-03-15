@@ -204,3 +204,6 @@ option('fdt', type: 'combo', value: 'auto',
 
 option('selinux', type: 'feature', value: 'auto',
        description: 'SELinux support in qemu-nbd')
+
+option('libqemu', type: 'boolean', value: 'false',
+       description: 'Build shared libraries instead of executables')
