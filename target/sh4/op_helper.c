@@ -29,9 +29,6 @@ void superh_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
                                     MMUAccessType access_type,
                                     int mmu_idx, uintptr_t retaddr)
 {
-    CPUSH4State *env = cs->env_ptr;
-
-    env->tea = addr;
     switch (access_type) {
     case MMU_INST_FETCH:
     case MMU_DATA_LOAD:
@@ -40,8 +37,6 @@ void superh_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
     case MMU_DATA_STORE:
         cs->exception_index = 0x100;
         break;
-    default:
-        g_assert_not_reached();
     }
     cpu_loop_exit_restore(cs, retaddr);
 }
@@ -84,6 +79,11 @@ void helper_raise_fpu_disable(CPUSH4State *env)
 void helper_raise_slot_fpu_disable(CPUSH4State *env)
 {
     raise_exception(env, 0x820, 0);
+}
+
+void helper_debug(CPUSH4State *env)
+{
+    raise_exception(env, EXCP_DEBUG, 0);
 }
 
 void helper_sleep(CPUSH4State *env)

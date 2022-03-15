@@ -133,10 +133,12 @@ struct VirtQueue
     QLIST_ENTRY(VirtQueue) node;
 };
 
-/* Called within call_rcu().  */
 static void virtio_free_region_cache(VRingMemoryRegionCaches *caches)
 {
-    assert(caches != NULL);
+    if (!caches) {
+        return;
+    }
+
     address_space_cache_destroy(&caches->desc);
     address_space_cache_destroy(&caches->avail);
     address_space_cache_destroy(&caches->used);
@@ -247,10 +249,13 @@ static void vring_packed_event_read(VirtIODevice *vdev,
     hwaddr off_off = offsetof(VRingPackedDescEvent, off_wrap);
     hwaddr off_flags = offsetof(VRingPackedDescEvent, flags);
 
-    e->flags = virtio_lduw_phys_cached(vdev, cache, off_flags);
+    address_space_read_cached(cache, off_flags, &e->flags,
+                              sizeof(e->flags));
     /* Make sure flags is seen before off_wrap */
     smp_rmb();
-    e->off_wrap = virtio_lduw_phys_cached(vdev, cache, off_off);
+    address_space_read_cached(cache, off_off, &e->off_wrap,
+                              sizeof(e->off_wrap));
+    virtio_tswap16s(vdev, &e->off_wrap);
     virtio_tswap16s(vdev, &e->flags);
 }
 
@@ -260,7 +265,8 @@ static void vring_packed_off_wrap_write(VirtIODevice *vdev,
 {
     hwaddr off = offsetof(VRingPackedDescEvent, off_wrap);
 
-    virtio_stw_phys_cached(vdev, cache, off, off_wrap);
+    virtio_tswap16s(vdev, &off_wrap);
+    address_space_write_cached(cache, off, &off_wrap, sizeof(off_wrap));
     address_space_cache_invalidate(cache, off, sizeof(off_wrap));
 }
 
@@ -269,7 +275,8 @@ static void vring_packed_flags_write(VirtIODevice *vdev,
 {
     hwaddr off = offsetof(VRingPackedDescEvent, flags);
 
-    virtio_stw_phys_cached(vdev, cache, off, flags);
+    virtio_tswap16s(vdev, &flags);
+    address_space_write_cached(cache, off, &flags, sizeof(flags));
     address_space_cache_invalidate(cache, off, sizeof(flags));
 }
 
@@ -502,9 +509,11 @@ static void vring_packed_desc_read_flags(VirtIODevice *vdev,
                                          MemoryRegionCache *cache,
                                          int i)
 {
-    hwaddr off = i * sizeof(VRingPackedDesc) + offsetof(VRingPackedDesc, flags);
-
-    *flags = virtio_lduw_phys_cached(vdev, cache, off);
+    address_space_read_cached(cache,
+                              i * sizeof(VRingPackedDesc) +
+                              offsetof(VRingPackedDesc, flags),
+                              flags, sizeof(*flags));
+    virtio_tswap16s(vdev, flags);
 }
 
 static void vring_packed_desc_read(VirtIODevice *vdev,
@@ -557,7 +566,8 @@ static void vring_packed_desc_write_flags(VirtIODevice *vdev,
 {
     hwaddr off = i * sizeof(VRingPackedDesc) + offsetof(VRingPackedDesc, flags);
 
-    virtio_stw_phys_cached(vdev, cache, off, desc->flags);
+    virtio_tswap16s(vdev, &desc->flags);
+    address_space_write_cached(cache, off, &desc->flags, sizeof(desc->flags));
     address_space_cache_invalidate(cache, off, sizeof(desc->flags));
 }
 
@@ -624,7 +634,6 @@ static int virtio_queue_split_empty(VirtQueue *vq)
     return empty;
 }
 
-/* Called within rcu_read_lock().  */
 static int virtio_queue_packed_empty_rcu(VirtQueue *vq)
 {
     struct VRingPackedDesc desc;
@@ -976,23 +985,28 @@ static int virtqueue_split_read_next_desc(VirtIODevice *vdev, VRingDesc *desc,
     return VIRTQUEUE_READ_DESC_MORE;
 }
 
-/* Called within rcu_read_lock().  */
 static void virtqueue_split_get_avail_bytes(VirtQueue *vq,
                             unsigned int *in_bytes, unsigned int *out_bytes,
-                            unsigned max_in_bytes, unsigned max_out_bytes,
-                            VRingMemoryRegionCaches *caches)
+                            unsigned max_in_bytes, unsigned max_out_bytes)
 {
     VirtIODevice *vdev = vq->vdev;
     unsigned int max, idx;
     unsigned int total_bufs, in_total, out_total;
+    VRingMemoryRegionCaches *caches;
     MemoryRegionCache indirect_desc_cache = MEMORY_REGION_CACHE_INVALID;
     int64_t len = 0;
     int rc;
+
+    RCU_READ_LOCK_GUARD();
 
     idx = vq->last_avail_idx;
     total_bufs = in_total = out_total = 0;
 
     max = vq->vring.num;
+    caches = vring_get_region_caches(vq);
+    if (!caches) {
+        goto err;
+    }
 
     while ((rc = virtqueue_num_heads(vq, idx)) > 0) {
         MemoryRegionCache *desc_cache = &caches->desc;
@@ -1111,28 +1125,32 @@ static int virtqueue_packed_read_next_desc(VirtQueue *vq,
     return VIRTQUEUE_READ_DESC_MORE;
 }
 
-/* Called within rcu_read_lock().  */
 static void virtqueue_packed_get_avail_bytes(VirtQueue *vq,
                                              unsigned int *in_bytes,
                                              unsigned int *out_bytes,
                                              unsigned max_in_bytes,
-                                             unsigned max_out_bytes,
-                                             VRingMemoryRegionCaches *caches)
+                                             unsigned max_out_bytes)
 {
     VirtIODevice *vdev = vq->vdev;
     unsigned int max, idx;
     unsigned int total_bufs, in_total, out_total;
     MemoryRegionCache *desc_cache;
+    VRingMemoryRegionCaches *caches;
     MemoryRegionCache indirect_desc_cache = MEMORY_REGION_CACHE_INVALID;
     int64_t len = 0;
     VRingPackedDesc desc;
     bool wrap_counter;
 
+    RCU_READ_LOCK_GUARD();
     idx = vq->last_avail_idx;
     wrap_counter = vq->last_avail_wrap_counter;
     total_bufs = in_total = out_total = 0;
 
     max = vq->vring.num;
+    caches = vring_get_region_caches(vq);
+    if (!caches) {
+        goto err;
+    }
 
     for (;;) {
         unsigned int num_bufs = total_bufs;
@@ -1233,8 +1251,6 @@ void virtqueue_get_avail_bytes(VirtQueue *vq, unsigned int *in_bytes,
     uint16_t desc_size;
     VRingMemoryRegionCaches *caches;
 
-    RCU_READ_LOCK_GUARD();
-
     if (unlikely(!vq->vring.desc)) {
         goto err;
     }
@@ -1253,12 +1269,10 @@ void virtqueue_get_avail_bytes(VirtQueue *vq, unsigned int *in_bytes,
 
     if (virtio_vdev_has_feature(vq->vdev, VIRTIO_F_RING_PACKED)) {
         virtqueue_packed_get_avail_bytes(vq, in_bytes, out_bytes,
-                                         max_in_bytes, max_out_bytes,
-                                         caches);
+                                         max_in_bytes, max_out_bytes);
     } else {
         virtqueue_split_get_avail_bytes(vq, in_bytes, out_bytes,
-                                        max_in_bytes, max_out_bytes,
-                                        caches);
+                                        max_in_bytes, max_out_bytes);
     }
 
     return;
@@ -1689,8 +1703,6 @@ static unsigned int virtqueue_packed_drop_all(VirtQueue *vq)
     VirtQueueElement elem = {};
     VirtIODevice *vdev = vq->vdev;
     VRingPackedDesc desc;
-
-    RCU_READ_LOCK_GUARD();
 
     caches = vring_get_region_caches(vq);
     if (!caches) {
@@ -3659,7 +3671,6 @@ static void virtio_device_realize(DeviceState *dev, Error **errp)
     }
 
     vdev->listener.commit = virtio_memory_listener_commit;
-    vdev->listener.name = "virtio";
     memory_listener_register(&vdev->listener, vdev->dma_as);
 }
 

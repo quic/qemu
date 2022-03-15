@@ -30,7 +30,6 @@
 
 #include "qapi/error.h"
 #include "qemu.h"
-#include "user-internals.h"
 #include "qemu/path.h"
 #include "qemu/queue.h"
 #include "qemu/config-file.h"
@@ -40,7 +39,6 @@
 #include "qemu/module.h"
 #include "qemu/plugin.h"
 #include "exec/exec-all.h"
-#include "exec/gdbstub.h"
 #include "tcg/tcg.h"
 #include "qemu/timer.h"
 #include "qemu/envlist.h"
@@ -51,9 +49,6 @@
 #include "cpu_loop-common.h"
 #include "crypto/init.h"
 #include "fd-trans.h"
-#include "signal-common.h"
-#include "loader.h"
-#include "user-mmap.h"
 
 #ifndef AT_FLAGS_PRESERVE_ARGV0
 #define AT_FLAGS_PRESERVE_ARGV0_BIT 0
@@ -124,6 +119,13 @@ const char *qemu_uname_release;
    we allocate a bigger stack. Need a better solution, for example
    by remapping the process stack directly at the right place */
 unsigned long guest_stack_size = 8 * 1024 * 1024UL;
+
+#if defined(TARGET_I386)
+int cpu_get_pic_interrupt(CPUX86State *env)
+{
+    return -1;
+}
+#endif
 
 /***********************************************************/
 /* Helper routines for implementing atomic operations.  */
@@ -461,7 +463,7 @@ static const struct qemu_argument arg_table[] = {
      "",           "[[enable=]<pattern>][,events=<file>][,file=<file>]"},
 #ifdef CONFIG_PLUGIN
     {"plugin",     "QEMU_PLUGIN",      true,  handle_arg_plugin,
-     "",           "[file=]<file>[,<argname>=<argvalue>]"},
+     "",           "[file=]<file>[,arg=<string>]"},
 #endif
     {"version",    "QEMU_VERSION",     false, handle_arg_version,
      "",           "display version information and exit"},

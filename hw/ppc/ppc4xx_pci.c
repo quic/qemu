@@ -48,14 +48,12 @@ OBJECT_DECLARE_SIMPLE_TYPE(PPC4xxPCIState, PPC4xx_PCI_HOST_BRIDGE)
 #define PPC4xx_PCI_NR_PMMS 3
 #define PPC4xx_PCI_NR_PTMS 2
 
-#define PPC4xx_PCI_NUM_DEVS 5
-
 struct PPC4xxPCIState {
     PCIHostState parent_obj;
 
     struct PCIMasterMap pmm[PPC4xx_PCI_NR_PMMS];
     struct PCITargetMap ptm[PPC4xx_PCI_NR_PTMS];
-    qemu_irq irq[PPC4xx_PCI_NUM_DEVS];
+    qemu_irq irq[PCI_NUM_PINS];
 
     MemoryRegion container;
     MemoryRegion iomem;
@@ -248,7 +246,7 @@ static int ppc4xx_pci_map_irq(PCIDevice *pci_dev, int irq_num)
 
     trace_ppc4xx_pci_map_irq(pci_dev->devfn, irq_num, slot);
 
-    return slot > 0 ? slot - 1 : PPC4xx_PCI_NUM_DEVS - 1;
+    return slot - 1;
 }
 
 static void ppc4xx_pci_set_irq(void *opaque, int irq_num, int level)
@@ -256,7 +254,7 @@ static void ppc4xx_pci_set_irq(void *opaque, int irq_num, int level)
     qemu_irq *pci_irqs = opaque;
 
     trace_ppc4xx_pci_set_irq(irq_num);
-    assert(irq_num >= 0 && irq_num < PPC4xx_PCI_NUM_DEVS);
+    assert(irq_num >= 0);
     qemu_set_irq(pci_irqs[irq_num], level);
 }
 

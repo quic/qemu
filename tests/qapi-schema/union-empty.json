@@ -1,4 +1,2 @@
-# union discriminator enum cannot be empty
-{ 'enum': 'Empty', 'data': [ ] }
-{ 'struct': 'Base', 'data': { 'type': 'Empty' } }
-{ 'union': 'Union', 'base': 'Base', 'discriminator': 'type', 'data': { } }
+# simple unions cannot be empty
+{ 'union': 'Union', 'data': { } }

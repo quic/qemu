@@ -49,12 +49,13 @@ struct SHPCIState {
     uint32_t iobr;
 };
 
-static void sh_pci_reg_write(void *p, hwaddr addr, uint64_t val, unsigned size)
+static void sh_pci_reg_write (void *p, hwaddr addr, uint64_t val,
+                              unsigned size)
 {
     SHPCIState *pcic = p;
     PCIHostState *phb = PCI_HOST_BRIDGE(pcic);
 
-    switch (addr) {
+    switch(addr) {
     case 0 ... 0xfc:
         stl_le_p(pcic->dev->config + addr, val);
         break;
@@ -74,12 +75,13 @@ static void sh_pci_reg_write(void *p, hwaddr addr, uint64_t val, unsigned size)
     }
 }
 
-static uint64_t sh_pci_reg_read(void *p, hwaddr addr, unsigned size)
+static uint64_t sh_pci_reg_read (void *p, hwaddr addr,
+                                 unsigned size)
 {
     SHPCIState *pcic = p;
     PCIHostState *phb = PCI_HOST_BRIDGE(pcic);
 
-    switch (addr) {
+    switch(addr) {
     case 0 ... 0xfc:
         return ldl_le_p(pcic->dev->config + addr);
     case 0x1c0:

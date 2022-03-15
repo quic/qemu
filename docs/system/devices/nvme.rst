@@ -70,7 +70,7 @@ namespaces and additional features, the ``nvme-ns`` device must be used.
 
 The namespaces defined by the ``nvme-ns`` device will attach to the most
 recently defined ``nvme-bus`` that is created by the ``nvme`` device. Namespace
-identifiers are allocated automatically, starting from ``1``.
+identifers are allocated automatically, starting from ``1``.
 
 There are a number of parameters available:
 
@@ -110,32 +110,28 @@ multipath I/O.
 This will create an NVM subsystem with two controllers. Having controllers
 linked to an ``nvme-subsys`` device allows additional ``nvme-ns`` parameters:
 
-``shared`` (default: ``on`` since 6.2)
+``shared`` (default: ``off``)
   Specifies that the namespace will be attached to all controllers in the
-  subsystem. If set to ``off``, the namespace will remain a private namespace
-  and may only be attached to a single controller at a time. Shared namespaces
-  are always automatically attached to all controllers (also when controllers
-  are hotplugged).
+  subsystem. If set to ``off`` (the default), the namespace will remain a
+  private namespace and may only be attached to a single controller at a time.
 
 ``detached`` (default: ``off``)
   If set to ``on``, the namespace will be be available in the subsystem, but
-  not attached to any controllers initially. A shared namespace with this set
-  to ``on`` will never be automatically attached to controllers.
+  not attached to any controllers initially.
 
 Thus, adding
 
 .. code-block:: console
 
    -drive file=nvm-1.img,if=none,id=nvm-1
-   -device nvme-ns,drive=nvm-1,nsid=1
+   -device nvme-ns,drive=nvm-1,nsid=1,shared=on
    -drive file=nvm-2.img,if=none,id=nvm-2
-   -device nvme-ns,drive=nvm-2,nsid=3,shared=off,detached=on
+   -device nvme-ns,drive=nvm-2,nsid=3,detached=on
 
-will cause NSID 1 will be a shared namespace that is initially attached to both
-controllers. NSID 3 will be a private namespace due to ``shared=off`` and only
-attachable to a single controller at a time. Additionally it will not be
-attached to any controller initially (due to ``detached=on``) or to hotplugged
-controllers.
+will cause NSID 1 will be a shared namespace (due to ``shared=on``) that is
+initially attached to both controllers. NSID 3 will be a private namespace
+(i.e. only attachable to a single controller at a time) and will not be
+attached to any controller initially (due to ``detached=on``).
 
 Optional Features
 =================

@@ -127,6 +127,21 @@ SRST
     Show local APIC state
 ERST
 
+#if defined(TARGET_I386)
+    {
+        .name       = "ioapic",
+        .args_type  = "",
+        .params     = "",
+        .help       = "show io apic state",
+        .cmd        = hmp_info_io_apic,
+    },
+#endif
+
+SRST
+  ``info ioapic``
+    Show io APIC state
+ERST
+
     {
         .name       = "cpus",
         .args_type  = "",
@@ -159,7 +174,7 @@ ERST
         .args_type  = "",
         .params     = "",
         .help       = "show the interrupts statistics (if available)",
-        .cmd_info_hrt = qmp_x_query_irq,
+        .cmd        = hmp_info_irq,
     },
 
 SRST
@@ -185,7 +200,7 @@ ERST
         .args_type  = "",
         .params     = "",
         .help       = "show RDMA state",
-        .cmd_info_hrt = qmp_x_query_rdma,
+        .cmd        = hmp_info_rdma,
     },
 
 SRST
@@ -325,7 +340,7 @@ ERST
         .args_type  = "",
         .params     = "",
         .help       = "show NUMA information",
-        .cmd_info_hrt = qmp_x_query_numa,
+        .cmd        = hmp_info_numa,
     },
 
 SRST
@@ -338,7 +353,7 @@ ERST
         .args_type  = "",
         .params     = "",
         .help       = "show guest USB devices",
-        .cmd_info_hrt = qmp_x_query_usb,
+        .cmd        = hmp_info_usb,
     },
 
 SRST
@@ -363,7 +378,7 @@ ERST
         .args_type  = "",
         .params     = "",
         .help       = "show profiling information",
-        .cmd_info_hrt = qmp_x_query_profile,
+        .cmd        = hmp_info_profile,
     },
 
 SRST
@@ -594,7 +609,7 @@ ERST
         .args_type  = "",
         .params     = "",
         .help       = "show roms",
-        .cmd_info_hrt = qmp_x_query_roms,
+        .cmd        = hmp_info_roms,
     },
 
 SRST
@@ -772,7 +787,7 @@ ERST
         .args_type  = "",
         .params     = "",
         .help       = "Display system ramblock information",
-        .cmd_info_hrt = qmp_x_query_ramblock,
+        .cmd        = hmp_info_ramblock,
     },
 
 SRST
@@ -861,19 +876,4 @@ ERST
 SRST
   ``info dirty_rate``
     Display the vcpu dirty rate information.
-ERST
-
-#if defined(TARGET_I386)
-    {
-        .name       = "sgx",
-        .args_type  = "",
-        .params     = "",
-        .help       = "show intel SGX information",
-        .cmd        = hmp_info_sgx,
-    },
-#endif
-
-SRST
-  ``info sgx``
-    Show intel SGX information.
 ERST

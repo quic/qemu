@@ -99,8 +99,7 @@ static void bus_reset_child_foreach(Object *obj, ResettableChildCallback cb,
     }
 }
 
-static void qbus_init_internal(BusState *bus, DeviceState *parent,
-                               const char *name)
+static void qbus_init(BusState *bus, DeviceState *parent, const char *name)
 {
     const char *typename = object_get_typename(OBJECT(bus));
     BusClass *bc;
@@ -152,19 +151,19 @@ static void bus_unparent(Object *obj)
     bus->parent = NULL;
 }
 
-void qbus_init(void *bus, size_t size, const char *typename,
-               DeviceState *parent, const char *name)
+void qbus_create_inplace(void *bus, size_t size, const char *typename,
+                         DeviceState *parent, const char *name)
 {
     object_initialize(bus, size, typename);
-    qbus_init_internal(bus, parent, name);
+    qbus_init(bus, parent, name);
 }
 
-BusState *qbus_new(const char *typename, DeviceState *parent, const char *name)
+BusState *qbus_create(const char *typename, DeviceState *parent, const char *name)
 {
     BusState *bus;
 
     bus = BUS(object_new(typename));
-    qbus_init_internal(bus, parent, name);
+    qbus_init(bus, parent, name);
 
     return bus;
 }

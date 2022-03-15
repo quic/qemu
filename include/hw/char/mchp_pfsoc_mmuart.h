@@ -28,25 +28,18 @@
 #ifndef HW_MCHP_PFSOC_MMUART_H
 #define HW_MCHP_PFSOC_MMUART_H
 
-#include "hw/sysbus.h"
 #include "hw/char/serial.h"
 
-#define MCHP_PFSOC_MMUART_REG_COUNT 13
-
-#define TYPE_MCHP_PFSOC_UART "mchp.pfsoc.uart"
-OBJECT_DECLARE_SIMPLE_TYPE(MchpPfSoCMMUartState, MCHP_PFSOC_UART)
+#define MCHP_PFSOC_MMUART_REG_SIZE  52
 
 typedef struct MchpPfSoCMMUartState {
-    /*< private >*/
-    SysBusDevice parent_obj;
-
-    /*< public >*/
-    MemoryRegion container;
     MemoryRegion iomem;
+    hwaddr base;
+    qemu_irq irq;
 
-    SerialMM serial_mm;
+    SerialMM *serial;
 
-    uint32_t reg[MCHP_PFSOC_MMUART_REG_COUNT];
+    uint32_t reg[MCHP_PFSOC_MMUART_REG_SIZE / sizeof(uint32_t)];
 } MchpPfSoCMMUartState;
 
 /**

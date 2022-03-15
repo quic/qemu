@@ -176,27 +176,23 @@ static bool nvme_init_queue(BDRVNVMeState *s, NVMeQueue *q,
         return false;
     }
     memset(q->queue, 0, bytes);
-    r = qemu_vfio_dma_map(s->vfio, q->queue, bytes, false, &q->iova, errp);
+    r = qemu_vfio_dma_map(s->vfio, q->queue, bytes, false, &q->iova);
     if (r) {
-        error_prepend(errp, "Cannot map queue: ");
+        error_setg(errp, "Cannot map queue");
+        return false;
     }
-    return r == 0;
-}
-
-static void nvme_free_queue(NVMeQueue *q)
-{
-    qemu_vfree(q->queue);
+    return true;
 }
 
 static void nvme_free_queue_pair(NVMeQueuePair *q)
 {
-    trace_nvme_free_queue_pair(q->index, q, &q->cq, &q->sq);
+    trace_nvme_free_queue_pair(q->index, q);
     if (q->completion_bh) {
         qemu_bh_delete(q->completion_bh);
     }
-    nvme_free_queue(&q->sq);
-    nvme_free_queue(&q->cq);
     qemu_vfree(q->prp_list_pages);
+    qemu_vfree(q->sq.queue);
+    qemu_vfree(q->cq.queue);
     qemu_mutex_destroy(&q->lock);
     g_free(q);
 }
@@ -224,7 +220,6 @@ static NVMeQueuePair *nvme_create_queue_pair(BDRVNVMeState *s,
 
     q = g_try_new0(NVMeQueuePair, 1);
     if (!q) {
-        error_setg(errp, "Cannot allocate queue pair");
         return NULL;
     }
     trace_nvme_create_queue_pair(idx, q, size, aio_context,
@@ -233,7 +228,6 @@ static NVMeQueuePair *nvme_create_queue_pair(BDRVNVMeState *s,
                           qemu_real_host_page_size);
     q->prp_list_pages = qemu_try_memalign(qemu_real_host_page_size, bytes);
     if (!q->prp_list_pages) {
-        error_setg(errp, "Cannot allocate PRP page list");
         goto fail;
     }
     memset(q->prp_list_pages, 0, bytes);
@@ -243,9 +237,8 @@ static NVMeQueuePair *nvme_create_queue_pair(BDRVNVMeState *s,
     qemu_co_queue_init(&q->free_req_queue);
     q->completion_bh = aio_bh_new(aio_context, nvme_process_completion_bh, q);
     r = qemu_vfio_dma_map(s->vfio, q->prp_list_pages, bytes,
-                          false, &prp_list_iova, errp);
+                          false, &prp_list_iova);
     if (r) {
-        error_prepend(errp, "Cannot map buffer for DMA: ");
         goto fail;
     }
     q->free_req_head = -1;
@@ -519,10 +512,10 @@ static bool nvme_identify(BlockDriverState *bs, int namespace, Error **errp)
 {
     BDRVNVMeState *s = bs->opaque;
     bool ret = false;
-    QEMU_AUTO_VFREE union {
+    union {
         NvmeIdCtrl ctrl;
         NvmeIdNs ns;
-    } *id = NULL;
+    } *id;
     NvmeLBAF *lbaf;
     uint16_t oncs;
     int r;
@@ -538,9 +531,9 @@ static bool nvme_identify(BlockDriverState *bs, int namespace, Error **errp)
         error_setg(errp, "Cannot allocate buffer for identify response");
         goto out;
     }
-    r = qemu_vfio_dma_map(s->vfio, id, id_size, true, &iova, errp);
+    r = qemu_vfio_dma_map(s->vfio, id, id_size, true, &iova);
     if (r) {
-        error_prepend(errp, "Cannot map buffer for DMA: ");
+        error_setg(errp, "Cannot map buffer for DMA");
         goto out;
     }
 
@@ -600,6 +593,7 @@ static bool nvme_identify(BlockDriverState *bs, int namespace, Error **errp)
     s->blkshift = lbaf->ds;
 out:
     qemu_vfio_dma_unmap(s->vfio, id);
+    qemu_vfree(id);
 
     return ret;
 }
@@ -1023,7 +1017,6 @@ static coroutine_fn int nvme_cmd_map_qiov(BlockDriverState *bs, NvmeCmd *cmd,
     uint64_t *pagelist = req->prp_list_page;
     int i, j, r;
     int entries = 0;
-    Error *local_err = NULL, **errp = NULL;
 
     assert(qiov->size);
     assert(QEMU_IS_ALIGNED(qiov->size, s->page_size));
@@ -1036,7 +1029,7 @@ static coroutine_fn int nvme_cmd_map_qiov(BlockDriverState *bs, NvmeCmd *cmd,
 try_map:
         r = qemu_vfio_dma_map(s->vfio,
                               qiov->iov[i].iov_base,
-                              len, true, &iova, errp);
+                              len, true, &iova);
         if (r == -ENOSPC) {
             /*
              * In addition to the -ENOMEM error, the VFIO_IOMMU_MAP_DMA
@@ -1071,8 +1064,6 @@ try_map:
                     goto fail;
                 }
             }
-            errp = &local_err;
-
             goto try_map;
         }
         if (r) {
@@ -1116,9 +1107,6 @@ fail:
      * because they are already mapped before calling this function; for
      * temporary mappings, a later nvme_cmd_(un)map_qiov will reclaim by
      * calling qemu_vfio_dma_reset_temporary when necessary. */
-    if (local_err) {
-        error_reportf_err(local_err, "Cannot map buffer for DMA: ");
-    }
     return r;
 }
 
@@ -1223,7 +1211,7 @@ static int nvme_co_prw(BlockDriverState *bs, uint64_t offset, uint64_t bytes,
 {
     BDRVNVMeState *s = bs->opaque;
     int r;
-    QEMU_AUTO_VFREE uint8_t *buf = NULL;
+    uint8_t *buf = NULL;
     QEMUIOVector local_qiov;
     size_t len = QEMU_ALIGN_UP(bytes, qemu_real_host_page_size);
     assert(QEMU_IS_ALIGNED(offset, s->page_size));
@@ -1250,21 +1238,20 @@ static int nvme_co_prw(BlockDriverState *bs, uint64_t offset, uint64_t bytes,
     if (!r && !is_write) {
         qemu_iovec_from_buf(qiov, 0, buf, bytes);
     }
+    qemu_vfree(buf);
     return r;
 }
 
 static coroutine_fn int nvme_co_preadv(BlockDriverState *bs,
-                                       int64_t offset, int64_t bytes,
-                                       QEMUIOVector *qiov,
-                                       BdrvRequestFlags flags)
+                                       uint64_t offset, uint64_t bytes,
+                                       QEMUIOVector *qiov, int flags)
 {
     return nvme_co_prw(bs, offset, bytes, qiov, false, flags);
 }
 
 static coroutine_fn int nvme_co_pwritev(BlockDriverState *bs,
-                                        int64_t offset, int64_t bytes,
-                                        QEMUIOVector *qiov,
-                                        BdrvRequestFlags flags)
+                                        uint64_t offset, uint64_t bytes,
+                                        QEMUIOVector *qiov, int flags)
 {
     return nvme_co_prw(bs, offset, bytes, qiov, true, flags);
 }
@@ -1299,28 +1286,18 @@ static coroutine_fn int nvme_co_flush(BlockDriverState *bs)
 
 static coroutine_fn int nvme_co_pwrite_zeroes(BlockDriverState *bs,
                                               int64_t offset,
-                                              int64_t bytes,
+                                              int bytes,
                                               BdrvRequestFlags flags)
 {
     BDRVNVMeState *s = bs->opaque;
     NVMeQueuePair *ioq = s->queues[INDEX_IO(0)];
     NVMeRequest *req;
-    uint32_t cdw12;
+
+    uint32_t cdw12 = ((bytes >> s->blkshift) - 1) & 0xFFFF;
 
     if (!s->supports_write_zeroes) {
         return -ENOTSUP;
     }
-
-    if (bytes == 0) {
-        return 0;
-    }
-
-    cdw12 = ((bytes >> s->blkshift) - 1) & 0xFFFF;
-    /*
-     * We should not lose information. pwrite_zeroes_alignment and
-     * max_pwrite_zeroes guarantees it.
-     */
-    assert(((cdw12 + 1) << s->blkshift) == bytes);
 
     NvmeCmd cmd = {
         .opcode = NVME_CMD_WRITE_ZEROES,
@@ -1363,12 +1340,12 @@ static coroutine_fn int nvme_co_pwrite_zeroes(BlockDriverState *bs,
 
 static int coroutine_fn nvme_co_pdiscard(BlockDriverState *bs,
                                          int64_t offset,
-                                         int64_t bytes)
+                                         int bytes)
 {
     BDRVNVMeState *s = bs->opaque;
     NVMeQueuePair *ioq = s->queues[INDEX_IO(0)];
     NVMeRequest *req;
-    QEMU_AUTO_VFREE NvmeDsmRange *buf = NULL;
+    NvmeDsmRange *buf;
     QEMUIOVector local_qiov;
     int ret;
 
@@ -1389,14 +1366,6 @@ static int coroutine_fn nvme_co_pdiscard(BlockDriverState *bs,
     }
 
     assert(s->queue_count > 1);
-
-    /*
-     * Filling the @buf requires @offset and @bytes to satisfy restrictions
-     * defined in nvme_refresh_limits().
-     */
-    assert(QEMU_IS_ALIGNED(bytes, 1UL << s->blkshift));
-    assert(QEMU_IS_ALIGNED(offset, 1UL << s->blkshift));
-    assert((bytes >> s->blkshift) <= UINT32_MAX);
 
     buf = qemu_try_memalign(s->page_size, s->page_size);
     if (!buf) {
@@ -1443,6 +1412,7 @@ static int coroutine_fn nvme_co_pdiscard(BlockDriverState *bs,
     trace_nvme_dsm_done(s, offset, bytes, ret);
 out:
     qemu_iovec_destroy(&local_qiov);
+    qemu_vfree(buf);
     return ret;
 
 }
@@ -1492,18 +1462,6 @@ static void nvme_refresh_limits(BlockDriverState *bs, Error **errp)
     bs->bl.opt_mem_alignment = s->page_size;
     bs->bl.request_alignment = s->page_size;
     bs->bl.max_transfer = s->max_transfer;
-
-    /*
-     * Look at nvme_co_pwrite_zeroes: after shift and decrement we should get
-     * at most 0xFFFF
-     */
-    bs->bl.max_pwrite_zeroes = 1ULL << (s->blkshift + 16);
-    bs->bl.pwrite_zeroes_alignment = MAX(bs->bl.request_alignment,
-                                         1UL << s->blkshift);
-
-    bs->bl.max_pdiscard = (uint64_t)UINT32_MAX << s->blkshift;
-    bs->bl.pdiscard_alignment = MAX(bs->bl.request_alignment,
-                                    1UL << s->blkshift);
 }
 
 static void nvme_detach_aio_context(BlockDriverState *bs)
@@ -1563,15 +1521,14 @@ static void nvme_aio_unplug(BlockDriverState *bs)
 static void nvme_register_buf(BlockDriverState *bs, void *host, size_t size)
 {
     int ret;
-    Error *local_err = NULL;
     BDRVNVMeState *s = bs->opaque;
 
-    ret = qemu_vfio_dma_map(s->vfio, host, size, false, NULL, &local_err);
+    ret = qemu_vfio_dma_map(s->vfio, host, size, false, NULL);
     if (ret) {
         /* FIXME: we may run out of IOVA addresses after repeated
          * bdrv_register_buf/bdrv_unregister_buf, because nvme_vfio_dma_unmap
          * doesn't reclaim addresses for fixed mappings. */
-        error_reportf_err(local_err, "nvme_register_buf failed: ");
+        error_report("nvme_register_buf failed: %s", strerror(-ret));
     }
 }
 

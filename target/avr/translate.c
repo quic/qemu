@@ -70,9 +70,11 @@ static const char reg_names[NUMBER_OF_CPU_REGISTERS][8] = {
 };
 #define REG(x) (cpu_r[x])
 
-#define DISAS_EXIT   DISAS_TARGET_0  /* We want return to the cpu main loop.  */
-#define DISAS_LOOKUP DISAS_TARGET_1  /* We have a variable condition exit.  */
-#define DISAS_CHAIN  DISAS_TARGET_2  /* We have a single condition exit.  */
+enum {
+    DISAS_EXIT   = DISAS_TARGET_0,  /* We want return to the cpu main loop.  */
+    DISAS_LOOKUP = DISAS_TARGET_1,  /* We have a variable condition exit.  */
+    DISAS_CHAIN  = DISAS_TARGET_2,  /* We have a single condition exit.  */
+};
 
 typedef struct DisasContext DisasContext;
 
@@ -1087,7 +1089,11 @@ static void gen_goto_tb(DisasContext *ctx, int n, target_ulong dest)
         tcg_gen_exit_tb(tb, n);
     } else {
         tcg_gen_movi_i32(cpu_pc, dest);
-        tcg_gen_lookup_and_goto_ptr();
+        if (ctx->base.singlestep_enabled) {
+            gen_helper_debug(cpu_env);
+        } else {
+            tcg_gen_lookup_and_goto_ptr();
+        }
     }
     ctx->base.is_jmp = DISAS_NORETURN;
 }
@@ -3005,10 +3011,17 @@ static void avr_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
         tcg_gen_movi_tl(cpu_pc, ctx->npc);
         /* fall through */
     case DISAS_LOOKUP:
-        tcg_gen_lookup_and_goto_ptr();
-        break;
+        if (!ctx->base.singlestep_enabled) {
+            tcg_gen_lookup_and_goto_ptr();
+            break;
+        }
+        /* fall through */
     case DISAS_EXIT:
-        tcg_gen_exit_tb(NULL, 0);
+        if (ctx->base.singlestep_enabled) {
+            gen_helper_debug(cpu_env);
+        } else {
+            tcg_gen_exit_tb(NULL, 0);
+        }
         break;
     default:
         g_assert_not_reached();

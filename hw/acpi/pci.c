@@ -28,20 +28,19 @@
 #include "hw/acpi/pci.h"
 #include "hw/pci/pcie_host.h"
 
-/*
- * PCI Firmware Specification, Revision 3.0
- * 4.1.2 MCFG Table Description.
- */
 void build_mcfg(GArray *table_data, BIOSLinker *linker, AcpiMcfgInfo *info,
                 const char *oem_id, const char *oem_table_id)
 {
-    AcpiTable table = { .sig = "MCFG", .rev = 1,
-                        .oem_id = oem_id, .oem_table_id = oem_table_id };
+    int mcfg_start = table_data->len;
 
-    acpi_table_begin(&table, table_data);
-
+    /*
+     * PCI Firmware Specification, Revision 3.0
+     * 4.1.2 MCFG Table Description.
+     */
+    acpi_data_push(table_data, sizeof(AcpiTableHeader));
     /* Reserved */
     build_append_int_noprefix(table_data, 0, 8);
+
     /*
      * Memory Mapped Enhanced Configuration Space Base Address Allocation
      * Structure
@@ -57,5 +56,6 @@ void build_mcfg(GArray *table_data, BIOSLinker *linker, AcpiMcfgInfo *info,
     /* Reserved */
     build_append_int_noprefix(table_data, 0, 4);
 
-    acpi_table_end(linker, &table);
+    build_header(linker, table_data, (void *)(table_data->data + mcfg_start),
+                 "MCFG", table_data->len - mcfg_start, 1, oem_id, oem_table_id);
 }

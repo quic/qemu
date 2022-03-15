@@ -167,15 +167,7 @@ typedef struct QemuDmaBuf {
     uint32_t  fourcc;
     uint64_t  modifier;
     uint32_t  texture;
-    uint32_t  x;
-    uint32_t  y;
-    uint32_t  scanout_width;
-    uint32_t  scanout_height;
     bool      y0_top;
-    void      *sync;
-    int       fence_fd;
-    bool      allow_fences;
-    bool      draw_submitted;
 } QemuDmaBuf;
 
 typedef struct DisplayState DisplayState;
@@ -479,9 +471,7 @@ bool vnc_display_reload_certs(const char *id,  Error **errp);
 /* input.c */
 int index_from_key(const char *key, size_t key_length);
 
-#ifdef CONFIG_LINUX
 /* udmabuf.c */
 int udmabuf_fd(void);
-#endif
 
 #endif

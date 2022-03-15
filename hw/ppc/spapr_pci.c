@@ -782,29 +782,33 @@ static AddressSpace *spapr_pci_dma_iommu(PCIBus *bus, void *opaque, int devfn)
 
 static char *spapr_phb_vfio_get_loc_code(SpaprPhbState *sphb,  PCIDevice *pdev)
 {
-    g_autofree char *path = NULL;
-    g_autofree char *host = NULL;
-    g_autofree char *devspec = NULL;
-    char *buf = NULL;
+    char *path = NULL, *buf = NULL, *host = NULL;
 
     /* Get the PCI VFIO host id */
     host = object_property_get_str(OBJECT(pdev), "host", NULL);
     if (!host) {
-        return NULL;
+        goto err_out;
     }
 
     /* Construct the path of the file that will give us the DT location */
     path = g_strdup_printf("/sys/bus/pci/devices/%s/devspec", host);
-    if (!g_file_get_contents(path, &devspec, NULL, NULL)) {
-        return NULL;
+    g_free(host);
+    if (!g_file_get_contents(path, &buf, NULL, NULL)) {
+        goto err_out;
     }
+    g_free(path);
 
     /* Construct and read from host device tree the loc-code */
-    path = g_strdup_printf("/proc/device-tree%s/ibm,loc-code", devspec);
+    path = g_strdup_printf("/proc/device-tree%s/ibm,loc-code", buf);
+    g_free(buf);
     if (!g_file_get_contents(path, &buf, NULL, NULL)) {
-        return NULL;
+        goto err_out;
     }
     return buf;
+
+err_out:
+    g_free(path);
+    return NULL;
 }
 
 static char *spapr_phb_get_loc_code(SpaprPhbState *sphb, PCIDevice *pdev)
@@ -1317,7 +1321,8 @@ static int spapr_dt_pci_bus(SpaprPhbState *sphb, PCIBus *bus,
                           RESOURCE_CELLS_SIZE));
 
     assert(bus);
-    pci_for_each_device_under_bus_reverse(bus, spapr_dt_pci_device_cb, &cbinfo);
+    pci_for_each_device_reverse(bus, pci_bus_num(bus),
+                                spapr_dt_pci_device_cb, &cbinfo);
     if (cbinfo.err) {
         return cbinfo.err;
     }
@@ -2305,8 +2310,8 @@ static void spapr_phb_pci_enumerate_bridge(PCIBus *bus, PCIDevice *pdev,
         return;
     }
 
-    pci_for_each_device_under_bus(sec_bus, spapr_phb_pci_enumerate_bridge,
-                                  bus_no);
+    pci_for_each_device(sec_bus, pci_bus_num(sec_bus),
+                        spapr_phb_pci_enumerate_bridge, bus_no);
     pci_default_write_config(pdev, PCI_SUBORDINATE_BUS, *bus_no, 1);
 }
 
@@ -2315,8 +2320,9 @@ static void spapr_phb_pci_enumerate(SpaprPhbState *phb)
     PCIBus *bus = PCI_HOST_BRIDGE(phb)->bus;
     unsigned int bus_no = 0;
 
-    pci_for_each_device_under_bus(bus, spapr_phb_pci_enumerate_bridge,
-                                  &bus_no);
+    pci_for_each_device(bus, pci_bus_num(bus),
+                        spapr_phb_pci_enumerate_bridge,
+                        &bus_no);
 
 }
 

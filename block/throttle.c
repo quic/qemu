@@ -112,9 +112,8 @@ static int64_t throttle_getlength(BlockDriverState *bs)
 }
 
 static int coroutine_fn throttle_co_preadv(BlockDriverState *bs,
-                                           int64_t offset, int64_t bytes,
-                                           QEMUIOVector *qiov,
-                                           BdrvRequestFlags flags)
+                                           uint64_t offset, uint64_t bytes,
+                                           QEMUIOVector *qiov, int flags)
 {
 
     ThrottleGroupMember *tgm = bs->opaque;
@@ -124,9 +123,8 @@ static int coroutine_fn throttle_co_preadv(BlockDriverState *bs,
 }
 
 static int coroutine_fn throttle_co_pwritev(BlockDriverState *bs,
-                                            int64_t offset, int64_t bytes,
-                                            QEMUIOVector *qiov,
-                                            BdrvRequestFlags flags)
+                                            uint64_t offset, uint64_t bytes,
+                                            QEMUIOVector *qiov, int flags)
 {
     ThrottleGroupMember *tgm = bs->opaque;
     throttle_group_co_io_limits_intercept(tgm, bytes, true);
@@ -135,7 +133,7 @@ static int coroutine_fn throttle_co_pwritev(BlockDriverState *bs,
 }
 
 static int coroutine_fn throttle_co_pwrite_zeroes(BlockDriverState *bs,
-                                                  int64_t offset, int64_t bytes,
+                                                  int64_t offset, int bytes,
                                                   BdrvRequestFlags flags)
 {
     ThrottleGroupMember *tgm = bs->opaque;
@@ -145,7 +143,7 @@ static int coroutine_fn throttle_co_pwrite_zeroes(BlockDriverState *bs,
 }
 
 static int coroutine_fn throttle_co_pdiscard(BlockDriverState *bs,
-                                             int64_t offset, int64_t bytes)
+                                             int64_t offset, int bytes)
 {
     ThrottleGroupMember *tgm = bs->opaque;
     throttle_group_co_io_limits_intercept(tgm, bytes, true);
@@ -154,8 +152,8 @@ static int coroutine_fn throttle_co_pdiscard(BlockDriverState *bs,
 }
 
 static int coroutine_fn throttle_co_pwritev_compressed(BlockDriverState *bs,
-                                                       int64_t offset,
-                                                       int64_t bytes,
+                                                       uint64_t offset,
+                                                       uint64_t bytes,
                                                        QEMUIOVector *qiov)
 {
     return throttle_co_pwritev(bs, offset, bytes, qiov,

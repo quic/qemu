@@ -27,7 +27,6 @@
 #include "hw/misc/sifive_u_otp.h"
 #include "hw/misc/sifive_u_prci.h"
 #include "hw/ssi/sifive_spi.h"
-#include "hw/timer/sifive_pwm.h"
 
 #define TYPE_RISCV_U_SOC "riscv.sifive.u.soc"
 #define RISCV_U_SOC(obj) \
@@ -50,7 +49,6 @@ typedef struct SiFiveUSoCState {
     SiFiveSPIState spi0;
     SiFiveSPIState spi2;
     CadenceGEMState gem;
-    SiFivePwmState pwm[2];
 
     uint32_t serial;
     char *cpu_type;
@@ -94,9 +92,7 @@ enum {
     SIFIVE_U_DEV_FLASH0,
     SIFIVE_U_DEV_DRAM,
     SIFIVE_U_DEV_GEM,
-    SIFIVE_U_DEV_GEM_MGMT,
-    SIFIVE_U_DEV_PWM0,
-    SIFIVE_U_DEV_PWM1
+    SIFIVE_U_DEV_GEM_MGMT
 };
 
 enum {
@@ -130,14 +126,6 @@ enum {
     SIFIVE_U_PDMA_IRQ5 = 28,
     SIFIVE_U_PDMA_IRQ6 = 29,
     SIFIVE_U_PDMA_IRQ7 = 30,
-    SIFIVE_U_PWM0_IRQ0 = 42,
-    SIFIVE_U_PWM0_IRQ1 = 43,
-    SIFIVE_U_PWM0_IRQ2 = 44,
-    SIFIVE_U_PWM0_IRQ3 = 45,
-    SIFIVE_U_PWM1_IRQ0 = 46,
-    SIFIVE_U_PWM1_IRQ1 = 47,
-    SIFIVE_U_PWM1_IRQ2 = 48,
-    SIFIVE_U_PWM1_IRQ3 = 49,
     SIFIVE_U_QSPI0_IRQ = 51,
     SIFIVE_U_GEM_IRQ = 53
 };
@@ -156,6 +144,7 @@ enum {
 #define SIFIVE_U_MANAGEMENT_CPU_COUNT   1
 #define SIFIVE_U_COMPUTE_CPU_COUNT      4
 
+#define SIFIVE_U_PLIC_HART_CONFIG "MS"
 #define SIFIVE_U_PLIC_NUM_SOURCES 54
 #define SIFIVE_U_PLIC_NUM_PRIORITIES 7
 #define SIFIVE_U_PLIC_PRIORITY_BASE 0x04

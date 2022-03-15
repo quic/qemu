@@ -362,6 +362,7 @@ void fpu_set_state(CPUTriCoreState *env);
 
 void tricore_cpu_list(void);
 
+#define cpu_signal_handler cpu_tricore_signal_handler
 #define cpu_list tricore_cpu_list
 
 static inline int cpu_mmu_index(CPUTriCoreState *env, bool ifetch)
@@ -376,6 +377,7 @@ typedef TriCoreCPU ArchCPU;
 
 void cpu_state_reset(CPUTriCoreState *s);
 void tricore_tcg_init(void);
+int cpu_tricore_signal_handler(int host_signum, void *pinfo, void *puc);
 
 static inline void cpu_get_tb_cpu_state(CPUTriCoreState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)

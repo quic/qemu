@@ -266,12 +266,9 @@ static void s390_cpu_reset_full(DeviceState *dev)
 
 static const struct TCGCPUOps s390_tcg_ops = {
     .initialize = s390x_translate_init,
-
-#ifdef CONFIG_USER_ONLY
-    .record_sigsegv = s390_cpu_record_sigsegv,
-    .record_sigbus = s390_cpu_record_sigbus,
-#else
     .tlb_fill = s390_cpu_tlb_fill,
+
+#if !defined(CONFIG_USER_ONLY)
     .cpu_exec_interrupt = s390_cpu_exec_interrupt,
     .do_interrupt = s390_cpu_do_interrupt,
     .debug_excp_handler = s390x_cpu_debug_excp_handler,

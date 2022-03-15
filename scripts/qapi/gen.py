@@ -25,24 +25,18 @@ from typing import (
 from .common import (
     c_fname,
     c_name,
+    gen_endif,
+    gen_if,
     guardend,
     guardstart,
     mcgen,
 )
 from .schema import (
-    QAPISchemaFeature,
-    QAPISchemaIfCond,
     QAPISchemaModule,
     QAPISchemaObjectType,
     QAPISchemaVisitor,
 )
 from .source import QAPISourceInfo
-
-
-def gen_special_features(features: Sequence[QAPISchemaFeature]) -> str:
-    special_features = [f"1u << QAPI_{feat.name.upper()}"
-                        for feat in features if feat.is_special()]
-    return ' | '.join(special_features) or '0'
 
 
 class QAPIGen:
@@ -91,7 +85,7 @@ class QAPIGen:
                 fp.write(text)
 
 
-def _wrap_ifcond(ifcond: QAPISchemaIfCond, before: str, after: str) -> str:
+def _wrap_ifcond(ifcond: Sequence[str], before: str, after: str) -> str:
     if before == after:
         return after   # suppress empty #if ... #endif
 
@@ -101,9 +95,9 @@ def _wrap_ifcond(ifcond: QAPISchemaIfCond, before: str, after: str) -> str:
     if added[0] == '\n':
         out += '\n'
         added = added[1:]
-    out += ifcond.gen_if()
+    out += gen_if(ifcond)
     out += added
-    out += ifcond.gen_endif()
+    out += gen_endif(ifcond)
     return out
 
 
@@ -133,9 +127,9 @@ def build_params(arg_type: Optional[QAPISchemaObjectType],
 class QAPIGenCCode(QAPIGen):
     def __init__(self, fname: str):
         super().__init__(fname)
-        self._start_if: Optional[Tuple[QAPISchemaIfCond, str, str]] = None
+        self._start_if: Optional[Tuple[Sequence[str], str, str]] = None
 
-    def start_if(self, ifcond: QAPISchemaIfCond) -> None:
+    def start_if(self, ifcond: Sequence[str]) -> None:
         assert self._start_if is None
         self._start_if = (ifcond, self._body, self._preamble)
 
@@ -193,7 +187,7 @@ class QAPIGenH(QAPIGenC):
 
 
 @contextmanager
-def ifcontext(ifcond: QAPISchemaIfCond, *args: QAPIGenCCode) -> Iterator[None]:
+def ifcontext(ifcond: Sequence[str], *args: QAPIGenCCode) -> Iterator[None]:
     """
     A with-statement context manager that wraps with `start_if()` / `end_if()`.
 
@@ -304,9 +298,10 @@ class QAPISchemaModularCVisitor(QAPISchemaVisitor):
         self._current_module = old_module
 
     def write(self, output_dir: str, opt_builtins: bool = False) -> None:
-        for name, (genc, genh) in self._module.items():
+        for name in self._module:
             if QAPISchemaModule.is_builtin_module(name) and not opt_builtins:
                 continue
+            (genc, genh) = self._module[name]
             genc.write(output_dir)
             genh.write(output_dir)
 

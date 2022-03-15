@@ -253,17 +253,8 @@ struct JobDriver {
 
     /**
      * If the callback is not NULL, it will be invoked in job_cancel_async
-     *
-     * This function must return true if the job will be cancelled
-     * immediately without any further I/O (mandatory if @force is
-     * true), and false otherwise.  This lets the generic job layer
-     * know whether a job has been truly (force-)cancelled, or whether
-     * it is just in a special completion mode (like mirror after
-     * READY).
-     * (If the callback is NULL, the job is assumed to terminate
-     * without I/O.)
      */
-    bool (*cancel)(Job *job, bool force);
+    void (*cancel)(Job *job, bool force);
 
 
     /** Called when the job is freed */
@@ -436,14 +427,8 @@ const char *job_type_str(const Job *job);
 /** Returns true if the job should not be visible to the management layer. */
 bool job_is_internal(Job *job);
 
-/** Returns whether the job is being cancelled. */
+/** Returns whether the job is scheduled for cancellation. */
 bool job_is_cancelled(Job *job);
-
-/**
- * Returns whether the job is scheduled for cancellation (at an
- * indefinite point).
- */
-bool job_cancel_requested(Job *job);
 
 /** Returns whether the job is in a completed state. */
 bool job_is_completed(Job *job);
@@ -521,18 +506,18 @@ void job_user_cancel(Job *job, bool force, Error **errp);
 
 /**
  * Synchronously cancel the @job.  The completion callback is called
- * before the function returns.  If @force is false, the job may
- * actually complete instead of canceling itself; the circumstances
- * under which this happens depend on the kind of job that is active.
+ * before the function returns.  The job may actually complete
+ * instead of canceling itself; the circumstances under which this
+ * happens depend on the kind of job that is active.
  *
  * Returns the return value from the job if the job actually completed
  * during the call, or -ECANCELED if it was canceled.
  *
  * Callers must hold the AioContext lock of job->aio_context.
  */
-int job_cancel_sync(Job *job, bool force);
+int job_cancel_sync(Job *job);
 
-/** Synchronously force-cancels all jobs using job_cancel_sync(). */
+/** Synchronously cancels all jobs using job_cancel_sync(). */
 void job_cancel_sync_all(void);
 
 /**

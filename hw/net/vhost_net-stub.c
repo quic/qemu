@@ -33,13 +33,13 @@ struct vhost_net *vhost_net_init(VhostNetOptions *options)
 
 int vhost_net_start(VirtIODevice *dev,
                     NetClientState *ncs,
-                    int data_queue_pairs, int cvq)
+                    int total_queues)
 {
     return -ENOSYS;
 }
 void vhost_net_stop(VirtIODevice *dev,
                     NetClientState *ncs,
-                    int data_queue_pairs, int cvq)
+                    int total_queues)
 {
 }
 

@@ -19,15 +19,7 @@ Board-specific documentation
    i386/microvm
    i386/pc
 
-Architectural features
-~~~~~~~~~~~~~~~~~~~~~~
-
-.. toctree::
-   :maxdepth: 1
-
-   i386/cpu
-   i386/kvm-pv
-   i386/sgx
+.. include:: cpu-models-x86.rst.inc
 
 .. _pcsys_005freq:
 

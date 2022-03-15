@@ -21,7 +21,6 @@ import errno
 import json
 import logging
 import socket
-import struct
 from types import TracebackType
 from typing import (
     Any,
@@ -362,7 +361,7 @@ class QEMUMonitorProtocol:
 
     def get_events(self, wait: bool = False) -> List[QMPMessage]:
         """
-        Get a list of available QMP events and clear all pending events.
+        Get a list of available QMP events.
 
         @param wait (bool): block until an event is available.
         @param wait (float): If wait is a float, treat it as a timeout value.
@@ -375,9 +374,7 @@ class QEMUMonitorProtocol:
         @return The list of available QMP events.
         """
         self.__get_events(wait)
-        events = self.__events
-        self.__events = []
-        return events
+        return self.__events
 
     def clear_events(self) -> None:
         """
@@ -409,14 +406,18 @@ class QEMUMonitorProtocol:
             raise ValueError(msg)
         self.__sock.settimeout(timeout)
 
-    def send_fd_scm(self, fd: int) -> None:
+    def get_sock_fd(self) -> int:
         """
-        Send a file descriptor to the remote via SCM_RIGHTS.
-        """
-        if self.__sock.family != socket.AF_UNIX:
-            raise RuntimeError("Can't use SCM_RIGHTS on non-AF_UNIX socket.")
+        Get the socket file descriptor.
 
-        self.__sock.sendmsg(
-            [b' '],
-            [(socket.SOL_SOCKET, socket.SCM_RIGHTS, struct.pack('@i', fd))]
-        )
+        @return The file descriptor number.
+        """
+        return self.__sock.fileno()
+
+    def is_scm_available(self) -> bool:
+        """
+        Check if the socket allows for SCM_RIGHTS.
+
+        @return True if SCM_RIGHTS is available, otherwise False.
+        """
+        return self.__sock.family == socket.AF_UNIX

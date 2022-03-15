@@ -1,8 +1,8 @@
 =================
-QEMU UI subsystem
+Qemu UI subsystem
 =================
 
-QEMU Clipboard
+Qemu Clipboard
 --------------
 
 .. kernel-doc:: include/ui/clipboard.h

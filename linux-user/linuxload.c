@@ -2,8 +2,6 @@
 
 #include "qemu/osdep.h"
 #include "qemu.h"
-#include "user-internals.h"
-#include "loader.h"
 
 #define NGROUPS 32
 

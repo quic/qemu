@@ -38,7 +38,6 @@ struct AspeedMachineClass {
     uint32_t num_cs;
     uint32_t macs_mask;
     void (*i2c_init)(AspeedMachineState *bmc);
-    uint32_t uart_default;
 };
 
 

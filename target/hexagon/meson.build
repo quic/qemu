@@ -159,8 +159,7 @@ dectree_generated = custom_target(
     'dectree_generated.h.inc',
     output: 'dectree_generated.h.inc',
     depends: [iset_py],
-    env: {'PYTHONPATH': meson.current_build_dir()},
-    command: [python, files('dectree.py'), '@OUTPUT@'],
+    command: ['env', 'PYTHONPATH=' + meson.current_build_dir(), files('dectree.py'), '@OUTPUT@'],
 )
 hexagon_ss.add(dectree_generated)
 

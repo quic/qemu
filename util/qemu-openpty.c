@@ -80,9 +80,10 @@ static int openpty(int *amaster, int *aslave, char *name,
             (termp != NULL && tcgetattr(sfd, termp) < 0))
                 goto err;
 
-        *amaster = mfd;
-        *aslave = sfd;
-
+        if (amaster)
+                *amaster = mfd;
+        if (aslave)
+                *aslave = sfd;
         if (winp)
                 ioctl(sfd, TIOCSWINSZ, winp);
 

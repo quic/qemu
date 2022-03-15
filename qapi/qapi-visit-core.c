@@ -13,16 +13,11 @@
  */
 
 #include "qemu/osdep.h"
-#include "qapi/compat-policy.h"
 #include "qapi/error.h"
 #include "qapi/qmp/qerror.h"
 #include "qapi/visitor.h"
 #include "qapi/visitor-impl.h"
 #include "trace.h"
-
-/* Zero-initialization must result in default policy */
-QEMU_BUILD_BUG_ON(COMPAT_POLICY_INPUT_ACCEPT || COMPAT_POLICY_OUTPUT_ACCEPT);
-
 
 void visit_complete(Visitor *v, void *opaque)
 {
@@ -140,29 +135,22 @@ bool visit_optional(Visitor *v, const char *name, bool *present)
     return *present;
 }
 
-bool visit_policy_reject(Visitor *v, const char *name,
-                         unsigned special_features, Error **errp)
+bool visit_deprecated_accept(Visitor *v, const char *name, Error **errp)
 {
-    trace_visit_policy_reject(v, name);
-    if (v->policy_reject) {
-        return v->policy_reject(v, name, special_features, errp);
+    trace_visit_deprecated_accept(v, name);
+    if (v->deprecated_accept) {
+        return v->deprecated_accept(v, name, errp);
     }
-    return false;
+    return true;
 }
 
-bool visit_policy_skip(Visitor *v, const char *name,
-                       unsigned special_features)
+bool visit_deprecated(Visitor *v, const char *name)
 {
-    trace_visit_policy_skip(v, name);
-    if (v->policy_skip) {
-        return v->policy_skip(v, name, special_features);
+    trace_visit_deprecated(v, name);
+    if (v->deprecated) {
+        return v->deprecated(v, name);
     }
-    return false;
-}
-
-void visit_set_policy(Visitor *v, CompatPolicy *policy)
-{
-    v->compat_policy = *policy;
+    return true;
 }
 
 bool visit_is_input(Visitor *v)
@@ -396,7 +384,7 @@ static bool input_type_enum(Visitor *v, const char *name, int *obj,
                             const QEnumLookup *lookup, Error **errp)
 {
     int64_t value;
-    g_autofree char *enum_str = NULL;
+    char *enum_str;
 
     if (!visit_type_str(v, name, &enum_str, errp)) {
         return false;
@@ -404,19 +392,12 @@ static bool input_type_enum(Visitor *v, const char *name, int *obj,
 
     value = qapi_enum_parse(lookup, enum_str, -1, NULL);
     if (value < 0) {
-        error_setg(errp, "Parameter '%s' does not accept value '%s'",
-                   name ? name : "null", enum_str);
+        error_setg(errp, QERR_INVALID_PARAMETER, enum_str);
+        g_free(enum_str);
         return false;
     }
 
-    if (lookup->special_features
-        && !compat_policy_input_ok(lookup->special_features[value],
-                                   &v->compat_policy,
-                                   ERROR_CLASS_GENERIC_ERROR,
-                                   "value", enum_str, errp)) {
-        return false;
-    }
-
+    g_free(enum_str);
     *obj = value;
     return true;
 }

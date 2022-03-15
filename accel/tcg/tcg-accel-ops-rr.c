@@ -28,7 +28,6 @@
 #include "sysemu/tcg.h"
 #include "sysemu/replay.h"
 #include "qemu/main-loop.h"
-#include "qemu/notify.h"
 #include "qemu/guest-random.h"
 #include "exec/exec-all.h"
 
@@ -60,6 +59,8 @@ void rr_kick_vcpu_thread(CPUState *unused)
 
 static QEMUTimer *rr_kick_vcpu_timer;
 static CPUState *rr_current_cpu;
+
+#define TCG_KICK_PERIOD (NANOSECONDS_PER_SECOND / 10)
 
 static inline int64_t rr_next_kick_time(void)
 {
@@ -134,11 +135,6 @@ static void rr_deal_with_unplugged_cpus(void)
     }
 }
 
-static void rr_force_rcu(Notifier *notify, void *data)
-{
-    rr_kick_next_cpu();
-}
-
 /*
  * In the single-threaded case each vCPU is simulated in turn. If
  * there is more than a single vCPU we create a simple timer to kick
@@ -149,13 +145,10 @@ static void rr_force_rcu(Notifier *notify, void *data)
 
 static void *rr_cpu_thread_fn(void *arg)
 {
-    Notifier force_rcu;
     CPUState *cpu = arg;
 
     assert(tcg_enabled());
     rcu_register_thread();
-    force_rcu.notify = rr_force_rcu;
-    rcu_add_force_rcu_notifier(&force_rcu);
     tcg_register_thread();
 
     qemu_mutex_lock_iothread();
@@ -264,7 +257,6 @@ static void *rr_cpu_thread_fn(void *arg)
         rr_deal_with_unplugged_cpus();
     }
 
-    rcu_remove_force_rcu_notifier(&force_rcu);
     rcu_unregister_thread();
     return NULL;
 }

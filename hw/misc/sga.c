@@ -30,7 +30,6 @@
 #include "hw/loader.h"
 #include "qemu/module.h"
 #include "qom/object.h"
-#include "qemu/error-report.h"
 
 #define SGABIOS_FILENAME "sgabios.bin"
 
@@ -43,7 +42,6 @@ struct ISASGAState {
 
 static void sga_realizefn(DeviceState *dev, Error **errp)
 {
-    warn_report("-device sga is deprecated, use -machine graphics=off");
     rom_add_vga(SGABIOS_FILENAME);
 }
 

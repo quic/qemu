@@ -721,7 +721,6 @@ static void xen_log_global_stop(MemoryListener *listener)
 }
 
 static MemoryListener xen_memory_listener = {
-    .name = "xen-memory",
     .region_add = xen_region_add,
     .region_del = xen_region_del,
     .log_start = xen_log_start,
@@ -733,7 +732,6 @@ static MemoryListener xen_memory_listener = {
 };
 
 static MemoryListener xen_io_listener = {
-    .name = "xen-io",
     .region_add = xen_io_add,
     .region_del = xen_io_del,
     .priority = 10,
@@ -1613,8 +1611,8 @@ void xen_hvm_modified_memory(ram_addr_t start, ram_addr_t length)
 void qmp_xen_set_global_dirty_log(bool enable, Error **errp)
 {
     if (enable) {
-        memory_global_dirty_log_start(GLOBAL_DIRTY_MIGRATION);
+        memory_global_dirty_log_start();
     } else {
-        memory_global_dirty_log_stop(GLOBAL_DIRTY_MIGRATION);
+        memory_global_dirty_log_stop();
     }
 }

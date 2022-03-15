@@ -8,6 +8,8 @@
 #include "qapi/error.h"
 #include "ui/console.h"
 
+#ifdef CONFIG_LINUX
+
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
@@ -27,3 +29,12 @@ int udmabuf_fd(void)
     }
     return udmabuf;
 }
+
+#else
+
+int udmabuf_fd(void)
+{
+    return -1;
+}
+
+#endif

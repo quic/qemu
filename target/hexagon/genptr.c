@@ -66,6 +66,7 @@ static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot, TC
         tcg_gen_or_tl(hex_reg_written[rnum], hex_reg_written[rnum], slot_mask);
     }
 
+    tcg_temp_free(zero);
     tcg_temp_free(slot_mask);
 }
 
@@ -121,6 +122,7 @@ static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot, 
     }
 
     tcg_temp_free(val32);
+    tcg_temp_free(zero);
     tcg_temp_free(slot_mask);
 }
 
@@ -572,6 +574,8 @@ static inline void gen_store_conditional8(DisasContext *ctx,
     tcg_gen_movcond_i64(TCG_COND_EQ, tmp, tmp, hex_llsc_val_i64,
                         ctx->ones64, ctx->zero64);
     tcg_gen_extrl_i64_i32(pred, tmp);
+    tcg_temp_free_i64(one);
+    tcg_temp_free_i64(zero);
     tcg_temp_free_i64(tmp);
     tcg_gen_br(done);
 
@@ -647,7 +651,6 @@ static TCGv gen_8bitsof(TCGv result, TCGv value, DisasContext *ctx)
 {
     tcg_gen_movcond_tl(TCG_COND_NE, result, value,
                        ctx->zero, ctx->ones, ctx->zero);
-
     return result;
 }
 

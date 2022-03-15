@@ -1,5 +1,3 @@
-.. _stable-process:
-
 QEMU and the stable process
 ===========================
 

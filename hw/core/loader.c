@@ -46,8 +46,6 @@
 #include "qemu-common.h"
 #include "qemu/datadir.h"
 #include "qapi/error.h"
-#include "qapi/qapi-commands-machine.h"
-#include "qapi/type-helpers.h"
 #include "trace.h"
 #include "hw/hw.h"
 #include "disas/disas.h"
@@ -328,7 +326,7 @@ static void *load_at(int fd, off_t offset, size_t size)
 #define SZ		64
 #include "hw/elf_ops.h"
 
-const char *load_elf_strerror(ssize_t error)
+const char *load_elf_strerror(int error)
 {
     switch (error) {
     case 0:
@@ -404,12 +402,12 @@ fail:
 }
 
 /* return < 0 if error, otherwise the number of bytes loaded in memory */
-ssize_t load_elf(const char *filename,
-                 uint64_t (*elf_note_fn)(void *, void *, bool),
-                 uint64_t (*translate_fn)(void *, uint64_t),
-                 void *translate_opaque, uint64_t *pentry, uint64_t *lowaddr,
-                 uint64_t *highaddr, uint32_t *pflags, int big_endian,
-                 int elf_machine, int clear_lsb, int data_swab)
+int load_elf(const char *filename,
+             uint64_t (*elf_note_fn)(void *, void *, bool),
+             uint64_t (*translate_fn)(void *, uint64_t),
+             void *translate_opaque, uint64_t *pentry, uint64_t *lowaddr,
+             uint64_t *highaddr, uint32_t *pflags, int big_endian,
+             int elf_machine, int clear_lsb, int data_swab)
 {
     return load_elf_as(filename, elf_note_fn, translate_fn, translate_opaque,
                        pentry, lowaddr, highaddr, pflags, big_endian,
@@ -417,13 +415,12 @@ ssize_t load_elf(const char *filename,
 }
 
 /* return < 0 if error, otherwise the number of bytes loaded in memory */
-ssize_t load_elf_as(const char *filename,
-                    uint64_t (*elf_note_fn)(void *, void *, bool),
-                    uint64_t (*translate_fn)(void *, uint64_t),
-                    void *translate_opaque, uint64_t *pentry, uint64_t *lowaddr,
-                    uint64_t *highaddr, uint32_t *pflags, int big_endian,
-                    int elf_machine, int clear_lsb, int data_swab,
-                    AddressSpace *as)
+int load_elf_as(const char *filename,
+                uint64_t (*elf_note_fn)(void *, void *, bool),
+                uint64_t (*translate_fn)(void *, uint64_t),
+                void *translate_opaque, uint64_t *pentry, uint64_t *lowaddr,
+                uint64_t *highaddr, uint32_t *pflags, int big_endian,
+                int elf_machine, int clear_lsb, int data_swab, AddressSpace *as)
 {
     return load_elf_ram(filename, elf_note_fn, translate_fn, translate_opaque,
                         pentry, lowaddr, highaddr, pflags, big_endian,
@@ -431,13 +428,13 @@ ssize_t load_elf_as(const char *filename,
 }
 
 /* return < 0 if error, otherwise the number of bytes loaded in memory */
-ssize_t load_elf_ram(const char *filename,
-                     uint64_t (*elf_note_fn)(void *, void *, bool),
-                     uint64_t (*translate_fn)(void *, uint64_t),
-                     void *translate_opaque, uint64_t *pentry,
-                     uint64_t *lowaddr, uint64_t *highaddr, uint32_t *pflags,
-                     int big_endian, int elf_machine, int clear_lsb,
-                     int data_swab, AddressSpace *as, bool load_rom)
+int load_elf_ram(const char *filename,
+                 uint64_t (*elf_note_fn)(void *, void *, bool),
+                 uint64_t (*translate_fn)(void *, uint64_t),
+                 void *translate_opaque, uint64_t *pentry, uint64_t *lowaddr,
+                 uint64_t *highaddr, uint32_t *pflags, int big_endian,
+                 int elf_machine, int clear_lsb, int data_swab,
+                 AddressSpace *as, bool load_rom)
 {
     return load_elf_ram_sym(filename, elf_note_fn,
                             translate_fn, translate_opaque,
@@ -447,17 +444,16 @@ ssize_t load_elf_ram(const char *filename,
 }
 
 /* return < 0 if error, otherwise the number of bytes loaded in memory */
-ssize_t load_elf_ram_sym(const char *filename,
-                         uint64_t (*elf_note_fn)(void *, void *, bool),
-                         uint64_t (*translate_fn)(void *, uint64_t),
-                         void *translate_opaque, uint64_t *pentry,
-                         uint64_t *lowaddr, uint64_t *highaddr,
-                         uint32_t *pflags, int big_endian, int elf_machine,
-                         int clear_lsb, int data_swab,
-                         AddressSpace *as, bool load_rom, symbol_fn_t sym_cb)
+int load_elf_ram_sym(const char *filename,
+                     uint64_t (*elf_note_fn)(void *, void *, bool),
+                     uint64_t (*translate_fn)(void *, uint64_t),
+                     void *translate_opaque, uint64_t *pentry,
+                     uint64_t *lowaddr, uint64_t *highaddr, uint32_t *pflags,
+                     int big_endian, int elf_machine,
+                     int clear_lsb, int data_swab,
+                     AddressSpace *as, bool load_rom, symbol_fn_t sym_cb)
 {
-    int fd, data_order, target_data_order, must_swab;
-    ssize_t ret = ELF_LOAD_FAILED;
+    int fd, data_order, target_data_order, must_swab, ret = ELF_LOAD_FAILED;
     uint8_t e_ident[EI_NIDENT];
 
     fd = open(filename, O_RDONLY | O_BINARY);
@@ -559,35 +555,24 @@ ssize_t gunzip(void *dst, size_t dstlen, uint8_t *src, size_t srclen)
 
     /* skip header */
     i = 10;
-    if (srclen < 4) {
-        goto toosmall;
-    }
     flags = src[3];
     if (src[2] != DEFLATED || (flags & RESERVED) != 0) {
         puts ("Error: Bad gzipped data\n");
         return -1;
     }
-    if ((flags & EXTRA_FIELD) != 0) {
-        if (srclen < 12) {
-            goto toosmall;
-        }
+    if ((flags & EXTRA_FIELD) != 0)
         i = 12 + src[10] + (src[11] << 8);
-    }
-    if ((flags & ORIG_NAME) != 0) {
-        while (i < srclen && src[i++] != 0) {
-            /* do nothing */
-        }
-    }
-    if ((flags & COMMENT) != 0) {
-        while (i < srclen && src[i++] != 0) {
-            /* do nothing */
-        }
-    }
-    if ((flags & HEAD_CRC) != 0) {
+    if ((flags & ORIG_NAME) != 0)
+        while (src[i++] != 0)
+            ;
+    if ((flags & COMMENT) != 0)
+        while (src[i++] != 0)
+            ;
+    if ((flags & HEAD_CRC) != 0)
         i += 2;
-    }
     if (i >= srclen) {
-        goto toosmall;
+        puts ("Error: gunzip out of data in header\n");
+        return -1;
     }
 
     s.zalloc = zalloc;
@@ -611,10 +596,6 @@ ssize_t gunzip(void *dst, size_t dstlen, uint8_t *src, size_t srclen)
     inflateEnd(&s);
 
     return dstbytes;
-
-toosmall:
-    puts("Error: gunzip out of data in header\n");
-    return -1;
 }
 
 /* Load a U-Boot image.  */
@@ -1476,35 +1457,32 @@ void *rom_ptr_for_as(AddressSpace *as, hwaddr addr, size_t size)
     return cbdata.rom;
 }
 
-HumanReadableText *qmp_x_query_roms(Error **errp)
+void hmp_info_roms(Monitor *mon, const QDict *qdict)
 {
     Rom *rom;
-    g_autoptr(GString) buf = g_string_new("");
 
     QTAILQ_FOREACH(rom, &roms, next) {
         if (rom->mr) {
-            g_string_append_printf(buf, "%s"
-                                   " size=0x%06zx name=\"%s\"\n",
-                                   memory_region_name(rom->mr),
-                                   rom->romsize,
-                                   rom->name);
+            monitor_printf(mon, "%s"
+                           " size=0x%06zx name=\"%s\"\n",
+                           memory_region_name(rom->mr),
+                           rom->romsize,
+                           rom->name);
         } else if (!rom->fw_file) {
-            g_string_append_printf(buf, "addr=" TARGET_FMT_plx
-                                   " size=0x%06zx mem=%s name=\"%s\"\n",
-                                   rom->addr, rom->romsize,
-                                   rom->isrom ? "rom" : "ram",
-                                   rom->name);
+            monitor_printf(mon, "addr=" TARGET_FMT_plx
+                           " size=0x%06zx mem=%s name=\"%s\"\n",
+                           rom->addr, rom->romsize,
+                           rom->isrom ? "rom" : "ram",
+                           rom->name);
         } else {
-            g_string_append_printf(buf, "fw=%s/%s"
-                                   " size=0x%06zx name=\"%s\"\n",
-                                   rom->fw_dir,
-                                   rom->fw_file,
-                                   rom->romsize,
-                                   rom->name);
+            monitor_printf(mon, "fw=%s/%s"
+                           " size=0x%06zx name=\"%s\"\n",
+                           rom->fw_dir,
+                           rom->fw_file,
+                           rom->romsize,
+                           rom->name);
         }
     }
-
-    return human_readable_text_from_str(buf);
 }
 
 typedef enum HexRecord HexRecord;

@@ -25,6 +25,7 @@
 #include "exec/helper-proto.h"
 #include "helper_regs.h"
 #include "exec/cpu_ldst.h"
+#include "tcg/tcg.h"
 #include "internal.h"
 #include "qemu/atomic128.h"
 

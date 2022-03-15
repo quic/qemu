@@ -63,8 +63,3 @@ config VHOST_USER_I2C
     bool
     default y
     depends on VIRTIO && VHOST_USER
-
-config VHOST_USER_RNG
-    bool
-    default y
-    depends on VIRTIO && VHOST_USER

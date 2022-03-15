@@ -1,5 +1,4 @@
 #include "qemu/osdep.h"
-
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/sem.h>
@@ -15,8 +14,6 @@
 #include <linux/netlink.h>
 #include <sched.h>
 #include "qemu.h"
-#include "user-internals.h"
-#include "strace.h"
 
 struct syscallname {
     int nr;

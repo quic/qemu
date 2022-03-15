@@ -36,11 +36,7 @@ OBJECT_DECLARE_TYPE(AspeedI2CState, AspeedI2CClass, ASPEED_I2C)
 
 struct AspeedI2CState;
 
-#define TYPE_ASPEED_I2C_BUS "aspeed.i2c.bus"
-OBJECT_DECLARE_SIMPLE_TYPE(AspeedI2CBus, ASPEED_I2C_BUS)
-struct AspeedI2CBus {
-    SysBusDevice parent_obj;
-
+typedef struct AspeedI2CBus {
     struct AspeedI2CState *controller;
 
     MemoryRegion mr;
@@ -58,7 +54,7 @@ struct AspeedI2CBus {
     uint32_t pool_ctrl;
     uint32_t dma_addr;
     uint32_t dma_len;
-};
+} AspeedI2CBus;
 
 struct AspeedI2CState {
     SysBusDevice parent_obj;

@@ -193,18 +193,20 @@ struct Nios2CPU {
 
 void nios2_tcg_init(void);
 void nios2_cpu_do_interrupt(CPUState *cs);
+int cpu_nios2_signal_handler(int host_signum, void *pinfo, void *puc);
 void dump_mmu(CPUNios2State *env);
 void nios2_cpu_dump_state(CPUState *cpu, FILE *f, int flags);
 hwaddr nios2_cpu_get_phys_page_debug(CPUState *cpu, vaddr addr);
 void nios2_cpu_do_unaligned_access(CPUState *cpu, vaddr addr,
-                                   MMUAccessType access_type, int mmu_idx,
-                                   uintptr_t retaddr) QEMU_NORETURN;
+                                   MMUAccessType access_type,
+                                   int mmu_idx, uintptr_t retaddr);
 
 void do_nios2_semihosting(CPUNios2State *env);
 
 #define CPU_RESOLVING_TYPE TYPE_NIOS2_CPU
 
 #define cpu_gen_code cpu_nios2_gen_code
+#define cpu_signal_handler cpu_nios2_signal_handler
 
 #define CPU_SAVE_VERSION 1
 
@@ -218,15 +220,9 @@ static inline int cpu_mmu_index(CPUNios2State *env, bool ifetch)
                                                   MMU_SUPERVISOR_IDX;
 }
 
-#ifdef CONFIG_USER_ONLY
-void nios2_cpu_record_sigsegv(CPUState *cpu, vaddr addr,
-                              MMUAccessType access_type,
-                              bool maperr, uintptr_t ra);
-#else
 bool nios2_cpu_tlb_fill(CPUState *cs, vaddr address, int size,
                         MMUAccessType access_type, int mmu_idx,
                         bool probe, uintptr_t retaddr);
-#endif
 
 static inline int cpu_interrupts_enabled(CPUNios2State *env)
 {

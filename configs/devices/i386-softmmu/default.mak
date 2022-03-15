@@ -22,7 +22,6 @@
 #CONFIG_TPM_CRB=n
 #CONFIG_TPM_TIS_ISA=n
 #CONFIG_VTD=n
-#CONFIG_SGX=n
 
 # Boards:
 #

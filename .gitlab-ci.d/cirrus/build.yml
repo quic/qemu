@@ -13,7 +13,6 @@ env:
   PYTHON: "@PYTHON@"
   MAKE: "@MAKE@"
   CONFIGURE_ARGS: "@CONFIGURE_ARGS@"
-  TEST_TARGETS: "@TEST_TARGETS@"
 
 build_task:
   install_script:

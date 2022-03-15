@@ -28,6 +28,7 @@
 
 void openrisc_cpu_do_interrupt(CPUState *cs)
 {
+#ifndef CONFIG_USER_ONLY
     OpenRISCCPU *cpu = OPENRISC_CPU(cs);
     CPUOpenRISCState *env = &cpu->env;
     int exception = cs->exception_index;
@@ -95,6 +96,7 @@ void openrisc_cpu_do_interrupt(CPUState *cs)
     } else {
         cpu_abort(cs, "Unhandled exception 0x%x\n", exception);
     }
+#endif
 
     cs->exception_index = -1;
 }

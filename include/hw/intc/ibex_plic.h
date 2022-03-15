@@ -60,8 +60,6 @@ struct IbexPlicState {
     uint32_t threshold_base;
 
     uint32_t claim_base;
-
-    qemu_irq *external_irqs;
 };
 
 #endif /* HW_IBEX_PLIC_H */

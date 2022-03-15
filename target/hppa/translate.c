@@ -34,6 +34,7 @@
 
 #undef TCGv
 #undef tcg_temp_new
+#undef tcg_global_reg_new
 #undef tcg_global_mem_new
 #undef tcg_temp_local_new
 #undef tcg_temp_free
@@ -58,6 +59,7 @@
 #define TCGv_reg             TCGv_i64
 
 #define tcg_temp_new         tcg_temp_new_i64
+#define tcg_global_reg_new   tcg_global_reg_new_i64
 #define tcg_global_mem_new   tcg_global_mem_new_i64
 #define tcg_temp_local_new   tcg_temp_local_new_i64
 #define tcg_temp_free        tcg_temp_free_i64
@@ -153,6 +155,7 @@
 #else
 #define TCGv_reg             TCGv_i32
 #define tcg_temp_new         tcg_temp_new_i32
+#define tcg_global_reg_new   tcg_global_reg_new_i32
 #define tcg_global_mem_new   tcg_global_mem_new_i32
 #define tcg_temp_local_new   tcg_temp_local_new_i32
 #define tcg_temp_free        tcg_temp_free_i32
@@ -814,7 +817,11 @@ static void gen_goto_tb(DisasContext *ctx, int which,
     } else {
         copy_iaoq_entry(cpu_iaoq_f, f, cpu_iaoq_b);
         copy_iaoq_entry(cpu_iaoq_b, b, ctx->iaoq_n_var);
-        tcg_gen_lookup_and_goto_ptr();
+        if (ctx->base.singlestep_enabled) {
+            gen_excp_1(EXCP_DEBUG);
+        } else {
+            tcg_gen_lookup_and_goto_ptr();
+        }
     }
 }
 
@@ -2342,7 +2349,11 @@ static bool do_rfi(DisasContext *ctx, bool rfi_r)
         gen_helper_rfi(cpu_env);
     }
     /* Exit the TB to recognize new interrupts.  */
-    tcg_gen_exit_tb(NULL, 0);
+    if (ctx->base.singlestep_enabled) {
+        gen_excp_1(EXCP_DEBUG);
+    } else {
+        tcg_gen_exit_tb(NULL, 0);
+    }
     ctx->base.is_jmp = DISAS_NORETURN;
 
     return nullify_end(ctx);
@@ -4166,7 +4177,7 @@ static void hppa_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
     {
         /* Always fetch the insn, even if nullified, so that we check
            the page permissions for execute.  */
-        uint32_t insn = translator_ldl(env, &ctx->base, ctx->base.pc_next);
+        uint32_t insn = translator_ldl(env, ctx->base.pc_next);
 
         /* Set up the IA queue for the next insn.
            This will be overwritten by a branch.  */
@@ -4266,9 +4277,10 @@ static void hppa_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
         nullify_save(ctx);
         /* FALLTHRU */
     case DISAS_IAQ_N_UPDATED:
-        if (is_jmp != DISAS_IAQ_N_STALE_EXIT) {
+        if (ctx->base.singlestep_enabled) {
+            gen_excp_1(EXCP_DEBUG);
+        } else if (is_jmp != DISAS_IAQ_N_STALE_EXIT) {
             tcg_gen_lookup_and_goto_ptr();
-            break;
         }
         /* FALLTHRU */
     case DISAS_EXIT:

@@ -34,7 +34,6 @@ HotpluggableCPUList *machine_query_hotpluggable_cpus(MachineState *machine);
 void machine_set_cpu_numa_node(MachineState *machine,
                                const CpuInstanceProperties *props,
                                Error **errp);
-void smp_parse(MachineState *ms, SMPConfiguration *config, Error **errp);
 
 /**
  * machine_class_allow_dynamic_sysbus_dev: Add type to list of valid devices
@@ -51,21 +50,6 @@ void smp_parse(MachineState *ms, SMPConfiguration *config, Error **errp);
  * to the list of specifically permitted devices.
  */
 void machine_class_allow_dynamic_sysbus_dev(MachineClass *mc, const char *type);
-
-/**
- * device_type_is_dynamic_sysbus: Check if type is an allowed sysbus device
- * type for the machine class.
- * @mc: Machine class
- * @type: type to check (should be a subtype of TYPE_SYS_BUS_DEVICE)
- *
- * Returns: true if @type is a type in the machine's list of
- * dynamically pluggable sysbus devices; otherwise false.
- *
- * Check if the QOM type @type is in the list of allowed sysbus device
- * types (see machine_class_allowed_dynamic_sysbus_dev()).
- * Note that if @type has a parent type in the list, it is allowed too.
- */
-bool device_type_is_dynamic_sysbus(MachineClass *mc, const char *type);
 
 /**
  * device_is_dynamic_sysbus: test whether device is a dynamic sysbus device
@@ -123,16 +107,6 @@ typedef struct {
     int len;
     CPUArchId cpus[];
 } CPUArchIdList;
-
-/**
- * SMPCompatProps:
- * @prefer_sockets - whether sockets are preferred over cores in smp parsing
- * @dies_supported - whether dies are supported by the machine
- */
-typedef struct {
-    bool prefer_sockets;
-    bool dies_supported;
-} SMPCompatProps;
 
 /**
  * MachineClass:
@@ -195,6 +169,10 @@ typedef struct {
  *    kvm-type may be NULL if it is not needed.
  * @numa_mem_supported:
  *    true if '--numa node.mem' option is supported and false otherwise
+ * @smp_parse:
+ *    The function pointer to hook different machine specific functions for
+ *    parsing "smp-opts" from QemuOpts to MachineState::CpuTopology and more
+ *    machine specific topology fields, such as smp_dies for PCMachine.
  * @hotplug_allowed:
  *    If the hook is provided, then it'll be called for each device
  *    hotplug to check whether the device hotplug is allowed.  Return
@@ -231,6 +209,7 @@ struct MachineClass {
     void (*reset)(MachineState *state);
     void (*wakeup)(MachineState *state);
     int (*kvm_type)(MachineState *machine, const char *arg);
+    void (*smp_parse)(MachineState *ms, SMPConfiguration *config, Error **errp);
 
     BlockInterfaceType block_default_type;
     int units_per_default_bus;
@@ -268,7 +247,6 @@ struct MachineClass {
     bool nvdimm_supported;
     bool numa_mem_supported;
     bool auto_enable_numa;
-    SMPCompatProps smp_props;
     const char *default_ram_id;
 
     HotplugHandler *(*get_hotplug_handler)(MachineState *machine,
@@ -296,18 +274,17 @@ typedef struct DeviceMemoryState {
 /**
  * CpuTopology:
  * @cpus: the number of present logical processors on the machine
- * @sockets: the number of sockets on the machine
- * @dies: the number of dies in one socket
- * @cores: the number of cores in one die
+ * @cores: the number of cores in one package
  * @threads: the number of threads in one core
+ * @sockets: the number of sockets on the machine
  * @max_cpus: the maximum number of logical processors on the machine
  */
 typedef struct CpuTopology {
     unsigned int cpus;
-    unsigned int sockets;
     unsigned int dies;
     unsigned int cores;
     unsigned int threads;
+    unsigned int sockets;
     unsigned int max_cpus;
 } CpuTopology;
 
@@ -317,6 +294,7 @@ typedef struct CpuTopology {
 struct MachineState {
     /*< private >*/
     Object parent_obj;
+    Notifier sysbus_notifier;
 
     /*< public >*/
 
@@ -374,9 +352,6 @@ struct MachineState {
         type_register_static(&machine_initfn##_typeinfo); \
     } \
     type_init(machine_initfn##_register_types)
-
-extern GlobalProperty hw_compat_6_1[];
-extern const size_t hw_compat_6_1_len;
 
 extern GlobalProperty hw_compat_6_0[];
 extern const size_t hw_compat_6_0_len;

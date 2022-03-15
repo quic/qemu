@@ -80,4 +80,5 @@ extern int get_exe_mode(CPUHexagonState *env);
 extern const char *get_exe_mode_str(CPUHexagonState *env);
 extern void set_wait_mode(CPUHexagonState *env);
 extern void clear_wait_mode(CPUHexagonState *env);
+extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #endif

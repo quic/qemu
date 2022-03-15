@@ -21,10 +21,3 @@ void qapi_event_send_device_deleted(bool has_device,
 {
     /* Nothing to do. */
 }
-
-void qapi_event_send_device_unplug_guest_error(bool has_device,
-                                               const char *device,
-                                               const char *path)
-{
-    /* Nothing to do. */
-}

@@ -56,6 +56,7 @@ typedef struct MirrorBlockJob {
     bool zero_target;
     MirrorCopyMode copy_mode;
     BlockdevOnError on_source_error, on_target_error;
+    bool synced;
     /* Set when the target is synced (dirty bitmap is clean, nothing
      * in flight) and the job is running in active mode */
     bool actively_synced;
@@ -120,6 +121,7 @@ typedef enum MirrorMethod {
 static BlockErrorAction mirror_error_action(MirrorBlockJob *s, bool read,
                                             int error)
 {
+    s->synced = false;
     s->actively_synced = false;
     if (read) {
         return block_job_error_action(&s->common, s->on_source_error,
@@ -158,25 +160,18 @@ static void coroutine_fn mirror_wait_on_conflicts(MirrorOp *self,
             if (ranges_overlap(self_start_chunk, self_nb_chunks,
                                op_start_chunk, op_nb_chunks))
             {
-                if (self) {
-                    /*
-                     * If the operation is already (indirectly) waiting for us,
-                     * or will wait for us as soon as it wakes up, then just go
-                     * on (instead of producing a deadlock in the former case).
-                     */
-                    if (op->waiting_for_op) {
-                        continue;
-                    }
-
-                    self->waiting_for_op = op;
+                /*
+                 * If the operation is already (indirectly) waiting for us, or
+                 * will wait for us as soon as it wakes up, then just go on
+                 * (instead of producing a deadlock in the former case).
+                 */
+                if (op->waiting_for_op) {
+                    continue;
                 }
 
+                self->waiting_for_op = op;
                 qemu_co_queue_wait(&op->waiting_requests, NULL);
-
-                if (self) {
-                    self->waiting_for_op = NULL;
-                }
-
+                self->waiting_for_op = NULL;
                 break;
             }
         }
@@ -942,10 +937,12 @@ static int coroutine_fn mirror_run(Job *job, Error **errp)
     if (s->bdev_length == 0) {
         /* Transition to the READY state and wait for complete. */
         job_transition_to_ready(&s->common.job);
+        s->synced = true;
         s->actively_synced = true;
-        while (!job_cancel_requested(&s->common.job) && !s->should_complete) {
+        while (!job_is_cancelled(&s->common.job) && !s->should_complete) {
             job_yield(&s->common.job);
         }
+        s->common.job.cancelled = false;
         goto immediate_exit;
     }
 
@@ -1006,11 +1003,6 @@ static int coroutine_fn mirror_run(Job *job, Error **errp)
 
         job_pause_point(&s->common.job);
 
-        if (job_is_cancelled(&s->common.job)) {
-            ret = 0;
-            goto immediate_exit;
-        }
-
         cnt = bdrv_get_dirty_count(s->dirty_bitmap);
         /* cnt is the number of dirty bytes remaining and s->bytes_in_flight is
          * the number of bytes currently being processed; together those are
@@ -1037,7 +1029,7 @@ static int coroutine_fn mirror_run(Job *job, Error **errp)
         should_complete = false;
         if (s->in_flight == 0 && cnt == 0) {
             trace_mirror_before_flush(s);
-            if (!job_is_ready(&s->common.job)) {
+            if (!s->synced) {
                 if (mirror_flush(s) < 0) {
                     /* Go check s->ret.  */
                     continue;
@@ -1048,13 +1040,14 @@ static int coroutine_fn mirror_run(Job *job, Error **errp)
                  * the target in a consistent state.
                  */
                 job_transition_to_ready(&s->common.job);
+                s->synced = true;
                 if (s->copy_mode != MIRROR_COPY_MODE_BACKGROUND) {
                     s->actively_synced = true;
                 }
             }
 
             should_complete = s->should_complete ||
-                job_cancel_requested(&s->common.job);
+                job_is_cancelled(&s->common.job);
             cnt = bdrv_get_dirty_count(s->dirty_bitmap);
         }
 
@@ -1084,17 +1077,24 @@ static int coroutine_fn mirror_run(Job *job, Error **errp)
              * completion.
              */
             assert(QLIST_EMPTY(&bs->tracked_requests));
+            s->common.job.cancelled = false;
             need_drain = false;
             break;
         }
 
-        if (job_is_ready(&s->common.job) && !should_complete) {
+        ret = 0;
+
+        if (s->synced && !should_complete) {
             delay_ns = (s->in_flight == 0 &&
                         cnt == 0 ? BLOCK_JOB_SLICE_TIME : 0);
         }
-        trace_mirror_before_sleep(s, cnt, job_is_ready(&s->common.job),
-                                  delay_ns);
+        trace_mirror_before_sleep(s, cnt, s->synced, delay_ns);
         job_sleep_ns(&s->common.job, delay_ns);
+        if (job_is_cancelled(&s->common.job) &&
+            (!s->synced || s->common.job.force_cancel))
+        {
+            break;
+        }
         s->last_pause_ns = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
     }
 
@@ -1104,7 +1104,8 @@ immediate_exit:
          * or it was cancelled prematurely so that we do not guarantee that
          * the target is a copy of the source.
          */
-        assert(ret < 0 || job_is_cancelled(&s->common.job));
+        assert(ret < 0 || ((s->common.job.force_cancel || !s->synced) &&
+               job_is_cancelled(&s->common.job)));
         assert(need_drain);
         mirror_wait_for_all_io(s);
     }
@@ -1127,7 +1128,7 @@ static void mirror_complete(Job *job, Error **errp)
 {
     MirrorBlockJob *s = container_of(job, MirrorBlockJob, common.job);
 
-    if (!job_is_ready(job)) {
+    if (!s->synced) {
         error_setg(errp, "The active block job '%s' cannot be completed",
                    job->id);
         return;
@@ -1182,34 +1183,21 @@ static bool mirror_drained_poll(BlockJob *job)
      * from one of our own drain sections, to avoid a deadlock waiting for
      * ourselves.
      */
-    if (!s->common.job.paused && !job_is_cancelled(&job->job) && !s->in_drain) {
+    if (!s->common.job.paused && !s->common.job.cancelled && !s->in_drain) {
         return true;
     }
 
     return !!s->in_flight;
 }
 
-static bool mirror_cancel(Job *job, bool force)
+static void mirror_cancel(Job *job, bool force)
 {
     MirrorBlockJob *s = container_of(job, MirrorBlockJob, common.job);
     BlockDriverState *target = blk_bs(s->target);
 
-    /*
-     * Before the job is READY, we treat any cancellation like a
-     * force-cancellation.
-     */
-    force = force || !job_is_ready(job);
-
-    if (force) {
+    if (force || !job_is_ready(job)) {
         bdrv_cancel_in_flight(target);
     }
-    return force;
-}
-
-static bool commit_active_cancel(Job *job, bool force)
-{
-    /* Same as above in mirror_cancel() */
-    return force || !job_is_ready(job);
 }
 
 static const BlockJobDriver mirror_job_driver = {
@@ -1239,7 +1227,6 @@ static const BlockJobDriver commit_active_job_driver = {
         .abort                  = mirror_abort,
         .pause                  = mirror_pause,
         .complete               = mirror_complete,
-        .cancel                 = commit_active_cancel,
     },
     .drained_poll           = mirror_drained_poll,
 };
@@ -1408,7 +1395,7 @@ static void coroutine_fn active_write_settle(MirrorOp *op)
 }
 
 static int coroutine_fn bdrv_mirror_top_preadv(BlockDriverState *bs,
-    int64_t offset, int64_t bytes, QEMUIOVector *qiov, BdrvRequestFlags flags)
+    uint64_t offset, uint64_t bytes, QEMUIOVector *qiov, int flags)
 {
     return bdrv_co_preadv(bs->backing, offset, bytes, qiov, flags);
 }
@@ -1423,7 +1410,6 @@ static int coroutine_fn bdrv_mirror_top_do_write(BlockDriverState *bs,
     bool copy_to_target;
 
     copy_to_target = s->job->ret >= 0 &&
-                     !job_is_cancelled(&s->job->common.job) &&
                      s->job->copy_mode == MIRROR_COPY_MODE_WRITE_BLOCKING;
 
     if (copy_to_target) {
@@ -1463,7 +1449,7 @@ out:
 }
 
 static int coroutine_fn bdrv_mirror_top_pwritev(BlockDriverState *bs,
-    int64_t offset, int64_t bytes, QEMUIOVector *qiov, BdrvRequestFlags flags)
+    uint64_t offset, uint64_t bytes, QEMUIOVector *qiov, int flags)
 {
     MirrorBDSOpaque *s = bs->opaque;
     QEMUIOVector bounce_qiov;
@@ -1472,7 +1458,6 @@ static int coroutine_fn bdrv_mirror_top_pwritev(BlockDriverState *bs,
     bool copy_to_target;
 
     copy_to_target = s->job->ret >= 0 &&
-                     !job_is_cancelled(&s->job->common.job) &&
                      s->job->copy_mode == MIRROR_COPY_MODE_WRITE_BLOCKING;
 
     if (copy_to_target) {
@@ -1509,14 +1494,14 @@ static int coroutine_fn bdrv_mirror_top_flush(BlockDriverState *bs)
 }
 
 static int coroutine_fn bdrv_mirror_top_pwrite_zeroes(BlockDriverState *bs,
-    int64_t offset, int64_t bytes, BdrvRequestFlags flags)
+    int64_t offset, int bytes, BdrvRequestFlags flags)
 {
     return bdrv_mirror_top_do_write(bs, MIRROR_METHOD_ZERO, offset, bytes, NULL,
                                     flags);
 }
 
 static int coroutine_fn bdrv_mirror_top_pdiscard(BlockDriverState *bs,
-    int64_t offset, int64_t bytes)
+    int64_t offset, int bytes)
 {
     return bdrv_mirror_top_do_write(bs, MIRROR_METHOD_DISCARD, offset, bytes,
                                     NULL, 0);

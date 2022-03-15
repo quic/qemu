@@ -3,7 +3,6 @@
 #include "qemu/cutils.h"
 
 #include "qemu.h"
-#include "user-internals.h"
 
 void *lock_user(int type, abi_ulong guest_addr, ssize_t len, bool copy)
 {

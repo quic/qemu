@@ -16,11 +16,9 @@
 #include "backends/tpm/tpm_ioctl.h"
 #include "io/channel-socket.h"
 #include "qapi/error.h"
-#include "qapi/qmp/qlist.h"
-#include "qapi/qmp/qstring.h"
 #include "tpm-emu.h"
 
-void tpm_emu_test_wait_cond(TPMTestState *s)
+void tpm_emu_test_wait_cond(TestState *s)
 {
     gint64 end_time = g_get_monotonic_time() + 5 * G_TIME_SPAN_SECOND;
 
@@ -38,7 +36,7 @@ void tpm_emu_test_wait_cond(TPMTestState *s)
 
 static void *tpm_emu_tpm_thread(void *data)
 {
-    TPMTestState *s = data;
+    TestState *s = data;
     QIOChannel *ioc = s->tpm_ioc;
 
     s->tpm_msg = g_new(struct tpm_hdr, 1);
@@ -58,21 +56,9 @@ static void *tpm_emu_tpm_thread(void *data)
         s->tpm_msg->code = be32_to_cpu(s->tpm_msg->code);
 
         /* reply error */
-        switch (s->tpm_version) {
-        case TPM_VERSION_2_0:
-            s->tpm_msg->tag = cpu_to_be16(TPM2_ST_NO_SESSIONS);
-            s->tpm_msg->len = cpu_to_be32(sizeof(struct tpm_hdr));
-            s->tpm_msg->code = cpu_to_be32(TPM_RC_FAILURE);
-            break;
-        case TPM_VERSION_1_2:
-            s->tpm_msg->tag = cpu_to_be16(TPM_TAG_RSP_COMMAND);
-            s->tpm_msg->len = cpu_to_be32(sizeof(struct tpm_hdr));
-            s->tpm_msg->code = cpu_to_be32(TPM_FAIL);
-            break;
-        default:
-            g_debug("unsupport TPM version %u", s->tpm_version);
-            g_assert_not_reached();
-        }
+        s->tpm_msg->tag = cpu_to_be16(TPM2_ST_NO_SESSIONS);
+        s->tpm_msg->len = cpu_to_be32(sizeof(struct tpm_hdr));
+        s->tpm_msg->code = cpu_to_be32(TPM_RC_FAILURE);
         qio_channel_write(ioc, (char *)s->tpm_msg, be32_to_cpu(s->tpm_msg->len),
                           &error_abort);
     }
@@ -85,7 +71,7 @@ static void *tpm_emu_tpm_thread(void *data)
 
 void *tpm_emu_ctrl_thread(void *data)
 {
-    TPMTestState *s = data;
+    TestState *s = data;
     QIOChannelSocket *lioc = qio_channel_socket_new();
     QIOChannel *ioc;
 
@@ -193,40 +179,4 @@ void *tpm_emu_ctrl_thread(void *data)
     object_unref(OBJECT(ioc));
     object_unref(OBJECT(lioc));
     return NULL;
-}
-
-bool tpm_model_is_available(const char *args, const char *tpm_if)
-{
-    QTestState *qts;
-    QDict *rsp_tpm;
-    bool ret = false;
-
-    qts = qtest_init(args);
-    if (!qts) {
-        return false;
-    }
-
-    rsp_tpm = qtest_qmp(qts, "{ 'execute': 'query-tpm'}");
-    if (!qdict_haskey(rsp_tpm, "error")) {
-        QDict *rsp_models = qtest_qmp(qts,
-                                      "{ 'execute': 'query-tpm-models'}");
-        if (qdict_haskey(rsp_models, "return")) {
-            QList *models = qdict_get_qlist(rsp_models, "return");
-            QListEntry *e;
-
-            QLIST_FOREACH_ENTRY(models, e) {
-                QString *s = qobject_to(QString, qlist_entry_obj(e));
-                const char *ename = qstring_get_str(s);
-                if (!strcmp(ename, tpm_if)) {
-                    ret = true;
-                    break;
-                }
-            }
-        }
-        qobject_unref(rsp_models);
-    }
-    qobject_unref(rsp_tpm);
-    qtest_quit(qts);
-
-    return ret;
 }

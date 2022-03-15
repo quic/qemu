@@ -276,8 +276,7 @@ static int vpc_open(BlockDriverState *bs, QDict *options, int flags,
         if (ret < 0) {
             goto fail;
         }
-        if (strncmp(footer->creator, "conectix", 8) ||
-            be32_to_cpu(footer->type) != VHD_FIXED) {
+        if (strncmp(footer->creator, "conectix", 8)) {
             error_setg(errp, "invalid VPC image");
             ret = -EINVAL;
             goto fail;
@@ -609,8 +608,8 @@ static int vpc_get_info(BlockDriverState *bs, BlockDriverInfo *bdi)
 }
 
 static int coroutine_fn
-vpc_co_preadv(BlockDriverState *bs, int64_t offset, int64_t bytes,
-              QEMUIOVector *qiov, BdrvRequestFlags flags)
+vpc_co_preadv(BlockDriverState *bs, uint64_t offset, uint64_t bytes,
+              QEMUIOVector *qiov, int flags)
 {
     BDRVVPCState *s = bs->opaque;
     int ret;
@@ -659,8 +658,8 @@ fail:
 }
 
 static int coroutine_fn
-vpc_co_pwritev(BlockDriverState *bs, int64_t offset, int64_t bytes,
-               QEMUIOVector *qiov, BdrvRequestFlags flags)
+vpc_co_pwritev(BlockDriverState *bs, uint64_t offset, uint64_t bytes,
+               QEMUIOVector *qiov, int flags)
 {
     BDRVVPCState *s = bs->opaque;
     int64_t image_offset;

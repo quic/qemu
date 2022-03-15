@@ -262,21 +262,8 @@ static void gicd_write_irouter(GICv3State *s, MemTxAttrs attrs, int irq,
     gicv3_update(s, irq, 1);
 }
 
-/**
- * gicd_readb
- * gicd_readw
- * gicd_readl
- * gicd_readq
- * gicd_writeb
- * gicd_writew
- * gicd_writel
- * gicd_writeq
- *
- * Return %true if the operation succeeded, %false otherwise.
- */
-
-static bool gicd_readb(GICv3State *s, hwaddr offset,
-                       uint64_t *data, MemTxAttrs attrs)
+static MemTxResult gicd_readb(GICv3State *s, hwaddr offset,
+                              uint64_t *data, MemTxAttrs attrs)
 {
     /* Most GICv3 distributor registers do not support byte accesses. */
     switch (offset) {
@@ -286,17 +273,17 @@ static bool gicd_readb(GICv3State *s, hwaddr offset,
         /* This GIC implementation always has affinity routing enabled,
          * so these registers are all RAZ/WI.
          */
-        return true;
+        return MEMTX_OK;
     case GICD_IPRIORITYR ... GICD_IPRIORITYR + 0x3ff:
         *data = gicd_read_ipriorityr(s, attrs, offset - GICD_IPRIORITYR);
-        return true;
+        return MEMTX_OK;
     default:
-        return false;
+        return MEMTX_ERROR;
     }
 }
 
-static bool gicd_writeb(GICv3State *s, hwaddr offset,
-                        uint64_t value, MemTxAttrs attrs)
+static MemTxResult gicd_writeb(GICv3State *s, hwaddr offset,
+                               uint64_t value, MemTxAttrs attrs)
 {
     /* Most GICv3 distributor registers do not support byte accesses. */
     switch (offset) {
@@ -306,25 +293,25 @@ static bool gicd_writeb(GICv3State *s, hwaddr offset,
         /* This GIC implementation always has affinity routing enabled,
          * so these registers are all RAZ/WI.
          */
-        return true;
+        return MEMTX_OK;
     case GICD_IPRIORITYR ... GICD_IPRIORITYR + 0x3ff:
     {
         int irq = offset - GICD_IPRIORITYR;
 
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
-            return true;
+            return MEMTX_OK;
         }
         gicd_write_ipriorityr(s, attrs, irq, value);
         gicv3_update(s, irq, 1);
-        return true;
+        return MEMTX_OK;
     }
     default:
-        return false;
+        return MEMTX_ERROR;
     }
 }
 
-static bool gicd_readw(GICv3State *s, hwaddr offset,
-                       uint64_t *data, MemTxAttrs attrs)
+static MemTxResult gicd_readw(GICv3State *s, hwaddr offset,
+                              uint64_t *data, MemTxAttrs attrs)
 {
     /* Only GICD_SETSPI_NSR, GICD_CLRSPI_NSR, GICD_SETSPI_SR and GICD_SETSPI_NSR
      * support 16 bit accesses, and those registers are all part of the
@@ -332,11 +319,11 @@ static bool gicd_readw(GICv3State *s, hwaddr offset,
      * implement (ie for us GICD_TYPER.MBIS == 0), so for us they are
      * reserved.
      */
-    return false;
+    return MEMTX_ERROR;
 }
 
-static bool gicd_writew(GICv3State *s, hwaddr offset,
-                        uint64_t value, MemTxAttrs attrs)
+static MemTxResult gicd_writew(GICv3State *s, hwaddr offset,
+                               uint64_t value, MemTxAttrs attrs)
 {
     /* Only GICD_SETSPI_NSR, GICD_CLRSPI_NSR, GICD_SETSPI_SR and GICD_SETSPI_NSR
      * support 16 bit accesses, and those registers are all part of the
@@ -344,11 +331,11 @@ static bool gicd_writew(GICv3State *s, hwaddr offset,
      * implement (ie for us GICD_TYPER.MBIS == 0), so for us they are
      * reserved.
      */
-    return false;
+    return MEMTX_ERROR;
 }
 
-static bool gicd_readl(GICv3State *s, hwaddr offset,
-                       uint64_t *data, MemTxAttrs attrs)
+static MemTxResult gicd_readl(GICv3State *s, hwaddr offset,
+                              uint64_t *data, MemTxAttrs attrs)
 {
     /* Almost all GICv3 distributor registers are 32-bit.
      * Note that WO registers must return an UNKNOWN value on reads,
@@ -376,7 +363,7 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
         } else {
             *data = s->gicd_ctlr;
         }
-        return true;
+        return MEMTX_OK;
     case GICD_TYPER:
     {
         /* For this implementation:
@@ -384,9 +371,7 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
          * A3V == 1 (non-zero values of Affinity level 3 supported)
          * IDbits == 0xf (we support 16-bit interrupt identifiers)
          * DVIS == 0 (Direct virtual LPI injection not supported)
-         * LPIS == 1 (LPIs are supported if affinity routing is enabled)
-         * num_LPIs == 0b00000 (bits [15:11],Number of LPIs as indicated
-         *                      by GICD_TYPER.IDbits)
+         * LPIS == 0 (LPIs not supported)
          * MBIS == 0 (message-based SPIs not supported)
          * SecurityExtn == 1 if security extns supported
          * CPUNumber == 0 since for us ARE is always 1
@@ -401,63 +386,62 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
         bool sec_extn = !(s->gicd_ctlr & GICD_CTLR_DS);
 
         *data = (1 << 25) | (1 << 24) | (sec_extn << 10) |
-            (s->lpi_enable << GICD_TYPER_LPIS_SHIFT) |
             (0xf << 19) | itlinesnumber;
-        return true;
+        return MEMTX_OK;
     }
     case GICD_IIDR:
         /* We claim to be an ARM r0p0 with a zero ProductID.
          * This is the same as an r0p0 GIC-500.
          */
         *data = gicv3_iidr();
-        return true;
+        return MEMTX_OK;
     case GICD_STATUSR:
         /* RAZ/WI for us (this is an optional register and our implementation
          * does not track RO/WO/reserved violations to report them to the guest)
          */
         *data = 0;
-        return true;
+        return MEMTX_OK;
     case GICD_IGROUPR ... GICD_IGROUPR + 0x7f:
     {
         int irq;
 
         if (!attrs.secure && !(s->gicd_ctlr & GICD_CTLR_DS)) {
             *data = 0;
-            return true;
+            return MEMTX_OK;
         }
         /* RAZ/WI for SGIs, PPIs, unimplemented irqs */
         irq = (offset - GICD_IGROUPR) * 8;
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
             *data = 0;
-            return true;
+            return MEMTX_OK;
         }
         *data = *gic_bmp_ptr32(s->group, irq);
-        return true;
+        return MEMTX_OK;
     }
     case GICD_ISENABLER ... GICD_ISENABLER + 0x7f:
         *data = gicd_read_bitmap_reg(s, attrs, s->enabled, NULL,
                                      offset - GICD_ISENABLER);
-        return true;
+        return MEMTX_OK;
     case GICD_ICENABLER ... GICD_ICENABLER + 0x7f:
         *data = gicd_read_bitmap_reg(s, attrs, s->enabled, NULL,
                                      offset - GICD_ICENABLER);
-        return true;
+        return MEMTX_OK;
     case GICD_ISPENDR ... GICD_ISPENDR + 0x7f:
         *data = gicd_read_bitmap_reg(s, attrs, s->pending, mask_nsacr_ge1,
                                      offset - GICD_ISPENDR);
-        return true;
+        return MEMTX_OK;
     case GICD_ICPENDR ... GICD_ICPENDR + 0x7f:
         *data = gicd_read_bitmap_reg(s, attrs, s->pending, mask_nsacr_ge2,
                                      offset - GICD_ICPENDR);
-        return true;
+        return MEMTX_OK;
     case GICD_ISACTIVER ... GICD_ISACTIVER + 0x7f:
         *data = gicd_read_bitmap_reg(s, attrs, s->active, mask_nsacr_ge2,
                                      offset - GICD_ISACTIVER);
-        return true;
+        return MEMTX_OK;
     case GICD_ICACTIVER ... GICD_ICACTIVER + 0x7f:
         *data = gicd_read_bitmap_reg(s, attrs, s->active, mask_nsacr_ge2,
                                      offset - GICD_ICACTIVER);
-        return true;
+        return MEMTX_OK;
     case GICD_IPRIORITYR ... GICD_IPRIORITYR + 0x3ff:
     {
         int i, irq = offset - GICD_IPRIORITYR;
@@ -468,12 +452,12 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
             value |= gicd_read_ipriorityr(s, attrs, i);
         }
         *data = value;
-        return true;
+        return MEMTX_OK;
     }
     case GICD_ITARGETSR ... GICD_ITARGETSR + 0x3ff:
         /* RAZ/WI since affinity routing is always enabled */
         *data = 0;
-        return true;
+        return MEMTX_OK;
     case GICD_ICFGR ... GICD_ICFGR + 0xff:
     {
         /* Here only the even bits are used; odd bits are RES0 */
@@ -482,7 +466,7 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
 
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
             *data = 0;
-            return true;
+            return MEMTX_OK;
         }
 
         /* Since our edge_trigger bitmap is one bit per irq, we only need
@@ -494,7 +478,7 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
         value = extract32(value, (irq & 0x1f) ? 16 : 0, 16);
         value = half_shuffle32(value) << 1;
         *data = value;
-        return true;
+        return MEMTX_OK;
     }
     case GICD_IGRPMODR ... GICD_IGRPMODR + 0xff:
     {
@@ -505,16 +489,16 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
              * security enabled and this is an NS access
              */
             *data = 0;
-            return true;
+            return MEMTX_OK;
         }
         /* RAZ/WI for SGIs, PPIs, unimplemented irqs */
         irq = (offset - GICD_IGRPMODR) * 8;
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
             *data = 0;
-            return true;
+            return MEMTX_OK;
         }
         *data = *gic_bmp_ptr32(s->grpmod, irq);
-        return true;
+        return MEMTX_OK;
     }
     case GICD_NSACR ... GICD_NSACR + 0xff:
     {
@@ -523,7 +507,7 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
 
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
             *data = 0;
-            return true;
+            return MEMTX_OK;
         }
 
         if ((s->gicd_ctlr & GICD_CTLR_DS) || !attrs.secure) {
@@ -531,17 +515,17 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
              * security enabled and this is an NS access
              */
             *data = 0;
-            return true;
+            return MEMTX_OK;
         }
 
         *data = s->gicd_nsacr[irq / 16];
-        return true;
+        return MEMTX_OK;
     }
     case GICD_CPENDSGIR ... GICD_CPENDSGIR + 0xf:
     case GICD_SPENDSGIR ... GICD_SPENDSGIR + 0xf:
         /* RAZ/WI since affinity routing is always enabled */
         *data = 0;
-        return true;
+        return MEMTX_OK;
     case GICD_IROUTER ... GICD_IROUTER + 0x1fdf:
     {
         uint64_t r;
@@ -553,26 +537,26 @@ static bool gicd_readl(GICv3State *s, hwaddr offset,
         } else {
             *data = (uint32_t)r;
         }
-        return true;
+        return MEMTX_OK;
     }
     case GICD_IDREGS ... GICD_IDREGS + 0x2f:
         /* ID registers */
         *data = gicv3_idreg(offset - GICD_IDREGS);
-        return true;
+        return MEMTX_OK;
     case GICD_SGIR:
         /* WO registers, return unknown value */
         qemu_log_mask(LOG_GUEST_ERROR,
                       "%s: invalid guest read from WO register at offset "
                       TARGET_FMT_plx "\n", __func__, offset);
         *data = 0;
-        return true;
+        return MEMTX_OK;
     default:
-        return false;
+        return MEMTX_ERROR;
     }
 }
 
-static bool gicd_writel(GICv3State *s, hwaddr offset,
-                        uint64_t value, MemTxAttrs attrs)
+static MemTxResult gicd_writel(GICv3State *s, hwaddr offset,
+                               uint64_t value, MemTxAttrs attrs)
 {
     /* Almost all GICv3 distributor registers are 32-bit. Note that
      * RO registers must ignore writes, not abort.
@@ -616,68 +600,68 @@ static bool gicd_writel(GICv3State *s, hwaddr offset,
             s->gicd_ctlr &= ~(GICD_CTLR_EN_GRP1S | GICD_CTLR_ARE_NS);
         }
         gicv3_full_update(s);
-        return true;
+        return MEMTX_OK;
     }
     case GICD_STATUSR:
         /* RAZ/WI for our implementation */
-        return true;
+        return MEMTX_OK;
     case GICD_IGROUPR ... GICD_IGROUPR + 0x7f:
     {
         int irq;
 
         if (!attrs.secure && !(s->gicd_ctlr & GICD_CTLR_DS)) {
-            return true;
+            return MEMTX_OK;
         }
         /* RAZ/WI for SGIs, PPIs, unimplemented irqs */
         irq = (offset - GICD_IGROUPR) * 8;
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
-            return true;
+            return MEMTX_OK;
         }
         *gic_bmp_ptr32(s->group, irq) = value;
         gicv3_update(s, irq, 32);
-        return true;
+        return MEMTX_OK;
     }
     case GICD_ISENABLER ... GICD_ISENABLER + 0x7f:
         gicd_write_set_bitmap_reg(s, attrs, s->enabled, NULL,
                                   offset - GICD_ISENABLER, value);
-        return true;
+        return MEMTX_OK;
     case GICD_ICENABLER ... GICD_ICENABLER + 0x7f:
         gicd_write_clear_bitmap_reg(s, attrs, s->enabled, NULL,
                                     offset - GICD_ICENABLER, value);
-        return true;
+        return MEMTX_OK;
     case GICD_ISPENDR ... GICD_ISPENDR + 0x7f:
         gicd_write_set_bitmap_reg(s, attrs, s->pending, mask_nsacr_ge1,
                                   offset - GICD_ISPENDR, value);
-        return true;
+        return MEMTX_OK;
     case GICD_ICPENDR ... GICD_ICPENDR + 0x7f:
         gicd_write_clear_bitmap_reg(s, attrs, s->pending, mask_nsacr_ge2,
                                     offset - GICD_ICPENDR, value);
-        return true;
+        return MEMTX_OK;
     case GICD_ISACTIVER ... GICD_ISACTIVER + 0x7f:
         gicd_write_set_bitmap_reg(s, attrs, s->active, NULL,
                                   offset - GICD_ISACTIVER, value);
-        return true;
+        return MEMTX_OK;
     case GICD_ICACTIVER ... GICD_ICACTIVER + 0x7f:
         gicd_write_clear_bitmap_reg(s, attrs, s->active, NULL,
                                     offset - GICD_ICACTIVER, value);
-        return true;
+        return MEMTX_OK;
     case GICD_IPRIORITYR ... GICD_IPRIORITYR + 0x3ff:
     {
         int i, irq = offset - GICD_IPRIORITYR;
 
         if (irq < GIC_INTERNAL || irq + 3 >= s->num_irq) {
-            return true;
+            return MEMTX_OK;
         }
 
         for (i = irq; i < irq + 4; i++, value >>= 8) {
             gicd_write_ipriorityr(s, attrs, i, value);
         }
         gicv3_update(s, irq, 4);
-        return true;
+        return MEMTX_OK;
     }
     case GICD_ITARGETSR ... GICD_ITARGETSR + 0x3ff:
         /* RAZ/WI since affinity routing is always enabled */
-        return true;
+        return MEMTX_OK;
     case GICD_ICFGR ... GICD_ICFGR + 0xff:
     {
         /* Here only the odd bits are used; even bits are RES0 */
@@ -685,7 +669,7 @@ static bool gicd_writel(GICv3State *s, hwaddr offset,
         uint32_t mask, oldval;
 
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
-            return true;
+            return MEMTX_OK;
         }
 
         /* Since our edge_trigger bitmap is one bit per irq, our input
@@ -703,7 +687,7 @@ static bool gicd_writel(GICv3State *s, hwaddr offset,
         oldval = *gic_bmp_ptr32(s->edge_trigger, (irq & ~0x1f));
         value = (oldval & ~mask) | (value & mask);
         *gic_bmp_ptr32(s->edge_trigger, irq & ~0x1f) = value;
-        return true;
+        return MEMTX_OK;
     }
     case GICD_IGRPMODR ... GICD_IGRPMODR + 0xff:
     {
@@ -713,16 +697,16 @@ static bool gicd_writel(GICv3State *s, hwaddr offset,
             /* RAZ/WI if security disabled, or if
              * security enabled and this is an NS access
              */
-            return true;
+            return MEMTX_OK;
         }
         /* RAZ/WI for SGIs, PPIs, unimplemented irqs */
         irq = (offset - GICD_IGRPMODR) * 8;
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
-            return true;
+            return MEMTX_OK;
         }
         *gic_bmp_ptr32(s->grpmod, irq) = value;
         gicv3_update(s, irq, 32);
-        return true;
+        return MEMTX_OK;
     }
     case GICD_NSACR ... GICD_NSACR + 0xff:
     {
@@ -730,41 +714,41 @@ static bool gicd_writel(GICv3State *s, hwaddr offset,
         int irq = (offset - GICD_NSACR) * 4;
 
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
-            return true;
+            return MEMTX_OK;
         }
 
         if ((s->gicd_ctlr & GICD_CTLR_DS) || !attrs.secure) {
             /* RAZ/WI if security disabled, or if
              * security enabled and this is an NS access
              */
-            return true;
+            return MEMTX_OK;
         }
 
         s->gicd_nsacr[irq / 16] = value;
         /* No update required as this only affects access permission checks */
-        return true;
+        return MEMTX_OK;
     }
     case GICD_SGIR:
         /* RES0 if affinity routing is enabled */
-        return true;
+        return MEMTX_OK;
     case GICD_CPENDSGIR ... GICD_CPENDSGIR + 0xf:
     case GICD_SPENDSGIR ... GICD_SPENDSGIR + 0xf:
         /* RAZ/WI since affinity routing is always enabled */
-        return true;
+        return MEMTX_OK;
     case GICD_IROUTER ... GICD_IROUTER + 0x1fdf:
     {
         uint64_t r;
         int irq = (offset - GICD_IROUTER) / 8;
 
         if (irq < GIC_INTERNAL || irq >= s->num_irq) {
-            return true;
+            return MEMTX_OK;
         }
 
         /* Write half of the 64-bit register */
         r = gicd_read_irouter(s, attrs, irq);
         r = deposit64(r, (offset & 7) ? 32 : 0, 32, value);
         gicd_write_irouter(s, attrs, irq, r);
-        return true;
+        return MEMTX_OK;
     }
     case GICD_IDREGS ... GICD_IDREGS + 0x2f:
     case GICD_TYPER:
@@ -773,14 +757,14 @@ static bool gicd_writel(GICv3State *s, hwaddr offset,
         qemu_log_mask(LOG_GUEST_ERROR,
                       "%s: invalid guest write to RO register at offset "
                       TARGET_FMT_plx "\n", __func__, offset);
-        return true;
+        return MEMTX_OK;
     default:
-        return false;
+        return MEMTX_ERROR;
     }
 }
 
-static bool gicd_writeq(GICv3State *s, hwaddr offset,
-                        uint64_t value, MemTxAttrs attrs)
+static MemTxResult gicd_writell(GICv3State *s, hwaddr offset,
+                                uint64_t value, MemTxAttrs attrs)
 {
     /* Our only 64-bit registers are GICD_IROUTER<n> */
     int irq;
@@ -789,14 +773,14 @@ static bool gicd_writeq(GICv3State *s, hwaddr offset,
     case GICD_IROUTER ... GICD_IROUTER + 0x1fdf:
         irq = (offset - GICD_IROUTER) / 8;
         gicd_write_irouter(s, attrs, irq, value);
-        return true;
+        return MEMTX_OK;
     default:
-        return false;
+        return MEMTX_ERROR;
     }
 }
 
-static bool gicd_readq(GICv3State *s, hwaddr offset,
-                       uint64_t *data, MemTxAttrs attrs)
+static MemTxResult gicd_readll(GICv3State *s, hwaddr offset,
+                               uint64_t *data, MemTxAttrs attrs)
 {
     /* Our only 64-bit registers are GICD_IROUTER<n> */
     int irq;
@@ -805,9 +789,9 @@ static bool gicd_readq(GICv3State *s, hwaddr offset,
     case GICD_IROUTER ... GICD_IROUTER + 0x1fdf:
         irq = (offset - GICD_IROUTER) / 8;
         *data = gicd_read_irouter(s, attrs, irq);
-        return true;
+        return MEMTX_OK;
     default:
-        return false;
+        return MEMTX_ERROR;
     }
 }
 
@@ -815,7 +799,7 @@ MemTxResult gicv3_dist_read(void *opaque, hwaddr offset, uint64_t *data,
                             unsigned size, MemTxAttrs attrs)
 {
     GICv3State *s = (GICv3State *)opaque;
-    bool r;
+    MemTxResult r;
 
     switch (size) {
     case 1:
@@ -828,14 +812,14 @@ MemTxResult gicv3_dist_read(void *opaque, hwaddr offset, uint64_t *data,
         r = gicd_readl(s, offset, data, attrs);
         break;
     case 8:
-        r = gicd_readq(s, offset, data, attrs);
+        r = gicd_readll(s, offset, data, attrs);
         break;
     default:
-        r = false;
+        r = MEMTX_ERROR;
         break;
     }
 
-    if (!r) {
+    if (r == MEMTX_ERROR) {
         qemu_log_mask(LOG_GUEST_ERROR,
                       "%s: invalid guest read at offset " TARGET_FMT_plx
                       "size %u\n", __func__, offset, size);
@@ -845,18 +829,19 @@ MemTxResult gicv3_dist_read(void *opaque, hwaddr offset, uint64_t *data,
          * trigger the guest-error logging but don't return it to
          * the caller, or we'll cause a spurious guest data abort.
          */
+        r = MEMTX_OK;
         *data = 0;
     } else {
         trace_gicv3_dist_read(offset, *data, size, attrs.secure);
     }
-    return MEMTX_OK;
+    return r;
 }
 
 MemTxResult gicv3_dist_write(void *opaque, hwaddr offset, uint64_t data,
                              unsigned size, MemTxAttrs attrs)
 {
     GICv3State *s = (GICv3State *)opaque;
-    bool r;
+    MemTxResult r;
 
     switch (size) {
     case 1:
@@ -869,14 +854,14 @@ MemTxResult gicv3_dist_write(void *opaque, hwaddr offset, uint64_t data,
         r = gicd_writel(s, offset, data, attrs);
         break;
     case 8:
-        r = gicd_writeq(s, offset, data, attrs);
+        r = gicd_writell(s, offset, data, attrs);
         break;
     default:
-        r = false;
+        r = MEMTX_ERROR;
         break;
     }
 
-    if (!r) {
+    if (r == MEMTX_ERROR) {
         qemu_log_mask(LOG_GUEST_ERROR,
                       "%s: invalid guest write at offset " TARGET_FMT_plx
                       "size %u\n", __func__, offset, size);
@@ -886,10 +871,11 @@ MemTxResult gicv3_dist_write(void *opaque, hwaddr offset, uint64_t data,
          * trigger the guest-error logging but don't return it to
          * the caller, or we'll cause a spurious guest data abort.
          */
+        r = MEMTX_OK;
     } else {
         trace_gicv3_dist_write(offset, data, size, attrs.secure);
     }
-    return MEMTX_OK;
+    return r;
 }
 
 void gicv3_dist_set_irq(GICv3State *s, int irq, int level)

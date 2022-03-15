@@ -896,8 +896,7 @@ out:
 }
 
 static int coroutine_fn curl_co_preadv(BlockDriverState *bs,
-        int64_t offset, int64_t bytes, QEMUIOVector *qiov,
-        BdrvRequestFlags flags)
+        uint64_t offset, uint64_t bytes, QEMUIOVector *qiov, int flags)
 {
     CURLAIOCB acb = {
         .co = qemu_coroutine_self(),

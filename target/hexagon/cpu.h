@@ -32,7 +32,6 @@ typedef struct SystemState system_t;
 #include "hmx/hmx.h"
 #include "dma/dma.h"
 
-extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
 #include "cpu_helper.h"
 #include "reg_fields.h"
@@ -622,6 +621,7 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 #endif
 }
 
+
 #ifndef CONFIG_USER_ONLY
 
 /*
@@ -702,6 +702,7 @@ void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
 
 uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg);
 #endif
+
 
 void hexagon_translate_init(void);
 void hexagon_cpu_soft_reset(CPUHexagonState *env);

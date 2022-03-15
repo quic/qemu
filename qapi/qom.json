@@ -559,8 +559,10 @@
 #                                        for ramblock-id. Disable this for 4.0
 #                                        machine types or older to allow
 #                                        migration with newer QEMU versions.
-#                                        (default: false generally,
-#                                        but true for machine types <= 4.0)
+#                                        This option is considered stable
+#                                        despite the x- prefix. (default:
+#                                        false generally, but true for machine
+#                                        types <= 4.0)
 #
 # Note: prealloc=true and reserve=false cannot be set at the same time. With
 #       reserve=true, the behavior depends on the operating system: for example,
@@ -616,7 +618,7 @@
   'data': { '*align': 'size',
             '*discard-data': 'bool',
             'mem-path': 'str',
-            '*pmem': { 'type': 'bool', 'if': 'CONFIG_LIBPMEM' },
+            '*pmem': { 'type': 'bool', 'if': 'defined(CONFIG_LIBPMEM)' },
             '*readonly': 'bool' } }
 
 ##
@@ -644,23 +646,6 @@
   'data': { '*hugetlb': 'bool',
             '*hugetlbsize': 'size',
             '*seal': 'bool' } }
-
-##
-# @MemoryBackendEpcProperties:
-#
-# Properties for memory-backend-epc objects.
-#
-# The @share boolean option is true by default with epc
-#
-# The @merge boolean option is false by default with epc
-#
-# The @dump boolean option is false by default with epc
-#
-# Since: 6.2
-##
-{ 'struct': 'MemoryBackendEpcProperties',
-  'base': 'MemoryBackendProperties',
-  'data': {} }
 
 ##
 # @PrManagerHelperProperties:
@@ -769,10 +754,6 @@
 # @reduced-phys-bits: number of bits in physical addresses that become
 #                     unavailable when SEV is enabled
 #
-# @kernel-hashes: if true, add hashes of kernel/initrd/cmdline to a
-#                 designated guest firmware page for measured boot
-#                 with -kernel (default: false) (since 6.2)
-#
 # Since: 2.12
 ##
 { 'struct': 'SevGuestProperties',
@@ -782,14 +763,10 @@
             '*policy': 'uint32',
             '*handle': 'uint32',
             '*cbitpos': 'uint32',
-            'reduced-phys-bits': 'uint32',
-            '*kernel-hashes': 'bool' } }
+            'reduced-phys-bits': 'uint32' } }
 
 ##
 # @ObjectType:
-#
-# Features:
-# @unstable: Member @x-remote-object is experimental.
 #
 # Since: 6.0
 ##
@@ -800,13 +777,12 @@
     'authz-pam',
     'authz-simple',
     'can-bus',
-    { 'name': 'can-host-socketcan',
-      'if': 'CONFIG_LINUX' },
+    'can-host-socketcan',
     'colo-compare',
     'cryptodev-backend',
     'cryptodev-backend-builtin',
     { 'name': 'cryptodev-vhost-user',
-      'if': 'CONFIG_VHOST_CRYPTO' },
+      'if': 'defined(CONFIG_VHOST_CRYPTO)' },
     'dbus-vmstate',
     'filter-buffer',
     'filter-dump',
@@ -815,26 +791,20 @@
     'filter-replay',
     'filter-rewriter',
     'input-barrier',
-    { 'name': 'input-linux',
-      'if': 'CONFIG_LINUX' },
+    'input-linux',
     'iothread',
-    { 'name': 'memory-backend-epc',
-      'if': 'CONFIG_LINUX' },
     'memory-backend-file',
     { 'name': 'memory-backend-memfd',
-      'if': 'CONFIG_LINUX' },
+      'if': 'defined(CONFIG_LINUX)' },
     'memory-backend-ram',
     'pef-guest',
-    { 'name': 'pr-manager-helper',
-      'if': 'CONFIG_LINUX' },
+    'pr-manager-helper',
     'qtest',
     'rng-builtin',
     'rng-egd',
-    { 'name': 'rng-random',
-      'if': 'CONFIG_POSIX' },
+    'rng-random',
     'secret',
-    { 'name': 'secret_keyring',
-      'if': 'CONFIG_SECRET_KEYRING' },
+    'secret_keyring',
     'sev-guest',
     's390-pv-guest',
     'throttle-group',
@@ -842,7 +812,7 @@
     'tls-creds-psk',
     'tls-creds-x509',
     'tls-cipher-suites',
-    { 'name': 'x-remote-object', 'features': [ 'unstable' ] }
+    'x-remote-object'
   ] }
 
 ##
@@ -865,13 +835,12 @@
       'authz-listfile':             'AuthZListFileProperties',
       'authz-pam':                  'AuthZPAMProperties',
       'authz-simple':               'AuthZSimpleProperties',
-      'can-host-socketcan':         { 'type': 'CanHostSocketcanProperties',
-                                      'if': 'CONFIG_LINUX' },
+      'can-host-socketcan':         'CanHostSocketcanProperties',
       'colo-compare':               'ColoCompareProperties',
       'cryptodev-backend':          'CryptodevBackendProperties',
       'cryptodev-backend-builtin':  'CryptodevBackendProperties',
       'cryptodev-vhost-user':       { 'type': 'CryptodevVhostUserProperties',
-                                      'if': 'CONFIG_VHOST_CRYPTO' },
+                                      'if': 'defined(CONFIG_VHOST_CRYPTO)' },
       'dbus-vmstate':               'DBusVMStateProperties',
       'filter-buffer':              'FilterBufferProperties',
       'filter-dump':                'FilterDumpProperties',
@@ -880,25 +849,19 @@
       'filter-replay':              'NetfilterProperties',
       'filter-rewriter':            'FilterRewriterProperties',
       'input-barrier':              'InputBarrierProperties',
-      'input-linux':                { 'type': 'InputLinuxProperties',
-                                      'if': 'CONFIG_LINUX' },
+      'input-linux':                'InputLinuxProperties',
       'iothread':                   'IothreadProperties',
-      'memory-backend-epc':         { 'type': 'MemoryBackendEpcProperties',
-                                      'if': 'CONFIG_LINUX' },
       'memory-backend-file':        'MemoryBackendFileProperties',
       'memory-backend-memfd':       { 'type': 'MemoryBackendMemfdProperties',
-                                      'if': 'CONFIG_LINUX' },
+                                      'if': 'defined(CONFIG_LINUX)' },
       'memory-backend-ram':         'MemoryBackendProperties',
-      'pr-manager-helper':          { 'type': 'PrManagerHelperProperties',
-                                      'if': 'CONFIG_LINUX' },
+      'pr-manager-helper':          'PrManagerHelperProperties',
       'qtest':                      'QtestProperties',
       'rng-builtin':                'RngProperties',
       'rng-egd':                    'RngEgdProperties',
-      'rng-random':                 { 'type': 'RngRandomProperties',
-                                      'if': 'CONFIG_POSIX' },
+      'rng-random':                 'RngRandomProperties',
       'secret':                     'SecretProperties',
-      'secret_keyring':             { 'type': 'SecretKeyringProperties',
-                                      'if': 'CONFIG_SECRET_KEYRING' },
+      'secret_keyring':             'SecretKeyringProperties',
       'sev-guest':                  'SevGuestProperties',
       'throttle-group':             'ThrottleGroupProperties',
       'tls-creds-anon':             'TlsCredsAnonProperties',

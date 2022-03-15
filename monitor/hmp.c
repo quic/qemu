@@ -26,7 +26,6 @@
 #include <dirent.h>
 #include "hw/qdev-core.h"
 #include "monitor-internal.h"
-#include "monitor/hmp.h"
 #include "qapi/error.h"
 #include "qapi/qmp/qdict.h"
 #include "qapi/qmp/qnum.h"
@@ -1062,31 +1061,6 @@ fail:
     return NULL;
 }
 
-static void hmp_info_human_readable_text(Monitor *mon,
-                                         HumanReadableText *(*handler)(Error **))
-{
-    Error *err = NULL;
-    g_autoptr(HumanReadableText) info = handler(&err);
-
-    if (hmp_handle_error(mon, err)) {
-        return;
-    }
-
-    monitor_printf(mon, "%s", info->human_readable_text);
-}
-
-static void handle_hmp_command_exec(Monitor *mon,
-                                    const HMPCommand *cmd,
-                                    QDict *qdict)
-{
-    if (cmd->cmd_info_hrt) {
-        hmp_info_human_readable_text(mon,
-                                     cmd->cmd_info_hrt);
-    } else {
-        cmd->cmd(mon, qdict);
-    }
-}
-
 typedef struct HandleHmpCommandCo {
     Monitor *mon;
     const HMPCommand *cmd;
@@ -1097,7 +1071,7 @@ typedef struct HandleHmpCommandCo {
 static void handle_hmp_command_co(void *opaque)
 {
     HandleHmpCommandCo *data = opaque;
-    handle_hmp_command_exec(data->mon, data->cmd, data->qdict);
+    data->cmd->cmd(data->mon, data->qdict);
     monitor_set_cur(qemu_coroutine_self(), NULL);
     data->done = true;
 }
@@ -1115,7 +1089,7 @@ void handle_hmp_command(MonitorHMP *mon, const char *cmdline)
         return;
     }
 
-    if (!cmd->cmd && !cmd->cmd_info_hrt) {
+    if (!cmd->cmd) {
         /* FIXME: is it useful to try autoload modules here ??? */
         monitor_printf(&mon->common, "Command \"%.*s\" is not available.\n",
                        (int)(cmdline - cmd_start), cmd_start);
@@ -1135,7 +1109,7 @@ void handle_hmp_command(MonitorHMP *mon, const char *cmdline)
     if (!cmd->coroutine) {
         /* old_mon is non-NULL when called from qmp_human_monitor_command() */
         Monitor *old_mon = monitor_set_cur(qemu_coroutine_self(), &mon->common);
-        handle_hmp_command_exec(&mon->common, cmd, qdict);
+        cmd->cmd(&mon->common, qdict);
         monitor_set_cur(qemu_coroutine_self(), old_mon);
     } else {
         HandleHmpCommandCo data = {

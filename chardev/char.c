@@ -241,15 +241,18 @@ static void qemu_char_open(Chardev *chr, ChardevBackend *backend,
     ChardevCommon *common = backend ? backend->u.null.data : NULL;
 
     if (common && common->has_logfile) {
-        int flags = O_WRONLY;
+        int flags = O_WRONLY | O_CREAT;
         if (common->has_logappend &&
             common->logappend) {
             flags |= O_APPEND;
         } else {
             flags |= O_TRUNC;
         }
-        chr->logfd = qemu_create(common->logfile, flags, 0666, errp);
+        chr->logfd = qemu_open_old(common->logfile, flags, 0666);
         if (chr->logfd < 0) {
+            error_setg_errno(errp, errno,
+                             "Unable to open logfile %s",
+                             common->logfile);
             return;
         }
     }

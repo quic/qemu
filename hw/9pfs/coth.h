@@ -51,9 +51,7 @@
          */                                                             \
         qemu_coroutine_yield();                                         \
         qemu_bh_delete(co_bh);                                          \
-        do {                                                            \
-            code_block;                                                 \
-        } while (0);                                                    \
+        code_block;                                                     \
         /* re-enter back to qemu thread */                              \
         qemu_coroutine_yield();                                         \
     } while (0)

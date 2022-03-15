@@ -19,9 +19,7 @@
 
 #include "qemu/osdep.h"
 #include "qemu.h"
-#include "user-internals.h"
 #include "cpu_loop-common.h"
-#include "signal-common.h"
 
 static void xtensa_rfw(CPUXtensaState *env)
 {
@@ -223,6 +221,15 @@ void cpu_loop(CPUXtensaState *env)
                 info.si_errno = 0;
                 info.si_code = TARGET_FPE_INTDIV;
                 info._sifields._sigfault._addr = env->sregs[EPC1];
+                queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
+                break;
+
+            case LOAD_PROHIBITED_CAUSE:
+            case STORE_PROHIBITED_CAUSE:
+                info.si_signo = TARGET_SIGSEGV;
+                info.si_errno = 0;
+                info.si_code = TARGET_SEGV_ACCERR;
+                info._sifields._sigfault._addr = env->sregs[EXCVADDR];
                 queue_signal(env, info.si_signo, QEMU_SI_FAULT, &info);
                 break;
 

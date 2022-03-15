@@ -61,12 +61,6 @@
     } while (0)
 
 
-/* Anonymous BlockBackend for empty drive */
-static BlockBackend *blk_create_empty_drive(void)
-{
-    return blk_new(qemu_get_aio_context(), 0, BLK_PERM_ALL);
-}
-
 /********************************************************/
 /* qdev floppy bus                                      */
 
@@ -83,7 +77,7 @@ static const TypeInfo floppy_bus_info = {
 
 static void floppy_bus_create(FDCtrl *fdc, FloppyBus *bus, DeviceState *dev)
 {
-    qbus_init(bus, sizeof(FloppyBus), TYPE_FLOPPY_BUS, dev, NULL);
+    qbus_create_inplace(bus, sizeof(FloppyBus), TYPE_FLOPPY_BUS, dev, NULL);
     bus->fdc = fdc;
 }
 
@@ -492,7 +486,8 @@ static void floppy_drive_realize(DeviceState *qdev, Error **errp)
     }
 
     if (!dev->conf.blk) {
-        dev->conf.blk = blk_create_empty_drive();
+        /* Anonymous BlockBackend for an empty drive */
+        dev->conf.blk = blk_new(qemu_get_aio_context(), 0, BLK_PERM_ALL);
         ret = blk_attach_dev(dev->conf.blk, qdev);
         assert(ret == 0);
 
@@ -1166,19 +1161,7 @@ static FDrive *get_drv(FDCtrl *fdctrl, int unit)
 
 static FDrive *get_cur_drv(FDCtrl *fdctrl)
 {
-    FDrive *cur_drv = get_drv(fdctrl, fdctrl->cur_drv);
-
-    if (!cur_drv->blk) {
-        /*
-         * Kludge: empty drive line selected. Create an anonymous
-         * BlockBackend to avoid NULL deref with various BlockBackend
-         * API calls within this model (CVE-2021-20196).
-         * Due to the controller QOM model limitations, we don't
-         * attach the created to the controller device.
-         */
-        cur_drv->blk = blk_create_empty_drive();
-    }
-    return cur_drv;
+    return get_drv(fdctrl, fdctrl->cur_drv);
 }
 
 /* Status A register : 0x00 (read-only) */

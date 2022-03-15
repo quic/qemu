@@ -152,7 +152,7 @@ static void primary_vm_do_failover(void)
      * kick COLO thread which might wait at
      * qemu_sem_wait(&s->colo_checkpoint_sem).
      */
-    colo_checkpoint_notify(s);
+    colo_checkpoint_notify(migrate_get_current());
 
     /*
      * Wake up COLO thread which may blocked in recv() or send(),
@@ -205,7 +205,7 @@ void colo_do_failover(void)
         vm_stop_force_state(RUN_STATE_COLO);
     }
 
-    switch (last_colo_mode = get_colo_mode()) {
+    switch (get_colo_mode()) {
     case COLO_MODE_PRIMARY:
         primary_vm_do_failover();
         break;
@@ -459,10 +459,6 @@ static int colo_do_checkpoint_transaction(MigrationState *s,
     if (ret < 0) {
         goto out;
     }
-
-    if (migrate_auto_converge()) {
-        mig_throttle_counter_reset();
-    }
     /*
      * Only save VM's live state, which not including device state.
      * TODO: We may need a timeout mechanism to prevent COLO process
@@ -534,7 +530,8 @@ static void colo_process_checkpoint(MigrationState *s)
     Error *local_err = NULL;
     int ret;
 
-    if (get_colo_mode() != COLO_MODE_PRIMARY) {
+    last_colo_mode = get_colo_mode();
+    if (last_colo_mode != COLO_MODE_PRIMARY) {
         error_report("COLO mode must be COLO_MODE_PRIMARY");
         return;
     }
@@ -643,7 +640,6 @@ out:
      */
     if (s->rp_state.from_dst_file) {
         qemu_fclose(s->rp_state.from_dst_file);
-        s->rp_state.from_dst_file = NULL;
     }
 }
 
@@ -833,7 +829,8 @@ void *colo_process_incoming_thread(void *opaque)
     migrate_set_state(&mis->state, MIGRATION_STATUS_ACTIVE,
                       MIGRATION_STATUS_COLO);
 
-    if (get_colo_mode() != COLO_MODE_SECONDARY) {
+    last_colo_mode = get_colo_mode();
+    if (last_colo_mode != COLO_MODE_SECONDARY) {
         error_report("COLO mode must be COLO_MODE_SECONDARY");
         return NULL;
     }
@@ -921,6 +918,11 @@ out:
     /* Hope this not to be too long to loop here */
     qemu_sem_wait(&mis->colo_incoming_sem);
     qemu_sem_destroy(&mis->colo_incoming_sem);
+    /* Must be called after failover BH is completed */
+    if (mis->to_src_file) {
+        qemu_fclose(mis->to_src_file);
+        mis->to_src_file = NULL;
+    }
 
     rcu_unregister_thread();
     return NULL;

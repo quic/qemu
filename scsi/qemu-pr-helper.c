@@ -1044,7 +1044,10 @@ int main(int argc, char **argv)
         }
     }
 
-    qemu_init_main_loop(&error_fatal);
+    if (qemu_init_main_loop(&local_err)) {
+        error_report_err(local_err);
+        exit(EXIT_FAILURE);
+    }
 
     server_watch = qio_channel_add_watch(QIO_CHANNEL(server_ioc),
                                          G_IO_IN,
@@ -1058,8 +1061,10 @@ int main(int argc, char **argv)
         }
     }
 
-    if (daemonize || pidfile_specified) {
-        qemu_write_pidfile(pidfile, &error_fatal);
+    if ((daemonize || pidfile_specified) &&
+        !qemu_write_pidfile(pidfile, &local_err)) {
+        error_report_err(local_err);
+        exit(EXIT_FAILURE);
     }
 
 #ifdef CONFIG_LIBCAP_NG

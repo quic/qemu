@@ -26,8 +26,6 @@
 #include "exec/ramlist.h"
 #include "exec/ramblock.h"
 
-extern uint64_t total_dirty_pages;
-
 /**
  * clear_bmap_size: calculate clear bitmap size
  *
@@ -371,14 +369,10 @@ static inline void cpu_physical_memory_set_dirty_lebitmap(unsigned long *bitmap,
 
                     qatomic_or(&blocks[DIRTY_MEMORY_VGA][idx][offset], temp);
 
-                    if (global_dirty_tracking) {
+                    if (global_dirty_log) {
                         qatomic_or(
                                 &blocks[DIRTY_MEMORY_MIGRATION][idx][offset],
                                 temp);
-                        if (unlikely(
-                            global_dirty_tracking & GLOBAL_DIRTY_DIRTY_RATE)) {
-                            total_dirty_pages += ctpopl(temp);
-                        }
                     }
 
                     if (tcg_enabled()) {
@@ -398,7 +392,7 @@ static inline void cpu_physical_memory_set_dirty_lebitmap(unsigned long *bitmap,
     } else {
         uint8_t clients = tcg_enabled() ? DIRTY_CLIENTS_ALL : DIRTY_CLIENTS_NOCODE;
 
-        if (!global_dirty_tracking) {
+        if (!global_dirty_log) {
             clients &= ~(1 << DIRTY_MEMORY_MIGRATION);
         }
 
@@ -409,9 +403,6 @@ static inline void cpu_physical_memory_set_dirty_lebitmap(unsigned long *bitmap,
         for (i = 0; i < len; i++) {
             if (bitmap[i] != 0) {
                 c = leul_to_cpu(bitmap[i]);
-                if (unlikely(global_dirty_tracking & GLOBAL_DIRTY_DIRTY_RATE)) {
-                    total_dirty_pages += ctpopl(c);
-                }
                 do {
                     j = ctzl(c);
                     c &= ~(1ul << j);

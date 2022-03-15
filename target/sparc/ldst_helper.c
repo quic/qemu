@@ -27,6 +27,7 @@
 
 //#define DEBUG_MMU
 //#define DEBUG_MXCC
+//#define DEBUG_UNALIGNED
 //#define DEBUG_UNASSIGNED
 //#define DEBUG_ASI
 //#define DEBUG_CACHE_CONTROL
@@ -363,6 +364,10 @@ static void do_check_align(CPUSPARCState *env, target_ulong addr,
                            uint32_t align, uintptr_t ra)
 {
     if (addr & align) {
+#ifdef DEBUG_UNALIGNED
+        printf("Unaligned access to 0x" TARGET_FMT_lx " from 0x" TARGET_FMT_lx
+               "\n", addr, env->pc);
+#endif
         cpu_raise_exception_ra(env, TT_UNALIGNED, ra);
     }
 }
@@ -1313,7 +1318,7 @@ uint64_t helper_ld_asi(CPUSPARCState *env, target_ulong addr,
     case ASI_SNF:
     case ASI_SNFL:
         {
-            MemOpIdx oi;
+            TCGMemOpIdx oi;
             int idx = (env->pstate & PS_PRIV
                        ? (asi & 1 ? MMU_KERNEL_SECONDARY_IDX : MMU_KERNEL_IDX)
                        : (asi & 1 ? MMU_USER_SECONDARY_IDX : MMU_USER_IDX));
@@ -1328,27 +1333,27 @@ uint64_t helper_ld_asi(CPUSPARCState *env, target_ulong addr,
             oi = make_memop_idx(memop, idx);
             switch (size) {
             case 1:
-                ret = cpu_ldb_mmu(env, addr, oi, GETPC());
+                ret = helper_ret_ldub_mmu(env, addr, oi, GETPC());
                 break;
             case 2:
                 if (asi & 8) {
-                    ret = cpu_ldw_le_mmu(env, addr, oi, GETPC());
+                    ret = helper_le_lduw_mmu(env, addr, oi, GETPC());
                 } else {
-                    ret = cpu_ldw_be_mmu(env, addr, oi, GETPC());
+                    ret = helper_be_lduw_mmu(env, addr, oi, GETPC());
                 }
                 break;
             case 4:
                 if (asi & 8) {
-                    ret = cpu_ldl_le_mmu(env, addr, oi, GETPC());
+                    ret = helper_le_ldul_mmu(env, addr, oi, GETPC());
                 } else {
-                    ret = cpu_ldl_be_mmu(env, addr, oi, GETPC());
+                    ret = helper_be_ldul_mmu(env, addr, oi, GETPC());
                 }
                 break;
             case 8:
                 if (asi & 8) {
-                    ret = cpu_ldq_le_mmu(env, addr, oi, GETPC());
+                    ret = helper_le_ldq_mmu(env, addr, oi, GETPC());
                 } else {
-                    ret = cpu_ldq_be_mmu(env, addr, oi, GETPC());
+                    ret = helper_be_ldq_mmu(env, addr, oi, GETPC());
                 }
                 break;
             default:
@@ -1951,5 +1956,22 @@ void sparc_cpu_do_transaction_failed(CPUState *cs, hwaddr physaddr,
 
     sparc_raise_mmu_fault(cs, physaddr, is_write, is_exec,
                           is_asi, size, retaddr);
+}
+#endif
+
+#if !defined(CONFIG_USER_ONLY)
+void QEMU_NORETURN sparc_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
+                                                 MMUAccessType access_type,
+                                                 int mmu_idx,
+                                                 uintptr_t retaddr)
+{
+    SPARCCPU *cpu = SPARC_CPU(cs);
+    CPUSPARCState *env = &cpu->env;
+
+#ifdef DEBUG_UNALIGNED
+    printf("Unaligned access to 0x" TARGET_FMT_lx " from 0x" TARGET_FMT_lx
+           "\n", addr, env->pc);
+#endif
+    cpu_raise_exception_ra(env, TT_UNALIGNED, retaddr);
 }
 #endif

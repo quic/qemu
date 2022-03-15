@@ -539,11 +539,12 @@ other partial disk images on top of a base image to reconstruct a full backup
 from the point in time at which the incremental backup was issued.
 
 The "Push Model" here references the fact that QEMU is "pushing" the modified
-blocks out to a destination. We will be using the  `blockdev-backup
-<qemu-qmp-ref.html#index-blockdev_002dbackup>`_ QMP command to create both
+blocks out to a destination. We will be using the `drive-backup
+<qemu-qmp-ref.html#index-drive_002dbackup>`_ and `blockdev-backup
+<qemu-qmp-ref.html#index-blockdev_002dbackup>`_ QMP commands to create both
 full and incremental backups.
 
-The command is a background job, which has its own QMP API for querying and
+Both of these commands are jobs, which have their own QMP API for querying and
 management documented in `Background jobs
 <qemu-qmp-ref.html#Background-jobs>`_.
 
@@ -555,10 +556,6 @@ create a new incremental backup chain attached to a drive.
 
 This example creates a new, full backup of "drive0" and accompanies it with a
 new, empty bitmap that records writes from this point in time forward.
-
-The target can be created with the help of `blockdev-add
-<qemu-qmp-ref.html#index-blockdev_002dadd>`_ or `blockdev-create
-<qemu-qmp-ref.html#index-blockdev_002dcreate>`_ command.
 
 .. note:: Any new writes that happen after this command is issued, even while
           the backup job runs, will be written locally and not to the backup
@@ -579,11 +576,12 @@ The target can be created with the help of `blockdev-add
              }
            },
            {
-             "type": "blockdev-backup",
+             "type": "drive-backup",
              "data": {
                "device": "drive0",
-               "target": "target0",
-               "sync": "full"
+               "target": "/path/to/drive0.full.qcow2",
+               "sync": "full",
+               "format": "qcow2"
              }
            }
          ]
@@ -666,11 +664,12 @@ use a transaction to reset the bitmap while making a new full backup:
            }
          },
          {
-           "type": "blockdev-backup",
+           "type": "drive-backup",
            "data": {
              "device": "drive0",
-             "target": "target0",
-             "sync": "full"
+             "target": "/path/to/drive0.new_full.qcow2",
+             "sync": "full",
+             "format": "qcow2"
            }
          }
        ]
@@ -729,35 +728,19 @@ Example: First Incremental Backup
        $ qemu-img create -f qcow2 drive0.inc0.qcow2 \
          -b drive0.full.qcow2 -F qcow2
 
-#. Add target block node:
-
-   .. code-block:: QMP
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target0",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive0.inc0.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
 #. Issue an incremental backup command:
 
    .. code-block:: QMP
 
     -> {
-         "execute": "blockdev-backup",
+         "execute": "drive-backup",
          "arguments": {
            "device": "drive0",
            "bitmap": "bitmap0",
-           "target": "target0",
-           "sync": "incremental"
+           "target": "drive0.inc0.qcow2",
+           "format": "qcow2",
+           "sync": "incremental",
+           "mode": "existing"
          }
        }
 
@@ -802,36 +785,20 @@ Example: Second Incremental Backup
        $ qemu-img create -f qcow2 drive0.inc1.qcow2 \
          -b drive0.inc0.qcow2 -F qcow2
 
-#. Add target block node:
-
-   .. code-block:: QMP
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target0",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive0.inc1.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
 #. Issue a new incremental backup command. The only difference here is that we
    have changed the target image below.
 
    .. code-block:: QMP
 
     -> {
-         "execute": "blockdev-backup",
+         "execute": "drive-backup",
          "arguments": {
            "device": "drive0",
            "bitmap": "bitmap0",
-           "target": "target0",
-           "sync": "incremental"
+           "target": "drive0.inc1.qcow2",
+           "format": "qcow2",
+           "sync": "incremental",
+           "mode": "existing"
          }
        }
 
@@ -899,36 +866,20 @@ image:
              file for you, but you lose control over format options like
              compatibility and preallocation presets.
 
-#. Add target block node:
-
-   .. code-block:: QMP
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target0",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive0.inc2.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
 #. Issue a new incremental backup command. Apart from the new destination
    image, there is no difference from the last two examples.
 
    .. code-block:: QMP
 
     -> {
-         "execute": "blockdev-backup",
+         "execute": "drive-backup",
          "arguments": {
            "device": "drive0",
            "bitmap": "bitmap0",
-           "target": "target0",
-           "sync": "incremental"
+           "target": "drive0.inc2.qcow2",
+           "format": "qcow2",
+           "sync": "incremental",
+           "mode": "existing"
          }
        }
 
@@ -979,38 +930,6 @@ point in time.
     $ qemu-img create -f qcow2 drive0.full.qcow2 64G
     $ qemu-img create -f qcow2 drive1.full.qcow2 64G
 
-#. Add target block nodes:
-
-   .. code-block:: QMP
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target0",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive0.full.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target1",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive1.full.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
 #. Create a full (anchor) backup for each drive, with accompanying bitmaps:
 
    .. code-block:: QMP
@@ -1034,19 +953,21 @@ point in time.
                }
              },
              {
-               "type": "blockdev-backup",
+               "type": "drive-backup",
                "data": {
                  "device": "drive0",
-                 "target": "target0",
-                 "sync": "full"
+                 "target": "/path/to/drive0.full.qcow2",
+                 "sync": "full",
+                 "format": "qcow2"
                }
              },
              {
-               "type": "blockdev-backup",
+               "type": "drive-backup",
                "data": {
                  "device": "drive1",
-                 "target": "target1",
-                 "sync": "full"
+                 "target": "/path/to/drive1.full.qcow2",
+                 "sync": "full",
+                 "format": "qcow2"
                }
              }
            ]
@@ -1095,38 +1016,6 @@ point in time.
      $ qemu-img create -f qcow2 drive1.inc0.qcow2 \
        -b drive1.full.qcow2 -F qcow2
 
-#. Add target block nodes:
-
-   .. code-block:: QMP
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target0",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive0.inc0.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target1",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive1.inc0.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
 #. Issue a multi-drive incremental push backup transaction:
 
    .. code-block:: QMP
@@ -1136,21 +1025,25 @@ point in time.
          "arguments": {
            "actions": [
              {
-               "type": "blockev-backup",
+               "type": "drive-backup",
                "data": {
                  "device": "drive0",
                  "bitmap": "bitmap0",
+                 "format": "qcow2",
+                 "mode": "existing",
                  "sync": "incremental",
-                 "target": "target0"
+                 "target": "drive0.inc0.qcow2"
                }
              },
              {
-               "type": "blockdev-backup",
+               "type": "drive-backup",
                "data": {
                  "device": "drive1",
                  "bitmap": "bitmap0",
+                 "format": "qcow2",
+                 "mode": "existing",
                  "sync": "incremental",
-                 "target": "target1"
+                 "target": "drive1.inc0.qcow2"
                }
              },
            ]
@@ -1226,35 +1119,19 @@ described above. This example demonstrates the single-job failure case:
        $ qemu-img create -f qcow2 drive0.inc0.qcow2 \
          -b drive0.full.qcow2 -F qcow2
 
-#. Add target block node:
-
-   .. code-block:: QMP
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target0",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive0.inc0.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
 #. Attempt to create an incremental backup via QMP:
 
    .. code-block:: QMP
 
     -> {
-         "execute": "blockdev-backup",
+         "execute": "drive-backup",
          "arguments": {
            "device": "drive0",
            "bitmap": "bitmap0",
-           "target": "target0",
-           "sync": "incremental"
+           "target": "drive0.inc0.qcow2",
+           "format": "qcow2",
+           "sync": "incremental",
+           "mode": "existing"
          }
        }
 
@@ -1287,19 +1164,6 @@ described above. This example demonstrates the single-job failure case:
          "event": "BLOCK_JOB_COMPLETED"
        }
 
-#. Remove target node:
-
-   .. code-block:: QMP
-
-    -> {
-         "execute": "blockdev-del",
-         "arguments": {
-           "node-name": "target0",
-         }
-       }
-
-    <- { "return": {} }
-
 #. Delete the failed image, and re-create it.
 
    .. code:: bash
@@ -1308,36 +1172,20 @@ described above. This example demonstrates the single-job failure case:
        $ qemu-img create -f qcow2 drive0.inc0.qcow2 \
          -b drive0.full.qcow2 -F qcow2
 
-#. Add target block node:
-
-   .. code-block:: QMP
-
-    -> {
-         "execute": "blockdev-add",
-         "arguments": {
-           "node-name": "target0",
-           "driver": "qcow2",
-           "file": {
-             "driver": "file",
-             "filename": "drive0.inc0.qcow2"
-           }
-         }
-       }
-
-    <- { "return": {} }
-
 #. Retry the command after fixing the underlying problem, such as
    freeing up space on the backup volume:
 
    .. code-block:: QMP
 
     -> {
-         "execute": "blockdev-backup",
+         "execute": "drive-backup",
          "arguments": {
            "device": "drive0",
            "bitmap": "bitmap0",
-           "target": "target0",
-           "sync": "incremental"
+           "target": "drive0.inc0.qcow2",
+           "format": "qcow2",
+           "sync": "incremental",
+           "mode": "existing"
          }
        }
 
@@ -1362,8 +1210,7 @@ described above. This example demonstrates the single-job failure case:
 Example: Partial Transactional Failures
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-QMP commands like `blockdev-backup
-<qemu-qmp-ref.html#index-blockdev_002dbackup>`_
+QMP commands like `drive-backup <qemu-qmp-ref.html#index-drive_002dbackup>`_
 conceptually only start a job, and so transactions containing these commands
 may succeed even if the job it created later fails. This might have surprising
 interactions with notions of how a "transaction" ought to behave.
@@ -1393,21 +1240,25 @@ and one succeeds:
          "arguments": {
            "actions": [
            {
-             "type": "blockdev-backup",
+             "type": "drive-backup",
              "data": {
                "device": "drive0",
                "bitmap": "bitmap0",
+               "format": "qcow2",
+               "mode": "existing",
                "sync": "incremental",
-               "target": "target0"
+               "target": "drive0.inc0.qcow2"
              }
            },
            {
-             "type": "blockdev-backup",
+             "type": "drive-backup",
              "data": {
                "device": "drive1",
                "bitmap": "bitmap0",
+               "format": "qcow2",
+               "mode": "existing",
                "sync": "incremental",
-               "target": "target1"
+               "target": "drive1.inc0.qcow2"
              }
            }]
          }
@@ -1524,21 +1375,25 @@ applied:
            },
            "actions": [
            {
-             "type": "blockdev-backup",
+             "type": "drive-backup",
              "data": {
                "device": "drive0",
                "bitmap": "bitmap0",
+               "format": "qcow2",
+               "mode": "existing",
                "sync": "incremental",
-               "target": "target0"
+               "target": "drive0.inc0.qcow2"
              }
            },
            {
-             "type": "blockdev-backup",
+             "type": "drive-backup",
              "data": {
                "device": "drive1",
                "bitmap": "bitmap0",
+               "format": "qcow2",
+               "mode": "existing",
                "sync": "incremental",
-               "target": "target1"
+               "target": "drive1.inc0.qcow2"
              }
            }]
          }

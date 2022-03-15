@@ -46,18 +46,25 @@ static void object_set_properties_from_qdict(Object *obj, const QDict *qdict,
                                              Visitor *v, Error **errp)
 {
     const QDictEntry *e;
+    Error *local_err = NULL;
 
-    if (!visit_start_struct(v, NULL, NULL, 0, errp)) {
-        return;
+    if (!visit_start_struct(v, NULL, NULL, 0, &local_err)) {
+        goto out;
     }
     for (e = qdict_first(qdict); e; e = qdict_next(qdict, e)) {
-        if (!object_property_set(obj, e->key, v, errp)) {
-            goto out;
+        if (!object_property_set(obj, e->key, v, &local_err)) {
+            break;
         }
     }
-    visit_check_struct(v, errp);
-out:
+    if (!local_err) {
+        visit_check_struct(v, &local_err);
+    }
     visit_end_struct(v, NULL);
+
+out:
+    if (local_err) {
+        error_propagate(errp, local_err);
+    }
 }
 
 void object_set_properties_from_keyval(Object *obj, const QDict *qdict,

@@ -294,12 +294,12 @@ static const int tcg_target_call_oarg_regs[] = {
 bool use_vis3_instructions;
 #endif
 
-static bool check_fit_i64(int64_t val, unsigned int bits)
+static inline int check_fit_i64(int64_t val, unsigned int bits)
 {
     return val == sextract64(val, 0, bits);
 }
 
-static bool check_fit_i32(int32_t val, unsigned int bits)
+static inline int check_fit_i32(int32_t val, unsigned int bits)
 {
     return val == sextract32(val, 0, bits);
 }
@@ -362,19 +362,14 @@ static bool tcg_target_const_match(int64_t val, TCGType type, int ct)
     }
 }
 
-static void tcg_out_nop(TCGContext *s)
-{
-    tcg_out32(s, NOP);
-}
-
-static void tcg_out_arith(TCGContext *s, TCGReg rd, TCGReg rs1,
-                          TCGReg rs2, int op)
+static inline void tcg_out_arith(TCGContext *s, TCGReg rd, TCGReg rs1,
+                                 TCGReg rs2, int op)
 {
     tcg_out32(s, op | INSN_RD(rd) | INSN_RS1(rs1) | INSN_RS2(rs2));
 }
 
-static void tcg_out_arithi(TCGContext *s, TCGReg rd, TCGReg rs1,
-                           int32_t offset, int op)
+static inline void tcg_out_arithi(TCGContext *s, TCGReg rd, TCGReg rs1,
+                                  int32_t offset, int op)
 {
     tcg_out32(s, op | INSN_RD(rd) | INSN_RS1(rs1) | INSN_IMM13(offset));
 }
@@ -386,7 +381,8 @@ static void tcg_out_arithc(TCGContext *s, TCGReg rd, TCGReg rs1,
               | (val2const ? INSN_IMM13(val2) : INSN_RS2(val2)));
 }
 
-static bool tcg_out_mov(TCGContext *s, TCGType type, TCGReg ret, TCGReg arg)
+static inline bool tcg_out_mov(TCGContext *s, TCGType type,
+                               TCGReg ret, TCGReg arg)
 {
     if (ret != arg) {
         tcg_out_arith(s, ret, arg, TCG_REG_G0, ARITH_OR);
@@ -394,21 +390,12 @@ static bool tcg_out_mov(TCGContext *s, TCGType type, TCGReg ret, TCGReg arg)
     return true;
 }
 
-static void tcg_out_mov_delay(TCGContext *s, TCGReg ret, TCGReg arg)
-{
-    if (ret != arg) {
-        tcg_out_arith(s, ret, arg, TCG_REG_G0, ARITH_OR);
-    } else {
-        tcg_out_nop(s);
-    }
-}
-
-static void tcg_out_sethi(TCGContext *s, TCGReg ret, uint32_t arg)
+static inline void tcg_out_sethi(TCGContext *s, TCGReg ret, uint32_t arg)
 {
     tcg_out32(s, SETHI | INSN_RD(ret) | ((arg & 0xfffffc00) >> 10));
 }
 
-static void tcg_out_movi_imm13(TCGContext *s, TCGReg ret, int32_t arg)
+static inline void tcg_out_movi_imm13(TCGContext *s, TCGReg ret, int32_t arg)
 {
     tcg_out_arithi(s, ret, TCG_REG_G0, arg, ARITH_OR);
 }
@@ -483,14 +470,14 @@ static void tcg_out_movi_int(TCGContext *s, TCGType type, TCGReg ret,
     }
 }
 
-static void tcg_out_movi(TCGContext *s, TCGType type,
-                         TCGReg ret, tcg_target_long arg)
+static inline void tcg_out_movi(TCGContext *s, TCGType type,
+                                TCGReg ret, tcg_target_long arg)
 {
     tcg_out_movi_int(s, type, ret, arg, false);
 }
 
-static void tcg_out_ldst_rr(TCGContext *s, TCGReg data, TCGReg a1,
-                            TCGReg a2, int op)
+static inline void tcg_out_ldst_rr(TCGContext *s, TCGReg data, TCGReg a1,
+                                   TCGReg a2, int op)
 {
     tcg_out32(s, op | INSN_RD(data) | INSN_RS1(a1) | INSN_RS2(a2));
 }
@@ -507,20 +494,20 @@ static void tcg_out_ldst(TCGContext *s, TCGReg ret, TCGReg addr,
     }
 }
 
-static void tcg_out_ld(TCGContext *s, TCGType type, TCGReg ret,
-                       TCGReg arg1, intptr_t arg2)
+static inline void tcg_out_ld(TCGContext *s, TCGType type, TCGReg ret,
+                              TCGReg arg1, intptr_t arg2)
 {
     tcg_out_ldst(s, ret, arg1, arg2, (type == TCG_TYPE_I32 ? LDUW : LDX));
 }
 
-static void tcg_out_st(TCGContext *s, TCGType type, TCGReg arg,
-                       TCGReg arg1, intptr_t arg2)
+static inline void tcg_out_st(TCGContext *s, TCGType type, TCGReg arg,
+                              TCGReg arg1, intptr_t arg2)
 {
     tcg_out_ldst(s, arg, arg1, arg2, (type == TCG_TYPE_I32 ? STW : STX));
 }
 
-static bool tcg_out_sti(TCGContext *s, TCGType type, TCGArg val,
-                        TCGReg base, intptr_t ofs)
+static inline bool tcg_out_sti(TCGContext *s, TCGType type, TCGArg val,
+                               TCGReg base, intptr_t ofs)
 {
     if (val == 0) {
         tcg_out_st(s, type, TCG_REG_G0, base, ofs);
@@ -540,12 +527,12 @@ static void tcg_out_ld_ptr(TCGContext *s, TCGReg ret, const void *arg)
     tcg_out_ld(s, TCG_TYPE_PTR, ret, ret, (uintptr_t)arg & 0x3ff);
 }
 
-static void tcg_out_sety(TCGContext *s, TCGReg rs)
+static inline void tcg_out_sety(TCGContext *s, TCGReg rs)
 {
     tcg_out32(s, WRY | INSN_RS1(TCG_REG_G0) | INSN_RS2(rs));
 }
 
-static void tcg_out_rdy(TCGContext *s, TCGReg rd)
+static inline void tcg_out_rdy(TCGContext *s, TCGReg rd)
 {
     tcg_out32(s, RDY | INSN_RD(rd));
 }
@@ -563,6 +550,11 @@ static void tcg_out_div32(TCGContext *s, TCGReg rd, TCGReg rs1,
 
     tcg_out_arithc(s, rd, rs1, val2, val2const,
                    uns ? ARITH_UDIV : ARITH_SDIV);
+}
+
+static inline void tcg_out_nop(TCGContext *s)
+{
+    tcg_out32(s, NOP);
 }
 
 static const uint8_t tcg_cond_to_bcond[] = {
@@ -855,8 +847,8 @@ static void tcg_out_mb(TCGContext *s, TCGArg a0)
 }
 
 #ifdef CONFIG_SOFTMMU
-static const tcg_insn_unit *qemu_ld_trampoline[(MO_SSIZE | MO_BSWAP) + 1];
-static const tcg_insn_unit *qemu_st_trampoline[(MO_SIZE | MO_BSWAP) + 1];
+static const tcg_insn_unit *qemu_ld_trampoline[16];
+static const tcg_insn_unit *qemu_st_trampoline[16];
 
 static void emit_extend(TCGContext *s, TCGReg r, int op)
 {
@@ -883,7 +875,7 @@ static void emit_extend(TCGContext *s, TCGReg r, int op)
 
 static void build_trampolines(TCGContext *s)
 {
-    static void * const qemu_ld_helpers[] = {
+    static void * const qemu_ld_helpers[16] = {
         [MO_UB]   = helper_ret_ldub_mmu,
         [MO_SB]   = helper_ret_ldsb_mmu,
         [MO_LEUW] = helper_le_lduw_mmu,
@@ -895,7 +887,7 @@ static void build_trampolines(TCGContext *s)
         [MO_BEUL] = helper_be_ldul_mmu,
         [MO_BEQ]  = helper_be_ldq_mmu,
     };
-    static void * const qemu_st_helpers[] = {
+    static void * const qemu_st_helpers[16] = {
         [MO_UB]   = helper_ret_stb_mmu,
         [MO_LEUW] = helper_le_stw_mmu,
         [MO_LEUL] = helper_le_stl_mmu,
@@ -908,7 +900,7 @@ static void build_trampolines(TCGContext *s)
     int i;
     TCGReg ra;
 
-    for (i = 0; i < ARRAY_SIZE(qemu_ld_helpers); ++i) {
+    for (i = 0; i < 16; ++i) {
         if (qemu_ld_helpers[i] == NULL) {
             continue;
         }
@@ -936,7 +928,7 @@ static void build_trampolines(TCGContext *s)
         tcg_out_mov(s, TCG_TYPE_PTR, TCG_REG_O7, ra);
     }
 
-    for (i = 0; i < ARRAY_SIZE(qemu_st_helpers); ++i) {
+    for (i = 0; i < 16; ++i) {
         if (qemu_st_helpers[i] == NULL) {
             continue;
         }
@@ -1118,7 +1110,7 @@ static TCGReg tcg_out_tlb_load(TCGContext *s, TCGReg addr, int mem_index,
 }
 #endif /* CONFIG_SOFTMMU */
 
-static const int qemu_ld_opc[(MO_SSIZE | MO_BSWAP) + 1] = {
+static const int qemu_ld_opc[16] = {
     [MO_UB]   = LDUB,
     [MO_SB]   = LDSB,
 
@@ -1135,7 +1127,7 @@ static const int qemu_ld_opc[(MO_SSIZE | MO_BSWAP) + 1] = {
     [MO_LEQ]  = LDX_LE,
 };
 
-static const int qemu_st_opc[(MO_SIZE | MO_BSWAP) + 1] = {
+static const int qemu_st_opc[16] = {
     [MO_UB]   = STB,
 
     [MO_BEUW] = STH,
@@ -1148,7 +1140,7 @@ static const int qemu_st_opc[(MO_SIZE | MO_BSWAP) + 1] = {
 };
 
 static void tcg_out_qemu_ld(TCGContext *s, TCGReg data, TCGReg addr,
-                            MemOpIdx oi, bool is_64)
+                            TCGMemOpIdx oi, bool is_64)
 {
     MemOp memop = get_memop(oi);
 #ifdef CONFIG_SOFTMMU
@@ -1230,7 +1222,7 @@ static void tcg_out_qemu_ld(TCGContext *s, TCGReg data, TCGReg addr,
 }
 
 static void tcg_out_qemu_st(TCGContext *s, TCGReg data, TCGReg addr,
-                            MemOpIdx oi)
+                            TCGMemOpIdx oi)
 {
     MemOp memop = get_memop(oi);
 #ifdef CONFIG_SOFTMMU
@@ -1358,7 +1350,7 @@ static void tcg_out_op(TCGContext *s, TCGOpcode opc,
     case INDEX_op_goto_ptr:
         tcg_out_arithi(s, TCG_REG_G0, a0, 0, JMPL);
         if (USE_REG_TB) {
-            tcg_out_mov_delay(s, TCG_REG_TB, a0);
+            tcg_out_arith(s, TCG_REG_TB, a0, TCG_REG_G0, ARITH_OR);
         } else {
             tcg_out_nop(s);
         }

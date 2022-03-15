@@ -38,10 +38,6 @@
 #include "ui/input.h"
 #include "sysemu/sysemu.h"
 
-#if defined(__APPLE__) || defined(__OpenBSD__)
-#define _XOPEN_SOURCE_EXTENDED 1
-#endif
-
 /* KEY_EVENT is defined in wincon.h and in curses.h. Avoid redefinition. */
 #undef KEY_EVENT
 #include <curses.h>

@@ -11,15 +11,9 @@
 #ifndef QAPI_UTIL_H
 #define QAPI_UTIL_H
 
-typedef enum {
-    QAPI_DEPRECATED,
-    QAPI_UNSTABLE,
-} QapiSpecialFeature;
-
 typedef struct QEnumLookup {
     const char *const *array;
-    const unsigned char *const special_features;
-    const int size;
+    int size;
 } QEnumLookup;
 
 const char *qapi_enum_lookup(const QEnumLookup *lookup, int val);

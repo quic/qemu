@@ -12,7 +12,7 @@ This work is licensed under the terms of the GNU GPL, version 2.
 See the COPYING file in the top-level directory.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from .common import c_enum_const, c_name, mcgen
 from .gen import QAPISchemaModularCVisitor, build_params, ifcontext
@@ -20,7 +20,6 @@ from .schema import (
     QAPISchema,
     QAPISchemaEnumMember,
     QAPISchemaFeature,
-    QAPISchemaIfCond,
     QAPISchemaObjectType,
 )
 from .source import QAPISourceInfo
@@ -109,15 +108,13 @@ def gen_event_send(name: str,
         if not boxed:
             ret += gen_param_var(arg_type)
 
-    for f in features:
-        if f.is_special():
-            ret += mcgen('''
+    if 'deprecated' in [f.name for f in features]:
+        ret += mcgen('''
 
-    if (compat_policy.%(feat)s_output == COMPAT_POLICY_OUTPUT_HIDE) {
+    if (compat_policy.deprecated_output == COMPAT_POLICY_OUTPUT_HIDE) {
         return;
     }
-''',
-                         feat=f.name)
+''')
 
     ret += mcgen('''
 
@@ -230,7 +227,7 @@ void %(event_emit)s(%(event_enum)s event, QDict *qdict);
     def visit_event(self,
                     name: str,
                     info: Optional[QAPISourceInfo],
-                    ifcond: QAPISchemaIfCond,
+                    ifcond: Sequence[str],
                     features: List[QAPISchemaFeature],
                     arg_type: Optional[QAPISchemaObjectType],
                     boxed: bool) -> None:

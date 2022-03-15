@@ -143,8 +143,7 @@ build-efi-roms: build-pxe-roms
 #    efirom
 #
 edk2-basetools:
-	cd edk2/BaseTools && git submodule update --init --force \
-		Source/C/BrotliCompress/brotli
+	cd edk2/BaseTools && git submodule update --init --force
 	$(MAKE) -C edk2/BaseTools \
 		PYTHON_COMMAND=$${EDK2_PYTHON_COMMAND:-python3} \
 		EXTRA_OPTFLAGS='$(EDK2_BASETOOLS_OPTFLAGS)' \

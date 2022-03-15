@@ -1,4 +1,4 @@
-if unpack_edk2_blobs and get_option('install_blobs')
+if install_edk2_blobs
   foreach f: [
     '50-edk2-i386-secure.json',
     '50-edk2-x86_64-secure.json',
@@ -10,7 +10,7 @@ if unpack_edk2_blobs and get_option('install_blobs')
     configure_file(input: files(f),
                    output: f,
                    configuration: {'DATADIR': get_option('prefix') / qemu_datadir},
-                   install: true,
+                   install: get_option('install_blobs'),
                    install_dir: qemu_datadir / 'firmware')
   endforeach
 endif

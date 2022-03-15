@@ -18,7 +18,6 @@
  */
 #include "qemu/osdep.h"
 #include "qemu.h"
-#include "user-internals.h"
 #include "signal-common.h"
 #include "linux-user/trace.h"
 

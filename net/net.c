@@ -75,8 +75,6 @@ int parse_host_port(struct sockaddr_in *saddr, const char *str,
     const char *addr, *p, *r;
     int port, ret = 0;
 
-    memset(saddr, 0, sizeof(*saddr));
-
     substrings = g_strsplit(str, ":", 2);
     if (!substrings || !substrings[0] || !substrings[1]) {
         error_setg(errp, "host address '%s' doesn't contain ':' "
@@ -239,8 +237,7 @@ static void qemu_net_client_setup(NetClientState *nc,
                                   NetClientState *peer,
                                   const char *model,
                                   const char *name,
-                                  NetClientDestructor *destructor,
-                                  bool is_datapath)
+                                  NetClientDestructor *destructor)
 {
     nc->info = info;
     nc->model = g_strdup(model);
@@ -259,7 +256,6 @@ static void qemu_net_client_setup(NetClientState *nc,
 
     nc->incoming_queue = qemu_new_net_queue(qemu_deliver_packet_iov, nc);
     nc->destructor = destructor;
-    nc->is_datapath = is_datapath;
     QTAILQ_INIT(&nc->filters);
 }
 
@@ -274,23 +270,7 @@ NetClientState *qemu_new_net_client(NetClientInfo *info,
 
     nc = g_malloc0(info->size);
     qemu_net_client_setup(nc, info, peer, model, name,
-                          qemu_net_client_destructor, true);
-
-    return nc;
-}
-
-NetClientState *qemu_new_net_control_client(NetClientInfo *info,
-                                            NetClientState *peer,
-                                            const char *model,
-                                            const char *name)
-{
-    NetClientState *nc;
-
-    assert(info->size >= sizeof(NetClientState));
-
-    nc = g_malloc0(info->size);
-    qemu_net_client_setup(nc, info, peer, model, name,
-                          qemu_net_client_destructor, false);
+                          qemu_net_client_destructor);
 
     return nc;
 }
@@ -315,7 +295,7 @@ NICState *qemu_new_nic(NetClientInfo *info,
 
     for (i = 0; i < queues; i++) {
         qemu_net_client_setup(&nic->ncs[i], info, peers[i], model, name,
-                              NULL, true);
+                              NULL);
         nic->ncs[i].queue_index = i;
     }
 

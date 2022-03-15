@@ -663,13 +663,7 @@ static uint16_t default_GEN15_GA1[] = {
     S390_FEAT_ETOKEN,
 };
 
-static uint16_t default_GEN16_GA1[] = {
-    S390_FEAT_NNPA,
-    S390_FEAT_VECTOR_PACKED_DECIMAL_ENH2,
-    S390_FEAT_BEAR_ENH,
-    S390_FEAT_RDP,
-    S390_FEAT_PAI,
-};
+#define default_GEN16_GA1 EmptyFeat
 
 /* QEMU (CPU model) features */
 

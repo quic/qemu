@@ -56,6 +56,7 @@
 #include "sysemu/iothread.h"
 #include "block/block_int.h"
 #include "block/trace.h"
+#include "sysemu/arch_init.h"
 #include "sysemu/runstate.h"
 #include "sysemu/replay.h"
 #include "qemu/cutils.h"
@@ -1847,7 +1848,7 @@ static void drive_backup_abort(BlkActionState *common)
         aio_context = bdrv_get_aio_context(state->bs);
         aio_context_acquire(aio_context);
 
-        job_cancel_sync(&state->job->job, true);
+        job_cancel_sync(&state->job->job);
 
         aio_context_release(aio_context);
     }
@@ -1948,7 +1949,7 @@ static void blockdev_backup_abort(BlkActionState *common)
         aio_context = bdrv_get_aio_context(state->bs);
         aio_context_acquire(aio_context);
 
-        job_cancel_sync(&state->job->job, true);
+        job_cancel_sync(&state->job->job);
 
         aio_context_release(aio_context);
     }

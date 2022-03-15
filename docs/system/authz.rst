@@ -77,7 +77,9 @@ To create an instance of this driver via QMP:
      "arguments": {
        "qom-type": "authz-simple",
        "id": "authz0",
-       "identity": "fred"
+       "props": {
+         "identity": "fred"
+       }
      }
    }
 
@@ -108,13 +110,15 @@ To create an instance of this class via QMP:
      "arguments": {
        "qom-type": "authz-list",
        "id": "authz0",
-       "rules": [
-          { "match": "fred", "policy": "allow", "format": "exact" },
-          { "match": "bob", "policy": "allow", "format": "exact" },
-          { "match": "danb", "policy": "deny", "format": "exact" },
-          { "match": "dan*", "policy": "allow", "format": "glob" }
-       ],
-       "policy": "deny"
+       "props": {
+         "rules": [
+            { "match": "fred", "policy": "allow", "format": "exact" },
+            { "match": "bob", "policy": "allow", "format": "exact" },
+            { "match": "danb", "policy": "deny", "format": "exact" },
+            { "match": "dan*", "policy": "allow", "format": "glob" }
+         ],
+         "policy": "deny"
+       }
      }
    }
 
@@ -139,8 +143,10 @@ To create an instance of this class via QMP:
      "arguments": {
        "qom-type": "authz-list-file",
        "id": "authz0",
-       "filename": "/etc/qemu/myvm-vnc.acl",
-       "refresh": true
+       "props": {
+         "filename": "/etc/qemu/myvm-vnc.acl",
+         "refresh": true
+       }
      }
    }
 

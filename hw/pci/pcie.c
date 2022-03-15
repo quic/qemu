@@ -366,29 +366,6 @@ static void hotplug_event_clear(PCIDevice *dev)
     }
 }
 
-static void pcie_set_power_device(PCIBus *bus, PCIDevice *dev, void *opaque)
-{
-    bool *power = opaque;
-
-    pci_set_power(dev, *power);
-}
-
-static void pcie_cap_update_power(PCIDevice *hotplug_dev)
-{
-    uint8_t *exp_cap = hotplug_dev->config + hotplug_dev->exp.exp_cap;
-    PCIBus *sec_bus = pci_bridge_get_sec_bus(PCI_BRIDGE(hotplug_dev));
-    uint32_t sltcap = pci_get_long(exp_cap + PCI_EXP_SLTCAP);
-    uint16_t sltctl = pci_get_word(exp_cap + PCI_EXP_SLTCTL);
-    bool power = true;
-
-    if (sltcap & PCI_EXP_SLTCAP_PCP) {
-        power = (sltctl & PCI_EXP_SLTCTL_PCC) == PCI_EXP_SLTCTL_PWR_ON;
-    }
-
-    pci_for_each_device(sec_bus, pci_bus_num(sec_bus),
-                        pcie_set_power_device, &power);
-}
-
 /*
  * A PCI Express Hot-Plug Event has occurred, so update slot status register
  * and notify OS of the event if necessary.
@@ -457,7 +434,6 @@ void pcie_cap_slot_plug_cb(HotplugHandler *hotplug_dev, DeviceState *dev,
             pci_word_test_and_set_mask(exp_cap + PCI_EXP_LNKSTA,
                                        PCI_EXP_LNKSTA_DLLLA);
         }
-        pcie_cap_update_power(hotplug_pdev);
         return;
     }
 
@@ -475,7 +451,6 @@ void pcie_cap_slot_plug_cb(HotplugHandler *hotplug_dev, DeviceState *dev,
         }
         pcie_cap_slot_event(hotplug_pdev,
                             PCI_EXP_HP_EV_PDC | PCI_EXP_HP_EV_ABP);
-        pcie_cap_update_power(hotplug_pdev);
     }
 }
 
@@ -497,25 +472,6 @@ static void pcie_unplug_device(PCIBus *bus, PCIDevice *dev, void *opaque)
     object_unparent(OBJECT(dev));
 }
 
-static void pcie_cap_slot_do_unplug(PCIDevice *dev)
-{
-    PCIBus *sec_bus = pci_bridge_get_sec_bus(PCI_BRIDGE(dev));
-    uint8_t *exp_cap = dev->config + dev->exp.exp_cap;
-    uint32_t lnkcap = pci_get_long(exp_cap + PCI_EXP_LNKCAP);
-
-    pci_for_each_device_under_bus(sec_bus, pcie_unplug_device, NULL);
-
-    pci_word_test_and_clear_mask(exp_cap + PCI_EXP_SLTSTA,
-                                 PCI_EXP_SLTSTA_PDS);
-    if (dev->cap_present & QEMU_PCIE_LNKSTA_DLLLA ||
-        (lnkcap & PCI_EXP_LNKCAP_DLLLARC)) {
-        pci_word_test_and_clear_mask(exp_cap + PCI_EXP_LNKSTA,
-                                     PCI_EXP_LNKSTA_DLLLA);
-    }
-    pci_word_test_and_set_mask(exp_cap + PCI_EXP_SLTSTA,
-                               PCI_EXP_SLTSTA_PDC);
-}
-
 void pcie_cap_slot_unplug_request_cb(HotplugHandler *hotplug_dev,
                                      DeviceState *dev, Error **errp)
 {
@@ -525,7 +481,6 @@ void pcie_cap_slot_unplug_request_cb(HotplugHandler *hotplug_dev,
     PCIDevice *hotplug_pdev = PCI_DEVICE(hotplug_dev);
     uint8_t *exp_cap = hotplug_pdev->config + hotplug_pdev->exp.exp_cap;
     uint32_t sltcap = pci_get_word(exp_cap + PCI_EXP_SLTCAP);
-    uint16_t sltctl = pci_get_word(exp_cap + PCI_EXP_SLTCTL);
 
     /* Check if hot-unplug is disabled on the slot */
     if ((sltcap & PCI_EXP_SLTCAP_HPC) == 0) {
@@ -541,15 +496,7 @@ void pcie_cap_slot_unplug_request_cb(HotplugHandler *hotplug_dev,
         return;
     }
 
-    if ((sltctl & PCI_EXP_SLTCTL_PIC) == PCI_EXP_SLTCTL_PWR_IND_BLINK) {
-        error_setg(errp, "Hot-unplug failed: "
-                   "guest is busy (power indicator blinking)");
-        return;
-    }
-
     dev->pending_deleted_event = true;
-    dev->pending_deleted_expires_ms =
-        qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) + 5000; /* 5 secs */
 
     /* In case user cancel the operation of multi-function hot-add,
      * remove the function that is unexposed to guest individually,
@@ -559,16 +506,6 @@ void pcie_cap_slot_unplug_request_cb(HotplugHandler *hotplug_dev,
         !bus->devices[0]) {
         pcie_unplug_device(bus, pci_dev, NULL);
 
-        return;
-    }
-
-    if (((sltctl & PCI_EXP_SLTCTL_PIC) == PCI_EXP_SLTCTL_PWR_IND_OFF) &&
-        ((sltctl & PCI_EXP_SLTCTL_PCC) == PCI_EXP_SLTCTL_PWR_OFF)) {
-        /* slot is powered off -> unplug without round-trip to the guest */
-        pcie_cap_slot_do_unplug(hotplug_pdev);
-        hotplug_event_notify(hotplug_pdev);
-        pci_word_test_and_clear_mask(exp_cap + PCI_EXP_SLTSTA,
-                                     PCI_EXP_SLTSTA_ABP);
         return;
     }
 
@@ -688,7 +625,6 @@ void pcie_cap_slot_reset(PCIDevice *dev)
                                  PCI_EXP_SLTSTA_PDC |
                                  PCI_EXP_SLTSTA_ABP);
 
-    pcie_cap_update_power(dev);
     hotplug_event_update_event_status(dev);
 }
 
@@ -707,6 +643,7 @@ void pcie_cap_slot_write_config(PCIDevice *dev,
     uint32_t pos = dev->exp.exp_cap;
     uint8_t *exp_cap = dev->config + pos;
     uint16_t sltsta = pci_get_word(exp_cap + PCI_EXP_SLTSTA);
+    uint32_t lnkcap = pci_get_long(exp_cap + PCI_EXP_LNKCAP);
 
     if (ranges_overlap(addr, len, pos + PCI_EXP_SLTSTA, 2)) {
         /*
@@ -756,9 +693,20 @@ void pcie_cap_slot_write_config(PCIDevice *dev,
         (val & PCI_EXP_SLTCTL_PIC_OFF) == PCI_EXP_SLTCTL_PIC_OFF &&
         (!(old_slt_ctl & PCI_EXP_SLTCTL_PCC) ||
         (old_slt_ctl & PCI_EXP_SLTCTL_PIC_OFF) != PCI_EXP_SLTCTL_PIC_OFF)) {
-        pcie_cap_slot_do_unplug(dev);
+        PCIBus *sec_bus = pci_bridge_get_sec_bus(PCI_BRIDGE(dev));
+        pci_for_each_device(sec_bus, pci_bus_num(sec_bus),
+                            pcie_unplug_device, NULL);
+
+        pci_word_test_and_clear_mask(exp_cap + PCI_EXP_SLTSTA,
+                                     PCI_EXP_SLTSTA_PDS);
+        if (dev->cap_present & QEMU_PCIE_LNKSTA_DLLLA ||
+            (lnkcap & PCI_EXP_LNKCAP_DLLLARC)) {
+            pci_word_test_and_clear_mask(exp_cap + PCI_EXP_LNKSTA,
+                                         PCI_EXP_LNKSTA_DLLLA);
+        }
+        pci_word_test_and_set_mask(exp_cap + PCI_EXP_SLTSTA,
+                                       PCI_EXP_SLTSTA_PDC);
     }
-    pcie_cap_update_power(dev);
 
     hotplug_event_notify(dev);
 
@@ -785,7 +733,6 @@ int pcie_cap_slot_post_load(void *opaque, int version_id)
 {
     PCIDevice *dev = opaque;
     hotplug_event_update_event_status(dev);
-    pcie_cap_update_power(dev);
     return 0;
 }
 
@@ -929,8 +876,8 @@ void pcie_add_capability(PCIDevice *dev,
                          uint16_t offset, uint16_t size)
 {
     assert(offset >= PCI_CONFIG_SPACE_SIZE);
-    assert(offset < (uint16_t)(offset + size));
-    assert((uint16_t)(offset + size) <= PCIE_CONFIG_SPACE_SIZE);
+    assert(offset < offset + size);
+    assert(offset + size <= PCIE_CONFIG_SPACE_SIZE);
     assert(size >= 8);
     assert(pci_is_express(dev));
 

@@ -30,12 +30,14 @@ import struct
 import subprocess
 import sys
 import time
-from typing import (Any, Callable, Dict, Iterable, Iterator,
+from typing import (Any, Callable, Dict, Iterable,
                     List, Optional, Sequence, TextIO, Tuple, Type, TypeVar)
 import unittest
 
 from contextlib import contextmanager
 
+# pylint: disable=import-error, wrong-import-position
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'python'))
 from qemu.machine import qtest
 from qemu.qmp import QMPMessage
 
@@ -72,13 +74,6 @@ if os.environ.get('QEMU_NBD_OPTIONS'):
 qemu_prog = os.environ.get('QEMU_PROG', 'qemu')
 qemu_opts = os.environ.get('QEMU_OPTIONS', '').strip().split(' ')
 
-gdb_qemu_env = os.environ.get('GDB_OPTIONS')
-qemu_gdb = []
-if gdb_qemu_env:
-    qemu_gdb = ['gdbserver'] + gdb_qemu_env.strip().split(' ')
-
-qemu_print = os.environ.get('PRINT_QEMU', False)
-
 imgfmt = os.environ.get('IMGFMT', 'raw')
 imgproto = os.environ.get('IMGPROTO', 'file')
 output_dir = os.environ.get('OUTPUT_DIR', '.')
@@ -96,40 +91,13 @@ except KeyError:
     sys.stderr.write('Please run this test via the "check" script\n')
     sys.exit(os.EX_USAGE)
 
-qemu_valgrind = []
-if os.environ.get('VALGRIND_QEMU') == "y" and \
-    os.environ.get('NO_VALGRIND') != "y":
-    valgrind_logfile = "--log-file=" + test_dir
-    # %p allows to put the valgrind process PID, since
-    # we don't know it a priori (subprocess.Popen is
-    # not yet invoked)
-    valgrind_logfile += "/%p.valgrind"
-
-    qemu_valgrind = ['valgrind', valgrind_logfile, '--error-exitcode=99']
+socket_scm_helper = os.environ.get('SOCKET_SCM_HELPER', 'socket_scm_helper')
 
 luks_default_secret_object = 'secret,id=keysec0,data=' + \
                              os.environ.get('IMGKEYSECRET', '')
 luks_default_key_secret_opt = 'key-secret=keysec0'
 
 sample_img_dir = os.environ['SAMPLE_IMG_DIR']
-
-
-@contextmanager
-def change_log_level(
-        logger_name: str, level: int = logging.CRITICAL) -> Iterator[None]:
-    """
-    Utility function for temporarily changing the log level of a logger.
-
-    This can be used to silence errors that are expected or uninteresting.
-    """
-    _logger = logging.getLogger(logger_name)
-    current_level = _logger.level
-    _logger.setLevel(level)
-
-    try:
-        yield
-    finally:
-        _logger.setLevel(current_level)
 
 
 def unarchive_sample_image(sample, fname):
@@ -251,18 +219,18 @@ def qemu_io_silent(*args):
         default_args = qemu_io_args
 
     args = default_args + list(args)
-    result = subprocess.run(args, stdout=subprocess.DEVNULL, check=False)
-    if result.returncode < 0:
+    exitcode = subprocess.call(args, stdout=open('/dev/null', 'w'))
+    if exitcode < 0:
         sys.stderr.write('qemu-io received signal %i: %s\n' %
-                         (-result.returncode, ' '.join(args)))
-    return result.returncode
+                         (-exitcode, ' '.join(args)))
+    return exitcode
 
 def qemu_io_silent_check(*args):
     '''Run qemu-io and return the true if subprocess returned 0'''
     args = qemu_io_args + list(args)
-    result = subprocess.run(args, stdout=subprocess.DEVNULL,
-                            stderr=subprocess.STDOUT, check=False)
-    return result.returncode == 0
+    exitcode = subprocess.call(args, stdout=open('/dev/null', 'w'),
+                               stderr=subprocess.STDOUT)
+    return exitcode == 0
 
 class QemuIoInteractive:
     def __init__(self, *args):
@@ -504,14 +472,10 @@ class Timeout:
         self.seconds = seconds
         self.errmsg = errmsg
     def __enter__(self):
-        if qemu_gdb or qemu_valgrind:
-            return self
         signal.signal(signal.SIGALRM, self.timeout)
         signal.setitimer(signal.ITIMER_REAL, self.seconds)
         return self
     def __exit__(self, exc_type, value, traceback):
-        if qemu_gdb or qemu_valgrind:
-            return False
         signal.setitimer(signal.ITIMER_REAL, 0)
         return False
     def timeout(self, signum, frame):
@@ -606,33 +570,11 @@ class VM(qtest.QEMUQtestMachine):
 
     def __init__(self, path_suffix=''):
         name = "qemu%s-%d" % (path_suffix, os.getpid())
-        timer = 15.0 if not (qemu_gdb or qemu_valgrind) else None
-        if qemu_gdb and qemu_valgrind:
-            sys.stderr.write('gdb and valgrind are mutually exclusive\n')
-            sys.exit(1)
-        wrapper = qemu_gdb if qemu_gdb else qemu_valgrind
-        super().__init__(qemu_prog, qemu_opts, wrapper=wrapper,
-                         name=name,
+        super().__init__(qemu_prog, qemu_opts, name=name,
                          base_temp_dir=test_dir,
-                         sock_dir=sock_dir, qmp_timer=timer)
+                         socket_scm_helper=socket_scm_helper,
+                         sock_dir=sock_dir)
         self._num_drives = 0
-
-    def _post_shutdown(self) -> None:
-        super()._post_shutdown()
-        if not qemu_valgrind or not self._popen:
-            return
-        valgrind_filename = f"{test_dir}/{self._popen.pid}.valgrind"
-        if self.exitcode() == 99:
-            with open(valgrind_filename, encoding='utf-8') as f:
-                print(f.read())
-        else:
-            os.remove(valgrind_filename)
-
-    def _pre_launch(self) -> None:
-        super()._pre_launch()
-        if qemu_print:
-            # set QEMU binary output to stdout
-            self._close_qemu_log_file()
 
     def add_object(self, opts):
         self._args.append('-object')
@@ -709,14 +651,13 @@ class VM(qtest.QEMUQtestMachine):
         self.hmp(f'qemu-io {drive} "remove_break bp_{drive}"')
 
     def hmp_qemu_io(self, drive: str, cmd: str,
-                    use_log: bool = False, qdev: bool = False) -> QMPMessage:
+                    use_log: bool = False) -> QMPMessage:
         """Write to a given drive using an HMP command"""
-        d = '-d ' if qdev else ''
-        return self.hmp(f'qemu-io {d}{drive} "{cmd}"', use_log=use_log)
+        return self.hmp(f'qemu-io {drive} "{cmd}"', use_log=use_log)
 
     def flatten_qmp_object(self, obj, output=None, basestr=''):
         if output is None:
-            output = {}
+            output = dict()
         if isinstance(obj, list):
             for i, item in enumerate(obj):
                 self.flatten_qmp_object(item, output, basestr + str(i) + '.')
@@ -729,7 +670,7 @@ class VM(qtest.QEMUQtestMachine):
 
     def qmp_to_opts(self, obj):
         obj = self.flatten_qmp_object(obj)
-        output_list = []
+        output_list = list()
         for key in obj:
             output_list += [key + '=' + obj[key]]
         return ','.join(output_list)
@@ -1134,9 +1075,7 @@ def notrun(reason):
     # Each test in qemu-iotests has a number ("seq")
     seq = os.path.basename(sys.argv[0])
 
-    with open('%s/%s.notrun' % (output_dir, seq), 'w', encoding='utf-8') \
-            as outfile:
-        outfile.write(reason + '\n')
+    open('%s/%s.notrun' % (output_dir, seq), 'w').write(reason + '\n')
     logger.warning("%s not run: %s", seq, reason)
     sys.exit(0)
 
@@ -1149,9 +1088,8 @@ def case_notrun(reason):
     # Each test in qemu-iotests has a number ("seq")
     seq = os.path.basename(sys.argv[0])
 
-    with open('%s/%s.casenotrun' % (output_dir, seq), 'a', encoding='utf-8') \
-            as outfile:
-        outfile.write('    [case not run] ' + reason + '\n')
+    open('%s/%s.casenotrun' % (output_dir, seq), 'a').write(
+        '    [case not run] ' + reason + '\n')
 
 def _verify_image_format(supported_fmts: Sequence[str] = (),
                          unsupported_fmts: Sequence[str] = ()) -> None:
@@ -1363,9 +1301,8 @@ class ReproducibleStreamWrapper:
 
 class ReproducibleTestRunner(unittest.TextTestRunner):
     def __init__(self, stream: Optional[TextIO] = None,
-                 resultclass: Type[unittest.TestResult] =
-                 ReproducibleTestResult,
-                 **kwargs: Any) -> None:
+             resultclass: Type[unittest.TestResult] = ReproducibleTestResult,
+             **kwargs: Any) -> None:
         rstream = ReproducibleStreamWrapper(stream or sys.stdout)
         super().__init__(stream=rstream,           # type: ignore
                          descriptions=True,

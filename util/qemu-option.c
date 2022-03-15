@@ -1126,11 +1126,11 @@ int qemu_opts_foreach(QemuOptsList *list, qemu_opts_loopfunc func,
                       void *opaque, Error **errp)
 {
     Location loc;
-    QemuOpts *opts, *next;
+    QemuOpts *opts;
     int rc = 0;
 
     loc_push_none(&loc);
-    QTAILQ_FOREACH_SAFE(opts, &list->head, next, next) {
+    QTAILQ_FOREACH(opts, &list->head, next) {
         loc_restore(&opts->loc);
         rc = func(opaque, opts, errp);
         if (rc) {

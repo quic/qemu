@@ -207,7 +207,7 @@ static const BlockJobDriver commit_job_driver = {
 };
 
 static int coroutine_fn bdrv_commit_top_preadv(BlockDriverState *bs,
-    int64_t offset, int64_t bytes, QEMUIOVector *qiov, BdrvRequestFlags flags)
+    uint64_t offset, uint64_t bytes, QEMUIOVector *qiov, int flags)
 {
     return bdrv_co_preadv(bs->backing, offset, bytes, qiov, flags);
 }

@@ -23,17 +23,7 @@
 ##
 { 'event': 'RTC_CHANGE',
   'data': { 'offset': 'int' },
-  'if': { 'any': [ 'TARGET_ALPHA',
-                   'TARGET_ARM',
-                   'TARGET_HPPA',
-                   'TARGET_I386',
-                   'TARGET_MIPS',
-                   'TARGET_MIPS64',
-                   'TARGET_PPC',
-                   'TARGET_PPC64',
-                   'TARGET_S390X',
-                   'TARGET_SH4',
-                   'TARGET_SPARC' ] } }
+  'if': 'defined(TARGET_ALPHA) || defined(TARGET_ARM) || defined(TARGET_HPPA) || defined(TARGET_I386) || defined(TARGET_MIPS) || defined(TARGET_MIPS64) || defined(TARGET_PPC) || defined(TARGET_PPC64) || defined(TARGET_S390X) || defined(TARGET_SH4) || defined(TARGET_SPARC)' }
 
 ##
 # @rtc-reset-reinjection:
@@ -52,7 +42,7 @@
 #
 ##
 { 'command': 'rtc-reset-reinjection',
-  'if': 'TARGET_I386' }
+  'if': 'defined(TARGET_I386)' }
 
 
 ##
@@ -79,7 +69,7 @@
 { 'enum': 'SevState',
   'data': ['uninit', 'launch-update', 'launch-secret', 'running',
            'send-update', 'receive-update' ],
-  'if': 'TARGET_I386' }
+  'if': 'defined(TARGET_I386)' }
 
 ##
 # @SevInfo:
@@ -111,7 +101,7 @@
               'state' : 'SevState',
               'handle' : 'uint32'
             },
-  'if': 'TARGET_I386'
+  'if': 'defined(TARGET_I386)'
 }
 
 ##
@@ -132,7 +122,7 @@
 #
 ##
 { 'command': 'query-sev', 'returns': 'SevInfo',
-  'if': 'TARGET_I386' }
+  'if': 'defined(TARGET_I386)' }
 
 
 ##
@@ -146,7 +136,7 @@
 #
 ##
 { 'struct': 'SevLaunchMeasureInfo', 'data': {'data': 'str'},
-  'if': 'TARGET_I386' }
+  'if': 'defined(TARGET_I386)' }
 
 ##
 # @query-sev-launch-measure:
@@ -164,7 +154,7 @@
 #
 ##
 { 'command': 'query-sev-launch-measure', 'returns': 'SevLaunchMeasureInfo',
-  'if': 'TARGET_I386' }
+  'if': 'defined(TARGET_I386)' }
 
 
 ##
@@ -189,7 +179,7 @@
             'cert-chain': 'str',
             'cbitpos': 'int',
             'reduced-phys-bits': 'int'},
-  'if': 'TARGET_I386' }
+  'if': 'defined(TARGET_I386)' }
 
 ##
 # @query-sev-capabilities:
@@ -209,7 +199,7 @@
 #
 ##
 { 'command': 'query-sev-capabilities', 'returns': 'SevCapability',
-  'if': 'TARGET_I386' }
+  'if': 'defined(TARGET_I386)' }
 
 ##
 # @sev-inject-launch-secret:
@@ -227,47 +217,7 @@
 ##
 { 'command': 'sev-inject-launch-secret',
   'data': { 'packet-header': 'str', 'secret': 'str', '*gpa': 'uint64' },
-  'if': 'TARGET_I386' }
-
-##
-# @SevAttestationReport:
-#
-# The struct describes attestation report for a Secure Encrypted
-# Virtualization feature.
-#
-# @data:  guest attestation report (base64 encoded)
-#
-#
-# Since: 6.1
-##
-{ 'struct': 'SevAttestationReport',
-  'data': { 'data': 'str'},
-  'if': 'TARGET_I386' }
-
-##
-# @query-sev-attestation-report:
-#
-# This command is used to get the SEV attestation report, and is
-# supported on AMD X86 platforms only.
-#
-# @mnonce: a random 16 bytes value encoded in base64 (it will be
-#          included in report)
-#
-# Returns: SevAttestationReport objects.
-#
-# Since: 6.1
-#
-# Example:
-#
-# -> { "execute" : "query-sev-attestation-report",
-#                  "arguments": { "mnonce": "aaaaaaa" } }
-# <- { "return" : { "data": "aaaaaaaabbbddddd"} }
-#
-##
-{ 'command': 'query-sev-attestation-report',
-  'data': { 'mnonce': 'str' },
-  'returns': 'SevAttestationReport',
-  'if': 'TARGET_I386' }
+  'if': 'defined(TARGET_I386)' }
 
 ##
 # @dump-skeys:
@@ -289,7 +239,7 @@
 ##
 { 'command': 'dump-skeys',
   'data': { 'filename': 'str' },
-  'if': 'TARGET_S390X' }
+  'if': 'defined(TARGET_S390X)' }
 
 ##
 # @GICCapability:
@@ -314,7 +264,7 @@
   'data': { 'version': 'int',
             'emulated': 'bool',
             'kernel': 'bool' },
-  'if': 'TARGET_ARM' }
+  'if': 'defined(TARGET_ARM)' }
 
 ##
 # @query-gic-capabilities:
@@ -334,66 +284,42 @@
 #
 ##
 { 'command': 'query-gic-capabilities', 'returns': ['GICCapability'],
-  'if': 'TARGET_ARM' }
+  'if': 'defined(TARGET_ARM)' }
 
 
 ##
-# @SGXInfo:
+# @SevAttestationReport:
 #
-# Information about intel Safe Guard eXtension (SGX) support
+# The struct describes attestation report for a Secure Encrypted Virtualization
+# feature.
 #
-# @sgx: true if SGX is supported
+# @data:  guest attestation report (base64 encoded)
 #
-# @sgx1: true if SGX1 is supported
 #
-# @sgx2: true if SGX2 is supported
-#
-# @flc: true if FLC is supported
-#
-# @section-size: The EPC section size for guest
-#
-# Since: 6.2
+# Since: 6.1
 ##
-{ 'struct': 'SGXInfo',
-  'data': { 'sgx': 'bool',
-            'sgx1': 'bool',
-            'sgx2': 'bool',
-            'flc': 'bool',
-            'section-size': 'uint64'},
-   'if': 'TARGET_I386' }
+{ 'struct': 'SevAttestationReport',
+  'data': { 'data': 'str'},
+  'if': 'defined(TARGET_I386)' }
 
 ##
-# @query-sgx:
+# @query-sev-attestation-report:
 #
-# Returns information about SGX
+# This command is used to get the SEV attestation report, and is supported on AMD
+# X86 platforms only.
 #
-# Returns: @SGXInfo
+# @mnonce: a random 16 bytes value encoded in base64 (it will be included in report)
 #
-# Since: 6.2
+# Returns: SevAttestationReport objects.
+#
+# Since: 6.1
 #
 # Example:
 #
-# -> { "execute": "query-sgx" }
-# <- { "return": { "sgx": true, "sgx1" : true, "sgx2" : true,
-#                  "flc": true, "section-size" : 0 } }
+# -> { "execute" : "query-sev-attestation-report", "arguments": { "mnonce": "aaaaaaa" } }
+# <- { "return" : { "data": "aaaaaaaabbbddddd"} }
 #
 ##
-{ 'command': 'query-sgx', 'returns': 'SGXInfo', 'if': 'TARGET_I386' }
-
-##
-# @query-sgx-capabilities:
-#
-# Returns information from host SGX capabilities
-#
-# Returns: @SGXInfo
-#
-# Since: 6.2
-#
-# Example:
-#
-# -> { "execute": "query-sgx-capabilities" }
-# <- { "return": { "sgx": true, "sgx1" : true, "sgx2" : true,
-#                  "flc": true, "section-size" : 0 } }
-#
-##
-{ 'command': 'query-sgx-capabilities', 'returns': 'SGXInfo', 'if': 'TARGET_I386' }
+{ 'command': 'query-sev-attestation-report', 'data': { 'mnonce': 'str' },
+  'returns': 'SevAttestationReport',
+  'if': 'defined(TARGET_I386)' }

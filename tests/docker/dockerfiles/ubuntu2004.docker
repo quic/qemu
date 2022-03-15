@@ -60,7 +60,6 @@ ENV PACKAGES \
     libsdl2-dev \
     libsdl2-image-dev \
     libseccomp-dev \
-    libselinux-dev \
     libslirp-dev \
     libsnappy-dev \
     libspice-protocol-dev \

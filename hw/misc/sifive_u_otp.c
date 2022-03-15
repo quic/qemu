@@ -209,14 +209,7 @@ static void sifive_u_otp_realize(DeviceState *dev, Error **errp)
                           TYPE_SIFIVE_U_OTP, SIFIVE_U_OTP_REG_SIZE);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->mmio);
 
-    dinfo = drive_get_next(IF_PFLASH);
-    if (!dinfo) {
-        dinfo = drive_get_next(IF_NONE);
-        if (dinfo) {
-            warn_report("using \"-drive if=none\" for the OTP is deprecated, "
-                        "use \"-drive if=pflash\" instead.");
-        }
-    }
+    dinfo = drive_get_next(IF_NONE);
     if (dinfo) {
         int ret;
         uint64_t perm;
@@ -242,10 +235,14 @@ static void sifive_u_otp_realize(DeviceState *dev, Error **errp)
 
             if (blk_pread(s->blk, 0, s->fuse, filesize) != filesize) {
                 error_setg(errp, "failed to read the initial flash content");
-                return;
             }
         }
     }
+}
+
+static void sifive_u_otp_reset(DeviceState *dev)
+{
+    SiFiveUOTPState *s = SIFIVE_U_OTP(dev);
 
     /* Initialize all fuses' initial value to 0xFFs */
     memset(s->fuse, 0xff, sizeof(s->fuse));
@@ -262,15 +259,13 @@ static void sifive_u_otp_realize(DeviceState *dev, Error **errp)
         serial_data = s->serial;
         if (blk_pwrite(s->blk, index * SIFIVE_U_OTP_FUSE_WORD,
                        &serial_data, SIFIVE_U_OTP_FUSE_WORD, 0) < 0) {
-            error_setg(errp, "failed to write index<%d>", index);
-            return;
+            error_report("write error index<%d>", index);
         }
 
         serial_data = ~(s->serial);
         if (blk_pwrite(s->blk, (index + 1) * SIFIVE_U_OTP_FUSE_WORD,
                        &serial_data, SIFIVE_U_OTP_FUSE_WORD, 0) < 0) {
-            error_setg(errp, "failed to write index<%d>", index + 1);
-            return;
+            error_report("write error index<%d>", index + 1);
         }
     }
 
@@ -284,6 +279,7 @@ static void sifive_u_otp_class_init(ObjectClass *klass, void *data)
 
     device_class_set_props(dc, sifive_u_otp_properties);
     dc->realize = sifive_u_otp_realize;
+    dc->reset = sifive_u_otp_reset;
 }
 
 static const TypeInfo sifive_u_otp_info = {

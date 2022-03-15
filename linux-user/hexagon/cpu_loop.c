@@ -20,11 +20,8 @@
 
 #include "qemu/osdep.h"
 #include "qemu.h"
-#include "user-internals.h"
 #include "cpu_loop-common.h"
 #include "target/hexagon/internal.h"
-#include "signal-common.h"
-#include "internal.h"
 
 void cpu_loop(CPUHexagonState *env)
 {
@@ -39,6 +36,7 @@ void cpu_loop(CPUHexagonState *env)
         trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         process_queued_cpu_work(cs);
+
         signum = 0;
         sigcode = 0;
         sigaddr = 0;
@@ -106,6 +104,7 @@ void cpu_loop(CPUHexagonState *env)
                 trapnr, env->cause_code);
             exit(EXIT_FAILURE);
         }
+
         if (signum) {
             target_siginfo_t info = {
                 .si_signo = signum,
@@ -115,6 +114,7 @@ void cpu_loop(CPUHexagonState *env)
             };
             queue_signal(env, info.si_signo, QEMU_SI_KILL, &info);
         }
+
         process_pending_signals(env);
     }
 }
