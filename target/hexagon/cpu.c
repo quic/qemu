@@ -711,8 +711,6 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
             }
             hexagon_disable_int(env, irq);
             cpu_interrupt(cs, mask[irq]);
-        } else {
-            cpu_reset_interrupt(cs, mask[irq]);
         }
         break;
     default:
@@ -1322,8 +1320,8 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_size = sizeof(HexagonCPUClass),
         .class_init = hexagon_cpu_class_init,
     },
-    DEFINE_CPU(TYPE_HEXAGON_CPU_GENERIC,          hexagon_common_cpu_init),
-    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,              hexagon_common_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,  hexagon_common_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,  hexagon_common_cpu_init),
 };
 
 DEFINE_TYPES(hexagon_cpu_type_infos)
