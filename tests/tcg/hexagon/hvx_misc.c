@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2021-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,6 @@ typedef union {
     int16_t   h[MAX_VEC_SIZE_BYTES / 2];
     uint8_t  ub[MAX_VEC_SIZE_BYTES / 1];
     int8_t    b[MAX_VEC_SIZE_BYTES / 1];
-
     int32_t   sf[MAX_VEC_SIZE_BYTES / 4];
     int16_t   hf[MAX_VEC_SIZE_BYTES / 2];
 } MMVector;

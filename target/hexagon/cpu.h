@@ -32,6 +32,7 @@ typedef struct SystemState system_t;
 #include "hmx/hmx.h"
 #include "dma/dma.h"
 
+extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
 #include "cpu_helper.h"
 #include "reg_fields.h"
@@ -87,7 +88,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define HEXAGON_CPU_TYPE_NAME(name) (name HEXAGON_CPU_TYPE_SUFFIX)
 #define CPU_RESOLVING_TYPE TYPE_HEXAGON_CPU
 
-#define TYPE_HEXAGON_CPU_ANY HEXAGON_CPU_TYPE_NAME("any")
+#define TYPE_HEXAGON_CPU_GENERIC HEXAGON_CPU_TYPE_NAME("generic")
 #define TYPE_HEXAGON_CPU_V67 HEXAGON_CPU_TYPE_NAME("v67")
 
 
@@ -621,7 +622,6 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 #endif
 }
 
-
 #ifndef CONFIG_USER_ONLY
 
 /*
@@ -702,7 +702,6 @@ void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
 
 uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg);
 #endif
-
 
 void hexagon_translate_init(void);
 void hexagon_cpu_soft_reset(CPUHexagonState *env);

@@ -106,6 +106,15 @@ static uint32_t hreg_compute_hflags_value(CPUPPCState *env)
     if (env->spr[SPR_LPCR] & LPCR_GTSE) {
         hflags |= 1 << HFLAGS_GTSE;
     }
+    if (env->spr[SPR_LPCR] & LPCR_HR) {
+        hflags |= 1 << HFLAGS_HR;
+    }
+    if (env->spr[SPR_POWER_MMCR0] & MMCR0_PMCC0) {
+        hflags |= 1 << HFLAGS_PMCC0;
+    }
+    if (env->spr[SPR_POWER_MMCR0] & MMCR0_PMCC1) {
+        hflags |= 1 << HFLAGS_PMCC1;
+    }
 
 #ifndef CONFIG_USER_ONLY
     if (!env->has_hv_mode || (msr & (1ull << MSR_HV))) {
@@ -257,6 +266,18 @@ int hreg_store_msr(CPUPPCState *env, target_ulong value, int alter_hv)
 
     return excp;
 }
+
+#ifdef CONFIG_SOFTMMU
+void store_40x_sler(CPUPPCState *env, uint32_t val)
+{
+    /* XXX: TO BE FIXED */
+    if (val != 0x00000000) {
+        cpu_abort(env_cpu(env),
+                  "Little-endian regions are not supported by now\n");
+    }
+    env->spr[SPR_405_SLER] = val;
+}
+#endif /* CONFIG_SOFTMMU */
 
 #ifndef CONFIG_USER_ONLY
 void check_tlb_flush(CPUPPCState *env, bool global)

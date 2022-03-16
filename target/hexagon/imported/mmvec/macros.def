@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-
 
 DEF_MACRO(fDUMPQ,(STR,REG),
 	"dump REG",
@@ -56,7 +55,7 @@ DEF_MACRO(fNOTQ,(VAL),
 	"~VAL",
 	"~VAL",
 	/* Will break Visual Studio? */
-	({mmqreg_t _ret ={0}; int _i_; for (_i_ = 0; _i_ < fVECSIZE()/64; _i_++) _ret.ud[_i_] = ~VAL.ud[_i_]; _ret;}),
+	({mmqreg_t _ret = {0}; int _i_; for (_i_ = 0; _i_ < fVECSIZE()/64; _i_++) _ret.ud[_i_] = ~VAL.ud[_i_]; _ret;}),
 	()
 )
 
@@ -1320,9 +1319,8 @@ DEF_MACRO(fRNDSATQF16,(A,B,C),
   "rnd_sat(A,B,C)",
   "Rnd/Sat/Norm of Vector Multiply of two QF16 inputs",
   rnd_sat_qf16(A,B,C),
-  ()
+	()
 )
-
 /*Qfloat Macros for others*/
 DEF_MACRO(fPARSESF,(A),
   "A",
@@ -1546,8 +1544,4 @@ DEF_MACRO(fMIN_HF,(X,Y),
   min_hf(X,Y),
   (A_HVX_FLT)
 )
-
-
-
-
 

@@ -29,6 +29,7 @@
 #include "hw/intc/sifive_plic.h"
 #include "target/riscv/cpu.h"
 #include "migration/vmstate.h"
+#include "hw/irq.h"
 
 #define RISCV_DEBUG_PLIC 0
 
@@ -139,18 +140,14 @@ static void sifive_plic_update(SiFivePLICState *plic)
     for (addrid = 0; addrid < plic->num_addrs; addrid++) {
         uint32_t hartid = plic->addr_config[addrid].hartid;
         PLICMode mode = plic->addr_config[addrid].mode;
-        CPUState *cpu = qemu_get_cpu(hartid);
-        CPURISCVState *env = cpu ? cpu->env_ptr : NULL;
-        if (!env) {
-            continue;
-        }
         int level = sifive_plic_irqs_pending(plic, addrid);
+
         switch (mode) {
         case PLICMode_M:
-            riscv_cpu_update_mip(RISCV_CPU(cpu), MIP_MEIP, BOOL_TO_MASK(level));
+            qemu_set_irq(plic->m_external_irqs[hartid - plic->hartid_base], level);
             break;
         case PLICMode_S:
-            riscv_cpu_update_mip(RISCV_CPU(cpu), MIP_SEIP, BOOL_TO_MASK(level));
+            qemu_set_irq(plic->s_external_irqs[hartid - plic->hartid_base], level);
             break;
         default:
             break;
@@ -358,21 +355,6 @@ static const MemoryRegionOps sifive_plic_ops = {
     }
 };
 
-static Property sifive_plic_properties[] = {
-    DEFINE_PROP_STRING("hart-config", SiFivePLICState, hart_config),
-    DEFINE_PROP_UINT32("hartid-base", SiFivePLICState, hartid_base, 0),
-    DEFINE_PROP_UINT32("num-sources", SiFivePLICState, num_sources, 0),
-    DEFINE_PROP_UINT32("num-priorities", SiFivePLICState, num_priorities, 0),
-    DEFINE_PROP_UINT32("priority-base", SiFivePLICState, priority_base, 0),
-    DEFINE_PROP_UINT32("pending-base", SiFivePLICState, pending_base, 0),
-    DEFINE_PROP_UINT32("enable-base", SiFivePLICState, enable_base, 0),
-    DEFINE_PROP_UINT32("enable-stride", SiFivePLICState, enable_stride, 0),
-    DEFINE_PROP_UINT32("context-base", SiFivePLICState, context_base, 0),
-    DEFINE_PROP_UINT32("context-stride", SiFivePLICState, context_stride, 0),
-    DEFINE_PROP_UINT32("aperture-size", SiFivePLICState, aperture_size, 0),
-    DEFINE_PROP_END_OF_LIST(),
-};
-
 /*
  * parse PLIC hart/mode address offset config
  *
@@ -430,39 +412,46 @@ static void parse_hart_config(SiFivePLICState *plic)
 
 static void sifive_plic_irq_request(void *opaque, int irq, int level)
 {
-    SiFivePLICState *plic = opaque;
-    if (RISCV_DEBUG_PLIC) {
-        qemu_log("sifive_plic_irq_request: irq=%d level=%d\n", irq, level);
-    }
-    sifive_plic_set_pending(plic, irq, level > 0);
-    sifive_plic_update(plic);
+    SiFivePLICState *s = opaque;
+
+    sifive_plic_set_pending(s, irq, level > 0);
+    sifive_plic_update(s);
 }
 
 static void sifive_plic_realize(DeviceState *dev, Error **errp)
 {
-    SiFivePLICState *plic = SIFIVE_PLIC(dev);
+    SiFivePLICState *s = SIFIVE_PLIC(dev);
     int i;
 
-    memory_region_init_io(&plic->mmio, OBJECT(dev), &sifive_plic_ops, plic,
-                          TYPE_SIFIVE_PLIC, plic->aperture_size);
-    parse_hart_config(plic);
-    plic->bitfield_words = (plic->num_sources + 31) >> 5;
-    plic->num_enables = plic->bitfield_words * plic->num_addrs;
-    plic->source_priority = g_new0(uint32_t, plic->num_sources);
-    plic->target_priority = g_new(uint32_t, plic->num_addrs);
-    plic->pending = g_new0(uint32_t, plic->bitfield_words);
-    plic->claimed = g_new0(uint32_t, plic->bitfield_words);
-    plic->enable = g_new0(uint32_t, plic->num_enables);
-    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &plic->mmio);
-    qdev_init_gpio_in(dev, sifive_plic_irq_request, plic->num_sources);
+    memory_region_init_io(&s->mmio, OBJECT(dev), &sifive_plic_ops, s,
+                          TYPE_SIFIVE_PLIC, s->aperture_size);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->mmio);
+
+    parse_hart_config(s);
+
+    s->bitfield_words = (s->num_sources + 31) >> 5;
+    s->num_enables = s->bitfield_words * s->num_addrs;
+    s->source_priority = g_new0(uint32_t, s->num_sources);
+    s->target_priority = g_new(uint32_t, s->num_addrs);
+    s->pending = g_new0(uint32_t, s->bitfield_words);
+    s->claimed = g_new0(uint32_t, s->bitfield_words);
+    s->enable = g_new0(uint32_t, s->num_enables);
+
+    qdev_init_gpio_in(dev, sifive_plic_irq_request, s->num_sources);
+
+    s->s_external_irqs = g_malloc(sizeof(qemu_irq) * s->num_harts);
+    qdev_init_gpio_out(dev, s->s_external_irqs, s->num_harts);
+
+    s->m_external_irqs = g_malloc(sizeof(qemu_irq) * s->num_harts);
+    qdev_init_gpio_out(dev, s->m_external_irqs, s->num_harts);
 
     /* We can't allow the supervisor to control SEIP as this would allow the
      * supervisor to clear a pending external interrupt which will result in
      * lost a interrupt in the case a PLIC is attached. The SEIP bit must be
      * hardware controlled when a PLIC is attached.
      */
-    for (i = 0; i < plic->num_harts; i++) {
-        RISCVCPU *cpu = RISCV_CPU(qemu_get_cpu(plic->hartid_base + i));
+    for (i = 0; i < s->num_harts; i++) {
+        RISCVCPU *cpu = RISCV_CPU(qemu_get_cpu(s->hartid_base + i));
         if (riscv_cpu_claim_interrupts(cpu, MIP_SEIP) < 0) {
             error_report("SEIP already claimed");
             exit(1);
@@ -493,6 +482,21 @@ static const VMStateDescription vmstate_sifive_plic = {
         }
 };
 
+static Property sifive_plic_properties[] = {
+    DEFINE_PROP_STRING("hart-config", SiFivePLICState, hart_config),
+    DEFINE_PROP_UINT32("hartid-base", SiFivePLICState, hartid_base, 0),
+    DEFINE_PROP_UINT32("num-sources", SiFivePLICState, num_sources, 0),
+    DEFINE_PROP_UINT32("num-priorities", SiFivePLICState, num_priorities, 0),
+    DEFINE_PROP_UINT32("priority-base", SiFivePLICState, priority_base, 0),
+    DEFINE_PROP_UINT32("pending-base", SiFivePLICState, pending_base, 0),
+    DEFINE_PROP_UINT32("enable-base", SiFivePLICState, enable_base, 0),
+    DEFINE_PROP_UINT32("enable-stride", SiFivePLICState, enable_stride, 0),
+    DEFINE_PROP_UINT32("context-base", SiFivePLICState, context_base, 0),
+    DEFINE_PROP_UINT32("context-stride", SiFivePLICState, context_stride, 0),
+    DEFINE_PROP_UINT32("aperture-size", SiFivePLICState, aperture_size, 0),
+    DEFINE_PROP_END_OF_LIST(),
+};
+
 static void sifive_plic_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
@@ -520,6 +524,7 @@ type_init(sifive_plic_register_types)
  * Create PLIC device.
  */
 DeviceState *sifive_plic_create(hwaddr addr, char *hart_config,
+    uint32_t num_harts,
     uint32_t hartid_base, uint32_t num_sources,
     uint32_t num_priorities, uint32_t priority_base,
     uint32_t pending_base, uint32_t enable_base,
@@ -527,6 +532,8 @@ DeviceState *sifive_plic_create(hwaddr addr, char *hart_config,
     uint32_t context_stride, uint32_t aperture_size)
 {
     DeviceState *dev = qdev_new(TYPE_SIFIVE_PLIC);
+    int i;
+
     assert(enable_stride == (enable_stride & -enable_stride));
     assert(context_stride == (context_stride & -context_stride));
     qdev_prop_set_string(dev, "hart-config", hart_config);
@@ -542,5 +549,15 @@ DeviceState *sifive_plic_create(hwaddr addr, char *hart_config,
     qdev_prop_set_uint32(dev, "aperture-size", aperture_size);
     sysbus_realize_and_unref(SYS_BUS_DEVICE(dev), &error_fatal);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 0, addr);
+
+    for (i = 0; i < num_harts; i++) {
+        CPUState *cpu = qemu_get_cpu(hartid_base + i);
+
+        qdev_connect_gpio_out(dev, i,
+                              qdev_get_gpio_in(DEVICE(cpu), IRQ_S_EXT));
+        qdev_connect_gpio_out(dev, num_harts + i,
+                              qdev_get_gpio_in(DEVICE(cpu), IRQ_M_EXT));
+    }
+
     return dev;
 }

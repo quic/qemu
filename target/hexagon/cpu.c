@@ -711,6 +711,8 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
             }
             hexagon_disable_int(env, irq);
             cpu_interrupt(cs, mask[irq]);
+        } else {
+            cpu_reset_interrupt(cs, mask[irq]);
         }
         break;
     default:
@@ -1092,6 +1094,7 @@ static const char *mmu_idx_names[] = {
 };
 #endif
 
+#if !defined(CONFIG_USER_ONLY)
 static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
                              MMUAccessType access_type, int mmu_idx,
                              bool probe, uintptr_t retaddr)
@@ -1147,6 +1150,7 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
     do_raise_exception_err(env, cs->exception_index, retaddr);
 #endif
 }
+#endif
 
 #ifndef CONFIG_USER_ONLY
 #include "hw/core/sysemu-cpu-ops.h"
@@ -1179,7 +1183,7 @@ static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
     return false;
 }
 
-static void hexagon_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
+static void QEMU_NORETURN hexagon_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
                                         MMUAccessType access_type,
                                         int mmu_idx,
                                         uintptr_t retaddr)
@@ -1215,9 +1219,9 @@ static void hexagon_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
 static struct TCGCPUOps hexagon_tcg_ops = {
     .initialize = hexagon_translate_init,
     .synchronize_from_tb = hexagon_cpu_synchronize_from_tb,
-    .tlb_fill = hexagon_tlb_fill,
 
 #if !defined(CONFIG_USER_ONLY)
+    .tlb_fill = hexagon_tlb_fill,
     .cpu_exec_interrupt = hexagon_cpu_exec_interrupt,
     .do_interrupt = hexagon_cpu_do_interrupt,
     .do_unaligned_access = hexagon_cpu_do_unaligned_access,
@@ -1318,8 +1322,8 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_size = sizeof(HexagonCPUClass),
         .class_init = hexagon_cpu_class_init,
     },
-    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,  hexagon_common_cpu_init),
-    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,  hexagon_common_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_GENERIC,          hexagon_common_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,              hexagon_common_cpu_init),
 };
 
 DEFINE_TYPES(hexagon_cpu_type_infos)

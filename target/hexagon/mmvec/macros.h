@@ -82,8 +82,8 @@
 #define fVLOG_VTCM_HALFWORD_INCREMENT(EA, OFFSET, INC, IDX, ALIGNMENT, LEN) \
     do { \
         int log_byte = 0; \
-        vaddr_t va = EA; \
-        vaddr_t va_high = EA + LEN; \
+        target_ulong va = EA; \
+        target_ulong va_high = EA + LEN; \
         for (int i0 = 0; i0 < 2; i0++) { \
             log_byte = (va + i0) <= va_high; \
             LOG_VTCM_BYTE(va + i0, log_byte, INC.ub[2 * IDX + i0], \
@@ -94,8 +94,8 @@
                                          ALIGNMENT, LEN) \
     do { \
         int log_byte = 0; \
-        vaddr_t va = EA; \
-        vaddr_t va_high = EA + LEN; \
+        target_ulong va = EA; \
+        target_ulong va_high = EA + LEN; \
         for (int i0 = 0; i0 < 2; i0++) { \
             log_byte = (va + i0) <= va_high; \
             LOG_VTCM_BYTE(va + i0, log_byte, INC.ub[2 * IDX + i0], \
@@ -106,15 +106,15 @@
 #define GATHER_FUNCTION(EA, OFFSET, IDX, LEN, ELEMENT_SIZE, BANK_IDX, QVAL) \
     do { \
         int i0; \
-        vaddr_t va = EA; \
-        vaddr_t va_high = EA + LEN; \
+        target_ulong va = EA; \
+        target_ulong va_high = EA + LEN; \
         uintptr_t ra = GETPC(); \
         int log_bank = 0; \
         int log_byte = 0; \
         for (i0 = 0; i0 < ELEMENT_SIZE; i0++) { \
             log_byte = ((va + i0) <= va_high) && QVAL; \
             log_bank |= (log_byte << i0); \
-            size1u_t B; \
+            uint8_t B; \
             B = cpu_ldub_data_ra(env, EA + i0, ra); \
             env->tmp_VRegs[0].ub[ELEMENT_SIZE * IDX + i0] = B; \
             LOG_VTCM_BYTE(va + i0, log_byte, B, ELEMENT_SIZE * IDX + i0); \
@@ -137,7 +137,7 @@
                 TYPE dst = 0; \
                 TYPE inc = 0; \
                 for (int j = 0; j < sizeof(TYPE); j++) { \
-                    size1u_t val; \
+                    uint8_t val; \
                     val = cpu_ldub_data_ra(env, env->vtcm_log.va[i + j], ra); \
                     dst |= val << (8 * j); \
                     inc |= env->vtcm_log.data.ub[j + i] << (8 * j); \

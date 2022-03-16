@@ -66,8 +66,9 @@
     } while (0)
 #define GET_EA_pci \
     do { \
+        TCGv tcgv_siV = tcg_constant_tl(siV); \
         tcg_gen_mov_tl(EA, RxV); \
-        gen_helper_fcircadd(RxV, RxV, tcg_constant_tl(siV), MuV, \
+        gen_helper_fcircadd(RxV, RxV, tcgv_siV, MuV, \
                             hex_gpr[HEX_REG_CS0 + MuN]); \
     } while (0)
 #define GET_EA_pcr(SHIFT) \
@@ -1563,6 +1564,8 @@
     do { \
         TCGv LSB = tcg_temp_new(); \
         TCGv_i64 LSB_i64 = tcg_temp_new_i64(); \
+        TCGv zero = tcg_const_tl(0); \
+        TCGv_i64 zero_i64 = tcg_const_i64(0); \
         TCGv_i64 unscramble = tcg_temp_new_i64(); \
         TCGv WORD = tcg_temp_new(); \
         TCGv SP = tcg_temp_new(); \
@@ -1575,16 +1578,18 @@
         tcg_gen_mov_i64(unscramble, gen_frame_unscramble(tmp_i64)); \
         tcg_gen_concat_i32_i64(RddV, hex_gpr[HEX_REG_FP], \
                                      hex_gpr[HEX_REG_LR]); \
-        tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, ctx->zero64, \
+        tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, zero_i64, \
                             unscramble, RddV); \
         tcg_gen_mov_tl(SP, hex_gpr[HEX_REG_SP]); \
         tcg_gen_addi_tl(tmp, EA, 8); \
-        tcg_gen_movcond_tl(TCG_COND_NE, SP, LSB, ctx->zero, tmp, SP); \
-        gen_log_predicated_reg_write(HEX_REG_SP, SP, insn->slot, ctx->zero); \
+        tcg_gen_movcond_tl(TCG_COND_NE, SP, LSB, zero, tmp, SP); \
+        gen_log_predicated_reg_write(HEX_REG_SP, SP, insn->slot); \
         ctx_log_reg_write(ctx, HEX_REG_SP); \
-        gen_cond_return(LSB, fGETWORD(1, RddV), ctx->zero); \
+        gen_cond_return(LSB, fGETWORD(1, RddV)); \
         tcg_temp_free(LSB); \
         tcg_temp_free_i64(LSB_i64); \
+        tcg_temp_free(zero); \
+        tcg_temp_free_i64(zero_i64); \
         tcg_temp_free_i64(unscramble); \
         tcg_temp_free(WORD); \
         tcg_temp_free(SP); \
@@ -1611,6 +1616,8 @@
     do { \
         TCGv LSB = tcg_temp_new(); \
         TCGv_i64 LSB_i64 = tcg_temp_new_i64(); \
+        TCGv zero = tcg_const_tl(0); \
+        TCGv_i64 zero_i64 = tcg_const_i64(0); \
         TCGv_i64 unscramble = tcg_temp_new_i64(); \
         TCGv_i64 RddV = tcg_temp_new_i64(); \
         TCGv WORD = tcg_temp_new(); \
@@ -1624,19 +1631,21 @@
         tcg_gen_mov_i64(unscramble, gen_frame_unscramble(tmp_i64)); \
         tcg_gen_concat_i32_i64(RddV, hex_gpr[HEX_REG_FP], \
                                      hex_gpr[HEX_REG_LR]); \
-        tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, ctx->zero64, \
+        tcg_gen_movcond_i64(TCG_COND_NE, RddV, LSB_i64, zero_i64, \
                             unscramble, RddV); \
         tcg_gen_mov_tl(SP, hex_gpr[HEX_REG_SP]); \
         tcg_gen_addi_tl(tmp, EA, 8); \
-        tcg_gen_movcond_tl(TCG_COND_NE, SP, LSB, ctx->zero, tmp, SP); \
-        gen_log_predicated_reg_write(HEX_REG_SP, SP, insn->slot, ctx->zero); \
+        tcg_gen_movcond_tl(TCG_COND_NE, SP, LSB, zero, tmp, SP); \
+        gen_log_predicated_reg_write(HEX_REG_SP, SP, insn->slot); \
         ctx_log_reg_write(ctx, HEX_REG_SP); \
-        gen_log_predicated_reg_write_pair(HEX_REG_FP, RddV, insn->slot, ctx->zero); \
+        gen_log_predicated_reg_write_pair(HEX_REG_FP, RddV, insn->slot); \
         ctx_log_reg_write(ctx, HEX_REG_FP); \
         ctx_log_reg_write(ctx, HEX_REG_LR); \
-        gen_cond_return(LSB, fGETWORD(1, RddV), ctx->zero); \
+        gen_cond_return(LSB, fGETWORD(1, RddV)); \
         tcg_temp_free(LSB); \
         tcg_temp_free_i64(LSB_i64); \
+        tcg_temp_free(zero); \
+        tcg_temp_free_i64(zero_i64); \
         tcg_temp_free_i64(unscramble); \
         tcg_temp_free_i64(RddV); \
         tcg_temp_free(WORD); \
@@ -1704,12 +1713,13 @@
 #define fGEN_TCG_A4_addp_c(SHORTCODE) \
     do { \
         TCGv_i64 carry = tcg_temp_new_i64(); \
+        TCGv_i64 zero = tcg_constant_i64(0); \
         tcg_gen_extu_i32_i64(carry, PxV); \
         tcg_gen_andi_i64(carry, carry, 1); \
-        tcg_gen_add2_i64(RddV, carry, RssV, ctx->zero64, carry, ctx->zero64); \
-        tcg_gen_add2_i64(RddV, carry, RddV, carry, RttV, ctx->zero64); \
+        tcg_gen_add2_i64(RddV, carry, RssV, zero, carry, zero); \
+        tcg_gen_add2_i64(RddV, carry, RddV, carry, RttV, zero); \
         tcg_gen_extrl_i64_i32(PxV, carry); \
-        gen_8bitsof(PxV, PxV, ctx); \
+        gen_8bitsof(PxV, PxV); \
         tcg_temp_free_i64(carry); \
     } while (0)
 
@@ -1717,14 +1727,15 @@
 #define fGEN_TCG_A4_subp_c(SHORTCODE) \
     do { \
         TCGv_i64 carry = tcg_temp_new_i64(); \
+        TCGv_i64 zero = tcg_constant_i64(0); \
         TCGv_i64 not_RttV = tcg_temp_new_i64(); \
         tcg_gen_extu_i32_i64(carry, PxV); \
         tcg_gen_andi_i64(carry, carry, 1); \
         tcg_gen_not_i64(not_RttV, RttV); \
-        tcg_gen_add2_i64(RddV, carry, RssV, ctx->zero64, carry, ctx->zero64); \
-        tcg_gen_add2_i64(RddV, carry, RddV, carry, not_RttV, ctx->zero64); \
+        tcg_gen_add2_i64(RddV, carry, RssV, zero, carry, zero); \
+        tcg_gen_add2_i64(RddV, carry, RddV, carry, not_RttV, zero); \
         tcg_gen_extrl_i64_i32(PxV, carry); \
-        gen_8bitsof(PxV, PxV, ctx); \
+        gen_8bitsof(PxV, PxV); \
         tcg_temp_free_i64(carry); \
         tcg_temp_free_i64(not_RttV); \
     } while (0)
@@ -1757,18 +1768,18 @@
     } while (0)
 
 #define fGEN_TCG_J2_call(SHORTCODE) \
-    gen_call(riV, ctx->zero)
+    gen_call(riV)
 #define fGEN_TCG_J2_callr(SHORTCODE) \
-    gen_callr(RsV, ctx->zero)
+    gen_callr(RsV)
 
 #define fGEN_TCG_J2_callt(SHORTCODE) \
-    gen_pred_call(PuV, true, riV, ctx->zero)
+    gen_pred_call(PuV, true, riV)
 #define fGEN_TCG_J2_callf(SHORTCODE) \
-    gen_pred_call(PuV, false, riV, ctx->zero)
+    gen_pred_call(PuV, false, riV)
 #define fGEN_TCG_J2_callrt(SHORTCODE) \
-    gen_pred_callr(PuV, true, RsV, ctx->zero)
+    gen_pred_callr(PuV, true, RsV)
 #define fGEN_TCG_J2_callrf(SHORTCODE) \
-    gen_pred_callr(PuV, false, RsV, ctx->zero)
+    gen_pred_callr(PuV, false, RsV)
 
 #define fGEN_TCG_J2_loop0r(SHORTCODE) \
     gen_loop0r(RsV, riV, insn)
@@ -1784,7 +1795,7 @@
 #define fGEN_TCG_J2_endloop1(SHORTCODE) \
     gen_endloop1()
 #define fGEN_TCG_J2_endloop01(SHORTCODE) \
-    gen_endloop01(ctx->zero)
+    gen_endloop01()
 
 /*
  * Compound compare and jump instructions
@@ -1895,7 +1906,7 @@
 #define fGEN_TCG_SA1_cmpeqi(SHORTCODE) \
     do { \
         TCGv tmp = tcg_temp_new(); \
-        gen_comparei(TCG_COND_EQ, tmp, RsV, uiV, ctx); \
+        gen_comparei(TCG_COND_EQ, tmp, RsV, uiV); \
         gen_log_pred_write(ctx, 0, tmp); \
         tcg_temp_free(tmp); \
     } while (0)
@@ -1956,34 +1967,34 @@
 
 /* Compare instructions */
 #define fGEN_TCG_C2_cmpeq(SHORTCODE) \
-    gen_compare(TCG_COND_EQ, PdV, RsV, RtV, ctx)
+    gen_compare(TCG_COND_EQ, PdV, RsV, RtV)
 #define fGEN_TCG_C4_cmpneq(SHORTCODE) \
-    gen_compare(TCG_COND_NE, PdV, RsV, RtV, ctx)
+    gen_compare(TCG_COND_NE, PdV, RsV, RtV)
 #define fGEN_TCG_C2_cmpgt(SHORTCODE) \
-    gen_compare(TCG_COND_GT, PdV, RsV, RtV, ctx)
+    gen_compare(TCG_COND_GT, PdV, RsV, RtV)
 #define fGEN_TCG_C2_cmpgtu(SHORTCODE) \
-    gen_compare(TCG_COND_GTU, PdV, RsV, RtV, ctx)
+    gen_compare(TCG_COND_GTU, PdV, RsV, RtV)
 #define fGEN_TCG_C4_cmplte(SHORTCODE) \
-    gen_compare(TCG_COND_LE, PdV, RsV, RtV, ctx)
+    gen_compare(TCG_COND_LE, PdV, RsV, RtV)
 #define fGEN_TCG_C4_cmplteu(SHORTCODE) \
-    gen_compare(TCG_COND_LEU, PdV, RsV, RtV, ctx)
+    gen_compare(TCG_COND_LEU, PdV, RsV, RtV)
 #define fGEN_TCG_C2_cmpeqp(SHORTCODE) \
-    gen_compare_i64(TCG_COND_EQ, PdV, RssV, RttV, ctx)
+    gen_compare_i64(TCG_COND_EQ, PdV, RssV, RttV)
 #define fGEN_TCG_C2_cmpgtp(SHORTCODE) \
-    gen_compare_i64(TCG_COND_GT, PdV, RssV, RttV, ctx)
+    gen_compare_i64(TCG_COND_GT, PdV, RssV, RttV)
 #define fGEN_TCG_C2_cmpgtup(SHORTCODE) \
-    gen_compare_i64(TCG_COND_GTU, PdV, RssV, RttV, ctx)
+    gen_compare_i64(TCG_COND_GTU, PdV, RssV, RttV)
 #define fGEN_TCG_C2_cmpeqi(SHORTCODE) \
-    gen_comparei(TCG_COND_EQ, PdV, RsV, siV, ctx)
+    gen_comparei(TCG_COND_EQ, PdV, RsV, siV)
 #define fGEN_TCG_C2_cmpgti(SHORTCODE) \
-    gen_comparei(TCG_COND_GT, PdV, RsV, siV, ctx)
+    gen_comparei(TCG_COND_GT, PdV, RsV, siV)
 #define fGEN_TCG_C2_cmpgtui(SHORTCODE) \
-    gen_comparei(TCG_COND_GTU, PdV, RsV, uiV, ctx)
+    gen_comparei(TCG_COND_GTU, PdV, RsV, uiV)
 #define fGEN_TCG_A4_cmpbgtui(SHORTCODE) \
     do { \
         TCGv byte = tcg_temp_new(); \
         tcg_gen_extract_tl(byte, RsV, 0, 8); \
-        gen_comparei(TCG_COND_GTU, PdV, byte, uiV, ctx); \
+        gen_comparei(TCG_COND_GTU, PdV, byte, uiV); \
         tcg_temp_free(byte); \
     } while (0)
 
@@ -1991,15 +2002,15 @@
     tcg_gen_ext8u_tl(RdV, RsV)
 
 #define fGEN_TCG_J2_jump(SHORTCODE) \
-    gen_jump(riV, ctx->zero)
+    gen_jump(riV)
 #define fGEN_TCG_J2_jumpr(SHORTCODE) \
-    gen_write_new_pc(RsV, ctx->zero)
+    gen_write_new_pc(RsV)
 
 #define fGEN_TCG_cond_jump(COND) \
     do { \
         TCGv LSB = tcg_temp_new(); \
         COND; \
-        gen_cond_jump(LSB, riV, ctx->zero); \
+        gen_cond_jump(LSB, riV); \
         tcg_temp_free(LSB); \
     } while (0)
 
@@ -2017,14 +2028,14 @@
         TCGv LSB = tcg_temp_new(); \
         tcg_gen_andi_tl(LSB, PuN, 1); \
         tcg_gen_xori_tl(LSB, LSB, 1); \
-        gen_cond_jumpr(LSB, RsV, ctx->zero); \
+        gen_cond_jumpr(LSB, RsV); \
         tcg_temp_free(LSB); \
     } while (0)
 
 #define fGEN_TCG_J2_jumptnew(SHORTCODE) \
-    gen_cond_jump(PuN, riV, ctx->zero)
+    gen_cond_jump(PuN, riV)
 #define fGEN_TCG_J2_jumptnewpt(SHORTCODE) \
-    gen_cond_jump(PuN, riV, ctx->zero)
+    gen_cond_jump(PuN, riV)
 
 /*
  * New value compare & jump instructions
@@ -2032,37 +2043,37 @@
  * if ([!]COND(r0.new, #7) jump:t address
  */
 #define fGEN_TCG_J4_cmpgt_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_LE, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_LE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeq_f_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_NE, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_NE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeq_t_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_EQ, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_EQ, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmplt_f_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_GE, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_GE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgt_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_GT, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_GT, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeqi_t_jumpnv_nt(SHORTCODE) \
-    gen_cmpi_jumpnv(TCG_COND_EQ, NsN, UiV, riV, ctx->zero)
+    gen_cmpi_jumpnv(TCG_COND_EQ, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpltu_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_GEU, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_GEU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgtui_t_jumpnv_t(SHORTCODE) \
-    gen_cmpi_jumpnv(TCG_COND_GTU, NsN, UiV, riV, ctx->zero)
+    gen_cmpi_jumpnv(TCG_COND_GTU, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpeq_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_NE, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_NE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeqi_f_jumpnv_t(SHORTCODE) \
-    gen_cmpi_jumpnv(TCG_COND_NE, NsN, UiV, riV, ctx->zero)
+    gen_cmpi_jumpnv(TCG_COND_NE, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpgtu_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_GTU, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_GTU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgtu_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_LEU, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_LEU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmplt_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(TCG_COND_LT, NsN, RtV, riV, ctx->zero)
+    gen_cmp_jumpnv(TCG_COND_LT, NsN, RtV, riV)
 
 /* r0 = r1 ; jump address */
 #define fGEN_TCG_J4_jumpsetr(SHORTCODE) \
     do { \
         tcg_gen_mov_tl(RdV, RsV); \
-        gen_jump(riV, ctx->zero); \
+        gen_jump(riV); \
     } while (0)
 
 /* r0 = lsr(r1, #5) */
@@ -2100,7 +2111,7 @@
 
 /* r0 |= asl(r1, r2) */
 #define fGEN_TCG_S2_asl_r_r_or(SHORTCODE) \
-    gen_asl_r_r_or(RxV, RsV, RtV, ctx->zero)
+    gen_asl_r_r_or(RxV, RsV, RtV)
 
 /* r0 = asl(r1, #5) */
 #define fGEN_TCG_S2_asl_i_r(SHORTCODE) \
@@ -2166,9 +2177,11 @@
     tcg_gen_concat_i32_i64(RddV, RtV, RsV)
 #define fGEN_TCG_A2_combineii(SHORTCODE) \
     do { \
-        TCGv tmp_lo = tcg_constant_tl(SiV); \
-        TCGv tmp_hi = tcg_constant_tl(siV); \
+        TCGv tmp_lo = tcg_const_tl(SiV); \
+        TCGv tmp_hi = tcg_const_tl(siV); \
         tcg_gen_concat_i32_i64(RddV, tmp_lo, tmp_hi); \
+        tcg_temp_free(tmp_lo); \
+        tcg_temp_free(tmp_hi); \
     } while (0)
 #define fGEN_TCG_A2_combine_ll(SHORTCODE) \
     do { \
@@ -2182,22 +2195,32 @@
     } while (0)
 #define fGEN_TCG_A4_combineri(SHORTCODE) \
     do { \
-        tcg_gen_concat_i32_i64(RddV, tcg_constant_tl(siV), RsV); \
+        TCGv tmp_lo = tcg_const_tl(siV); \
+        tcg_gen_concat_i32_i64(RddV, tmp_lo, RsV); \
+        tcg_temp_free(tmp_lo); \
     } while (0)
 #define fGEN_TCG_A4_combineir(SHORTCODE) \
     do { \
-        tcg_gen_concat_i32_i64(RddV, RsV, tcg_constant_tl(siV)); \
+        TCGv tmp_hi = tcg_const_tl(siV); \
+        tcg_gen_concat_i32_i64(RddV, RsV, tmp_hi); \
+        tcg_temp_free(tmp_hi); \
     } while (0)
 #define fGEN_TCG_A4_combineii(SHORTCODE) \
     do { \
-        TCGv tmp_lo = tcg_constant_tl(UiV); \
-        TCGv tmp_hi = tcg_constant_tl(siV); \
+        TCGv tmp_lo = tcg_const_tl(UiV); \
+        TCGv tmp_hi = tcg_const_tl(siV); \
         tcg_gen_concat_i32_i64(RddV, tmp_lo, tmp_hi); \
+        tcg_temp_free(tmp_lo); \
+        tcg_temp_free(tmp_hi); \
     } while (0)
 
 #define fGEN_TCG_SA1_combine0i(SHORTCODE) \
     do { \
-        tcg_gen_concat_i32_i64(RddV, tcg_constant_tl(uiV), ctx->zero); \
+        TCGv tmp_lo = tcg_const_tl(uiV); \
+        TCGv zero = tcg_const_tl(0); \
+        tcg_gen_concat_i32_i64(RddV, tmp_lo, zero); \
+        tcg_temp_free(tmp_lo); \
+        tcg_temp_free(zero); \
     } while (0)
 
 /* r0 = or(#8, asl(r0, #5)) */
@@ -2224,13 +2247,15 @@
 #define fGEN_TCG_SA1_clrtnew(SHORTCODE) \
     do { \
         TCGv mask = tcg_temp_new(); \
+        TCGv zero = tcg_const_tl(0); \
         tcg_gen_movi_tl(RdV, 0); \
         tcg_gen_movi_tl(mask, 1 << insn->slot); \
         tcg_gen_or_tl(mask, hex_slot_cancelled, mask); \
         tcg_gen_movcond_tl(TCG_COND_EQ, hex_slot_cancelled, \
-                           hex_new_pred_value[0], ctx->zero, \
+                           hex_new_pred_value[0], zero, \
                            mask, hex_slot_cancelled); \
         tcg_temp_free(mask); \
+        tcg_temp_free(zero); \
     } while (0)
 
 /* r0 = add(r1 , mpyi(#6, r2)) */
@@ -2245,14 +2270,16 @@
     do { \
         TCGv LSB = tcg_temp_new(); \
         TCGv mask = tcg_temp_new(); \
+        TCGv zero = tcg_const_tl(0); \
         PRED; \
         ADD; \
         tcg_gen_movi_tl(mask, 1 << insn->slot); \
         tcg_gen_or_tl(mask, hex_slot_cancelled, mask); \
-        tcg_gen_movcond_tl(TCG_COND_NE, hex_slot_cancelled, LSB, ctx->zero, \
+        tcg_gen_movcond_tl(TCG_COND_NE, hex_slot_cancelled, LSB, zero, \
                            hex_slot_cancelled, mask); \
         tcg_temp_free(LSB); \
         tcg_temp_free(mask); \
+        tcg_temp_free(zero); \
     } while (0)
 
 #define fGEN_TCG_A2_paddt(SHORTCODE) \
@@ -2278,15 +2305,18 @@
 #define fGEN_TCG_COND_MOVE(VAL, COND) \
     do { \
         TCGv LSB = tcg_temp_new(); \
+        TCGv zero = tcg_const_tl(0); \
         TCGv mask = tcg_temp_new(); \
-        TCGv value = tcg_constant_tl(siV); \
+        TCGv value = tcg_const_tl(siV); \
         VAL; \
-        tcg_gen_movcond_tl(COND, RdV, LSB, ctx->zero, value, ctx->zero); \
+        tcg_gen_movcond_tl(COND, RdV, LSB, zero, value, zero); \
         tcg_gen_movi_tl(mask, 1 << insn->slot); \
-        tcg_gen_movcond_tl(TCG_COND_EQ, mask, LSB, ctx->zero, mask, ctx->zero); \
+        tcg_gen_movcond_tl(TCG_COND_EQ, mask, LSB, zero, mask, zero); \
         tcg_gen_or_tl(hex_slot_cancelled, hex_slot_cancelled, mask); \
         tcg_temp_free(LSB); \
+        tcg_temp_free(zero); \
         tcg_temp_free(mask); \
+        tcg_temp_free(value); \
     } while (0)
 
 #define fGEN_TCG_C2_cmoveit(SHORTCODE) \
@@ -2299,30 +2329,41 @@
 /* r0 = mux(p0, #3, #5) */
 #define fGEN_TCG_C2_muxii(SHORTCODE) \
     do { \
+        TCGv zero = tcg_const_tl(0); \
+        TCGv tval = tcg_const_tl(siV); \
+        TCGv fval = tcg_const_tl(SiV); \
         TCGv lsb = tcg_temp_new(); \
         tcg_gen_andi_tl(lsb, PuV, 1); \
-        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, ctx->zero, \
-                           tcg_constant_tl(siV), tcg_constant_tl(SiV)); \
+        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, zero, tval, fval); \
+        tcg_temp_free(zero); \
+        tcg_temp_free(tval); \
+        tcg_temp_free(fval); \
         tcg_temp_free(lsb); \
     } while (0)
 
 /* r0 = mux(p0, r1, #5) */
 #define fGEN_TCG_C2_muxir(SHORTCODE) \
     do { \
+        TCGv zero = tcg_const_tl(0); \
+        TCGv fval = tcg_const_tl(siV); \
         TCGv lsb = tcg_temp_new(); \
         tcg_gen_andi_tl(lsb, PuV, 1); \
-        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, ctx->zero, RsV, \
-                           tcg_constant_tl(siV)); \
+        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, zero, RsV, fval); \
+        tcg_temp_free(zero); \
+        tcg_temp_free(fval); \
         tcg_temp_free(lsb); \
     } while (0)
 
 /* r0 = mux(p0, #3, r1) */
 #define fGEN_TCG_C2_muxri(SHORTCODE) \
     do { \
+        TCGv zero = tcg_const_tl(0); \
+        TCGv tval = tcg_const_tl(siV); \
         TCGv lsb = tcg_temp_new(); \
         tcg_gen_andi_tl(lsb, PuV, 1); \
-        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, ctx->zero, \
-                           tcg_constant_tl(siV), RsV); \
+        tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, zero, tval, RsV); \
+        tcg_temp_free(zero); \
+        tcg_temp_free(tval); \
         tcg_temp_free(lsb); \
     } while (0)
 
@@ -2330,14 +2371,14 @@
 #define fGEN_TCG_S2_tstbit_i(SHORTCODE) \
     do { \
         tcg_gen_andi_tl(PdV, RsV, (1 << uiV)); \
-        gen_8bitsof(PdV, PdV, ctx); \
+        gen_8bitsof(PdV, PdV); \
     } while (0)
 
 /* p0 = !tstbit(r0, #5) */
 #define fGEN_TCG_S4_ntstbit_i(SHORTCODE) \
     do { \
         tcg_gen_andi_tl(PdV, RsV, (1 << uiV)); \
-        gen_8bitsof(PdV, PdV, ctx); \
+        gen_8bitsof(PdV, PdV); \
         tcg_gen_xori_tl(PdV, PdV, 0xff); \
     } while (0)
 
@@ -2359,8 +2400,10 @@
 /* p0 = bitsclr(r1, #6) */
 #define fGEN_TCG_C2_bitsclri(SHORTCODE) \
     do { \
+        TCGv zero = tcg_const_tl(0); \
         tcg_gen_andi_tl(PdV, RsV, uiV); \
-        gen_compare(TCG_COND_EQ, PdV, PdV, ctx->zero, ctx); \
+        gen_compare(TCG_COND_EQ, PdV, PdV, zero); \
+        tcg_temp_free(zero); \
     } while (0)
 
 #define fGEN_TCG_S2_cl0(SHORTCODE) \
@@ -2382,10 +2425,10 @@
     } while (0)
 
 #define fGEN_TCG_SL2_jumpr31(SHORTCODE) \
-    gen_write_new_pc(hex_gpr[HEX_REG_LR], ctx->zero)
+    gen_write_new_pc(hex_gpr[HEX_REG_LR])
 
 #define fGEN_TCG_SL2_jumpr31_tnew(SHORTCODE) \
-    gen_cond_jumpr(hex_new_pred_value[0], hex_gpr[HEX_REG_LR], ctx->zero)
+    gen_cond_jumpr(hex_new_pred_value[0], hex_gpr[HEX_REG_LR])
 
 #define fGEN_TCG_J2_pause(SHORTCODE) \
     do { \
@@ -2556,7 +2599,8 @@
     gen_helper_sfmin(RdV, cpu_env, RsV, RtV)
 #define fGEN_TCG_F2_sfclass(SHORTCODE) \
     do { \
-        gen_helper_sfclass(PdV, cpu_env, RsV, tcg_constant_tl(uiV)); \
+        TCGv imm = tcg_constant_tl(uiV); \
+        gen_helper_sfclass(PdV, cpu_env, RsV, imm); \
     } while (0)
 #define fGEN_TCG_F2_sffixupn(SHORTCODE) \
     gen_helper_sffixupn(RdV, cpu_env, RsV, RtV)
@@ -2582,7 +2626,8 @@
     gen_helper_dfcmpuo(PdV, cpu_env, RssV, RttV)
 #define fGEN_TCG_F2_dfclass(SHORTCODE) \
     do { \
-        gen_helper_dfclass(PdV, cpu_env, RssV, tcg_constant_tl(uiV)); \
+        TCGv imm = tcg_constant_tl(uiV); \
+        gen_helper_dfclass(PdV, cpu_env, RssV, imm); \
     } while (0)
 #define fGEN_TCG_F2_sfmpy(SHORTCODE) \
     gen_helper_sfmpy(RdV, cpu_env, RsV, RtV)

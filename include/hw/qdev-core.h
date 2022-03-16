@@ -26,6 +26,7 @@ typedef enum DeviceCategory {
     DEVICE_CATEGORY_SOUND,
     DEVICE_CATEGORY_MISC,
     DEVICE_CATEGORY_CPU,
+    DEVICE_CATEGORY_WATCHDOG,
     DEVICE_CATEGORY_MAX
 } DeviceCategory;
 
@@ -176,11 +177,12 @@ struct DeviceState {
     Object parent_obj;
     /*< public >*/
 
-    const char *id;
+    char *id;
     char *canonical_path;
     bool realized;
     bool pending_deleted_event;
-    QemuOpts *opts;
+    int64_t pending_deleted_expires_ms;
+    QDict *opts;
     int hotplugged;
     bool allow_unplug_during_migration;
     BusState *parent_bus;
@@ -201,8 +203,12 @@ struct DeviceListener {
      * informs qdev if a device should be visible or hidden.  We can
      * hide a failover device depending for example on the device
      * opts.
+     *
+     * On errors, it returns false and errp is set. Device creation
+     * should fail in this case.
      */
-    bool (*hide_device)(DeviceListener *listener, QemuOpts *device_opts);
+    bool (*hide_device)(DeviceListener *listener, const QDict *device_opts,
+                        bool from_json, Error **errp);
     QTAILQ_ENTRY(DeviceListener) link;
 };
 
@@ -264,6 +270,7 @@ struct BusState {
     HotplugHandler *hotplug_handler;
     int max_index;
     bool realized;
+    bool full;
     int num_children;
 
     /*
@@ -597,6 +604,10 @@ void qdev_init_gpio_in(DeviceState *dev, qemu_irq_handler handler, int n);
  *
  * See qdev_connect_gpio_out() for how code that uses such a device
  * can connect to one of its output GPIO lines.
+ *
+ * There is no need to release the @pins allocated array because it
+ * will be automatically released when @dev calls its instance_finalize()
+ * handler.
  */
 void qdev_init_gpio_out(DeviceState *dev, qemu_irq *pins, int n);
 /**
@@ -673,9 +684,9 @@ DeviceState *qdev_find_recursive(BusState *bus, const char *id);
 typedef int (qbus_walkerfn)(BusState *bus, void *opaque);
 typedef int (qdev_walkerfn)(DeviceState *dev, void *opaque);
 
-void qbus_create_inplace(void *bus, size_t size, const char *typename,
-                         DeviceState *parent, const char *name);
-BusState *qbus_create(const char *typename, DeviceState *parent, const char *name);
+void qbus_init(void *bus, size_t size, const char *typename,
+               DeviceState *parent, const char *name);
+BusState *qbus_new(const char *typename, DeviceState *parent, const char *name);
 bool qbus_realize(BusState *bus, Error **errp);
 void qbus_unrealize(BusState *bus);
 
@@ -798,18 +809,43 @@ static inline bool qbus_is_hotpluggable(BusState *bus)
    return bus->hotplug_handler;
 }
 
+/**
+ * qbus_mark_full: Mark this bus as full, so no more devices can be attached
+ * @bus: Bus to mark as full
+ *
+ * By default, QEMU will allow devices to be plugged into a bus up
+ * to the bus class's device count limit. Calling this function
+ * marks a particular bus as full, so that no more devices can be
+ * plugged into it. In particular this means that the bus will not
+ * be considered as a candidate for plugging in devices created by
+ * the user on the commandline or via the monitor.
+ * If a machine has multiple buses of a given type, such as I2C,
+ * where some of those buses in the real hardware are used only for
+ * internal devices and some are exposed via expansion ports, you
+ * can use this function to mark the internal-only buses as full
+ * after you have created all their internal devices. Then user
+ * created devices will appear on the expansion-port bus where
+ * guest software expects them.
+ */
+static inline void qbus_mark_full(BusState *bus)
+{
+    bus->full = true;
+}
+
 void device_listener_register(DeviceListener *listener);
 void device_listener_unregister(DeviceListener *listener);
 
 /**
  * @qdev_should_hide_device:
- * @opts: QemuOpts as passed on cmdline.
+ * @opts: options QDict
+ * @from_json: true if @opts entries are typed, false for all strings
+ * @errp: pointer to error object
  *
  * Check if a device should be added.
  * When a device is added via qdev_device_add() this will be called,
  * and return if the device should be added now or not.
  */
-bool qdev_should_hide_device(QemuOpts *opts);
+bool qdev_should_hide_device(const QDict *opts, bool from_json, Error **errp);
 
 typedef enum MachineInitPhase {
     /* current_machine is NULL.  */

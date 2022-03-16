@@ -53,4 +53,8 @@ typedef MMVector          mmvector_t;
 typedef MMVectorPair      mmvector_pair_t;
 typedef MMQReg            mmqreg_t;
 
+typedef MMVector          mmvector_t;
+typedef MMVectorPair      mmvector_pair_t;
+typedef MMQReg            mmqret_t;
+
 #endif

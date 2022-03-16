@@ -182,7 +182,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                 % (tag, tag))
     else:
         ## The return type of the function is the type of the destination
-        ## register
+        ## register (if scalar)
         i=0
         for regtype,regid,toss,numregs in regs:
             if (hex_common.is_written(regid)):
@@ -204,6 +204,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             f.write("void")
         f.write(" HELPER(%s)(CPUHexagonState *env" % tag)
 
+        ## Arguments include the vector destination operands
         i = 1
         for regtype,regid,toss,numregs in regs:
             if (hex_common.is_written(regid)):
@@ -232,6 +233,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
         for immlett,bits,immshift in imms:
             gen_helper_arg_imm(f,immlett)
             i += 1
+
         if hex_common.need_slot(tag):
             if i > 0: f.write(", ")
             f.write("uint32_t slot")

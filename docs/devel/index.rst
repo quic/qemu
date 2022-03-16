@@ -1,5 +1,6 @@
+---------------------
 Developer Information
-=====================
+---------------------
 
 This section of the manual documents various parts of the internals of QEMU.
 You only need to read it if you are interested in reading or
@@ -43,4 +44,7 @@ modifying QEMU's source code.
    ebpf_rss
    vfio-migration
    qapi-code-gen
-   writing-qmp-commands
+   writing-monitor-commands
+   trivial-patches
+   submitting-a-patch
+   submitting-a-pull-request
