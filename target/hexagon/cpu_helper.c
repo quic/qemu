@@ -496,7 +496,6 @@ void clear_wait_mode(CPUHexagonState *env)
     SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_W,thread_wait_mask);
 }
 
-
 void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause)
 {
     const uint32_t old = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);

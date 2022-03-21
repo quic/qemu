@@ -177,22 +177,24 @@
 #define LOAD_CANCEL(EA) do { CANCEL; } while (0)
 
 #ifdef QEMU_GENERATE
-static inline void gen_pred_cancel(DisasContext *ctx, TCGv pred, int slot_num)
+static inline void gen_pred_cancel(TCGv pred, int slot_num)
  {
     TCGv slot_mask = tcg_temp_new();
     TCGv tmp = tcg_temp_new();
+    TCGv zero = tcg_const_tl(0);
     tcg_gen_ori_tl(slot_mask, hex_slot_cancelled, 1 << slot_num);
     tcg_gen_andi_tl(tmp, pred, 1);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_slot_cancelled, tmp, ctx->zero,
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_slot_cancelled, tmp, zero,
                        slot_mask, hex_slot_cancelled);
     tcg_temp_free(slot_mask);
     tcg_temp_free(tmp);
+    tcg_temp_free(zero);
 }
 #define PRED_LOAD_CANCEL(PRED, EA) \
-    gen_pred_cancel(ctx, PRED, insn->is_endloop ? 4 : insn->slot)
+    gen_pred_cancel(PRED, insn->is_endloop ? 4 : insn->slot)
 
 #define PRED_STORE_CANCEL(PRED, EA) \
-    gen_pred_cancel(ctx, PRED, insn->is_endloop ? 4 : insn->slot)
+    gen_pred_cancel(PRED, insn->is_endloop ? 4 : insn->slot)
 #endif
 
 #define fMAX(A, B) (((A) > (B)) ? (A) : (B))
@@ -400,7 +402,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
     } while (0)
 
 #ifdef QEMU_GENERATE
-#define fWRITE_NPC(A) gen_write_new_pc(A, ctx->zero)
+#define fWRITE_NPC(A) gen_write_new_pc(A)
 #else
 #define fWRITE_NPC(A) write_new_pc(env, A)
 #endif
@@ -543,7 +545,8 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fPM_M_BREV(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
 #define fPM_CIRI(REG, IMM, MVAL) \
     do { \
-        gen_helper_fcircadd(REG, REG, tcg_constant_tl(siV), MuV, \
+        TCGv tcgv_siV = tcg_constant_tl(siV); \
+        gen_helper_fcircadd(REG, REG, tcgv_siV, MuV, \
                             hex_gpr[HEX_REG_CS0 + MuN]); \
     } while (0)
 #else
