@@ -286,7 +286,7 @@ static void v66g_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V66G_1024";
     mc->init = v66g_1024_config_init;
-    mc->is_default = 0;
+    mc->is_default = false;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->default_cpus = 4;
@@ -325,7 +325,7 @@ static void v68n_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V68N_1024";
     mc->init = v68n_1024_config_init;
-    mc->is_default = 1;
+    mc->is_default = false;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->default_cpus = 6;
@@ -365,7 +365,7 @@ static void v69na_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V69NA_1024";
     mc->init = v69na_1024_config_init;
-    mc->is_default = 0;
+    mc->is_default = false;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->default_cpus = 6;
@@ -393,7 +393,7 @@ static void v73na_1024_linux_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon Linux V73NA_1024";
     mc->init = v73na_1024_linux_config_init;
-    mc->is_default = 0;
+    mc->is_default = false;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->default_cpus = 6;
@@ -407,7 +407,7 @@ static void v73na_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V73NA_1024";
     mc->init = v73na_1024_config_init;
-    mc->is_default = 0;
+    mc->is_default = false;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->default_cpus = 6;
@@ -435,7 +435,7 @@ static void v75na_1024_linux_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon Linux V75NA_1024";
     mc->init = v75na_1024_linux_config_init;
-    mc->is_default = 0;
+    mc->is_default = false;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->default_cpus = 6;
@@ -449,13 +449,28 @@ static void v75na_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V75NA_1024";
     mc->init = v75na_1024_config_init;
-    mc->is_default = 0;
+    mc->is_default = false;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
     mc->default_cpus = 6;
     mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
 }
+
+static void virt_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon Virt";
+    mc->init = v75na_1024_config_init;
+    mc->is_default = true;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = HEXAGON_CPU_TYPE_NAME("v67");
+    mc->default_cpus = 6;
+    mc->max_cpus = THREADS_MAX;
+    mc->default_ram_size = 4 * GiB;
+}
+
 static const TypeInfo hexagon_machine_types[] = {
     {
         .name = MACHINE_TYPE_NAME("V66G_1024"),
@@ -493,6 +508,10 @@ static const TypeInfo hexagon_machine_types[] = {
         .name = MACHINE_TYPE_NAME("V68_H2"),
         .parent = TYPE_MACHINE,
         .class_init = v68g_h2_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("virt"),
+        .parent = TYPE_MACHINE,
+        .class_init = virt_init,
     },
 };
 
