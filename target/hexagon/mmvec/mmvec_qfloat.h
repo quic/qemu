@@ -54,6 +54,11 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define epsilon 1.0/pow(2,23)
+#define units 1.0*pow(2,23)
+#define epsilon_hf 1.0/pow(2,10)
+#define units_hf 1.0*pow(2,10)
+
 typedef struct{
   int sign;
   int exp;

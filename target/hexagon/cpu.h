@@ -495,6 +495,7 @@ struct CPUHexagonState {
     MMVector future_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
     MMVector tmp_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
 
+    VRegMask VRegs_updated_tmp;
     VRegMask VRegs_updated;
 
     MMQReg QRegs[NUM_QREGS] QEMU_ALIGNED(16);

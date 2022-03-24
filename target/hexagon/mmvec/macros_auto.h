@@ -61,7 +61,6 @@
 #define fVALIGN(ADDR, LOG2_ALIGNMENT) ( ADDR = ADDR & ~(LOG2_ALIGNMENT-1))
 #define fVLASTBYTE(ADDR, LOG2_ALIGNMENT) ( ADDR = ADDR | (LOG2_ALIGNMENT-1))
 #define fVELEM(WIDTH) ((fVECSIZE()*8)/WIDTH)
-// mgl was thread not 0
 #define fVECLOGSIZE() (MAX_VEC_SIZE_LOGBYTES)
 #define fVBUF_IDX(EA) (((EA) >> fVECLOGSIZE()) & 0xFF)
 #define fREAD_VBUF(IDX,WIDX) READ_VBUF(IDX,WIDX)
@@ -218,4 +217,5 @@
 #define fMAX_HF(X,Y) max_hf(X,Y)
 #define fMIN_HF(X,Y) min_hf(X,Y)
 
+#define fSTOREDOUBLEMMV(EA, SRC) fSTOREMMV_AL(EA,fVECSIZE(),2*fVECSIZE(),SRC)
 #endif

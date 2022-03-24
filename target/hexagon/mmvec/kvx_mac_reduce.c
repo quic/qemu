@@ -257,6 +257,7 @@ static inline int128_t int128_shr(int128_t a, size4u_t amt)
 }
 
 
+#define int128_gt kvx_int128_gt
 static inline int kvx_int128_gt(int128_t a, int128_t b)
 {
 	if (a.high == b.high)
@@ -304,6 +305,7 @@ static inline xf_t xf_norm_right(xf_t a, int amt)
 	return a;
 }
 
+#define int128_add  kvx_int128_add
 static inline int128_t kvx_int128_add(int128_t a, int128_t b)
 {
 	int128_t ret;
@@ -316,6 +318,7 @@ static inline int128_t kvx_int128_add(int128_t a, int128_t b)
 	return ret;
 }
 
+#define int128_sub kvx_int128_sub
 static inline int128_t kvx_int128_sub(int128_t a, int128_t b, int borrow)
 {
 	int128_t ret;
@@ -330,7 +333,7 @@ static inline int128_t kvx_int128_sub(int128_t a, int128_t b, int borrow)
 	} else {
 		a.high = 0;
 		a.low = 1;
-		return kvx_int128_sub(ret, a, 0);
+		return int128_sub(ret, a, 0);
 	}
 }
 
@@ -631,6 +634,7 @@ GEN_XF_ROUND(df_t,DF_MANTBITS(),DF_INF_EXP)
 GEN_XF_ROUND(sf_t,SF_MANTBITS(),SF_INF_EXP)
 GEN_HF_ROUND(sf_t,SF_MANTBITS(),SF_INF_EXP)
 
+#define int128_mult_6464 kvx_int128_mult_6464
 static inline int128_t kvx_int128_mult_6464(size8u_t ai, size8u_t bi)
 {
 	int128_t ret;
@@ -684,7 +688,7 @@ xf_t xf_sub_kvx(xf_t a, xf_t b, int negate)
 		/* small - big == - (big - small) */
 		return xf_sub_kvx(b, a, !negate);
 	}
-	if ((b.exp == a.exp) && (kvx_int128_gt(b.mant, a.mant))) {
+	if ((b.exp == a.exp) && (int128_gt(b.mant, a.mant))) {
 		/* small - big == - (big - small) */
 		return xf_sub_kvx(b, a, !negate);
 	}
@@ -708,7 +712,7 @@ xf_t xf_sub_kvx(xf_t a, xf_t b, int negate)
 	}
 	xf_debug("norm_r: Sub/a: ", a);
 	xf_debug("norm_r: Sub/b: ", b);
-	if ((kvx_int128_gt(b.mant, a.mant))) {
+	if ((int128_gt(b.mant, a.mant))) {
 		xf_debug("retry: Sub/a: ", a);
 		xf_debug("retry: Sub/b: ", b);
 		return xf_sub_kvx(b, a, !negate);
@@ -716,9 +720,9 @@ xf_t xf_sub_kvx(xf_t a, xf_t b, int negate)
 	/* OK, now things should be normalized! */
 	ret.sign = a.sign;
 	ret.exp = a.exp;
-	assert(!kvx_int128_gt(b.mant, a.mant));
+	assert(!int128_gt(b.mant, a.mant));
 	borrow = (b.round << 2) | (b.guard << 1) | b.sticky;
-	ret.mant = kvx_int128_sub(a.mant, b.mant, (borrow != 0));
+	ret.mant = int128_sub(a.mant, b.mant, (borrow != 0));
 	borrow = 0 - borrow;
 	ret.guard = (borrow >> 2) & 1;
 	ret.round = (borrow >> 1) & 1;
@@ -747,7 +751,7 @@ xf_t xf_add_kvx(xf_t a, xf_t b)
 		/* small + big ==  (big + small) */
 		return xf_add_kvx(b, a);
 	}
-	if ((b.exp == a.exp) && kvx_int128_gt(b.mant, a.mant)) {
+	if ((b.exp == a.exp) && int128_gt(b.mant, a.mant)) {
 		/* small + big ==  (big + small) */
 		return xf_add_kvx(b, a);
 	}
@@ -772,15 +776,15 @@ xf_t xf_add_kvx(xf_t a, xf_t b)
 	xf_debug("norm_r: Add/a: ", a);
 	xf_debug("norm_r: Add/b: ", b);
 	/* OK, now things should be normalized! */
-	if (kvx_int128_gt(b.mant, a.mant)) {
+	if (int128_gt(b.mant, a.mant)) {
 		xf_debug("retry: Add/a: ", a);
 		xf_debug("retry: Add/b: ", b);
 		return xf_add_kvx(b, a);
 	};
 	ret.sign = a.sign;
 	ret.exp = a.exp;
-	assert(!kvx_int128_gt(b.mant, a.mant));
-	ret.mant = kvx_int128_add(a.mant, b.mant);
+	assert(!int128_gt(b.mant, a.mant));
+	ret.mant = int128_add(a.mant, b.mant);
 	ret.guard = b.guard;
 	ret.round = b.round;
 	ret.sticky = b.sticky;
@@ -831,21 +835,21 @@ float internal_fma_kvx(float a_in, float b_in, float c_in, int scale)
 	fesetexceptflag(&flags_tmp, FE_ALL_EXCEPT);
 #endif
 	/* (a * 2**b) * (c * 2**d) == a*c * 2**(b+d) */
-	prod.mant = kvx_int128_mult_6464(sf_getmant_kvx(a), sf_getmant_kvx(b));
+	prod.mant = int128_mult_6464(sf_getmant_kvx(a), sf_getmant_kvx(b));
 	/* Note: extracting the mantissa into an int is multiplying by 2**23, so adjust here: */
 	prod.exp = sf_getexp_kvx(a) + sf_getexp_kvx(b) - SF_BIAS - 23;
 	prod.sign = a.x.sign ^ b.x.sign;
 	if (isz(a.f) || isz(b.f)) prod.exp = -2*WAY_BIG_EXP;
 	xf_debug("prod: ", prod);
 	if ((scale > 0) /*&& (fpclassify(c.f) == FP_SUBNORMAL)*/) {
-		acc.mant = kvx_int128_mult_6464(0,0);
+		acc.mant = int128_mult_6464(0,0);
 		acc.exp = -WAY_BIG_EXP;
 		acc.sign = c.x.sign;
 		acc.sticky = 1;
 		xf_debug("special denorm acc: ",acc);
 		result = xf_add_kvx(prod,acc);
 	} else if (!isz(c.f)) {
-		acc.mant = kvx_int128_mult_6464(sf_getmant_kvx(c), 1);
+		acc.mant = int128_mult_6464(sf_getmant_kvx(c), 1);
 		acc.exp = sf_getexp_kvx(c);
 		acc.sign = c.x.sign;
 		xf_debug("acc: ", acc);
@@ -886,13 +890,13 @@ float internal_vdmpy_acc(float a_in, float b_in, float c_in, float d_in, float a
         accm.f = acc_in;
 
         /* (a * 2**b) * (c * 2**d) == a*c * 2**(b+d) */
-	prod1.mant = kvx_int128_mult_6464(sf_getmant_kvx(a), sf_getmant_kvx(c));
+	prod1.mant = int128_mult_6464(sf_getmant_kvx(a), sf_getmant_kvx(c));
 	/* Note: extracting the mantissa into an int is multiplying by 2**23, so adjust here: */
 	prod1.exp = sf_getexp_kvx(a) + sf_getexp_kvx(c) - SF_BIAS - 23;
 	prod1.sign = a.x.sign ^ c.x.sign;
 
         /* (a * 2**b) * (c * 2**d) == a*c * 2**(b+d) */
-	prod2.mant = kvx_int128_mult_6464(sf_getmant_kvx(b), sf_getmant_kvx(d));
+	prod2.mant = int128_mult_6464(sf_getmant_kvx(b), sf_getmant_kvx(d));
 	/* Note: extracting the mantissa into an int is multiplying by 2**23, so adjust here: */
 	prod2.exp = sf_getexp_kvx(b) + sf_getexp_kvx(d) - SF_BIAS - 23;
 	prod2.sign = b.x.sign ^ d.x.sign;
@@ -905,14 +909,14 @@ float internal_vdmpy_acc(float a_in, float b_in, float c_in, float d_in, float a
 	xf_debug("prod2: ", prod2);
 
 	if ((scale > 0) /*&& (fpclassify(c.f) == FP_SUBNORMAL)*/) {
-		acc.mant = kvx_int128_mult_6464(0,0);
+		acc.mant = int128_mult_6464(0,0);
 		acc.exp = -WAY_BIG_EXP;
 		acc.sign = c.x.sign;
 		acc.sticky = 1;
 		xf_debug("special denorm acc: ",acc);
 		//result = xf_add_kvx(prod,acc);
 	} else /*if (!isz(accm.f)) */{
-		acc.mant = kvx_int128_mult_6464(sf_getmant_kvx(accm), 1);
+		acc.mant = int128_mult_6464(sf_getmant_kvx(accm), 1);
 		acc.exp  = sf_getexp_kvx(accm);
 		acc.sign = accm.x.sign;
 		xf_debug("acc: ", acc);

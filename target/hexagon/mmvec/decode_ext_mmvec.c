@@ -84,7 +84,7 @@ int opcode_vreg_wr_count[] = {
 
 
 static int
-check_new_value(Packet * pkt)
+check_new_value(Packet * packet)
 {
     /* .new value for a MMVector store */
     int i, j;
@@ -95,8 +95,8 @@ check_new_value(Packet * pkt)
     char letter;
     int def_regnum;
 
-    for (i = 1; i < pkt->num_insns; i++) {
-        uint16_t use_opcode = pkt->insn[i].opcode;
+    for (i = 1; i < packet->num_insns; i++) {
+        uint16_t use_opcode = packet->insn[i].opcode;
         if (GET_ATTRIB(use_opcode, A_DOTNEWVALUE) &&
             GET_ATTRIB(use_opcode, A_CVI) &&
             GET_ATTRIB(use_opcode, A_STORE)) {
@@ -107,11 +107,11 @@ check_new_value(Packet * pkt)
              * the value.
              * Shift off the LSB which indicates odd/even register.
              */
-            int def_off = ((pkt->insn[i].regno[use_regidx]) >> 1);
-            int def_oreg = pkt->insn[i].regno[use_regidx] & 1;
+            int def_off = ((packet->insn[i].regno[use_regidx]) >> 1);
+            int def_oreg = packet->insn[i].regno[use_regidx] & 1;
             int def_idx = -1;
             for (j = i - 1; (j >= 0) && (def_off >= 0); j--) {
-                if (!GET_ATTRIB(pkt->insn[j].opcode, A_CVI)) {
+                if (!GET_ATTRIB(packet->insn[j].opcode, A_CVI)) {
                     continue;
                 }
                 def_off--;
@@ -125,10 +125,10 @@ check_new_value(Packet * pkt)
              * out-of-range
              */
             g_assert(!((def_off != 0) || (def_idx < 0) ||
-                       (def_idx > (pkt->num_insns - 1))));
+                       (def_idx > (packet->num_insns - 1))));
 
             /* def_idx is the index of the producer */
-            def_opcode = pkt->insn[def_idx].opcode;
+            def_opcode = packet->insn[def_idx].opcode;
             reginfo = opcode_reginfo[def_opcode];
             destletters = "dexy";
             for (j = 0; (letter = destletters[j]) != 0; j++) {
@@ -136,30 +136,32 @@ check_new_value(Packet * pkt)
                 if (dststr != NULL) {
                     break;
                 }
+		/* if ((dststr != NULL) && GET_ATTRIB(def_opcode,A_CVI_TMP)) {
+            	packet->invalid_new_target = 1;*/
             }
             if ((dststr == NULL)  && GET_ATTRIB(def_opcode, A_CVI_GATHER)) {
                 def_regnum = 0;
-                pkt->insn[i].regno[use_regidx] = def_oreg;
-                pkt->insn[i].new_value_producer_slot = pkt->insn[def_idx].slot;
+                packet->insn[i].regno[use_regidx] = def_oreg;
+                packet->insn[i].new_value_producer_slot = packet->insn[def_idx].slot;
             } else {
                 if (dststr == NULL) {
                     /* still not there, we have a bad packet */
                     g_assert_not_reached();
                 }
-                def_regnum = pkt->insn[def_idx].regno[dststr - reginfo];
+                def_regnum = packet->insn[def_idx].regno[dststr - reginfo];
                 /* Now patch up the consumer with the register number */
-                pkt->insn[i].regno[use_regidx] = def_regnum ^ def_oreg;
+                packet->insn[i].regno[use_regidx] = def_regnum ^ def_oreg;
                 /* special case for (Vx,Vy) */
                 dststr = strchr(reginfo, 'y');
                 if (def_oreg && strchr(reginfo, 'x') && dststr) {
-                    def_regnum = pkt->insn[def_idx].regno[dststr - reginfo];
-                    pkt->insn[i].regno[use_regidx] = def_regnum;
+                    def_regnum = packet->insn[def_idx].regno[dststr - reginfo];
+                    packet->insn[i].regno[use_regidx] = def_regnum;
                 }
                 /*
                  * We need to remember who produces this value to later
                  * check if it was dynamically cancelled
                  */
-                pkt->insn[i].new_value_producer_slot = pkt->insn[def_idx].slot;
+                packet->insn[i].new_value_producer_slot = packet->insn[def_idx].slot;
             }
         }
     }
@@ -175,13 +177,13 @@ check_new_value(Packet * pkt)
  */
 
 static void
-decode_mmvec_move_cvi_to_end(Packet *pkt, int max)
+decode_mmvec_move_cvi_to_end(Packet *packet, int max)
 {
     int i;
     for (i = 0; i < max; i++) {
-        if (GET_ATTRIB(pkt->insn[i].opcode, A_CVI)) {
-            int last_inst = pkt->num_insns - 1;
-            uint16_t last_opcode = pkt->insn[last_inst].opcode;
+        if (GET_ATTRIB(packet->insn[i].opcode, A_CVI)) {
+            int last_inst = packet->num_insns - 1;
+            uint16_t last_opcode = packet->insn[last_inst].opcode;
 
             /*
              * If the last instruction is an endloop, move to the one before it
@@ -192,8 +194,13 @@ decode_mmvec_move_cvi_to_end(Packet *pkt, int max)
                 (last_opcode == J2_endloop01)) {
                 last_inst--;
             }
+            if (!GET_ATTRIB(packet->insn[last_inst].opcode,A_CVI) &&
+            	(GET_ATTRIB(packet->insn[last_inst].opcode,A_LOAD) ||
+                 GET_ATTRIB(packet->insn[last_inst].opcode,A_STORE))) {
+                    last_inst--;
+            }
 
-            decode_send_insn_to(pkt, i, last_inst);
+            decode_send_insn_to(packet, i, last_inst);
             max--;
             i--;    /* Retry this index now that packet has rotated */
         }
@@ -201,14 +208,14 @@ decode_mmvec_move_cvi_to_end(Packet *pkt, int max)
 }
 
 static void
-decode_shuffle_for_execution_vops(Packet *pkt)
+decode_shuffle_for_execution_vops(Packet *packet)
 {
     /*
      * Sort for .new
      */
     int i;
-    for (i = 0; i < pkt->num_insns; i++) {
-        uint16_t opcode = pkt->insn[i].opcode;
+    for (i = 0; i < packet->num_insns; i++) {
+        uint16_t opcode = packet->insn[i].opcode;
         if (GET_ATTRIB(opcode, A_LOAD) &&
             (GET_ATTRIB(opcode, A_CVI_NEW) ||
              GET_ATTRIB(opcode, A_CVI_TMP))) {
@@ -216,19 +223,19 @@ decode_shuffle_for_execution_vops(Packet *pkt)
              * Find prior consuming vector instructions
              * Move to end of packet
              */
-            decode_mmvec_move_cvi_to_end(pkt, i);
+            decode_mmvec_move_cvi_to_end(packet, i);
             break;
         }
     }
 
     /* Move HVX new value stores to the end of the packet */
-    for (i = 0; i < pkt->num_insns - 1; i++) {
-        uint16_t opcode = pkt->insn[i].opcode;
+    for (i = 0; i < packet->num_insns - 1; i++) {
+        uint16_t opcode = packet->insn[i].opcode;
         if (GET_ATTRIB(opcode, A_STORE) &&
             GET_ATTRIB(opcode, A_CVI_NEW) &&
             !GET_ATTRIB(opcode, A_CVI_SCATTER_RELEASE)) {
-            int last_inst = pkt->num_insns - 1;
-            uint16_t last_opcode = pkt->insn[last_inst].opcode;
+            int last_inst = packet->num_insns - 1;
+            uint16_t last_opcode = packet->insn[last_inst].opcode;
 
             /*
              * If the last instruction is an endloop, move to the one before it
@@ -240,21 +247,21 @@ decode_shuffle_for_execution_vops(Packet *pkt)
                 last_inst--;
             }
 
-            decode_send_insn_to(pkt, i, last_inst);
+            decode_send_insn_to(packet, i, last_inst);
             break;
         }
     }
 }
 
 static void
-check_for_vhist(Packet *pkt)
+check_for_vhist(Packet *packet)
 {
-    pkt->vhist_insn = NULL;
-    for (int i = 0; i < pkt->num_insns; i++) {
-        Insn *insn = &pkt->insn[i];
+    packet->vhist_insn = NULL;
+    for (int i = 0; i < packet->num_insns; i++) {
+        Insn *insn = &packet->insn[i];
         int opcode = insn->opcode;
         if (GET_ATTRIB(opcode, A_CVI) && GET_ATTRIB(opcode, A_CVI_4SLOT)) {
-                pkt->vhist_insn = insn;
+                packet->vhist_insn = insn;
                 return;
         }
     }
@@ -287,11 +294,11 @@ SlotMask mmvec_ext_decode_find_iclass_slots(int opcode)
     }
 }
 
-void mmvec_ext_decode_checks(Packet *pkt, bool disas_only)
+void mmvec_ext_decode_checks(Packet *packet, bool disas_only)
 {
-    check_new_value(pkt);
+    check_new_value(packet);
     if (!disas_only) {
-        decode_shuffle_for_execution_vops(pkt);
+        decode_shuffle_for_execution_vops(packet);
     }
-    check_for_vhist(pkt);
+    check_for_vhist(packet);
 }

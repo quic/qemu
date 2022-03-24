@@ -81,6 +81,7 @@ void mem_vector_scatter_init(CPUHexagonState *env, Insn *insn,
     if (EXCEPTION_DETECTED) return;
     mmvecx_t *mmvecx = THREAD2STRUCT;
 
+    // Check TCM space for Exception
     paddr_t base_paddr = thread->mem_access[slot].paddr;
 
     thread->mem_access[slot].paddr = thread->mem_access[slot].paddr & ~(element_size-1);   // Align to element Size
@@ -103,17 +104,20 @@ void mem_vector_scatter_init(CPUHexagonState *env, Insn *insn,
     for(i = 0; i < fVECSIZE(); i++) {
         mmvecx->vtcm_log.offsets.ub[i] = 0; // Mark invalid
         mmvecx->vtcm_log.data.ub[i] = 0;
+        /* mmvecx->vtcm_log.mask.ub[i] = 0; */
         mmvecx->vtcm_log.pa[i] = 0;
     }
 
     mmvecx->vtcm_log.va_base = base_vaddr;
     mmvecx->vtcm_log.pa_base = base_paddr;
-    mmvecx->vtcm_log.oob_access = 0;
 #endif
     bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
 
-    env->vtcm_pending = true;
-    env->vtcm_log.op = false;
+    env->vtcm_pending = 1;
+#ifndef CONFIG_USER_ONLY
+    env->vtcm_log.oob_access = 0;
+#endif
+    env->vtcm_log.op = 0;
     env->vtcm_log.op_size = 0;
 }
 
@@ -130,6 +134,7 @@ void mem_vector_gather_init(CPUHexagonState *env, Insn *insn,
     mmvecx_t *mmvecx = THREAD2STRUCT;
 
     if (EXCEPTION_DETECTED) return;
+    // Check TCM space for Exception
     paddr_t base_paddr = thread->mem_access[slot].paddr;
 
 
@@ -160,16 +165,24 @@ void mem_vector_gather_init(CPUHexagonState *env, Insn *insn,
     }
     for(i = 0; i < fVECSIZE(); i++) {
         mmvecx->vtcm_log.data.ub[i] = 0;
+        /* mmvecx->vtcm_log.mask.ub[i] = 0; */
         mmvecx->vtcm_log.pa[i] = 0;
         mmvecx->tmp_VRegs[0].ub[i] = 0;
     }
 
+#ifndef CONFIG_USER_ONLY
     mmvecx->vtcm_log.oob_access = 0;
-    mmvecx->vtcm_log.op = false;
+#endif
+    mmvecx->vtcm_log.op = 0;
     mmvecx->vtcm_log.op_size = 0;
 
     mmvecx->vtcm_log.va_base = base_vaddr;
     mmvecx->vtcm_log.pa_base = base_paddr;
+
+    // Temp Reg gets updated
+    // This allows Store .new to grab the correct result
+    mmvecx->VRegs_updated_tmp = 0xFFFFFFFF;
+    /*mmvecx->gather_issued = 1;*/
 #endif
     bitmap_zero(env->vtcm_log.mask, MAX_VEC_SIZE_BYTES);
 }
@@ -181,8 +194,22 @@ void mem_vector_scatter_finish(thread_t* thread, Insn * insn, int op)
 {
     int slot = insn->slot;
     mmvecx_t *mmvecx = THREAD2STRUCT;
+#if 0
+    int i;
+    for (i = 0; i < fVECSIZE(); i++)
+    {
+        if ( mmvecx->vtcm_log.mask.ub[i] )
+        {
+            if (ARCH_OPT_TH(vtcm_poison_enable) && !thread->bq_on)
+            {
+              	enlist_byte(thread, mmvecx->vtcm_log.pa[i], POISON, 2); //rw=2
+            }
+        }
+    }
+#endif
     thread->store_pending[slot] = 0;
     mmvecx->vstore_pending[slot] = 0;
+    /*mmvecx->vtcm_log.size = fVECSIZE();*/
 
 
     memcpy(thread->mem_access[slot].cdata, &mmvecx->vtcm_log.offsets.ub[0], 256);
@@ -200,6 +227,21 @@ void mem_vector_gather_finish(thread_t* thread, Insn * insn)
     int slot = insn->slot;
     mmvecx_t *mmvecx = THREAD2STRUCT;
 
+#if 0
+    int i;
+    // FIXME: Move this to ext.c at commit time
+    for (i = 0; i < fVECSIZE(); i++)
+    {
+        if ( mmvecx->vtcm_log.mask.ub[i] )
+        {
+            if (ARCH_OPT_TH(vtcm_poison_enable) && !thread->bq_on)
+            {
+              //                read_vtcm_poison_scatter_gather_byte(thread, mmvecx->vtcm_log.pa[i]);
+                enlist_byte(thread, mmvecx->vtcm_log.pa[i], POISON, 1); //rw=1, read-poison
+            }
+        }
+    }
+#endif
 
 	memcpy(thread->mem_access[slot].cdata, &mmvecx->vtcm_log.offsets.ub[0], 256);
 

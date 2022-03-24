@@ -946,7 +946,7 @@ DEF_MACRO(fSTOREMMV_AL, (EA, ALIGNMENT, LEN, SRC),
     "Store LEN bytes from SRC into memory at EA (forced alignment).",
     {
     fV_AL_CHECK(EA,ALIGNMENT-1);
-    mem_store_vector_oddva(thread, insn, EA&~(ALIGNMENT-1), EA, insn->slot, LEN, &SRC.ub[0], 0, 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
+    mem_store_vector_oddva(thread, insn, EA&~(ALIGNMENT-1), EA, insn->slot, LEN, SRC.ub, 0, 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
     },
     (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
@@ -965,7 +965,7 @@ DEF_MACRO(fSTOREMMVQ_AL, (EA, ALIGNMENT, LEN, SRC, MASK),
 	mmvector_t maskvec;
 	int i;
 	for (i = 0; i < fVECSIZE(); i++) maskvec.ub[i] = fGETQBIT(MASK,i);
-	mem_store_vector_oddva(thread, insn, EA&~(ALIGNMENT-1), EA, insn->slot, LEN, &SRC.ub[0], &maskvec.ub[0], 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
+	mem_store_vector_oddva(thread, insn, EA&~(ALIGNMENT-1), EA, insn->slot, LEN, SRC.ub, &maskvec.ub[0], 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
     } while (0),
     (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
@@ -985,7 +985,7 @@ DEF_MACRO(fSTOREMMVNQ_AL, (EA, ALIGNMENT, LEN, SRC, MASK),
 	int i;
 	for (i = 0; i < fVECSIZE(); i++) maskvec.ub[i] = fGETQBIT(MASK,i);
         fV_AL_CHECK(EA,ALIGNMENT-1);
-	mem_store_vector_oddva(thread, insn, EA&~(ALIGNMENT-1), EA, insn->slot, LEN, &SRC.ub[0], &maskvec.ub[0], 1, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
+	mem_store_vector_oddva(thread, insn, EA&~(ALIGNMENT-1), EA, insn->slot, LEN, SRC.ub, &maskvec.ub[0], 1, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
     },
     (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
@@ -1006,7 +1006,7 @@ DEF_MACRO(fSTOREMMVU_AL, (EA, ALIGNMENT, LEN, SRC),
     if (size1>LEN) size1 = LEN;
     size2 = LEN-size1;
     mem_store_vector_oddva(thread, insn, EA+size1, EA+fVECSIZE(), /* slot */ 1, size2, &SRC.ub[size1], 0, 0, fUSE_LOOKUP_ADDRESS());
-    mem_store_vector_oddva(thread, insn, EA, EA, /* slot */ 0, size1, &SRC.ub[0], 0, 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
+    mem_store_vector_oddva(thread, insn, EA, EA, /* slot */ 0, size1, SRC.ub, 0, 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
     },
     (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
@@ -1041,7 +1041,7 @@ DEF_MACRO(fSTOREMMVQU_AL, (EA, ALIGNMENT, LEN, SRC, MASK),
 	if (size1>LEN) size1 = LEN;
 	size2 = LEN-size1;
 	mem_store_vector_oddva(thread, insn, EA+size1, EA+fVECSIZE(),/* slot */ 1, size2, &SRC.ub[size1], &maskvec.ub[size1], 0, fUSE_LOOKUP_ADDRESS());
-	mem_store_vector_oddva(thread, insn, EA, /* slot */ 0, size1, &SRC.ub[0], &maskvec.ub[0], 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
+	mem_store_vector_oddva(thread, insn, EA, /* slot */ 0, size1, SRC.ub, &maskvec.ub[0], 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
     },
     (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )
@@ -1076,7 +1076,7 @@ DEF_MACRO(fSTOREMMVNQU_AL, (EA, ALIGNMENT, LEN, SRC, MASK),
 	if (size1>LEN) size1 = LEN;
 	size2 = LEN-size1;
 	mem_store_vector_oddva(thread, insn, EA+size1, EA+fVECSIZE(), /* slot */ 1, size2, &SRC.ub[size1], &maskvec.ub[size1], 1, fUSE_LOOKUP_ADDRESS());
-	mem_store_vector_oddva(thread, insn, EA, EA, /* slot */ 0, size1, &SRC.ub[0], &maskvec.ub[0], 1, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
+	mem_store_vector_oddva(thread, insn, EA, EA, /* slot */ 0, size1, SRC.ub, &maskvec.ub[0], 1, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr));
     },
     (A_STORE,A_MEMLIKE,A_RESTRICT_SINGLE_MEM_FIRST)
 )

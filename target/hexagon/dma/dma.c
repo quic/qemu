@@ -540,8 +540,8 @@ static uint64_t ARCH_FUNCTION(retrieve_descriptor)(dma_t *dma, uint32_t desc_va,
         // DLBC
         uint32_t dlbc_enabled = udma_ctx->dm2.dlbc_enable && (type0 || (type1 && ((desc->type1.type == DMA_DESC_32BIT_VA_TYPE)
                                 || (desc->type1.type ==DMA_DESC_38BIT_VA_TYPE)
-                                || (desc->type1.type ==DMA_DESC_32BIT_VA_WIDE_TYPE)
-                                || (desc->type1.type ==DMA_DESC_38BIT_VA_WIDE_TYPE))));
+                                || (desc->type1.type ==DMA_DESC_32BIT_VA_WIDE_TYPE))));
+
         if (dlbc_enabled)
         {
             //DMA_DEBUG(dma, "DMA %d: Tick %8d: descriptor retrieve error alginment src=%d dst=%d\n", dma->num, ((udma_ctx_t *)dma->udma_ctx)->dma_tick_count,
@@ -635,6 +635,7 @@ static uint32_t ARCH_FUNCTION(start_dma)(dma_t *dma, uint32_t new_dma)
         // Record is we took a recoverable or unrecoverable exception
         desc_state->state = (DMA_STATUS_INT(udma_ctx, DMA_STATUS_INT_ERROR)) ? DMA_DESC_EXCEPT_ERROR : DMA_DESC_EXCEPT_RUNNING ;
         udma_ctx->exception_va = new_dma;
+		dma_adapter_descriptor_end(dma, -1, new_dma, (uint32_t*)&desc_state->desc, 0, 1);
         return 0;
     }
 
@@ -668,6 +669,8 @@ static uint32_t ARCH_FUNCTION(start_dma)(dma_t *dma, uint32_t new_dma)
     if (desc->common.descSize == DESC_DESCTYPE_TYPE0) {
         desc_state->bytes_to_transfer = desc->type0.length;
         desc_state->lines_to_transfer = 0;
+        desc_state->desc.type1.srcStride = desc->type0.srcAddress;  // This is a one-off hack for UWBC-A error checking
+        desc_state->desc.type1.dstStride = desc->type0.dstAddress;  // Store initial addresses in unused field of struct, could check in the retrieve function instead ...
     }
     else if (desc_state->desc.common.descSize == DESC_DESCTYPE_TYPE1)
     {
@@ -1316,11 +1319,11 @@ static uint32_t ARCH_FUNCTION(dma_step_descriptor_chain)(dma_t *dma)
 }
 
 void ARCH_FUNCTION(dma_arch_tlbw)(dma_t *dma, uint32_t jtlb_idx) {
-    //udma_ctx_t *udma_ctx = (udma_ctx_t *)dma->udma_ctx;
+    udma_ctx_t *udma_ctx __attribute__((unused)) = (udma_ctx_t *)dma->udma_ctx;
     ARCH_FUNCTION(uarch_dma_tlbw)(udma_ctx->uarch_dma_engine, jtlb_idx);
 }
 void ARCH_FUNCTION(dma_arch_tlbinvasid)(dma_t *dma) {
-    //udma_ctx_t *udma_ctx = (udma_ctx_t *)dma->udma_ctx;
+    udma_ctx_t *udma_ctx __attribute__((unused)) = (udma_ctx_t *)dma->udma_ctx;
     ARCH_FUNCTION(uarch_dma_tlbinvasid)(udma_ctx->uarch_dma_engine);
 }
 uint32_t ARCH_FUNCTION(dma_get_tick_count)(dma_t *dma) {
