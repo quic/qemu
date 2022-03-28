@@ -179,6 +179,7 @@ typedef struct arch_proc_opt {
     int QDSP6_MX_FP_COLS;
     int QDSP6_MX_FP_ACC_NORM;
     int QDSP6_MX_PARALLEL_GRPS;
+    int QDSP6_MX_NUM_BIAS_GRPS;
     int QDSP6_VX_PRESENT;
     int QDSP6_VX_CONTEXTS;
     int QDSP6_VX_MEM_ENTRIES;
@@ -347,6 +348,8 @@ typedef struct hmx_mem_access_info {
     uint8_t outputselect16x16;
     uint8_t act_reuse;
     uint32_t wgt_size;
+    uint32_t wgtc_mode;
+    uint32_t wgtc_global_density;
     uint16_t egy_mpy_acc[HMX_MAX_EGY_CYCLE];
     uint8_t egy_cvt;
 } hmx_mem_access_info_t;

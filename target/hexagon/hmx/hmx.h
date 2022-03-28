@@ -28,6 +28,7 @@
 #define MAX_CONVERT_STATES 2
 #define MAX_INPUT_CHANNELS 64
 #define MAX_RATE_INPUT_CHANNELS 32
+#define MAX_BIAS_STATES 4
 
 #define MAX_HMX_ACC_BYTES	32
 #define HMX_HEX 1
@@ -240,7 +241,9 @@ typedef union hmx_cvt_rs_reg  {
         uint32_t fp_type:1;
         uint32_t fp_rnd:1;
         uint32_t fxp16_ch_sel:2;
-        uint32_t reserved:21;
+		uint32_t reserved2:1;
+		uint32_t bias_sel:2;
+        uint32_t reserved:18;
     };
     uint32_t raw;
 } hmx_cvt_rs_reg_t;
@@ -262,6 +265,7 @@ typedef union {
 		size2u_t acc_update:1;
 		size2u_t bias_update:1;
 		size2u_t bias_write:2;
+		size2u_t bias_sel:2;
 	};
 	size2u_t val;
 } hmx_commit_state_t;
@@ -326,6 +330,7 @@ typedef struct HMX_State {
 	uint32_t bias_32bit:1;
 	uint32_t weight_bits:5;
 	uint32_t weight_bytes_per_cycle:32;
+	uint32_t wgtc_global_density:8;
 
 	uint8_t wgtc_start_offset;
 	uint16_t wgtc_total_bytes;
@@ -396,18 +401,16 @@ typedef struct HMX_State {
 	size1u_t cvt_accum_current_index;
 	hmx_acc_t cvt_accum[MAX_CONVERT_STATES][MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
 
-	union {
 		hmx_acc_t cvt_future_accum_fxp[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
 		hmx_acc_t cvt_future_accum_flt[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
-	};
 
-	hmx_bias_t bias[MAX_ACCUMULATORS_DEPTH];
-	hmx_bias_t future_bias[MAX_ACCUMULATORS_DEPTH];
+	hmx_acc_t cvt_fallback_future_accum_fxp[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
+	hmx_acc_t cvt_fallback_future_accum_flt[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
 
-	//union {
+	hmx_bias_t bias[MAX_BIAS_STATES][MAX_ACCUMULATORS_DEPTH/2];
+	hmx_bias_t future_bias[MAX_BIAS_STATES][MAX_ACCUMULATORS_DEPTH/2];
 		hmx_acc_t future_accum_fxp[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
 		hmx_acc_t future_accum_flt[MAX_ACCUMULATORS_SPATIAL][MAX_ACCUMULATORS_DEPTH];
-	//};
 
 	hmx_wgt_cache_t wgt_cache[WGT_CACHE_MAX_SIZE][64];	// WGT Stream per output channel
 	uint16_t 	    act_cache[WGT_CACHE_MAX_SIZE][64];	// WGT Stream per output channel
@@ -431,6 +434,7 @@ typedef struct HMX_State {
 	uint32_t array_mpy[MAX_RATE_INPUT_CHANNELS];
 	uint32_t array_acc;
 
+	uint32_t fp8_batch_ch_start_wgt_idx;
 
 } hmx_state_t;
 

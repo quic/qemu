@@ -315,8 +315,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     for (i = 0; i < STORES_MAX; i++) {
         ctx->store_width[i] = 0;
     }
-    // mgl new
-    //tcg_gen_movi_tl(hex_pkt_has_store_s1, pkt->pkt_has_store_s1);
     ctx->s1_store_processed = false;
     ctx->pre_commit = true;
 

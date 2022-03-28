@@ -160,7 +160,7 @@ int hmx_ext_set_ovf(thread_t *thread, int spatial_index, size4u_t channel_index,
 void *hmx_ext_palloc(processor_t *proc, int slots)
 {
 	hmx_state_t *hmx_state;
-	if ((hmx_state = calloc(1,sizeof(hmx_state_t))) == NULL) {
+	if ((hmx_state = (hmx_state_t *) calloc(1,sizeof(hmx_state_t))) == NULL) {
 		assert(-1);
 	}
 
@@ -217,12 +217,17 @@ void hmx_reset(processor_t *proc, thread_t *thread){
 	}
 
 	for(int depth = 0; depth < MAX_ACCUMULATORS_DEPTH; depth++){
-		state->bias[depth] = reset_bias;
-		state->future_bias[depth] = reset_bias;
+		for(int bias_num = 0; bias_num < MAX_BIAS_STATES; bias_num++){
+			state->bias[bias_num][depth] = reset_bias;
+			state->future_bias[bias_num][depth] = reset_bias;
+		}
 		for(int spatial = 0; spatial < MAX_ACCUMULATORS_SPATIAL; spatial++){
 			state->accum_fxp[spatial][depth] = reset_acc;
 			state->accum_flt[spatial][depth] = reset_acc_flt;
 			state->cvt_future_accum_fxp[spatial][depth] = reset_acc_zero;
+			state->cvt_fallback_future_accum_fxp[spatial][depth] = reset_acc_zero;
+			state->cvt_future_accum_flt[spatial][depth] = reset_acc_zero;
+			state->cvt_fallback_future_accum_flt[spatial][depth] = reset_acc_zero;
 			state->future_accum_fxp[spatial][depth] = reset_acc_zero;
 			state->future_accum_flt[spatial][depth] = reset_acc_flt;
 			state->accum_fxp[spatial][depth].bias_state = 0xF;
@@ -248,6 +253,7 @@ void hmx_ext_commit_regs(thread_t *thread, int extno)
 			hmx_age_cvt_state(thread);
 		}
 		memcpy(state->cvt_accum[state->cvt_accum_current_index], state->cvt_future_accum_fxp, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+		memcpy(state->cvt_fallback_future_accum_fxp, state->cvt_future_accum_fxp, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 
 	}
 	if(state->fxp_commit_state.acc_update) {
@@ -255,7 +261,7 @@ void hmx_ext_commit_regs(thread_t *thread, int extno)
 
 	}
 	if(state->fxp_commit_state.bias_update) {
-		memcpy(state->bias,  state->future_bias,  sizeof(size4u_t)*MAX_ACCUMULATORS_DEPTH);
+		memcpy(state->bias,  state->future_bias,  MAX_BIAS_STATES*sizeof(hmx_bias_t)*MAX_ACCUMULATORS_DEPTH/2);
 	}
 
 	state->fxp_commit_state.cvt_update = 0;
@@ -270,6 +276,7 @@ void hmx_ext_commit_regs(thread_t *thread, int extno)
 			hmx_age_cvt_state(thread);
 		}
 		memcpy(state->cvt_accum[state->cvt_accum_current_index], state->cvt_future_accum_flt, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+		memcpy(state->cvt_fallback_future_accum_flt, state->cvt_future_accum_flt, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	}
 	if(state->flt_commit_state.acc_update) {
 		if(state->support_fp16 == 0){
@@ -316,9 +323,13 @@ void hmx_ext_rewind(thread_t *thread, int extno)
 	hmx_state_t *state = THREAD2HMXSTRUCT;
 	state->operand_ready = 0;
 	if(state->fxp_commit_state.cvt_update)
-		memcpy(state->cvt_future_accum_fxp, state->cvt_accum[state->cvt_accum_current_index], sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+		memcpy(state->cvt_future_accum_fxp, state->cvt_fallback_future_accum_fxp, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
 	if(state->flt_commit_state.cvt_update)
-		memcpy(state->cvt_future_accum_flt, state->cvt_accum[state->cvt_accum_current_index], sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+		memcpy(state->cvt_future_accum_flt, state->cvt_fallback_future_accum_flt, sizeof(hmx_acc_t)*MAX_ACCUMULATORS_DEPTH*MAX_ACCUMULATORS_SPATIAL);
+
+	if(state->fxp_commit_state.bias_update) {
+		memcpy(state->future_bias,  state->bias,  MAX_BIAS_STATES*sizeof(hmx_bias_t)*MAX_ACCUMULATORS_DEPTH/2);
+	}
 	state->fxp_commit_state.val = 0;
 	state->flt_commit_state.val = 0;
 };
@@ -403,15 +414,15 @@ static void write_converted_peg(thread_t *thread, int x_idx, int y_idx, int x_ac
 		}
 
 #ifdef VERIFICATION
-		int slot_tmp = thread->ver_cur_slot;
-		thread->ver_cur_slot = 0;
+		int slot_tmp = thread->cur_slot;
+		thread->cur_slot = 0;
 		int width = (flt) ? 2 : 1;
 		int val = (flt) ? hf : byte;
 		if (thread->processor_ptr->options->sim_vtcm_memory_callback) {
 			thread->processor_ptr->options->sim_vtcm_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId, 0, pa, width, DWRITE, val);
 		}
-		thread->ver_cur_slot = 0;
-		thread->ver_cur_slot = slot_tmp;
+		thread->cur_slot = 0;
+		thread->cur_slot = slot_tmp;
 #endif
 	}
 }
@@ -528,34 +539,35 @@ void hmx_ext_commit_mem(thread_t *thread, int slot, int extno)
 	// This will get cleaned up when old bias instructions are replicated
 	if(hmx_state->fxp_commit_state.bias_write) {
 		for(int output_ch_idx = 0; output_ch_idx < hmx_state->QDSP6_MX_COLS; output_ch_idx++) {
-			size4u_t temp = hmx_state->bias[output_ch_idx].val[0];
+			size4u_t temp = hmx_state->bias[hmx_state->fxp_commit_state.bias_sel][output_ch_idx].val[0];
 			paddr_t pa = thread->mem_access[0].paddr + 4*output_ch_idx;
 			sim_mem_write4(thread->system_ptr,thread->threadId, pa , temp);
 #ifdef VERIFICATION
-			int slot_tmp = thread->ver_cur_slot;
-			thread->ver_cur_slot = 0;
+			int slot_tmp = thread->cur_slot;
+			thread->cur_slot = 0;
 			if (thread->processor_ptr->options->sim_vtcm_memory_callback) {
 				thread->processor_ptr->options->sim_vtcm_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId, 0, pa, 4, DWRITE, temp);
 			}
-			thread->ver_cur_slot = slot_tmp;
+			thread->cur_slot = slot_tmp;
 #endif
 		}
 		if(hmx_state->fxp_commit_state.bias_write == 2) {
 			for(int output_ch_idx = 0; output_ch_idx < hmx_state->QDSP6_MX_COLS; output_ch_idx++) {
-				size4u_t temp = hmx_state->bias[output_ch_idx].val[1];
+				size4u_t temp = hmx_state->bias[hmx_state->fxp_commit_state.bias_sel][output_ch_idx].val[1];
 				paddr_t pa = thread->mem_access[0].paddr + 4*output_ch_idx + 128;
 				sim_mem_write4(thread->system_ptr,thread->threadId, pa , temp);
 #ifdef VERIFICATION
-				int slot_tmp = thread->ver_cur_slot;
-				thread->ver_cur_slot = 0;
+				int slot_tmp = thread->cur_slot;
+				thread->cur_slot = 0;
 				if (thread->processor_ptr->options->sim_vtcm_memory_callback) {
 					thread->processor_ptr->options->sim_vtcm_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId, 0, pa, 4, DWRITE, temp);
 				}
-				thread->ver_cur_slot = slot_tmp;
+				thread->cur_slot = slot_tmp;
 #endif
 			}
 		}
 		hmx_state->fxp_commit_state.bias_write = 0;
+		hmx_state->fxp_commit_state.bias_sel = 0;
 	}
 
 
@@ -737,7 +749,7 @@ int hmx_ext_set_acc(thread_t *thread, int spatial_index, size4u_t channel_index,
 		uint32_t is_biased = (wordno>>16);
 		hmx_state->accum_fxp[spatial_index][channel_index].w[wordno & 0xFFFF] = (size4s_t)val + ((is_biased) ? hmx_state->internal_bias_value : 0);
 		uint32_t bias_flag = (is_biased << (wordno & 0xFFFF));
-		//uint32_t old_state = hmx_state->accum_fxp[spatial_index][channel_index].bias_state;
+		uint32_t old_state __attribute__((unused)) = hmx_state->accum_fxp[spatial_index][channel_index].bias_state;
 		hmx_state->accum_fxp[spatial_index][channel_index].bias_state &= ~(1 << (wordno & 0xFFFF));	//clear flag
 		hmx_state->accum_fxp[spatial_index][channel_index].bias_state |= bias_flag;
 		fMX_DEBUG_LOG(1, "TB HMX WRITE: FXP ACC[%02d][%02d][%02d]=%08x (incoming val: %08x, bias_flag: %08x bstate old=%x new=%x)", spatial_index, channel_index, wordno & 0xFFFF, hmx_state->accum_fxp[spatial_index][channel_index].w[wordno & 0xFFFF], val, bias_flag, old_state, hmx_state->accum_fxp[spatial_index][channel_index].bias_state);
@@ -750,8 +762,8 @@ int hmx_ext_get_bias(thread_t *thread, int arrayno, size4u_t channel_index, size
 	*result = 0xDEADBEEF;
 	if (THREAD2HMXSTRUCT != NULL) {
 		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
-		*result = hmx_state->bias[channel_index].val[wordno];
-		fMX_DEBUG_LOG(2, "TB HMX READ: BIAS [%02d].w[%d] = %08x", channel_index, wordno, *result);
+		*result = hmx_state->bias[arrayno][channel_index].val[wordno];
+		fMX_DEBUG_LOG(2, "TB HMX READ: BIAS [%02d][%02d].w[%d] = %08x", arrayno, channel_index, wordno, *result);
 		return 0;
 	}
 	return -1;
@@ -760,8 +772,9 @@ int hmx_ext_get_bias(thread_t *thread, int arrayno, size4u_t channel_index, size
 int hmx_ext_set_bias(thread_t *thread, int arrayno, size4u_t channel_index, size4u_t wordno, size4u_t val) {
 	if (THREAD2HMXSTRUCT != NULL) {
 		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
-		fMX_DEBUG_LOG(2, "TB HMX WRITE: BIAS [%02d].w[%d] = %08x", channel_index, wordno, val);
-		hmx_state->bias[channel_index].val[wordno] = val;
+		fMX_DEBUG_LOG(2, "TB HMX WRITE: BIAS [%02d][%02d].w[%d] = %08x", arrayno, channel_index, wordno, val);
+		hmx_state->bias[arrayno][channel_index].val[wordno] = val;
+		hmx_state->future_bias[arrayno][channel_index].val[wordno] = val;
 		return 0;
 	}
 	return -1;
@@ -773,6 +786,9 @@ size4u_t hmx_ext_set_cvt_state(thread_t *thread, size4u_t age, size4u_t spatial_
 		hmx_state->cvt_accum[age ^ hmx_state->cvt_accum_current_index][spatial_idx][channel_idx].w[state_index] = val;
 		if(age == 0){
 			hmx_state->cvt_future_accum_fxp[spatial_idx][channel_idx].uh[0] = val;
+			hmx_state->cvt_fallback_future_accum_fxp[spatial_idx][channel_idx].uh[0] = val;
+			hmx_state->cvt_future_accum_flt[spatial_idx][channel_idx].uh[0] = val;
+			hmx_state->cvt_fallback_future_accum_flt[spatial_idx][channel_idx].uh[0] = val;
 		}
 		fMX_DEBUG_LOG(2, "TB HMX WRITE: CVT ST[%02d][%02d] [%02d][%02d] = 0x%02x", age, state_index, spatial_idx, channel_idx, val);
 		return 0;

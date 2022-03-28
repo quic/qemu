@@ -42,6 +42,8 @@
 #define env thread
 #define thread_t         CPUHexagonState
 #define THREAD2STRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
+#define Regs gpr
+#define REG_USR HEX_REG_USR
 
 // Get Arch option through thread
 #define ARCH_OPT_TH(OPTION) (thread->processor_ptr->arch_proc_options->OPTION)
@@ -99,7 +101,7 @@ void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, i
 	else
 		warn(":unknown bias data type, neither 16bit nor 32bit ");
 
-	mem_init_access_unaligned(thread, slot, vaddr, vaddr, size, access_type, type);\
+	mem_init_access_unaligned(thread, slot, vaddr, vaddr, size, (enum mem_access_types) access_type, type);\
 
     if (EXCEPTION_DETECTED) return;
 	maptr->paddr = paddr = maptr->paddr & ~(size-1);
@@ -115,8 +117,8 @@ void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, i
 	if (EXCEPTION_DETECTED) return;
 
 #ifdef VERIFICATION
-    int slot_tmp = thread->ver_cur_slot;
-    thread->ver_cur_slot = slot;
+    int slot_tmp = thread->cur_slot;
+    thread->cur_slot = slot;
 #endif
 	if(!thread->bq_on) {
 		if (access_type == access_type_hmx_load_bias) {
@@ -126,7 +128,7 @@ void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, i
 		}
 	}
 #ifdef VERIFICATION
-    thread->ver_cur_slot = slot_tmp;
+    thread->cur_slot = slot_tmp;
 #endif
 
 }
@@ -140,9 +142,8 @@ void hmx_debug_log_mac_info(thread_t * thread) {
 	mem_access_info_t *wgt_maptr = &thread->mem_access[0];
 	mem_access_info_t *act_maptr = &thread->mem_access[1];
 	hmx_mem_access_info_t * act_hmx_maptr = &act_maptr->hmx_ma;
-	hmx_mem_access_info_t * wgt_hmx_maptr = &wgt_maptr->hmx_ma;
 
-	fMX_DEBUG_LOG(0, "MXMEM %s MAC OPERATION pktid=%08x pc=%08x", (act_hmx_maptr->flt) ? "FLT" : "FXP", thread->pktid, thread->Regs[REG_PC]);
+	fMX_DEBUG_LOG(0, "MXMEM %s MAC OPERATION pktid=%08x", (THREAD2HMXSTRUCT->is_flt) ? "FLT" : "FXP", thread->pktid);
 	fMX_DEBUG_LOG(0, "\tACT start=%08x range=%08x pa=%010llx operation type=%s", act_maptr->vaddr, act_maptr->range, act_maptr->paddr, hmx_act_type_str[THREAD2HMXSTRUCT->act_block_type]);
 	fMX_DEBUG_LOG(0, "\tWGT start=%08x range=%08x pa=%010llx operation type=%s", wgt_maptr->vaddr, wgt_maptr->range, wgt_maptr->paddr, hmx_wgt_type_str[THREAD2HMXSTRUCT->wgt_block_type] );
 	fMX_DEBUG_LOG(0, "\tCrouton: x_mask: 0x%02x x_inc: 0x%02x y_mask: 0x%02x y_inc: 0x%02x", THREAD2HMXSTRUCT->tile_x_mask, THREAD2HMXSTRUCT->tile_x_inc, THREAD2HMXSTRUCT->tile_y_mask, THREAD2HMXSTRUCT->tile_y_inc);
@@ -174,12 +175,12 @@ void hmx_act_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot)
 	maptr->paddr = paddr & pa_mask;
 	THREAD2HMXSTRUCT->act_addr = maptr->paddr;
 #ifdef VERIFICATION
-    int slot_tmp = thread->ver_cur_slot;
-    thread->ver_cur_slot = slot;
+    int slot_tmp = thread->cur_slot;
+    thread->cur_slot = slot;
 #endif
 	if(!thread->bq_on) { MEMTRACE_LD(thread, thread->Regs[REG_PC], start, paddr, 0, DREAD, 0xfeedfacedeadbeefULL); }
 #ifdef VERIFICATION
-    thread->ver_cur_slot = slot_tmp;
+    thread->cur_slot = slot_tmp;
 #endif
 }
 
@@ -242,7 +243,7 @@ void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int 
 	}
 
 	int32_t fxp_max_wgt = 4 * thread->processor_ptr->arch_proc_options->QDSP6_MX_COLS;
-	int32_t flt_max_wgt = 8 * thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_COLS;
+	int32_t flt_max_wgt = 2 * thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_RATE * thread->processor_ptr->arch_proc_options->QDSP6_MX_FP_COLS;
 	wgt_pa_at_mac_limit += (THREAD2HMXSTRUCT->mac_cycle_limit * ((THREAD2HMXSTRUCT->is_flt) ? flt_max_wgt  : fxp_max_wgt )) >>  weight_count;
 	wgt_pa_at_mac_limit -= 1;
 
@@ -260,18 +261,19 @@ void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int 
 	}
 
 #ifdef VERIFICATION
-    int slot_tmp = thread->ver_cur_slot;
-    thread->ver_cur_slot = slot;
+    int slot_tmp = thread->cur_slot;
+    thread->cur_slot = slot;
 #endif
 	if(!thread->bq_on) { MEMTRACE_LD(thread, thread->Regs[REG_PC], start, paddr, 0, DREAD, 0xfeedfacedeadbeefULL); }
 #ifdef VERIFICATION
-    thread->ver_cur_slot = slot_tmp;
+    thread->cur_slot = slot_tmp;
 #endif
 
 }
 
+#define ESR_FPCOPROC USR_FPCOPROC
 uint32_t hmx_get_usr_reg_coproc_field(thread_t* thread) {
-	return GET_FIELD(USR_FPCOPROC, thread->gpr[HEX_REG_USR]);
+	return GET_FIELD(ESR_FPCOPROC, thread->Regs[REG_USR]);
 }
 
 
@@ -292,12 +294,12 @@ void hmx_mxmem_wr_xlate(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, v
 
 	fVDOCHKPAGECROSS(start, start + dY);
 #ifdef VERIFICATION
-    int slot_tmp = thread->ver_cur_slot;
-    thread->ver_cur_slot = slot;
+    int slot_tmp = thread->cur_slot;
+    thread->cur_slot = slot;
 #endif
 	if(!thread->bq_on) { memwrap_memtrace_st(thread, thread->Regs[REG_PC], start, paddr, 1); }
 #ifdef VERIFICATION
-    thread->ver_cur_slot = slot_tmp;
+    thread->cur_slot = slot_tmp;
 #endif
 }
 

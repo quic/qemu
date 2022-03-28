@@ -321,12 +321,12 @@ void ARCH_FUNCTION(hmx_mult_xfp)(hmx_state_t * state_ptr, uint32_t row, uint32_t
     usr_fp_reg_t usr_reg = state_ptr->usr_fp;
     hmx_xfp_t acc_xfp = state_ptr->future_accum_flt[row][col].xfp[sel];
 
-    // This can be refactored out
-    if((grp_size == 4) && (mod_col < (parallel_grp_size/2)) && (grp_idx % 2 == 1)) {
+    if(parallel_grp_size > 8)
+	{
+		if( (grp_size <= 8) && (mod_col/grp_size != grp_idx % (parallel_grp_size/grp_size)) )
         wgt = 0;
-    }  else if((grp_size == 4) && (mod_col >= (parallel_grp_size/2)) && (grp_idx % 2 == 0)) {
-        wgt = 0;
-    }  else if((grp_size < 4) && ((mod_col/grp_size) != (grp_idx % (parallel_grp_size/grp_size)) )) {
+    }  else {
+		if( (grp_size <= 4) && (mod_col/grp_size != grp_idx % (parallel_grp_size/grp_size)) )
         wgt = 0;
     }
 
@@ -433,13 +433,13 @@ void ARCH_FUNCTION(hmx_mac_pmu)(hmx_state_t * state_ptr, const uint32_t is_flt, 
     int hmx_power_on =  (state_ptr->proc->arch_proc_options->hmx_power_config == 0) ? (!state_ptr->thread->bq_on) : 1;
 	if (state_ptr->proc->arch_proc_options->pmu_enable && hmx_power_on)
 	{
-		//processor_t * proc = state_ptr->proc;
+		processor_t * proc __attribute__((unused)) = state_ptr->proc;
 		const uint32_t mac_tile_size = is_flt ? state_ptr->QDSP6_MX_FP_RATE : state_ptr->QDSP6_MX_RATE;
         const uint32_t mac_pmu_counter = 2048;	// This is calculation based on the total number of macs and the rate
         const uint32_t max_cycles = 32/mac_tile_size;
         const uint32_t mac_pmu_counter_mask = mac_pmu_counter-1;
-        //uint32_t array_stat = (is_flt) ? phmx_array_flt_mpy0 : phmx_array_fxp_mpy0;
-        //uint32_t acc_stat = (is_flt) ? phmx_array_flt_acc : phmx_array_fxp_acc;;
+        uint32_t array_stat __attribute__((unused)) = (is_flt) ? phmx_array_flt_mpy0 : phmx_array_fxp_mpy0;
+        uint32_t acc_stat __attribute__((unused)) = (is_flt) ? phmx_array_flt_acc : phmx_array_fxp_acc;
         uint32_t shift = 0;  // rate == 1
         shift += (mac_tile_size >= 2); // rate == 2
         shift += (mac_tile_size >= 4); // rate == 4
@@ -549,8 +549,8 @@ void ARCH_FUNCTION(hmx_16x8_verif_callback)(hmx_state_t * state_ptr,  uint32_t s
     ARCH_FUNCTION(hmx_8x8_verif_callback)(state_ptr, spatial_hi_idx, output_idx, acc_idx, result_hi, rs);
 }
 
-void ARCH_FUNCTION(hmx_16x16_verif_callback)(hmx_state_t * state_ptr,  uint32_t spatial_hi_idx,  uint32_t spatial_lo_idx,  uint32_t output_hi_idx,  uint32_t output_lo_idx,  uint32_t output_adjust,  uint32_t acc_idx,  uint32_t cvt_idx,  uint16_t result_hi,  uint16_t result_lo, hmx_cvt_rs_reg_t rs);
-void ARCH_FUNCTION(hmx_16x16_verif_callback)(hmx_state_t * state_ptr,  uint32_t spatial_hi_idx,  uint32_t spatial_lo_idx,  uint32_t output_hi_idx,  uint32_t output_lo_idx,  uint32_t output_adjust,  uint32_t acc_idx,  uint32_t cvt_idx,  uint16_t result_hi,  uint16_t result_lo, hmx_cvt_rs_reg_t rs)
+void ARCH_FUNCTION(hmx_16x16_verif_callback)(hmx_state_t * state_ptr,  uint32_t spatial_hi_idx,  uint32_t spatial_lo_idx,  uint32_t output_hi_idx,  uint32_t output_lo_idx,  uint32_t output_adjust,  uint32_t acc_idx,  uint16_t result_hi,  uint16_t result_lo, hmx_cvt_rs_reg_t rs);
+void ARCH_FUNCTION(hmx_16x16_verif_callback)(hmx_state_t * state_ptr,  uint32_t spatial_hi_idx,  uint32_t spatial_lo_idx,  uint32_t output_hi_idx,  uint32_t output_lo_idx,  uint32_t output_adjust,  uint32_t acc_idx,  uint16_t result_hi,  uint16_t result_lo, hmx_cvt_rs_reg_t rs)
 {
     hmx_cvt_rs_reg_t rs2 = rs;
 
@@ -574,8 +574,8 @@ void ARCH_FUNCTION(hmx_wgt_verif_callback)(hmx_state_t * state_ptr, uint32_t tes
     {
         if (state_ptr->proc->options->sim_vtcm_memory_callback && testgen_check)
         {
-            uint32_t slot_tmp = state_ptr->thread->ver_cur_slot;
-            state_ptr->thread->ver_cur_slot = 1;
+            uint32_t slot_tmp = state_ptr->thread->cur_slot;
+            state_ptr->thread->cur_slot = 1;
             uint32_t stride = (wgt_per_word==2) ? 2 : 1;
             uint32_t loop_end = (decomp) ? 1 : 4;
             if (decomp)
@@ -590,7 +590,7 @@ void ARCH_FUNCTION(hmx_wgt_verif_callback)(hmx_state_t * state_ptr, uint32_t tes
                 state_ptr->proc->options->sim_vtcm_memory_callback(state_ptr->system, state_ptr->proc, state_ptr->threadId, 0, pa+t, stride, DREAD, tmp_wgt);
 
             }
-            state_ptr->thread->ver_cur_slot = slot_tmp;
+            state_ptr->thread->cur_slot = slot_tmp;
         }
     }
 #endif
@@ -642,7 +642,6 @@ void ARCH_FUNCTION(hmx_8x4_convert_body)(hmx_state_t * state_ptr,  uint32_t spat
 {
     // Indices
     const uint32_t acc_lo_idx = acc_idx + 0 + subchannel;
-    const uint32_t cvt_idx = state_ptr->cvt_accum_current_index;
 	const int32_t acc_in  = state_ptr->accum_fxp[spatial_idx][output_idx].w[acc_lo_idx];
 	const int32_t internal_bias    =  hmx_get_internal_bias(state_ptr, spatial_idx, output_idx, acc_lo_idx ) ;
     hmx_acc_select_ptr_t fptr = (hmx_acc_select_ptr_t)acc_select_fptr;
@@ -650,7 +649,7 @@ void ARCH_FUNCTION(hmx_8x4_convert_body)(hmx_state_t * state_ptr,  uint32_t spat
     DEBUG_PRINT(2,       "HMX_CVT8X4_IN: pktid=0x%08x ACC[%02d][%02d][%02d].%s=%08x combined=%09llx internal_bias=%x",  state_ptr->pktid, spatial_idx, output_idx, acc_idx, subchannel ? "hi" : "lo", acc_in, (long long int)acc, internal_bias);
 
     // Feedback
-    const uint32_t feedback = state_ptr->cvt_accum[cvt_idx][spatial_idx][output_idx].uh[0];
+    const uint32_t feedback = state_ptr->cvt_future_accum_fxp[spatial_idx][output_idx].uh[0];
     const uint32_t poly_bias  =  poly_feedback_select((rs.fb_dst==HMX_CVT_FB_OUTBIAS), rs.fb_limit, get_bias(bias), feedback );
     const uint32_t poly_scale =  poly_feedback_select((rs.fb_dst==HMX_CVT_FB_SCALE), rs.fb_limit, get_scale(bias), feedback );
     const int64_t bias32 = (int64_t)((int32_t)bias.fxp.bias32  & 0xFFFFFFF0);
@@ -666,10 +665,6 @@ void ARCH_FUNCTION(hmx_8x8_convert_body)(hmx_state_t * state_ptr, uint32_t spati
     // Indices
     const uint32_t acc_lo_idx = acc_idx + 0;
     const uint32_t acc_hi_idx = acc_idx + 2;
-    const uint32_t cvt_idx = state_ptr->cvt_accum_current_index;
-
-
-
 
     // Accumulators
     hmx_acc_select_ptr_t fptr = (hmx_acc_select_ptr_t)acc_select_fptr;
@@ -678,7 +673,7 @@ void ARCH_FUNCTION(hmx_8x8_convert_body)(hmx_state_t * state_ptr, uint32_t spati
     DEBUG_PRINT(2,       "HMX_CVT8X8_IN: pktid=0x%08x ACC[%02d][%02d][%02d].hi=%08x .lo=%08x combined=%09llx internal_bias=%x",  state_ptr->pktid, spatial_idx, output_idx, acc_idx, state_ptr->accum_fxp[spatial_idx][output_idx].w[acc_hi_idx], state_ptr->accum_fxp[spatial_idx][output_idx].w[acc_lo_idx], (long long int)acc, internal_bias );
 
     // parameters from bias reg and feedback decision
-    const uint16_t feedback = state_ptr->cvt_accum[cvt_idx][spatial_idx][output_idx].uh[0];
+    const uint16_t feedback = state_ptr->cvt_future_accum_fxp[spatial_idx][output_idx].uh[0];
     const uint32_t poly_bias  =  poly_feedback_select((rs.fb_dst==HMX_CVT_FB_OUTBIAS), rs.fb_limit, get_bias(bias), feedback );
     const uint32_t poly_scale =  poly_feedback_select((rs.fb_dst==HMX_CVT_FB_SCALE), rs.fb_limit, get_scale(bias), feedback );
     const int64_t bias32 = (int64_t)((int32_t)bias.fxp.bias32  & 0xFFFFFFFF);
@@ -737,7 +732,6 @@ void ARCH_FUNCTION(hmx_16x16_convert_body)(hmx_state_t * state_ptr, uint32_t spa
     const uint32_t spatial_hi_idx = spatial_idx + 1;
     const uint32_t output_lo_idx = output_idx + 0;
     const uint32_t output_hi_idx = output_idx + 1;
-    const uint32_t cvt_idx = state_ptr->cvt_accum_current_index;
 
 
 
@@ -757,12 +751,14 @@ void ARCH_FUNCTION(hmx_16x16_convert_body)(hmx_state_t * state_ptr, uint32_t spa
 
     const uint32_t output_adjust = ((rs.fxp16_ch_sel == 0x2) && !legacy) ? 0 : 1;
 
-    if((rs.fxp16_ch_sel == 0x2) && (!legacy)){
+    if((rs.fxp16_ch_sel != 0x3) && (!legacy)){
+        if(rs.fxp16_ch_sel == 0x2){
         acc_lh = acc_ll;
         acc_hh = acc_hl;
     }
     acc_ll = 0;
     acc_hl = 0;
+    }
 
     DEBUG_PRINT(2,       "HMX_CVT16X16_IN: pktid=0x%08x ACC_LL[%02d][%02d][%02d].hi=%08x .lo=%08x combined=%09llx",  state_ptr->pktid, spatial_lo_idx, output_lo_idx, acc_lo_idx, state_ptr->accum_fxp[spatial_lo_idx][output_lo_idx].w[acc_hi_idx], state_ptr->accum_fxp[spatial_lo_idx][output_lo_idx].w[acc_lo_idx], (long long int)acc_ll );
     DEBUG_PRINT(2,       "HMX_CVT16X16_IN: pktid=0x%08x ACC_HL[%02d][%02d][%02d].hi=%08x .lo=%08x combined=%09llx",  state_ptr->pktid, spatial_hi_idx, output_lo_idx, acc_lo_idx, state_ptr->accum_fxp[spatial_hi_idx][output_lo_idx].w[acc_hi_idx], state_ptr->accum_fxp[spatial_hi_idx][output_lo_idx].w[acc_lo_idx], (long long int)acc_hl );
@@ -771,10 +767,10 @@ void ARCH_FUNCTION(hmx_16x16_convert_body)(hmx_state_t * state_ptr, uint32_t spa
 
 
     // parameters from bias reg and feedback decision
-    const hmx_bias_t bias_reg2 = state_ptr->bias[output_hi_idx];    // Need second bias reg
+    const hmx_bias_t bias_reg2 = state_ptr->bias[rs.bias_sel][output_hi_idx];    // Need second bias reg
     const uint32_t output_bias = ((bias_reg2.fxp.bias1 << 12) + get_bias(bias)) << 2;
     const uint32_t scale = (((((!bias_reg2.fxp.sigmsb << 10) + bias_reg2.fxp.sig) << 10) + bias.fxp.sig) << 1) + bias.fxp.siglsb;
-    const uint32_t feedback = hmx_cvt_combine_feedback(state_ptr->cvt_accum[cvt_idx][spatial_hi_idx][output_idx+output_adjust].uh[0], state_ptr->cvt_accum[cvt_idx][spatial_lo_idx][output_idx+output_adjust].uh[0]) << 2;
+    const uint32_t feedback = hmx_cvt_combine_feedback(state_ptr->cvt_future_accum_fxp[spatial_hi_idx][output_idx+output_adjust].uh[0], state_ptr->cvt_future_accum_fxp[spatial_lo_idx][output_idx+output_adjust].uh[0]) << 2;
     const uint32_t poly_bias  =  poly_feedback_select((rs.fb_dst==HMX_CVT_FB_OUTBIAS), rs.fb_limit, output_bias, feedback ) >> 2;
     const uint32_t poly_scale =  poly_feedback_select((rs.fb_dst==HMX_CVT_FB_SCALE), rs.fb_limit, scale, feedback );
     const int64_t bias48 = (int64_t)bias.fxp.bias32 << 16;
@@ -791,7 +787,7 @@ void ARCH_FUNCTION(hmx_16x16_convert_body)(hmx_state_t * state_ptr, uint32_t spa
         state_ptr->cvt_future_accum_fxp[spatial_hi_idx][output_lo_idx + !output_adjust].uh[0] = 0;
     }
     DEBUG_PRINT(2,       "HMX_CVT_OUT: pktid=0x%08x CVT_STATE[%02d][%02d]=%02x CVT_STATE[%02d][%02d]=%02x HALF OUT=%04x", state_ptr->pktid, spatial_lo_idx, output_lo_idx + output_adjust,  result_lo, spatial_hi_idx, output_lo_idx + output_adjust, result_hi, result );
-    VERIF(ARCH_FUNCTION(hmx_16x16_verif_callback)(state_ptr, spatial_hi_idx, spatial_lo_idx, output_hi_idx, output_lo_idx, output_adjust, acc_lo_idx, cvt_idx, result_hi, result_lo, rs);)
+    VERIF(ARCH_FUNCTION(hmx_16x16_verif_callback)(state_ptr, spatial_hi_idx, spatial_lo_idx, output_hi_idx, output_lo_idx, output_adjust, acc_lo_idx, result_hi, result_lo, rs);)
 }
 
 static inline int8_t hmx_sign_extend_to_byte(int8_t in, int32_t bit_select, int32_t mask, int32_t shift) {
@@ -901,11 +897,11 @@ void ARCH_FUNCTION(hmx_acc_convert)(hmx_state_t * state_ptr, hmx_cvt_rs_reg_t cv
     const uint32_t acc_idx = state_ptr->acc_select;
 
     const hmx_cvt_body_ptr_t convert_body_fptr = hmx_cvt_body_ptr_table[type];
-    void * acc_select_fptr = (state_ptr->redundant_acc) ? &hmx_combine_redundant_acc : &hmx_non_redundant_acc;
+    void * acc_select_fptr = (void*)((state_ptr->redundant_acc) ? &hmx_combine_redundant_acc : &hmx_non_redundant_acc);
 
     for(uint32_t output_idx = 0; output_idx < output_depth; output_idx+=output_stride)
     {
-        const hmx_bias_t bias = state_ptr->bias[output_idx];
+        const hmx_bias_t bias = state_ptr->bias[cvt_rs.bias_sel][output_idx];
 		for(uint32_t spatial_idx = 0; spatial_idx < spatial_size; spatial_idx+=spatial_stride)
         {
             convert_body_fptr(state_ptr, spatial_idx, output_idx, acc_idx, bias, subchannel, legacy, cvt_rs, acc_select_fptr);
@@ -928,9 +924,9 @@ void ARCH_FUNCTION(hmx_act_ld_verif_callback)(hmx_state_t * state_ptr, uint16_t 
         int32_t accessed  = (flt) ? state_ptr->act_cache_uh_accessed[cache_idx>>1] : state_ptr->act_cache_ub_accessed[cache_idx];
         if (!accessed)
         {
-            int slot_tmp = state_ptr->thread->ver_cur_slot;
+            int slot_tmp = state_ptr->thread->cur_slot;
             int stride = (flt) ? 2 : 1;
-            state_ptr->thread->ver_cur_slot = 1;
+            state_ptr->thread->cur_slot = 1;
 
             paddr_t pa = state_ptr->act_addr + (cache_idx & 2047);
             if (block_idx) {
@@ -942,7 +938,7 @@ void ARCH_FUNCTION(hmx_act_ld_verif_callback)(hmx_state_t * state_ptr, uint16_t 
             state_ptr->proc->options->sim_vtcm_memory_callback(state_ptr->system, state_ptr->proc, state_ptr->threadId, 1, pa, stride, DREAD, act);
 
 
-            state_ptr->thread->ver_cur_slot = slot_tmp;
+            state_ptr->thread->cur_slot = slot_tmp;
             if (flt) {
                 state_ptr->act_cache_uh_accessed[cache_idx>>1] = 1;
             } else {
@@ -1019,6 +1015,18 @@ ARCH_FUNCTION(hmx_wgt_range_check)(hmx_state_t * state_ptr, int32_t stream_idx, 
     return in;
 }
 
+static inline int compute_indices(int start_value, int stop_value, int increment, int msb, int dilation, int * array_pointer){
+    int counter = 0;
+    int inner_value = start_value;
+    while(inner_value >= 0){
+		array_pointer[counter] = inner_value;
+		inner_value = ARCH_FUNCTION(hmx_inc_tap_with_spatial_mask_dilate)(inner_value, increment, msb, dilation);
+        if(inner_value > stop_value) inner_value = -1;
+        counter++;
+	}
+    return counter;
+}
+
 void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_t weights_per_byte_log, uint32_t wgt_per_word, uint32_t unpack, uint32_t type, uint32_t mult_type, uint32_t output_channel_scale)
 {
     int32_t tile_y_mask = state_ptr->tile_y_mask;
@@ -1031,7 +1039,8 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
 	int32_t x_dilate = state_ptr->x_dilate;
 	int32_t format = state_ptr->format;
 	int32_t group_size = state_ptr->group_size;
-	int group_count = state_ptr->group_count;
+	int32_t group_count = state_ptr->group_count;
+	int32_t parallel_group_size = state_ptr->QDSP6_MX_COLS / state_ptr->QDSP6_MX_PARALLEL_GRPS;
 	int32_t input_ch_end_last_block = state_ptr->ch_stop << format;
 	int32_t input_ch_start_first_block = state_ptr->ch_start << format;
 	int32_t input_ch_stride = 1 << format; /* stride by number of groups*/
@@ -1043,13 +1052,27 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
 	int32_t deep_block_end = deep_mode ? 2 : 1 ;
 	int32_t current_acc = flt_mode ? state_ptr->current_acc_flt : state_ptr->current_acc_fxp;
 	int32_t wgt_stream_idx = 0;
+    int x_tap_array[MAX_ACCUMULATORS_SPATIAL];
+    int y_tap_array[MAX_ACCUMULATORS_SPATIAL];
+    int intra_tile_x_array[MAX_ACCUMULATORS_SPATIAL];
+    int intra_tile_y_array[MAX_ACCUMULATORS_SPATIAL];
+	int x_tap_idx = state_ptr->x_start;
+	int y_tap_idx = state_ptr->y_start;
+    int intra_tile_x = 0;
+    int intra_tile_y = 0;
+    int x_tap_count = compute_indices(x_tap_idx, state_ptr->x_stop, tile_x_inc, tile_x_mask_msb, x_dilate, x_tap_array);
+    int y_tap_count = compute_indices(y_tap_idx, state_ptr->y_stop, tile_y_inc, tile_y_mask_msb, y_dilate, y_tap_array);
+    int x_count = compute_indices(intra_tile_x, 0x7FFFFFFF, tile_x_inc, tile_x_mask_msb, 0, intra_tile_x_array);
+    int y_count = compute_indices(intra_tile_y, 0x7FFFFFFF, tile_y_inc, tile_y_mask_msb, 0, intra_tile_y_array);
 
 	paddr_t wgt_addr = state_ptr->wgt_addr;
 	paddr_t wgt_len = state_ptr->max_weight_pa;
     int32_t mx_fp_rate = state_ptr->QDSP6_MX_FP_RATE;
-    int32_t input_ch_fp_rate_2_stide = 4 * input_ch_stride;
-    if((mx_fp_rate == 2) && (group_size <= 4) && flt_mode) {
-        input_ch_fp_rate_2_stide = mx_fp_rate * input_ch_stride;
+    int32_t input_ch_fp_rate_stride = 4 * input_ch_stride;
+    if((mx_fp_rate == 2) && (group_size <= parallel_group_size/2) && flt_mode) {
+        input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
+    } else if ( (mx_fp_rate == 8) && flt_mode) {
+		input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
     }
 
     ARCH_FUNCTION(hmx_ld_wgt)(env, state_ptr, wgt_addr, wgt_len,  wgt_per_word, output_channel_scale, flt_mode, unpack );
@@ -1058,34 +1081,37 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
     {
 		int32_t input_ch_end = (((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_channels;
 		int32_t input_ch_start = (block_idx == 0) ? input_ch_start_first_block : 0;
+		if ((mx_fp_rate == 8) && flt_mode) { input_ch_start &= (0xfff8 << format); input_ch_end = ((input_ch_end & 0x1f) > 0) ? ((input_ch_end + 32) & (0xfff8 << format)) : (input_ch_end & (0xfff8 << format));}
 
-        DEBUG_PRINT(2, "MX MULT: Block %d Channel Range: [0x%x, 0x%x] Deep Block Count=%d", block_idx, input_ch_start, input_ch_end, deep_block_end);
+        DEBUG_PRINT(2, "MX MULT: Block %d Channel Range: [%d, %d] Deep Block Count=%d, fp_rate=%d flt_mode=%d", block_idx, input_ch_start >> format, input_ch_end >> format, deep_block_end, mx_fp_rate, flt_mode);
 
 		ARCH_FUNCTION(hmx_ld_act)(env, state_ptr,  state_ptr->act_addr, block_idx);
 
-        int32_t y_tap_idx  = state_ptr->y_start;
-		int32_t y_tap_stop = state_ptr->y_stop;
-		int32_t y_tap_decoded  = 0;
-		while (y_tap_idx>=0)
+        for(int32_t y_tap_decoded = 0; y_tap_decoded < y_tap_count; y_tap_decoded++)
         {
+            y_tap_idx = y_tap_array[y_tap_decoded];
 			for(int32_t deep_block_idx = 0; deep_block_idx < deep_block_end; deep_block_idx++)
             {
-				int32_t x_tap_decoded  = 0;
-				int32_t x_tap_idx  = state_ptr->x_start;
-				int32_t x_tap_stop = state_ptr->x_stop;
-				while (x_tap_idx>=0)
+                for(int32_t x_tap_decoded = 0; x_tap_decoded < x_tap_count; x_tap_decoded++)
                 {
-					for(int32_t input_ch_idx = input_ch_start; input_ch_idx < input_ch_end; input_ch_idx += input_ch_fp_rate_2_stide)
+                    x_tap_idx = x_tap_array[x_tap_decoded];
+					for(int32_t input_ch_idx = input_ch_start; input_ch_idx < input_ch_end; input_ch_idx += input_ch_fp_rate_stride)
                     {
 						int32_t wgt_stream_group_idx = wgt_stream_idx; /* save wgt stream pointer for grouped convolution*/
 						int32_t group_idx_stride = 1;
 						for(int32_t group_idx = 0; group_idx < group_count; group_idx += group_idx_stride)
                         { /* process all groups */
+							DEBUG_PRINT(2, "MX GROUP MULT: saved wgt_stream_group_idx=%d, wgt_stream_idx=%d", wgt_stream_group_idx, wgt_stream_idx);
 							wgt_stream_idx = wgt_stream_group_idx; /* restore wgt stream pointer, reset per group */
 							int32_t input_ch_start_group =  input_ch_idx + (group_idx << format) *group_size; /* starting channel of group */
 							int32_t input_ch_stop_group =  input_ch_start_group + 4*input_ch_stride; /* stop at next group */
-							if ((mx_fp_rate == 2) && (group_size <= 4) && flt_mode) {
+							if ((mx_fp_rate == 2) && (group_size <= parallel_group_size/2) && flt_mode) {
                                 input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
+                            } else if ((mx_fp_rate == 8) && (group_size > 4) && flt_mode) {
+								input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
+							} else if ((mx_fp_rate == 8) && (group_size <= 4) && flt_mode) {
+								input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end);
+								//wgt_stream_idx = wgt_stream_group_idx + group_idx % ( 8 / group_size);
                             }
                             if(group_size < 4) {
                                 input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end) ;
@@ -1093,19 +1119,21 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
 							for(int32_t input_ch_idx2 = input_ch_start_group; input_ch_idx2 < input_ch_stop_group; input_ch_idx2 += input_ch_stride)
                             {
 								int32_t input_ch_idx_raw = (input_ch_idx2 >> format);
+								uint32_t fp8_ch_start = input_ch_start >> format;
+								uint32_t fp8_ch_stop = ((((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_ch_end ) >> format;
                                 DEBUG_PRINT(2, "MX MULT: x_tap=%d y_tap=%d input_channel=%d deep_block=%d, group_idx=%d, input_ch_idx=%d, input_ch_idx2=%d, stop_ch=%d", x_tap_decoded, y_tap_decoded, input_ch_idx_raw,deep_block_idx, group_idx, input_ch_idx, input_ch_idx2, input_ch_stop_group);
-								int32_t intra_tile_y= 0;
-								while (intra_tile_y>=0)
+                                for(int32_t intra_y_counter = 0; intra_y_counter < y_count; intra_y_counter++)
                                 {
+                                    intra_tile_y = intra_tile_y_array[intra_y_counter];
                                     int32_t y_next_tile = 0;
                                     int32_t act_y_offset = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(y_tap_idx, intra_tile_y, tile_y_mask, &y_next_tile);
 
                                     //DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
                                     act_y_offset = (act_y_offset & 0x7FFFFFFF) + (y_next_tile * 0x800); // Clean negative overflow bit
                                     //DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
-									int32_t intra_tile_x = 0;
-									while (intra_tile_x>=0)
+                                    for(int32_t intra_x_counter = 0; intra_x_counter < x_count; intra_x_counter++)
                                     {
+                                        intra_tile_x = intra_tile_x_array[intra_x_counter];
                                         int32_t overflow = 0;
                                         int32_t output_idx = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(x_tap_idx, intra_tile_x, tile_x_mask, &overflow);
                                         int32_t acc_select = (overflow) ? (current_acc ^ 0x1) & 0x1 : current_acc & 0x1;
@@ -1127,23 +1155,25 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
                                         }
                                         int32_t output_ch_group_start = group_idx*group_size; /* output channel group corresponds to input channel group */
 										int32_t output_ch_group_end = output_ch_group_start + group_size; /* stop at next group */
-										if((group_size <= 4) && flt_mode)
+										if((group_size <= parallel_group_size/2) && flt_mode)
                                         {
-                                            output_ch_group_start = (group_idx/(8/group_size))*8; output_ch_group_end = output_ch_group_start + 8;
+                                            output_ch_group_start = (group_idx/(parallel_group_size/group_size))*parallel_group_size; output_ch_group_end = output_ch_group_start + parallel_group_size;
                                         }
 
-                                        ARCH_FUNCTION(hmx_mult_inner)(state_ptr, output_idx,acc_select,act,wgt_stream_idx,mult_type,input_ch_idx_raw,x_tap_decoded,y_tap_decoded,block_idx,deep_block_idx, output_channel_scale, flt_mode, group_idx, output_ch_group_start, output_ch_group_end, group_size);
-                                        intra_tile_x = ARCH_FUNCTION(hmx_inc_tap_with_spatial_mask_dilate)(intra_tile_x, tile_x_inc, tile_x_mask_msb, 0);
+                                        ARCH_FUNCTION(hmx_mult_inner)(state_ptr, output_idx,acc_select,act,wgt_stream_idx,mult_type,input_ch_idx_raw,x_tap_decoded,y_tap_decoded,block_idx,deep_block_idx, output_channel_scale, flt_mode, group_idx, output_ch_group_start, output_ch_group_end, group_size, fp8_ch_start, fp8_ch_stop);
 
 									}
-                                    intra_tile_y = ARCH_FUNCTION(hmx_inc_tap_with_spatial_mask_dilate)(intra_tile_y, tile_y_inc, tile_y_mask_msb, 0);
 								}
+								if(flt_mode && (mx_fp_rate == 8) && (input_ch_idx_raw - group_idx * group_size >= fp8_ch_stop) && (group_size > 4)){
+									DEBUG_PRINT(2, "MX MULT not increase wgt_stream_idx: input_ch_idx_raw=%d, group_idx=%d, fp8_ch_stop=%d", input_ch_idx_raw, group_idx, fp8_ch_stop);
+								}
+								else
 								wgt_stream_idx++;
 							}
 						}
 						if(--state_ptr->mac_cycle_limit == 0 )
                         {
-                            x_tap_idx = y_tap_idx = -1;
+                            x_tap_count = x_tap_decoded;
                             block_idx = block_end;
                             input_ch_idx = input_ch_end;
                             deep_block_idx = deep_block_end;
@@ -1157,23 +1187,11 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
                             }
                         }
                     }
-					ARCH_FUNCTION(hmx_mac_pmu)(state_ptr, flt_mode, (deep_block_end*block_idx)+deep_block_idx);
-                    x_tap_idx = ARCH_FUNCTION(hmx_inc_tap_with_spatial_mask_dilate)(x_tap_idx, tile_x_inc, tile_x_mask_msb, x_dilate);
-					if (x_tap_idx > x_tap_stop) {
-                        x_tap_idx = -1;
-                    }
-					x_tap_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, x_tap_idx, -1);
-					x_tap_decoded++;
+					ARCH_FUNCTION(hmx_mac_pmu)(state_ptr,flt_mode,state_ptr->blocks);
 				}
 				current_acc = (deep_mode) ? current_acc ^ 0x1 : current_acc;
-				y_tap_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, y_tap_idx, -1);
 			}
-            y_tap_idx = ARCH_FUNCTION(hmx_inc_tap_with_spatial_mask_dilate)(y_tap_idx, tile_y_inc, tile_y_mask_msb, y_dilate);
-			if (y_tap_idx > y_tap_stop) {
-                y_tap_idx = -1;
-            }
-			y_tap_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, y_tap_idx, -1);
-			y_tap_decoded++;
+
 		}
 		block_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, block_idx, block_end);
 	}
@@ -1186,9 +1204,18 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
 }
 
 
-void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t acc_select,uint32_t act,uint32_t wgt_stream_idx,uint32_t mult_type,uint32_t input_channel,uint32_t x_tap,uint32_t y_tap,uint32_t block,uint32_t deep_block,uint32_t output2x,uint32_t is_flt,uint32_t grp_idx,uint32_t grp_start,uint32_t grp_end,uint32_t grp_size){
+void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t acc_select,uint32_t act,uint32_t wgt_stream_idx,uint32_t mult_type,uint32_t input_channel,uint32_t x_tap,uint32_t y_tap,uint32_t block,uint32_t deep_block,uint32_t output2x,uint32_t is_flt,uint32_t grp_idx,uint32_t grp_start,uint32_t grp_end,uint32_t grp_size, uint32_t fp8_ch_start, uint32_t fp8_ch_stop){
     uint8_t valid = state_ptr->wgt_cache[wgt_stream_idx][0].valid;	// Should be valid for all output channels
-    if ( (!state_ptr->limit_execeeded) && valid && (row>=0) )
+	if(input_channel == (input_channel & ~(state_ptr->QDSP6_MX_FP_RATE - 1)))
+		state_ptr->fp8_batch_ch_start_wgt_idx = wgt_stream_idx;
+	uint8_t valid_fp8_batch = state_ptr->wgt_cache[state_ptr->fp8_batch_ch_start_wgt_idx][0].valid;
+	DEBUG_PRINT(2,"HMX_MULT_INNER: limit_exceeded=%d, valid=%d, row=%d, fp8_batch_ch_start_wgt_idx=%d, valid_fp8_batch=%d, fp8_ch_stop=%d", state_ptr->limit_execeeded, valid, row, state_ptr->fp8_batch_ch_start_wgt_idx, valid_fp8_batch, fp8_ch_stop);
+	uint32_t fp_rate_8_positive_0_insert = (state_ptr->QDSP6_MX_FP_RATE == 8) && is_flt && (input_channel - grp_idx * grp_size >= fp8_ch_stop) && (grp_size > 4) && valid_fp8_batch;
+	uint32_t fp_rate_8_insert_0_small_grp_size = (state_ptr->QDSP6_MX_FP_RATE == 8) && is_flt && (grp_size <= 4) && ((input_channel / grp_size) != grp_idx);
+	if(fp_rate_8_positive_0_insert)
+		valid = 1;
+
+    if ( (!state_ptr->limit_execeeded) && (valid || valid_fp8_batch) && (row>=0) )
     {
         for(uint32_t output_2x_channels = 0; output_2x_channels < output2x; output_2x_channels++)
         {
@@ -1198,6 +1225,16 @@ void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t
 
                 DEBUG_PRINT(2,"WGT_SEL CACHE[%02d][%02d]=%02x", wgt_stream_idx, output_ch_idx, wgt);
                 const hmx_mult_body_ptr_t mult_fptr = hmx_mult_body_ptr_table[mult_type];
+				if(fp_rate_8_positive_0_insert | fp_rate_8_insert_0_small_grp_size)
+				{
+					wgt = 0;
+					DEBUG_PRINT(2,"FOR FP RATE=8 pos 0 wgt input channel=%d, grp_idx=%d, grp_size=%d, fp8_ch_start=%d, fp8_ch_stop=%d wgt=%02x", input_channel, grp_idx, grp_size, fp8_ch_start, fp8_ch_stop, wgt);
+				}
+				if( !valid && valid_fp8_batch)
+				{
+					wgt = 0;
+					DEBUG_PRINT(2,"FOR FP RATE=8 wgt, not enough but batch beginning is good, input channel=%d, grp_idx=%d, grp_size=%d, fp8_ch_start=%d, fp8_ch_stop=%d wgt=%02x", input_channel, grp_idx, grp_size, fp8_ch_start, fp8_ch_stop, wgt);
+				}
 
                 mult_fptr(state_ptr, row, output_ch_idx, acc_select, act, wgt, input_channel, x_tap, y_tap, block, output_2x_channels, deep_block, grp_idx, grp_size);
 
@@ -1303,10 +1340,12 @@ int8_t ARCH_FUNCTION(hmx_wgt_ld_meta_data)(thread_t *env, hmx_state_t * state_pt
 
 void ARCH_FUNCTION(hmx_ld_wgt)(thread_t *env, hmx_state_t * state_ptr, paddr_t wgt_addr, paddr_t wgt_addr_end, uint32_t wgt_per_word, uint32_t output_scale, uint32_t is_flt, uint32_t unpack_idx )
 {
+	processor_t * proc __attribute__((unused)) = state_ptr->proc;
 
     DEBUG_PRINT(2, "Loading WGTs from pa range[%llx %llx]  WGTs per word=%d, output channel scale=%d wgtc_mode=%d", wgt_addr, wgt_addr_end, wgt_per_word, output_scale, state_ptr->wgtc_mode);
 
     const uint32_t output_ch_wgt_end = state_ptr->QDSP6_MX_COLS;
+	//const uint32_t mx_fp_rate = state_ptr->QDSP6_MX_FP_RATE;
 
     int32_t wgt_cache_idx = 0;
     uint32_t block_idx = 0;
@@ -1317,12 +1356,15 @@ void ARCH_FUNCTION(hmx_ld_wgt)(thread_t *env, hmx_state_t * state_ptr, paddr_t w
             // First Load metadata
             uint32_t wgtc_metadata[128] = {0};
             DEBUG_PRINT_VAR(paddr_t wgt_uc_metadata_addr = wgt_addr + (4 * output_ch_wgt_end);)
+            INC_PSTATN(phmxwgtcomp_metadata_rd, 1);
+            INC_PSTATN(phmxwgtdcomp_issue, 2);
 #ifdef VERIFICATION
             int8_t meta_addr_valid = ARCH_FUNCTION(hmx_wgt_ld_meta_data)(env, state_ptr, wgtc_metadata, wgt_uc_metadata_addr,  wgt_addr, wgt_addr_end);
 #endif
             const int32_t wgt_total_bytes = state_ptr->wgtc_total_bytes + 1;
             int32_t wgt_total_bytes_lane_cnt[8] = {0};
             int32_t wgt_local_total_bytes_lane[8] = {0};
+            INC_PSTATN(phmxwgtcomp_compdata_rd, wgt_total_bytes/16);
 
             for(uint32_t vector_idx = 0; vector_idx < 8; vector_idx++)
             {
@@ -1418,13 +1460,17 @@ void ARCH_FUNCTION(hmx_ld_wgt)(thread_t *env, hmx_state_t * state_ptr, paddr_t w
 
     if (wgt_per_word==2) {
         // Special case for floating point if a multiple of 128 bytes were provided instead of 256, fill the other 2 channels with zero
-        while( (wgt_cache_idx & 0x3) )
+		uint32_t zero_fill_mask = 0x3;
+		if(state_ptr->QDSP6_MX_FP_RATE == 8)
+			zero_fill_mask = 0x1;
+
+        while( (wgt_cache_idx & zero_fill_mask) )
         {
             for(int32_t output_ch_wgt_idx = 0; output_ch_wgt_idx < output_ch_wgt_end; output_ch_wgt_idx++)
             {
                 state_ptr->wgt_cache[wgt_cache_idx][output_ch_wgt_idx].wgt = 0;
                 state_ptr->wgt_cache[wgt_cache_idx][output_ch_wgt_idx].valid = 1;
-                state_ptr->wgt_cache[wgt_cache_idx][output_ch_wgt_idx].wgt  ^= state_ptr->wgt_negate;
+                //state_ptr->wgt_cache[wgt_cache_idx][output_ch_wgt_idx].wgt  ^= state_ptr->wgt_negate;
                 DEBUG_PRINT(2, "WGT_LOAD[%02d][%02d]=0x0 Set to zero not enough weights provided FP case", wgt_cache_idx, output_ch_wgt_idx);
             }
             wgt_cache_idx++;
@@ -1500,6 +1546,8 @@ void ARCH_FUNCTION(hmx_populate_hmx_mac_maptr)(thread_t * thread, hmx_state_t * 
     hmx_act_maptr->tile_x_mask = state_ptr->tile_x_mask;
     hmx_act_maptr->tile_y_mask = state_ptr->tile_y_mask;
 	hmx_act_maptr->wgt_size = hmx_wgt_maptr->wgt_size = (int32_t)((state_ptr->max_weight_pa & ~0x7F) - (state_ptr->wgt_addr & ~0x7F) + 128) / 128;
+	hmx_act_maptr->wgtc_mode = hmx_wgt_maptr->wgtc_mode = state_ptr->wgtc_mode;
+	hmx_act_maptr->wgtc_global_density = hmx_wgt_maptr->wgtc_global_density = state_ptr->wgtc_total_bytes;
     thread->mem_access[0].lddata = state_ptr->max_weight_pa;
 }
 
@@ -1699,8 +1747,13 @@ void ARCH_FUNCTION(hmx_act_paramaters)(hmx_state_t * state_ptr, vaddr_t start, v
 
 	state_ptr->fxp_commit_state.acc_update = 0;
 	state_ptr->flt_commit_state.acc_update = 0;
-    state_ptr->mac_cycle_limit = (state_ptr->is_flt) ? 256 : 512;
+    state_ptr->mac_cycle_limit = (state_ptr->is_flt) ? (1024 / state_ptr->QDSP6_MX_FP_RATE) : 512;
     state_ptr->operand_ready |= (state_ptr->blocks>0)<<slot;
+	if(state_ptr->is_flt && !state_ptr->support_fp16)
+	{
+		state_ptr->blocks = 0;
+		DEBUG_PRINT(0, "HMX FLT: set block to 0 for hmx without fp16 support, pktid=0x%08x", state_ptr->pktid);
+	}
 
 }
 
@@ -1728,6 +1781,20 @@ void ARCH_FUNCTION(hmx_wgt_paramaters)(hmx_state_t * state_ptr, vaddr_t start, v
 	state_ptr->limit_execeeded = 0;
 
     state_ptr->weight_bits = hmx_unpack_bits_table[unpack];
+	if(!state_ptr->is_flt && (state_ptr->weight_bits < 8) && !((state_ptr->weight_bits == 4) & (output_ch_scale == 2)))
+	{
+		if(state_ptr->group_convolution)
+		{
+			state_ptr->ch_start = 0;
+    		state_ptr->ch_stop = state_ptr->group_size;
+		}
+		else
+		{
+			state_ptr->ch_start = 0;
+			state_ptr->ch_stop = 32;
+		}
+		DEBUG_PRINT(2, "Fix start stop channel at the boundary of groups: weight_bits = %x group_conv: %x, group_size: %d, ch_start: %d, ch_stop: %d", state_ptr->weight_bits, state_ptr->group_convolution, state_ptr->group_size, state_ptr->ch_start, state_ptr->ch_stop);
+	}
 
 	state_ptr->wgt_negate = (state_ptr->is_flt) ? (((start & (0x20)) > 0) << 15) : 0;
 
@@ -1768,6 +1835,7 @@ void ARCH_FUNCTION(hmx_wgt_paramaters)(hmx_state_t * state_ptr, vaddr_t start, v
 	}
     DEBUG_PRINT(2, "MX SETUP: state_ptr->x_start  =%x  state_ptr->x_stop=%x state_ptr->x_tap=%x state_ptr->fx=%x state_ptr->tile_x_mask=%x", state_ptr->x_start , state_ptr->x_stop, state_ptr->x_tap, state_ptr->fx, state_ptr->tile_x_mask);
 	state_ptr->usr_fp.raw = usr;
+	state_ptr->fp8_batch_ch_start_wgt_idx = 0;
 }
 
 void ARCH_FUNCTION(hmx_update_verif_trace)(thread_t * thread) {

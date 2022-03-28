@@ -84,7 +84,7 @@ hmx_xfp_t ARCH_FUNCTION(hmx_fp_xfp)(hmx_state_t * state_ptr,
 		uint32_t exp_out,
 		uint32_t normalize)
 {
-	hmx_xfp_t out_xfp = {.INT = int_out, .EXP = exp_out, .FRAC = frac_out};
+	hmx_xfp_t out_xfp = {.INT = (uint8_t)(int_out), .EXP = (uint8_t)(exp_out), .FRAC = (uint8_t)(frac_out)};
 
 	const int32_t in_exp_min = 1;
 	const int32_t in_exp_max = (1 << exp_in) - 1;
@@ -295,7 +295,7 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_normalize)(
 		uint32_t	use_lza)
 {
 
-	hmx_xfp_t out = {.EXP = exp_out, .FRAC = frac_out, .INT = int_out};
+	hmx_xfp_t out = {.EXP = (uint8_t)(exp_out), .FRAC = (uint8_t)(frac_out), .INT = (uint8_t)(int_out)};
 	exp_range_t out_exp_range = get_exp_range_unbiased(exp_out);
 
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_normalize in          ", in);
@@ -369,7 +369,7 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_cvt_normalize)(
 {
 
 	hmx_xfp_t tmp = {.EXP = in.EXP, .FRAC = in.FRAC, .INT = in.INT};
-	hmx_xfp_t out = {.EXP = exp_out, .FRAC = frac_out, .INT = int_out};
+	hmx_xfp_t out = {.EXP = (uint8_t)(exp_out), .FRAC = (uint8_t)(frac_out), .INT = (uint8_t)(int_out)};
 	exp_range_t out_exp_range = get_exp_range_unbiased(exp_out);
 
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_normalize in          ", in);
@@ -451,7 +451,7 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_add)(
 		hmx_xfp_t 	in_b)
 {
 
-	hmx_xfp_t out = {.EXP = in_a.EXP, .FRAC = in_a.FRAC, .INT = in_a.INT+1 };
+	hmx_xfp_t out = {.EXP = in_a.EXP, .FRAC = in_a.FRAC, .INT = (uint8_t)(in_a.INT+1) };
 
 	uint8_t a_neg = (in_a.status.zero | in_a.status.inf) ? in_a.status.negative : in_a.sig < 0;
 	uint8_t b_neg = (in_b.status.zero | in_b.status.inf) ? in_b.status.negative : in_b.sig < 0;
@@ -543,7 +543,7 @@ static inline hmx_xfp_t xfp_adder( hmx_state_t * state_ptr,
 		uint32_t EXP,
 		uint32_t compute_lza)
 {
-	hmx_xfp_t out   = {.EXP = EXP, .FRAC = FRAC, .INT = INT };
+	hmx_xfp_t out   = {.EXP = (uint8_t)(EXP), .FRAC = (uint8_t)(FRAC), .INT = (uint8_t)(INT)  };
 
 	uint8_t all_zeros = 1;
 	uint8_t all_true_zeros = 1;
@@ -565,7 +565,7 @@ static inline hmx_xfp_t xfp_adder( hmx_state_t * state_ptr,
 	DEBUG_PRINT_XFP("hmx_xfp_add_max_exp            : in[%d] exp = %04x acc_aligned_sig=%016llx", max_exp_idx, (uint16_t)in[max_exp_idx].exp, (long long int)in[max_exp_idx].sig);
 	z_plus_z_sign = all_zeros & z_plus_z_sign;
 	out.sig  = 0;
-	int64_t aligned_sig[4] = {0};
+	int64_t aligned_sig[32] = {0};
 	for(uint32_t i = 0; i < N; i++ ) {
 		int32_t delta_exp = compute_shift(out.exp, in[i].exp, 0);
 		aligned_sig[i] =  right_shift_with_inexact(state_ptr, in[i].sig, delta_exp);
@@ -626,7 +626,7 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_mult)(
 		uint32_t exp_out)
 {
 
-	hmx_xfp_t out = {.EXP = exp_out, .FRAC = 2*in_a.FRAC, .INT = 2*in_a.INT-1 };
+	hmx_xfp_t out = {.EXP = (uint8_t)(exp_out), .FRAC = (uint8_t)(2*in_a.FRAC), .INT = (uint8_t)(2*in_a.INT-1) };
 
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_mult in0              ", in_a);
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_mult in1              ", in_b);
@@ -941,8 +941,8 @@ static inline uint32_t hmx_cvt_combine_feedback(uint16_t hi, uint16_t lo) {
     return result | ((uint32_t)lo & 0xFFF);
 }
 
-void ARCH_FUNCTION(hmx_xfp_verif_callback)(hmx_state_t * state_ptr, uint32_t spatial_hi_idx, uint32_t spatial_lo_idx, uint32_t output_idx, uint32_t acc_idx, const uint32_t cvt_idx, uint16_t result_hi, uint16_t result_lo, hmx_cvt_rs_reg_t rs);
-void ARCH_FUNCTION(hmx_xfp_verif_callback)(hmx_state_t * state_ptr, uint32_t spatial_hi_idx, uint32_t spatial_lo_idx, uint32_t output_idx, uint32_t acc_idx, const uint32_t cvt_idx, uint16_t result_hi, uint16_t result_lo, hmx_cvt_rs_reg_t rs)
+void ARCH_FUNCTION(hmx_xfp_verif_callback)(hmx_state_t * state_ptr, uint32_t spatial_hi_idx, uint32_t spatial_lo_idx, uint32_t output_idx, uint32_t acc_idx, uint16_t result_hi, uint16_t result_lo, hmx_cvt_rs_reg_t rs);
+void ARCH_FUNCTION(hmx_xfp_verif_callback)(hmx_state_t * state_ptr, uint32_t spatial_hi_idx, uint32_t spatial_lo_idx, uint32_t output_idx, uint32_t acc_idx, uint16_t result_hi, uint16_t result_lo, hmx_cvt_rs_reg_t rs)
 {
     thread_t * thread = state_ptr->thread;
     processor_t * proc = thread->processor_ptr;
@@ -966,14 +966,13 @@ void ARCH_FUNCTION(hmx_xfp_verif_callback)(hmx_state_t * state_ptr, uint32_t spa
 void ARCH_FUNCTION(hmx_xfp_convert_body)(hmx_state_t * state_ptr, uint32_t spatial_idx, uint32_t output_idx, uint32_t acc_idx, hmx_bias_t bias, uint32_t subchannel, uint32_t legacy, hmx_cvt_rs_reg_t rs, void * acc_select_fptr)
 {
     // Indices
-    const uint32_t cvt_idx = state_ptr->cvt_accum_current_index;
     const uint32_t spatial_lo_idx = spatial_idx + 0;
     const uint32_t spatial_hi_idx = spatial_idx + 1;
 
     hmx_xfp_t acc   = state_ptr->accum_flt[spatial_lo_idx][output_idx].xfp[acc_idx];
     rs.fp_type &= state_ptr->support_bf16;
 
-    const uint32_t feedback = hmx_cvt_combine_feedback(state_ptr->cvt_accum[cvt_idx][spatial_hi_idx][output_idx].uh[0], state_ptr->cvt_accum[cvt_idx][spatial_lo_idx][output_idx].uh[0]);
+    const uint32_t feedback = hmx_cvt_combine_feedback(state_ptr->cvt_future_accum_flt[spatial_hi_idx][output_idx].uh[0], state_ptr->cvt_future_accum_flt[spatial_lo_idx][output_idx].uh[0]);
 
     DEBUG_PRINT_XFP("HMX_CVT_IN XFP: pktid=0x%08x  ACC[%02d][%02d][%02d] EXP=%02x SIG=%016llx OVF=%02x usr=%x CVT FEEDBACK=%05x fb dest=%x limit=%x rnd=%d",
     state_ptr->pktid, (int)(spatial_lo_idx>>1), (int)output_idx, (int)acc_idx, (uint16_t)acc.exp, (long long int)acc.sig, acc.status.inf, state_ptr->usr_fp.raw, feedback, rs.fb_dst, rs.fb_limit, rs.fp_rnd );
@@ -985,7 +984,7 @@ void ARCH_FUNCTION(hmx_xfp_convert_body)(hmx_state_t * state_ptr, uint32_t spati
     state_ptr->cvt_future_accum_flt[spatial_lo_idx][output_idx].uh[0] = result_lo,
     state_ptr->cvt_future_accum_flt[spatial_hi_idx][output_idx].uh[0] = result_hi;
 
-    VERIF(ARCH_FUNCTION(hmx_xfp_verif_callback)(state_ptr, spatial_hi_idx, spatial_lo_idx, output_idx, acc_idx, cvt_idx, result_hi, result_lo, rs);)
+    VERIF(ARCH_FUNCTION(hmx_xfp_verif_callback)(state_ptr, spatial_hi_idx, spatial_lo_idx, output_idx, acc_idx, result_hi, result_lo, rs);)
     DEBUG_PRINT_XFP("HMX_CVT_OUT XFP: pktid=0x%08x ACC[%02d][%02d][%02d] HF16=%05x CVT_STATE[%02d][%02d]=%03x CVT_STATE[%02d][%02d]=%03x",  state_ptr->pktid, (int)(spatial_lo_idx>>1), (int)output_idx, (int)acc_idx, result, (int)(spatial_lo_idx), (int)output_idx, result_lo, (int)(spatial_hi_idx), (int)output_idx, result_hi);
 }
 

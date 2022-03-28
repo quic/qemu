@@ -1405,7 +1405,7 @@ void HELPER(debug_print_vec)(CPUHexagonState *env, int rnum, void *vecptr)
     unsigned char *vec = (unsigned char *)vecptr;
     printf("vec[%d] = 0x", rnum);
     for (int i = MAX_VEC_SIZE_BYTES - 2; i >= 0; i--) {
-        printf("%02x", *vec);
+        printf("%02x", vec[i]);
     }
     printf("\n");
 }
@@ -1578,12 +1578,12 @@ static void hex_k0_unlock(CPUHexagonState *env)
 /* Helpful for printing intermediate values within instructions */
 void HELPER(debug_value)(CPUHexagonState *env, int32_t value)
 {
-    HEX_DEBUG_LOG("mgl: value = 0x%x\n", value);
+    HEX_DEBUG_LOG("value = 0x%x\n", value);
 }
 
 void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
 {
-    HEX_DEBUG_LOG("mgl: value_i64 = 0x%lx\n", value);
+    HEX_DEBUG_LOG("value_i64 = 0x%lx\n", value);
 }
 
 /* Histogram instructions */
