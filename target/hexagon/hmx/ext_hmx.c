@@ -217,10 +217,6 @@ void hmx_reset(processor_t *proc, thread_t *thread){
 	}
 
 	for(int depth = 0; depth < MAX_ACCUMULATORS_DEPTH; depth++){
-		for(int bias_num = 0; bias_num < MAX_BIAS_STATES; bias_num++){
-			state->bias[bias_num][depth] = reset_bias;
-			state->future_bias[bias_num][depth] = reset_bias;
-		}
 		for(int spatial = 0; spatial < MAX_ACCUMULATORS_SPATIAL; spatial++){
 			state->accum_fxp[spatial][depth] = reset_acc;
 			state->accum_flt[spatial][depth] = reset_acc_flt;
@@ -237,6 +233,13 @@ void hmx_reset(processor_t *proc, thread_t *thread){
 			}
 		}
 	}
+
+	for(int depth = 0; depth < MAX_ACCUMULATORS_DEPTH/2; depth++){
+		for(int bias_num = 0; bias_num < MAX_BIAS_STATES; bias_num++){
+			state->bias[bias_num][depth] = reset_bias;
+			state->future_bias[bias_num][depth] = reset_bias;
+		}
+    }
 
 	state->current_acc_flt = 0;
 	state->current_acc_fxp = 0;
