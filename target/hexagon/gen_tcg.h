@@ -2102,6 +2102,14 @@
 #define fGEN_TCG_S2_asl_r_r_or(SHORTCODE) \
     gen_asl_r_r_or(RxV, RsV, RtV, ctx->zero)
 
+/* r0 = asr(r1, r2):sat */
+#define fGEN_TCG_S2_asr_r_r_sat(SHORTCODE) \
+    gen_asr_r_r_sat(RdV, RsV, RtV)
+
+/* r0 = asl(r1, r2):sat */
+#define fGEN_TCG_S2_asl_r_r_sat(SHORTCODE) \
+    gen_asl_r_r_sat(RdV, RsV, RtV)
+
 /* r0 = asl(r1, #5) */
 #define fGEN_TCG_S2_asl_i_r(SHORTCODE) \
     fASHIFTL(RdV, RsV, uiV, 4_4)
