@@ -38,7 +38,6 @@ set(QEMU_CONF_ARGS
     --disable-vde
     --disable-vte
     --disable-rbd
-    --disable-xfsctl
     --disable-smartcard
     --disable-libnfs
     --disable-snappy
