@@ -1,3 +1,20 @@
+##
+##  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##
+##  This program is free software; you can redistribute it and/or modify
+##  it under the terms of the GNU General Public License as published by
+##  the Free Software Foundation; either version 2 of the License, or
+##  (at your option) any later version.
+##
+##  This program is distributed in the hope that it will be useful,
+##  but WITHOUT ANY WARRANTY; without even the implied warranty of
+##  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##  GNU General Public License for more details.
+##
+##  You should have received a copy of the GNU General Public License
+##  along with this program; if not, see <http://www.gnu.org/licenses/>.
+##
+
 # -*- Mode: makefile -*-
 #
 # Hexagon SoftMMU tests - included from tests/tcg/Makefile
@@ -11,7 +28,11 @@ VPATH 		+= $(HEXAGON_SYSTEM_SRC)
 TESTS += \
 	standalone_hw \
 	standalone_vec \
-	mmu_test \
+	mmu_multi_tlb \
+	mmu_page_size \
+	mmu_permissions \
+	mmu_overlap \
+	mmu_asids \
 	badva \
 	tlblock \
 	k0lock \
@@ -65,7 +86,16 @@ LDFLAGS+= -static
 
 standalone_hw: standalone_hw.o monitor_insts.o
 standalone_vec: standalone_vec.o
-mmu_test: mmu_test.o dummy_mutex.o
+mmu_multi_tlb.o: mmu_multi_tlb.c mmu.h
+mmu_multi_tlb: mmu_multi_tlb.o dummy_mutex.o
+mmu_page_size.o: mmu_page_size.c mmu.h
+mmu_page_size: mmu_page_size.o dummy_mutex.o
+mmu_permissions.o: mmu_permissions.c mmu.h
+mmu_permissions: mmu_permissions.o dummy_mutex.o
+mmu_overlap.o: mmu_overlap.c mmu.h
+mmu_overlap: mmu_overlap.o dummy_mutex.o
+mmu_asids.o: mmu_asids.c mmu.h
+mmu_asids: mmu_asids.o dummy_mutex.o
 badva: badva.o
 tlblock: tlblock.o
 k0lock: k0lock.o
