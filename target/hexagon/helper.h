@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,11 @@ DEF_HELPER_3(sfrecipa, i64, env, f32, f32)
 DEF_HELPER_2(sfinvsqrta, i64, env, f32)
 DEF_HELPER_4(vacsh_val, s64, env, s64, s64, s64)
 DEF_HELPER_FLAGS_4(vacsh_pred, TCG_CALL_NO_RWG_SE, s32, env, s64, s64, s64)
+
+#ifndef CONFIG_USER_ONLY
+DEF_HELPER_4(data_cache_op, void, env, i32, int, int)
+DEF_HELPER_4(insn_cache_op, void, env, i32, int, int)
+#endif
 
 DEF_HELPER_1(commit_hmx, void, env)
 

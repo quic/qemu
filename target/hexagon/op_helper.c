@@ -529,6 +529,68 @@ int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
     return PeV;
 }
 
+#ifndef CONFIG_USER_ONLY
+void HELPER(data_cache_op)(CPUHexagonState *env, target_ulong RsV,
+                           int slot, int mmu_idx)
+{
+    if (hexagon_cpu_mmu_enabled(env)) {
+        hwaddr phys;
+        int prot;
+        int size;
+        int32_t excp;
+        /* Look for a match in the TLB */
+        if (hex_tlb_find_match(env, RsV, MMU_DATA_LOAD, &phys, &prot, &size,
+                               &excp, mmu_idx)) {
+            if (excp == HEX_EVENT_PRECISE) {
+                /*
+                 * If a matching entry was found but doesn't have read or write
+                 * permission, raise a permission execption
+                 */
+                bool read_perm = (prot & (PAGE_VALID | PAGE_READ)) ==
+                                 (PAGE_VALID | PAGE_READ);
+                bool write_perm = (prot & (PAGE_VALID | PAGE_WRITE)) ==
+                                  (PAGE_VALID | PAGE_WRITE);
+                if (!read_perm && !write_perm) {
+                    CPUState *cs = env_cpu(env);
+                    uintptr_t retaddr = GETPC();
+                    raise_perm_exception(cs, RsV, slot, MMU_DATA_LOAD, excp);
+                    do_raise_exception_err(env, cs->exception_index, retaddr);
+                }
+            }
+        } else {
+            /* If no TLB match found, raise a TLB miss exception */
+            CPUState *cs = env_cpu(env);
+            uintptr_t retaddr = GETPC();
+            raise_tlbmiss_exception(cs, RsV, slot, MMU_DATA_LOAD);
+            do_raise_exception_err(env, cs->exception_index, retaddr);
+        }
+    }
+}
+
+void HELPER(insn_cache_op)(CPUHexagonState *env, target_ulong RsV,
+                           int slot, int mmu_idx)
+{
+    if (hexagon_cpu_mmu_enabled(env)) {
+        hwaddr phys;
+        int prot;
+        int size;
+        int32_t excp;
+        /*
+         * Look for a match in the TLB
+         * Note that insn cache ops do NOT raise the privilege exception
+         */
+        if (!hex_tlb_find_match(env, RsV, MMU_INST_FETCH, &phys, &prot, &size,
+                                &excp, mmu_idx)) {
+            /* If not TLB match found, raise a TLB miss exception */
+            CPUState *cs = env_cpu(env);
+            uintptr_t retaddr = GETPC();
+            raise_tlbmiss_exception(cs, RsV, slot, MMU_INST_FETCH);
+            do_raise_exception_err(env, cs->exception_index, retaddr);
+        }
+    }
+}
+#endif
+
 static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
 {
     if (!(env->slot_cancelled & (1 << slot))) {

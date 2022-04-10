@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1041,8 +1041,9 @@ static void set_badva_regs(CPUHexagonState *env, target_ulong VA, int slot,
         g_assert_not_reached();
     }
 }
-static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA, int slot,
-                                MMUAccessType access_type)
+
+void raise_tlbmiss_exception(CPUState *cs, target_ulong VA, int slot,
+                             MMUAccessType access_type)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
@@ -1070,8 +1071,8 @@ static void raise_tlbmiss_exception(CPUState *cs, target_ulong VA, int slot,
     }
 }
 
-static void raise_perm_exception(CPUState *cs, target_ulong VA, int slot,
-                                 MMUAccessType access_type, int32_t excp)
+void raise_perm_exception(CPUState *cs, target_ulong VA, int slot,
+                          MMUAccessType access_type, int32_t excp)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;

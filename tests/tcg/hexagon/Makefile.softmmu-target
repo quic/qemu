@@ -33,6 +33,7 @@ TESTS += \
 	mmu_permissions \
 	mmu_overlap \
 	mmu_asids \
+	mmu_cacheops \
 	badva \
 	tlblock \
 	k0lock \
@@ -96,6 +97,8 @@ mmu_overlap.o: mmu_overlap.c mmu.h
 mmu_overlap: mmu_overlap.o dummy_mutex.o
 mmu_asids.o: mmu_asids.c mmu.h
 mmu_asids: mmu_asids.o dummy_mutex.o
+mmu_cacheops.o: mmu_cacheops.c mmu.h
+mmu_cacheops: mmu_cacheops.o dummy_mutex.o
 badva: badva.o
 tlblock: tlblock.o
 k0lock: k0lock.o

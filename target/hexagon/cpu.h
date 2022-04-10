@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -687,6 +687,12 @@ uint32_t hexagon_get_interrupts(CPUHexagonState *global_env);
  * queued.
  */
 bool hexagon_thread_is_busy(CPUHexagonState *thread_env);
+
+void raise_tlbmiss_exception(CPUState *cs, target_ulong VA, int slot,
+                             MMUAccessType access_type);
+
+void raise_perm_exception(CPUState *cs, target_ulong VA, int slot,
+                          MMUAccessType access_type, int32_t excp);
 
 /*
  * @return pointer to the lowest priority thread.

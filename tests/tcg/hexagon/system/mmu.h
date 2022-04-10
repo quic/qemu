@@ -701,6 +701,66 @@ void my_event_handle_nmi_helper(uint32_t ssr)
     }
 }
 
+/*
+ * When a TLB miss happens, create a mapping
+ * We'll set different read/write/execute permissions
+ * for different entry numbers.
+ */
+void my_event_handle_tlbmissrw_helper(uint32_t ssr)
+{
+    uint32_t cause = GET_FIELD(ssr, SSR_CAUSE);
+    uint32_t badva = getbadva();
+    uint32_t entry_num = tlb_entry_num(badva);
+    uint32_t VA = page_start(badva, TARGET_PAGE_BITS);
+    uint32_t PA = VA - (entry_num * ONE_MB);
+
+    uint64_t entry =
+        create_mmu_entry(1, 0, 0, 0, VA, 0, 0, 0, 1, 0x3, PA, PGSIZE_4K);
+    if (entry_num == TWO_MB_ENTRY) {
+        SET_FIELD(entry, PTE_R, 1);
+    }
+    if (entry_num == THREE_MB_ENTRY) {
+        SET_FIELD(entry, PTE_W, 1);
+    }
+
+    set_exception_vector_bit(my_exceptions, cause);
+
+    switch (cause) {
+    case HEX_CAUSE_TLBMISSRW_READ:
+        tlbw(entry, entry_num);
+        break;
+    case HEX_CAUSE_TLBMISSRW_WRITE:
+        tlbw(entry, entry_num);
+        break;
+    default:
+        do_coredump();
+        break;
+    }
+}
+
+void my_event_handle_tlbmissx_helper(uint32_t ssr)
+{
+    uint32_t cause = GET_FIELD(ssr, SSR_CAUSE);
+    uint32_t badva = getbadva();
+    uint32_t entry_num = tlb_entry_num(badva);
+    uint32_t VA = page_start(badva, TARGET_PAGE_BITS);
+    uint32_t PA = VA - (entry_num * ONE_MB);
+
+    uint64_t entry =
+        create_mmu_entry(1, 0, 0, 0, VA, 0, 0, 0, 1, 0x3, PA, PGSIZE_4K);
+
+    set_exception_vector_bit(my_exceptions, cause);
+
+    switch (cause) {
+    case HEX_CAUSE_TLBMISSX_NORMAL:
+        tlbw(entry, entry_num);
+        break;
+    default:
+        do_coredump();
+        break;
+    }
+}
+
 static inline void install_my_event_vectors(void)
 {
     old_evb = getevb();
