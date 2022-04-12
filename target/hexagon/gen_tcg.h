@@ -2063,9 +2063,11 @@
 #define fGEN_TCG_S2_asl_r_r_or(SHORTCODE) \
     gen_asl_r_r_or(RxV, RsV, RtV)
 
+/* r0 = asr(r1, r2):sat */
 #define fGEN_TCG_S2_asr_r_r_sat(SHORTCODE) \
     gen_asr_r_r_sat(RdV, RsV, RtV)
 
+/* r0 = asl(r1, r2):sat */
 #define fGEN_TCG_S2_asl_r_r_sat(SHORTCODE) \
     gen_asl_r_r_sat(RdV, RsV, RtV)
 
@@ -2465,6 +2467,10 @@
         tcg_gen_add_tl(RxV, RxV, RsV); \
         tcg_gen_add_tl(RxV, RxV, RtV); \
     } while (0)
+
+/* r0 = add(pc, #128) */
+#define fGEN_TCG_C4_addipc(SHORTCODE) \
+    tcg_gen_movi_tl(RdV, ctx->base.pc_next + uiV)
 
 #define fGEN_TCG_A2_sath(SHORTCODE) \
     gen_sat(RdV, RsV, true, 16)
