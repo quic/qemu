@@ -1758,6 +1758,7 @@
  *      cmpeqn1  compare equal to negative 1
  *      cmpgtn1  compare greater than negative 1
  *      cmpeq    compare equal (two registers)
+ *      cmpgtu   compare greater than unsigned (two registers)
  *
  * Condition
  *      tp0      p0 is true     p0 = cmp.eq(r0,#5); if (p0.new) jump:nt address
@@ -1851,6 +1852,8 @@
     gen_cmpnd_cmp_n1_jmp(ctx, pkt, insn, 1, TCG_COND_GT, false, RsV, riV)
 #define fGEN_TCG_J4_cmpeq_tp0_jump_t(SHORTCODE) \
     gen_cmpnd_cmp_jmp(ctx, pkt, insn, 0, TCG_COND_EQ, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, pkt, insn, 1, TCG_COND_GTU, true, RsV, RtV, riV)
 
 /* p0 = cmp.eq(r0, #7) */
 #define fGEN_TCG_SA1_cmpeqi(SHORTCODE) \
