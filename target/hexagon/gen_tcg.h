@@ -1509,7 +1509,7 @@
           tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
-          gen_write_new_pc(pkt, fGETWORD(1, RddV)); \
+          gen_jumpr(ctx, pkt, fGETWORD(1, RddV)); \
         } \
         tcg_temp_free(tmp); \
         tcg_temp_free_i64(tmp_i64); \
@@ -1529,7 +1529,7 @@
           gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
-          gen_write_new_pc(pkt, fGETWORD(1, tmp_i64)); \
+          gen_jumpr(ctx, pkt, fGETWORD(1, tmp_i64)); \
         } \
         tcg_temp_free(tmp); \
         tcg_temp_free_i64(tmp_i64); \
@@ -1555,7 +1555,7 @@
         tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
         tcg_gen_addi_tl(tmp, EA, 8); \
         gen_log_reg_write(HEX_REG_SP, tmp); \
-        gen_write_new_pc(pkt, fGETWORD(1, RddV)); \
+        gen_jumpr(ctx, pkt, fGETWORD(1, RddV)); \
         tcg_temp_free_i64(tmp_i64); \
         tcg_temp_free(tmp); \
         tcg_temp_free(WORD); \
@@ -1593,7 +1593,7 @@
         tcg_temp_free(LSB); \
         tcg_gen_addi_tl(tmp, EA, 8); \
         gen_log_reg_write(HEX_REG_SP, tmp); \
-        gen_write_new_pc(pkt, fGETWORD(1, RddV)); \
+        gen_jumpr(ctx, pkt, fGETWORD(1, RddV)); \
         gen_log_reg_write_pair(HEX_REG_FP, RddV); \
         tcg_temp_free_i64(RddV); \
         tcg_temp_free_i64(tmp_i64); \
@@ -1718,18 +1718,18 @@
     } while (0)
 
 #define fGEN_TCG_J2_call(SHORTCODE) \
-    gen_call(pkt, riV)
+    gen_call(ctx, pkt, riV)
 #define fGEN_TCG_J2_callr(SHORTCODE) \
-    gen_callr(pkt, RsV)
+    gen_callr(ctx, pkt, RsV)
 
 #define fGEN_TCG_J2_callt(SHORTCODE) \
-    gen_pred_call(pkt, PuV, true, riV)
+    gen_cond_call(ctx, pkt, PuV, true, riV)
 #define fGEN_TCG_J2_callf(SHORTCODE) \
-    gen_pred_call(pkt, PuV, false, riV)
+    gen_cond_call(ctx, pkt, PuV, false, riV)
 #define fGEN_TCG_J2_callrt(SHORTCODE) \
-    gen_pred_callr(pkt, PuV, true, RsV)
+    gen_cond_callr(ctx, pkt, PuV, true, RsV)
 #define fGEN_TCG_J2_callrf(SHORTCODE) \
-    gen_pred_callr(pkt, PuV, false, RsV)
+    gen_cond_callr(ctx, pkt, PuV, false, RsV)
 
 #define fGEN_TCG_J2_loop0r(SHORTCODE) \
     gen_loop0r(pkt, RsV, riV, insn)
@@ -1741,11 +1741,11 @@
     gen_loop1i(pkt, UiV, riV, insn)
 
 #define fGEN_TCG_J2_endloop0(SHORTCODE) \
-    gen_endloop0(pkt)
+    gen_endloop0(ctx, pkt)
 #define fGEN_TCG_J2_endloop1(SHORTCODE) \
-    gen_endloop1(pkt)
+    gen_endloop1(ctx, pkt)
 #define fGEN_TCG_J2_endloop01(SHORTCODE) \
-    gen_endloop01(pkt)
+    gen_endloop01(ctx, pkt)
 
 /*
  * Compound compare and jump instructions
@@ -1955,15 +1955,15 @@
     tcg_gen_ext8u_tl(RdV, RsV)
 
 #define fGEN_TCG_J2_jump(SHORTCODE) \
-    gen_jump(pkt, riV)
+    gen_jump(ctx, pkt, riV)
 #define fGEN_TCG_J2_jumpr(SHORTCODE) \
-    gen_write_new_pc(pkt, RsV)
+    gen_jumpr(ctx, pkt, RsV)
 
 #define fGEN_TCG_cond_jump(COND) \
     do { \
         TCGv LSB = tcg_temp_new(); \
         COND; \
-        gen_cond_jump(pkt, LSB, riV); \
+        gen_cond_jump(ctx, pkt, LSB, riV); \
         tcg_temp_free(LSB); \
     } while (0)
 
@@ -1981,14 +1981,14 @@
         TCGv LSB = tcg_temp_new(); \
         tcg_gen_andi_tl(LSB, PuN, 1); \
         tcg_gen_xori_tl(LSB, LSB, 1); \
-        gen_cond_jumpr(pkt, LSB, RsV); \
+        gen_cond_jumpr(ctx, pkt, LSB, RsV); \
         tcg_temp_free(LSB); \
     } while (0)
 
 #define fGEN_TCG_J2_jumptnew(SHORTCODE) \
-    gen_cond_jump(pkt, PuN, riV)
+    gen_cond_jump(ctx, pkt, PuN, riV)
 #define fGEN_TCG_J2_jumptnewpt(SHORTCODE) \
-    gen_cond_jump(pkt, PuN, riV)
+    gen_cond_jump(ctx, pkt, PuN, riV)
 
 /*
  * New value compare & jump instructions
@@ -1996,37 +1996,37 @@
  * if ([!]COND(r0.new, #7) jump:t address
  */
 #define fGEN_TCG_J4_cmpgt_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_LE, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_LE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeq_f_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_NE, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_NE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeq_t_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_EQ, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_EQ, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmplt_f_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_GE, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_GE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgt_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_GT, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_GT, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeqi_t_jumpnv_nt(SHORTCODE) \
-    gen_cmpi_jumpnv(pkt, TCG_COND_EQ, NsN, UiV, riV)
+    gen_cmpi_jumpnv(ctx, pkt, TCG_COND_EQ, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpltu_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_GEU, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_GEU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgtui_t_jumpnv_t(SHORTCODE) \
-    gen_cmpi_jumpnv(pkt, TCG_COND_GTU, NsN, UiV, riV)
+    gen_cmpi_jumpnv(ctx, pkt, TCG_COND_GTU, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpeq_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_NE, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_NE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeqi_f_jumpnv_t(SHORTCODE) \
-    gen_cmpi_jumpnv(pkt, TCG_COND_NE, NsN, UiV, riV)
+    gen_cmpi_jumpnv(ctx, pkt, TCG_COND_NE, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpgtu_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_GTU, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_GTU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgtu_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_LEU, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_LEU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmplt_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(pkt, TCG_COND_LT, NsN, RtV, riV)
+    gen_cmp_jumpnv(ctx, pkt, TCG_COND_LT, NsN, RtV, riV)
 
 /* r0 = r1 ; jump address */
 #define fGEN_TCG_J4_jumpsetr(SHORTCODE) \
     do { \
         tcg_gen_mov_tl(RdV, RsV); \
-        gen_jump(pkt, riV); \
+        gen_jump(ctx, pkt, riV); \
     } while (0)
 
 /* r0 = lsr(r1, #5) */
@@ -2383,10 +2383,10 @@
     } while (0)
 
 #define fGEN_TCG_SL2_jumpr31(SHORTCODE) \
-    gen_write_new_pc(pkt, hex_gpr[HEX_REG_LR])
+    gen_jumpr(ctx, pkt, hex_gpr[HEX_REG_LR])
 
 #define fGEN_TCG_SL2_jumpr31_tnew(SHORTCODE) \
-    gen_cond_jumpr(pkt, hex_new_pred_value[0], hex_gpr[HEX_REG_LR])
+    gen_cond_jumpr(ctx, pkt, hex_new_pred_value[0], hex_gpr[HEX_REG_LR])
 
 /*
  * r5:4 = valignb(r1:0, r3:2, p0)
