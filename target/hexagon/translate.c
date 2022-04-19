@@ -366,7 +366,9 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
 #else
     if (pkt->pkt_has_cof) {
 #endif
-        tcg_gen_movi_tl(hex_branch_taken, 0);
+        if (pkt->pkt_has_multi_cof) {
+            tcg_gen_movi_tl(hex_branch_taken, 0);
+        }
     }
     // FIXME: this was moved out of the conditional init above:
     tcg_gen_movi_tl(hex_next_PC, next_PC);

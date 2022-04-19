@@ -651,12 +651,64 @@ static TCGv gen_8bitsof(TCGv result, TCGv value, DisasContext *ctx)
     return result;
 }
 
-static inline void gen_write_new_pc(TCGv addr, TCGv zero)
+static void gen_write_new_pc_addr(DisasContext *ctx, Packet *pkt, TCGv addr, TCGv pred)
 {
-    /* If there are multiple branches in a packet, ignore the second one */
-    tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, hex_branch_taken, zero,
-                       hex_next_PC, addr);
-    tcg_gen_movi_tl(hex_branch_taken, 1);
+    TCGLabel *pred_false = NULL;
+    if (pkt->pkt_has_multi_cof) {
+        if (pred != NULL) {
+            pred_false = gen_new_label();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, pred_false);
+        }
+        /* If there are multiple branches in a packet, ignore the second one */
+        TCGv zero = tcg_constant_tl(0);
+        tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC,
+                           hex_branch_taken, zero,
+                           hex_next_PC, addr);
+        tcg_gen_movi_tl(hex_branch_taken, 1);
+        if (pred != NULL) {
+            gen_set_label(pred_false);
+        }
+    } else {
+        if (pred != NULL) {
+            pred_false = gen_new_label();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, pred_false);
+        }
+        tcg_gen_mov_tl(hex_next_PC, addr);
+        if (pred != NULL) {
+            gen_set_label(pred_false);
+        }
+    }
+}
+
+static void gen_write_new_pc_pcrel(DisasContext *ctx, Packet *pkt, int pc_off, TCGv pred)
+{
+    target_ulong dest = ctx->base.pc_next + pc_off;
+    if (pkt->pkt_has_multi_cof) {
+        TCGLabel *pred_false = NULL;
+        if (pred != NULL) {
+            pred_false = gen_new_label();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, pred_false);
+        }
+        /* If there are multiple branches in a packet, ignore the second one */
+        TCGLabel *skip = gen_new_label();
+        tcg_gen_brcondi_tl(TCG_COND_NE, hex_branch_taken, 0, skip);
+        tcg_gen_movi_tl(hex_next_PC, dest);
+        tcg_gen_movi_tl(hex_branch_taken, 1);
+        gen_set_label(skip);
+        if (pred != NULL) {
+            gen_set_label(pred_false);
+        }
+    } else {
+        TCGLabel *pred_false = NULL;
+        if (pred != NULL) {
+            pred_false = gen_new_label();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, pred_false);
+        }
+        tcg_gen_movi_tl(hex_next_PC, dest);
+        if (pred != NULL) {
+            gen_set_label(pred_false);
+        }
+    }
 }
 
 static inline void gen_set_usr_field(int field, TCGv val)
@@ -736,7 +788,18 @@ static inline void gen_compare_i64(TCGCond cond, TCGv res,
     tcg_temp_free_i64(temp);
 }
 
-static inline void gen_cmpnd_cmp_jmp(DisasContext *ctx, Insn *insn,
+static void gen_cond_jumpr(DisasContext *ctx, Packet *pkt,
+                           TCGv pred, TCGv dst_pc)
+{
+    gen_write_new_pc_addr(ctx, pkt, dst_pc, pred);
+}
+
+static void gen_cond_jump(DisasContext *ctx, Packet *pkt, TCGv pred, int pc_off)
+{
+    gen_write_new_pc_pcrel(ctx, pkt, pc_off, pred);
+}
+
+static inline void gen_cmpnd_cmp_jmp(DisasContext *ctx, Packet *pkt, Insn *insn,
                                      int pnum, TCGCond cond,
                                      bool sense, TCGv arg1, TCGv arg2,
                                      int pc_off)
@@ -747,93 +810,76 @@ static inline void gen_cmpnd_cmp_jmp(DisasContext *ctx, Insn *insn,
         gen_log_pred_write(ctx, pnum, pred);
         tcg_temp_free(pred);
     } else {
-        TCGv new_pc = tcg_temp_new();
         TCGv pred = tcg_temp_new();
 
-        tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
         tcg_gen_mov_tl(pred, hex_new_pred_value[pnum]);
         if (!sense) {
             tcg_gen_xori_tl(pred, pred, 0xff);
         }
 
-        /* If there are multiple branches in a packet, ignore the second one */
-        tcg_gen_movcond_tl(TCG_COND_NE, pred, hex_branch_taken, ctx->zero,
-                           ctx->zero, pred);
-
-        tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, pred, ctx->zero,
-                           new_pc, hex_next_PC);
-        tcg_gen_movcond_tl(TCG_COND_NE, hex_branch_taken, pred, ctx->zero,
-                           tcg_constant_tl(1), hex_branch_taken);
-
-        tcg_temp_free(new_pc);
+        gen_cond_jump(ctx, pkt, pred, pc_off);
         tcg_temp_free(pred);
     }
 }
 
-static inline void gen_cmpnd_cmpi_jmp(DisasContext *ctx, Insn *insn,
-                                      int pnum, TCGCond cond,
-                                      bool sense, TCGv arg1, int arg2,
-                                      int pc_off)
+static void gen_cmpnd_cmpi_jmp(DisasContext *ctx, Packet *pkt, Insn *insn,
+                               int pnum, TCGCond cond,
+                               bool sense, TCGv arg1, int arg2,
+                               int pc_off)
 {
-    gen_cmpnd_cmp_jmp(ctx, insn, pnum, cond, sense, arg1,
+    gen_cmpnd_cmp_jmp(ctx, pkt, insn, pnum, cond, sense, arg1,
                       tcg_constant_tl(arg2), pc_off);
 
 }
 
-static inline void gen_cmpnd_cmp_n1_jmp(DisasContext *ctx, Insn *insn,
-                                        int pnum, TCGCond cond,
-                                        bool sense, TCGv arg, int pc_off)
+static void gen_cmpnd_cmp_n1_jmp(DisasContext *ctx, Packet *pkt, Insn *insn,
+                                 int pnum, TCGCond cond,
+                                 bool sense, TCGv arg, int pc_off)
 {
-    gen_cmpnd_cmpi_jmp(ctx, insn, pnum, cond, sense, arg, -1, pc_off);
+    gen_cmpnd_cmpi_jmp(ctx, pkt, insn, pnum, cond, sense, arg, -1, pc_off);
 }
 
 
-static inline void gen_jump(int pc_off, TCGv zero)
+static void gen_jump(DisasContext *ctx, Packet *pkt, int pc_off)
 {
-    TCGv new_pc = tcg_temp_new();
-    tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
-    gen_write_new_pc(new_pc, zero);
-    tcg_temp_free(new_pc);
+    gen_write_new_pc_pcrel(ctx, pkt, pc_off, NULL);
 }
 
-static inline void gen_cond_jumpr(TCGv pred, TCGv dst_pc, TCGv zero)
+static void gen_jumpr(DisasContext *ctx, Packet *pkt, TCGv new_pc)
 {
-    TCGv new_pc = tcg_temp_new();
-
-    tcg_gen_movcond_tl(TCG_COND_EQ, new_pc, pred, zero, hex_next_PC, dst_pc);
-
-    /* If there are multiple jumps in a packet, only the first one is taken */
-    tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, hex_branch_taken, zero,
-                       hex_next_PC, new_pc);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_branch_taken, pred, zero,
-                       hex_branch_taken, tcg_constant_tl(1));
-
-    tcg_temp_free(new_pc);
+    gen_write_new_pc_addr(ctx, pkt, new_pc, NULL);
 }
 
-static inline void gen_cond_jump(TCGv pred, int pc_off, TCGv zero)
-{
-    TCGv new_pc = tcg_temp_new();
-
-    tcg_gen_addi_tl(new_pc, hex_gpr[HEX_REG_PC], pc_off);
-    gen_cond_jumpr(pred, new_pc, zero);
-
-    tcg_temp_free(new_pc);
-}
-
-static inline void gen_call(int pc_off, TCGv zero)
+static void gen_call(DisasContext *ctx, Packet *pkt, int pc_off)
 {
     gen_log_reg_write(HEX_REG_LR, hex_next_PC);
-    gen_jump(pc_off, zero);
+    gen_write_new_pc_pcrel(ctx, pkt, pc_off, NULL);
 }
 
-static inline void gen_callr(TCGv new_pc, TCGv zero)
+static void gen_callr(DisasContext *ctx, Packet *pkt, TCGv new_pc)
 {
     gen_log_reg_write(HEX_REG_LR, hex_next_PC);
-    gen_write_new_pc(new_pc, zero);
+    gen_write_new_pc_addr(ctx, pkt, new_pc, NULL);
 }
 
-static void gen_pred_call(TCGv pred, bool sense, int pc_off, TCGv zero)
+static void gen_cond_call(DisasContext *ctx, Packet *pkt,
+                          TCGv pred, bool sense, int pc_off)
+{
+    TCGv lsb = tcg_temp_local_new();
+    TCGLabel *skip = gen_new_label();
+    tcg_gen_andi_tl(lsb, pred, 1);
+    if (!sense) {
+        tcg_gen_xori_tl(lsb, lsb, 1);
+    }
+    tcg_gen_brcondi_tl(TCG_COND_EQ, lsb, 0, skip);
+    tcg_temp_free(lsb);
+    gen_log_reg_write(HEX_REG_LR, hex_next_PC);
+    gen_set_label(skip);
+    gen_write_new_pc_pcrel(ctx, pkt, pc_off, lsb);
+}
+
+static void gen_cond_callr(DisasContext *ctx, Packet *pkt,
+                           TCGv pred, bool sense, TCGv new_pc)
 {
     TCGv lsb = tcg_temp_new();
     TCGLabel *skip = gen_new_label();
@@ -843,25 +889,11 @@ static void gen_pred_call(TCGv pred, bool sense, int pc_off, TCGv zero)
     }
     tcg_gen_brcondi_tl(TCG_COND_EQ, lsb, 0, skip);
     tcg_temp_free(lsb);
-    gen_call(pc_off, zero);
+    gen_callr(ctx, pkt, new_pc);
     gen_set_label(skip);
 }
 
-static void gen_pred_callr(TCGv pred, bool sense, TCGv new_pc, TCGv zero)
-{
-    TCGv lsb = tcg_temp_new();
-    TCGLabel *skip = gen_new_label();
-    tcg_gen_andi_tl(lsb, pred, 1);
-    if (!sense) {
-        tcg_gen_xori_tl(lsb, lsb, 1);
-    }
-    tcg_gen_brcondi_tl(TCG_COND_EQ, lsb, 0, skip);
-    tcg_temp_free(lsb);
-    gen_callr(new_pc, zero);
-    gen_set_label(skip);
-}
-
-static inline void gen_endloop0(void)
+static void gen_endloop0(DisasContext *ctx, Packet *pkt)
 {
     TCGv lpcfg = tcg_temp_local_new();
 
@@ -896,51 +928,40 @@ static inline void gen_endloop0(void)
 
     /*
      *    if (hex_gpr[HEX_REG_LC0] > 1) {
-     *        hex_next_PC = hex_gpr[HEX_REG_SA0];
-     *        hex_branch_taken = 1;
+     *        PC = hex_gpr[HEX_REG_SA0];
      *        hex_gpr[HEX_REG_LC0] = hex_gpr[HEX_REG_LC0] - 1;
      *    }
      */
     TCGLabel *label3 = gen_new_label();
     tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC0], 1, label3);
     {
-        TCGv lc0 = tcg_temp_local_new();
-        tcg_gen_mov_tl(hex_next_PC, hex_gpr[HEX_REG_SA0]);
-        tcg_gen_movi_tl(hex_branch_taken, 1);
-        tcg_gen_mov_tl(lc0, hex_gpr[HEX_REG_LC0]);
-        tcg_gen_subi_tl(lc0, lc0, 1);
-        tcg_gen_mov_tl(hex_new_value[HEX_REG_LC0], lc0);
-        tcg_temp_free(lc0);
+            gen_jumpr(ctx, pkt, hex_gpr[HEX_REG_SA0]);
+            tcg_gen_subi_tl(hex_new_value[HEX_REG_LC0],
+                            hex_gpr[HEX_REG_LC0], 1);
     }
     gen_set_label(label3);
 
     tcg_temp_free(lpcfg);
 }
 
-static inline void gen_endloop1(void)
+static inline void gen_endloop1(DisasContext *ctx, Packet *pkt)
 {
     /*
      *    if (hex_gpr[HEX_REG_LC1] > 1) {
-     *        hex_next_PC = hex_gpr[HEX_REG_SA1];
-     *        hex_branch_taken = 1;
+     *        PC = hex_gpr[HEX_REG_SA1];
      *        hex_gpr[HEX_REG_LC1] = hex_gpr[HEX_REG_LC1] - 1;
      *    }
      */
     TCGLabel *label = gen_new_label();
     tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC1], 1, label);
     {
-        TCGv lc1 = tcg_temp_local_new();
-        tcg_gen_mov_tl(hex_next_PC, hex_gpr[HEX_REG_SA1]);
-        tcg_gen_movi_tl(hex_branch_taken, 1);
-        tcg_gen_mov_tl(lc1, hex_gpr[HEX_REG_LC1]);
-        tcg_gen_subi_tl(lc1, lc1, 1);
-        tcg_gen_mov_tl(hex_new_value[HEX_REG_LC1], lc1);
-        tcg_temp_free(lc1);
+        gen_jumpr(ctx, pkt, hex_gpr[HEX_REG_SA1]);
+        tcg_gen_subi_tl(hex_new_value[HEX_REG_LC1], hex_gpr[HEX_REG_LC1], 1);
     }
     gen_set_label(label);
 }
 
-static void gen_endloop01(TCGv zero)
+static void gen_endloop01(DisasContext *ctx, Packet *pkt)
 {
     TCGv lpcfg = tcg_temp_local_new();
 
@@ -975,7 +996,7 @@ static void gen_endloop01(TCGv zero)
 
     /*
      *    if (hex_gpr[HEX_REG_LC0] > 1) {
-     *        hex_next_PC = hex_gpr[HEX_REG_SA0];
+     *        PC = hex_gpr[HEX_REG_SA0];
      *        hex_new_value[HEX_REG_LC0] = hex_gpr[HEX_REG_LC0] - 1;
      *    } else {
      *        if (hex_gpr[HEX_REG_LC1] > 1) {
@@ -988,14 +1009,14 @@ static void gen_endloop01(TCGv zero)
     TCGLabel *done = gen_new_label();
     tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC0], 1, label3);
     {
-        gen_write_new_pc(hex_gpr[HEX_REG_SA0], zero);
+        gen_jumpr(ctx, pkt, hex_gpr[HEX_REG_SA0]);
         tcg_gen_subi_tl(hex_new_value[HEX_REG_LC0], hex_gpr[HEX_REG_LC0], 1);
         tcg_gen_br(done);
     }
     gen_set_label(label3);
     tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC1], 1, done);
     {
-        gen_write_new_pc(hex_gpr[HEX_REG_SA1], zero);
+        gen_jumpr(ctx, pkt, hex_gpr[HEX_REG_SA1]);
         tcg_gen_subi_tl(hex_new_value[HEX_REG_LC1], hex_gpr[HEX_REG_LC1], 1);
     }
     gen_set_label(done);
@@ -1016,21 +1037,21 @@ static inline void gen_ashiftl_4_4s(TCGv dst, TCGv src, int32_t shift_amt)
     }
 }
 
-static inline void gen_cmp_jumpnv(TCGCond cond, TCGv val, TCGv src, int pc_off,
-    TCGv zero)
+static void gen_cmp_jumpnv(DisasContext *ctx, Packet *pkt,
+                           TCGCond cond, TCGv val, TCGv src, int pc_off)
 {
     TCGv pred = tcg_temp_new();
     tcg_gen_setcond_tl(cond, pred, val, src);
-    gen_cond_jump(pred, pc_off, zero);
+    gen_cond_jump(ctx, pkt, pred, pc_off);
     tcg_temp_free(pred);
 }
 
-static inline void gen_cmpi_jumpnv(TCGCond cond, TCGv val, int src, int pc_off,
-    TCGv zero)
+static void gen_cmpi_jumpnv(DisasContext *ctx, Packet *pkt,
+                            TCGCond cond, TCGv val, int src, int pc_off)
 {
     TCGv pred = tcg_temp_new();
     tcg_gen_setcondi_tl(cond, pred, val, src);
-    gen_cond_jump(pred, pc_off, zero);
+    gen_cond_jump(ctx, pkt, pred, pc_off);
     tcg_temp_free(pred);
 }
 
