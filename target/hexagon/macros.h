@@ -399,11 +399,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
         }                                                   \
     } while (0)
 
-#ifdef QEMU_GENERATE
-#define fWRITE_NPC(A) gen_write_new_pc(A, ctx->zero)
-#else
-#define fWRITE_NPC(A) write_new_pc(env, A)
-#endif
+#define fWRITE_NPC(A) write_new_pc(env, pkt_has_multi_cof != 0, A)
 
 #define MARK_LATE_PRED_WRITE(RNUM) /* Not modelled in qemu */
 
