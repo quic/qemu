@@ -2525,6 +2525,10 @@
         tcg_gen_add_tl(RxV, RxV, RtV); \
     } while (0)
 
+/* r0 = add(pc, #128) */
+#define fGEN_TCG_C4_addipc(SHORTCODE) \
+    tcg_gen_movi_tl(RdV, ctx->base.pc_next + uiV)
+
 #define fGEN_TCG_A2_sath(SHORTCODE) \
     gen_sat(RdV, RsV, true, 16)
 #define fGEN_TCG_A2_satuh(SHORTCODE) \
