@@ -289,7 +289,7 @@ static void do_start_thread(CPUState *cs, run_on_cpu_data tbd)
     cpu_resume(cs);
 }
 
-extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
+//extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
 void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
 {
     CPUState *cs;

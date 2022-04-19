@@ -19,6 +19,7 @@ NAMES += hotpages
 NAMES += howvec
 NAMES += lockstep
 NAMES += cache
+NAMES += drcov
 
 # quic-specific:
 NAMES += hwprofile

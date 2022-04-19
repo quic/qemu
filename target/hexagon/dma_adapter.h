@@ -34,6 +34,7 @@
 
 
 //! Structure to figure out which memory subsystem covers what address range.
+#define thread_t CPUHexagonState
 struct dma_addr_range_t {
 	paddr_t base;    //!> Base address.
 	paddr_t size;    //!> Length (size) in bytes.
@@ -88,7 +89,6 @@ typedef struct dma_memaccess_info {
 
 //! Structure to support a DMA engine - maintain useful information per thread
 //! at the adapter side.
-
 
 typedef struct dma_adapter_engine_info_t {
 	exception_info  einfo;       //!> Exception information stored for later use.

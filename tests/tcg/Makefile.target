@@ -32,6 +32,8 @@
 all:
 -include ../../../config-host.mak
 -include ../config-$(TARGET).mak
+
+# Get semihosting definitions for user-mode emulation
 ifeq ($(CONFIG_USER_ONLY),y)
 -include $(SRC_PATH)/configs/targets/$(TARGET).mak
 endif
@@ -88,13 +90,12 @@ QEMU_OPTS=
 
 
 # If TCG debugging, or TCI is enabled things are a lot slower
-ifneq ($(CONFIG_TCG_INTERPRETER),)
+# ??? Makefile no longer has any indication that TCI is enabled,
+# but for the record:
+#   15s    original default
+#   60s    with --enable-debug
+#   90s    with --enable-tcg-interpreter
 TIMEOUT=90
-else ifneq ($(CONFIG_DEBUG_TCG),)
-TIMEOUT=60
-else
-TIMEOUT=15
-endif
 
 ifdef CONFIG_USER_ONLY
 # The order we include is important. We include multiarch first and

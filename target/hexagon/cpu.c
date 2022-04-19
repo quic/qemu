@@ -25,6 +25,7 @@
 #include "fpu/softfloat-helpers.h"
 #include "gdb_qreginfo.h"
 #include "hmx/ext_hmx.h"
+#include "dma/dma.h"
 
 #if !defined(CONFIG_USER_ONLY)
 #include "migration/vmstate.h"

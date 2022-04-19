@@ -19,13 +19,13 @@
 #define HEXAGON_CPU_H
 
 /* Forward declaration needed by some of the header files */
-typedef struct CPUHexagonState CPUHexagonState;
+struct CPUArchState;
+typedef struct CPUArchState CPUHexagonState;
 typedef struct ProcessorState processor_t;
 typedef struct SystemState system_t;
 
 #include "fpu/softfloat-types.h"
 
-#include "qemu-common.h"
 #include "exec/cpu-defs.h"
 #include "hex_regs.h"
 #include "mmvec/mmvec.h"
@@ -49,6 +49,8 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 /* Hexagon processors have a strong memory model.
 */
 #define TCG_GUEST_DEFAULT_MO      (TCG_MO_ALL)
+#include "qom/object.h"
+#include "hw/core/cpu.h"
 
 #define NUM_PREGS 4
 #define TOTAL_PER_THREAD_REGS 64
@@ -304,10 +306,6 @@ struct ProcessorState {
     int timing_on;
 };
 
-typedef struct CPUHexagonState CPUArchState;
-typedef struct HexagonCPU ArchCPU;
-
-
 typedef struct hmx_mem_access_info {
     int32_t dY;
     uint16_t blocks;
@@ -449,7 +447,8 @@ typedef struct Einfo exception_info;
 typedef struct Instruction Insn;
 typedef unsigned systemstate_t;
 
-struct CPUHexagonState {
+// mgl struct CPUHexagonState
+typedef struct CPUArchState {
     target_ulong gpr[TOTAL_PER_THREAD_REGS];
     target_ulong pred[NUM_PREGS];
     target_ulong branch_taken;
@@ -543,15 +542,10 @@ struct CPUHexagonState {
     uint32_t exe_arch;
     gchar *lib_search_dir;
 #endif
-};
+} CPUHexagonState;
 #define mmvecx_t CPUHexagonState
 
-#define HEXAGON_CPU_CLASS(klass) \
-    OBJECT_CLASS_CHECK(HexagonCPUClass, (klass), TYPE_HEXAGON_CPU)
-#define HEXAGON_CPU(obj) \
-    OBJECT_CHECK(HexagonCPU, (obj), TYPE_HEXAGON_CPU)
-#define HEXAGON_CPU_GET_CLASS(obj) \
-    OBJECT_GET_CLASS(HexagonCPUClass, (obj), TYPE_HEXAGON_CPU)
+OBJECT_DECLARE_CPU_TYPE(HexagonCPU, HexagonCPUClass, HEXAGON_CPU)
 
 typedef struct HexagonCPUClass {
     /*< private >*/
@@ -561,7 +555,7 @@ typedef struct HexagonCPUClass {
     DeviceReset parent_reset;
 } HexagonCPUClass;
 
-typedef struct HexagonCPU {
+struct ArchCPU {
     /*< private >*/
     CPUState parent_obj;
     /*< public >*/
@@ -582,7 +576,7 @@ typedef struct HexagonCPU {
 #endif
     bool lldb_compat;
     target_ulong lldb_stack_adjust;
-} HexagonCPU;
+};
 
 #include "cpu_bits.h"
 
@@ -712,6 +706,7 @@ void hexagon_raise_interrupt(CPUHexagonState *env, HexagonCPU *thread,
 
 uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg);
 #endif
+typedef HexagonCPU ArchCPU;
 
 void hexagon_translate_init(void);
 void hexagon_cpu_soft_reset(CPUHexagonState *env);

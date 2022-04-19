@@ -25,8 +25,8 @@
 #include "int16_emu.h"
 #include "mpy_hmx_support.h"
 
-#define ThreadState thread_t
-#define thread_t CPUHexagonState
+#define ThreadState CPUArchState
+#define thread_t    CPUHexagonState
 
 struct HMX_State;
 union hmx_bias;

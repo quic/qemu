@@ -17,3 +17,4 @@ GTAGS
 .vscode
 build
 *.patch
+*.gcov

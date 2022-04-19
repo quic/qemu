@@ -24,7 +24,7 @@
 #define REG_OPERANDS_MAX 5
 #define IMMEDS_MAX 2
 
-typedef struct CPUHexagonState CPUHexagonState;
+//typedef struct CPUHexagonState CPUHexagonState;
 struct Instruction;
 struct Packet;
 struct DisasContext;

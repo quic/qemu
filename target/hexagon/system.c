@@ -36,7 +36,7 @@
 //#include "iic.h"
 //#include "uarch/uarch.h"
 
-#define thread_t CPUHexagonState
+//#define thread_t CPUHexagonState
 
 
 #ifdef ZEBU_CHECKSUM_TRACE
