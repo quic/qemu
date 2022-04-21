@@ -1453,19 +1453,23 @@
 #define fGEN_TCG_Y2_icinva(SHORTCODE) \
     do { RsV = RsV; } while (0)
 #else
-/* data cache ops can raise exceptions */
+/* data/insn cache ops can raise exceptions */
+#define fGEN_TCG_CACHEOP(HELPER) \
+    do { \
+        if (ctx->gen_cacheop_exceptions) { \
+            HELPER(cpu_env, RsV, \
+                   tcg_constant_tl(insn->slot), \
+                   tcg_constant_tl(ctx->mem_idx)); \
+        } \
+    } while (0)
 #define fGEN_TCG_Y2_dcinva(SHORTCODE) \
-    gen_helper_data_cache_op(cpu_env, RsV, tcg_constant_tl(insn->slot), \
-                             tcg_constant_tl(ctx->mem_idx))
+    fGEN_TCG_CACHEOP(gen_helper_data_cache_op)
 #define fGEN_TCG_Y2_dccleaninva(SHORTCODE) \
-    gen_helper_data_cache_op(cpu_env, RsV, tcg_constant_tl(insn->slot), \
-                             tcg_constant_tl(ctx->mem_idx))
+    fGEN_TCG_CACHEOP(gen_helper_data_cache_op)
 #define fGEN_TCG_Y2_dccleana(SHORTCODE) \
-    gen_helper_data_cache_op(cpu_env, RsV, tcg_constant_tl(insn->slot), \
-                             tcg_constant_tl(ctx->mem_idx))
+    fGEN_TCG_CACHEOP(gen_helper_data_cache_op)
 #define fGEN_TCG_Y2_icinva(SHORTCODE) \
-    gen_helper_insn_cache_op(cpu_env, RsV, tcg_constant_tl(insn->slot), \
-                             tcg_constant_tl(ctx->mem_idx))
+    fGEN_TCG_CACHEOP(gen_helper_insn_cache_op)
 #endif
 
 /* We have to brute force allocframe because it has C math in the semantics */
@@ -2524,6 +2528,10 @@
         tcg_gen_add_tl(RxV, RxV, RsV); \
         tcg_gen_add_tl(RxV, RxV, RtV); \
     } while (0)
+
+/* r0 = add(pc, #128) */
+#define fGEN_TCG_C4_addipc(SHORTCODE) \
+    tcg_gen_movi_tl(RdV, ctx->base.pc_next + uiV)
 
 #define fGEN_TCG_A2_sath(SHORTCODE) \
     gen_sat(RdV, RsV, true, 16)

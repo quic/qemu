@@ -423,6 +423,22 @@ static void test_bitspliti(void)
     check64(res64, 0x0000000012345678ULL);
 }
 
+static void test_addipc(void)
+{
+    uint32_t pc, addipc_res;
+
+    /* Normal version */
+    asm("%0 = pc\n\t"
+        "%1 = add(pc, #24)\n\t"
+        : "=r"(pc), "=r"(addipc_res));
+    check(addipc_res - pc, 28);
+
+    /* Use constant extender */
+    asm("%0 = pc\n\t"
+        "%1 = add(pc, #100)\n\t"
+        : "=r"(pc), "=r"(addipc_res));
+    check(addipc_res - pc, 104);
+}
 int main()
 {
     int res;
@@ -573,6 +589,8 @@ int main()
     test_insert();
 
     test_bitspliti();
+
+    test_addipc();
 
     puts(err ? "FAIL" : "PASS");
     return err;
