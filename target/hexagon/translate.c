@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1048,6 +1048,7 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     ctx->hvx_check_emitted = false;
     ctx->hmx_check_emitted = false;
     ctx->pcycle_enabled = get_pcycle_enabled_flag(db->tb->flags) != 0;
+    ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
 #endif
 }
 

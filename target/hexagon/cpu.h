@@ -567,6 +567,7 @@ struct ArchCPU {
 #if !defined(CONFIG_USER_ONLY)
     bool count_gcycle_xt;
     bool sched_limit;
+    bool cacheop_exceptions;
     gchar *usefs;
     uint64_t config_table_addr;
     uint32_t rev_reg;

@@ -77,6 +77,8 @@ static Property hexagon_cpu_properties[] = {
         0xffffffffULL),
     DEFINE_PROP_UINT32("qtimer-base-addr", HexagonCPU, qtimer_base_addr,
         0xffffffffULL),
+    DEFINE_PROP_BOOL("cacheop-exceptions", HexagonCPU, cacheop_exceptions,
+        false),
 #endif
     DEFINE_PROP_BOOL("lldb-compat", HexagonCPU, lldb_compat, false),
     DEFINE_PROP_UNSIGNED("lldb-stack-adjust", HexagonCPU, lldb_stack_adjust,
