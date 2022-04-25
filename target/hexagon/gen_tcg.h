@@ -1969,7 +1969,11 @@
 
 #define fGEN_TCG_J2_jumpt(SHORTCODE) \
     fGEN_TCG_cond_jump(fLSBOLD(PuV))
+#define fGEN_TCG_J2_jumptpt(SHORTCODE) \
+    fGEN_TCG_cond_jump(fLSBOLD(PuV))
 #define fGEN_TCG_J2_jumpf(SHORTCODE) \
+    fGEN_TCG_cond_jump(fLSBOLDNOT(PuV))
+#define fGEN_TCG_J2_jumpfpt(SHORTCODE) \
     fGEN_TCG_cond_jump(fLSBOLDNOT(PuV))
 #define fGEN_TCG_J2_jumpfnewpt(SHORTCODE) \
     fGEN_TCG_cond_jump(fLSBNEWNOT(PuN))
