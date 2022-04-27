@@ -26,7 +26,6 @@
 #include "migration/blocker.h"
 #include "migration/qemu-file-types.h"
 #include "sysemu/dma.h"
-#include "sysemu/tcg.h"
 #include "trace.h"
 
 /* enabled until disconnected backend stabilizes */
@@ -989,7 +988,7 @@ static inline bool vhost_needs_vring_endian(VirtIODevice *vdev)
     if (virtio_vdev_has_feature(vdev, VIRTIO_F_VERSION_1)) {
         return false;
     }
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
     return vdev->device_endian == VIRTIO_DEVICE_ENDIAN_LITTLE;
 #else
     return vdev->device_endian == VIRTIO_DEVICE_ENDIAN_BIG;

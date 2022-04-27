@@ -20,10 +20,10 @@
 #include "hw/virtio/vhost-shadow-virtqueue.h"
 #include "hw/virtio/vhost-vdpa.h"
 #include "exec/address-spaces.h"
+#include "qemu/cutils.h"
 #include "qemu/main-loop.h"
 #include "cpu.h"
 #include "trace.h"
-#include "qemu-common.h"
 #include "qapi/error.h"
 
 /*
@@ -129,6 +129,7 @@ static void vhost_vdpa_listener_begin_batch(struct vhost_vdpa *v)
         .iotlb.type = VHOST_IOTLB_BATCH_BEGIN,
     };
 
+    trace_vhost_vdpa_listener_begin_batch(v, fd, msg.type, msg.iotlb.type);
     if (write(fd, &msg, sizeof(msg)) != sizeof(msg)) {
         error_report("failed to write, fd=%d, errno=%d (%s)",
                      fd, errno, strerror(errno));
@@ -163,6 +164,7 @@ static void vhost_vdpa_listener_commit(MemoryListener *listener)
     msg.type = v->msg_type;
     msg.iotlb.type = VHOST_IOTLB_BATCH_END;
 
+    trace_vhost_vdpa_listener_commit(v, fd, msg.type, msg.iotlb.type);
     if (write(fd, &msg, sizeof(msg)) != sizeof(msg)) {
         error_report("failed to write, fd=%d, errno=%d (%s)",
                      fd, errno, strerror(errno));
@@ -468,7 +470,7 @@ err:
 static void vhost_vdpa_host_notifier_uninit(struct vhost_dev *dev,
                                             int queue_index)
 {
-    size_t page_size = qemu_real_host_page_size;
+    size_t page_size = qemu_real_host_page_size();
     struct vhost_vdpa *v = dev->opaque;
     VirtIODevice *vdev = dev->vdev;
     VhostVDPAHostNotifier *n;
@@ -485,7 +487,7 @@ static void vhost_vdpa_host_notifier_uninit(struct vhost_dev *dev,
 
 static int vhost_vdpa_host_notifier_init(struct vhost_dev *dev, int queue_index)
 {
-    size_t page_size = qemu_real_host_page_size;
+    size_t page_size = qemu_real_host_page_size();
     struct vhost_vdpa *v = dev->opaque;
     VirtIODevice *vdev = dev->vdev;
     VhostVDPAHostNotifier *n;
@@ -875,7 +877,7 @@ static bool vhost_vdpa_svq_unmap_ring(struct vhost_vdpa *v,
         return false;
     }
 
-    size = ROUND_UP(result->size, qemu_real_host_page_size);
+    size = ROUND_UP(result->size, qemu_real_host_page_size());
     r = vhost_vdpa_dma_unmap(v, result->iova, size);
     return r == 0;
 }

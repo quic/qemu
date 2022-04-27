@@ -6457,6 +6457,7 @@ static void init_proc_POWER10(CPUPPCState *env)
     register_power5p_common_sprs(env);
     register_power5p_lpar_sprs(env);
     register_power5p_ear_sprs(env);
+    register_power5p_tb_sprs(env);
     register_power6_common_sprs(env);
     register_power6_dbg_sprs(env);
     register_power8_tce_address_control_sprs(env);
@@ -6467,6 +6468,7 @@ static void init_proc_POWER10(CPUPPCState *env)
     register_power8_pmu_user_sprs(env);
     register_power8_tm_sprs(env);
     register_power8_pspb_sprs(env);
+    register_power8_dpdes_sprs(env);
     register_vtb_sprs(env);
     register_power8_ic_sprs(env);
     register_power8_book4_sprs(env);
@@ -7150,7 +7152,7 @@ static void ppc_cpu_reset(DeviceState *dev)
 #if defined(TARGET_PPC64)
     msr |= (target_ulong)1 << MSR_TM; /* Transactional memory */
 #endif
-#if !defined(TARGET_WORDS_BIGENDIAN)
+#if !TARGET_BIG_ENDIAN
     msr |= (target_ulong)1 << MSR_LE; /* Little-endian user mode */
     if (!((env->msr_mask >> MSR_LE) & 1)) {
         fprintf(stderr, "Selected CPU does not support little-endian.\n");

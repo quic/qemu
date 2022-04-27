@@ -87,9 +87,10 @@ void print_helper_counts(void)
 #endif
 
 /* Exceptions processing helpers */
-void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
-                                          uint32_t exception,
-                                          uintptr_t pc)
+G_NORETURN
+void do_raise_exception_err(CPUHexagonState *env,
+                            uint32_t exception,
+                            uintptr_t pc)
 {
     CPUState *cs = env_cpu(env);
 #ifdef CONFIG_USER_ONLY
@@ -104,7 +105,7 @@ void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
     cpu_loop_exit_restore(cs, pc);
 }
 
-void QEMU_NORETURN HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
+G_NORETURN void HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
 {
     do_raise_exception_err(env, excp, 0);
 }

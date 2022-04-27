@@ -39,9 +39,9 @@
  */
 #define COUNT_HEX_HELPERS 0
 
-extern void QEMU_NORETURN do_raise_exception_err(CPUHexagonState *env,
-                                                 uint32_t exception,
-                                                 uintptr_t pc);
+void G_NORETURN do_raise_exception_err(CPUHexagonState *env,
+        uint32_t exception,
+        uintptr_t pc);
 
 extern void hexagon_dump(CPUHexagonState *env, FILE *f, int flags);
 extern int hexagon_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);

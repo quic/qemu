@@ -1916,8 +1916,6 @@ static bool trans_PNEXT(DisasContext *s, arg_rr_esz *a)
 static void do_sat_addsub_32(TCGv_i64 reg, TCGv_i64 val, bool u, bool d)
 {
     int64_t ibound;
-    TCGv_i64 bound;
-    TCGCond cond;
 
     /* Use normal 64-bit arithmetic to detect 32-bit overflow.  */
     if (u) {
@@ -1928,15 +1926,12 @@ static void do_sat_addsub_32(TCGv_i64 reg, TCGv_i64 val, bool u, bool d)
     if (d) {
         tcg_gen_sub_i64(reg, reg, val);
         ibound = (u ? 0 : INT32_MIN);
-        cond = TCG_COND_LT;
+        tcg_gen_smax_i64(reg, reg, tcg_constant_i64(ibound));
     } else {
         tcg_gen_add_i64(reg, reg, val);
         ibound = (u ? UINT32_MAX : INT32_MAX);
-        cond = TCG_COND_GT;
+        tcg_gen_smin_i64(reg, reg, tcg_constant_i64(ibound));
     }
-    bound = tcg_const_i64(ibound);
-    tcg_gen_movcond_i64(cond, reg, reg, bound, bound, reg);
-    tcg_temp_free_i64(bound);
 }
 
 /* Similarly with 64-bit values.  */
@@ -2872,7 +2867,7 @@ static TCGv_i64 load_last_active(DisasContext *s, TCGv_i32 last,
      * The final adjustment for the vector register base
      * is added via constant offset to the load.
      */
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
     /* Adjust for element ordering.  See vec_reg_offset.  */
     if (esz < 3) {
         tcg_gen_xori_i32(last, last, 8 - (1 << esz));
@@ -5711,7 +5706,7 @@ static void do_ldrq(DisasContext *s, int zt, int pg, TCGv_i64 addr, int dtype)
          * for this load operation.
          */
         TCGv_i64 tmp = tcg_temp_new_i64();
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
         poff += 6;
 #endif
         tcg_gen_ld16u_i64(tmp, cpu_env, poff);
@@ -5790,7 +5785,7 @@ static void do_ldro(DisasContext *s, int zt, int pg, TCGv_i64 addr, int dtype)
          * for this load operation.
          */
         TCGv_i64 tmp = tcg_temp_new_i64();
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
         poff += 4;
 #endif
         tcg_gen_ld32u_i64(tmp, cpu_env, poff);

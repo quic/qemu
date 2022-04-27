@@ -29,7 +29,6 @@
 #include <grp.h>
 #include <libgen.h>
 
-#include "qemu-common.h"
 /* Needed early for CONFIG_BSD etc. */
 #include "net/slirp.h"
 #include "qemu/qemu-options.h"
@@ -151,14 +150,6 @@ int os_parse_cmd_args(int index, const char *optarg)
     case QEMU_OPTION_daemonize:
         daemonize = 1;
         break;
-#if defined(CONFIG_LINUX)
-    case QEMU_OPTION_enablefips:
-        warn_report("-enable-fips is deprecated, please build QEMU with "
-                    "the `libgcrypt` library as the cryptography provider "
-                    "to enable FIPS compliance");
-        fips_set_state(true);
-        break;
-#endif
     default:
         return -1;
     }
@@ -292,7 +283,7 @@ void os_setup_post(void)
         dup2(fd, 0);
         dup2(fd, 1);
         /* In case -D is given do not redirect stderr to /dev/null */
-        if (!qemu_logfile) {
+        if (!qemu_log_enabled()) {
             dup2(fd, 2);
         }
 

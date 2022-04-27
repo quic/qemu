@@ -148,12 +148,12 @@ if have_system
     endif
 
     tests += {
-      'test-qdev-global-props': [qom, hwcore, testqapi]
+      'test-qdev-global-props': [qom, hwcore]
     }
   endif
 endif
 
-if have_ga and targetos == 'linux' and 'CONFIG_TSAN' not in config_host
+if have_ga and targetos == 'linux'
   tests += {'test-qga': ['../qtest/libqtest.c']}
   test_deps += {'test-qga': qga}
 endif

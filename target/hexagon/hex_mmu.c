@@ -222,17 +222,15 @@ static void hex_dump_mmu(CPUHexagonState *env, FILE *f)
 static inline void hex_log_tlbw(uint32_t index, uint64_t entry)
 {
     if (qemu_loglevel_mask(CPU_LOG_MMU)) {
-        QemuLogFile *logfile;
         if (qemu_log_enabled()) {
-            rcu_read_lock();
-            logfile = qatomic_rcu_read(&qemu_logfile);
+            FILE *logfile = qemu_log_trylock();
             if (logfile) {
-                fprintf(logfile->fd, "tlbw[%03d]: ", index);
-                if (!hex_dump_mmu_entry(logfile->fd, entry)) {
-                    fprintf(logfile->fd, "invalid\n");
+                fprintf(logfile, "tlbw[%03d]: ", index);
+                if (!hex_dump_mmu_entry(logfile, entry)) {
+                    fprintf(logfile, "invalid\n");
                 }
+                qemu_log_unlock(logfile);
             }
-            rcu_read_unlock();
         }
     }
 }

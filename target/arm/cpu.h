@@ -21,6 +21,7 @@
 #define ARM_CPU_H
 
 #include "kvm-consts.h"
+#include "qemu/cpu-float.h"
 #include "hw/registerfields.h"
 #include "cpu-qom.h"
 #include "exec/cpu-defs.h"
@@ -95,7 +96,7 @@ enum {
  * therefore useful to be able to pass TCG the offset of the least
  * significant half of a uint64_t struct member.
  */
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
 #define offsetoflow32(S, M) (offsetof(S, M) + sizeof(uint32_t))
 #define offsetofhigh32(S, M) offsetof(S, M)
 #else
@@ -258,7 +259,8 @@ typedef struct CPUArchState {
      *  all other bits are stored in their correct places in env->pstate
      */
     uint32_t pstate;
-    uint32_t aarch64; /* 1 if CPU is in aarch64 state; inverse of PSTATE.nRW */
+    bool aarch64; /* True if CPU is in aarch64 state; inverse of PSTATE.nRW */
+    bool thumb;   /* True if CPU is in thumb mode; cpsr[5] */
 
     /* Cached TBFLAGS state.  See below for which bits are included.  */
     CPUARMTBFlags hflags;
@@ -285,7 +287,6 @@ typedef struct CPUArchState {
     uint32_t ZF; /* Z set if zero.  */
     uint32_t QF; /* 0 or 1 */
     uint32_t GE; /* cpsr[19:16] */
-    uint32_t thumb; /* cpsr[5]. 0 = arm mode, 1 = thumb mode. */
     uint32_t condexec_bits; /* IT bits.  cpsr[15:10,26:25].  */
     uint32_t btype;  /* BTI branch type.  spsr[11:10].  */
     uint64_t daif; /* exception masks, in the bits they are in PSTATE */
@@ -382,7 +383,7 @@ typedef struct CPUArchState {
         union { /* Fault address registers. */
             struct {
                 uint64_t _unused_far0;
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
                 uint32_t ifar_ns;
                 uint32_t dfar_ns;
                 uint32_t ifar_s;
@@ -419,7 +420,7 @@ typedef struct CPUArchState {
         uint64_t c9_pminten; /* perf monitor interrupt enables */
         union { /* Memory attribute redirection */
             struct {
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
                 uint64_t _unused_mair_0;
                 uint32_t mair1_ns;
                 uint32_t mair0_ns;
@@ -1093,7 +1094,7 @@ void aarch64_add_pauth_properties(Object *obj);
  */
 static inline uint64_t *sve_bswap64(uint64_t *dst, uint64_t *src, int nr)
 {
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
     int i;
 
     for (i = 0; i < nr; ++i) {
@@ -1232,6 +1233,20 @@ void pmu_init(ARMCPU *cpu);
 #define SCTLR_ATA0    (1ULL << 42) /* v8.5-MemTag */
 #define SCTLR_ATA     (1ULL << 43) /* v8.5-MemTag */
 #define SCTLR_DSSBS_64 (1ULL << 44) /* v8.5, AArch64 only */
+#define SCTLR_TWEDEn  (1ULL << 45)  /* FEAT_TWED */
+#define SCTLR_TWEDEL  MAKE_64_MASK(46, 4)  /* FEAT_TWED */
+#define SCTLR_TMT0    (1ULL << 50) /* FEAT_TME */
+#define SCTLR_TMT     (1ULL << 51) /* FEAT_TME */
+#define SCTLR_TME0    (1ULL << 52) /* FEAT_TME */
+#define SCTLR_TME     (1ULL << 53) /* FEAT_TME */
+#define SCTLR_EnASR   (1ULL << 54) /* FEAT_LS64_V */
+#define SCTLR_EnAS0   (1ULL << 55) /* FEAT_LS64_ACCDATA */
+#define SCTLR_EnALS   (1ULL << 56) /* FEAT_LS64 */
+#define SCTLR_EPAN    (1ULL << 57) /* FEAT_PAN3 */
+#define SCTLR_EnTP2   (1ULL << 60) /* FEAT_SME */
+#define SCTLR_NMI     (1ULL << 61) /* FEAT_NMI */
+#define SCTLR_SPINTMASK (1ULL << 62) /* FEAT_NMI */
+#define SCTLR_TIDCP   (1ULL << 63) /* FEAT_TIDCP1 */
 
 #define CPTR_TCPAC    (1U << 31)
 #define CPTR_TTA      (1U << 20)
@@ -1544,6 +1559,18 @@ static inline void xpsr_write(CPUARMState *env, uint32_t val, uint32_t mask)
 #define SCR_FIEN              (1U << 21)
 #define SCR_ENSCXT            (1U << 25)
 #define SCR_ATA               (1U << 26)
+#define SCR_FGTEN             (1U << 27)
+#define SCR_ECVEN             (1U << 28)
+#define SCR_TWEDEN            (1U << 29)
+#define SCR_TWEDEL            MAKE_64BIT_MASK(30, 4)
+#define SCR_TME               (1ULL << 34)
+#define SCR_AMVOFFEN          (1ULL << 35)
+#define SCR_ENAS0             (1ULL << 36)
+#define SCR_ADEN              (1ULL << 37)
+#define SCR_HXEN              (1ULL << 38)
+#define SCR_TRNDR             (1ULL << 40)
+#define SCR_ENTP2             (1ULL << 41)
+#define SCR_GPF               (1ULL << 48)
 
 #define HSTR_TTEE (1 << 16)
 #define HSTR_TJDBX (1 << 17)
@@ -1933,6 +1960,7 @@ FIELD(ID_MMFR4, CCIDX, 24, 4)
 FIELD(ID_MMFR4, EVT, 28, 4)
 
 FIELD(ID_MMFR5, ETS, 0, 4)
+FIELD(ID_MMFR5, NTLBPA, 4, 4)
 
 FIELD(ID_PFR0, STATE0, 0, 4)
 FIELD(ID_PFR0, STATE1, 4, 4)
@@ -1985,6 +2013,16 @@ FIELD(ID_AA64ISAR1, SPECRES, 40, 4)
 FIELD(ID_AA64ISAR1, BF16, 44, 4)
 FIELD(ID_AA64ISAR1, DGH, 48, 4)
 FIELD(ID_AA64ISAR1, I8MM, 52, 4)
+FIELD(ID_AA64ISAR1, XS, 56, 4)
+FIELD(ID_AA64ISAR1, LS64, 60, 4)
+
+FIELD(ID_AA64ISAR2, WFXT, 0, 4)
+FIELD(ID_AA64ISAR2, RPRES, 4, 4)
+FIELD(ID_AA64ISAR2, GPA3, 8, 4)
+FIELD(ID_AA64ISAR2, APA3, 12, 4)
+FIELD(ID_AA64ISAR2, MOPS, 16, 4)
+FIELD(ID_AA64ISAR2, BC, 20, 4)
+FIELD(ID_AA64ISAR2, PAC_FRAC, 24, 4)
 
 FIELD(ID_AA64PFR0, EL0, 0, 4)
 FIELD(ID_AA64PFR0, EL1, 4, 4)
@@ -2007,6 +2045,10 @@ FIELD(ID_AA64PFR1, SSBS, 4, 4)
 FIELD(ID_AA64PFR1, MTE, 8, 4)
 FIELD(ID_AA64PFR1, RAS_FRAC, 12, 4)
 FIELD(ID_AA64PFR1, MPAM_FRAC, 16, 4)
+FIELD(ID_AA64PFR1, SME, 24, 4)
+FIELD(ID_AA64PFR1, RNDR_TRAP, 28, 4)
+FIELD(ID_AA64PFR1, CSV2_FRAC, 32, 4)
+FIELD(ID_AA64PFR1, NMI, 36, 4)
 
 FIELD(ID_AA64MMFR0, PARANGE, 0, 4)
 FIELD(ID_AA64MMFR0, ASIDBITS, 4, 4)
@@ -2033,6 +2075,11 @@ FIELD(ID_AA64MMFR1, SPECSEI, 24, 4)
 FIELD(ID_AA64MMFR1, XNX, 28, 4)
 FIELD(ID_AA64MMFR1, TWED, 32, 4)
 FIELD(ID_AA64MMFR1, ETS, 36, 4)
+FIELD(ID_AA64MMFR1, HCX, 40, 4)
+FIELD(ID_AA64MMFR1, AFP, 44, 4)
+FIELD(ID_AA64MMFR1, NTLBPA, 48, 4)
+FIELD(ID_AA64MMFR1, TIDCP1, 52, 4)
+FIELD(ID_AA64MMFR1, CMOW, 56, 4)
 
 FIELD(ID_AA64MMFR2, CNP, 0, 4)
 FIELD(ID_AA64MMFR2, UAO, 4, 4)
@@ -2059,7 +2106,10 @@ FIELD(ID_AA64DFR0, CTX_CMPS, 28, 4)
 FIELD(ID_AA64DFR0, PMSVER, 32, 4)
 FIELD(ID_AA64DFR0, DOUBLELOCK, 36, 4)
 FIELD(ID_AA64DFR0, TRACEFILT, 40, 4)
+FIELD(ID_AA64DFR0, TRACEBUFFER, 44, 4)
 FIELD(ID_AA64DFR0, MTPMU, 48, 4)
+FIELD(ID_AA64DFR0, BRBE, 52, 4)
+FIELD(ID_AA64DFR0, HPMN0, 60, 4)
 
 FIELD(ID_AA64ZFR0, SVEVER, 0, 4)
 FIELD(ID_AA64ZFR0, AES, 4, 4)
@@ -2081,6 +2131,7 @@ FIELD(ID_DFR0, PERFMON, 24, 4)
 FIELD(ID_DFR0, TRACEFILT, 28, 4)
 
 FIELD(ID_DFR1, MTPMU, 0, 4)
+FIELD(ID_DFR1, HPMN0, 4, 4)
 
 FIELD(DBGDIDR, SE_IMP, 12, 1)
 FIELD(DBGDIDR, NSUHD_IMP, 14, 1)
@@ -2756,11 +2807,6 @@ typedef enum CPAccessResult {
     /* As CP_ACCESS_UNCATEGORIZED, but for traps directly to EL2 or EL3 */
     CP_ACCESS_TRAP_UNCATEGORIZED_EL2 = 5,
     CP_ACCESS_TRAP_UNCATEGORIZED_EL3 = 6,
-    /* Access fails and results in an exception syndrome for an FP access,
-     * trapped directly to EL2 or EL3
-     */
-    CP_ACCESS_TRAP_FP_EL2 = 7,
-    CP_ACCESS_TRAP_FP_EL3 = 8,
 } CPAccessResult;
 
 /* Access functions for coprocessor registers. These cannot fail and
@@ -3549,12 +3595,12 @@ static inline int cpu_mmu_index(CPUARMState *env, bool ifetch)
 static inline bool bswap_code(bool sctlr_b)
 {
 #ifdef CONFIG_USER_ONLY
-    /* BE8 (SCTLR.B = 0, TARGET_WORDS_BIGENDIAN = 1) is mixed endian.
-     * The invalid combination SCTLR.B=1/CPSR.E=1/TARGET_WORDS_BIGENDIAN=0
+    /* BE8 (SCTLR.B = 0, TARGET_BIG_ENDIAN = 1) is mixed endian.
+     * The invalid combination SCTLR.B=1/CPSR.E=1/TARGET_BIG_ENDIAN=0
      * would also end up as a mixed-endian mode with BE code, LE data.
      */
     return
-#ifdef TARGET_WORDS_BIGENDIAN
+#if TARGET_BIG_ENDIAN
         1 ^
 #endif
         sctlr_b;
@@ -3570,7 +3616,7 @@ static inline bool bswap_code(bool sctlr_b)
 static inline bool arm_cpu_bswap_data(CPUARMState *env)
 {
     return
-#ifdef TARGET_WORDS_BIGENDIAN
+#if TARGET_BIG_ENDIAN
        1 ^
 #endif
        arm_cpu_data_is_big_endian(env);

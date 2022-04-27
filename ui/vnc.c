@@ -25,7 +25,6 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
 #include "vnc.h"
 #include "vnc-jobs.h"
 #include "trace.h"
@@ -55,6 +54,7 @@
 #include "qemu/cutils.h"
 #include "qemu/help_option.h"
 #include "io/dns-resolver.h"
+#include "monitor/monitor.h"
 
 #define VNC_REFRESH_INTERVAL_BASE GUI_REFRESH_INTERVAL_DEFAULT
 #define VNC_REFRESH_INTERVAL_INC  50
@@ -2340,7 +2340,7 @@ static void pixel_format_message (VncState *vs) {
     vnc_write_u8(vs, vs->client_pf.bits_per_pixel); /* bits-per-pixel */
     vnc_write_u8(vs, vs->client_pf.depth); /* depth */
 
-#ifdef HOST_WORDS_BIGENDIAN
+#if HOST_BIG_ENDIAN
     vnc_write_u8(vs, 1);             /* big-endian-flag */
 #else
     vnc_write_u8(vs, 0);             /* big-endian-flag */
@@ -4059,13 +4059,6 @@ void vnc_display_open(const char *id, Error **errp)
         password = qemu_opt_get_bool(opts, "password", false);
     }
     if (password) {
-        if (fips_get_state()) {
-            error_setg(errp,
-                       "VNC password auth disabled due to FIPS mode, "
-                       "consider using the VeNCrypt or SASL authentication "
-                       "methods as an alternative");
-            goto fail;
-        }
         if (!qcrypto_cipher_supports(
                 QCRYPTO_CIPHER_ALG_DES, QCRYPTO_CIPHER_MODE_ECB)) {
             error_setg(errp,
