@@ -18,7 +18,6 @@
  */
 
 #include "qemu/osdep.h"
-#include "qemu-common.h"
 #include "qemu.h"
 #include "user-internals.h"
 #include "elf.h"
@@ -231,7 +230,7 @@ do_kernel_trap(CPUARMState *env)
     /* Jump back to the caller.  */
     addr = env->regs[14];
     if (addr & 1) {
-        env->thumb = 1;
+        env->thumb = true;
         addr &= ~1;
     }
     env->regs[15] = addr;
@@ -519,7 +518,7 @@ void target_cpu_copy_regs(CPUArchState *env, struct target_pt_regs *regs)
     for(i = 0; i < 16; i++) {
         env->regs[i] = regs->uregs[i];
     }
-#ifdef TARGET_WORDS_BIGENDIAN
+#if TARGET_BIG_ENDIAN
     /* Enable BE8.  */
     if (EF_ARM_EABI_VERSION(info->elf_flags) >= EF_ARM_EABI_VER4
         && (info->elf_flags & EF_ARM_BE8)) {

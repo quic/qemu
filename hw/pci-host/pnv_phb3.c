@@ -10,7 +10,6 @@
 #include "qemu/log.h"
 #include "qapi/visitor.h"
 #include "qapi/error.h"
-#include "qemu-common.h"
 #include "hw/pci-host/pnv_phb3_regs.h"
 #include "hw/pci-host/pnv_phb3.h"
 #include "hw/pci/pcie_host.h"
@@ -1162,6 +1161,7 @@ static void pnv_phb3_root_port_realize(DeviceState *dev, Error **errp)
         error_propagate(errp, local_err);
         return;
     }
+    pci_config_set_interrupt_pin(pci->config, 0);
 }
 
 static void pnv_phb3_root_port_class_init(ObjectClass *klass, void *data)

@@ -1212,7 +1212,7 @@ static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
     return false;
 }
 
-static void QEMU_NORETURN hexagon_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
+static void G_NORETURN hexagon_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
                                         MMUAccessType access_type,
                                         int mmu_idx,
                                         uintptr_t retaddr)
