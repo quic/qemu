@@ -586,11 +586,14 @@ struct ArchCPU {
 #define cpu_signal_handler cpu_hexagon_signal_handler
 extern int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 
-#ifndef CONFIG_USER_ONLY
 enum {
+#ifndef CONFIG_USER_ONLY
     PCYCLE_ENABLED_FLAGS_BIT = 3,
+#endif
+    IS_TIGHT_LOOP_BIT = 4,
 };
 
+#ifndef CONFIG_USER_ONLY
 static inline void set_pcycle_enabled_flag(uint32_t *flags)
 {
     *flags |= (1 << PCYCLE_ENABLED_FLAGS_BIT);
@@ -601,6 +604,16 @@ static inline bool get_pcycle_enabled_flag(uint32_t flags)
     return (flags >> PCYCLE_ENABLED_FLAGS_BIT) & 1;
 }
 #endif
+
+static inline void set_is_tight_loop_flag(uint32_t *flags)
+{
+    *flags |= (1 << IS_TIGHT_LOOP_BIT);
+}
+
+static inline bool get_is_tight_loop_flag(uint32_t flags)
+{
+    return (flags >> IS_TIGHT_LOOP_BIT) & 1;
+}
 
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
@@ -621,6 +634,9 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
         set_pcycle_enabled_flag(flags);
     }
 #endif
+    if (*pc == env->gpr[HEX_REG_SA0]) {
+        set_is_tight_loop_flag(flags);
+    }
 }
 
 #ifndef CONFIG_USER_ONLY

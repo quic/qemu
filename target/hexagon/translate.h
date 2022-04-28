@@ -27,6 +27,7 @@
 
 typedef struct DisasContext {
     DisasContextBase base;
+    Packet *pkt;
     uint32_t next_PC;
     uint32_t mem_idx;
     uint32_t num_packets;
@@ -65,6 +66,7 @@ typedef struct DisasContext {
     bool has_single_direct_branch;
     TCGv branch_cond;
     target_ulong branch_dest;
+    bool is_tight_loop;
     bool hvx_check_emitted;
     bool hmx_check_emitted;
     bool pcycle_enabled;
