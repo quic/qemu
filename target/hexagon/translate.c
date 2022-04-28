@@ -117,14 +117,53 @@ static void gen_exec_counters(DisasContext *ctx)
                     hex_gpr[HEX_REG_QEMU_HVX_CNT], ctx->num_hvx_insns);
 }
 
-static void gen_end_tb(DisasContext *ctx)
+static bool use_goto_tb(DisasContext *ctx, target_ulong dest)
+{
+    DisasContextBase *db = &ctx->base;
+
+    /* Check for the dest on the same page as the start of the TB.  */
+    return ((db->pc_first ^ dest) & TARGET_PAGE_MASK) == 0;
+}
+
+static void gen_goto_tb(DisasContext *ctx, int idx, target_ulong dest)
+{
+    if (use_goto_tb(ctx, dest)) {
+        tcg_gen_goto_tb(idx);
+        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], dest);
+        tcg_gen_exit_tb(ctx->base.tb, idx);
+    } else {
+        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], dest);
+        tcg_gen_lookup_and_goto_ptr();
+    }
+}
+
+static void gen_end_tb(DisasContext *ctx, Packet *pkt)
 {
     gen_exec_counters(ctx);
+
     if (ctx->base.singlestep_enabled) {
         gen_exception_raw(EXCP_DEBUG);
-    } else {
-        tcg_gen_exit_tb(NULL, 0);
+        ctx->base.is_jmp = DISAS_NORETURN;
+        return;
     }
+
+    if (ctx->has_single_direct_branch) {
+        if (ctx->branch_cond != NULL) {
+            TCGLabel *skip = gen_new_label();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, ctx->branch_cond, 0, skip);
+            gen_goto_tb(ctx, 0, ctx->branch_dest);
+            gen_set_label(skip);
+            gen_goto_tb(ctx, 1, ctx->next_PC);
+            tcg_temp_free(ctx->branch_cond);
+            ctx->branch_cond = NULL;
+        } else {
+            gen_goto_tb(ctx, 0, ctx->branch_dest);
+        }
+    } else {
+        tcg_gen_lookup_and_goto_ptr();
+    }
+
+    g_assert(ctx->branch_cond == NULL);
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -797,7 +836,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     }
 
     if (pkt->pkt_has_cof) {
-        gen_end_tb(ctx);
+        gen_end_tb(ctx, pkt);
     }
 }
 
@@ -841,6 +880,9 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 {
+    DisasContext *ctx = container_of(db, DisasContext, base);
+    ctx->has_single_direct_branch = false;
+    ctx->branch_cond = NULL;
 }
 
 static void hexagon_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
