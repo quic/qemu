@@ -1,15 +1,16 @@
 # Configuration for Repo Lockdown - https://github.com/dessant/repo-lockdown
 
+# QUIC: disabled lockdown
 name: 'Repo Lockdown'
 
-on:
+_on:
   pull_request_target:
     types: opened
 
-permissions:
+_permissions:
   pull-requests: write
 
-jobs:
+_jobs:
   action:
     runs-on: ubuntu-latest
     steps:
