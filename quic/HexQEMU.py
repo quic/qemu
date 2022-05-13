@@ -232,7 +232,11 @@ class SysStatCommand(object):
             }
             asserted = frozenset([name for name, bit in ssr_bits.items() if (ssr & (1<<bit)) != 0])
             not_asserted = frozenset([name for name, bit in ssr_bits.items() if (ssr & (1<<bit)) == 0])
-            ssr_bits_by_tid[tid] = (asid, asserted, not_asserted)
+            CAUSE_START = 0
+            CAUSE_MASK = 0x0ff
+            cause = ((ssr >> CAUSE_START) & CAUSE_MASK) if 'EX' in asserted else None
+
+            ssr_bits_by_tid[tid] = (asid, asserted, not_asserted, cause)
 
             XA_START = 24
             XA_MASK = 0b111
@@ -248,8 +252,6 @@ class SysStatCommand(object):
             }
             syscfg_set = frozenset([name for name, bit in syscfg_bits.items() if (syscfg & (1<<bit)) != 0])
             syscfg_unset = frozenset([name for name, bit in syscfg_bits.items() if (syscfg & (1<<bit)) == 0])
-#           print('tid: {}'.format(tid))
-#           print('\tssr: {:08x} (ASID: 0x{:02x}, asserted: {}, not asserted: {})'.format(ssr, asid, asserted, not_asserted))
 
             PRIO_START = 16
             PRIO_MASK = 0b0_1111_1111
@@ -290,14 +292,14 @@ class SysStatCommand(object):
                 return 'INVALID'
 
         def priv_mode(ssr_set):
-            if 'UM' in ssr_set and 'GM' in ssr_set and 'EX' not in ssr_set:
+            if 'UM' in ssr_set and 'GM' not in ssr_set and 'EX' not in ssr_set:
                 return 'User'
-            elif 'UM' not in ssr_set and 'GM' in ssr_set and 'EX' not in ssr_set:
+            elif 'UM' in ssr_set and 'GM' in ssr_set and 'EX' not in ssr_set:
                 return 'Guest'
             else:
                 return 'Monitor'
 
-        thread_dwes = dict([(x, to_dwe(x)) for x in range(4)])
+        thread_dwes = dict([(x, to_dwe(x)) for x in range(th_count)])
         print('modectl:  0x{:08x}'.format(modectl))
 
         BESTWAIT_PRIO_MASK = 0b01_1111_1111
@@ -314,25 +316,32 @@ class SysStatCommand(object):
             'enabled' if schedcfg_en else 'disabled'))
         print('syscfg:   0x{:08x}'.format(syscfg))
 
-        print('TID Prio Run mode (DWE)  ASID     Set            Unset\n'
-              '--- ---- --------------  ---- --------------   --------------')
+        print('TID Prio Mode  Priv    Cause    Set            Unset\n'
+              '--- ---- ----- ------- ----- --------------   --------------')
         for thread_id, dwe in thread_dwes.items():
-            d, w, e = dwe
             thread_mode = decode_dwe(dwe)
             try:
-                asid, ssr_set, ssr_unset = ssr_bits_by_tid[thread_id]
+                asid, ssr_set, ssr_unset, cause = ssr_bits_by_tid[thread_id]
             except KeyError:
-                asid, ssr_set, ssr_unset = 0xff, frozenset(), frozenset()
+                asid, ssr_set, ssr_unset, cause = 0xff, frozenset(), frozenset(), None
             bits_set = sorted(list(ssr_set))
             bits_unset = sorted(list(ssr_unset))
             prio = prio_by_tid.get(thread_id, '?')
 
-            print('{:3} {:4}  {:6} {}{}{}     0x{:02x} {:15}  {:15}'.format(
-                thread_id, prio, thread_mode, d, w, e, asid, ','.join(bits_set), ','.join(bits_unset)))
-        print('GLB    -        -          -  {:15}  {:15}'.format(
+            cause_str = ' 0x{:02x}'.format(cause) if cause else '  -  '
+
+            print('{:3} {:4} {:5} {:7} {} {:15}  {:15}'.format(
+                thread_id, prio, thread_mode, priv_mode(ssr_set),
+                cause_str, ','.join(bits_set), ','.join(bits_unset)))
+#           if 'EX' in bits_set:
+#               debugger.HandleCommand('thread select {}'.format(thread_id))
+#               debugger.HandleCommand('register read ssr elr badva0 badva1')
+#               print('\n')
+        print('GLB    -       -         -   {:15}  {:15}'.format(
                     ','.join(syscfg_set), ','.join(syscfg_unset)))
 
         print('\n')
+
         # ssr:
 #       print('-\n'
 #             'IE: interrupt enable, UM: user mode, GM: guest mode, EX: int/exception accepted\n'
@@ -341,18 +350,7 @@ class SysStatCommand(object):
 #       print('V2X: HVX Vec size, TL: TLB lock, KL: kernel lock, G: global int enable, M: MMU enable\n'
 #             'PRIO: scheduling enable\n\n')
 
-        print('TID Priv    PC\n'
-              '--- ------- -------------------------')
-        for thread_id, (_, ssr_set, _) in ssr_bits_by_tid.items():
-            pc = pc_by_tid[thread_id]
-#           sect_off_addr = target.ResolveLoadAddress(pc)
-#           pc_detail = 'N/A'
-#           pc_detail = sect_off_addr.symbolicate()
-#           pc_detail = pc_context.GetFunction()
-#           pc_detail = sect_off_addr.get_instructions()
-            func_name = frames_by_thread[thread_id].GetFunction().GetName()
-            pc_detail = func_name if func_name else ''
-            print('{:-3} {:7} 0x{:08x} [{}]'.format(thread_id, priv_mode(ssr_set), pc, pc_detail))
+        debugger.HandleCommand('thread list')
 
         print('\n')
 
@@ -371,7 +369,6 @@ class SysStatCommand(object):
 
         _print_ints(reg_groups)
         _print_vids(reg_groups)
-
 
         unexpected = get_unexpected(sysregs)
         if unexpected:
