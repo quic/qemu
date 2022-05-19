@@ -48,7 +48,7 @@
 #define HIGH_32(val) (0x0ffffffffULL & (val >> 32))
 #define LOW_32(val) (0x0ffffffffULL & val)
 
-/* Merge the IRQs from the two component devices.  */
+/* Merge the IRQs from the component devices.  */
 static void qutimer_set_irq(QCTQtimerState *s, int irq, int level)
 {
     s->level[irq] = level;
@@ -56,6 +56,7 @@ static void qutimer_set_irq(QCTQtimerState *s, int irq, int level)
      * FIXME: Do we really want to do this ?
      * s->timer[0].int_level = level;
      * s->timer[1].int_level = level;
+     * s->timer[2].int_level = level;
      */
     qemu_set_irq(s->irq, s->level[0] || s->level[1]);
 }
@@ -63,36 +64,32 @@ static void qutimer_set_irq(QCTQtimerState *s, int irq, int level)
 /* qct_qtimer_read/write:
  * if offset < 0x1000 read restricted registers:
  * QCT_QTIMER_AC_CNTFREQ/CNTSR/CNTTID/CNTACR/CNTOFF_(LO/HI)/QCT_QTIMER_VERSION
- * else if offset < 0x2000
- *     - Reference timer 1
- * else
- *     - Reference timer 2
  */
 static uint64_t qct_qtimer_read(void *opaque, hwaddr offset,
                            unsigned size)
 {
     QCTQtimerState *s = (QCTQtimerState *)opaque;
 
-    if (offset < 0x1000) {
-        switch (offset) {
-        case QCT_QTIMER_AC_CNTFRQ:
-           return s->freq;
-        case QCT_QTIMER_AC_CNTSR:
-           return s->secure;
-        case QCT_QTIMER_AC_CNTTID:
-           return 0x11; /* Only frame 0 and frame 1 are implemented. */
-        case QCT_QTIMER_AC_CNTACR_0:
-            return s->timer[0].cnt_ctrl;
-        case QCT_QTIMER_AC_CNTACR_1:
-            return s->timer[1].cnt_ctrl;
-        case QCT_QTIMER_VERSION:
-            return 0x10000000;
-        default:
-                qemu_log_mask(LOG_GUEST_ERROR,
-                              "%s: QCT_QTIMER_AC_CNT: Bad offset %x\n",
-                              __func__, (int) offset);
-            return 0x0;
-        }
+    switch (offset) {
+    case QCT_QTIMER_AC_CNTFRQ:
+       return s->freq;
+    case QCT_QTIMER_AC_CNTSR:
+       return s->secure;
+    case QCT_QTIMER_AC_CNTTID:
+       return 0x11; /* Only frame 0 and frame 1 are implemented. */
+    case QCT_QTIMER_AC_CNTACR_0:
+        return s->timer[0].cnt_ctrl;
+    case QCT_QTIMER_AC_CNTACR_1:
+        return s->timer[1].cnt_ctrl;
+    case QCT_QTIMER_AC_CNTACR_2:
+        return s->timer[2].cnt_ctrl;
+    case QCT_QTIMER_VERSION:
+        return 0x10000000;
+    default:
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "%s: QCT_QTIMER_AC_CNT: Bad offset %x\n",
+                          __func__, (int) offset);
+        return 0x0;
     }
 
     qemu_log_mask(LOG_GUEST_ERROR,
@@ -123,6 +120,9 @@ static void qct_qtimer_write(void *opaque, hwaddr offset,
         case QCT_QTIMER_AC_CNTACR_1:
             s->timer[1].cnt_ctrl = value;
             return;
+        case QCT_QTIMER_AC_CNTACR_2:
+            s->timer[2].cnt_ctrl = value;
+            return;
         default:
             qemu_log_mask(LOG_GUEST_ERROR, "%s: QCT_QTIMER_AC_CNT: Bad offset %x\n",
                           __func__, (int) offset);
@@ -144,7 +144,7 @@ static const VMStateDescription vmstate_qct_qtimer = {
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (VMStateField[]) {
-        VMSTATE_INT32_ARRAY(level, QCTQtimerState, 2),
+        VMSTATE_INT32_ARRAY(level, QCTQtimerState, QCT_QTIMER_TIMER_ELTS),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -155,8 +155,8 @@ static void qct_qtimer_init(Object *obj)
 
     object_property_add_uint32_ptr(obj, "secure", &s->secure, OBJ_PROP_FLAG_READ);
     object_property_add_uint32_ptr(obj, "frame_id", &s->frame_id, OBJ_PROP_FLAG_READ);
-
-    s->secure = QCT_QTIMER_AC_CNTSR_NSN_1 | QCT_QTIMER_AC_CNTSR_NSN_2;
+    s->secure = QCT_QTIMER_AC_CNTSR_NSN_1 | QCT_QTIMER_AC_CNTSR_NSN_2
+        | QCT_QTIMER_AC_CNTSR_NSN_3;
 }
 
 static void qct_qtimer_realize(DeviceState *dev, Error **errp)
@@ -170,7 +170,7 @@ static void qct_qtimer_realize(DeviceState *dev, Error **errp)
     sysbus_init_mmio(sbd, &s->iomem);
     sysbus_init_irq(sbd, &s->irq);
 
-    for (i = 0; i < 2; i++) {
+    for (i = 0; i < QCT_QTIMER_TIMER_ELTS; i++) {
         /* if needed we can initialize the children in ..._init() function */
         object_initialize_child(OBJECT(s), "timer[*]", &s->timer[i], TYPE_QCT_HEXTIMER);
         qdev_prop_set_uint32(DEVICE(&s->timer[i]), "devid", i);

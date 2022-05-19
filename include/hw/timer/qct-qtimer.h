@@ -43,15 +43,16 @@ struct QCTHextimerState {
     qemu_irq irq;
 };
 
+#define QCT_QTIMER_TIMER_ELTS (3)
 struct QCTQtimerState {
     SysBusDevice parent_obj;
 
     MemoryRegion iomem;
     uint32_t secure;
-    struct QCTHextimerState timer[2];
+    struct QCTHextimerState timer[QCT_QTIMER_TIMER_ELTS];
     uint32_t frame_id;
     uint32_t freq;
-    int level[2];
+    int level[QCT_QTIMER_TIMER_ELTS];
     qemu_irq irq;
 };
 
@@ -59,9 +60,11 @@ struct QCTQtimerState {
 #define QCT_QTIMER_AC_CNTSR (0x004)
 #define QCT_QTIMER_AC_CNTSR_NSN_1 (1 << 0)
 #define QCT_QTIMER_AC_CNTSR_NSN_2 (1 << 1)
+#define QCT_QTIMER_AC_CNTSR_NSN_3 (1 << 2)
 #define QCT_QTIMER_AC_CNTTID (0x08)
 #define QCT_QTIMER_AC_CNTACR_0 (0x40)
 #define QCT_QTIMER_AC_CNTACR_1 (0x44)
+#define QCT_QTIMER_AC_CNTACR_2 (0x48)
 #define QCT_QTIMER_AC_CNTACR_RWPT (1 << 5) /* R/W of CNTP_* regs */
 #define QCT_QTIMER_AC_CNTACR_RWVT (1 << 4) /* R/W of CNTV_* regs */
 #define QCT_QTIMER_AC_CNTACR_RVOFF (1 << 3) /* R/W of CNTVOFF register */
