@@ -84,6 +84,21 @@ MEM_NOSHUF32(mem_noshuf_sd_luh, long long,    unsigned short,   memd, memuh)
 MEM_NOSHUF32(mem_noshuf_sd_lw,  long long,    signed int,       memd, memw)
 MEM_NOSHUF64(mem_noshuf_sd_ld,  long long,    signed long long, memd, memd)
 
+static inline unsigned int pred_lw_sw(int pred, int *p, int *q, int x)
+{
+    unsigned int ret;
+    asm volatile("p0 = cmp.eq(%4, #0)\n\t"
+                 "%0 = %3\n\t"
+                 "{\n\t"
+                 "    memw(%1) = %3\n\t"
+                 "    if (!p0) %0 = memw(%2)\n\t"
+                 "}:mem_noshuf\n"
+                 : "=&r"(ret)
+                 : "r"(p), "r"(q), "r"(x), "r"(pred)
+                 : "p0", "memory");
+    return ret;
+}
+
 static inline unsigned int cancel_sw_lb(int pred, int *p, signed char *q, int x)
 {
     unsigned int ret;
@@ -126,10 +141,12 @@ typedef union {
 
 int err;
 
-static void check32(int n, int expect)
+#define check32(n, expect) check32_(n, expect, __LINE__)
+
+static void check32_(int n, int expect, int line)
 {
     if (n != expect) {
-        printf("ERROR: 0x%08x != 0x%08x\n", n, expect);
+        printf("ERROR: 0x%08x != 0x%08x, line %d\n", n, expect, line);
         err++;
     }
 }
@@ -322,6 +339,18 @@ int main()
     n.d[1] = ~0LL;
     res64 = mem_noshuf_sd_ld(&n.d[0], &n.d[1], 0x123456789abcdef0LL);
     check64(res64, 0xffffffffffffffffLL);
+
+    n.w[0] = ~0;
+    n.w[1] = ~0;
+    res32 = pred_lw_sw(0, &n.w[0], &n.w[1], 0x12345678);
+    check32(res32, 0x12345678);
+    check32(n.w[0], 0x12345678);
+
+    n.w[0] = ~0;
+    n.w[1] = ~0;
+    res32 = pred_lw_sw(1, &n.w[0], &n.w[1], 0x12345678);
+    check32(res32, 0xffffffff);
+    check32(n.w[0], 0x12345678);
 
     puts(err ? "FAIL" : "PASS");
     return err;
