@@ -12,7 +12,7 @@ set(QEMU_CONF_ARGS
     --disable-brlapi
     --disable-vnc-sasl
     --disable-vnc-jpeg
-    --disable-vnc-png
+    --disable-png
     --disable-curses
     --disable-curl
     --disable-kvm
