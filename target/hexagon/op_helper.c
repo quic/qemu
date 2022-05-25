@@ -2317,20 +2317,9 @@ void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
 }
 
 /*
- * Update the GCYCLE_XT register where X is the number of running threads
- */
-void HELPER(inc_gcycle_xt)(CPUHexagonState *env)
-{
-    uint32_t num_threads = HELPER(get_ready_count)(env);
-    if (1 <= num_threads && num_threads <= 6) {
-        env->g_sreg[HEX_SREG_GCYCLE_1T + num_threads - 1]++;
-    }
-}
-
-/*
  * Return the count of threads ready to run.
  */
-uint32_t HELPER(get_ready_count)(CPUHexagonState *env)
+static uint32_t get_ready_count(CPUHexagonState *env)
 {
     uint32_t ready_count = 0;
     CPUState *cs;
@@ -2343,6 +2332,32 @@ uint32_t HELPER(get_ready_count)(CPUHexagonState *env)
         }
     }
     return ready_count;
+}
+
+/*
+ * Update the GCYCLE_XT register where X is the number of running threads
+ */
+void HELPER(inc_gcycle_xt)(CPUHexagonState *env)
+{
+    uint32_t num_threads = get_ready_count(env);
+    if (1 <= num_threads && num_threads <= 6) {
+        env->g_sreg[HEX_SREG_GCYCLE_1T + num_threads - 1]++;
+    }
+}
+
+void HELPER(cpu_limit)(CPUHexagonState *env, target_ulong next_PC)
+{
+    uint32_t ready_count = get_ready_count(env);
+
+    env->gpr[HEX_REG_QEMU_CPU_TB_CNT]++;
+
+    if (ready_count > 1 &&
+        env->gpr[HEX_REG_QEMU_CPU_TB_CNT] >= HEXAGON_TB_EXEC_PER_CPU_MAX) {
+        env->gpr[HEX_REG_PC] = next_PC;
+        HELPER(raise_exception)(env, EXCP_YIELD);
+        env->gpr[HEX_REG_QEMU_CPU_TB_CNT] = 0;
+    }
+    env->last_cpu = env->threadId;
 }
 
 void HELPER(pending_interrupt)(CPUHexagonState *env)
