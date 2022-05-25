@@ -27,6 +27,7 @@
 
 typedef struct DisasContext {
     DisasContextBase base;
+    uint32_t next_PC;
     uint32_t mem_idx;
     uint32_t num_packets;
     uint32_t num_insns;
@@ -61,6 +62,9 @@ typedef struct DisasContext {
     bool qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
     bool pre_commit;
+    bool has_single_direct_branch;
+    TCGv branch_cond;
+    target_ulong branch_dest;
     bool hvx_check_emitted;
     bool hmx_check_emitted;
     bool pcycle_enabled;
