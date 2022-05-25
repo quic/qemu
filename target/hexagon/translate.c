@@ -173,15 +173,60 @@ static void gen_cpu_limit(DisasContext *ctx, TCGv dest)
 }
 #endif
 
+static bool use_goto_tb(DisasContext *ctx, target_ulong dest)
+{
+    return translator_use_goto_tb(&ctx->base, dest);
+}
+
+static void gen_goto_tb(DisasContext *ctx, int idx, target_ulong dest)
+{
+    if (use_goto_tb(ctx, dest)) {
+        tcg_gen_goto_tb(idx);
+        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], dest);
+        tcg_gen_exit_tb(ctx->base.tb, idx);
+    } else {
+        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], dest);
+        tcg_gen_lookup_and_goto_ptr();
+    }
+}
+
 static void gen_end_tb(DisasContext *ctx)
 {
     gen_exec_counters(ctx);
-    tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+
 #ifndef CONFIG_USER_ONLY
     gen_helper_pending_interrupt(cpu_env);
     gen_helper_resched(cpu_env);
 #endif
-    gen_cpu_limit(ctx, hex_next_PC);
+
+    if (ctx->has_single_direct_branch) {
+        if (ctx->branch_cond != NULL) {
+            TCGLabel *skip = gen_new_label();
+            tcg_gen_brcondi_tl(TCG_COND_EQ, ctx->branch_cond, 0, skip);
+            gen_cpu_limit(ctx, tcg_constant_tl(ctx->branch_dest));
+            gen_goto_tb(ctx, 0, ctx->branch_dest);
+            gen_set_label(skip);
+            gen_cpu_limit(ctx, tcg_constant_tl(ctx->next_PC));
+            gen_goto_tb(ctx, 1, ctx->next_PC);
+            tcg_temp_free(ctx->branch_cond);
+            ctx->branch_cond = NULL;
+        } else {
+            gen_cpu_limit(ctx, tcg_constant_tl(ctx->branch_dest));
+            gen_goto_tb(ctx, 0, ctx->branch_dest);
+        }
+    } else {
+        gen_cpu_limit(ctx, hex_next_PC);
+        tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+#ifdef CONFIG_USER_ONLY
+        /*
+         * TODO Figure out why this doesn't work in system mode
+         *      tests/tcg/hexagon/system/qtimer.c
+         */
+        tcg_gen_lookup_and_goto_ptr();
+#endif
+    }
+
+    g_assert(ctx->branch_cond == NULL);
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -325,6 +370,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     }
 #endif
     /* Clear out the disassembly context */
+    ctx->next_PC = next_PC;
     ctx->reg_log_idx = 0;
     bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
 #ifndef CONFIG_USER_ONLY
@@ -1029,8 +1075,8 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 {
-#if !defined(CONFIG_USER_ONLY)
     DisasContext *ctx = container_of(db, DisasContext, base);
+#if !defined(CONFIG_USER_ONLY)
     HexagonCPU *hex_cpu = HEXAGON_CPU(cpu);
     ctx->need_cpu_limit = hex_cpu->sched_limit &&
                           (!(tb_cflags(ctx->base.tb) & CF_PARALLEL));
@@ -1042,6 +1088,8 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     ctx->pcycle_enabled = get_pcycle_enabled_flag(db->tb->flags) != 0;
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
 #endif
+    ctx->has_single_direct_branch = false;
+    ctx->branch_cond = NULL;
 }
 
 static void hexagon_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
