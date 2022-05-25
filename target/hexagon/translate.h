@@ -40,6 +40,7 @@ typedef struct DisasContext {
     int greg_log_idx;
     int sreg_log[SREG_WRITES_MAX];
     int sreg_log_idx;
+    bool need_cpu_limit;
 #endif
     int preg_log[PRED_WRITES_MAX];
     int preg_log_idx;
@@ -99,8 +100,6 @@ static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
     if (rnum < HEX_SREG_GLB_START) {
         ctx->sreg_log[ctx->sreg_log_idx] = rnum;
         ctx->sreg_log_idx++;
-    } else if (rnum == HEX_SREG_SYSCFG) {
-        ctx->base.is_jmp = DISAS_TOO_MANY;
     }
 }
 #endif

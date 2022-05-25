@@ -160,6 +160,19 @@ static void gen_exec_counters(DisasContext *ctx)
     }
 }
 
+#ifdef CONFIG_USER_ONLY
+static void gen_cpu_limit(DisasContext *ctx, TCGv dest)
+{
+}
+#else
+static void gen_cpu_limit(DisasContext *ctx, TCGv dest)
+{
+    if (ctx->need_cpu_limit) {
+        gen_helper_cpu_limit(cpu_env, dest);
+    }
+}
+#endif
+
 static void gen_end_tb(DisasContext *ctx)
 {
     gen_exec_counters(ctx);
@@ -168,6 +181,7 @@ static void gen_end_tb(DisasContext *ctx)
     gen_helper_pending_interrupt(cpu_env);
     gen_helper_resched(cpu_env);
 #endif
+    gen_cpu_limit(ctx, hex_next_PC);
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -183,8 +197,6 @@ static void gen_exception_debug(DisasContext *ctx)
 
 void gen_exception_end_tb(DisasContext *ctx, int excp)
 {
-    gen_exec_counters(ctx);
-    tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
 #ifdef CONFIG_USER_ONLY
     gen_exception_raw(excp);
 #else
@@ -517,7 +529,7 @@ static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
             gen_helper_modify_ssr(cpu_env, hex_t_sreg_new_value[reg_num],
                                   hex_t_sreg[reg_num]);
             /* This can change processor state, so end the TB */
-            ctx->base.is_jmp = DISAS_TOO_MANY;
+            ctx->base.is_jmp = DISAS_NORETURN;
         } else if ((reg_num == HEX_SREG_BESTWAIT) ||
                  (reg_num == HEX_SREG_STID)     ||
                  (reg_num == HEX_SREG_SCHEDCFG) ||
@@ -526,7 +538,7 @@ static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
                  (reg_num == HEX_SREG_IMASK)) {
 
             /* This can trigger resched interrupt, so end the TB */
-            ctx->base.is_jmp = DISAS_TOO_MANY;
+            ctx->base.is_jmp = DISAS_NORETURN;
         }
         if (reg_num < HEX_SREG_GLB_START) {
             tcg_gen_mov_tl(hex_t_sreg[reg_num], hex_t_sreg_new_value[reg_num]);
@@ -810,30 +822,6 @@ static void gen_cpu_limit_init(void)
     tcg_gen_movi_tl(hex_gpr[HEX_REG_QEMU_CPU_TB_CNT], 0);
     gen_set_label(skip_reinit);
 }
-
-static void gen_cpu_limit(void)
-{
-    TCGLabel *label_skip = gen_new_label();
-    TCGv_i32 running_count = tcg_temp_new_i32();
-    gen_helper_get_ready_count(running_count, cpu_env);
-
-    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_CPU_TB_CNT],
-                    hex_gpr[HEX_REG_QEMU_CPU_TB_CNT], 1);
-
-    tcg_gen_brcondi_tl(TCG_COND_LE, running_count, 1, label_skip);
-    tcg_gen_brcondi_tl(TCG_COND_LT, hex_gpr[HEX_REG_QEMU_CPU_TB_CNT],
-        HEXAGON_TB_EXEC_PER_CPU_MAX, label_skip);
-
-    gen_exception_raw(EXCP_YIELD);
-    tcg_gen_movi_tl(hex_gpr[HEX_REG_QEMU_CPU_TB_CNT], 0);
-    tcg_gen_exit_tb(NULL, 0);
-
-    gen_set_label(label_skip);
-    tcg_gen_mov_tl(hex_last_cpu, hex_thread_id);
-
-    tcg_temp_free_i32(running_count);
-}
-
 #endif
 
 static void update_exec_counters(DisasContext *ctx, Packet *pkt)
@@ -980,6 +968,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
     if (pkt->pkt_has_cof
 #if !defined(CONFIG_USER_ONLY)
         || pkt->pkt_has_sys_visibility
+        || ctx->base.is_jmp == DISAS_NORETURN
 #endif
         ) {
         gen_end_tb(ctx);
@@ -1041,8 +1030,9 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 #if !defined(CONFIG_USER_ONLY)
     DisasContext *ctx = container_of(db, DisasContext, base);
     HexagonCPU *hex_cpu = HEXAGON_CPU(cpu);
-    if (hex_cpu->sched_limit
-        && (!(tb_cflags(ctx->base.tb) & CF_PARALLEL))) {
+    ctx->need_cpu_limit = hex_cpu->sched_limit &&
+                          (!(tb_cflags(ctx->base.tb) & CF_PARALLEL));
+    if (ctx->need_cpu_limit) {
         gen_cpu_limit_init();
     }
     ctx->hvx_check_emitted = false;
@@ -1145,13 +1135,6 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         g_assert_not_reached();
     }
 
-#ifndef CONFIG_USER_ONLY
-    HexagonCPU *hex_cpu = HEXAGON_CPU(cpu);
-    if (hex_cpu->sched_limit
-        && (!(tb_cflags(ctx->base.tb) & CF_PARALLEL))) {
-        gen_cpu_limit();
-    }
-#endif
     if (ctx->base.singlestep_enabled) {
         gen_exception_debug(ctx);
     } else {
