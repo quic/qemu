@@ -165,7 +165,6 @@ F: tests/qtest/arm-cpu-features.c
 F: hw/arm/
 F: hw/cpu/a*mpcore.c
 F: include/hw/cpu/a*mpcore.h
-F: disas/arm.c
 F: disas/arm-a64.cc
 F: disas/libvixl/
 F: docs/system/target-arm.rst
@@ -272,7 +271,6 @@ F: target/ppc/
 F: hw/ppc/ppc.c
 F: hw/ppc/ppc_booke.c
 F: include/hw/ppc/ppc.h
-F: disas/ppc.c
 
 RISC-V TCG CPUs
 M: Palmer Dabbelt <palmer@dabbelt.com>
@@ -305,7 +303,6 @@ S: Maintained
 F: target/s390x/
 F: target/s390x/tcg
 F: hw/s390x/
-F: disas/s390.c
 F: tests/tcg/s390x/
 L: qemu-s390x@nongnu.org
 
@@ -336,7 +333,6 @@ F: target/i386/tcg/
 F: tests/tcg/i386/
 F: tests/tcg/x86_64/
 F: hw/i386/
-F: disas/i386.c
 F: docs/system/cpu-models-x86*
 T: git https://gitlab.com/ehabkost/qemu.git x86-next
 
@@ -890,7 +886,7 @@ F: include/hw/ssi/imx_spi.h
 SBSA-REF
 M: Radoslaw Biernacki <rad@semihalf.com>
 M: Peter Maydell <peter.maydell@linaro.org>
-R: Leif Lindholm <leif@nuviainc.com>
+R: Leif Lindholm <quic_llindhol@quicinc.com>
 L: qemu-arm@nongnu.org
 S: Maintained
 F: hw/arm/sbsa-ref.c
@@ -1114,7 +1110,11 @@ S: Odd Fixes
 F: configs/devices/hppa-softmmu/default.mak
 F: hw/hppa/
 F: hw/net/*i82596*
+F: hw/misc/lasi.c
+F: hw/pci-host/dino.c
+F: include/hw/misc/lasi.h
 F: include/hw/net/lasi_82596.h
+F: include/hw/pci-host/dino.h
 F: pc-bios/hppa-firmware.img
 
 M68K Machines
@@ -2545,6 +2545,13 @@ F: qapi/block*.json
 F: qapi/transaction.json
 T: git https://repo.or.cz/qemu/armbru.git block-next
 
+Compute Express Link
+M: Ben Widawsky <ben.widawsky@intel.com>
+M: Jonathan Cameron <jonathan.cameron@huawei.com>
+S: Supported
+F: hw/cxl/
+F: include/hw/cxl/
+
 Dirty Bitmaps
 M: Eric Blake <eblake@redhat.com>
 M: Vladimir Sementsov-Ogievskiy <v.sementsov-og@mail.ru>
@@ -3268,13 +3275,11 @@ M: Richard Henderson <richard.henderson@linaro.org>
 S: Maintained
 L: qemu-arm@nongnu.org
 F: tcg/arm/
-F: disas/arm.c
 
 i386 TCG target
 M: Richard Henderson <richard.henderson@linaro.org>
 S: Maintained
 F: tcg/i386/
-F: disas/i386.c
 
 LoongArch64 TCG target
 M: WANG Xuerui <git@xen0n.name>
@@ -3294,7 +3299,6 @@ PPC TCG target
 M: Richard Henderson <richard.henderson@linaro.org>
 S: Odd Fixes
 F: tcg/ppc/
-F: disas/ppc.c
 
 RISC-V TCG target
 M: Palmer Dabbelt <palmer@dabbelt.com>
@@ -3308,7 +3312,6 @@ S390 TCG target
 M: Richard Henderson <richard.henderson@linaro.org>
 S: Maintained
 F: tcg/s390/
-F: disas/s390.c
 L: qemu-s390x@nongnu.org
 
 SPARC TCG target
@@ -3371,6 +3374,7 @@ F: qemu-nbd.*
 F: blockdev-nbd.c
 F: docs/interop/nbd.txt
 F: docs/tools/qemu-nbd.rst
+F: tests/qemu-iotests/tests/*nbd*
 T: git https://repo.or.cz/qemu/ericb.git nbd
 T: git https://src.openvz.org/scm/~vsementsov/qemu.git nbd
 
