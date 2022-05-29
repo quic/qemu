@@ -396,7 +396,7 @@ static void hex_timer_realize(DeviceState *dev, Error **errp)
                           "hextimer", QTIMER_MEM_REGION_SIZE_BYTES);
     sysbus_init_mmio(sbd, &s->iomem);
 
-    s->timer = ptimer_init(hex_timer_tick, s, PTIMER_POLICY_DEFAULT);
+    s->timer = ptimer_init(hex_timer_tick, s, PTIMER_POLICY_LEGACY);
     vmstate_register(NULL, VMSTATE_INSTANCE_ID_ANY, &vmstate_hex_timer, s);
 #if 0
     /* auto start qtimer */
