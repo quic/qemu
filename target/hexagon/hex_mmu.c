@@ -420,7 +420,7 @@ static uint32_t hex_tlb_lookup_by_asid(CPUHexagonState *env, uint32_t asid,
                       __func__, asid, VA);
     } else {
         qemu_log_mask(CPU_LOG_MMU, "%s: 0x%x, 0x%08x => %d\n",
-                      __func__, asid, VA, i);
+                      __func__, asid, VA, idx);
     }
 
     return idx;
