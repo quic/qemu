@@ -388,6 +388,7 @@
         TCGv LSB = tcg_temp_new(); \
         TCGLabel *label = gen_new_label(); \
         PRED;  \
+        CHECK_NOSHUF; \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
         tcg_temp_free(LSB); \
         GET_EA; \
@@ -565,6 +566,7 @@
         TCGv LSB = tcg_temp_new(); \
         TCGLabel *label = gen_new_label(); \
         PRED;  \
+        CHECK_NOSHUF; \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
         tcg_temp_free(LSB); \
         GET_EA; \
