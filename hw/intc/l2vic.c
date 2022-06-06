@@ -128,6 +128,9 @@ static void l2vic_update(L2VICState *s, int irq, int level)
         int vid = get_vid(s, irq);
         //ensure the irq line goes low after going high
         qemu_irq_pulse(s->irq[vid + 2]);
+    } else {
+        int vid = get_vid(s, irq);
+        qemu_set_irq(s->irq[vid + 2], level);
     }
 }
 
@@ -158,8 +161,7 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
         */
         clear_bit(irq, (unsigned long *)s->int_enable);
 
-        vid = get_vid(s,irq);
-        qemu_irq_pulse(s->irq[vid + 2]);
+        l2vic_update (s, irq, level);
         s->vidpending = TRUE;
         s->vid0 = irq;
         s->vid_group[vid] = irq;
