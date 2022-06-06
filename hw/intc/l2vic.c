@@ -135,6 +135,7 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
 {
     int vid;
     L2VICState *s = (L2VICState *) opaque;
+    qemu_mutex_lock(&s->active);
     s->level = level;
 
     if (level && test_bit(irq, (unsigned long *)s->int_enable)) {
@@ -147,6 +148,7 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
         if (s->vidpending) {
             /* printf("PENDING, irq:level = %d, %d\n", irq, level); */
             set_bit(irq, (unsigned long *) s->int_pending);
+            qemu_mutex_unlock(&s->active);
             return;
         }
 
@@ -164,6 +166,7 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
         s->vid0 = irq;
         s->vid_group[vid] = irq;
     }
+    qemu_mutex_unlock(&s->active);
 }
 
 static void l2vic_write(void *opaque, hwaddr offset,
@@ -185,6 +188,7 @@ static void l2vic_write(void *opaque, hwaddr offset,
                 /* Diag end --  */
                 irq = get_next_pending(s);
                 if (irq != L2VIC_NO_PENDING) {
+                    qemu_mutex_unlock(&s->active);
                     l2vic_set_irq(s, irq, 1);
                 }
             }
@@ -228,7 +232,8 @@ static void l2vic_write(void *opaque, hwaddr offset,
         /* The soft-int interface only works with edge-triggered interrupts */
         if (test_bit(irq, (unsigned long *)s->int_type)) {
             qemu_mutex_unlock(&s->active);
-            return l2vic_set_irq(opaque, irq, 1);
+            l2vic_set_irq(opaque, irq, 1);
+            return;
         }
     } else if (offset >= L2VIC_INT_GRPn_0 &&
                offset < L2VIC_INT_GRPn_1) {
@@ -252,8 +257,9 @@ static void l2vic_write(void *opaque, hwaddr offset,
 static uint64_t l2vic_read(void *opaque, hwaddr offset,
                            unsigned size)
 {
-    uint32_t value;
+    uint64_t value;
     L2VICState *s = (L2VICState *)opaque;
+    qemu_mutex_lock(&s->active);
 
     if (offset == L2VIC_VID_GRP_0) {
         value = s->vid_group[0];
@@ -302,12 +308,14 @@ static uint64_t l2vic_read(void *opaque, hwaddr offset,
                offset < L2VIC_INT_GRPn_3 + 0x80) {
         value = L2VICA(s->int_group_n3, offset - L2VIC_INT_GRPn_3);
     } else {
-        value = 0;
-        printf( "%s: offset %x\n", __func__, (int) offset);
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: invalid read offset 0x%08x\n",
+                __func__, (unsigned int)offset);
+        value = -1;
         g_assert(false);
     }
 
     trace_l2vic_reg_read((unsigned) offset, value);
+    qemu_mutex_unlock(&s->active);
 
     return value;
 }
