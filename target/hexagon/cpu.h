@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -161,16 +161,23 @@ typedef struct HexagonCPU {
 #define cpu_signal_handler cpu_hexagon_signal_handler
 int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 
+typedef union {
+    uint32_t i;
+    struct {
+        bool is_tight_loop:1;
+    };
+} HexStateFlags;
+
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
 {
+    HexStateFlags hex_flags = { 0 };
     *pc = env->gpr[HEX_REG_PC];
     *cs_base = 0;
-#ifdef CONFIG_USER_ONLY
-    *flags = 0;
-#else
-#error System mode not supported on Hexagon yet
-#endif
+    if (*pc == env->gpr[HEX_REG_SA0]) {
+        hex_flags.is_tight_loop = true;
+    }
+    *flags = hex_flags.i;
 }
 
 typedef struct CPUHexagonState CPUArchState;

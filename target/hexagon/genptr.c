@@ -738,18 +738,25 @@ static void gen_endloop0(DisasContext *ctx, Packet *pkt)
     gen_set_label(label2);
 
     /*
-     *    if (hex_gpr[HEX_REG_LC0] > 1) {
-     *        PC = hex_gpr[HEX_REG_SA0];
-     *        hex_new_value[HEX_REG_LC0] = hex_gpr[HEX_REG_LC0] - 1;
-     *    }
+     * If we're in a tight loop, we'll do this at the end of the TB to take
+     * advantage of direct block chaining.
      */
-    TCGLabel *label3 = gen_new_label();
-    tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC0], 1, label3);
-    {
-        gen_jumpr(ctx, pkt, hex_gpr[HEX_REG_SA0]);
-        tcg_gen_subi_tl(hex_new_value[HEX_REG_LC0], hex_gpr[HEX_REG_LC0], 1);
+    if (!ctx->is_tight_loop) {
+        /*
+         *    if (hex_gpr[HEX_REG_LC0] > 1) {
+         *        PC = hex_gpr[HEX_REG_SA0];
+         *        hex_new_value[HEX_REG_LC0] = hex_gpr[HEX_REG_LC0] - 1;
+         *    }
+         */
+        TCGLabel *label3 = gen_new_label();
+        tcg_gen_brcondi_tl(TCG_COND_LEU, hex_gpr[HEX_REG_LC0], 1, label3);
+        {
+            gen_jumpr(ctx, pkt, hex_gpr[HEX_REG_SA0]);
+            tcg_gen_subi_tl(hex_new_value[HEX_REG_LC0],
+                            hex_gpr[HEX_REG_LC0], 1);
+        }
+        gen_set_label(label3);
     }
-    gen_set_label(label3);
 
     tcg_temp_free(lpcfg);
 }
