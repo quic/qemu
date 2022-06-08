@@ -2935,6 +2935,7 @@ if have_system or have_user
     'hw/core',
     'target/arm',
     'target/arm/hvf',
+    'target/hexagon',
     'target/hppa',
     'target/i386',
     'target/i386/kvm',

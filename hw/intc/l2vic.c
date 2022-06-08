@@ -29,6 +29,7 @@
 #include "qemu/log.h"
 #include "qemu/module.h"
 #include "l2vic.h"
+#include "trace.h"
 
 #define L2VICA(s, n) \
     (s[(n)>>2])
@@ -134,6 +135,7 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
 {
     int vid;
     L2VICState *s = (L2VICState *) opaque;
+    qemu_mutex_lock(&s->active);
     s->level = level;
 
     if (level && test_bit(irq, (unsigned long *)s->int_enable)) {
@@ -146,6 +148,7 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
         if (s->vidpending) {
             /* printf("PENDING, irq:level = %d, %d\n", irq, level); */
             set_bit(irq, (unsigned long *) s->int_pending);
+            qemu_mutex_unlock(&s->active);
             return;
         }
 
@@ -163,12 +166,14 @@ static void l2vic_set_irq(void *opaque, int irq, int level)
         s->vid0 = irq;
         s->vid_group[vid] = irq;
     }
+    qemu_mutex_unlock(&s->active);
 }
 
 static void l2vic_write(void *opaque, hwaddr offset,
                         uint64_t val, unsigned size) {
     L2VICState *s = (L2VICState *) opaque;
     qemu_mutex_lock(&s->active);
+    trace_l2vic_reg_write((unsigned) offset, (uint32_t) val);
 
     if (offset == L2VIC_VID_0) {
         if ((int)val != L2VIC_NO_PENDING) {
@@ -183,6 +188,7 @@ static void l2vic_write(void *opaque, hwaddr offset,
                 /* Diag end --  */
                 irq = get_next_pending(s);
                 if (irq != L2VIC_NO_PENDING) {
+                    qemu_mutex_unlock(&s->active);
                     l2vic_set_irq(s, irq, 1);
                 }
             }
@@ -226,7 +232,8 @@ static void l2vic_write(void *opaque, hwaddr offset,
         /* The soft-int interface only works with edge-triggered interrupts */
         if (test_bit(irq, (unsigned long *)s->int_type)) {
             qemu_mutex_unlock(&s->active);
-            return l2vic_set_irq(opaque, irq, 1);
+            l2vic_set_irq(opaque, irq, 1);
+            return;
         }
     } else if (offset >= L2VIC_INT_GRPn_0 &&
                offset < L2VIC_INT_GRPn_1) {
@@ -250,59 +257,67 @@ static void l2vic_write(void *opaque, hwaddr offset,
 static uint64_t l2vic_read(void *opaque, hwaddr offset,
                            unsigned size)
 {
+    uint64_t value;
     L2VICState *s = (L2VICState *)opaque;
+    qemu_mutex_lock(&s->active);
 
     if (offset == L2VIC_VID_GRP_0) {
-        return s->vid_group[0];
+        value = s->vid_group[0];
     } else if (offset == L2VIC_VID_GRP_1) {
-        return s->vid_group[1];
+        value =  s->vid_group[1];
     } else if (offset == L2VIC_VID_GRP_2) {
-        return s->vid_group[2];
+        value = s->vid_group[2];
     } else if (offset == L2VIC_VID_GRP_3) {
-        return s->vid_group[3];
+        value = s->vid_group[3];
     } else if (offset == L2VIC_VID_0) {
-        return (s->vid0);
+        value = s->vid0;
     } else if (offset >= L2VIC_INT_ENABLEn &&
                offset <  L2VIC_INT_ENABLE_CLEARn) {
-        return L2VICA(s->int_enable, offset-L2VIC_INT_ENABLEn);
+        value = L2VICA(s->int_enable, offset-L2VIC_INT_ENABLEn);
     } else if (offset >= L2VIC_INT_ENABLE_CLEARn &&
                offset < L2VIC_INT_ENABLE_SETn) {
-        return 0;
+        value = 0;
     } else if (offset >= L2VIC_INT_ENABLE_SETn &&
                offset < L2VIC_INT_TYPEn) {
-        return 0;
+        value = 0;
     } else if (offset >= L2VIC_INT_TYPEn &&
                offset < L2VIC_INT_TYPEn+0x80) {
-        return L2VICA(s->int_type, offset-L2VIC_INT_TYPEn);
+        value = L2VICA(s->int_type, offset-L2VIC_INT_TYPEn);
     } else if (offset >= L2VIC_INT_STATUSn &&
                offset < L2VIC_INT_CLEARn) {
-        return L2VICA(s->int_status, offset-L2VIC_INT_STATUSn);
+        value = L2VICA(s->int_status, offset-L2VIC_INT_STATUSn);
     } else if (offset >= L2VIC_INT_CLEARn &&
                offset < L2VIC_SOFT_INTn) {
-        return L2VICA(s->int_clear, offset-L2VIC_INT_CLEARn);
+        value = L2VICA(s->int_clear, offset-L2VIC_INT_CLEARn);
     } else if (offset >= L2VIC_SOFT_INTn &&
                offset < L2VIC_INT_PENDINGn) {
-        return 0;
+        value = 0;
     } else if (offset >= L2VIC_INT_PENDINGn &&
                offset < L2VIC_INT_PENDINGn + 0x80) {
-        return L2VICA(s->int_pending, offset-L2VIC_INT_PENDINGn);
+        value = L2VICA(s->int_pending, offset-L2VIC_INT_PENDINGn);
     } else if (offset >= L2VIC_INT_GRPn_0 &&
                offset < L2VIC_INT_GRPn_1) {
-        return L2VICA(s->int_group_n0, offset - L2VIC_INT_GRPn_0);
+        value = L2VICA(s->int_group_n0, offset - L2VIC_INT_GRPn_0);
     } else if (offset >= L2VIC_INT_GRPn_1 &&
                offset < L2VIC_INT_GRPn_2) {
-        return L2VICA(s->int_group_n1, offset - L2VIC_INT_GRPn_1);
+        value = L2VICA(s->int_group_n1, offset - L2VIC_INT_GRPn_1);
     } else if (offset >= L2VIC_INT_GRPn_2 &&
                offset < L2VIC_INT_GRPn_3) {
-        return L2VICA(s->int_group_n2, offset - L2VIC_INT_GRPn_2);
+        value = L2VICA(s->int_group_n2, offset - L2VIC_INT_GRPn_2);
     } else if (offset >= L2VIC_INT_GRPn_3 &&
                offset < L2VIC_INT_GRPn_3 + 0x80) {
-        return L2VICA(s->int_group_n3, offset - L2VIC_INT_GRPn_3);
+        value = L2VICA(s->int_group_n3, offset - L2VIC_INT_GRPn_3);
     } else {
-        printf( "%s: offset %x\n", __func__, (int) offset);
+        qemu_log_mask(LOG_GUEST_ERROR, "%s: invalid read offset 0x%08x\n",
+                __func__, (unsigned int)offset);
+        value = -1;
         g_assert(false);
     }
-    return 0;
+
+    trace_l2vic_reg_read((unsigned) offset, value);
+    qemu_mutex_unlock(&s->active);
+
+    return value;
 }
 
 static const MemoryRegionOps l2vic_ops = {
