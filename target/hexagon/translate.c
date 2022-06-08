@@ -383,6 +383,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         || pkt->can_do_io;
 
     if (may_do_io && (tb_cflags(ctx->base.tb) & CF_USE_ICOUNT)) {
+        ctx->base.is_jmp = DISAS_TOO_MANY;
         gen_io_start();
     }
 #endif

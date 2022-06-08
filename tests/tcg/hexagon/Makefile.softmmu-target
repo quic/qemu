@@ -171,9 +171,12 @@ run-neg-unaligned: neg-unaligned
 run-vid-group: vid-group
 run-timer_reg: timer_reg
 run-qtimer_test: qtimer_test
+run-swi: swi
+run-tlblock: tlblock
+run-k0lock: k0lock
 
 ICOUNT_OPTS=-icount auto
-run-vid-group run-timer_reg run-qtimer_test:
+run-tlblock run-k0lock run-swi run-timer_reg run-qtimer_test run-vid-group:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
