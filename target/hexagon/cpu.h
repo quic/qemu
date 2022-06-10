@@ -586,57 +586,42 @@ struct ArchCPU {
 #define cpu_signal_handler cpu_hexagon_signal_handler
 extern int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 
-enum {
+typedef union {
+    uint32_t i;
+    struct {
 #ifndef CONFIG_USER_ONLY
-    PCYCLE_ENABLED_FLAGS_BIT = 3,
+        int mmu_index:3;
+        bool pcycle_enabled:1;
 #endif
-    IS_TIGHT_LOOP_BIT = 4,
-};
-
-#ifndef CONFIG_USER_ONLY
-static inline void set_pcycle_enabled_flag(uint32_t *flags)
-{
-    *flags |= (1 << PCYCLE_ENABLED_FLAGS_BIT);
-}
-
-static inline bool get_pcycle_enabled_flag(uint32_t flags)
-{
-    return (flags >> PCYCLE_ENABLED_FLAGS_BIT) & 1;
-}
-#endif
-
-static inline void set_is_tight_loop_flag(uint32_t *flags)
-{
-    *flags |= (1 << IS_TIGHT_LOOP_BIT);
-}
-
-static inline bool get_is_tight_loop_flag(uint32_t flags)
-{
-    return (flags >> IS_TIGHT_LOOP_BIT) & 1;
-}
+        bool is_tight_loop:1;
+    };
+} HexStateFlags;
 
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
 {
+    HexStateFlags hex_flags = { 0 };
     *pc = env->gpr[HEX_REG_PC];
     *cs_base = 0;
-#ifdef CONFIG_USER_ONLY
-    *flags = 0;
-#else
+
+#ifndef CONFIG_USER_ONLY
     target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     bool pcycle_enabled = extract32(syscfg,
                                     reg_field_info[SYSCFG_PCYCLEEN].offset,
                                     reg_field_info[SYSCFG_PCYCLEEN].width);
 
-    *flags = cpu_mmu_index(env, false);
+    hex_flags.mmu_index = cpu_mmu_index(env, false);
 
     if (pcycle_enabled) {
-        set_pcycle_enabled_flag(flags);
+        hex_flags.pcycle_enabled = true;
     }
 #endif
+
     if (*pc == env->gpr[HEX_REG_SA0]) {
-        set_is_tight_loop_flag(flags);
+        hex_flags.is_tight_loop = true;
     }
+
+    *flags = hex_flags.i;
 }
 
 #ifndef CONFIG_USER_ONLY
