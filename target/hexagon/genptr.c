@@ -1345,9 +1345,12 @@ static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
     }
 }
 
-static inline void gen_pause(void) {
+static void gen_pause(void)
+{
     tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+#ifndef CONFIG_USER_ONLY
     gen_exception(EXCP_YIELD);
+#endif
 }
 
 static void gen_vreg_load(DisasContext *ctx, intptr_t dstoff, TCGv src,

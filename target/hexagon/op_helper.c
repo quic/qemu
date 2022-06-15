@@ -46,6 +46,7 @@
 #include "hex_mmu.h"
 #include "hw/intc/l2vic.h"
 #include "hw/timer/qct-qtimer.h"
+#include "hex_interrupts.h"
 #endif
 
 #define SF_BIAS        127
@@ -2224,38 +2225,7 @@ typedef struct {
 
 void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
 {
-    uint32_t ints_asserted[32];
-    size_t ints_asserted_count = 0;
-    HexagonCPU *threads[THREADS_MAX];
-    memset(threads, 0, sizeof(threads));
-
-    hexagon_set_interrupts(env, mask);
-    hexagon_find_asserted_interrupts(env, ints_asserted, sizeof(ints_asserted),
-                                     &ints_asserted_count);
-
-    for (size_t i = 0; i < ints_asserted_count; i++) {
-        const uint32_t int_num = ints_asserted[i];
-        size_t threads_count = 0;
-        hexagon_find_int_threads(env, int_num, threads, &threads_count);
-        if (threads_count < 1) {
-            continue;
-        }
-
-        HexagonCPU *int_thread =
-            hexagon_find_lowest_prio_any_thread(threads, threads_count, int_num, NULL);
-        if (!int_thread) {
-            continue;
-        }
-        hexagon_raise_interrupt(env, int_thread, int_num, 0);
-    }
-
-    /* exit loop if current thread was selected to handle a swi int */
-    CPUState *current_cs = env_cpu(env);
-    if (current_cs->exception_index >= HEX_EVENT_INT0 &&
-        current_cs->exception_index <= HEX_EVENT_INTF) {
-        HEX_DEBUG_LOG("%s: current selected %p\n", __FUNCTION__, current_cs);
-        cpu_loop_exit(current_cs);
-    }
+    hex_raise_interrupts(env, mask, CPU_INTERRUPT_SWI);
 }
 
 void HELPER(resched)(CPUHexagonState *env)

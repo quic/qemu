@@ -1,5 +1,5 @@
 ##
-##  Copyright(c) 2020-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2020-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -201,6 +201,7 @@ hexagon_ss.add(files(
 
 hexagon_softmmu_ss.add(files(
     'hex_mmu.c',
+    'hex_interrupts.c',
 ))
 
 target_arch += {'hexagon': hexagon_ss}
