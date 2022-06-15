@@ -48,6 +48,7 @@ TESTS += \
 	fastl2vic \
 	fastint \
 	swi \
+	swi2 \
 	udma \
 	ieee_fp \
 	hmx \
@@ -113,6 +114,8 @@ ciad-siad: ciad-siad.o
 fastl2vic: fastl2vic.o
 fastint: fastint.o
 swi: swi.o
+swi2.o: swi2.c interrupts.h
+swi2: swi2.o
 udma: udma.o
 ieee_fp: ieee_fp.o
 hmx: hmx.o
@@ -172,11 +175,12 @@ run-vid-group: vid-group
 run-timer_reg: timer_reg
 run-qtimer_test: qtimer_test
 run-swi: swi
+run-swi2: swi2
 run-tlblock: tlblock
 run-k0lock: k0lock
 
 ICOUNT_OPTS=-icount auto
-run-tlblock run-k0lock run-swi run-timer_reg run-qtimer_test run-vid-group:
+run-tlblock run-k0lock run-swi run-swi2 run-timer_reg run-qtimer_test run-vid-group:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
