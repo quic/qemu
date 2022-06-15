@@ -197,7 +197,6 @@ static void gen_end_tb(DisasContext *ctx)
     gen_exec_counters(ctx);
 
 #ifndef CONFIG_USER_ONLY
-    gen_helper_pending_interrupt(cpu_env);
     gen_helper_resched(cpu_env);
 #endif
 
@@ -1213,10 +1212,6 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 
     /* Fall through */
     case DISAS_NEXT:
-#ifndef CONFIG_USER_ONLY
-    gen_helper_pending_interrupt(cpu_env);
-    gen_helper_resched(cpu_env);
-#endif
         break;
     case DISAS_NORETURN:
         break;

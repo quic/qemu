@@ -84,6 +84,8 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
  * to another CPU.
  */
 #define HEXAGON_TB_EXEC_PER_CPU_MAX 2000
+
+#define CPU_INTERRUPT_SWI      CPU_INTERRUPT_TGT_INT_0
 #endif
 
 #define HEXAGON_CPU_TYPE_SUFFIX "-" TYPE_HEXAGON_CPU

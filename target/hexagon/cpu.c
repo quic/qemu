@@ -36,6 +36,7 @@
 #include "hw/intc/l2vic.h"
 #include "qemu/main-loop.h"
 #include "sysemu/cpus.h"
+#include "hex_interrupts.h"
 #endif
 
 #define INVALID_REG_VAL (0xababababULL)
@@ -658,100 +659,15 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 {
     HexagonCPU *cpu = opaque;
     CPUHexagonState *env = &cpu->env;
-    CPUState *cs = CPU(cpu);
 
     trace_hexagon_irq_line(irq, level);
 
-    target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
-    target_ulong gbit = GET_SYSCFG_FIELD(SYSCFG_GIE, syscfg);
-    if (!gbit && level) {
-        hexagon_set_interrupts(env, 1 << irq);
-        return;
-    }
-
- /* Event#  CauseCode    Description
-  * 16       0xC0        Interrupt 0  General interrupt. Maskable,
-  *                                   highest priority general interrupt
-  * 17       0xC1        Interrupt 1
-  * 18       0xC2        Interrupt 2  VIC0 Interface
-  * 19       0xC3        Interrupt 3  VIC1 Interface
-  * 20       0xC4        Interrupt 4  VIC2 Interface
-  * 21       0xC5        Interrupt 5  VIC3 Interface
-  * 22       0xC6        Interrupt 6
-  * 23       0xC7        Interrupt 7  Lowest priority interrupt
-  */
-    static const int mask[] = {
-        [HEXAGON_CPU_IRQ_0] = CPU_INTERRUPT_HARD,
-        [HEXAGON_CPU_IRQ_1] = CPU_INTERRUPT_HARD,
-        [HEXAGON_CPU_IRQ_2] = CPU_INTERRUPT_HARD,
-        [HEXAGON_CPU_IRQ_3] = CPU_INTERRUPT_HARD,
-        [HEXAGON_CPU_IRQ_4] = CPU_INTERRUPT_HARD,
-        [HEXAGON_CPU_IRQ_5] = CPU_INTERRUPT_HARD,
-        [HEXAGON_CPU_IRQ_6] = CPU_INTERRUPT_HARD,
-        [HEXAGON_CPU_IRQ_7] = CPU_INTERRUPT_HARD,
-    };
-
-
-    /* IRQ 2, event number: 18, Cause Code: 0xc2 (VIC0 interface) */
-    if (level) {
-        HexagonCPU *threads[THREADS_MAX];
-        size_t threads_count = 0;
-        memset(threads, 0, sizeof(threads));
-        hexagon_find_int_threads(env, irq, threads, &threads_count);
-        if (threads_count < 1) {
-            trace_hexagon_irq_thread_candidates(0, -1, -1);
-            /*
-             * No unmasked thread is available for this interrupt.  We
-             * must pend it and assert it later.
-             */
-           hexagon_set_interrupts(env, 1 << irq);
-           /*
-            * FIXME: or should we make this method the general method
-            * and not one that's only used when threads are occupied?
-            */
-
-           return;
-        }
-
-        HexagonCPU *int_thread =
-            hexagon_find_lowest_prio_any_thread(threads, threads_count, irq, NULL);
-        env = &int_thread->env;
-        cs = CPU(int_thread);
-
-        target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-        target_ulong ex = GET_SSR_FIELD(SSR_EX, ssr);
-        trace_hexagon_irq_thread_candidates(threads_count, cs->cpu_index, !ex);
-
-        if (ex) {
-            assert(get_exe_mode(env) != HEX_EXE_MODE_WAIT);
-            /*
-             * This thread is not interruptible.  We
-             * must pend it and assert it later.
-             */
-           hexagon_set_interrupts(env, 1 << irq);
-
-           /*
-            * FIXME: or should we make this method the general method
-            * and not one that's only used when threads are occupied?
-            */
-           return;
-        }
-        env->cause_code = HEX_CAUSE_INT0 + irq;
-    }
     switch (irq) {
     case HEXAGON_CPU_IRQ_0 ... HEXAGON_CPU_IRQ_7:
-        HEX_DEBUG_LOG("%s: IRQ irq:%d, level:%d\n", __func__, irq, level);
+        qemu_log_mask(CPU_LOG_INT, "%s: irq %d, level %d\n",
+                      __func__, irq, level);
         if (level) {
-            if (get_exe_mode(env) == HEX_EXE_MODE_WAIT) {
-                hexagon_resume_thread(env, HEX_EVENT_INT0 + irq);
-            }
-            hexagon_disable_int(env, irq);
-            cpu_interrupt(cs, mask[irq]);
-        } else {
-            //FIXME: do something better for the level=0 path
-            //The following line was always clearing CPU_INTERRUPT_HARD
-            //on the thread 0. At least some thread look up must be done.
-            //cpu_reset_interrupt(cs, mask[irq]);
+            hex_raise_interrupts(env, 1 << irq, CPU_INTERRUPT_HARD);
         }
         break;
     default:
@@ -1204,21 +1120,12 @@ static const struct SysemuCPUOps hexagon_sysemu_ops = {
 
 #define CHECK_EX 0
 #ifndef CONFIG_USER_ONLY
-/* XXX_SM: */
 static bool hexagon_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 {
-    CPUClass *cc = CPU_GET_CLASS(cs);
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
-    if (interrupt_request & CPU_INTERRUPT_HARD && !hexagon_thread_is_busy(env)) {
-        qemu_log_mask(CPU_LOG_INT,
-                "got a hard int, full mask is %08x|%d\n",
-                (int)interrupt_request, (int)interrupt_request);
-
-        cs->exception_index = HEX_EVENT_INT2;
-        cc->tcg_ops->do_interrupt(cs);
-        cs->interrupt_request &= ~CPU_INTERRUPT_HARD;
-        return true;
+    if (interrupt_request & (CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI)) {
+        return hex_check_interrupts(env);
     }
     return false;
 }
