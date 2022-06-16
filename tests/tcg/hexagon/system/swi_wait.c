@@ -82,6 +82,7 @@ int main()
             NULL);
 
 
+#if 0
     delay(10000);
     swi(ALL_INTERRUPTS_MASK);
     printf("waiting for wake\n");
@@ -89,6 +90,7 @@ int main()
     delay(1000);
 
     assert(all_ints_delivered(1));
+#endif
 
     delay(10000);
     global_int_disable();
