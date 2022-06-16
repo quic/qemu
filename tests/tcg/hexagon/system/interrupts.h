@@ -70,4 +70,24 @@ static inline void set_thread_imask(uint32_t mask)
                  : "r0");
 }
 
+static inline void wait_for_interrupts(void)
+{
+    asm volatile("wait(r0)\n"
+                 :
+                 :
+                 :);
+}
+
+static inline void iassignw(int int_num, int thread_mask)
+{
+    int_num &= 0x01f;
+    int_num = int_num << 16;
+    asm volatile("r0 = and(%0, #0x0ff)\n\t"
+                 "r0 = or(r0, %1)\n\t"
+                 "iassignw(r0)\n"
+                 :
+                 : "r"(thread_mask), "r"(int_num)
+                 :"r0");
+}
+
 #endif
