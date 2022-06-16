@@ -648,11 +648,7 @@ bool hexagon_thread_is_enabled(CPUHexagonState *env) {
 
 static bool hexagon_cpu_has_work(CPUState *cs)
 {
-    HexagonCPU *cpu = HEXAGON_CPU(cs);
-    CPUHexagonState *env = &cpu->env;
-
-    return hexagon_thread_is_enabled(env) &&
-        (cs->interrupt_request & CPU_INTERRUPT_HARD);
+    return (cs->interrupt_request & (CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI));
 }
 
 static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
