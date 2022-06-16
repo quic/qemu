@@ -23,6 +23,8 @@
 #include "macros.h"
 #include "sys_macros.h"
 
+static bool hex_is_qualified_for_int(CPUHexagonState *env, int int_num);
+
 static bool get_syscfg_gie(CPUHexagonState *env)
 {
     target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
@@ -149,7 +151,7 @@ static bool is_lowest_prio(CPUHexagonState *env, int int_num)
     return true;
 }
 
-bool hex_is_qualified_for_int(CPUHexagonState *env, int int_num)
+static bool hex_is_qualified_for_int(CPUHexagonState *env, int int_num)
 {
     bool syscfg_gie = get_syscfg_gie(env);
     bool iad = get_iad_bit(env, int_num);
@@ -174,6 +176,14 @@ void hex_accept_int(CPUHexagonState *env, int int_num)
     env->gpr[HEX_REG_PC] = evb | (cs->exception_index << 2);
     if (get_ipend(env) == 0) {
         cs->interrupt_request &= ~(CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
+    }
+
+    if (get_exe_mode(env) == HEX_EXE_MODE_WAIT) {
+        qemu_log_mask(CPU_LOG_INT, "%s: thread %d in WAIT mode\n",
+                      __func__, env->threadId);
+        CPUState *cs = env_cpu(env);
+        clear_wait_mode(env);
+        cpu_resume(cs);
     }
 }
 
@@ -200,12 +210,30 @@ bool hex_check_interrupts(CPUHexagonState *env)
     schedcfgen = get_schedcfgen(env);
     for (int i = 0; i < max_ints; i++) {
         if (!get_iad_bit(env, i) && get_ipend_bit(env, i)) {
+            qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] found int %d\n", __func__, env->threadId, i);
             if (hex_is_qualified_for_int(env, i) &&
                 (!schedcfgen || is_lowest_prio(env, i))) {
                 hex_accept_int(env, i);
                 retval = true;
                 break;
             }
+            bool syscfg_gie = get_syscfg_gie(env);
+            bool iad = get_iad_bit(env, i);
+            bool ssr_ie = get_ssr_ie(env);
+            bool ssr_ex = get_ssr_ex(env);
+            bool imask = get_imask_bit(env, i);
+
+            qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] int %d not handled, qualified: %d, schedcfg_en: %d, low prio %d\n", __func__, env->threadId, i,
+            hex_is_qualified_for_int(env, i),
+                schedcfgen,
+                is_lowest_prio(env, i));
+
+            qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] int %d not handled, GIE %d, iad %d, SSR:IE %d, SSR:EX: %d, imask bit %d\n", __func__, env->threadId, i,
+                syscfg_gie,
+                iad,
+                ssr_ie,
+                ssr_ex,
+                imask);
         }
     }
     if (need_lock) {
@@ -232,8 +260,13 @@ void hex_raise_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
         qemu_mutex_lock_iothread();
     }
     CPU_FOREACH(cs) {
+        qemu_log_mask(CPU_LOG_INT, "raising 0x%02x on %d\n", type, cs->cpu_index);
         cs->interrupt_request |= type;
     }
+    CPU_FOREACH(cs) {
+        cpu_resume(cs);
+    }
+
 
     set_ipend(env, mask);
 
@@ -241,6 +274,7 @@ void hex_raise_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
         qemu_mutex_unlock_iothread();
     }
 
+#if 0
     if (get_exe_mode(env) == HEX_EXE_MODE_WAIT) {
         qemu_log_mask(CPU_LOG_INT, "%s: thread %d in WAIT mode\n",
                       __func__, env->threadId);
@@ -248,4 +282,5 @@ void hex_raise_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
         clear_wait_mode(env);
         cpu_resume(cs);
     }
+#endif
 }
