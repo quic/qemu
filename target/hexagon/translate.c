@@ -197,7 +197,13 @@ static void gen_end_tb(DisasContext *ctx)
     gen_exec_counters(ctx);
 
 #ifndef CONFIG_USER_ONLY
-    gen_helper_resched(cpu_env);
+    if (ctx->resched_required) {
+        gen_helper_resched(cpu_env);
+        gen_helper_pending_interrupt(cpu_env);
+    }
+    else if (ctx->intcheck_required) {
+        gen_helper_pending_interrupt(cpu_env);
+    }
 #endif
 
     if (ctx->has_single_direct_branch) {
@@ -459,6 +465,10 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         gen_coproc_check(SSR_XE2, HEX_CAUSE_NO_COPROC2_ENABLE);
         ctx->hmx_check_emitted = true;
     }
+    ctx->resched_required |= check_for_opcode(pkt, J2_rte);
+    /* FIXME gen_io_start() for intcheck_required ? */
+    ctx->intcheck_required |= check_for_opcode(pkt, J2_rte)
+                           || check_for_opcode(pkt, Y2_swi);
 #endif
 }
 
@@ -1124,6 +1134,8 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     ctx->hmx_check_emitted = false;
     ctx->pcycle_enabled = hex_flags.pcycle_enabled;
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
+    ctx->resched_required = false;
+    ctx->intcheck_required = false;
 #endif
     ctx->has_single_direct_branch = false;
     ctx->branch_cond = NULL;
