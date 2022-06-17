@@ -49,20 +49,6 @@ static inline uint32_t get_htid(void)
     return htid;
 }
 
-static inline void set_task_prio(int prio)
-{
-    static uint32_t PRIO_CLR_MASK = 0xff00ffff;
-    prio = prio & 0xff;
-    asm volatile("r0 = stid\n\t"
-                 "r0 = and(r0, %0)\n\t"
-                 "r0 = or(r0, %1)\n\t"
-                 "stid = r0\n\t"
-                 "isync\n\t"
-                 :
-                 : "r"(PRIO_CLR_MASK), "r"(prio << 16)
-                 : "r0");
-}
-
 /* volatile bacause it tracks when interrupts have been processed */
 volatile int ints_by_irq[MAX_INT_NUM];
 

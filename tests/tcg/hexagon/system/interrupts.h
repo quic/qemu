@@ -90,4 +90,19 @@ static inline void iassignw(int int_num, int thread_mask)
                  :"r0");
 }
 
+static inline void set_task_prio(int prio)
+{
+    static uint32_t PRIO_CLR_MASK = 0xff00ffff;
+    prio = prio & 0xff;
+    asm volatile("r0 = stid\n\t"
+                 "r0 = and(r0, %0)\n\t"
+                 "r0 = or(r0, %1)\n\t"
+                 "stid = r0\n\t"
+                 "isync\n\t"
+                 :
+                 : "r"(PRIO_CLR_MASK), "r"(prio << 16)
+                 : "r0");
+}
+
+
 #endif
