@@ -247,6 +247,10 @@
 
 #define DO_CIAD(RS)                   \
     do {                                  \
+        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
+        uint32_t iad = fGET_FIELD(tmp, IPENDAD_IAD); \
+        fSET_FIELD(tmp, IPENDAD_IAD, iad & ~(RS)); \
+        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
         helper_ciad(env, RS); \
     } while (0)
 
