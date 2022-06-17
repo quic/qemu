@@ -25,7 +25,7 @@
 #define MAX_INT_NUM (8)
 #define ALL_INTERRUPTS_MASK (0xff)
 
-/* volatile bacause it tracks when interrupts have been processed */
+/* volatile because it tracks when interrupts have been processed */
 volatile int ints_by_irq[MAX_INT_NUM];
 
 static bool all_ints_delivered(int n)
@@ -34,16 +34,36 @@ static bool all_ints_delivered(int n)
     for (int i = 0; i < MAX_INT_NUM; i++) {
         bool delivered = (ints_by_irq[i] == n);
         if (!delivered) {
-            printf("ints_by_irq[%d] = %d\n", i, ints_by_irq[i]);
+            printf("ints_by_irq[%d] = %d, expected %d\n", i, ints_by_irq[i], n);
         }
         all_delivered = all_delivered && delivered;
     }
     return all_delivered;
 }
 
+static void wait_for_ints_delivered(int n, int mask)
+{
+    bool all_delivered = false;
+    while (!all_delivered) {
+        int delivered_mask = 0;
+        for (int i = 0; i < MAX_INT_NUM; i++) {
+            if ((mask & (1 << i)) == 0) {
+                continue;
+            }
+            if (ints_by_irq[i] == n) {
+                delivered_mask = delivered_mask | (1 << n);
+            } else {
+                printf("ints_by_irq[%d] == %d\n", i, ints_by_irq[i]);
+            }
+        }
+        printf("delivered mask 0x%02x, compare mask 0x%02x\n",
+            delivered_mask, mask);
+        all_delivered = delivered_mask == mask;
+    }
+}
+
 volatile bool tasks_enabled = true;
 volatile int times_woken = 0;
-bool x;
 static void wait_thread(void *param)
 {
     printf("wait thread spawned\n");
@@ -51,14 +71,13 @@ static void wait_thread(void *param)
         printf("> wait thread waiting\n");
         wait_for_interrupts();
         times_woken++;
-        x = tasks_enabled;
     }
 }
 
 static long long wait_stack[1024];
 void wait_for_wake_count(int wake_count) {
-    while (times_woken != wake_count) {
-        printf("checking times woken %d, wake_count to match %d\n", times_woken, wake_count);
+    while (times_woken < wake_count) {
+        //printf("checking times woken %d, wake_count to match %d\n", times_woken, wake_count);
         asm volatile("pause(#1)\n\t");
     }
 }
@@ -81,41 +100,58 @@ int main()
             &wait_stack[ARRAY_SIZE(wait_stack) - 1], WAIT_THREAD_ID,
             NULL);
 
+    static int INT_MASK = ALL_INTERRUPTS_MASK;
 
-#if 0
+    /* Test ordinary swi interrupts */
     delay(10000);
-    swi(ALL_INTERRUPTS_MASK);
-    printf("waiting for wake\n");
+    swi(INT_MASK);
+    printf("waiting for wake #1\n");
+#if 0
+    wait_for_ints_delivered(1, INT_MASK);
+#else
     wait_for_wake_count(1);
-    delay(1000);
-
-    assert(all_ints_delivered(1));
 #endif
+    printf("\twake count now %d\n", times_woken);
+    delay(1000);
+    assert(all_ints_delivered(1));
 
+    /* Test swi interrupts, triggered
+     * while ints disabled.
+     */
     delay(10000);
     global_int_disable();
-    swi(ALL_INTERRUPTS_MASK);
+    swi(INT_MASK);
     global_int_enable();
-    printf("waiting for wake\n");
+    printf("waiting for wake #2\n");
+#if 0
+    wait_for_ints_delivered(2, INT_MASK);
+#else
     wait_for_wake_count(2);
-    delay(1000);
-
+#endif
+    printf("\twake count now %d\n", times_woken);
     assert(all_ints_delivered(2));
 
+    /* Test swi interrupts, triggered
+     * while ints masked for all threads.
+     */
     delay(10000);
-    int INT_THREAD_MASK = 0xff;
+    int INT_THREAD_MASK = 0x1f;
     for (int i = 0; i < MAX_INT_NUM; i++) {
         iassignw(i, INT_THREAD_MASK);
     }
-    swi(ALL_INTERRUPTS_MASK);
+    swi(INT_MASK);
     /* Now unmask: */
     INT_THREAD_MASK = ~(1 << WAIT_THREAD_ID);
     for (int i = 0; i < MAX_INT_NUM; i++) {
         iassignw(i, INT_THREAD_MASK);
     }
-    wait_for_wake_count(3);
     delay(1000);
-
+#if 0
+    wait_for_ints_delivered(3, INT_MASK);
+#else
+    wait_for_wake_count(3);
+#endif
+    printf("\twake count now %d\n", times_woken);
     assert(all_ints_delivered(3));
 
     /* Teardown: */
