@@ -112,10 +112,11 @@ static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
     if ((rnum == HEX_SREG_BESTWAIT) ||
         (rnum == HEX_SREG_STID)     ||
         (rnum == HEX_SREG_SCHEDCFG) ||
-        (rnum == HEX_SREG_GEVB)     ||
+        (rnum == HEX_SREG_SSR)      ||
         (rnum == HEX_SREG_IPENDAD)  ||
         (rnum == HEX_SREG_IMASK)) {
         ctx->resched_required = true;
+        ctx->intcheck_required = true;
         ctx->base.is_jmp = DISAS_NORETURN;
     }
 
