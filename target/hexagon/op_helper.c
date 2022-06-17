@@ -1962,9 +1962,6 @@ void HELPER(ciad)(CPUHexagonState *env, uint32_t src)
 {
     HEX_DEBUG_LOG("%s: tid %d, src 0x%x\n",
         __FUNCTION__, env->threadId, src);
-    uint32_t ipend = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
-    ipend &= ~(src << 16);
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipend);
     hexagon_clear_last_irq(env, L2VIC_VID_0);
     return;
 }
