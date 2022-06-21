@@ -22,6 +22,7 @@
 #include "hex_interrupts.h"
 #include "macros.h"
 #include "sys_macros.h"
+#include "sysemu/cpus.h"
 
 static bool hex_is_qualified_for_int(CPUHexagonState *env, int int_num);
 
@@ -187,6 +188,13 @@ void hex_accept_int(CPUHexagonState *env, int int_num)
     }
 }
 
+static bool should_not_exec(CPUHexagonState *env)
+{
+    return (get_exe_mode(env) == HEX_EXE_MODE_WAIT)
+        || (env->k0_lock_state == HEX_LOCK_WAITING)
+        || (env->tlb_lock_state == HEX_LOCK_WAITING);
+}
+
 bool hex_check_interrupts(CPUHexagonState *env)
 {
     CPUState *cs = env_cpu(env);
@@ -200,7 +208,9 @@ bool hex_check_interrupts(CPUHexagonState *env)
     if (get_ipend(env) == 0) {
         CPUState *cs = env_cpu(env);
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
-        cs->halted = (get_exe_mode(env) == HEX_EXE_MODE_WAIT);
+        if (should_not_exec(env)) {
+            cpu_stop_current();
+        }
         return false;
     }
 
@@ -251,12 +261,14 @@ bool hex_check_interrupts(CPUHexagonState *env)
     if (!int_handled && !ssr_ex) {
         /* FIXME - clear both bits? */
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
-#if 0
         /* If it was in WAIT mode before the interrupt, put
          * this thread back to sleep:
          */
-        cs->halted = (get_exe_mode(env) == HEX_EXE_MODE_WAIT);
-#endif
+        if (should_not_exec(env)) {
+            cpu_stop_current();
+        }
+    } else if (int_handled) {
+        assert(!cs->halted);
     }
     if (need_lock) {
         qemu_mutex_unlock_iothread();
