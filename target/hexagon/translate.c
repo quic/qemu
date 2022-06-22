@@ -465,10 +465,13 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         gen_coproc_check(SSR_XE2, HEX_CAUSE_NO_COPROC2_ENABLE);
         ctx->hmx_check_emitted = true;
     }
-    ctx->resched_required |= check_for_opcode(pkt, J2_rte);
     /* FIXME gen_io_start() for intcheck_required ? */
     ctx->intcheck_required |= check_for_opcode(pkt, J2_rte)
+                           || check_for_opcode(pkt, Y4_siad)
+                           || check_for_opcode(pkt, Y2_ciad)
                            || check_for_opcode(pkt, Y2_swi);
+    ctx->resched_required |= ctx->intcheck_required
+                           || check_for_opcode(pkt, J2_rte);
 #endif
 }
 
