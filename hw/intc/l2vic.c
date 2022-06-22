@@ -40,6 +40,13 @@
 #define SLICE_MAX (L2VIC_INTERRUPT_MAX / 32)
 #define IRQBIT(irq) (1 << (irq) % 32)
 
+#define DEBUG_DEV_L2VIC 1
+
+#define D(...) do {             \
+    if (DEBUG_DEV_L2VIC) {       \
+        qemu_log(__VA_ARGS__);  \
+    }                           \
+} while (0);
 
 typedef struct L2VICState {
     SysBusDevice parent_obj;
@@ -49,7 +56,7 @@ typedef struct L2VICState {
     MemoryRegion fast_iomem;
     uint32_t level;
     uint32_t vid_group[4]; /* offset 0:vid group 0 etc, 10 bits in each group are used. */
-    bool     vidpending;
+    bool     vidactive;
     uint32_t vid0;
     uint32_t int_clear[SLICE_MAX] QEMU_ALIGNED(16);  /* Clear Status of Active Edge interrupt, not used*/
     uint32_t int_enable[SLICE_MAX] QEMU_ALIGNED(16); /* Enable interrupt source */
@@ -67,25 +74,6 @@ typedef struct L2VICState {
     qemu_irq irq[8];
 } L2VICState;
 
-/* Find the next pending interrupt bit.
- * For an interrupt to be pending the pending but must be set while the matching
- * status bit be unset. If the matching enable bit is not set then somehow
- * a pending interrupt got disabled.
- */
-static int get_next_pending(L2VICState *s) {
-    unsigned int intnum=0;
-    intnum = find_next_bit((unsigned long *)s->int_pending,
-                           L2VIC_INTERRUPT_MAX, intnum);
-    while (intnum < L2VIC_INTERRUPT_MAX) {
-        if (!test_bit(intnum, (unsigned long *)s->int_status)) {
-            break;
-        }
-        intnum = find_next_bit((unsigned long *)s->int_pending,
-                               L2VIC_INTERRUPT_MAX, intnum+1);
-    }
-    return (intnum < L2VIC_INTERRUPT_MAX) ? intnum : L2VIC_NO_PENDING;
-}
-
 
 /* Find out if this irq is associated with a group other than
  * the default group */
@@ -102,7 +90,6 @@ static uint32_t *get_int_group(L2VICState *s, int irq)
         return s->int_group_n2;
     }
     return s->int_group_n3;
-
 }
 
 static int find_slice(int irq)
@@ -122,60 +109,62 @@ static int get_vid(L2VICState *s, int irq)
         return 0;
     }
 }
-static void l2vic_update(L2VICState *s, int irq, int level)
+
+static void l2vic_update(L2VICState *s, int irq)
 {
-    if (level) {
+    if (s->vidactive) {
+        D("L2VIC: busy\n");
+        return;
+    }
+    bool pending = test_bit(irq, (unsigned long *)s->int_pending);
+    bool enable = test_bit(irq, (unsigned long *)s->int_enable);
+    if (pending && enable) {
         int vid = get_vid(s, irq);
-        //ensure the irq line goes low after going high
+        set_bit(irq, (unsigned long *)s->int_status);
+        clear_bit(irq, (unsigned long *)s->int_pending);
+        clear_bit(irq, (unsigned long *)s->int_enable);
+        // ensure the irq line goes low after going high
+
+        if (!test_bit(irq, (unsigned long *)s->int_type)) {
+            s->vidactive = TRUE;
+        }
+        s->vid0 = irq;
+        s->vid_group[get_vid(s, irq)] = irq;
+
         qemu_irq_pulse(s->irq[vid + 2]);
+        D("L2VIC: delivered %d (vid %d)\n", irq, vid);
     } else {
+        if (pending) {
+            D("L2VIC: pending (not enabled) %d\n", irq );
+        }
         int vid = get_vid(s, irq);
-        qemu_set_irq(s->irq[vid + 2], level);
+        qemu_set_irq(s->irq[vid + 2], 0);
     }
 }
-
+static void l2vic_update_all(L2VICState *s)
+{
+    for (int i=0; !s->vidactive && i<L2VIC_INTERRUPT_MAX; i++) {
+      l2vic_update(s, i);
+    }
+}
 static void l2vic_set_irq(void *opaque, int irq, int level)
 {
-    int vid;
-    L2VICState *s = (L2VICState *) opaque;
+    L2VICState *s = (L2VICState *)opaque;
     s->level = level;
 
-    if (level && test_bit(irq, (unsigned long *)s->int_enable)) {
-#if 0
-        printf("ACK, irq:level = %d, %d\n", irq, level);
-        printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
-                L2VICA(s->int_enable, 4 * (irq / 32)));
-        printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
-#endif
-        if (s->vidpending) {
-            /* printf("PENDING, irq:level = %d, %d\n", irq, level); */
-            set_bit(irq, (unsigned long *) s->int_pending);
-            return;
-        }
+    if (level) { // && test_bit(irq, (unsigned long *)s->int_enable)) {
+        D("ACK, irq:level = %d, %d\n", irq, level);
+        D("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
+               L2VICA(s->int_enable, 4 * (irq / 32)));
+        D("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
 
-        set_bit(irq, (unsigned long *) s->int_status);
-        set_bit(irq, (unsigned long *) s->int_pending);
+        qemu_mutex_lock(&s->active);
+        set_bit(irq, (unsigned long *)s->int_pending);
+        qemu_mutex_unlock(&s->active);
 
-        /* Interrupts are automatically cleared and disabled, the ISR must
-         * re-enable it by writing to L2VIC_INT_ENABLE_SETn area
-        */
-        clear_bit(irq, (unsigned long *)s->int_enable);
-
-        l2vic_update (s, irq, level);
-        s->vidpending = TRUE;
-        s->vid0 = irq;
-        s->vid_group[vid] = irq;
     }
-#if 0
-    printf("NACK, irq:level = %d, %d\n", irq, level);
-    printf("\t(L2VICA(s->int_enable, 4 * (irq / 32)) = 0x%x\n",
-                L2VICA(s->int_enable, 4 * (irq / 32)));
-    printf("\tIRQBIT(irq) = 0x%x\n", IRQBIT(irq));
-    printf("\tIRQBIT(irq) & enable = 0x%x\n", IRQBIT(irq) & L2VICA(s->int_enable, 4 * (irq / 32)));
-#endif
 
-    //FIXME: it's probably wrong to always update on the '0' irq line
-    //return l2vic_update (s, 0, 0);
+    l2vic_update(s, irq);
 }
 
 static void l2vic_write(void *opaque, hwaddr offset,
@@ -183,23 +172,13 @@ static void l2vic_write(void *opaque, hwaddr offset,
     L2VICState *s = (L2VICState *) opaque;
     qemu_mutex_lock(&s->active);
     trace_l2vic_reg_write((unsigned) offset, (uint32_t) val);
-
+    D("L2Vic write 0x%llx 0x%llx\n", offset, val);
     if (offset == L2VIC_VID_0) {
         if ((int)val != L2VIC_NO_PENDING) {
             s->vid0 = val;
         }
-        if (s->vidpending) {
-            s->vidpending = FALSE;
-            if (memcmp(s->int_status, s->int_pending, sizeof(s->int_pending))) {
-                /* Diag start -- something must be pending if we are here  */
-                int irq = find_first_bit((unsigned long *) s->int_pending, L2VIC_INTERRUPT_MAX);
-                g_assert(irq != L2VIC_INTERRUPT_MAX);
-                /* Diag end --  */
-                irq = get_next_pending(s);
-                if (irq != L2VIC_NO_PENDING) {
-                    l2vic_set_irq(s, irq, 1);
-                }
-            }
+        if (s->vidactive) {
+            s->vidactive = FALSE;
         }
     } else if (offset == L2VIC_VID_1) {
         g_assert_not_reached(); /* No support of VID1 at the moment */
@@ -211,8 +190,6 @@ static void l2vic_write(void *opaque, hwaddr offset,
         L2VICA(s->int_enable, offset - L2VIC_INT_ENABLE_CLEARn) &= ~val;
     } else if (offset >= L2VIC_INT_ENABLE_SETn &&
                offset < L2VIC_INT_TYPEn) {
-        L2VICA(s->int_status, offset - L2VIC_INT_ENABLE_SETn) &= ~val;
-        L2VICA(s->int_pending, offset - L2VIC_INT_ENABLE_SETn) &= ~val;
         L2VICA(s->int_enable, offset - L2VIC_INT_ENABLE_SETn) |= val;
     } else if (offset >= L2VIC_INT_TYPEn &&
                offset < L2VIC_INT_TYPEn + 0x80) {
@@ -232,7 +209,7 @@ static void l2vic_write(void *opaque, hwaddr offset,
         /*
          *  Need to reverse engineer the actual irq number.
          */
-        int irq = find_first_bit(&val, sizeof(s->int_enable[0]) * CHAR_BIT);
+        int irq = find_first_bit(( unsigned long *)&val, sizeof(s->int_enable[0]) * CHAR_BIT);
         hwaddr byteoffset = offset - L2VIC_SOFT_INTn;
         g_assert(irq != sizeof(s->int_enable[0]) * CHAR_BIT);
         irq += byteoffset * 8;
@@ -240,7 +217,8 @@ static void l2vic_write(void *opaque, hwaddr offset,
         /* The soft-int interface only works with edge-triggered interrupts */
         if (test_bit(irq, (unsigned long *)s->int_type)) {
             qemu_mutex_unlock(&s->active);
-            return l2vic_set_irq(opaque, irq, 1);
+            l2vic_set_irq(opaque, irq, 1);
+            qemu_mutex_lock(&s->active);
         }
     } else if (offset >= L2VIC_INT_GRPn_0 &&
                offset < L2VIC_INT_GRPn_1) {
@@ -257,6 +235,7 @@ static void l2vic_write(void *opaque, hwaddr offset,
     } else {
         qemu_log_mask(LOG_UNIMP, "%s: offset %x\n", __func__, (int) offset);
     }
+    l2vic_update_all(s);
     qemu_mutex_unlock(&s->active);
     return;
 }
@@ -266,6 +245,8 @@ static uint64_t l2vic_read(void *opaque, hwaddr offset,
 {
     uint32_t value;
     L2VICState *s = (L2VICState *)opaque;
+    D("L2Vic read 0x%llx\n", offset);
+    qemu_mutex_lock(&s->active);
 
     if (offset == L2VIC_VID_GRP_0) {
         value = s->vid_group[0];
@@ -315,11 +296,12 @@ static uint64_t l2vic_read(void *opaque, hwaddr offset,
         value = L2VICA(s->int_group_n3, offset - L2VIC_INT_GRPn_3);
     } else {
         value = 0;
-        printf( "%s: offset %x\n", __func__, (int) offset);
+        qemu_log_mask(LOG_GUEST_ERROR, "L2VIC: %s: offset %x\n", __func__, (int) offset);
         g_assert(false);
     }
 
     trace_l2vic_reg_read((unsigned) offset, value);
+    qemu_mutex_unlock(&s->active);
 
     return value;
 }
@@ -387,10 +369,10 @@ static void l2vic_reset(DeviceState *d)
     memset(s->int_group_n2, 0, sizeof(s->int_group_n2));
     memset(s->int_group_n3, 0, sizeof(s->int_group_n3));
     s->int_soft = 0;
-    s->vidpending = FALSE;
+    s->vidactive = FALSE;
     s->vid0 = 0;
 
-    l2vic_update(s, 0, 0);
+    l2vic_update(s, 0);
 }
 
 static void l2vic_init(Object *obj)
@@ -418,7 +400,7 @@ static const VMStateDescription vmstate_l2vic = {
     .fields = (VMStateField[]) {
         VMSTATE_UINT32(level, L2VICState),
         VMSTATE_UINT32_ARRAY(vid_group, L2VICState, 4),
-        VMSTATE_BOOL (vidpending,L2VICState),
+        VMSTATE_BOOL (vidactive,L2VICState),
         VMSTATE_UINT32(vid0, L2VICState),
         VMSTATE_UINT32_ARRAY(int_enable, L2VICState, SLICE_MAX),
         VMSTATE_UINT32(int_enable_clear, L2VICState),
