@@ -1062,40 +1062,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             "\t%s: event 0x%x, cause 0x%x\n", __func__,
             cs->exception_index, env->cause_code);
 
-        int int_num = -1;
     switch (cs->exception_index) {
-    case HEX_EVENT_INT0:
-    case HEX_EVENT_INT1:
-    case HEX_EVENT_INT2:
-    case HEX_EVENT_INT3:
-    case HEX_EVENT_INT4:
-    case HEX_EVENT_INT5:
-    case HEX_EVENT_INT6:
-    case HEX_EVENT_INT7:
-    case HEX_EVENT_INT8:
-    case HEX_EVENT_INT9:
-    case HEX_EVENT_INTA:
-    case HEX_EVENT_INTB:
-    case HEX_EVENT_INTC:
-    case HEX_EVENT_INTD:
-    case HEX_EVENT_INTE:
-    case HEX_EVENT_INTF:
-        HEX_DEBUG_LOG("\tHEX_EVENT_INT%d: tid = %u, "
-            "PC = 0x%x, next_PC = 0x%x\n",
-            cs->exception_index - HEX_EVENT_INT0,
-            env->threadId,
-            ARCH_GET_THREAD_REG(env, HEX_REG_PC),
-            env->next_PC);
-        int_num = cs->exception_index - HEX_EVENT_INT0;
-
-        /* Clear pending: */
-        hexagon_clear_interrupts(env, 1 << int_num);
-
-        hexagon_ssr_set_cause(env, env->cause_code);
-        set_addresses(env, 0, cs->exception_index);
-        env->branch_taken = 1;
-        break;
-
     case HEX_EVENT_TRAP0:
         HEX_DEBUG_LOG("\ttid = %u, trap0, pc = 0x%x, elr = 0x%x, "
             "index 0x%x, cause 0x%x\n",
