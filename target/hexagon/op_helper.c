@@ -2233,11 +2233,7 @@ void HELPER(resched)(CPUHexagonState *env)
     const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
     const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
     CPUState *cs = env_cpu(env);
-#if 0
-    if (!schedcfg_en || hexagon_int_disabled(env, int_number)) {
-#else
     if (!schedcfg_en) {
-#endif
         return;
     }
 
@@ -2248,16 +2244,6 @@ void HELPER(resched)(CPUHexagonState *env)
     CPU_FOREACH(cs) {
         threads[i++] = HEXAGON_CPU(cs);
     }
-    HexagonCPU *int_thread =
-        hexagon_find_lowest_prio_any_thread(threads, i, int_number, &lowest_th_prio);
-
-#if 0
-    if (!int_thread) {
-        return;
-    }
-#else
-    (void) int_thread;
-#endif
 
     uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
     uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
@@ -2268,24 +2254,9 @@ void HELPER(resched)(CPUHexagonState *env)
      * interrupt on the lowest priority thread.
      */
     if (lowest_th_prio > best_prio) {
-#if 0
-        CPUHexagonState *int_thread_env = &int_thread->env;
-        /* do the resched int */
-        HEX_DEBUG_LOG(
-                "raising resched int %d, cur PC 0x%08x\n",
-                int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
-        SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
-
-#if HEX_DEBUG
-        HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
-#endif
-        assert(!hexagon_thread_is_busy(int_thread_env));
-        hexagon_raise_interrupt(env, int_thread, int_number, L2VIC_NO_PENDING);
-#else
         qemu_log_mask(CPU_LOG_INT, "%s: raising resched int %d, cur PC 0x%08x\n", __func__, int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
         SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
         hex_raise_interrupts(env, 1 << int_number, CPU_INTERRUPT_SWI);
-#endif
     }
 }
 

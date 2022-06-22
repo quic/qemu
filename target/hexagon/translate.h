@@ -109,8 +109,7 @@ static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
         ctx->sreg_log[ctx->sreg_log_idx] = rnum;
         ctx->sreg_log_idx++;
     }
-    if ((rnum == HEX_SREG_BESTWAIT) ||
-        (rnum == HEX_SREG_STID)     ||
+    if ((rnum == HEX_SREG_STID)     ||
         (rnum == HEX_SREG_SSR)      ||
         (rnum == HEX_SREG_IMASK)) {
         ctx->resched_required = true;
@@ -119,6 +118,7 @@ static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
     }
 #if 0
         /* FIXME globals: */
+        (rnum == HEX_SREG_BESTWAIT) ||
         (rnum == HEX_SREG_SCHEDCFG) ||
         (rnum == HEX_SREG_IPENDAD)  ||
 #endif
