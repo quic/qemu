@@ -2238,11 +2238,20 @@ void HELPER(resched)(CPUHexagonState *env)
     }
 
     uint32_t lowest_th_prio = 0; /* 0 is highest prio */
-    HexagonCPU *threads[THREADS_MAX];
-    memset(threads, 0, sizeof(threads));
-    size_t i = 0;
+    HexagonCPU *thread;
+    CPUHexagonState *thread_env;
     CPU_FOREACH(cs) {
-        threads[i++] = HEXAGON_CPU(cs);
+        thread = HEXAGON_CPU(cs);
+        thread_env = &(thread->env);
+        uint32_t th_prio = GET_FIELD(
+            STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
+        if (!hexagon_thread_is_enabled(thread_env)) {
+            continue;
+        }
+
+        lowest_th_prio = (lowest_th_prio > th_prio)
+            ? lowest_th_prio
+            : th_prio;
     }
 
     uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
