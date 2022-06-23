@@ -2093,6 +2093,14 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
             env->t_packet_count = 0;
         }
     }
+
+    /* See if global interrupts are turned on */
+    uint8_t old_gie = GET_SYSCFG_FIELD(SYSCFG_GIE, old);
+    uint8_t new_gie = GET_SYSCFG_FIELD(SYSCFG_GIE, val);
+    if (!old_gie && new_gie) {
+        qemu_log_mask(CPU_LOG_INT, "%s: global interrupts enabled\n", __func__);
+        hex_interrupt_update(env);
+    }
 }
 
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
