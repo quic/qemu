@@ -474,6 +474,7 @@ typedef struct CPUArchState {
     target_ulong greg[NUM_GREGS];
     target_ulong greg_new_value[NUM_GREGS];
     target_ulong greg_written[NUM_GREGS];
+    target_ulong wait_next_pc;
 #endif
 
     /*

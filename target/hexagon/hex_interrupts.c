@@ -167,24 +167,24 @@ void hex_accept_int(CPUHexagonState *env, int int_num)
 {
     CPUState *cs = env_cpu(env);
     target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
+    bool in_wait_mode = get_exe_mode(env) == HEX_EXE_MODE_WAIT;
 
     set_ipend_bit(env, int_num, 0);
     set_iad_bit(env, int_num, 1);
     set_ssr_ex_cause(env, 1, HEX_CAUSE_INT0 | int_num);
     cs->exception_index = HEX_EVENT_INT0 + int_num;
     env->cause_code = HEX_EVENT_INT0 + int_num;
-    set_elr(env, env->gpr[HEX_REG_PC]);
+    if (in_wait_mode) {
+        qemu_log_mask(CPU_LOG_INT, "%s: thread %d exiting WAIT mode\n",
+                      __func__, env->threadId);
+        set_elr(env, env->wait_next_pc);
+        clear_wait_mode(env);
+    } else {
+        set_elr(env, env->gpr[HEX_REG_PC]);
+    }
     env->gpr[HEX_REG_PC] = evb | (cs->exception_index << 2);
     if (get_ipend(env) == 0) {
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
-    }
-
-    if (get_exe_mode(env) == HEX_EXE_MODE_WAIT) {
-        qemu_log_mask(CPU_LOG_INT, "%s: thread %d in WAIT mode\n",
-                      __func__, env->threadId);
-        CPUState *cs = env_cpu(env);
-        clear_wait_mode(env);
-        cpu_resume(cs);
     }
 }
 
@@ -206,7 +206,6 @@ bool hex_check_interrupts(CPUHexagonState *env)
 
     /* Early exit if nothing pending */
     if (get_ipend(env) == 0) {
-        CPUState *cs = env_cpu(env);
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
         if (should_not_exec(env)) {
             cpu_stop_current();
@@ -223,7 +222,7 @@ bool hex_check_interrupts(CPUHexagonState *env)
     schedcfgen = get_schedcfgen(env);
     for (int i = 0; i < max_ints; i++) {
         if (!get_iad_bit(env, i) && get_ipend_bit(env, i)) {
-            qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] found int %d\n", __func__, env->threadId, i);
+            qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] pc = 0x%x found int %d\n", __func__, env->threadId, env->gpr[HEX_REG_PC], i);
             if (hex_is_qualified_for_int(env, i) &&
                 (!schedcfgen || is_lowest_prio(env, i))) {
                 qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] int %d handled_\n",
@@ -260,7 +259,7 @@ bool hex_check_interrupts(CPUHexagonState *env)
      */
     if (!int_handled && !ssr_ex) {
         /* FIXME - clear both bits? */
-        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
+//        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
         /* If it was in WAIT mode before the interrupt, put
          * this thread back to sleep:
          */

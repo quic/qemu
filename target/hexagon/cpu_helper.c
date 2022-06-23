@@ -212,7 +212,6 @@ void hexagon_wait_thread(CPUHexagonState *env)
 {
     qemu_mutex_lock_iothread();
     CPUState *cs = env_cpu(env);
-    HELPER(pending_interrupt)(env);
     if (cs->exception_index != HEX_EVENT_NONE) {
         qemu_mutex_unlock_iothread();
         return;
@@ -220,8 +219,8 @@ void hexagon_wait_thread(CPUHexagonState *env)
     if (get_exe_mode(env) != HEX_EXE_MODE_WAIT) {
         set_wait_mode(env);
     }
-    ARCH_SET_THREAD_REG(env, HEX_REG_PC,
-       ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
+    env->wait_next_pc = env->gpr[HEX_REG_PC] + 4;
+    env->next_PC = env->gpr[HEX_REG_PC];
 
     qemu_mutex_unlock_iothread();
     cpu_stop_current();

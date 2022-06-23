@@ -66,11 +66,12 @@ volatile bool tasks_enabled = true;
 volatile int times_woken = 0;
 static void wait_thread(void *param)
 {
-    printf("wait thread spawned\n");
+//    printf("wait thread spawned\n");
     while (tasks_enabled) {
-        printf("> wait thread waiting\n");
+//        printf("> wait thread waiting: times_woken = %d\n", times_woken);
         wait_for_interrupts();
         times_woken++;
+//        printf(">    wait thread: times_woken = %d\n", times_woken);
     }
 }
 
@@ -82,8 +83,17 @@ void wait_for_wake_count(int wake_count) {
     }
 }
 
+static inline uint32_t get_htid(void)
+{
+    uint32_t htid;
+    asm volatile("%0 = htid\n\t" : "=r"(htid));
+    return htid;
+}
+
 static void interrupt_handler(int intno)
 {
+    uint32_t htid = get_htid();
+//    printf("Interrupt %d handled by thread %ld\n", intno, htid);
     ints_by_irq[intno]++;
 }
 
@@ -103,7 +113,7 @@ int main()
     static int INT_MASK = ALL_INTERRUPTS_MASK;
 
     /* Test ordinary swi interrupts */
-    delay(10000);
+    delay(1);
     swi(INT_MASK);
     printf("waiting for wake #1\n");
 #if 0
@@ -112,17 +122,18 @@ int main()
     wait_for_wake_count(1);
 #endif
     printf("\twake count now %d\n", times_woken);
-    delay(1000);
+    delay(1);
     assert(all_ints_delivered(1));
 
     /* Test swi interrupts, triggered
      * while ints disabled.
      */
-    delay(10000);
+    delay(1);
+//    printf("global_int_disable\n");
     global_int_disable();
     swi(INT_MASK);
+//    printf("global_int_enable, waiting for wake #2\n");
     global_int_enable();
-    printf("waiting for wake #2\n");
 #if 0
     wait_for_ints_delivered(2, INT_MASK);
 #else
@@ -134,7 +145,7 @@ int main()
     /* Test swi interrupts, triggered
      * while ints masked for all threads.
      */
-    delay(10000);
+    delay(1);
     int INT_THREAD_MASK = 0x1f;
     for (int i = 0; i < MAX_INT_NUM; i++) {
         iassignw(i, INT_THREAD_MASK);
@@ -145,7 +156,8 @@ int main()
     for (int i = 0; i < MAX_INT_NUM; i++) {
         iassignw(i, INT_THREAD_MASK);
     }
-    delay(1000);
+    delay(1);
+    printf("waiting for wake #3\n");
 #if 0
     wait_for_ints_delivered(3, INT_MASK);
 #else
