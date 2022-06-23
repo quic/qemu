@@ -467,11 +467,19 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     }
     /* FIXME gen_io_start() for intcheck_required ? */
     ctx->intcheck_required |= check_for_opcode(pkt, J2_rte)
+                           || check_for_opcode(pkt, Y2_iassignw)
+                           || check_for_opcode(pkt, Y2_setimask)
                            || check_for_opcode(pkt, Y4_siad)
                            || check_for_opcode(pkt, Y2_ciad)
                            || check_for_opcode(pkt, Y2_swi);
     ctx->resched_required |= ctx->intcheck_required
-                           || check_for_opcode(pkt, J2_rte);
+                           || check_for_opcode(pkt, J2_rte)
+                           || check_for_opcode(pkt, Y2_tfrsrcr)
+                           || check_for_opcode(pkt, Y4_tfrspcp);
+
+    if (ctx->resched_required || ctx->intcheck_required) {
+        ctx->base.is_jmp = DISAS_NORETURN;
+    }
 #endif
 }
 
