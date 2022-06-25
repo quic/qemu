@@ -258,8 +258,7 @@ bool hex_check_interrupts(CPUHexagonState *env)
      * interrupt_request bit(s) when we execute one of those instructions.
      */
     if (!int_handled && !ssr_ex) {
-        /* FIXME - clear both bits? */
-//        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
+        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
         /* If it was in WAIT mode before the interrupt, put
          * this thread back to sleep:
          */
