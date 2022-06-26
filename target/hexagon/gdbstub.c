@@ -111,7 +111,12 @@ int hexagon_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     CPUHexagonState *env = &cpu->env;
 
     if (n == HEX_REG_P3_0) {
-        g_assert_not_reached(); /* FIXME CAIN */
+        uint32_t p3_0 = ldtul_p(mem_buf);
+        env->pred[3] = (p3_0 & 0xff000000) >> 24;
+        env->pred[2] = (p3_0 & 0x00ff0000) >> 16;
+        env->pred[1] = (p3_0 & 0x0000ff00) >> 8;
+        env->pred[0] = p3_0 & 0x000000ff;
+        return sizeof(target_ulong);
     }
 
     if (n < TOTAL_PER_THREAD_REGS) {
