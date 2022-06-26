@@ -2281,17 +2281,21 @@ void HELPER(resched)(CPUHexagonState *env)
 
 void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
 {
+    bool found = false;
     CPUState *cs = NULL;
     CPU_FOREACH (cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *thread_env = &cpu->env;
         uint32_t thread_id_mask = 0x1 << thread_env->threadId;
         if ((thread_mask & thread_id_mask) != 0) {
-            /* FIXME also wake these threads? cpu_resume/loop_exit_restore?*/
+            found = true;
             cs->exception_index = HEX_EVENT_IMPRECISE;
             thread_env->cause_code = HEX_CAUSE_IMPRECISE_NMI;
             HEX_DEBUG_LOG("tid %d gets nmi\n", thread_env->threadId);
         }
+    }
+    if (found) {
+        hex_interrupt_update(env);
     }
 }
 
