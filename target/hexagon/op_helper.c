@@ -2218,6 +2218,7 @@ void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
             SET_SYSTEM_FIELD(found_env, HEX_SREG_IMASK, IMASK_MASK, imask);
             HEX_DEBUG_LOG("%s: tid %d, found it, imask 0x%x\n",
                 __FUNCTION__, found_env->threadId, imask);
+            hex_interrupt_update(env);
             return;
         }
     }
