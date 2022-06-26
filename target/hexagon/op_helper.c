@@ -2198,6 +2198,7 @@ void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
             SET_SYSTEM_FIELD(found_env, HEX_SREG_STID, STID_PRIO, prio);
             HEX_DEBUG_LOG("%s: tid[%d].PRIO = 0x%x\n",
                 __FUNCTION__, found_env->threadId, prio);
+            hex_interrupt_update(env);
             return;
         }
     }
