@@ -197,8 +197,13 @@ static void gen_end_tb(DisasContext *ctx)
     gen_exec_counters(ctx);
 
 #ifndef CONFIG_USER_ONLY
-    gen_helper_pending_interrupt(cpu_env);
-    gen_helper_resched(cpu_env);
+    if (ctx->resched_required) {
+        gen_helper_resched(cpu_env);
+        gen_helper_pending_interrupt(cpu_env);
+    }
+    else if (ctx->intcheck_required) {
+        gen_helper_pending_interrupt(cpu_env);
+    }
 #endif
 
     if (ctx->has_single_direct_branch) {
@@ -380,7 +385,8 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         || pkt->pkt_has_scalar_store_s1
         || pkt->pkt_has_load_s0
         || pkt->pkt_has_load_s1
-        || pkt->can_do_io;
+        || pkt->can_do_io
+        || check_for_opcode(pkt, Y2_ciad);
 
     if (may_do_io && (tb_cflags(ctx->base.tb) & CF_USE_ICOUNT)) {
         ctx->base.is_jmp = DISAS_TOO_MANY;
@@ -459,6 +465,19 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
         gen_coproc_check(SSR_XE2, HEX_CAUSE_NO_COPROC2_ENABLE);
         ctx->hmx_check_emitted = true;
+    }
+
+    ctx->intcheck_required |= check_for_opcode(pkt, Y2_iassignw)
+                           || check_for_opcode(pkt, Y2_setimask)
+                           || check_for_opcode(pkt, Y2_ciad)
+                           || check_for_opcode(pkt, Y2_swi);
+    ctx->resched_required |=  check_for_opcode(pkt, J2_rte)
+                           || check_for_opcode(pkt, Y2_tfrsrcr)
+                           || check_for_opcode(pkt, Y4_tfrspcp)
+                           || check_for_opcode(pkt, Y2_setprio);
+
+    if (ctx->resched_required || ctx->intcheck_required) {
+        ctx->base.is_jmp = DISAS_NORETURN;
     }
 #endif
 }
@@ -1125,6 +1144,8 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     ctx->hmx_check_emitted = false;
     ctx->pcycle_enabled = hex_flags.pcycle_enabled;
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
+    ctx->resched_required = false;
+    ctx->intcheck_required = false;
 #endif
     ctx->has_single_direct_branch = false;
     ctx->branch_cond = NULL;
@@ -1213,10 +1234,6 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
 
     /* Fall through */
     case DISAS_NEXT:
-#ifndef CONFIG_USER_ONLY
-    gen_helper_pending_interrupt(cpu_env);
-    gen_helper_resched(cpu_env);
-#endif
         break;
     case DISAS_NORETURN:
         break;

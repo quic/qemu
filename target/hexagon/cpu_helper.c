@@ -212,7 +212,6 @@ void hexagon_wait_thread(CPUHexagonState *env)
 {
     qemu_mutex_lock_iothread();
     CPUState *cs = env_cpu(env);
-    HELPER(pending_interrupt)(env);
     if (cs->exception_index != HEX_EVENT_NONE) {
         qemu_mutex_unlock_iothread();
         return;
@@ -220,8 +219,8 @@ void hexagon_wait_thread(CPUHexagonState *env)
     if (get_exe_mode(env) != HEX_EXE_MODE_WAIT) {
         set_wait_mode(env);
     }
-    ARCH_SET_THREAD_REG(env, HEX_REG_PC,
-       ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4);
+    env->wait_next_pc = env->gpr[HEX_REG_PC] + 4;
+    env->next_PC = env->gpr[HEX_REG_PC];
 
     qemu_mutex_unlock_iothread();
     cpu_stop_current();
@@ -232,6 +231,14 @@ void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
 {
     CPUState *cs = env_cpu(env);
     clear_wait_mode(env);
+    /*
+     * The wait instruction keeps the PC pointing to itself
+     * so that it has an opportunity to check for interrupts.
+     *
+     * When we come out of wait mode, adjust the PC to the
+     * next executable instruction.
+     */
+    env->gpr[HEX_REG_PC] = env->wait_next_pc;
     cs = env_cpu(env);
     cs->exception_index = ei;
     cpu_resume(cs);
@@ -527,45 +534,6 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
         CPUState *cs = env_cpu(env);
         tlb_flush(cs);
     }
-}
-
-void hexagon_clear_interrupts(CPUHexagonState *global_env, uint32_t mask)
-{
-    /* Deassert all of the interrupts in the `mask` input: */
-    target_ulong ipendad = ARCH_GET_SYSTEM_REG(global_env, HEX_SREG_IPENDAD);
-    target_ulong ipendad_ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
-    ipendad_ipend &= ~mask;
-    SET_SYSTEM_FIELD(global_env, HEX_SREG_IPENDAD, IPENDAD_IPEND, ipendad_ipend);
-}
-
-bool hexagon_assert_interrupt(CPUHexagonState *global_env, uint32_t irq)
-{
-    if (hexagon_int_disabled(global_env, irq)) {
-        return false;
-    }
-    hexagon_set_interrupts(global_env, 1 << irq);
-
-    HexagonCPU *int_thread = hexagon_find_lowest_prio(global_env, irq);
-    if (!int_thread) {
-        return false;
-    }
-    CPUHexagonState *int_env = &int_thread->env;
-    if (!hexagon_thread_is_interruptible(int_env, irq)) {
-        return false;
-    }
-
-    hexagon_raise_interrupt(int_env, int_thread, irq, 0);
-    hexagon_disable_int(global_env, irq);
-
-    return true;
-}
-
-void hexagon_enable_int(CPUHexagonState *env, uint32_t int_num)
-{
-    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
-    target_ulong ipendad_iad = GET_FIELD(IPENDAD_IAD, ipendad);
-    fSET_FIELD(ipendad, IPENDAD_IAD, ipendad_iad & ~(1 << int_num));
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
 }
 
 static const int PCYCLES_PER_PACKET = 3;

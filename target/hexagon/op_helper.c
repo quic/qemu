@@ -46,6 +46,7 @@
 #include "hex_mmu.h"
 #include "hw/intc/l2vic.h"
 #include "hw/timer/qct-qtimer.h"
+#include "hex_interrupts.h"
 #endif
 
 #define SF_BIAS        127
@@ -1932,7 +1933,8 @@ static uint32_t hexagon_find_last_irq(CPUHexagonState *env, uint32_t vid)
     return irq;
 }
 
-static int hexagon_find_l2vic_pending(CPUHexagonState *env)
+int hexagon_find_l2vic_pending(CPUHexagonState *env);
+int hexagon_find_l2vic_pending(CPUHexagonState *env)
 {
     int intnum = 0;
     CPUState *cs = env_cpu(env);
@@ -1960,9 +1962,6 @@ void HELPER(ciad)(CPUHexagonState *env, uint32_t src)
 {
     HEX_DEBUG_LOG("%s: tid %d, src 0x%x\n",
         __FUNCTION__, env->threadId, src);
-    uint32_t ipend = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
-    ipend &= ~(src << 16);
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipend);
     hexagon_clear_last_irq(env, L2VIC_VID_0);
     return;
 }
@@ -2094,6 +2093,14 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
             env->t_packet_count = 0;
         }
     }
+
+    /* See if global interrupts are turned on */
+    uint8_t old_gie = GET_SYSCFG_FIELD(SYSCFG_GIE, old);
+    uint8_t new_gie = GET_SYSCFG_FIELD(SYSCFG_GIE, val);
+    if (!old_gie && new_gie) {
+        qemu_log_mask(CPU_LOG_INT, "%s: global interrupts enabled\n", __func__);
+        hex_interrupt_update(env);
+    }
 }
 
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
@@ -2191,6 +2198,7 @@ void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
             SET_SYSTEM_FIELD(found_env, HEX_SREG_STID, STID_PRIO, prio);
             HEX_DEBUG_LOG("%s: tid[%d].PRIO = 0x%x\n",
                 __FUNCTION__, found_env->threadId, prio);
+            hex_interrupt_update(env);
             return;
         }
     }
@@ -2211,6 +2219,7 @@ void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
             SET_SYSTEM_FIELD(found_env, HEX_SREG_IMASK, IMASK_MASK, imask);
             HEX_DEBUG_LOG("%s: tid %d, found it, imask 0x%x\n",
                 __FUNCTION__, found_env->threadId, imask);
+            hex_interrupt_update(env);
             return;
         }
     }
@@ -2224,65 +2233,37 @@ typedef struct {
 
 void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
 {
-    uint32_t ints_asserted[32];
-    size_t ints_asserted_count = 0;
-    HexagonCPU *threads[THREADS_MAX];
-    memset(threads, 0, sizeof(threads));
-
-    hexagon_set_interrupts(env, mask);
-    hexagon_find_asserted_interrupts(env, ints_asserted, sizeof(ints_asserted),
-                                     &ints_asserted_count);
-
-    for (size_t i = 0; i < ints_asserted_count; i++) {
-        const uint32_t int_num = ints_asserted[i];
-        size_t threads_count = 0;
-        hexagon_find_int_threads(env, int_num, threads, &threads_count);
-        if (threads_count < 1) {
-            continue;
-        }
-
-        HexagonCPU *int_thread =
-            hexagon_find_lowest_prio_any_thread(threads, threads_count, int_num, NULL);
-        if (!int_thread) {
-            continue;
-        }
-        hexagon_raise_interrupt(env, int_thread, int_num, 0);
-    }
-
-    /* exit loop if current thread was selected to handle a swi int */
-    CPUState *current_cs = env_cpu(env);
-    if (current_cs->exception_index >= HEX_EVENT_INT0 &&
-        current_cs->exception_index <= HEX_EVENT_INTF) {
-        HEX_DEBUG_LOG("%s: current selected %p\n", __FUNCTION__, current_cs);
-        cpu_loop_exit(current_cs);
-    }
+    hex_raise_interrupts(env, mask, CPU_INTERRUPT_SWI);
 }
 
 void HELPER(resched)(CPUHexagonState *env)
 {
+    qemu_log_mask(CPU_LOG_INT, "%s: check resched\n", __func__);
     const uint32_t schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
     const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
     const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
     CPUState *cs = env_cpu(env);
-    if (!schedcfg_en || hexagon_int_disabled(env, int_number)) {
+    if (!schedcfg_en) {
         return;
     }
 
     uint32_t lowest_th_prio = 0; /* 0 is highest prio */
-    HexagonCPU *threads[THREADS_MAX];
-    memset(threads, 0, sizeof(threads));
-    size_t i = 0;
+    HexagonCPU *thread;
+    CPUHexagonState *thread_env;
     CPU_FOREACH(cs) {
-        threads[i++] = HEXAGON_CPU(cs);
-    }
-    HexagonCPU *int_thread =
-        hexagon_find_lowest_prio_any_thread(threads, i, int_number, &lowest_th_prio);
+        thread = HEXAGON_CPU(cs);
+        thread_env = &(thread->env);
+        uint32_t th_prio = GET_FIELD(
+            STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
+        if (!hexagon_thread_is_enabled(thread_env)) {
+            continue;
+        }
 
-    if (!int_thread) {
-        return;
+        lowest_th_prio = (lowest_th_prio > th_prio)
+            ? lowest_th_prio
+            : th_prio;
     }
 
-    CPUHexagonState *int_thread_env = &int_thread->env;
     uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
     uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
 
@@ -2292,33 +2273,29 @@ void HELPER(resched)(CPUHexagonState *env)
      * interrupt on the lowest priority thread.
      */
     if (lowest_th_prio > best_prio) {
-        /* do the resched int */
-        HEX_DEBUG_LOG(
-                "raising resched int %d, cur PC 0x%08x\n",
-                int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
+        qemu_log_mask(CPU_LOG_INT, "%s: raising resched int %d, cur PC 0x%08x\n", __func__, int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
         SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
-
-#if HEX_DEBUG
-        HEX_DEBUG_LOG("resched on tid %d\n", int_thread_env->threadId);
-#endif
-        assert(!hexagon_thread_is_busy(int_thread_env));
-        hexagon_raise_interrupt(env, int_thread, int_number, L2VIC_NO_PENDING);
+        hex_raise_interrupts(env, 1 << int_number, CPU_INTERRUPT_SWI);
     }
 }
 
 void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
 {
+    bool found = false;
     CPUState *cs = NULL;
     CPU_FOREACH (cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *thread_env = &cpu->env;
         uint32_t thread_id_mask = 0x1 << thread_env->threadId;
         if ((thread_mask & thread_id_mask) != 0) {
-            /* FIXME also wake these threads? cpu_resume/loop_exit_restore?*/
+            found = true;
             cs->exception_index = HEX_EVENT_IMPRECISE;
             thread_env->cause_code = HEX_CAUSE_IMPRECISE_NMI;
             HEX_DEBUG_LOG("tid %d gets nmi\n", thread_env->threadId);
         }
+    }
+    if (found) {
+        hex_interrupt_update(env);
     }
 }
 
@@ -2368,35 +2345,7 @@ void HELPER(cpu_limit)(CPUHexagonState *env, target_ulong next_PC)
 
 void HELPER(pending_interrupt)(CPUHexagonState *env)
 {
-    CPUState *cs = env_cpu(env);
-    const target_ulong pend_mask = hexagon_get_interrupts(env);
-    int intnum;
-
-    if (!pend_mask || cs->exception_index != HEX_EVENT_NONE) {
-        return;
-    }
-
-    for (intnum = 0; intnum < reg_field_info[IPENDAD_IPEND].width;
-         ++intnum) {
-        unsigned mask = 0x1 << intnum;
-        if ((pend_mask & mask) == 0) {
-            continue;
-        }
-
-        if (hexagon_int_disabled(env, intnum)) {
-            continue;
-        }
-        HexagonCPU *int_thread = hexagon_find_lowest_prio(env, intnum);
-        if (!int_thread) {
-            continue;
-        }
-        CPUHexagonState *thread_env = &int_thread->env;
-        if (!hexagon_thread_is_interruptible(thread_env, intnum)) {
-            continue;
-        }
-        int vid_num = hexagon_find_l2vic_pending(env);
-        hexagon_raise_interrupt(thread_env, int_thread, intnum, vid_num);
-    }
+    hex_interrupt_update(env);
 }
 #endif
 
