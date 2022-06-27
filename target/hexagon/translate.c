@@ -239,13 +239,7 @@ static void gen_end_tb(DisasContext *ctx)
     } else {
         gen_cpu_limit(ctx, hex_next_PC);
         tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
-#ifdef CONFIG_USER_ONLY
-        /*
-         * TODO Figure out why this doesn't work in system mode
-         *      tests/tcg/hexagon/system/qtimer.c
-         */
         tcg_gen_lookup_and_goto_ptr();
-#endif
     }
 
     g_assert(ctx->branch_cond == NULL);
