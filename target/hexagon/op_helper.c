@@ -2198,6 +2198,7 @@ void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
             SET_SYSTEM_FIELD(found_env, HEX_SREG_STID, STID_PRIO, prio);
             HEX_DEBUG_LOG("%s: tid[%d].PRIO = 0x%x\n",
                 __FUNCTION__, found_env->threadId, prio);
+            hex_interrupt_update(env);
             return;
         }
     }
@@ -2218,6 +2219,7 @@ void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
             SET_SYSTEM_FIELD(found_env, HEX_SREG_IMASK, IMASK_MASK, imask);
             HEX_DEBUG_LOG("%s: tid %d, found it, imask 0x%x\n",
                 __FUNCTION__, found_env->threadId, imask);
+            hex_interrupt_update(env);
             return;
         }
     }
@@ -2279,17 +2281,21 @@ void HELPER(resched)(CPUHexagonState *env)
 
 void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
 {
+    bool found = false;
     CPUState *cs = NULL;
     CPU_FOREACH (cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *thread_env = &cpu->env;
         uint32_t thread_id_mask = 0x1 << thread_env->threadId;
         if ((thread_mask & thread_id_mask) != 0) {
-            /* FIXME also wake these threads? cpu_resume/loop_exit_restore?*/
+            found = true;
             cs->exception_index = HEX_EVENT_IMPRECISE;
             thread_env->cause_code = HEX_CAUSE_IMPRECISE_NMI;
             HEX_DEBUG_LOG("tid %d gets nmi\n", thread_env->threadId);
         }
+    }
+    if (found) {
+        hex_interrupt_update(env);
     }
 }
 

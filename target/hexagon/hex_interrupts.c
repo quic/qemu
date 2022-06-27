@@ -89,6 +89,15 @@ static inline bool get_ipend_bit(CPUHexagonState *env, int int_num)
     return extract32(ipend, int_num, 1);
 }
 
+static void clear_ipend(CPUHexagonState *env, uint32_t mask)
+{
+    target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
+    target_ulong ipend = GET_FIELD(IPENDAD_IPEND, ipendad);
+    ipend &= ~mask;
+    fSET_FIELD(ipendad, IPENDAD_IPEND, ipend);
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
+}
+
 static void set_ipend(CPUHexagonState *env, uint32_t mask)
 {
     target_ulong ipendad = ARCH_GET_SYSTEM_REG(env, HEX_SREG_IPENDAD);
@@ -273,6 +282,28 @@ bool hex_check_interrupts(CPUHexagonState *env)
     }
 
     return int_handled;
+}
+
+void hex_clear_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
+{
+    bool need_lock;
+    if (mask == 0) {
+        return;
+    }
+
+    /*
+     * Notify all CPUs that the interrupt has happened
+     */
+    need_lock = !qemu_mutex_iothread_locked();
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+    clear_ipend(env, mask);
+    hex_interrupt_update(env);
+
+    if (need_lock) {
+        qemu_mutex_unlock_iothread();
+    }
 }
 
 void hex_raise_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)

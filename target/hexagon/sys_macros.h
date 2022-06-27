@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -224,16 +224,6 @@
         gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp);  \
     } while (0)
 
-#define DO_CSWI(RS) \
-    do { \
-        TCGv tmp = tcg_temp_new(); \
-        TCGv not_rs = tcg_temp_new(); \
-        tcg_gen_not_i32(not_rs, (RS)); \
-        gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IPEND, tmp); \
-        tcg_gen_andi_tl(tmp, tmp, not_rs); \
-        gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IPEND, tmp);  \
-    } while (0)
-
 #else
 
 #define DO_IASSIGNR(RS, RD)            \
@@ -262,13 +252,7 @@
         WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
     } while (0)
 
-#define DO_CSWI(RS) \
-    do { \
-        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
-        uint32_t ipend = fGET_FIELD(tmp, IPENDAD_IPEND); \
-        fSET_FIELD(tmp, IPENDAD_IPEND, tmp & ~ipend); \
-        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
-    } while (0)
+#define DO_CSWI(RS) hex_clear_interrupts(env, RS, CPU_INTERRUPT_SWI)
 #endif
 
 #define DO_SWI(RS)  helper_swi(env, RS)
