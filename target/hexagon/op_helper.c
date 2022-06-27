@@ -1832,33 +1832,7 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 }
 
 #ifndef CONFIG_USER_ONLY
-void HELPER(fwait)(CPUHexagonState *env, uint32_t mask)
-
-{
-    /* mask is unsued */
-    hexagon_wait_thread(env);
-}
-
-void HELPER(fresume)(CPUHexagonState *env, uint32_t mask)
-
-{
-    hexagon_resume_threads(env, mask);
-}
-
-void HELPER(fstart)(CPUHexagonState *env, uint32_t mask)
-
-{
-    hexagon_start_threads(env, mask);
-}
-
-void HELPER(clear_run_mode)(CPUHexagonState *env, uint32_t mask)
-
-{
-    /* mask is unused */
-    hexagon_stop_thread(env);
-}
-
-void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
+static void iassignw(CPUHexagonState *env, uint32_t src)
 
 {
     HEX_DEBUG_LOG("%s: tid %d, src 0x%x\n",
@@ -1887,7 +1861,7 @@ void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
     }
 }
 
-uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
+static uint32_t iassignr(CPUHexagonState *env, uint32_t src)
 
 {
     uint32_t modectl =
@@ -1957,15 +1931,6 @@ int hexagon_find_l2vic_pending(CPUHexagonState *env)
     }
     return (intnum < L2VIC_INTERRUPT_MAX) ? intnum : L2VIC_NO_PENDING;
 }
-
-void HELPER(ciad)(CPUHexagonState *env, uint32_t src)
-{
-    HEX_DEBUG_LOG("%s: tid %d, src 0x%x\n",
-        __FUNCTION__, env->threadId, src);
-    hexagon_clear_last_irq(env, L2VIC_VID_0);
-    return;
-}
-
 
 static void hexagon_read_timer(CPUHexagonState *env, uint32_t *low, uint32_t *high)
 {
@@ -2165,7 +2130,7 @@ uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
     }
 }
 
-uint32_t HELPER(getimask)(CPUHexagonState *env, uint32_t tid)
+static uint32_t getimask(CPUHexagonState *env, uint32_t tid)
 
 {
     HEX_DEBUG_LOG("%s: tid %u, for tid %u\n",
@@ -2184,8 +2149,8 @@ uint32_t HELPER(getimask)(CPUHexagonState *env, uint32_t tid)
     }
     return 0;
 }
-void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
 
+static void setprio(CPUHexagonState *env, uint32_t thread, uint32_t prio)
 {
     thread = thread & (THREADS_MAX-1);
     HEX_DEBUG_LOG("%s: tid %u, setting thread 0x%x, prio 0x%x\n",
@@ -2205,7 +2170,7 @@ void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
     g_assert_not_reached();
 }
 
-void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
+static void setimask(CPUHexagonState *env, uint32_t pred, uint32_t imask)
 
 {
     HEX_DEBUG_LOG("%s: tid %u, pred 0x%x, imask 0x%x\n",
@@ -2230,11 +2195,6 @@ typedef struct {
     CPUHexagonState *env;
 } thread_entry;
 
-
-void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
-{
-    hex_raise_interrupts(env, mask, CPU_INTERRUPT_SWI);
-}
 
 void HELPER(resched)(CPUHexagonState *env)
 {
@@ -2279,7 +2239,7 @@ void HELPER(resched)(CPUHexagonState *env)
     }
 }
 
-void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
+static void nmi(CPUHexagonState *env, uint32_t thread_mask)
 {
     bool found = false;
     CPUState *cs = NULL;

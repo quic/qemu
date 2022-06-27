@@ -167,12 +167,12 @@
 #define fCLEAR_K0_LOCK()      hex_k0_unlock(env);
 
 #define fGET_TNUM()               thread->threadId
-#define fSTART(REG)               helper_fstart(env, REG)
-#define fRESUME(REG)              helper_fresume(env, REG)
-#define fCLEAR_RUN_MODE(x)        helper_clear_run_mode(env, (x))
-#define READ_IMASK(TID)           helper_getimask(env, TID)
-#define WRITE_IMASK(PRED, MASK)   helper_setimask(env, PRED, MASK)
-#define WRITE_PRIO(TH, PRIO)      helper_setprio(env, TH, PRIO)
+#define fSTART(REG)               hexagon_start_threads(env, REG)
+#define fRESUME(REG)              hexagon_resume_threads(env, REG)
+#define fCLEAR_RUN_MODE(x)        hexagon_stop_thread(env)
+#define READ_IMASK(TID)           getimask(env, TID)
+#define WRITE_IMASK(PRED, MASK)   setimask(env, PRED, MASK)
+#define WRITE_PRIO(TH, PRIO)      setprio(env, TH, PRIO)
 
 #define fTLB_IDXMASK(INDEX) \
     ((INDEX) & (fPOW2_ROUNDUP(fCAST4u(NUM_TLB_ENTRIES)) - 1))
@@ -197,7 +197,7 @@
 
 /* FIXME - Update these when properly implementing stop instruction */
 
-#define fSET_WAIT_MODE(TNUM)      helper_fwait(env, TNUM)
+#define fSET_WAIT_MODE(TNUM)      hexagon_wait_thread(env)
 
 #define fIN_DEBUG_MODE(TNUM) \
     0    /* FIXME */
@@ -205,35 +205,11 @@
     0    /* FIXME */
 #define fIN_DEBUG_MODE_WARN(TNUM)
 
-#ifdef QEMU_GENERATE
-
-#define DO_IASSIGNR(RS, RD)                   \
-    do {                                      \
-        gen_helper_iassignr(RD, cpu_env, RS); \
-    } while (0)
-#define DO_IASSIGNW(RS)                   \
-    do {                                  \
-        gen_helper_iassignw(cpu_env, RS); \
-    } while (0)
-
-#define DO_SIAD(RS) \
-    do { \
-        TCGv tmp = tcg_temp_new(); \
-        gen_get_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp); \
-        tcg_gen_ori_tl(tmp, tmp, not_rs); \
-        gen_set_sreg_field(HEX_SREG_IPENDAD, IPENDAD_IAD, tmp);  \
-    } while (0)
-
-#else
-
 #define DO_IASSIGNR(RS, RD)            \
     do {                               \
-        RD = helper_iassignr(env, RS); \
+        RD = iassignr(env, RS); \
     } while (0)
-#define DO_IASSIGNW(RS)           \
-    do {                          \
-        helper_iassignw(env, RS); \
-    } while (0)
+#define DO_IASSIGNW(RS)   iassignw(env, RS)
 
 #define DO_CIAD(RS)                   \
     do {                                  \
@@ -241,7 +217,7 @@
         uint32_t iad = fGET_FIELD(tmp, IPENDAD_IAD); \
         fSET_FIELD(tmp, IPENDAD_IAD, iad & ~(RS)); \
         WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
-        helper_ciad(env, RS); \
+        hexagon_clear_last_irq(env, L2VIC_VID_0); \
     } while (0)
 
 #define DO_SIAD(RS) \
@@ -253,11 +229,10 @@
     } while (0)
 
 #define DO_CSWI(RS) hex_clear_interrupts(env, RS, CPU_INTERRUPT_SWI)
-#endif
 
-#define DO_SWI(RS)  helper_swi(env, RS)
+#define DO_SWI(RS)  hex_raise_interrupts(env, RS, CPU_INTERRUPT_SWI)
 
-#define fDO_NMI(RS) helper_nmi(env, RS);
+#define fDO_NMI(RS) nmi(env, RS);
 
 #ifdef QEMU_GENERATE
 
