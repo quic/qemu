@@ -195,44 +195,11 @@
 #define fTLBP(TLBHI) \
     hex_tlb_lookup(env, ((TLBHI) >> 12), ((TLBHI) << 12))
 
-/* FIXME - Update these when properly implementing stop instruction */
-
-#define fSET_WAIT_MODE(TNUM)      hexagon_wait_thread(env)
-
 #define fIN_DEBUG_MODE(TNUM) \
     0    /* FIXME */
 #define fIN_DEBUG_MODE_NO_ISDB(TNUM) \
     0    /* FIXME */
 #define fIN_DEBUG_MODE_WARN(TNUM)
-
-#define DO_IASSIGNR(RS, RD)            \
-    do {                               \
-        RD = iassignr(env, RS); \
-    } while (0)
-#define DO_IASSIGNW(RS)   iassignw(env, RS)
-
-#define DO_CIAD(RS)                   \
-    do {                                  \
-        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
-        uint32_t iad = fGET_FIELD(tmp, IPENDAD_IAD); \
-        fSET_FIELD(tmp, IPENDAD_IAD, iad & ~(RS)); \
-        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
-        hexagon_clear_last_irq(env, L2VIC_VID_0); \
-    } while (0)
-
-#define DO_SIAD(RS) \
-    do { \
-        uint32_t tmp = READ_SREG(HEX_SREG_IPENDAD); \
-        uint32_t iad = fGET_FIELD(tmp, IPENDAD_IAD); \
-        fSET_FIELD(tmp, IPENDAD_IAD, iad | RS); \
-        WRITE_SREG(HEX_SREG_IPENDAD, tmp);  \
-    } while (0)
-
-#define DO_CSWI(RS) hex_clear_interrupts(env, RS, CPU_INTERRUPT_SWI)
-
-#define DO_SWI(RS)  hex_raise_interrupts(env, RS, CPU_INTERRUPT_SWI)
-
-#define fDO_NMI(RS) nmi(env, RS);
 
 #ifdef QEMU_GENERATE
 

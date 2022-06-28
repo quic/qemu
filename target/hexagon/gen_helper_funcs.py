@@ -313,6 +313,8 @@ def main():
 
         f.write('#if !defined(CONFIG_USER_ONLY)\n')
         for tag in hex_common.get_sys_tags():
+            if ( hex_common.skip_qemu_helper(tag) ):
+                continue
             gen_helper_function(f, tag, tagregs, tagimms)
         f.write('#endif\n')
 

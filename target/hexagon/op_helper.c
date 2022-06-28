@@ -597,6 +597,85 @@ void HELPER(insn_cache_op)(CPUHexagonState *env, target_ulong RsV,
         }
     }
 }
+
+void HELPER(swi)(CPUHexagonState *env, uint32_t mask)
+{
+    hex_raise_interrupts(env, mask, CPU_INTERRUPT_SWI);
+}
+
+void HELPER(cswi)(CPUHexagonState *env, uint32_t mask)
+{
+    hex_clear_interrupts(env, mask, CPU_INTERRUPT_SWI);
+}
+
+static void hexagon_set_vid(CPUHexagonState *env, uint32_t offset, int val)
+{
+    g_assert((offset == L2VIC_VID_0) || (offset == L2VIC_VID_1));
+    CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    const hwaddr pend_mem = cpu->l2vic_base_addr + offset;
+    cpu_physical_memory_write(pend_mem, &val, sizeof(val));
+}
+
+static void hexagon_clear_last_irq(CPUHexagonState *env, uint32_t offset)
+{
+    /*
+     * currently only l2vic is the only attached it uses vid0, remove
+     * the assert below if anther is added
+     */
+    hexagon_set_vid(env, offset, L2VIC_NO_PENDING);
+}
+
+void HELPER(ciad)(CPUHexagonState *env, uint32_t mask)
+{
+    bool need_lock = !qemu_mutex_iothread_locked();
+    uint32_t ipendad;
+    uint32_t iad;
+
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+    ipendad = READ_SREG(HEX_SREG_IPENDAD);
+    iad = fGET_FIELD(ipendad, IPENDAD_IAD);
+    fSET_FIELD(ipendad, IPENDAD_IAD, iad & ~(mask));
+    env->g_sreg[HEX_SREG_IPENDAD] = ipendad;
+    hexagon_clear_last_irq(env, L2VIC_VID_0);
+    hex_interrupt_update(env);
+    if (need_lock) {
+        qemu_mutex_unlock_iothread();
+    }
+}
+
+void HELPER(siad)(CPUHexagonState *env, uint32_t mask)
+{
+    bool need_lock = !qemu_mutex_iothread_locked();
+    uint32_t ipendad;
+    uint32_t iad;
+
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+    ipendad = READ_SREG(HEX_SREG_IPENDAD);
+    iad = fGET_FIELD(ipendad, IPENDAD_IAD);
+    fSET_FIELD(ipendad, IPENDAD_IAD, iad | mask);
+    env->g_sreg[HEX_SREG_IPENDAD] = ipendad;
+    hex_interrupt_update(env);
+    if (need_lock) {
+        qemu_mutex_unlock_iothread();
+    }
+}
+
+void HELPER(wait)(CPUHexagonState *env)
+{
+    if (!fIN_DEBUG_MODE(fGET_TNUM())) {
+        hexagon_wait_thread(env);
+     }
+}
+
+void HELPER(resume)(CPUHexagonState *env, uint32_t mask)
+{
+    hexagon_resume_threads(env, mask);
+}
 #endif
 
 static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
@@ -1832,45 +1911,57 @@ static void cancel_slot(CPUHexagonState *env, uint32_t slot)
 }
 
 #ifndef CONFIG_USER_ONLY
-static void iassignw(CPUHexagonState *env, uint32_t src)
-
+void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 {
-    HEX_DEBUG_LOG("%s: tid %d, src 0x%x\n",
-        __FUNCTION__, env->threadId, src);
-    uint32_t modectl =
-        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
-    CPUState *cpu = NULL;
+    bool need_lock = !qemu_mutex_iothread_locked();
+    uint32_t modectl;
+    uint32_t thread_enabled_mask;
+    CPUState *cpu;
+
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+    modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
+
     CPU_FOREACH (cpu) {
         CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
         uint32_t thread_id_mask = 0x1 << thread_env->threadId;
         if (thread_enabled_mask & thread_id_mask) {
             uint32_t imask = ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK);
-            //uint32_t imask_mask = GET_FIELD(IMASK_MASK, imask);
             uint32_t intbitpos = (src >> 16) & 0xF;
-            fINSERT_BITS(imask, 1, intbitpos,
-                (src >> thread_env->threadId) & 0x1);
+            uint32_t val = (src >> thread_env->threadId) & 0x1;
+            imask = deposit32(imask, intbitpos, 1, val);
             ARCH_SET_SYSTEM_REG(thread_env, HEX_SREG_IMASK, imask);
-            HEX_DEBUG_LOG("%s: tid %d, read imask 0x%x, intbitpos %u, "
-              "set bitval %u, new imask 0x%x\n",
-              __FUNCTION__,
-              thread_env->threadId, imask, intbitpos,
-              (src >> thread_env->threadId) & 0x1,
-              ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_IMASK));
+
+            qemu_log_mask(CPU_LOG_INT, "%s: thread %d, new imask 0x%x\n",
+                          __func__, thread_env->threadId, imask);
         }
+    }
+    hex_interrupt_update(env);
+    if (need_lock) {
+        qemu_mutex_unlock_iothread();
     }
 }
 
-static uint32_t iassignr(CPUHexagonState *env, uint32_t src)
+uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
 
 {
-    uint32_t modectl =
-        ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
+    bool need_lock = qemu_mutex_iothread_locked();
+    uint32_t modectl;
+    uint32_t thread_enabled_mask;
+    uint32_t intbitpos;
+    uint32_t dest_reg;
+    CPUState *cpu;
+
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+    modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
     /* src fields are in same position as modectl, but mean different things */
-    uint32_t intbitpos = GET_FIELD(MODECTL_W, src);
-    uint32_t dest_reg = 0;
-    CPUState *cpu = NULL;
+    intbitpos = GET_FIELD(MODECTL_W, src);
+    dest_reg = 0;
     CPU_FOREACH (cpu) {
         CPUHexagonState *thread_env = &(HEXAGON_CPU(cpu)->env);
         uint32_t thread_id_mask = 0x1 << thread_env->threadId;
@@ -1879,21 +1970,10 @@ static uint32_t iassignr(CPUHexagonState *env, uint32_t src)
             dest_reg |= ((imask >> intbitpos) & 0x1) << thread_env->threadId;
         }
     }
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
     return dest_reg;
-}
-
-static void hexagon_set_vid(CPUHexagonState *env, uint32_t offset, int val) {
-    assert ((offset == L2VIC_VID_0) || (offset == L2VIC_VID_1));
-    CPUState *cs = env_cpu(env);
-    HexagonCPU *cpu = HEXAGON_CPU(cs);
-    const hwaddr pend_mem = cpu->l2vic_base_addr + offset;
-    cpu_physical_memory_write(pend_mem, &val, sizeof(val));
-}
-
-static void hexagon_clear_last_irq(CPUHexagonState *env, uint32_t offset) {
-    /* currently only l2vic is the only attached it uses vid0, remove
-     * the assert below if anther is added */
-    hexagon_set_vid(env, offset, L2VIC_NO_PENDING);
 }
 
 static uint32_t hexagon_find_last_irq(CPUHexagonState *env, uint32_t vid)
@@ -2130,64 +2210,103 @@ uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
     }
 }
 
-static uint32_t getimask(CPUHexagonState *env, uint32_t tid)
+uint32_t HELPER(getimask)(CPUHexagonState *env, uint32_t tid)
 
 {
-    HEX_DEBUG_LOG("%s: tid %u, for tid %u\n",
-        __FUNCTION__, env->threadId, tid);
     CPUState *cs;
     CPU_FOREACH(cs) {
         HexagonCPU *found_cpu = HEXAGON_CPU(cs);
         CPUHexagonState *found_env = &found_cpu->env;
         if (found_env->threadId == tid) {
-            target_ulong imask = ARCH_GET_SYSTEM_REG(found_env,HEX_SREG_IMASK);
-            HEX_DEBUG_LOG("%s: tid %d, found it, imask = 0x%x\n",
-                __FUNCTION__, env->threadId,
-                (unsigned)GET_FIELD(IMASK_MASK, imask));
+            target_ulong imask = ARCH_GET_SYSTEM_REG(found_env, HEX_SREG_IMASK);
+            qemu_log_mask(CPU_LOG_INT, "%s: tid %d imask = 0x%x\n",
+                          __func__, env->threadId,
+                          (unsigned)GET_FIELD(IMASK_MASK, imask));
             return GET_FIELD(IMASK_MASK, imask);
         }
     }
     return 0;
 }
 
-static void setprio(CPUHexagonState *env, uint32_t thread, uint32_t prio)
+void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
 {
-    thread = thread & (THREADS_MAX-1);
-    HEX_DEBUG_LOG("%s: tid %u, setting thread 0x%x, prio 0x%x\n",
-      __FUNCTION__, env->threadId, thread, prio);
+    bool need_lock = !qemu_mutex_iothread_locked();
     CPUState *cs;
+
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+    thread &= env->processor_ptr->thread_system_mask;
     CPU_FOREACH(cs) {
         HexagonCPU *found_cpu = HEXAGON_CPU(cs);
         CPUHexagonState *found_env = &found_cpu->env;
         if (thread == found_env->threadId) {
             SET_SYSTEM_FIELD(found_env, HEX_SREG_STID, STID_PRIO, prio);
-            HEX_DEBUG_LOG("%s: tid[%d].PRIO = 0x%x\n",
-                __FUNCTION__, found_env->threadId, prio);
-            hex_interrupt_update(env);
+            qemu_log_mask(CPU_LOG_INT, "%s: tid %d prio = 0x%x\n",
+                          __func__, found_env->threadId, prio);
+            HELPER(resched)(env);
+            if (need_lock) {
+                qemu_mutex_unlock_iothread();
+            }
             return;
         }
     }
     g_assert_not_reached();
 }
 
-static void setimask(CPUHexagonState *env, uint32_t pred, uint32_t imask)
-
+void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
 {
-    HEX_DEBUG_LOG("%s: tid %u, pred 0x%x, imask 0x%x\n",
-      __FUNCTION__, env->threadId, pred, imask);
+    bool need_lock = !qemu_mutex_iothread_locked();
     CPUState *cs;
+
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+    pred &= env->processor_ptr->thread_system_mask;
     CPU_FOREACH(cs) {
         HexagonCPU *found_cpu = HEXAGON_CPU(cs);
         CPUHexagonState *found_env = &found_cpu->env;
 
-        if (pred & (0x1 << found_env->threadId)) {
+        if (pred == found_env->threadId) {
             SET_SYSTEM_FIELD(found_env, HEX_SREG_IMASK, IMASK_MASK, imask);
-            HEX_DEBUG_LOG("%s: tid %d, found it, imask 0x%x\n",
-                __FUNCTION__, found_env->threadId, imask);
+            qemu_log_mask(CPU_LOG_INT, "%s: tid %d imask 0x%x\n",
+                          __func__, found_env->threadId, imask);
             hex_interrupt_update(env);
+            if (need_lock) {
+                qemu_mutex_unlock_iothread();
+            }
             return;
         }
     }
+    hex_interrupt_update(env);
+    if (need_lock) {
+        qemu_mutex_unlock_iothread();
+    }
+}
+
+void HELPER(start)(CPUHexagonState *env, uint32_t imask)
+{
+    hexagon_start_threads(env, imask);
+}
+
+void HELPER(stop)(CPUHexagonState *env)
+{
+    hexagon_stop_thread(env);
+}
+
+void HELPER(rte)(CPUHexagonState *env, uint32_t pkt_has_multi_cof)
+{
+    uint32_t slot = 4; /* dummy value */
+    uint32_t new_ssr;
+
+    /* Clear the EX bit in SSR */
+    new_ssr = deposit32(env->t_sreg[HEX_SREG_SSR],
+                        reg_field_info[SSR_EX].offset,
+                        reg_field_info[SSR_EX].width, 0);
+    log_sreg_write(env, HEX_SREG_SSR, new_ssr, slot);
+
+    /* Jump to ELR */
+    write_new_pc(env, pkt_has_multi_cof != 0, env->t_sreg[HEX_SREG_ELR]);
 }
 
 typedef struct {
@@ -2198,21 +2317,34 @@ typedef struct {
 
 void HELPER(resched)(CPUHexagonState *env)
 {
+    bool need_lock = !qemu_mutex_iothread_locked();
+    uint32_t schedcfg;
+    uint32_t schedcfg_en;
+    int int_number;
+    CPUState *cs;
+    uint32_t lowest_th_prio = 0; /* 0 is highest prio */
+    uint32_t bestwait_reg;
+    uint32_t best_prio;
+
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+
     qemu_log_mask(CPU_LOG_INT, "%s: check resched\n", __func__);
-    const uint32_t schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
-    const uint32_t schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
-    const int int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
-    CPUState *cs = env_cpu(env);
+    schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
+    schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
+    int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
+
     if (!schedcfg_en) {
+        if (need_lock) {
+            qemu_mutex_unlock_iothread();
+        }
         return;
     }
 
-    uint32_t lowest_th_prio = 0; /* 0 is highest prio */
-    HexagonCPU *thread;
-    CPUHexagonState *thread_env;
     CPU_FOREACH(cs) {
-        thread = HEXAGON_CPU(cs);
-        thread_env = &(thread->env);
+        HexagonCPU *thread = HEXAGON_CPU(cs);
+        CPUHexagonState *thread_env = &(thread->env);
         uint32_t th_prio = GET_FIELD(
             STID_PRIO, ARCH_GET_SYSTEM_REG(thread_env, HEX_SREG_STID));
         if (!hexagon_thread_is_enabled(thread_env)) {
@@ -2224,8 +2356,8 @@ void HELPER(resched)(CPUHexagonState *env)
             : th_prio;
     }
 
-    uint32_t bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
-    uint32_t best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
+    bestwait_reg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_BESTWAIT);
+    best_prio = GET_FIELD(BESTWAIT_PRIO, bestwait_reg);
 
     /*
      * If the lowest priority thread is lower priority than the
@@ -2237,9 +2369,12 @@ void HELPER(resched)(CPUHexagonState *env)
         SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
         hex_raise_interrupts(env, 1 << int_number, CPU_INTERRUPT_SWI);
     }
+    if (need_lock) {
+        qemu_mutex_unlock_iothread();
+    }
 }
 
-static void nmi(CPUHexagonState *env, uint32_t thread_mask)
+void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
 {
     bool found = false;
     CPUState *cs = NULL;

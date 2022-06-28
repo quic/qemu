@@ -155,7 +155,8 @@ def main():
         sys_tags = [tag for tag in hex_common.get_sys_tags() if not hex_common.skip_qemu_helper(tag)]
         f.write('#if !defined(CONFIG_USER_ONLY)\n')
         for tag in sys_tags:
-            gen_helper_prototype(f, tag, tagregs, tagimms)
+            if not hex_common.tag_ignore(tag):
+                gen_helper_prototype(f, tag, tagregs, tagimms)
         f.write('#endif\n')
 
 if __name__ == "__main__":

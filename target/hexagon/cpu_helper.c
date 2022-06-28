@@ -41,6 +41,7 @@
 #include "mmvec/macros_auto.h"
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
+#include "hex_interrupts.h"
 #endif
 #include "sysemu/runstate.h"
 
@@ -245,21 +246,23 @@ void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
 }
 
 void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
-
 {
-    int htid;
+    bool need_lock = !qemu_mutex_iothread_locked();
+    CPUState *cs;
+    CPUHexagonState *env;
+    bool found;
 
-    for (htid = 0 ; htid < THREADS_MAX ; ++htid) {
+    if (need_lock) {
+        qemu_mutex_lock_iothread();
+    }
+    for (int htid = 0 ; htid < THREADS_MAX ; ++htid) {
         if (!(mask & (0x1 << htid))) {
             continue;
         }
 
-        HexagonCPU *cpu;
-        CPUHexagonState *env;
-        CPUState *cs = env_cpu(current_env);
-        bool found = false;
+        found = false;
         CPU_FOREACH(cs) {
-            cpu = HEXAGON_CPU(cs);
+            HexagonCPU *cpu = HEXAGON_CPU(cs);
             env = &cpu->env;
             if (env->threadId == htid) {
                 found = true;
@@ -276,6 +279,9 @@ void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
             continue;
         }
         hexagon_resume_thread(env, HEX_EVENT_NONE);
+    }
+    if (need_lock) {
+        qemu_mutex_unlock_iothread();
     }
 }
 
@@ -515,12 +521,14 @@ void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause)
 
 void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
-    target_ulong old_EX = GET_SSR_FIELD(SSR_EX, old);
-    target_ulong old_UM = GET_SSR_FIELD(SSR_UM, old);
-    target_ulong old_GM = GET_SSR_FIELD(SSR_GM, old);
-    target_ulong new_EX = GET_SSR_FIELD(SSR_EX, new);
-    target_ulong new_UM = GET_SSR_FIELD(SSR_UM, new);
-    target_ulong new_GM = GET_SSR_FIELD(SSR_GM, new);
+    bool old_EX = GET_SSR_FIELD(SSR_EX, old);
+    bool old_UM = GET_SSR_FIELD(SSR_UM, old);
+    bool old_GM = GET_SSR_FIELD(SSR_GM, old);
+    bool new_EX = GET_SSR_FIELD(SSR_EX, new);
+    bool new_UM = GET_SSR_FIELD(SSR_UM, new);
+    bool new_GM = GET_SSR_FIELD(SSR_GM, new);
+    bool old_IE = GET_SSR_FIELD(SSR_IE, old);
+    bool new_IE = GET_SSR_FIELD(SSR_IE, new);
 
     if ((old_EX != new_EX) ||
         (old_UM != new_UM) ||
@@ -533,6 +541,12 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
     if (new_asid != old_asid) {
         CPUState *cs = env_cpu(env);
         tlb_flush(cs);
+    }
+
+    /* See if the interrupts have been enabled or we have exited EX mode */
+    if ((new_IE && !old_IE) ||
+        (!new_EX && old_EX)) {
+        hex_interrupt_update(env);
     }
 }
 

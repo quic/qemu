@@ -196,16 +196,6 @@ static void gen_end_tb(DisasContext *ctx)
 
     gen_exec_counters(ctx);
 
-#ifndef CONFIG_USER_ONLY
-    if (ctx->resched_required) {
-        gen_helper_resched(cpu_env);
-        gen_helper_pending_interrupt(cpu_env);
-    }
-    else if (ctx->intcheck_required) {
-        gen_helper_pending_interrupt(cpu_env);
-    }
-#endif
-
     if (ctx->has_single_direct_branch) {
         if (ctx->branch_cond != NULL) {
             TCGLabel *skip = gen_new_label();
@@ -461,18 +451,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         ctx->hmx_check_emitted = true;
     }
 
-    ctx->intcheck_required |= check_for_opcode(pkt, Y2_iassignw)
-                           || check_for_opcode(pkt, Y2_setimask)
-                           || check_for_opcode(pkt, Y2_ciad)
-                           || check_for_opcode(pkt, Y2_swi);
-    ctx->resched_required |=  check_for_opcode(pkt, J2_rte)
-                           || check_for_opcode(pkt, Y2_tfrsrcr)
-                           || check_for_opcode(pkt, Y4_tfrspcp)
-                           || check_for_opcode(pkt, Y2_setprio);
-
-    if (ctx->resched_required || ctx->intcheck_required) {
-        ctx->base.is_jmp = DISAS_NORETURN;
-    }
 #endif
 }
 
@@ -626,14 +604,16 @@ static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
                                   hex_t_sreg[reg_num]);
             /* This can change processor state, so end the TB */
             ctx->base.is_jmp = DISAS_NORETURN;
+        } else if ((reg_num == HEX_SREG_STID) ||
+                   (reg_num == HEX_SREG_IMASK) ||
+                   (reg_num == HEX_SREG_IPENDAD)) {
+            /* This can change the interrupt state, so end the TB */
+            gen_helper_pending_interrupt(cpu_env);
+            ctx->base.is_jmp = DISAS_NORETURN;
         } else if ((reg_num == HEX_SREG_BESTWAIT) ||
-                 (reg_num == HEX_SREG_STID)     ||
-                 (reg_num == HEX_SREG_SCHEDCFG) ||
-                 (reg_num == HEX_SREG_GEVB)     ||
-                 (reg_num == HEX_SREG_IPENDAD)  ||
-                 (reg_num == HEX_SREG_IMASK)) {
-
+                   (reg_num == HEX_SREG_SCHEDCFG)) {
             /* This can trigger resched interrupt, so end the TB */
+            gen_helper_resched(cpu_env);
             ctx->base.is_jmp = DISAS_NORETURN;
         }
         if (reg_num < HEX_SREG_GLB_START) {
@@ -642,8 +622,6 @@ static void gen_sreg_writes(CPUHexagonState *env, DisasContext *ctx)
                 /* Do this so HELPER(debug_commit_end) will know */
                 tcg_gen_movi_tl(hex_t_sreg_written[reg_num], 1);
             }
-        } else {
-            g_assert_not_reached();
         }
     }
 }
@@ -1138,8 +1116,6 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     ctx->hmx_check_emitted = false;
     ctx->pcycle_enabled = hex_flags.pcycle_enabled;
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
-    ctx->resched_required = false;
-    ctx->intcheck_required = false;
 #endif
     ctx->has_single_direct_branch = false;
     ctx->branch_cond = NULL;
