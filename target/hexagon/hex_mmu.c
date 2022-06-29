@@ -17,6 +17,7 @@
 
 #include "qemu/osdep.h"
 #include "qemu/main-loop.h"
+#include "qemu/qemu-print.h"
 #include "cpu.h"
 #include "sysemu/cpus.h"
 #include "internal.h"
@@ -201,6 +202,39 @@ static bool hex_dump_mmu_entry(FILE *f, uint64_t entry)
 
     /* Not valid */
     return false;
+}
+
+void dump_mmu(CPUHexagonState *env)
+{
+    int i;
+
+    for (i = 0; i < NUM_TLB_ENTRIES; i++) {
+        uint64_t entry = env->hex_tlb->entries[i];
+        if (GET_TLB_FIELD(entry, PTE_V)) {
+            qemu_printf("0x%016lx: ", entry);
+            uint64_t PA = hex_tlb_phys_addr(entry);
+            uint64_t VA = hex_tlb_virt_addr(entry);
+            qemu_printf("V:%lld G:%lld A1:%lld A0:%lld",
+                    GET_TLB_FIELD(entry, PTE_V),
+                    GET_TLB_FIELD(entry, PTE_G),
+                    GET_TLB_FIELD(entry, PTE_ATR1),
+                    GET_TLB_FIELD(entry, PTE_ATR0));
+            qemu_printf(" ASID:0x%02llx VA:0x%08lx",
+                    GET_TLB_FIELD(entry, PTE_ASID),
+                    VA);
+            qemu_printf(" X:%lld W:%lld R:%lld U:%lld C:%lld",
+                    GET_TLB_FIELD(entry, PTE_X),
+                    GET_TLB_FIELD(entry, PTE_W),
+                    GET_TLB_FIELD(entry, PTE_R),
+                    GET_TLB_FIELD(entry, PTE_U),
+                    GET_TLB_FIELD(entry, PTE_C));
+            qemu_printf(" PA:0x%09lx SZ:%s (0x%x)",
+                    PA,
+                    pgsize_str[hex_tlb_pgsize(entry)],
+                    hex_tlb_page_size(entry));
+            qemu_printf("\n");
+        }
+    }
 }
 
 #if HEX_DEBUG
