@@ -25,7 +25,6 @@
 #include "hex_mmu.h"
 
 const MonitorDef monitor_defs[] = {
-    { "cycle_count", offsetof(CPUHexagonState,  t_cycle_count) },
 #if !defined(CONFIG_USER_ONLY)
     { "tlb_lock", offsetof(CPUHexagonState, tlb_lock_state) },
     { "k0_lock", offsetof(CPUHexagonState,  k0_lock_state) },
@@ -41,6 +40,7 @@ const MonitorDef *target_monitor_defs(void)
 
 void hmp_info_tlb(Monitor *mon, const QDict *qdict)
 {
+#if !defined(CONFIG_USER_ONLY)
     CPUArchState *env = mon_get_cpu_env(mon);
     if (!env) {
         monitor_printf(mon, "No CPU available\n");
@@ -48,4 +48,5 @@ void hmp_info_tlb(Monitor *mon, const QDict *qdict)
     }
 
     dump_mmu(env);
+#endif
 }
