@@ -771,11 +771,6 @@ def gen_tcg_func(f, tag, regs, imms):
     for immlett,bits,immshift in imms:
         genptr_decl_imm(f,immlett)
 
-    if 'A_PRIV' in hex_common.attribdict[tag]:
-        f.write('    fCHECKFORPRIV();\n')
-    if 'A_GUEST' in hex_common.attribdict[tag]:
-        f.write('    fCHECKFORGUEST();\n')
-
     ## Read all the inputs
     for regtype,regid,toss,numregs in regs:
         if (hex_common.is_read(regid)):

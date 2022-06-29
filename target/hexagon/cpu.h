@@ -592,8 +592,8 @@ extern int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 typedef union {
     uint32_t i;
     struct {
-#ifndef CONFIG_USER_ONLY
         int mmu_index:3;
+#ifndef CONFIG_USER_ONLY
         bool pcycle_enabled:1;
 #endif
         bool is_tight_loop:1;
@@ -618,6 +618,8 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
     if (pcycle_enabled) {
         hex_flags.pcycle_enabled = true;
     }
+#else
+    hex_flags.mmu_index = MMU_USER_IDX;
 #endif
 
     if (*pc == env->gpr[HEX_REG_SA0]) {
