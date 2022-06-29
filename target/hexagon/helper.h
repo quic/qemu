@@ -122,8 +122,6 @@ DEF_HELPER_2(probe_hvx_stores, void, env, int)
 DEF_HELPER_3(probe_pkt_scalar_hvx_stores, void, env, int, int)
 
 #if !defined(CONFIG_USER_ONLY)
-DEF_HELPER_1(checkforguest, void, env)
-DEF_HELPER_1(checkforpriv, void, env)
 DEF_HELPER_2(ciad, void, env, i32)
 DEF_HELPER_2(clear_run_mode, void, env, i32)
 DEF_HELPER_2(fresume, void, env, i32)

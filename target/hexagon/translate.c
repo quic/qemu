@@ -1093,6 +1093,24 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
     if (decode_packet(nwords, words, &pkt, false) > 0) {
         HEX_DEBUG_PRINT_PKT(&pkt);
         ctx->pkt = &pkt;
+
+#ifndef CONFIG_USER_ONLY
+        if (check_for_attrib(&pkt, A_PRIV)) {
+            if (ctx->mem_idx != MMU_KERNEL_IDX) {
+                gen_exception_end_tb(ctx, HEX_CAUSE_PRIV_USER_NO_SINSN);
+                ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
+                return;
+            }
+        }
+        if (check_for_attrib(&pkt, A_GUEST)) {
+            if (ctx->mem_idx != MMU_KERNEL_IDX &&
+                ctx->mem_idx != MMU_GUEST_IDX) {
+                gen_exception_end_tb(ctx, HEX_CAUSE_PRIV_USER_NO_GINSN);
+                ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
+                return;
+            }
+        }
+#endif
         gen_start_packet(env, ctx, &pkt);
         for (i = 0; i < pkt.num_insns; i++) {
             gen_insn(env, ctx, &pkt.insn[i], &pkt);
@@ -1109,14 +1127,6 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
 
-#ifdef CONFIG_USER_ONLY
-    ctx->mem_idx = MMU_USER_IDX;
-#else
-    HexagonCPU *cpu = HEXAGON_CPU(cs);
-    CPUHexagonState *env = &cpu->env;
-    ctx->mem_idx = cpu_mmu_index(env, false);
-#endif
-
     ctx->num_packets = 0;
     ctx->num_insns = 0;
     ctx->num_hvx_insns = 0;
@@ -1132,6 +1142,8 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 {
     DisasContext *ctx = container_of(db, DisasContext, base);
     HexStateFlags hex_flags = { db->tb->flags };
+
+    ctx->mem_idx = hex_flags.mmu_index;
 
 #if !defined(CONFIG_USER_ONLY)
     HexagonCPU *hex_cpu = HEXAGON_CPU(cpu);

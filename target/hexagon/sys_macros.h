@@ -71,11 +71,6 @@
   cpu_physical_memory_read(addr, &DST, sizeof(uint32_t)); \
 }
 
-#ifdef QEMU_GENERATE
-#define fCHECKFORPRIV() gen_helper_checkforpriv(cpu_env)
-#define fCHECKFORGUEST() gen_helper_checkforguest(cpu_env)
-#endif
-
 #define fPOW2_HELP_ROUNDUP(VAL) \
     ((VAL) | \
      ((VAL) >> 1) | \
