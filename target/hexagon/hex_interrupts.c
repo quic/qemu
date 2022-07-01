@@ -338,8 +338,12 @@ void hex_interrupt_update(CPUHexagonState *env)
 
     if (get_ipend(env) != 0) {
         CPU_FOREACH(cs) {
-            cs->interrupt_request |= CPU_INTERRUPT_SWI;
-            cpu_resume(cs);
+            HexagonCPU *hex_cpu = HEXAGON_CPU(cs);
+            CPUHexagonState *hex_env = &hex_cpu->env;
+            if (get_exe_mode(hex_env) != HEX_EXE_MODE_OFF) {
+                cs->interrupt_request |= CPU_INTERRUPT_SWI;
+                cpu_resume(cs);
+            }
         }
     }
 
