@@ -172,6 +172,30 @@ static bool hex_is_qualified_for_int(CPUHexagonState *env, int int_num)
     return syscfg_gie && !iad && ssr_ie && !ssr_ex && !imask;
 }
 
+static void clear_pending_locks(CPUHexagonState *env)
+{
+    if (env->k0_lock_state == HEX_LOCK_WAITING) {
+        env->k0_lock_state = HEX_LOCK_UNLOCKED;
+    }
+    if (env->tlb_lock_state == HEX_LOCK_WAITING) {
+        env->tlb_lock_state = HEX_LOCK_UNLOCKED;
+    }
+}
+
+static bool should_not_exec(CPUHexagonState *env)
+{
+    return (get_exe_mode(env) == HEX_EXE_MODE_WAIT);
+}
+
+static void restore_state(CPUHexagonState *env, bool int_accepted)
+{
+    CPUState *cs = env_cpu(env);
+    cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
+    if (!int_accepted && should_not_exec(env)) {
+        cpu_stop_current();
+    }
+}
+
 void hex_accept_int(CPUHexagonState *env, int int_num)
 {
     CPUState *cs = env_cpu(env);
@@ -183,26 +207,24 @@ void hex_accept_int(CPUHexagonState *env, int int_num)
     set_ssr_ex_cause(env, 1, HEX_CAUSE_INT0 | int_num);
     cs->exception_index = HEX_EVENT_INT0 + int_num;
     env->cause_code = HEX_EVENT_INT0 + int_num;
+    clear_pending_locks(env);
     if (in_wait_mode) {
-        qemu_log_mask(CPU_LOG_INT, "%s: thread %d exiting WAIT mode\n",
-                      __func__, env->threadId);
+        qemu_log_mask(CPU_LOG_INT,
+            "%s: thread %d resuming, exiting WAIT mode\n",
+            __func__, env->threadId);
         set_elr(env, env->wait_next_pc);
         clear_wait_mode(env);
+    } else if (env->k0_lock_state == HEX_LOCK_WAITING) {
+        g_assert_not_reached();
     } else {
         set_elr(env, env->gpr[HEX_REG_PC]);
     }
     env->gpr[HEX_REG_PC] = evb | (cs->exception_index << 2);
     if (get_ipend(env) == 0) {
-        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
+        restore_state(env, true);
     }
 }
 
-static bool should_not_exec(CPUHexagonState *env)
-{
-    return (get_exe_mode(env) == HEX_EXE_MODE_WAIT)
-        || (env->k0_lock_state == HEX_LOCK_WAITING)
-        || (env->tlb_lock_state == HEX_LOCK_WAITING);
-}
 
 bool hex_check_interrupts(CPUHexagonState *env)
 {
@@ -215,10 +237,7 @@ bool hex_check_interrupts(CPUHexagonState *env)
 
     /* Early exit if nothing pending */
     if (get_ipend(env) == 0) {
-        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
-        if (should_not_exec(env)) {
-            cpu_stop_current();
-        }
+        restore_state(env, false);
         return false;
     }
 
@@ -267,13 +286,7 @@ bool hex_check_interrupts(CPUHexagonState *env)
      * interrupt_request bit(s) when we execute one of those instructions.
      */
     if (!int_handled && !ssr_ex) {
-        cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI);
-        /* If it was in WAIT mode before the interrupt, put
-         * this thread back to sleep:
-         */
-        if (should_not_exec(env)) {
-            cpu_stop_current();
-        }
+        restore_state(env, int_handled);
     } else if (int_handled) {
         assert(!cs->halted);
     }
