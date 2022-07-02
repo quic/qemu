@@ -167,7 +167,7 @@ static void gen_cpu_limit(DisasContext *ctx, TCGv dest)
 #else
 static void gen_cpu_limit(DisasContext *ctx, TCGv dest)
 {
-    if (ctx->need_cpu_limit) {
+    if (ctx->need_cpu_limit && ctx->should_advance_pc) {
         gen_helper_cpu_limit(cpu_env, dest);
     }
 }
@@ -180,6 +180,9 @@ static bool use_goto_tb(DisasContext *ctx, target_ulong dest)
 
 static void gen_goto_tb(DisasContext *ctx, int idx, target_ulong dest)
 {
+    if (!ctx->should_advance_pc) {
+        return;
+    }
     if (use_goto_tb(ctx, dest)) {
         tcg_gen_goto_tb(idx);
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], dest);
@@ -238,14 +241,16 @@ static void gen_end_tb(DisasContext *ctx)
         gen_goto_tb(ctx, 1, ctx->base.pc_next + pkt->encod_pkt_size_in_bytes);
     } else {
         gen_cpu_limit(ctx, hex_next_PC);
-        tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
-#ifdef CONFIG_USER_ONLY
         /*
-         * TODO Figure out why this doesn't work in system mode
-         *      tests/tcg/hexagon/system/qtimer.c
+         * Some instructions cannot complete executing until
+         * they have acquired an exclusive lock.  In those cases,
+         * we only advance the PC depending on the specific CPU state
+         * in the implementation of those instructions.
          */
-        tcg_gen_lookup_and_goto_ptr();
-#endif
+        if (ctx->should_advance_pc) {
+            tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+            tcg_gen_lookup_and_goto_ptr();
+        }
     }
 
     g_assert(ctx->branch_cond == NULL);
@@ -411,12 +416,17 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     bitmap_zero(ctx->vregs_select, NUM_VREGS);
     ctx->qreg_log_idx = 0;
     ctx->pre_commit = true;
+    ctx->should_advance_pc = true;
 
     for (i = 0; i < STORES_MAX; i++) {
         ctx->store_width[i] = 0;
     }
     ctx->s1_store_processed = false;
-    ctx->pre_commit = true;
+    if (check_for_opcode(pkt, Y2_k0lock)
+        || check_for_opcode(pkt, Y2_tlblock)) {
+        ctx->should_advance_pc = false;
+    }
+
 
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
@@ -1242,7 +1252,9 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     switch (ctx->base.is_jmp) {
     case DISAS_TOO_MANY:
         gen_exec_counters(ctx);
-        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
+        if (ctx->should_advance_pc) {
+            tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
+        }
 
     /* Fall through */
     case DISAS_NEXT:

@@ -77,6 +77,7 @@ typedef struct DisasContext {
     TCGv ones;
     TCGv_i64 ones64;
     bool gen_cacheop_exceptions;
+    bool should_advance_pc;
 } DisasContext;
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
