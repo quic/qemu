@@ -361,25 +361,7 @@ static void ARCH_FUNCTION(verif_mac_callback)(hmx_state_t * state_ptr, int32_t a
 }
 #endif
 
-int32_t ARCH_FUNCTION(hmx_fxp_mac)(hmx_state_t * state_ptr, int32_t acc, uint8_t act, int8_t wgt, int8_t callback_wgt, int32_t spatial_idx, int32_t output_ch, int32_t acc_idx, int32_t input_ch, int32_t x_tap, int32_t y_tap, int32_t block_idx, int32_t deep_block_idx) {
-	int32_t output = acc;
-	int32_t wgt32 = (int32_t)((int16_t)wgt);
-	int32_t act32 = (int32_t)((uint16_t)act);
-	output += act32 * wgt32;
-
-#ifdef VERIFICATION
-    int32_t output_verif = output - ((state_ptr->accum_fxp[spatial_idx][output_ch].bias_state & (1 << (acc_idx ))) ? state_ptr->internal_bias_value : 0);
-
-    DEBUG_PRINT(2, "HMX FXP MULT: pktid=0x%08x X_TAP=%02d Y_TAP=%02d IN_CHAN=%02d BLOCK=%02d DEEP_BLOCK=%d A: 0x%02x W: 0x%02x ACC[%02d][%02d][%02d].%s = 0x%08x, acc_idx=%d",
-    state_ptr->pktid, x_tap, y_tap, input_ch, block_idx, deep_block_idx, act, (uint8_t)callback_wgt, spatial_idx, output_ch, (acc_idx & 0x1), (acc_idx & 0x2) ? "hi" : "lo", output_verif, acc_idx);
-
-    ARCH_FUNCTION(verif_mac_callback)(state_ptr,  output_verif,  act,  callback_wgt,  spatial_idx,  output_ch,  acc_idx,  input_ch,  x_tap,  y_tap,  block_idx,  deep_block_idx );
-#endif
-	return output;
-}
-
-
-void ARCH_FUNCTION(hmx_mult_fxp)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size)
+static inline QEMU_ALWAYS_INLINE void ARCH_FUNCTION(hmx_mult_fxp)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size)
 {
     if (state_ptr->redundant_acc)
     {
@@ -397,7 +379,7 @@ void ARCH_FUNCTION(hmx_mult_fxp)(hmx_state_t * state_ptr, uint32_t row, uint32_t
 
 }
 
-void ARCH_FUNCTION(hmx_mult_fxp_subbyte)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size) {
+static inline QEMU_ALWAYS_INLINE void ARCH_FUNCTION(hmx_mult_fxp_subbyte)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size) {
     int32_t acc_idx = sel + ((output2x) ? 2 : 0);
     state_ptr->future_accum_fxp[row][col].w[acc_idx] = ARCH_FUNCTION(hmx_fxp_mac)(state_ptr, state_ptr->future_accum_fxp[row][col].w[acc_idx], act, wgt, wgt, row, col, acc_idx, in_chan,  x_tap, y_tap, block, deep_block);
 }
@@ -825,8 +807,8 @@ int8_t ARCH_FUNCTION(hmx_unpack_scrumb_from_byte)(int8_t in, int32_t bit_select)
 #ifndef DBG_TRACING
 
 hmx_mult_body_ptr_t hmx_mult_body_ptr_table[HMX_MULT_TYPES] = {
-	&hmx_mult_fxp,
-    &hmx_mult_fxp_subbyte,
+    0, /* directly handle hmx_mult_fxp */
+    0, /* directly handle hmx_mult_fxp_subbyte */
 	&hmx_mult_xfp,
 };
 
@@ -1215,6 +1197,7 @@ void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t
 	if(fp_rate_8_positive_0_insert)
 		valid = 1;
 
+    const hmx_mult_body_ptr_t mult_fptr = hmx_mult_body_ptr_table[mult_type];
     if ( (!state_ptr->limit_execeeded) && (valid || valid_fp8_batch) && (row>=0) )
     {
         for(uint32_t output_2x_channels = 0; output_2x_channels < output2x; output_2x_channels++)
@@ -1224,7 +1207,6 @@ void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t
                 uint16_t wgt = state_ptr->wgt_cache[wgt_stream_idx][output_ch_idx + (output_2x_channels*32)].wgt;
 
                 DEBUG_PRINT(2,"WGT_SEL CACHE[%02d][%02d]=%02x", wgt_stream_idx, output_ch_idx, wgt);
-                const hmx_mult_body_ptr_t mult_fptr = hmx_mult_body_ptr_table[mult_type];
 				if(fp_rate_8_positive_0_insert | fp_rate_8_insert_0_small_grp_size)
 				{
 					wgt = 0;
@@ -1235,8 +1217,12 @@ void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t
 					wgt = 0;
 					DEBUG_PRINT(2,"FOR FP RATE=8 wgt, not enough but batch beginning is good, input channel=%d, grp_idx=%d, grp_size=%d, fp8_ch_start=%d, fp8_ch_stop=%d wgt=%02x", input_channel, grp_idx, grp_size, fp8_ch_start, fp8_ch_stop, wgt);
 				}
-
-                mult_fptr(state_ptr, row, output_ch_idx, acc_select, act, wgt, input_channel, x_tap, y_tap, block, output_2x_channels, deep_block, grp_idx, grp_size);
+                if (mult_type ==  HMX_MULT_FXP)
+                    hmx_mult_fxp(state_ptr, row, output_ch_idx, acc_select, act, wgt, input_channel, x_tap, y_tap, block, output_2x_channels, deep_block, grp_idx, grp_size);
+                else if (mult_type == HMX_MULT_FXP_SUBBYTE)
+                    hmx_mult_fxp_subbyte(state_ptr, row, output_ch_idx, acc_select, act, wgt, input_channel, x_tap, y_tap, block, output_2x_channels, deep_block, grp_idx, grp_size);
+                else
+                    mult_fptr(state_ptr, row, output_ch_idx, acc_select, act, wgt, input_channel, x_tap, y_tap, block, output_2x_channels, deep_block, grp_idx, grp_size);
 
                 if (state_ptr->proc->arch_proc_options->pmu_enable)
                 {

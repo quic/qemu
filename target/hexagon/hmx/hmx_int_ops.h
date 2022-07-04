@@ -65,12 +65,11 @@ typedef struct ProcessorState {
 #endif
 
 // Multiply Functions
-ARCH_FUNCTION_DECL(int32_t, hmx_fxp_mac,struct HMX_State * state_ptr, int32_t acc, uint8_t act, int8_t wgt, int8_t callback_wgt, int32_t spatial_idx, int32_t output_ch, int32_t acc_idx, int32_t input_ch, int32_t x_tap, int32_t y_tap, int32_t block_idx, int32_t deep_block_idx);
+#define hmx_fxp_mac(state_ptr, acc, act, wgt, callback_wgt, spatial_idx, output_ch, acc_idx, input_ch, x_tap, y_tap, block_idx, deep_block_idx) \
+	((int32_t)acc + ((int32_t)((int16_t)wgt) * (int32_t)((uint16_t)act)))
 ARCH_FUNCTION_DECL(void, hmx_multiply,thread_t *env, struct HMX_State * state_ptr, uint32_t weights_per_byte_log, uint32_t wgt_per_word, uint32_t unpack, uint32_t type, uint32_t mult_type, uint32_t output_channel_scale);
 ARCH_FUNCTION_DECL(void, hmx_mult_inner,struct HMX_State * state_ptr, int32_t row,uint32_t acc_select,uint32_t act,uint32_t wgt_stream_idx,uint32_t mult_type,uint32_t input_channel,uint32_t x_tap,uint32_t y_tap,uint32_t block,uint32_t deep_block,uint32_t output2x,uint32_t is_flt,uint32_t grp_idx,uint32_t grp_start,uint32_t grp_end,uint32_t grp_size, uint32_t fp8_ch_start, uint32_t fp8_ch_end);
 ARCH_FUNCTION_DECL(void, hmx_mult_xfp,struct HMX_State * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size);
-ARCH_FUNCTION_DECL(void, hmx_mult_fxp,struct HMX_State * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size);
-ARCH_FUNCTION_DECL(void, hmx_mult_fxp_subbyte,struct HMX_State * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size);
 
 // Convert Functions
 ARCH_FUNCTION_DECL(int64_t,  hmx_combine_redundant_acc, struct HMX_State * state_ptr, int32_t hi,     int32_t lo, int32_t bias);
