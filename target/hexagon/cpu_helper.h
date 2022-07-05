@@ -26,35 +26,39 @@
 #define ARCH_SET_SYSTEM_REG(ENV,REG,VAL) (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
     ((ENV)->t_sreg[(REG)] = (VAL)) : ((ENV)->g_sreg[(REG)] = (VAL)))
 #define DEBUG_MEMORY_READ_ENV(ENV,ADDR,SIZE,PTR) \
-    hexagon_tools_memory_read(ENV, ADDR, SIZE, PTR)
+    hexagon_read_memory(ENV, ADDR, SIZE, PTR)
 #define DEBUG_MEMORY_READ(ADDR,SIZE,PTR) \
-    hexagon_tools_memory_read(env, ADDR, SIZE, PTR)
+    hexagon_read_memory(env, ADDR, SIZE, PTR)
 #define DEBUG_MEMORY_READ_LOCKED(ADDR,SIZE,PTR) \
-    hexagon_tools_memory_read_locked(env, ADDR, SIZE, PTR)
+    hexagon_read_memory_locked(env, ADDR, SIZE, PTR)
 #define DEBUG_MEMORY_WRITE(ADDR,SIZE,DATA) \
-    hexagon_tools_memory_write(env, ADDR, SIZE, (uint64_t)DATA)
+    hexagon_write_memory(env, ADDR, SIZE, (uint64_t)DATA)
 
-extern void hexagon_tools_memory_read(CPUHexagonState *env, target_ulong vaddr,
+void hexagon_read_memory_block(CPUHexagonState *env, target_ulong addr, int byte_count,
+    unsigned char *dstbuf);
+void hexagon_read_memory(CPUHexagonState *env, target_ulong vaddr,
     int size, void *retptr);
-extern void hexagon_tools_memory_write(CPUHexagonState *env, target_ulong vaddr,
+void hexagon_write_memory_block(CPUHexagonState *env, target_ulong addr, int byte_count,
+    unsigned char *srcbuf);
+void hexagon_write_memory(CPUHexagonState *env, target_ulong vaddr,
     int size, uint64_t data);
-extern int hexagon_tools_memory_read_locked(CPUHexagonState *env,
+int hexagon_read_memory_locked(CPUHexagonState *env,
                                             target_ulong vaddr, int size,
                                             void *retptr);
-extern void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
+void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
                                  uint32_t length);
 
-extern void hexagon_wait_thread(CPUHexagonState *env);
-extern void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei);
-extern void hexagon_resume_threads(CPUHexagonState *env, uint32_t mask);
-extern void hexagon_start_threads(CPUHexagonState *env, uint32_t mask);
-extern void hexagon_stop_thread(CPUHexagonState *env);
-extern void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old);
-extern void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause);
+void hexagon_wait_thread(CPUHexagonState *env);
+void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei);
+void hexagon_resume_threads(CPUHexagonState *env, uint32_t mask);
+void hexagon_start_threads(CPUHexagonState *env, uint32_t mask);
+void hexagon_stop_thread(CPUHexagonState *env);
+void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old);
+void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause);
 /*
  * Clear the interrupt pending bits in the mask.
  */
-extern void hexagon_clear_interrupts(CPUHexagonState *global_env, uint32_t mask);
+void hexagon_clear_interrupts(CPUHexagonState *global_env, uint32_t mask);
 
 /*
  * Assert interrupt number @a irq.  This function will search for the appropriate
@@ -62,24 +66,24 @@ extern void hexagon_clear_interrupts(CPUHexagonState *global_env, uint32_t mask)
  * it or pend it if none is available.  Threads selected to handle interrupts that
  * are waiting will be resumed.
  */
-extern bool hexagon_assert_interrupt(CPUHexagonState *global_env, uint32_t irq);
-extern void hexagon_enable_int(CPUHexagonState *env, uint32_t int_num);
+bool hexagon_assert_interrupt(CPUHexagonState *global_env, uint32_t irq);
+void hexagon_enable_int(CPUHexagonState *env, uint32_t int_num);
 
 
 
-extern const char *get_sys_ssr_str(uint32_t ssr);
-extern const char *get_sys_str(CPUHexagonState *env);
-extern int sys_in_monitor_mode_reg(uint32_t ssr);
-extern int sys_in_guest_mode_reg(uint32_t ssr);
-extern int sys_in_user_mode_reg(uint32_t ssr);
-extern int sys_in_monitor_mode(CPUHexagonState *env);
-extern int sys_in_guest_mode(CPUHexagonState *env);
-extern int sys_in_user_mode(CPUHexagonState *env);
-extern int get_cpu_mode(CPUHexagonState *env);
-extern int get_exe_mode(CPUHexagonState *env);
-extern const char *get_exe_mode_str(CPUHexagonState *env);
-extern void set_wait_mode(CPUHexagonState *env);
-extern void clear_wait_mode(CPUHexagonState *env);
+const char *get_sys_ssr_str(uint32_t ssr);
+const char *get_sys_str(CPUHexagonState *env);
+int sys_in_monitor_mode_reg(uint32_t ssr);
+int sys_in_guest_mode_reg(uint32_t ssr);
+int sys_in_user_mode_reg(uint32_t ssr);
+int sys_in_monitor_mode(CPUHexagonState *env);
+int sys_in_guest_mode(CPUHexagonState *env);
+int sys_in_user_mode(CPUHexagonState *env);
+int get_cpu_mode(CPUHexagonState *env);
+int get_exe_mode(CPUHexagonState *env);
+const char *get_exe_mode_str(CPUHexagonState *env);
+void set_wait_mode(CPUHexagonState *env);
+void clear_wait_mode(CPUHexagonState *env);
 uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env);
 uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env);
 uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env);

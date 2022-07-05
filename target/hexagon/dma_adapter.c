@@ -549,6 +549,7 @@ void dma_adapter_stalled_warning(dma_t *dma) {
 	warn("DMA %d: Decomposition stalled due to DM2 Guest/Monitor mode stall setting DM2=0x%08x\n", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), val);
 }
 
+#ifdef CONFIG_USER_ONLY
 static size8u_t memread(thread_t *thread, mem_access_info_t *memaptr, int do_trace)
 {
     paddr_t paddr = memaptr->paddr;
@@ -556,27 +557,18 @@ static size8u_t memread(thread_t *thread, mem_access_info_t *memaptr, int do_tra
     size8u_t data;
 
     switch (width) {
-#ifdef CONFIG_USER_ONLY
         case 1:
-            get_user_u8(data, paddr);
+            data = cpu_ldub_data_ra(thread, paddr, GETPC());
             break;
         case 2:
-            get_user_u16(data, paddr);
+            data = cpu_lduw_data_ra(thread, paddr, GETPC());
             break;
         case 4:
-            get_user_u32(data, paddr);
+            data = cpu_ldl_data_ra(thread, paddr, GETPC());
             break;
         case 8:
-            get_user_u64(data, paddr);
+            data = cpu_ldq_data_ra(thread, paddr, GETPC());
             break;
-#else
-        case 1:
-        case 2:
-        case 4:
-        case 8:
-            hexagon_tools_memory_read(thread, paddr, width, &data);
-            break;
-#endif
         default:
             g_assert_not_reached();
     }
@@ -590,32 +582,22 @@ static void memwrite(thread_t *thread, mem_access_info_t *memaptr)
     size8u_t data = memaptr->stdata;
 
     switch (width) {
-#ifdef CONFIG_USER_ONLY
         case 1:
-            put_user_u8(data, paddr);
+            cpu_stb_data_ra(thread, paddr, data, GETPC());
             break;
         case 2:
-            put_user_u16(data, paddr);
+            cpu_stw_data_ra(thread, paddr, data, GETPC());
             break;
         case 4:
-            put_user_u32(data, paddr);
+            cpu_stl_data_ra(thread, paddr, data, GETPC());
             break;
         case 8:
-            put_user_u64(data, paddr);
+            cpu_stq_data_ra(thread, paddr, data, GETPC());
             break;
-#else
-        case 1:
-        case 2:
-        case 4:
-        case 8:
-            hexagon_tools_memory_write(thread, paddr, width, data);
-            break;
-#endif
         default:
             g_assert_not_reached();
     }
 }
-
 
 int dma_adapter_memread(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *dst, int width) {
 	mem_access_info_t macc_task;
@@ -668,6 +650,7 @@ int dma_adapter_memwrite(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *src, int
 	}
 	return 1;
 }
+#endif
 
 dma_t *dma_adapter_init(processor_t *proc, int dmanum) {
 	dma_t *dma = NULL;

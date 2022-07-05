@@ -67,137 +67,225 @@ unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
 }
 
 #ifndef CONFIG_USER_ONLY
-static size1u_t hexagon_swi_mem_read1(CPUHexagonState *env, target_ulong paddr)
 
-{
-    size1u_t data = 0;
+#define BYTES_LEFT_IN_PAGE(A) (TARGET_PAGE_SIZE - ((A) % TARGET_PAGE_SIZE))
+
+static inline QEMU_ALWAYS_INLINE bool hexagon_read_memory_small(
+    CPUHexagonState *env, target_ulong addr, int byte_count,
+    unsigned char *dstbuf, int mmu_idx)
+
+ {
+    /* handle small sizes */
+    switch (byte_count) {
+        case 1:
+            *dstbuf = cpu_ldub_mmuidx_ra(env, addr, mmu_idx, GETPC());
+            return true;
+
+        case 2:
+            if (QEMU_IS_ALIGNED(addr, 2)) {
+                *(unsigned short *)dstbuf = cpu_lduw_mmuidx_ra(env,
+                    addr, mmu_idx, GETPC());
+                return true;
+            }
+            break;
+
+        case 4:
+            if (QEMU_IS_ALIGNED(addr, 4)) {
+                *(uint32_t *)dstbuf = cpu_ldl_mmuidx_ra(env,
+                    addr, mmu_idx, GETPC());
+                return true;
+            }
+            break;
+
+        case 8:
+            if (QEMU_IS_ALIGNED(addr, 8)) {
+                *(uint64_t *)dstbuf = cpu_ldq_mmuidx_ra(env,
+                    addr, mmu_idx, GETPC());
+                return true;
+            }
+            break;
+
+        default:
+            /* larger request, handle elsewhere */
+            return false;
+    }
+
+    /* not aligned, copy bytes */
+    for (int i = 0 ; i < byte_count ; ++i)
+        *dstbuf++ = cpu_ldub_mmuidx_ra(env, addr++, mmu_idx, GETPC());
+    return true;
+}
+
+void hexagon_read_memory_block(CPUHexagonState *env, target_ulong addr,
+    int byte_count, unsigned char *dstbuf)
+
+ {
     unsigned mmu_idx = cpu_mmu_index(env, false);
-    data = cpu_ldub_mmuidx_ra(env, paddr, mmu_idx, GETPC());
-    return data;
-}
 
-static size2u_t hexagon_swi_mem_read2(CPUHexagonState *env, target_ulong paddr)
-
-{
-    size2u_t data = 0;
-    size1u_t tdata;
-    int i;
-
-    for (i = 0; i < 2; i++) {
-        tdata = hexagon_swi_mem_read1(env, paddr + i);
-        data = ((size2u_t) tdata << (8 * i)) | data;
+    /* handle small sizes */
+    if (hexagon_read_memory_small(env,
+        addr, byte_count, dstbuf, mmu_idx) == true) {
+        return;
     }
 
-    return data;
-}
+    /* handle larger sizes here */
+    unsigned bytes_left_in_page = BYTES_LEFT_IN_PAGE(addr);
+    while (byte_count > 0) {
+        unsigned copy_byte_count = (bytes_left_in_page > byte_count) ?
+             byte_count : bytes_left_in_page;
+        unsigned char *host_addr = (unsigned char *)probe_read(
+            env, addr, copy_byte_count, mmu_idx, GETPC());
 
-static target_ulong hexagon_swi_mem_read4(CPUHexagonState *env, target_ulong paddr)
-
-{
-    target_ulong data = 0;
-    size1u_t tdata;
-    int i;
-
-    for (i = 0; i < 4; i++) {
-        tdata = hexagon_swi_mem_read1(env, paddr + i);
-        data = ((target_ulong) tdata << (8 * i)) | data;
+        byte_count -= copy_byte_count;
+        if (host_addr) {
+            addr += copy_byte_count;
+            while (copy_byte_count-- > 0) {
+                *dstbuf++ = (unsigned char)ldub_p(host_addr++);
+            }
+        } else {
+            while (copy_byte_count-- > 0) {
+                *dstbuf++ = cpu_ldub_mmuidx_ra(env, addr++, mmu_idx, GETPC());
+            }
+        }
+        bytes_left_in_page = BYTES_LEFT_IN_PAGE(addr);
     }
-
-    return data;
 }
 
-
-static size8u_t hexagon_swi_mem_read8(CPUHexagonState *env, target_ulong paddr)
-
-{
-    size8u_t data = 0;
-    size1u_t tdata;
-    int i;
-
-    for (i = 0; i < 8; i++) {
-        tdata = hexagon_swi_mem_read1(env, paddr + i);
-        data = ((size8u_t) tdata << (8 * i)) | data;
-    }
-
-    return data;
-}
-
-void hexagon_tools_memory_read(CPUHexagonState *env, target_ulong vaddr,
+void hexagon_read_memory(CPUHexagonState *env, target_ulong vaddr,
     int size, void *retptr)
 
 {
-    CPUState *cs = env_cpu(env);
+    unsigned mmu_idx = cpu_mmu_index(env, false);
     target_ulong paddr = vaddr;
 
-    switch (size) {
-    case 1:
-        (*(size1u_t *) retptr) = hexagon_swi_mem_read1(env, paddr);
-        break;
-    case 2:
-        (*(size2u_t *) retptr) = hexagon_swi_mem_read2(env, paddr);
-        break;
-    case 4:
-        (*(target_ulong *) retptr) = hexagon_swi_mem_read4(env, paddr);
-        break;
-    case 8:
-        (*(size8u_t *) retptr) = hexagon_swi_mem_read8(env, paddr);
-        break;
-    default:
-        cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
+    if (hexagon_read_memory_small(env,
+        paddr, size, retptr, mmu_idx) == true)
+        return;
+
+    CPUState *cs = env_cpu(env);
+    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
+}
+
+int hexagon_read_memory_locked(CPUHexagonState *env, target_ulong vaddr,
+    int size, void *retptr)
+
+{
+    int ret = 0;
+
+    if (size == 4 || size == 8) {
+        unsigned mmu_idx = cpu_mmu_index(env, false);
+        target_ulong paddr = vaddr;
+
+        if (hexagon_read_memory_small(env,
+            paddr, size, retptr, mmu_idx) == true)
+            return ret;
+    }
+
+    CPUState *cs = env_cpu(env);
+    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
+
+    return ret; /* cant actually execute because of abort */
+}
+
+static inline QEMU_ALWAYS_INLINE bool hexagon_write_memory_small(
+    CPUHexagonState *env, target_ulong addr, int byte_count,
+    unsigned char *srcbuf, int mmu_idx)
+
+{
+    /* handle small sizes */
+    switch (byte_count) {
+        case 1:
+            cpu_stb_mmuidx_ra(env, addr, *srcbuf, mmu_idx, GETPC());
+            return true;
+
+         case 2:
+            if (QEMU_IS_ALIGNED(addr, 2)) {
+                cpu_stw_mmuidx_ra(env,
+                    addr, *(uint16_t *)srcbuf, mmu_idx, GETPC());
+                return true;
+            }
+            break;
+
+         case 4:
+            if (QEMU_IS_ALIGNED(addr, 4)) {
+                cpu_stl_mmuidx_ra(env,
+                    addr, *(uint32_t *)srcbuf, mmu_idx, GETPC());
+                return true;
+            }
+            break;
+
+         case 8:
+            if (QEMU_IS_ALIGNED(addr, 8)) {
+                cpu_stq_mmuidx_ra(env,
+                    addr, *(uint64_t *)srcbuf, mmu_idx, GETPC());
+                return true;
+            }
+            break;
+
+         default:
+            /* larger request, handle elsewhere */
+            return false;
+    }
+
+    /* not aligned, copy bytes */
+    for (int i = 0 ; i < byte_count ; ++i)
+         cpu_stb_mmuidx_ra(env, addr++, *srcbuf++, mmu_idx, GETPC());
+
+    return true;
+}
+
+void hexagon_write_memory_block(CPUHexagonState *env, target_ulong addr,
+    int byte_count, unsigned char *srcbuf)
+
+{
+    unsigned mmu_idx = cpu_mmu_index(env, false);
+
+    /* handle small sizes */
+    if (hexagon_write_memory_small(env,
+        addr, byte_count, srcbuf, mmu_idx) == true) {
+        return;
+    }
+
+    /* handle larger sizes here */
+    unsigned bytes_left_in_page = BYTES_LEFT_IN_PAGE(addr);
+    while (byte_count > 0) {
+        unsigned copy_byte_count = (bytes_left_in_page > byte_count) ?
+             byte_count : bytes_left_in_page;
+        unsigned char *host_addr = (unsigned char *)probe_write(
+            env, addr, copy_byte_count, mmu_idx, GETPC());
+
+        byte_count -= copy_byte_count;
+        if (host_addr) {
+            addr += copy_byte_count;
+            while (copy_byte_count-- > 0) {
+                stb_p(host_addr++, *srcbuf++);
+            }
+        } else {
+            while (copy_byte_count-- > 0) {
+                cpu_stb_mmuidx_ra(env, addr++, *srcbuf++, mmu_idx, GETPC());
+            }
+        }
+        bytes_left_in_page = BYTES_LEFT_IN_PAGE(addr);
     }
 }
 
-void hexagon_tools_memory_write(CPUHexagonState *env, target_ulong vaddr,
+void hexagon_write_memory(CPUHexagonState *env, target_ulong vaddr,
     int size, size8u_t data)
 
 {
-    CPUState *cs = env_cpu(env);
     paddr_t paddr = vaddr;
     unsigned mmu_idx = cpu_mmu_index(env, false);
-    uintptr_t ra = GETPC();
 
-    switch (size) {
-    case 1:
-        cpu_stb_mmuidx_ra(env, paddr, data, mmu_idx, ra);
-        break;
-    case 2:
-        cpu_stw_mmuidx_ra(env, paddr, data, mmu_idx, ra);
-        break;
-    case 4:
-        cpu_stl_mmuidx_ra(env, paddr, data, mmu_idx, ra);
-        break;
-    case 8:
-        cpu_stq_mmuidx_ra(env, paddr, data, mmu_idx, ra);
-        break;
-    default:
-        cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
-    }
-}
+    if (hexagon_write_memory_small(env,
+        paddr, size, (unsigned char *)&data, mmu_idx) == true)
+        return;
 
-int hexagon_tools_memory_read_locked(CPUHexagonState *env, target_ulong vaddr,
-    int size, void *retptr)
-
-{
     CPUState *cs = env_cpu(env);
-    target_ulong paddr = vaddr;
-    int ret = 0;
-
-    switch (size) {
-    case 4:
-        (*(target_ulong *) retptr) = hexagon_swi_mem_read4(env, paddr);
-        break;
-    case 8:
-        (*(size8u_t *) retptr) = hexagon_swi_mem_read8(env, paddr);
-        break;
-    default:
-        cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
-        break;
-     }
-
-    return ret;
+    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
 }
 
-void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr, uint32_t length)
+void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
+    uint32_t length)
 
 {
     unsigned int warm;
