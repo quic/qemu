@@ -71,6 +71,7 @@ TESTS += \
 	test-thread \
 	access \
 	getcwd \
+	checkforpriv \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -140,6 +141,8 @@ ftrunc: ftrunc.o
 test-thread: test-thread.o
 access: access.o
 getcwd: getcwd.o
+checkforpriv.o: checkforpriv.c mmu.h
+checkforpriv: checkforpriv.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
