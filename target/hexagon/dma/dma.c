@@ -240,6 +240,7 @@ static void ARCH_FUNCTION(dump_dma_status)(dma_t *dma, const char * buf, uint32_
 
 static uint32_t ARCH_FUNCTION(dma_data_read)(dma_t *dma, uint64_t pa, uint32_t len, uint8_t *buffer)
 {
+#if defined(CONFIG_USER_ONLY)
     uint32_t bytes = len;
     uint8_t *p = buffer;
     uint64_t pa_cur = pa;
@@ -249,11 +250,16 @@ static uint32_t ARCH_FUNCTION(dma_data_read)(dma_t *dma, uint64_t pa, uint32_t l
         pa_cur++;
         bytes--;
     }
+#else
+    thread_t* thread = dma_adapter_retrieve_thread(dma);
+    hexagon_read_memory_block(thread, pa, len, buffer);
+#endif
     return 1;
 }
 
 static uint32_t ARCH_FUNCTION(dma_data_write)(dma_t *dma, uint64_t pa, uint32_t len, uint8_t *buffer)
 {
+#if defined(CONFIG_USER_ONLY)
     uint32_t bytes = len;
     uint8_t *p = buffer;
     uint64_t pa_cur = pa;
@@ -263,6 +269,10 @@ static uint32_t ARCH_FUNCTION(dma_data_write)(dma_t *dma, uint64_t pa, uint32_t 
         pa_cur++;
         bytes--;
     }
+#else
+    thread_t* thread = dma_adapter_retrieve_thread(dma);
+    hexagon_write_memory_block(thread, pa, len, buffer);
+#endif
     return 1;
 }
 
@@ -1045,7 +1055,7 @@ uint32_t ARCH_FUNCTION(step_2d_descriptor)(dma_t *dma)
                     if (dma_adapter_xlate_va(dma, current_gather_list_va, &gather_addr_pa, &dma_mem_access, desc->srcStride, DMA_XLATE_TYPE_LOAD, 0, except_vtcm, 0, 0))
                     {
                         current_gather_src_va = 0;
-                        dma_adapter_memread(dma, src_va, gather_addr_pa, (uint8_t *) &current_gather_src_va, desc->srcStride);
+                        dma_data_read(dma, gather_addr_pa, desc->srcStride, (uint8_t *) &current_gather_src_va);
                         DMA_DEBUG(dma, "DMA %d: Tick %8d: gather address fetched for desc=%08x from src_va: %llx pa: %llx gather va=%llx\n", dma->num, ((udma_ctx_t *)dma->udma_ctx)->dma_tick_count, ((udma_ctx_t *)dma->udma_ctx)->active.va, (long long int)src_va, (long long int)gather_addr_pa, (long long int)current_gather_src_va);
                         new_gather_va = 0;
                     }

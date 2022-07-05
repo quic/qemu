@@ -41,14 +41,17 @@
 #define INC_PSTATNPC(...)
 
 #ifdef CONFIG_USER_ONLY
-#define sim_mem_write1(X, Y, addr, val)        put_user_u8(val, addr)
-#define sim_mem_write2(X, Y, addr, val)        put_user_u16(val, addr)
-#define sim_mem_write4(X, Y, addr, val)        put_user_u32(val, addr)
+#define CPU_MMU_INDEX(ENV) MMU_USER_IDX
 #else
-#define sim_mem_write1(X, Y, addr, val)        hexagon_tools_memory_write(thread, addr, 1, val)
-#define sim_mem_write2(X, Y, addr, val)        hexagon_tools_memory_write(thread, addr, 2, val)
-#define sim_mem_write4(X, Y, addr, val)        hexagon_tools_memory_write(thread, addr, 4, val)
+#define CPU_MMU_INDEX(ENV) cpu_mmu_index((ENV), false)
 #endif
+
+#define sim_mem_write1(X, Y, addr, val) cpu_stb_mmuidx_ra(thread, addr, val, \
+    CPU_MMU_INDEX(thread), GETPC())
+#define sim_mem_write2(X, Y, addr, val) cpu_stw_mmuidx_ra(thread, addr, val, \
+    CPU_MMU_INDEX(thread), GETPC())
+#define sim_mem_write4(X, Y, addr, val) cpu_stl_mmuidx_ra(thread, addr, val, \
+    CPU_MMU_INDEX(thread), GETPC())
 
 static void clear_xfp_accumulators(hmx_state_t * state, int idx) {
 	hmx_xfp_t xfp_zero = hmx_xfp_zero(state);
