@@ -385,13 +385,13 @@
  */
 #define fGEN_TCG_PRED_LOAD(GET_EA, PRED, SIZE, SIGN) \
     do { \
-        TCGv LSB = tcg_temp_new(); \
+        TCGv LSB = tcg_temp_local_new(); \
         TCGLabel *label = gen_new_label(); \
+        tcg_gen_movi_tl(EA, 0); \
         PRED;  \
-        CHECK_NOSHUF; \
+        CHECK_NOSHUF_PRED(GET_EA, SIZE, LSB); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
         tcg_temp_free(LSB); \
-        GET_EA; \
         fLOAD(1, SIZE, SIGN, EA, RdV); \
         gen_set_label(label); \
     } while (0)
@@ -563,13 +563,13 @@
 /* Predicated loads into a register pair */
 #define fGEN_TCG_PRED_LOAD_PAIR(GET_EA, PRED) \
     do { \
-        TCGv LSB = tcg_temp_new(); \
+        TCGv LSB = tcg_temp_local_new(); \
         TCGLabel *label = gen_new_label(); \
+        tcg_gen_movi_tl(EA, 0); \
         PRED;  \
-        CHECK_NOSHUF; \
+        CHECK_NOSHUF_PRED(GET_EA, 8, LSB); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
         tcg_temp_free(LSB); \
-        GET_EA; \
         fLOAD(1, 8, u, EA, RddV); \
         gen_set_label(label); \
     } while (0)

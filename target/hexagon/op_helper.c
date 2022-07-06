@@ -460,6 +460,17 @@ static void probe_store(CPUHexagonState *env, int slot, int mmu_idx,
     }
 }
 
+/*
+ * Called from a mem_noshuf packet to make sure the load doesn't
+ * raise an exception
+ */
+void HELPER(probe_noshuf_load)(CPUHexagonState *env, target_ulong va,
+                               int size, int mmu_idx)
+{
+    uintptr_t retaddr = GETPC();
+    probe_read(env, va, size, mmu_idx, retaddr);
+}
+
 /* Called during packet commit when there are two scalar stores */
 void HELPER(probe_pkt_scalar_store_s0)(CPUHexagonState *env, int args)
 {
