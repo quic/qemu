@@ -2299,7 +2299,9 @@ static uint32_t get_ready_count(CPUHexagonState *env)
     CPU_FOREACH(cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *thread_env = &cpu->env;
-        const bool running = (get_exe_mode(thread_env) == HEX_EXE_MODE_RUN);
+        const bool running = (get_exe_mode(thread_env) == HEX_EXE_MODE_RUN)
+                          && (env->k0_lock_state != HEX_LOCK_WAITING)
+                          && (env->tlb_lock_state != HEX_LOCK_WAITING);
         if (running) {
             ready_count += 1;
         }
