@@ -155,7 +155,16 @@
 #define fDCINVIDX(REG)
 #define fDCINVA(REG) do { REG = REG; } while (0) /* Nothing to do in qemu */
 
-#define fSET_TLB_LOCK()       hex_tlb_lock(env);
+#define fSET_TLB_LOCK() do { \
+            hex_tlb_lock(env); \
+            if (env->tlb_lock_state == HEX_LOCK_OWNER) { \
+                env->gpr[HEX_REG_PC] += 4; \
+            } else if (env->tlb_lock_state == HEX_LOCK_WAITING) { \
+                env->next_PC = env->gpr[HEX_REG_PC]; \
+            } else { \
+                g_assert_not_reached(); \
+            } \
+        } while (0);
 #define fCLEAR_TLB_LOCK()     hex_tlb_unlock(env);
 
 #define fSET_K0_LOCK()        hex_k0_lock(env);
