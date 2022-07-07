@@ -35,6 +35,7 @@
 #include "ui/kbd-state.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/runstate.h"
+#include "sysemu/runstate-action.h"
 #include "sysemu/cpu-throttle.h"
 #include "qapi/error.h"
 #include "qapi/qapi-commands-block.h"
@@ -1290,7 +1291,10 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
 {
     COCOA_DEBUG("QemuCocoaAppController: applicationWillTerminate\n");
 
-    qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_UI);
+    with_iothread_lock(^{
+        shutdown_action = SHUTDOWN_ACTION_POWEROFF;
+        qemu_system_shutdown_request(SHUTDOWN_CAUSE_HOST_UI);
+    });
 
     /*
      * Sleep here, because returning will cause OSX to kill us
@@ -1890,16 +1894,18 @@ static void cocoa_clipboard_notify(Notifier *notifier, void *data)
 static void cocoa_clipboard_request(QemuClipboardInfo *info,
                                     QemuClipboardType type)
 {
+    NSAutoreleasePool *pool;
     NSData *text;
 
     switch (type) {
     case QEMU_CLIPBOARD_TYPE_TEXT:
+        pool = [[NSAutoreleasePool alloc] init];
         text = [[NSPasteboard generalPasteboard] dataForType:NSPasteboardTypeString];
         if (text) {
             qemu_clipboard_set_data(&cbpeer, info, type,
                                     [text length], [text bytes], true);
-            [text release];
         }
+        [pool release];
         break;
     default:
         break;

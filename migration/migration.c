@@ -30,7 +30,6 @@
 #include "migration/misc.h"
 #include "migration.h"
 #include "savevm.h"
-#include "qemu-file-channel.h"
 #include "qemu-file.h"
 #include "migration/vmstate.h"
 #include "block/block.h"
@@ -163,7 +162,8 @@ INITIALIZE_MIGRATE_CAPS_SET(check_caps_background_snapshot,
     MIGRATION_CAPABILITY_COMPRESS,
     MIGRATION_CAPABILITY_XBZRLE,
     MIGRATION_CAPABILITY_X_COLO,
-    MIGRATION_CAPABILITY_VALIDATE_UUID);
+    MIGRATION_CAPABILITY_VALIDATE_UUID,
+    MIGRATION_CAPABILITY_ZERO_COPY_SEND);
 
 /* When we add fault tolerance, we could have several
    migrations at once.  For now we don't need to add
@@ -722,7 +722,7 @@ void migration_ioc_process_incoming(QIOChannel *ioc, Error **errp)
 
     if (!mis->from_src_file) {
         /* The first connection (multifd may have multiple) */
-        QEMUFile *f = qemu_fopen_channel_input(ioc);
+        QEMUFile *f = qemu_file_new_input(ioc);
 
         if (!migration_incoming_setup(f, errp)) {
             return;
@@ -1275,6 +1275,24 @@ static bool migrate_caps_check(bool *cap_list,
         }
     }
 
+#ifdef CONFIG_LINUX
+    if (cap_list[MIGRATION_CAPABILITY_ZERO_COPY_SEND] &&
+        (!cap_list[MIGRATION_CAPABILITY_MULTIFD] ||
+         migrate_use_compression() ||
+         migrate_use_tls())) {
+        error_setg(errp,
+                   "Zero copy only available for non-compressed non-TLS multifd migration");
+        return false;
+    }
+#else
+    if (cap_list[MIGRATION_CAPABILITY_ZERO_COPY_SEND]) {
+        error_setg(errp,
+                   "Zero copy currently only available on Linux");
+        return false;
+    }
+#endif
+
+
     /* incoming side only */
     if (runstate_check(RUN_STATE_INMIGRATE) &&
         !migrate_multi_channels_is_allowed() &&
@@ -1497,16 +1515,6 @@ static bool migrate_params_check(MigrationParameters *params, Error **errp)
         error_prepend(errp, "Invalid mapping given for block-bitmap-mapping: ");
         return false;
     }
-#ifdef CONFIG_LINUX
-    if (params->zero_copy_send &&
-        (!migrate_use_multifd() ||
-         params->multifd_compression != MULTIFD_COMPRESSION_NONE ||
-         (params->tls_creds && *params->tls_creds))) {
-        error_setg(errp,
-                   "Zero copy only available for non-compressed non-TLS multifd migration");
-        return false;
-    }
-#endif
     return true;
 }
 
@@ -2593,7 +2601,7 @@ bool migrate_use_zero_copy_send(void)
 
     s = migrate_get_current();
 
-    return s->parameters.zero_copy_send;
+    return s->enabled_capabilities[MIGRATION_CAPABILITY_ZERO_COPY_SEND];
 }
 #endif
 
@@ -3081,7 +3089,7 @@ static int postcopy_start(MigrationState *ms)
      */
     bioc = qio_channel_buffer_new(4096);
     qio_channel_set_name(QIO_CHANNEL(bioc), "migration-postcopy-buffer");
-    fb = qemu_fopen_channel_output(QIO_CHANNEL(bioc));
+    fb = qemu_file_new_output(QIO_CHANNEL(bioc));
     object_unref(OBJECT(bioc));
 
     /*
@@ -3544,7 +3552,8 @@ static MigThrError migration_detect_error(MigrationState *s)
 /* How many bytes have we transferred since the beginning of the migration */
 static uint64_t migration_total_bytes(MigrationState *s)
 {
-    return qemu_ftell(s->to_dst_file) + ram_counters.multifd_bytes;
+    return qemu_file_total_transferred(s->to_dst_file) +
+        ram_counters.multifd_bytes;
 }
 
 static void migration_calculate_complete(MigrationState *s)
@@ -3970,7 +3979,7 @@ static void *bg_migration_thread(void *opaque)
      */
     s->bioc = qio_channel_buffer_new(512 * 1024);
     qio_channel_set_name(QIO_CHANNEL(s->bioc), "vmstate-buffer");
-    fb = qemu_fopen_channel_output(QIO_CHANNEL(s->bioc));
+    fb = qemu_file_new_output(QIO_CHANNEL(s->bioc));
     object_unref(OBJECT(s->bioc));
 
     update_iteration_initial_status(s);
@@ -4290,6 +4299,10 @@ static Property migration_properties[] = {
     DEFINE_PROP_MIG_CAP("x-multifd", MIGRATION_CAPABILITY_MULTIFD),
     DEFINE_PROP_MIG_CAP("x-background-snapshot",
             MIGRATION_CAPABILITY_BACKGROUND_SNAPSHOT),
+#ifdef CONFIG_LINUX
+    DEFINE_PROP_MIG_CAP("x-zero-copy-send",
+            MIGRATION_CAPABILITY_ZERO_COPY_SEND),
+#endif
 
     DEFINE_PROP_END_OF_LIST(),
 };

@@ -165,8 +165,6 @@ F: tests/qtest/arm-cpu-features.c
 F: hw/arm/
 F: hw/cpu/a*mpcore.c
 F: include/hw/cpu/a*mpcore.h
-F: disas/arm-a64.cc
-F: disas/libvixl/
 F: docs/system/target-arm.rst
 F: docs/system/arm/cpu-features.rst
 
@@ -212,6 +210,13 @@ S: Maintained
 F: target/hppa/
 F: disas/hppa.c
 
+LoongArch TCG CPUs
+M: Song Gao <gaosong@loongson.cn>
+M: Xiaojuan Yang <yangxiaojuan@loongson.cn>
+S: Maintained
+F: target/loongarch/
+F: tests/tcg/loongarch64/
+
 M68K TCG CPUs
 M: Laurent Vivier <laurent@vivier.eu>
 S: Maintained
@@ -239,7 +244,8 @@ F: docs/system/cpu-models-mips.rst.inc
 F: tests/tcg/mips/
 
 MIPS TCG CPUs (nanoMIPS ISA)
-S: Orphan
+M: Stefan Pejic <stefan.pejic@syrmia.com>
+S: Maintained
 F: disas/nanomips.*
 F: target/mips/tcg/*nanomips*
 
@@ -1116,6 +1122,23 @@ F: include/hw/net/lasi_82596.h
 F: include/hw/pci-host/dino.h
 F: pc-bios/hppa-firmware.img
 
+LoongArch Machines
+------------------
+Virt
+M: Xiaojuan Yang <yangxiaojuan@loongson.cn>
+M: Song Gao <gaosong@loongson.cn>
+S: Maintained
+F: docs/system/loongarch/loongson3.rst
+F: configs/targets/loongarch64-softmmu.mak
+F: configs/devices/loongarch64-softmmu/default.mak
+F: hw/loongarch/
+F: include/hw/loongarch/virt.h
+F: include/hw/intc/loongarch_*.h
+F: hw/intc/loongarch_*.c
+F: include/hw/pci-host/ls7a.h
+F: hw/rtc/ls7a_rtc.c
+F: gdb-xml/loongarch*.xml
+
 M68K Machines
 -------------
 an5206
@@ -1815,7 +1838,6 @@ R: Ani Sinha <ani@anisinha.ca>
 S: Supported
 F: include/hw/acpi/*
 F: include/hw/firmware/smbios.h
-F: hw/mem/*
 F: hw/acpi/*
 F: hw/smbios/*
 F: hw/i386/acpi-build.[hc]
@@ -1826,6 +1848,7 @@ F: tests/qtest/acpi-utils.[hc]
 F: tests/data/acpi/
 F: docs/specs/acpi_cpu_hotplug.rst
 F: docs/specs/acpi_mem_hotplug.rst
+F: docs/specs/acpi_nvdimm.rst
 F: docs/specs/acpi_pci_hotplug.rst
 F: docs/specs/acpi_hw_reduced_hotplug.rst
 
@@ -2133,15 +2156,6 @@ F: qapi/rocker.json
 F: tests/rocker/
 F: docs/specs/rocker.txt
 
-NVDIMM
-M: Xiao Guangrong <xiaoguangrong.eric@gmail.com>
-S: Maintained
-F: hw/acpi/nvdimm.c
-F: hw/mem/nvdimm.c
-F: include/hw/mem/nvdimm.h
-F: docs/nvdimm.txt
-F: docs/specs/acpi_nvdimm.rst
-
 e1000x
 M: Dmitry Fleytman <dmitry.fleytman@gmail.com>
 S: Maintained
@@ -2174,6 +2188,7 @@ Generic Loader
 M: Alistair Francis <alistair@alistair23.me>
 S: Maintained
 F: hw/core/generic-loader.c
+F: hw/core/uboot_image.h
 F: include/hw/core/generic-loader.h
 F: docs/system/generic-loader.rst
 
@@ -2401,6 +2416,14 @@ F: hw/intc/s390_flic*.c
 F: include/hw/s390x/s390_flic.h
 L: qemu-s390x@nongnu.org
 
+CanoKey
+M: Hongren (Zenithal) Zheng <i@zenithal.me>
+S: Maintained
+R: Canokeys.org <contact@canokeys.org>
+F: hw/usb/canokey.c
+F: hw/usb/canokey.h
+F: docs/system/devices/canokey.rst
+
 Subsystems
 ----------
 Overall Audio backends
@@ -2512,7 +2535,7 @@ F: scsi/*
 
 Block Jobs
 M: John Snow <jsnow@redhat.com>
-M: Vladimir Sementsov-Ogievskiy <v.sementsov-og@mail.ru>
+M: Vladimir Sementsov-Ogievskiy <vsementsov@yandex-team.ru>
 L: qemu-block@nongnu.org
 S: Supported
 F: blockjob.c
@@ -2537,7 +2560,7 @@ F: block/aio_task.c
 F: util/qemu-co-shared-resource.c
 F: include/qemu/co-shared-resource.h
 T: git https://gitlab.com/jsnow/qemu.git jobs
-T: git https://src.openvz.org/scm/~vsementsov/qemu.git jobs
+T: git https://gitlab.com/vsementsov/qemu.git block
 
 Block QAPI, monitor, command line
 M: Markus Armbruster <armbru@redhat.com>
@@ -2554,11 +2577,12 @@ M: Ben Widawsky <ben.widawsky@intel.com>
 M: Jonathan Cameron <jonathan.cameron@huawei.com>
 S: Supported
 F: hw/cxl/
+F: hw/mem/cxl_type3.c
 F: include/hw/cxl/
 
 Dirty Bitmaps
 M: Eric Blake <eblake@redhat.com>
-M: Vladimir Sementsov-Ogievskiy <v.sementsov-og@mail.ru>
+M: Vladimir Sementsov-Ogievskiy <vsementsov@yandex-team.ru>
 R: John Snow <jsnow@redhat.com>
 L: qemu-block@nongnu.org
 S: Supported
@@ -2572,6 +2596,7 @@ F: util/hbitmap.c
 F: tests/unit/test-hbitmap.c
 F: docs/interop/bitmaps.rst
 T: git https://repo.or.cz/qemu/ericb.git bitmaps
+T: git https://gitlab.com/vsementsov/qemu.git block
 
 Character device backends
 M: Marc-André Lureau <marcandre.lureau@redhat.com>
@@ -2669,6 +2694,19 @@ F: softmmu/physmem.c
 F: include/exec/memory-internal.h
 F: scripts/coccinelle/memory-region-housekeeping.cocci
 
+Memory devices
+M: David Hildenbrand <david@redhat.com>
+M: Igor Mammedov <imammedo@redhat.com>
+R: Xiao Guangrong <xiaoguangrong.eric@gmail.com>
+S: Supported
+F: hw/mem/memory-device.c
+F: hw/mem/nvdimm.c
+F: hw/mem/pc-dimm.c
+F: include/hw/mem/memory-device.h
+F: include/hw/mem/nvdimm.h
+F: include/hw/mem/pc-dimm.h
+F: docs/nvdimm.txt
+
 SPICE
 M: Gerd Hoffmann <kraxel@redhat.com>
 S: Odd Fixes
@@ -2711,6 +2749,7 @@ F: softmmu/cpu-throttle.c
 F: softmmu/cpu-timers.c
 F: softmmu/icount.c
 F: softmmu/runstate-action.c
+F: softmmu/runstate.c
 F: qapi/run-state.json
 
 Read, Copy, Update (RCU)
@@ -2782,16 +2821,17 @@ F: scripts/*.py
 F: tests/*.py
 
 Benchmark util
-M: Vladimir Sementsov-Ogievskiy <v.sementsov-og@mail.ru>
+M: Vladimir Sementsov-Ogievskiy <vsementsov@yandex-team.ru>
 S: Maintained
 F: scripts/simplebench/
-T: git https://src.openvz.org/scm/~vsementsov/qemu.git simplebench
+T: git https://gitlab.com/vsementsov/qemu.git simplebench
 
 Transactions helper
-M: Vladimir Sementsov-Ogievskiy <v.sementsov-og@mail.ru>
+M: Vladimir Sementsov-Ogievskiy <vsementsov@yandex-team.ru>
 S: Maintained
 F: include/qemu/transactions.h
 F: util/transactions.c
+T: git https://gitlab.com/vsementsov/qemu.git block
 
 QAPI
 M: Markus Armbruster <armbru@redhat.com>
@@ -3271,8 +3311,6 @@ M: Richard Henderson <richard.henderson@linaro.org>
 S: Maintained
 L: qemu-arm@nongnu.org
 F: tcg/aarch64/
-F: disas/arm-a64.cc
-F: disas/libvixl/
 
 ARM TCG target
 M: Richard Henderson <richard.henderson@linaro.org>
@@ -3368,7 +3406,7 @@ F: block/iscsi-opts.c
 
 Network Block Device (NBD)
 M: Eric Blake <eblake@redhat.com>
-M: Vladimir Sementsov-Ogievskiy <v.sementsov-og@mail.ru>
+M: Vladimir Sementsov-Ogievskiy <vsementsov@yandex-team.ru>
 L: qemu-block@nongnu.org
 S: Maintained
 F: block/nbd*
@@ -3380,7 +3418,7 @@ F: docs/interop/nbd.txt
 F: docs/tools/qemu-nbd.rst
 F: tests/qemu-iotests/tests/*nbd*
 T: git https://repo.or.cz/qemu/ericb.git nbd
-T: git https://src.openvz.org/scm/~vsementsov/qemu.git nbd
+T: git https://gitlab.com/vsementsov/qemu.git block
 
 NFS
 M: Peter Lieven <pl@kamp.de>
@@ -3465,13 +3503,13 @@ F: block/dmg.c
 parallels
 M: Stefan Hajnoczi <stefanha@redhat.com>
 M: Denis V. Lunev <den@openvz.org>
-M: Vladimir Sementsov-Ogievskiy <v.sementsov-og@mail.ru>
+M: Vladimir Sementsov-Ogievskiy <vsementsov@yandex-team.ru>
 L: qemu-block@nongnu.org
 S: Supported
 F: block/parallels.c
 F: block/parallels-ext.c
 F: docs/interop/parallels.txt
-T: git https://src.openvz.org/scm/~vsementsov/qemu.git parallels
+T: git https://gitlab.com/vsementsov/qemu.git block
 
 qed
 M: Stefan Hajnoczi <stefanha@redhat.com>
@@ -3544,6 +3582,8 @@ M: Coiby Xu <Coiby.Xu@gmail.com>
 S: Maintained
 F: block/export/vhost-user-blk-server.c
 F: block/export/vhost-user-blk-server.h
+F: block/export/virtio-blk-handler.c
+F: block/export/virtio-blk-handler.h
 F: include/qemu/vhost-user-server.h
 F: tests/qtest/libqos/vhost-user-blk.c
 F: tests/qtest/libqos/vhost-user-blk.h
@@ -3555,6 +3595,13 @@ M: Hanna Reitz <hreitz@redhat.com>
 L: qemu-block@nongnu.org
 S: Supported
 F: block/export/fuse.c
+
+VDUSE library and block device exports
+M: Xie Yongji <xieyongji@bytedance.com>
+S: Maintained
+F: subprojects/libvduse/
+F: block/export/vduse-blk.c
+F: block/export/vduse-blk.h
 
 Replication
 M: Wen Congyang <wencongyang2@huawei.com>
@@ -3606,6 +3653,11 @@ F: hw/remote/proxy-memory-listener.c
 F: include/hw/remote/proxy-memory-listener.h
 F: hw/remote/iohub.c
 F: include/hw/remote/iohub.h
+F: subprojects/libvfio-user
+F: hw/remote/vfio-user-obj.c
+F: include/hw/remote/vfio-user-obj.h
+F: hw/remote/iommu.c
+F: include/hw/remote/iommu.h
 
 EBPF:
 M: Jason Wang <jasowang@redhat.com>
