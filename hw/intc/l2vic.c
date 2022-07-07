@@ -40,7 +40,7 @@
 #define SLICE_MAX (L2VIC_INTERRUPT_MAX / 32)
 #define IRQBIT(irq) (1 << (irq) % 32)
 
-#define DEBUG_DEV_L2VIC 1
+#define DEBUG_DEV_L2VIC 0
 
 #define D(...) do {             \
     if (DEBUG_DEV_L2VIC) {       \
