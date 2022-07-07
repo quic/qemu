@@ -36,4 +36,5 @@ extern bool hex_tlb_find_match(CPUHexagonState *env, target_ulong VA,
 extern int hex_tlb_check_overlap(CPUHexagonState *env, uint64_t entry, uint64_t index);
 extern void hex_tlb_lock(CPUHexagonState *env);
 extern void hex_tlb_unlock(CPUHexagonState *env);
+void dump_mmu(CPUHexagonState *env);
 #endif
