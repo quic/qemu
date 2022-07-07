@@ -1518,19 +1518,7 @@ char *sim_mem_get_host_ptr(system_t * sys, paddr_t paddr,
    functions to get the memory from the simulator.
    If we actually needed the bus, we will also call sim_busaccess
 */
-size1u_t sim_mem_read1(system_t * sys, int threadno, paddr_t paddr);
-size2u_t sim_mem_read2(system_t * sys, int threadno, paddr_t paddr);
-size4u_t sim_mem_read4(system_t * sys, int threadno, paddr_t paddr);
-size8u_t sim_mem_read8(system_t * sys, int threadno, paddr_t paddr);
 
-void sim_mem_write1(system_t * sys, int threadno, paddr_t paddr,
-					size1u_t value);
-void sim_mem_write2(system_t * sys, int threadno, paddr_t paddr,
-					size2u_t value);
-void sim_mem_write4(system_t * sys, int threadno, paddr_t paddr,
-					size4u_t value);
-void sim_mem_write8(system_t * sys, int threadno, paddr_t paddr,
-					size8u_t value);
 void sim_mem_write128(system_t * S, int threadno, paddr_t paddr,
 					  size4u_t * src);
 

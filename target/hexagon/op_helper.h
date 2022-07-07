@@ -22,51 +22,27 @@
 #include "exec/cpu_ldst.h"
 #include "exec/exec-all.h"
 
-#if 1
+#ifdef CONFIG_USER_ONLY
+#define CPU_MMU_INDEX(ENV) MMU_USER_IDX
+#else
+#define CPU_MMU_INDEX(ENV) cpu_mmu_index((ENV), false)
+#endif
+
 static inline size1u_t mem_read1(CPUHexagonState *env, paddr_t paddr)
 {
-    size1u_t retval;
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldub_data_ra(env, paddr, ra);
-#else
-    hexagon_tools_memory_read(env, paddr, 1, &retval);
-#endif
-    return retval;
+    return cpu_ldub_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
 }
 static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
 {
-    size2u_t retval;
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_lduw_data_ra(env, paddr, ra);
-#else
-    hexagon_tools_memory_read(env, paddr, 2, &retval);
-#endif
-    return retval;
+    return cpu_lduw_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
 }
 static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
 {
-    size4u_t retval;
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldl_data_ra(env, paddr, ra);
-#else
-    hexagon_tools_memory_read(env, paddr, 4, &retval);
-#endif
-    return retval;
+    return cpu_ldl_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
 }
 static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
 {
-    size8u_t retval;
-#ifdef CONFIG_USER_ONLY
-    uintptr_t ra = GETPC();
-    retval = cpu_ldq_data_ra(env, paddr, ra);
-#else
-    hexagon_tools_memory_read(env, paddr, 8, &retval);
-#endif
-    return retval;
+    return cpu_ldq_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
 }
-#endif
 
 #endif
