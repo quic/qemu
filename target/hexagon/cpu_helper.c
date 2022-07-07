@@ -213,7 +213,6 @@ void hexagon_wait_thread(CPUHexagonState *env)
     qemu_mutex_lock_iothread();
     g_assert(env->k0_lock_state == HEX_LOCK_UNLOCKED);
     g_assert(env->tlb_lock_state == HEX_LOCK_UNLOCKED);
-    g_assert(get_exe_mode(env) != HEX_EXE_MODE_WAIT);
 
     CPUState *cs = env_cpu(env);
     if (cs->exception_index != HEX_EVENT_NONE) {
