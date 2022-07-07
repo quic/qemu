@@ -389,7 +389,7 @@
         PRED;  \
         PRED_LOAD_CANCEL(LSB, EA); \
         tcg_gen_movi_tl(RdV, 0); \
-        CHECK_NOSHUF; \
+        CHECK_NOSHUF_PRED(EA, SIZE, LSB); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
             fLOAD(1, SIZE, SIGN, EA, RdV); \
         gen_set_label(label); \
@@ -569,7 +569,7 @@
         PRED;  \
         PRED_LOAD_CANCEL(LSB, EA); \
         tcg_gen_movi_i64(RddV, 0); \
-        CHECK_NOSHUF; \
+        CHECK_NOSHUF_PRED(EA, 8, LSB); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
             fLOAD(1, 8, u, EA, RddV); \
         gen_set_label(label); \

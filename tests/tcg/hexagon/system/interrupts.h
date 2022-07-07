@@ -52,6 +52,12 @@ int delay(int iters)
     return vals[0];
 }
 
+
+static inline void pause()
+{
+    asm volatile("pause(#1)\n\t");
+}
+
 static inline void swi(uint32_t mask)
 {
     asm volatile("r0 = %0\n"

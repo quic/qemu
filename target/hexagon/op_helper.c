@@ -106,6 +106,7 @@ void do_raise_exception_err(CPUHexagonState *env,
     cpu_loop_exit_restore(cs, pc);
 }
 
+
 G_NORETURN void HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
 {
     do_raise_exception_err(env, excp, 0);
@@ -686,6 +687,17 @@ static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
         uintptr_t ra = GETPC();
         probe_write(env, va, width, mmu_idx, ra);
     }
+}
+
+/*
+ * Called from a mem_noshuf packet to make sure the load doesn't
+ * raise an exception
+ */
+void HELPER(probe_noshuf_load)(CPUHexagonState *env, target_ulong va,
+                               int size, int mmu_idx)
+{
+    uintptr_t retaddr = GETPC();
+    probe_read(env, va, size, mmu_idx, retaddr);
 }
 
 /* Called during packet commit when there are two scalar stores */
@@ -1620,15 +1632,18 @@ static void hex_k0_lock(CPUHexagonState *env)
         if (env->k0_lock_state == HEX_LOCK_OWNER) {
             HEX_DEBUG_LOG("Already the owner\n");
             qemu_mutex_unlock_iothread();
+            env->gpr[HEX_REG_PC] = env->next_PC;
             return;
         }
         HEX_DEBUG_LOG("\tWaiting\n");
         env->k0_lock_state = HEX_LOCK_WAITING;
+        env->next_PC = env->gpr[HEX_REG_PC];
         cpu_stop_current();
     } else {
         HEX_DEBUG_LOG("\tAcquired\n");
         env->k0_lock_state = HEX_LOCK_OWNER;
         SET_SYSCFG_FIELD(env, SYSCFG_K0LOCK, 1);
+        env->gpr[HEX_REG_PC] = env->next_PC;
     }
 
     qemu_mutex_unlock_iothread();
@@ -1646,7 +1661,9 @@ static void hex_k0_unlock(CPUHexagonState *env)
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     if ((GET_SYSCFG_FIELD(SYSCFG_K0LOCK, syscfg) == 0) ||
          (env->k0_lock_state != HEX_LOCK_OWNER)) {
-        HEX_DEBUG_LOG("\tNot owner\n");
+        qemu_log_mask(LOG_GUEST_ERROR,
+            "thread %d attempted to unlock k0 without having the lock\n",
+            env->threadId);
         qemu_mutex_unlock_iothread();
         return;
     }
@@ -1699,6 +1716,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
         print_thread("\tWaiting thread found", cs);
         unlock_thread->k0_lock_state = HEX_LOCK_OWNER;
         SET_SYSCFG_FIELD(unlock_thread, SYSCFG_K0LOCK, 1);
+        unlock_thread->gpr[HEX_REG_PC] = unlock_thread->next_PC;
         cpu_resume(cs);
     }
 
@@ -2388,7 +2406,9 @@ static uint32_t get_ready_count(CPUHexagonState *env)
     CPU_FOREACH(cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *thread_env = &cpu->env;
-        const bool running = (get_exe_mode(thread_env) == HEX_EXE_MODE_RUN);
+        const bool running = (get_exe_mode(thread_env) == HEX_EXE_MODE_RUN)
+                          && (env->k0_lock_state != HEX_LOCK_WAITING)
+                          && (env->tlb_lock_state != HEX_LOCK_WAITING);
         if (running) {
             ready_count += 1;
         }

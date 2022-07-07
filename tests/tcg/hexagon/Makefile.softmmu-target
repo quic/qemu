@@ -72,6 +72,7 @@ TESTS += \
 	access \
 	getcwd \
 	checkforpriv \
+	pend_wake_wait \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -143,6 +144,7 @@ access: access.o
 getcwd: getcwd.o
 checkforpriv.o: checkforpriv.c mmu.h
 checkforpriv: checkforpriv.o
+pend_wake_wait: pend_wake_wait.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
