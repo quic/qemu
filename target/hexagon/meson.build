@@ -197,12 +197,12 @@ hexagon_ss.add(files(
     'dma/dma_descriptor.c',
     'dma/desc_tracker.c',
     'uarch/queue.c',
-    'monitor.c',
 ))
 
 hexagon_softmmu_ss.add(files(
     'hex_mmu.c',
     'hex_interrupts.c',
+    'monitor.c',
 ))
 
 target_arch += {'hexagon': hexagon_ss}
