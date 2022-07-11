@@ -463,7 +463,8 @@ static void decode_set_insn_attr_fields(Packet *pkt)
 
         if (GET_ATTRIB(opcode, A_STORE) && !GET_ATTRIB(opcode, A_LLSC)) {
             int skip = (GET_ATTRIB(opcode, A_STORE) &&
-                       (GET_ATTRIB(opcode, A_MEMSIZE_0B) ||
+                       (GET_ATTRIB(opcode, A_HMX) ||
+                        GET_ATTRIB(opcode, A_MEMSIZE_0B) ||
                         GET_ATTRIB(opcode, A_VMEM) ||
                         GET_ATTRIB(opcode, A_VMEMU)));
             if (!skip) {
