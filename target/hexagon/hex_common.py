@@ -114,6 +114,7 @@ def calculate_attribs():
     add_qemu_macro_attrib('fLOAD_LOCKED', 'A_LLSC')
     add_qemu_macro_attrib('fSTORE_LOCKED', 'A_LLSC')
     add_qemu_macro_attrib('fCLEAR_RTE_EX', 'A_IMPLICIT_WRITES_SSR')
+    add_qemu_macro_attrib('fSTORE', 'A_SCALAR_STORE')
 
     # Recurse down macros, find attributes from sub-macros
     macroValues = list(macros.values())

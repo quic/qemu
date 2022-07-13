@@ -772,10 +772,12 @@ static void process_store_log(DisasContext *ctx, Packet *pkt)
      *  slot 1 and then slot 0.  This will be important when
      *  the memory accesses overlap.
      */
-    if (pkt->pkt_has_scalar_store_s1 && !pkt->pkt_has_dczeroa) {
+    if (pkt->pkt_has_scalar_store_s1) {
+        g_assert(!pkt->pkt_has_dczeroa);
         process_store(ctx, pkt, 1);
     }
-    if (pkt->pkt_has_scalar_store_s0 && !pkt->pkt_has_dczeroa) {
+    if (pkt->pkt_has_scalar_store_s0) {
+        g_assert(!pkt->pkt_has_dczeroa);
         process_store(ctx, pkt, 0);
     }
 }
@@ -972,7 +974,7 @@ static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
          * The dczeroa will be the store in slot 0, check that we don't have
          * a store in slot 1 or an HVX store.
          */
-        g_assert(has_store_s0 && !has_store_s1 && !has_hvx_store);
+        g_assert(!has_store_s1 && !has_hvx_store);
         process_dczeroa(ctx, pkt);
     } else if (has_hvx_store) {
         TCGv mem_idx = tcg_constant_tl(ctx->mem_idx);
