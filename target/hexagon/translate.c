@@ -485,8 +485,8 @@ static void mark_implicit_reg_write(DisasContext *ctx, Insn *insn,
         bool is_predicated = GET_ATTRIB(insn->opcode, A_CONDEXEC) ||
                              rnum == HEX_REG_USR;
 
-        /* LC0 is conditionally written by endloop instructions */
-        if (rnum == HEX_REG_LC0 &&
+        /* LC0/LC1 is conditionally written by endloop instructions */
+        if ((rnum == HEX_REG_LC0 || rnum == HEX_REG_LC1) &&
             (insn->opcode == J2_endloop0 ||
              insn->opcode == J2_endloop1 ||
              insn->opcode == J2_endloop01)) {
