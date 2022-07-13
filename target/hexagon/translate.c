@@ -402,6 +402,62 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     ctx->s1_store_processed = false;
     ctx->pre_commit = true;
 
+    if (ctx->paranoid_commit_state) {
+        for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
+            tcg_gen_movi_tl(hex_new_value[i], PARANOID_VALUE);
+        }
+    #ifndef CONFIG_USER_ONLY
+        for (i = 0; i < HEX_SREG_GLB_START; i++) {
+            tcg_gen_movi_tl(hex_t_sreg_new_value[i], PARANOID_VALUE);
+        }
+        for (i = 0; i < NUM_GREGS; i++) {
+            tcg_gen_movi_tl(hex_greg_new_value[i], PARANOID_VALUE);
+        }
+    #endif
+        for (i = 0; i < NUM_PREGS; i++) {
+            tcg_gen_movi_tl(hex_new_pred_value[i], PARANOID_VALUE);
+        }
+        for (i = 0; i < STORES_MAX; i++) {
+            tcg_gen_movi_tl(hex_store_addr[i], PARANOID_VALUE);
+        }
+        for (i = 0; i < VECTOR_TEMPS_MAX; i++) {
+            intptr_t offset = offsetof(CPUHexagonState, future_VRegs[i]);
+            tcg_gen_gvec_dup_i32(MO_32, offset,
+                                 sizeof(MMVector), sizeof(MMVector),
+                                 tcg_constant_tl(PARANOID_VALUE));
+        }
+        for (i = 0; i < VECTOR_TEMPS_MAX; i++) {
+            intptr_t offset = offsetof(CPUHexagonState, tmp_VRegs[i]);
+            tcg_gen_gvec_dup_i32(MO_32, offset,
+                                 sizeof(MMVector), sizeof(MMVector),
+                                 tcg_constant_tl(PARANOID_VALUE));
+        }
+        for (i = 0; i < NUM_QREGS; i++) {
+            intptr_t offset = offsetof(CPUHexagonState, future_QRegs[i]);
+            tcg_gen_gvec_dup_i32(MO_32, offset,
+                                 sizeof(MMQReg), sizeof(MMQReg),
+                                 tcg_constant_tl(PARANOID_VALUE));
+        }
+        tcg_gen_gvec_dup_i32(MO_32, offsetof(CPUHexagonState, VuuV),
+                             sizeof(MMVectorPair), sizeof(MMVectorPair),
+                             tcg_constant_tl(PARANOID_VALUE));
+        tcg_gen_gvec_dup_i32(MO_32, offsetof(CPUHexagonState, VvvV),
+                             sizeof(MMVectorPair), sizeof(MMVectorPair),
+                             tcg_constant_tl(PARANOID_VALUE));
+        tcg_gen_gvec_dup_i32(MO_32, offsetof(CPUHexagonState, VxxV),
+                             sizeof(MMVectorPair), sizeof(MMVectorPair),
+                             tcg_constant_tl(PARANOID_VALUE));
+        tcg_gen_gvec_dup_i32(MO_32, offsetof(CPUHexagonState, vtmp),
+                             sizeof(MMVector), sizeof(MMVector),
+                             tcg_constant_tl(PARANOID_VALUE));
+        tcg_gen_gvec_dup_i32(MO_32, offsetof(CPUHexagonState, qtmp),
+                             sizeof(MMQReg), sizeof(MMQReg),
+                             tcg_constant_tl(PARANOID_VALUE));
+        for (i = 0; i < VSTORES_MAX; i++) {
+            tcg_gen_movi_tl(hex_vstore_addr[i], PARANOID_VALUE);
+        }
+    }
+
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
         gen_helper_debug_start_packet(cpu_env);
@@ -713,6 +769,10 @@ void process_store(DisasContext *ctx, Packet *pkt, int slot_num)
     {
         TCGv address = tcg_temp_local_new();
         tcg_gen_mov_tl(address, hex_store_addr[slot_num]);
+
+        if (ctx->paranoid_commit_state) {
+            gen_helper_assert_store_valid(cpu_env, tcg_constant_tl(slot_num));
+        }
 
         /*
          * If we know the width from the DisasContext, we can
@@ -1100,6 +1160,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
                                           CPUState *cs)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
+    HexagonCPU *hex_cpu = HEXAGON_CPU(cs);
 
     ctx->num_packets = 0;
     ctx->num_insns = 0;
@@ -1110,6 +1171,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->ones = tcg_constant_tl(0xff);
     ctx->ones64 = tcg_constant_i64(0xff);
     ctx->pcycle_enabled = false;
+    ctx->paranoid_commit_state = hex_cpu->paranoid_commit_state;
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)

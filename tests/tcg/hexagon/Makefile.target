@@ -79,6 +79,25 @@ hvx_histogram: hvx_histogram.c hvx_histogram_row.S
 usr_ctrl_assign: usr_ctrl_assign.c usr_ctrl_assign_pass.S
 	$(CC) $(CFLAGS) $(CROSS_CC_GUEST_CFLAGS) $^ -o $@
 
+# Run some tests with paranoid-commit-state turned on
+run-misc: misc
+run-usr: usr
+run-preg_alias: preg_alias
+run-dual_stores: dual_stores
+run-pred_stores: pred_stores
+run-multi_result: multi_result
+run-mem_noshuf: mem_noshuf
+run-hvx_misc: hvx_misc
+run-scatter_gather: scatter_gather
+run-hvx_histogram: hvx_histogram
+run-hvx_sat: hvx_sat
+
+PARANOID_OPTS=-cpu any,paranoid-commit-state=true
+run-misc run-usr run-preg_alias run-dual_stores run-pred_stores run-multi_result run-mem_noshuf \
+run-hvx_misc run-scatter_gather run-hvx_histogram run-hvx_sat:
+	$(call run-test, $<, $(QEMU) $<, "$< on $(TARGET_NAME)")
+	$(call run-test, $<, $(QEMU) $(PARANOID_OPTS) $<, "$< on $(TARGET_NAME) paranoid")
+
 # These tests raise an exception and return 1 to the shell
 # We'll grep for the proper exception number in their stderr
 run-privcheck: privcheck

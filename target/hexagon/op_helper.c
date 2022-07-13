@@ -236,6 +236,7 @@ void HELPER(gather_store)(CPUHexagonState *env, uint32_t addr, int slot)
 
 void HELPER(commit_hvx_stores)(CPUHexagonState *env)
 {
+    HexagonCPU *cpu = env_archcpu(env);
     uintptr_t ra = GETPC();
     int i;
 
@@ -244,6 +245,11 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
         if (env->vstore_pending[i]) {
             env->vstore_pending[i] = 0;
             target_ulong va = env->vstore[i].va;
+            if (cpu->paranoid_commit_state && va == PARANOID_VALUE) {
+                CPUState *cs = env_cpu(env);
+                cpu_abort(cs, "Invalid HVX store found at PC 0x%x\n",
+                          env->gpr[HEX_REG_PC]);
+            }
             int size = env->vstore[i].size;
             for (int j = 0; j < size; j++) {
                 if (test_bit(j, env->vstore[i].mask)) {
@@ -762,6 +768,14 @@ void HELPER(probe_pkt_scalar_hvx_stores)(CPUHexagonState *env, int mask,
     }
     if (has_hvx_stores) {
         HELPER(probe_hvx_stores)(env, mmu_idx);
+    }
+}
+
+void HELPER(assert_store_valid)(CPUHexagonState *env, int slot)
+{
+    if (env->mem_log_stores[slot].va == PARANOID_VALUE) {
+        CPUState *cs = env_cpu(env);
+        cpu_abort(cs, "Invalid store found at PC 0x%x\n", env->gpr[HEX_REG_PC]);
     }
 }
 

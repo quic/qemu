@@ -62,6 +62,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define VSTORES_MAX 2
 #define THREADS_MAX 8
 #define VECTOR_UNIT_MAX 4
+#define PARANOID_VALUE (~0)
 
 #define TYPE_HEXAGON_CPU "hexagon-cpu"
 
@@ -582,6 +583,7 @@ struct ArchCPU {
 #endif
     bool lldb_compat;
     target_ulong lldb_stack_adjust;
+    bool paranoid_commit_state;
 };
 
 #include "cpu_bits.h"

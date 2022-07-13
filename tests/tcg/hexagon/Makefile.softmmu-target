@@ -187,6 +187,15 @@ run-swi_wait: swi_wait
 run-tlblock: tlblock
 run-k0lock: k0lock
 
+# Run some tests with paranoid-commit-state turned on
+run-standalone_hw: standalone_hw
+run-standalone_vec: standalone_vec
+
+PARANOID_OPTS=-cpu any,paranoid-commit-state=true
+run-standalone_hw run-standalone_vec:
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<, "$< on $(TARGET_NAME)")
+	$(call run-test, $<, $(QEMU) $(PARANOID_OPTS) -kernel $<, "$< on $(TARGET_NAME) paranoid")
+
 ICOUNT_OPTS=-icount auto
 run-tlblock run-k0lock run-swi run-swi2 run-swi_wait run-timer_reg run-qtimer_test run-vid-group:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")

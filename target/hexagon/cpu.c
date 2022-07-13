@@ -85,6 +85,8 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_BOOL("lldb-compat", HexagonCPU, lldb_compat, false),
     DEFINE_PROP_UNSIGNED("lldb-stack-adjust", HexagonCPU, lldb_stack_adjust,
                          0, qdev_prop_uint32, target_ulong),
+    DEFINE_PROP_BOOL("paranoid-commit-state", HexagonCPU, paranoid_commit_state,
+        false),
     DEFINE_PROP_END_OF_LIST()
 };
 

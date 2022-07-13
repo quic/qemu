@@ -136,6 +136,7 @@ DEF_HELPER_4(probe_noshuf_load, void, env, i32, int, int)
 DEF_HELPER_2(probe_pkt_scalar_store_s0, void, env, int)
 DEF_HELPER_2(probe_hvx_stores, void, env, int)
 DEF_HELPER_3(probe_pkt_scalar_hvx_stores, void, env, int, int)
+DEF_HELPER_2(assert_store_valid, void, env, int)
 
 #if !defined(CONFIG_USER_ONLY)
 DEF_HELPER_2(cpu_limit, void, env, i32)
