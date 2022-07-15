@@ -709,10 +709,7 @@ def genptr_dst_write_opn(f,regtype, regid, tag):
 ##     For A2_add: Rd32=add(Rs32,Rt32), { RdV=RsV+RtV;}
 ##     We produce:
 ##    static void generate_A2_add()
-##                    CPUHexagonState *env
-##                    DisasContext *ctx,
-##                    Insn *insn,
-##                    Packet *pkt)
+##                    DisasContext *ctx)
 ##       {
 ##           TCGv RdV = tcg_temp_local_new();
 ##           const int RdN = insn->regno[0];
@@ -732,10 +729,7 @@ def genptr_dst_write_opn(f,regtype, regid, tag):
 ##
 def gen_tcg_func(f, tag, regs, imms):
     f.write("static void generate_%s(\n" %tag)
-    f.write("                CPUHexagonState *env,\n")
-    f.write("                DisasContext *ctx,\n")
-    f.write("                Insn *insn,\n")
-    f.write("                Packet *pkt)\n")
+    f.write("                DisasContext *ctx)\n")
     f.write('{\n')
 
     if 'A_PRIV' in hex_common.attribdict[tag]:
@@ -746,6 +740,8 @@ def gen_tcg_func(f, tag, regs, imms):
         f.write("#ifdef CONFIG_USER_ONLY\n")
         f.write("    gen_exception_end_tb(ctx, HEX_EXCP_PRIV_USER_NO_GINSN);\n")
         f.write("#else\n")
+
+    f.write("    Insn *insn __attribute__((unused)) = ctx->insn;\n")
 
     if hex_common.need_ea(tag): gen_decl_ea_tcg(f, tag)
     i=0
@@ -774,13 +770,13 @@ def gen_tcg_func(f, tag, regs, imms):
             gen_helper_decl_imm(f,immlett)
         if hex_common.need_pkt_has_multi_cof(tag):
             f.write("    TCGv pkt_has_multi_cof = ")
-            f.write("tcg_const_tl(pkt->pkt_has_multi_cof);\n")
+            f.write("tcg_const_tl(ctx->pkt->pkt_has_multi_cof);\n")
         if hex_common.need_part1(tag):
             f.write("    TCGv part1 = tcg_const_tl(insn->part1);\n")
         if hex_common.need_slot(tag):
             f.write("    TCGv slot = tcg_const_tl(insn->slot);\n")
         if hex_common.need_PC(tag):
-            f.write("    TCGv PC = tcg_const_tl(pkt->pc);\n")
+            f.write("    TCGv PC = tcg_const_tl(ctx->pkt->pc);\n")
         if hex_common.need_next_PC(tag):
             f.write("    TCGv next_PC = tcg_const_tl(ctx->next_PC);\n")
         f.write("    gen_helper_%s(" % (tag))
