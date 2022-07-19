@@ -17,7 +17,7 @@ THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 THIS_DIR = str(pathlib.Path(__file__).resolve().parent)
 TOOLS_REL_BASE = '/prj/dsp/qdsp6/release/' if os.path.exists('/prj/dsp/qdsp6/release/internal/HEXAGON/') else '/prj/qct/llvm/release/'
 HEX_TOOLS_REL_BASE = os.path.join(TOOLS_REL_BASE, 'internal/HEXAGON')
-LATEST_HEX_TOOLS_REL_BASE = os.path.join(HEX_TOOLS_REL_BASE, 'branch-8.6/linux64/latest/Tools')
+LATEST_HEX_TOOLS_REL_BASE = os.path.join(HEX_TOOLS_REL_BASE, 'branch-8.7/linux64/latest/Tools')
 LATEST_HEX_TOOLS_BIN = os.path.join(LATEST_HEX_TOOLS_REL_BASE, 'bin')
 HEX_LLDB = os.path.join(LATEST_HEX_TOOLS_BIN, 'hexagon-lldb')
 
@@ -175,6 +175,14 @@ if __name__ == '__main__':
         help='Enable the multithread-tcg for all tests',
         default=False,
         required=False)
+    parser.add_argument('-p', '--enable-paranoid', action='store_true',
+        help='Enable the paranoid-commit-state for all tests',
+        default=False,
+        required=False)
+    parser.add_argument('-s', '--enable-singlestep', action='store_true',
+        help='Enable singlestep mode for all tests',
+        default=False,
+        required=False)
     parser.add_argument('-j', '--proc-count', type=int,
         help='Process count',
         default=int(mp.cpu_count() * .85),
@@ -219,6 +227,12 @@ if __name__ == '__main__':
 
         if args.icount != None:
             cmd += f' -icount shift={args.icount}'
+        if args.enable_mttcg:
+            cmd += f' -accel tcg,thread=multi'
+        if args.enable_singlestep:
+            cmd += f' -singlestep'
+        if args.enable_paranoid:
+            args.extra_cpu_args = 'paranoid-commit-state=on'
 
         test = test_name(t)
         yield_needers = (
@@ -251,12 +265,14 @@ if __name__ == '__main__':
             'qurt_thread_join_mpd_bootimg',
             'qurt_proc_t3_bootimg',
         )
+        cpu_args = []
         if args.enable_yield:
             if test in yield_needers:
-                cmd += ' -cpu any,sched-limit=on'
+                cpu_args.append('sched-limit=on')
                 print(f'MODIFIED CMDLINE ARGS FOR "{test}": {cmd}')
-        elif args.extra_cpu_args:
-            cmd += f' -cpu any,{args.extra_cpu_args}'
+        if args.extra_cpu_args:
+            cpu_args.append(str(args.extra_cpu_args))
+        cmd += f' -cpu any,{",".join(cpu_args)}' if cpu_args else ''
         t0 = time.time()
         try:
             res = run_one(t, port_num, shlex.split(cmd), timeout_sec, stdout=PIPE, stderr=PIPE)
