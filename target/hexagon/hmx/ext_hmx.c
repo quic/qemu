@@ -53,6 +53,33 @@
 #define sim_mem_write4(X, Y, addr, val) cpu_stl_mmuidx_ra(thread, addr, val, \
     CPU_MMU_INDEX(thread), GETPC())
 
+#ifdef HEX_CONFIG_INT128
+static inline size4u_t int128_getword(size16s_t data, int word_select)
+
+{
+    size4u_t result;
+
+    switch (word_select) {
+        case 0:
+            result = int128_getlo(data);
+            break;
+        case 1:
+            result = int128_getlo(data) >> 32;
+            break;
+        case 2:
+            result = int128_gethi(data);
+            break;
+        case 3:
+            result = int128_gethi(data) >> 32;
+        break;
+        default:
+            g_assert_not_reached();
+    }
+
+    return result;
+}
+#endif
+
 static void clear_xfp_accumulators(hmx_state_t * state, int idx) {
 	hmx_xfp_t xfp_zero = hmx_xfp_zero(state);
 	for (int x = 0; x < MAX_ACCUMULATORS_DEPTH; x++) {
@@ -638,8 +665,13 @@ int hmx_ext_get_fp_acc(thread_t *thread,  int spatial_idx, int channel_idx, int 
 		*exponent = 0;
 		hmx_xfp_t acc = hmx_state->accum_flt[spatial_idx][channel_idx].xfp[acc_idx];
 		size16s_t acc_128 = hmx_xfp_to_tb_callback(hmx_state, exponent, ovf, acc);
-		*significand_hi = acc_128.hi;
-		*significand_lo = acc_128.lo;
+#ifdef HEX_CONFIG_INT128
+        *significand_hi = int128_gethi(acc_128);
+        *significand_lo = int128_getlo(acc_128);
+#else
+ 		*significand_hi = acc_128.hi;
+ 		*significand_lo = acc_128.lo;
+#endif
 		fMX_DEBUG_LOG(2,  "TB HMX READ: XFP ACC[%02d][%02d][%02d] exp: %08x sig: %016llx status inf: %d neg: %d true zero: %d ovf: %d exponent: %08x significand=%016llx%016llx ",
 			spatial_idx/2, channel_idx, acc_idx, acc.exp,  (long long int)acc.sig, acc.status.inf, acc.status.negative,  acc.status.zero, *ovf, *exponent, *significand_hi, *significand_lo);
 
@@ -650,7 +682,6 @@ int hmx_ext_get_fp_acc(thread_t *thread,  int spatial_idx, int channel_idx, int 
 
 }
 
-
 int hmx_ext_get_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t channel_idx, size4u_t acc_index, size8s_t * integer, size8u_t * fractional, size4u_t * ovf) {
 	*integer = 0xDEADBEEF;
 	*fractional = 0xDEADBEEF;
@@ -658,8 +689,13 @@ int hmx_ext_get_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t chan
 	if (THREAD2HMXSTRUCT != NULL) {
 		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		spatial_idx <<= 1;
-		*integer = hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].hi;
-		*fractional = hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].lo;
+#ifdef HEX_CONFIG_INT128
+        *integer = int128_gethi(hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index]);
+        *fractional = int128_getlo(hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index]);
+#else
+ 		*integer = hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].hi;
+ 		*fractional = hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].lo;
+#endif
 		*ovf = hmx_state->accum_flt[spatial_idx][channel_idx].ovf[acc_index];
 		return 0;
 	}
@@ -671,8 +707,13 @@ int hmx_ext_set_acc_flt_qformat(thread_t *thread, int spatial_idx, size4u_t chan
 	if (THREAD2HMXSTRUCT != NULL) {
 		hmx_state_t *hmx_state = THREAD2HMXSTRUCT;
 		spatial_idx <<= 1;
-		hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].hi = integer;
-		hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].lo = fractional;
+#ifdef HEX_CONFIG_INT128
+		hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index] =
+            int128_make128(fractional, integer);
+#else
+ 		hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].hi = integer;
+ 		hmx_state->accum_flt[spatial_idx][channel_idx].val[acc_index].lo = fractional;
+#endif
 		hmx_state->accum_flt[spatial_idx][channel_idx].ovf[acc_index] = ovf;
 		fMX_DEBUG_LOG(2,  "TB HMX WRITE: FLT ACC[%02d][%02d][%02d] = %016llx.%016llx ovf=%x",
 			spatial_idx/2, channel_idx, acc_index,
@@ -695,8 +736,11 @@ int hmx_ext_get_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_in
 		size16s_t acc =  hmx_state->accum_flt[spatial_index][channel_index].val[acc_select];
 
 		acc = shiftr128(acc, acc_shift);
-		*result = acc.w[word_select];
-
+#ifdef HEX_CONFIG_INT128
+        *result = int128_getword(acc, word_select);
+#else
+ 		*result = acc.w[word_select];
+#endif
 		fMX_DEBUG_LOG(2, "TB HMX READ: FLT ACC[%02d][%02d][%02d].w[%d]=%08x pktid:%08x", spatial_index/2, channel_index, acc_select, wordno, *result, thread->pktid);
 
 
@@ -711,20 +755,37 @@ int hmx_ext_set_acc_flt(thread_t *thread, int spatial_index, size4u_t channel_in
 		int acc_select = (wordno > 3);
 		int word_select = wordno & 0x3;
 		int acc_shift = 16+(66 - (hmx_state->QDSP6_MX_FP_ACC_FRAC+hmx_state->QDSP6_MX_FP_ACC_INT)) + (word_select*32);
+#ifdef HEX_CONFIG_INT128
+		size16s_t acc = int128_zero();
+		spatial_index <<= 1;
+        acc = int128_make64((size8u_t)val);
+#else
 		size16s_t acc =  {0};
 		spatial_index <<= 1;
-		acc.w[0] = val;
+ 		acc.w[0] = val;
+#endif
 		acc = shiftl128(acc, acc_shift);
 		if (word_select == 0) {
-			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[0] = 0;
-			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[1] = 0;
-			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[2] = 0;
-			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[3] = 0;
+#ifdef HEX_CONFIG_INT128
+			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select] =
+                int128_zero();
+#else
+ 			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[0] = 0;
+ 			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[1] = 0;
+ 			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[2] = 0;
+ 			hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[3] = 0;
+#endif
 		}
-		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[0] |= acc.w[0];
-		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[1] |= acc.w[1];
-		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[2] |= acc.w[2];
-		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[3] |= acc.w[3];
+#ifdef HEX_CONFIG_INT128
+        hmx_state->accum_flt[spatial_index][channel_index].val[acc_select] = int128_or(
+            hmx_state->accum_flt[spatial_index][channel_index].val[acc_select],
+            acc);
+#else
+ 		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[0] |= acc.w[0];
+ 		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[1] |= acc.w[1];
+ 		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[2] |= acc.w[2];
+ 		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select].w[3] |= acc.w[3];
+#endif
 
 		// Sign extend
 		hmx_state->accum_flt[spatial_index][channel_index].val[acc_select] = shiftr128(shiftl128(hmx_state->accum_flt[spatial_index][channel_index].val[acc_select], 46), 46);
