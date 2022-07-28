@@ -391,9 +391,9 @@
         PRED;  \
         CHECK_NOSHUF_PRED(GET_EA, SIZE, LSB); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-        tcg_temp_free(LSB); \
         fLOAD(1, SIZE, SIGN, EA, RdV); \
         gen_set_label(label); \
+        tcg_temp_free(LSB); \
     } while (0)
 
 #define fGEN_TCG_L2_ploadrubt_io(SHORTCODE) \
@@ -569,9 +569,9 @@
         PRED;  \
         CHECK_NOSHUF_PRED(GET_EA, 8, LSB); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-        tcg_temp_free(LSB); \
         fLOAD(1, 8, u, EA, RddV); \
         gen_set_label(label); \
+        tcg_temp_free(LSB); \
     } while (0)
 
 #define fGEN_TCG_L2_ploadrdt_io(SHORTCODE) \
