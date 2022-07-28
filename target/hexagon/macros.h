@@ -578,16 +578,8 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 
 #ifdef QEMU_GENERATE
 #define fSTORE(NUM, SIZE, EA, SRC) MEM_STORE##SIZE(EA, SRC, insn->slot)
-#define fSTORE1(EA, SRC) MEM_STORE1(EA, SRC, insn->slot)
-#define fSTORE2(EA, SRC) MEM_STORE2(EA, SRC, insn->slot)
-#define fSTORE4(EA, SRC) MEM_STORE4(EA, SRC, insn->slot)
-#define fSTORE8(EA, SRC) MEM_STORE8(EA, SRC, insn->slot)
 #else
 #define fSTORE(NUM, SIZE, EA, SRC) MEM_STORE##SIZE(EA, SRC, slot)
-#define fSTORE1(EA, SRC) MEM_STORE1(EA, SRC, slot)
-#define fSTORE2(EA, SRC) MEM_STORE2(EA, SRC, slot)
-#define fSTORE4(EA, SRC) MEM_STORE4(EA, SRC, slot)
-#define fSTORE8(EA, SRC) MEM_STORE8(EA, SRC, slot)
 #endif
 
 #ifdef QEMU_GENERATE

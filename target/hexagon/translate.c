@@ -427,19 +427,19 @@ static void mark_store_width(DisasContext *ctx)
     uint32_t slot = ctx->insn->slot;
 
     if (GET_ATTRIB(opcode, A_STORE)) {
-        if (GET_ATTRIB(opcode, A_STORE_SIZE1)) {
+        if (GET_ATTRIB(opcode, A_MEMSIZE_1B)) {
             ctx->store_width[slot] = 1;
             return;
         }
-        if (GET_ATTRIB(opcode, A_STORE_SIZE2)) {
+        if (GET_ATTRIB(opcode, A_MEMSIZE_2B)) {
             ctx->store_width[slot] = 2;
             return;
         }
-        if (GET_ATTRIB(opcode, A_STORE_SIZE4)) {
+        if (GET_ATTRIB(opcode, A_MEMSIZE_4B)) {
             ctx->store_width[slot] = 4;
             return;
         }
-        if (GET_ATTRIB(opcode, A_STORE_SIZE8)) {
+        if (GET_ATTRIB(opcode, A_MEMSIZE_8B)) {
             ctx->store_width[slot] = 8;
             return;
         }
