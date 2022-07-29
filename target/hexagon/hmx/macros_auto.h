@@ -65,6 +65,11 @@
 #define fMX_STORE_BIAS(OUT_IDX,BIAS_IDX,EA) {}
 #define fMX_STORE_BIAS_DOUBLE(OUT_IDX,BIAS_IDX,EA) {}
 #define fMX_GET_ACC_INDEX(IDX,Q_OFFSET) { unsigned int temp = (IDX >> fMX_GETCHANNELSIZE(thread->processor_ptr)) & ~((1<<Q_OFFSET)-1); IDX = temp | (IDX & ((1<<Q_OFFSET)-1)); }
-#define CHECK_ACCESS_RANGE(EXC,PADDR,LEN) { vaddr_t page_mask = (1ULL<<thread->mem_access[slot].xlate_info.size)-1; paddr_t page_of_start = (PADDR & ~page_mask); paddr_t page_of_end = ((PADDR + LEN) & ~page_mask); EXC |= (page_of_start != page_of_end); }
+#define CHECK_ACCESS_RANGE(EXC,PADDR,LEN) do { \
+    vaddr_t page_mask = (1ULL<<22)-1; \
+    paddr_t page_of_start = (PADDR & ~page_mask); \
+    paddr_t page_of_end = ((PADDR + LEN) & ~page_mask); \
+    EXC |= (page_of_start != page_of_end); \
+} while (0)
 #define fMX_HIDEHTML()
 #endif

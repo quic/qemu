@@ -37,6 +37,8 @@
 #undef EXCEPTION_DETECTED
 #define EXCEPTION_DETECTED      (thread->status & EXEC_STATUS_EXCEPTION)
 #endif
+#define warn(...) {}
+//#define register_coproc_ldst_exception(...) {}
 
 #define TYPE_LOAD 'L'
 #define TYPE_STORE 'S'

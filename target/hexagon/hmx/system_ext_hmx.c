@@ -51,16 +51,17 @@
 #define memwrap_memtrace_ld(...)
 #define memwrap_memtrace_st(...)
 #define warn(...) {}
-#define register_coproc_ldst_exception(...) {}
 
 // Get Arch option through thread
 #define ARCH_OPT_TH(OPTION) (thread->processor_ptr->arch_proc_options->OPTION)
 
-static int check_mxmem_page_cross(thread_t* thread, vaddr_t base, int length, int page_size)
+static int check_mxmem_page_cross(thread_t* thread, vaddr_t base,
+    int length, int page_size)
 {
 	vaddr_t page_mask = (1ULL<<page_size)-1;
 	if (((base+length) & ~page_mask) != (base & ~page_mask)) {
-		warn("HMX Op crossed page: start =%x end=%x Page Size=%x Page Mask=%x", base, base+length, page_size,page_mask);
+		warn("HMX Op crossed page: start =%x end=%x Page Size=%x Page Mask=%x",
+            base, base+length, page_size,page_mask);
 		return 1;
 	}
     return 0;

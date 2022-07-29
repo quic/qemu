@@ -60,6 +60,7 @@ TESTS += \
 	neg-float_excp \
 	neg-hvx_nocoproc \
 	neg-unaligned \
+	neg-vtcm_error \
 	pendalot \
 	vid-group \
 	levelint \
@@ -131,6 +132,7 @@ neg-framelimit: framelimit.o
 neg-float_excp: float_excp.o
 neg-hvx_nocoproc: hvx_nocoproc.o
 neg-unaligned: unaligned.o
+neg-vtcm_error: vtcm_error.o
 pendalot: pendalot.o
 vid-group: vid-group.o
 levelint: levelint.o
@@ -164,6 +166,7 @@ hmx.o: CFLAGS+= -mhmx
 hmx_conv.o: CFLAGS+= -mhmx
 hmx_conv_asm.o: ASFLAGS+= -mhmx
 hmx_conv_fp16.o: CFLAGS+= -mhmx
+vtcm_error.o: CFLAGS += -mhvx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
@@ -177,6 +180,15 @@ run-neg-framelimit: neg-framelimit
 run-neg-float_excp: neg-float_excp
 run-neg-hvx_nocoproc: neg-hvx_nocoproc
 run-neg-unaligned: neg-unaligned
+
+run-neg-vtcm_error: neg-vtcm_error
+	$(call run-test-neg, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
+	if [ $$? -ne 255 ] ; then \
+		return -1; \
+	fi
+	$(call quiet-command, \
+		grep -q "exception 0x26" $<.stderr, \
+		"GREP", "exception 0x26");
 
 run-vid-group: vid-group
 run-timer_reg: timer_reg
