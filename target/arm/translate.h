@@ -42,9 +42,9 @@ typedef struct DisasContext {
     bool ns;        /* Use non-secure CPREG bank on access */
     int fp_excp_el; /* FP exception EL or 0 if enabled */
     int sve_excp_el; /* SVE exception EL or 0 if enabled */
-    int sve_len;     /* SVE vector length in bytes */
-    /* Flag indicating that exceptions from secure mode are routed to EL3. */
-    bool secure_routed_to_el3;
+    int sme_excp_el; /* SME exception EL or 0 if enabled */
+    int vl;          /* current vector length in bytes */
+    int svl;         /* current streaming vector length in bytes */
     bool vfp_enabled; /* FP enabled via FPSCR.EN */
     int vec_len;
     int vec_stride;
@@ -59,8 +59,6 @@ typedef struct DisasContext {
      */
     uint32_t svc_imm;
     int current_el;
-    /* Debug target exception level for single-step exceptions */
-    int debug_target_el;
     GHashTable *cp_regs;
     uint64_t features; /* CPU features bits */
     bool aarch64;
@@ -100,6 +98,14 @@ typedef struct DisasContext {
     bool align_mem;
     /* True if PSTATE.IL is set */
     bool pstate_il;
+    /* True if PSTATE.SM is set. */
+    bool pstate_sm;
+    /* True if PSTATE.ZA is set. */
+    bool pstate_za;
+    /* True if non-streaming insns should raise an SME Streaming exception. */
+    bool sme_trap_nonstreaming;
+    /* True if the current instruction is non-streaming. */
+    bool is_nonstreaming;
     /* True if MVE insns are definitely not predicated by VPR or LTPSIZE */
     bool mve_no_pred;
     /*
@@ -148,6 +154,11 @@ static inline int plus_1(DisasContext *s, int x)
 static inline int plus_2(DisasContext *s, int x)
 {
     return x + 2;
+}
+
+static inline int plus_12(DisasContext *s, int x)
+{
+    return x + 12;
 }
 
 static inline int times_2(DisasContext *s, int x)
@@ -199,20 +210,6 @@ static inline int arm_dc_feature(DisasContext *dc, int feature)
 static inline int get_mem_index(DisasContext *s)
 {
     return arm_to_core_mmu_idx(s->mmu_idx);
-}
-
-/* Function used to determine the target exception EL when otherwise not known
- * or default.
- */
-static inline int default_exception_el(DisasContext *s)
-{
-    /* If we are coming from secure EL0 in a system with a 32-bit EL3, then
-     * there is no secure EL1, so we route exceptions to EL3.  Otherwise,
-     * exceptions can only be routed to ELs above 1, so we target the higher of
-     * 1 or the current EL.
-     */
-    return (s->mmu_idx == ARMMMUIdx_SE10_0 && s->secure_routed_to_el3)
-            ? 3 : MAX(1, s->current_el);
 }
 
 static inline void disas_set_insn_syndrome(DisasContext *s, uint32_t syn)
@@ -279,8 +276,9 @@ void arm_jump_cc(DisasCompare *cmp, TCGLabel *label);
 void arm_gen_test_cc(int cc, TCGLabel *label);
 MemOp pow2_align(unsigned i);
 void unallocated_encoding(DisasContext *s);
-void gen_exception_insn(DisasContext *s, uint64_t pc, int excp,
-                        uint32_t syn, uint32_t target_el);
+void gen_exception_insn_el(DisasContext *s, uint64_t pc, int excp,
+                           uint32_t syn, uint32_t target_el);
+void gen_exception_insn(DisasContext *s, uint64_t pc, int excp, uint32_t syn);
 
 /* Return state of Alternate Half-precision flag, caller frees result */
 static inline TCGv_i32 get_ahp_flag(void)
@@ -329,26 +327,12 @@ static inline void gen_ss_advance(DisasContext *s)
     }
 }
 
-static inline void gen_exception(int excp, uint32_t syndrome,
-                                 uint32_t target_el)
-{
-    gen_helper_exception_with_syndrome(cpu_env, tcg_constant_i32(excp),
-                                       tcg_constant_i32(syndrome),
-                                       tcg_constant_i32(target_el));
-}
-
 /* Generate an architectural singlestep exception */
 static inline void gen_swstep_exception(DisasContext *s, int isv, int ex)
 {
-    bool same_el = (s->debug_target_el == s->current_el);
-
-    /*
-     * If singlestep is targeting a lower EL than the current one,
-     * then s->ss_active must be false and we can never get here.
-     */
-    assert(s->debug_target_el >= s->current_el);
-
-    gen_exception(EXCP_UDEF, syn_swstep(same_el, isv, ex), s->debug_target_el);
+    /* Fill in the same_el field of the syndrome in the helper. */
+    uint32_t syn = syn_swstep(false, isv, ex);
+    gen_helper_exception_swstep(cpu_env, tcg_constant_i32(syn));
 }
 
 /*
@@ -586,5 +570,12 @@ uint64_t asimd_imm_const(uint32_t imm, int cmode, int op);
 #define TRANS_FEAT(NAME, FEAT, FUNC, ...) \
     static bool trans_##NAME(DisasContext *s, arg_##NAME *a) \
     { return dc_isar_feature(FEAT, s) && FUNC(s, __VA_ARGS__); }
+
+#define TRANS_FEAT_NONSTREAMING(NAME, FEAT, FUNC, ...)            \
+    static bool trans_##NAME(DisasContext *s, arg_##NAME *a)      \
+    {                                                             \
+        s->is_nonstreaming = true;                                \
+        return dc_isar_feature(FEAT, s) && FUNC(s, __VA_ARGS__);  \
+    }
 
 #endif /* TARGET_ARM_TRANSLATE_H */
