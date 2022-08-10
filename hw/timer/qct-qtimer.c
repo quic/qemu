@@ -431,13 +431,13 @@ static MemTxResult hex_timer_write(void *opaque,
 static void hex_timer_tick(void *opaque)
 {
     QCTHextimerState *s = (QCTHextimerState *)opaque;
-    s->cntpct += s->limit;
-    if (s->cntpct >= s->cntval) {
+    if ((s->cntpct >= s->cntval) && (s->int_level != 1)) {
         s->int_level = 1;
-        hex_timer_update(s);
-        ptimer_stop(s->timer);
         HEX_TIMER_LOG("\nFIRE!!! %ld\n", s->cntpct);
+        hex_timer_update(s);
+        return;
     }
+    s->cntpct += s->limit;
 }
 
 static const MemoryRegionOps hex_timer_ops = {
