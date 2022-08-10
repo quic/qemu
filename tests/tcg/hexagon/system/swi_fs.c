@@ -45,7 +45,7 @@ static void test_file_io()
 
     bool found_case = false;
     struct dirent *entry = NULL;
-    while (entry = readdir(dir)) {
+    while ((entry = readdir(dir))) {
         found_case = found_case || (strcmp(entry->d_name, test_case_filename) == 0);
     }
     assert(found_case);
