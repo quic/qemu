@@ -32,6 +32,9 @@
 #include "attribs.h"
 #include "gen_tcg.h"
 #include "gen_tcg_hvx.h"
+#ifndef CONFIG_USER_ONLY
+#include "gen_tcg_sys.h"
+#endif
 #include "reg_fields.h"
 
 
