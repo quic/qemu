@@ -848,14 +848,13 @@ def gen_def_tcg_func(f, tag, tagregs, tagimms):
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
-    hex_common.read_overrides_file(sys.argv[3])
-    hex_common.read_overrides_file(sys.argv[4])
-    hex_common.read_overrides_file(sys.argv[5])
+    for arg in sys.argv[3 : -1]:
+        hex_common.read_overrides_file(arg)
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    with open(sys.argv[6], 'w') as f:
+    with open(sys.argv[-1], 'w') as f:
         f.write("#ifndef HEXAGON_TCG_FUNCS_H\n")
         f.write("#define HEXAGON_TCG_FUNCS_H\n\n")
 
