@@ -1,0 +1,4 @@
+breakpoint set --name return --condition '$r0 == 0xbabebeef' -C 'script print("PASS")' -C 'script import os; os._exit(0)'
+run
+script print("FAIL")
+quit 1
