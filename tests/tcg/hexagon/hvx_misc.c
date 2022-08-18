@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <limits.h>
+#include <assert.h>
 #include "hvx_misc.h"
 
 int err;
@@ -825,6 +826,36 @@ static void test_vshuff(void)
     check_output_b(__LINE__, 1);
 }
 
+#define TEST_V6_VCOMBINE_TMP(reg1, reg2) \
+{ \
+    assert(reg1 > 3 && reg2 > 3); \
+    memset(output, 0, sizeof(MMVector) * 2); \
+    expect[0] = buffer0[0]; \
+    expect[1] = buffer0[1]; \
+    asm volatile("v0 = vmem(%0)\n\t" \
+                 "v1 = vmem(%1)\n\t" \
+                 "{\n\t" \
+                 "    v" #reg1 ":" #reg2 ".tmp=vcombine(v0,v1)\n\t" \
+                 "    v3:2 = v" #reg1 ":" #reg2 "\n\t" \
+                 "}\n\t" \
+                 "vmemu(%2) = v3\n\t" \
+                 "vmemu(%3) = v2\n\t" \
+                 : /* no outputs */ \
+                 : "r"(&buffer0[0]), "r"(&buffer0[1]), "r"(&output[0]), "r"(&output[1]) \
+                 : "v0", "v1", "v2", "v3", "memory"); \
+    check_output_b(__LINE__, 2); \
+} while (0) \
+
+static void test_v6_vcombine_tmp_alig(void)
+{
+    TEST_V6_VCOMBINE_TMP(9, 8);
+}
+
+static void test_v6_vcombine_tmp_unalig(void)
+{
+    TEST_V6_VCOMBINE_TMP(8, 9);
+}
+
 int main()
 {
     init_buffers();
@@ -870,6 +901,9 @@ int main()
     test_vsubuwsat_dv();
 
     test_vshuff();
+
+    test_v6_vcombine_tmp_alig();
+    test_v6_vcombine_tmp_unalig();
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;
