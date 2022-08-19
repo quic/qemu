@@ -35,11 +35,6 @@
 #define SF_MANTBITS    23
 #define float32_nan    make_float32(0xffffffff)
 
-size4u_t count_leading_ones_8(size8u_t src)
-{
-    return clo64(src);
-}
-
 /*
  * These three tables are used by the cabacdecbin instruction
  */

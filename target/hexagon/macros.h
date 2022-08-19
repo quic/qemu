@@ -500,7 +500,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fCRND(A) ((((A) & 0x3) == 0x3) ? ((A) + 1) : ((A)))
 #define fRNDN(A, N) ((((N) == 0) ? (A) : (((fSE32_64(A)) + (1 << ((N) - 1))))))
 #define fCRNDN(A, N) (conv_round(A, N))
-/* FIXME - Convert the size16s_t (hex_arch_types.h) to qemu's Int128 */
 #define fADD128(A, B) (add128(A, B))
 #define fSUB128(A, B) (sub128(A, B))
 #define fSHIFTR128(A, B) (shiftr128(A, B))
