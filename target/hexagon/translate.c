@@ -89,10 +89,10 @@ intptr_t ctx_future_vreg_off(DisasContext *ctx, int regnum,
         }
     }
 
-    g_assert(alloc_ok);
+    g_assert(alloc_ok && num >= 1 && num <= 2);
     offset = offsetof(CPUHexagonState, future_VRegs[ctx->future_vregs_idx]);
     for (int i = 0; i < num; i++) {
-        ctx->future_vregs_num[ctx->future_vregs_idx + i] = regnum++;
+        ctx->future_vregs_num[ctx->future_vregs_idx + i] = regnum ^ i;
     }
     ctx->future_vregs_idx += num;
     g_assert(ctx->future_vregs_idx <= VECTOR_TEMPS_MAX);
@@ -111,10 +111,10 @@ intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
         }
     }
 
-    g_assert(alloc_ok);
+    g_assert(alloc_ok && num >= 1 && num <= 2);
     offset = offsetof(CPUHexagonState, tmp_VRegs[ctx->tmp_vregs_idx]);
     for (int i = 0; i < num; i++) {
-        ctx->tmp_vregs_num[ctx->tmp_vregs_idx + i] = regnum++;
+        ctx->tmp_vregs_num[ctx->tmp_vregs_idx + i] = regnum ^ i;
     }
     ctx->tmp_vregs_idx += num;
     g_assert(ctx->tmp_vregs_idx <= VECTOR_TEMPS_MAX);

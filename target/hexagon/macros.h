@@ -105,10 +105,11 @@
         } \
     } while (0)
 
-#define CHECK_NOSHUF_PRED(EA, SIZE, PRED) \
+#define CHECK_NOSHUF_PRED(GET_EA, SIZE, PRED) \
     do { \
         TCGLabel *label = gen_new_label(); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, PRED, 0, label); \
+        GET_EA; \
         if (insn->slot == 0 && pkt->pkt_has_scalar_store_s1) { \
             probe_noshuf_load(EA, SIZE, ctx->mem_idx); \
         } \

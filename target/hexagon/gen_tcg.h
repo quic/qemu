@@ -385,13 +385,13 @@
     do { \
         TCGv LSB = tcg_temp_local_new(); \
         TCGLabel *label = gen_new_label(); \
-        GET_EA; \
+        tcg_gen_movi_tl(EA, 0); \
         PRED;  \
+        CHECK_NOSHUF_PRED(GET_EA, SIZE, LSB); \
         PRED_LOAD_CANCEL(LSB, EA); \
         tcg_gen_movi_tl(RdV, 0); \
-        CHECK_NOSHUF_PRED(EA, SIZE, LSB); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-            fLOAD(1, SIZE, SIGN, EA, RdV); \
+        fLOAD(1, SIZE, SIGN, EA, RdV); \
         gen_set_label(label); \
         tcg_temp_free(LSB); \
     } while (0)
@@ -565,13 +565,13 @@
     do { \
         TCGv LSB = tcg_temp_local_new(); \
         TCGLabel *label = gen_new_label(); \
-        GET_EA; \
+        tcg_gen_movi_tl(EA, 0); \
         PRED;  \
+        CHECK_NOSHUF_PRED(GET_EA, 8, LSB); \
         PRED_LOAD_CANCEL(LSB, EA); \
         tcg_gen_movi_i64(RddV, 0); \
-        CHECK_NOSHUF_PRED(EA, 8, LSB); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-            fLOAD(1, 8, u, EA, RddV); \
+        fLOAD(1, 8, u, EA, RddV); \
         gen_set_label(label); \
         tcg_temp_free(LSB); \
     } while (0)
@@ -2687,110 +2687,5 @@
 #define fGEN_TCG_S4_stored_rl_at_vi(SHORTCODE)          SHORTCODE
 #define fGEN_TCG_S2_storew_rl_st_vi(SHORTCODE)          SHORTCODE
 #define fGEN_TCG_S4_stored_rl_st_vi(SHORTCODE)          SHORTCODE
-
-/* System mode instructions */
-#ifndef CONFIG_USER_ONLY
-#define fGEN_TCG_Y2_swi(SHORTCODE) \
-    do { \
-        gen_helper_swi(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_cswi(SHORTCODE) \
-    do { \
-        gen_helper_cswi(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_ciad(SHORTCODE) \
-    do { \
-        gen_helper_ciad(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y4_siad(SHORTCODE) \
-    do { \
-        gen_helper_siad(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_wait(SHORTCODE) \
-    do { \
-        RsV = RsV; \
-        gen_helper_wait(cpu_env); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_resume(SHORTCODE) \
-    do { \
-        gen_helper_resume(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_getimask(SHORTCODE) \
-    do { \
-        gen_helper_getimask(RdV, cpu_env, RsV); \
-    } while (0)
-
-#define fGEN_TCG_Y2_iassignw(SHORTCODE) \
-    do { \
-        gen_helper_iassignw(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_iassignr(SHORTCODE) \
-    do { \
-        gen_helper_iassignr(RdV, cpu_env, RsV); \
-    } while (0)
-
-#define fGEN_TCG_Y2_setimask(SHORTCODE) \
-    do { \
-        gen_helper_setimask(cpu_env, PtV, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y4_nmi(SHORTCODE) \
-    do { \
-        gen_helper_nmi(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_setprio(SHORTCODE) \
-    do { \
-        gen_helper_setprio(cpu_env, PtV, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_start(SHORTCODE) \
-    do { \
-        gen_helper_start(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_stop(SHORTCODE) \
-    do { \
-        RsV = RsV; \
-        gen_helper_stop(cpu_env); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#define fGEN_TCG_Y2_tfrsrcr(SHORTCODE) \
-    do { \
-        tcg_gen_mov_tl(SdV, RsV); \
-    } while (0)
-
-#define fGEN_TCG_Y4_tfrspcp(SHORTCODE) \
-    do { \
-        tcg_gen_mov_i64(SddV, RssV); \
-    } while (0)
-
-#define fGEN_TCG_J2_rte(SHORTCODE) \
-    do { \
-        TCGv pkt_has_multi_cof = tcg_constant_tl(pkt->pkt_has_multi_cof); \
-        gen_helper_rte(cpu_env, pkt_has_multi_cof); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
-
-#endif
 
 #endif

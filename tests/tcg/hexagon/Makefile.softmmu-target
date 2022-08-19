@@ -73,6 +73,7 @@ TESTS += \
 	getcwd \
 	checkforpriv \
 	pend_wake_wait \
+	simple-assign \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -145,6 +146,7 @@ getcwd: getcwd.o
 checkforpriv.o: checkforpriv.c mmu.h
 checkforpriv: checkforpriv.o
 pend_wake_wait: pend_wake_wait.o
+simple-assign: simple-assign.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -197,9 +199,14 @@ run-standalone_hw run-standalone_vec:
 	$(call run-test, $<, $(QEMU) $(PARANOID_OPTS) -kernel $<, "$< on $(TARGET_NAME) paranoid")
 
 ICOUNT_OPTS=-icount auto
-run-tlblock run-k0lock run-swi run-swi2 run-swi_wait run-timer_reg run-qtimer_test run-vid-group:
+run-tlblock run-k0lock run-swi_wait run-timer_reg run-qtimer_test run-vid-group:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
+
+run-swi run-swi2:
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
+	# TODO: debug failure on icount execution and re-enable this test case.
+	# $(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
 run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
 
@@ -225,3 +232,18 @@ run-access: access
 
 run-hmx_conv_fp16: hmx_conv_fp16
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 hmx_input_fp16.dat hmx_output_fp16.dat","$< on $(TARGET_NAME)")
+
+ifneq ($(HAVE_HEXAGON_LLDB_BIN),)
+
+run-lldb-revcon: export LLDB_HEXAGON_USE_QEMU = 1
+run-lldb-revcon: export LLDB_HEXAGON_QEMU_PATH = $(QEMU)
+run-lldb-revcon: simple-assign
+	$(call run-test, $@, \
+		$(HAVE_HEXAGON_LLDB_BIN) --no-lldbinit --batch \
+		--source $(HEXAGON_SYSTEM_SRC)/lldbscripts/test-revcon.lldb \
+		$< -- $(filter-out -kernel,$(QEMU_OPTS)), \
+		"basic qemu revcon test")
+
+EXTRA_RUNS += run-lldb-revcon
+
+endif

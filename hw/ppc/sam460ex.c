@@ -334,9 +334,9 @@ static void sam460ex_init(MachineState *machine)
 
         if (i == 0) {
             sysbus_connect_irq(sbd, PPCUIC_OUTPUT_INT,
-                               ((qemu_irq *)env->irq_inputs)[PPC40x_INPUT_INT]);
+                             qdev_get_gpio_in(DEVICE(cpu), PPC40x_INPUT_INT));
             sysbus_connect_irq(sbd, PPCUIC_OUTPUT_CINT,
-                               ((qemu_irq *)env->irq_inputs)[PPC40x_INPUT_CINT]);
+                             qdev_get_gpio_in(DEVICE(cpu), PPC40x_INPUT_CINT));
         } else {
             sysbus_connect_irq(sbd, PPCUIC_OUTPUT_INT,
                                qdev_get_gpio_in(uic[0], input_ints[i]));
@@ -384,7 +384,7 @@ static void sam460ex_init(MachineState *machine)
 
     /* MAL */
     for (i = 0; i < ARRAY_SIZE(mal_irqs); i++) {
-        mal_irqs[0] = qdev_get_gpio_in(uic[2], 3 + i);
+        mal_irqs[i] = qdev_get_gpio_in(uic[2], 3 + i);
     }
     ppc4xx_mal_init(env, 4, 16, mal_irqs);
 

@@ -1237,7 +1237,9 @@ void mips_malta_init(MachineState *machine)
     int fl_idx = 0;
     int be;
     MaltaState *s;
+    PCIDevice *piix4;
     DeviceState *dev;
+    DeviceState *pm_dev;
 
     s = MIPS_MALTA(qdev_new(TYPE_MIPS_MALTA));
     sysbus_realize_and_unref(SYS_BUS_DEVICE(s), &error_fatal);
@@ -1399,7 +1401,12 @@ void mips_malta_init(MachineState *machine)
     empty_slot_init("GT64120", 0, 0x20000000);
 
     /* Southbridge */
-    dev = piix4_create(pci_bus, &isa_bus, &smbus);
+    piix4 = pci_create_simple_multifunction(pci_bus, PCI_DEVFN(10, 0), true,
+                                            TYPE_PIIX4_PCI_DEVICE);
+    dev = DEVICE(piix4);
+    isa_bus = ISA_BUS(qdev_get_child_bus(dev, "isa.0"));
+    pm_dev = DEVICE(object_resolve_path_component(OBJECT(dev), "pm"));
+    smbus = I2C_BUS(qdev_get_child_bus(pm_dev, "i2c"));
 
     /* Interrupt controller */
     qdev_connect_gpio_out_named(dev, "intr", 0, i8259_irq);
@@ -1435,6 +1442,14 @@ static const TypeInfo mips_malta_device = {
     .instance_init = mips_malta_instance_init,
 };
 
+GlobalProperty malta_compat[] = {
+    { "PIIX4_PM", "memory-hotplug-support", "off" },
+    { "PIIX4_PM", "acpi-pci-hotplug-with-bridge-support", "off" },
+    { "PIIX4_PM", "acpi-root-pci-hotplug", "off" },
+    { "PIIX4_PM", "x-not-migrate-acpi-index", "true" },
+};
+const size_t malta_compat_len = G_N_ELEMENTS(malta_compat);
+
 static void mips_malta_machine_init(MachineClass *mc)
 {
     mc->desc = "MIPS Malta Core LV";
@@ -1448,6 +1463,7 @@ static void mips_malta_machine_init(MachineClass *mc)
     mc->default_cpu_type = MIPS_CPU_TYPE_NAME("24Kf");
 #endif
     mc->default_ram_id = "mips_malta.ram";
+    compat_props_add(mc->compat_props, malta_compat, malta_compat_len);
 }
 
 DEFINE_MACHINE("malta", mips_malta_machine_init)

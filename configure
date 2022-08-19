@@ -109,6 +109,20 @@ error_exit() {
 }
 
 do_compiler() {
+  # Run the compiler, capturing its output to the log. First argument
+  # is compiler binary to execute.
+  local compiler="$1"
+  shift
+  if test -n "$BASH_VERSION"; then eval '
+      echo >>config.log "
+funcs: ${FUNCNAME[*]}
+lines: ${BASH_LINENO[*]}"
+  '; fi
+  echo $compiler "$@" >> config.log
+  $compiler "$@" >> config.log 2>&1 || return $?
+}
+
+do_compiler_werror() {
     # Run the compiler, capturing its output to the log. First argument
     # is compiler binary to execute.
     compiler="$1"
@@ -142,15 +156,15 @@ lines: ${BASH_LINENO[*]}"
 }
 
 do_cc() {
-    do_compiler "$cc" $CPU_CFLAGS "$@"
+    do_compiler_werror "$cc" $CPU_CFLAGS "$@"
 }
 
 do_cxx() {
-    do_compiler "$cxx" $CPU_CFLAGS "$@"
+    do_compiler_werror "$cxx" $CPU_CFLAGS "$@"
 }
 
 do_objc() {
-    do_compiler "$objcc" $CPU_CFLAGS "$@"
+    do_compiler_werror "$objcc" $CPU_CFLAGS "$@"
 }
 
 # Append $2 to the variable named $1, with space separation
@@ -240,6 +254,13 @@ safe_stack=""
 use_containers="yes"
 gdb_bin=$(command -v "gdb-multiarch" || command -v "gdb")
 
+# FIXME: we currently have to disable the auto-discovery of hexagon-lldb
+# because v8.7 causes issue QTOOL-80108, making the revcon test failure.
+# Once that issue is fixed, we can reenable the auto-discovery and have
+# the dependend test(s) enabled by default.
+#
+# hexagon_lldb_bin=$(command -v "hexagon-lldb")
+
 if test -e "$source_path/.git"
 then
     git_submodules_action="update"
@@ -301,6 +322,7 @@ meson_args=""
 ninja=""
 bindir="bin"
 skip_meson=no
+vfio_user_server="disabled"
 
 # The following Meson options are handled manually (still they
 # are included in the automatically generated help message)
@@ -314,7 +336,7 @@ fi
 fdt="auto"
 
 # 2. Automatically enable/disable other options
-tcg="enabled"
+tcg="auto"
 cfi="false"
 
 # parse CC options second
@@ -345,11 +367,14 @@ for opt do
   ;;
   --cross-cc-cflags-*) cc_arch=${opt#--cross-cc-cflags-}; cc_arch=${cc_arch%%=*}
                       eval "cross_cc_cflags_${cc_arch}=\$optarg"
-                      cross_cc_vars="$cross_cc_vars cross_cc_cflags_${cc_arch}"
   ;;
   --cross-cc-*) cc_arch=${opt#--cross-cc-}; cc_arch=${cc_arch%%=*}
                 eval "cross_cc_${cc_arch}=\$optarg"
-                cross_cc_vars="$cross_cc_vars cross_cc_${cc_arch}"
+  ;;
+  --cross-prefix-*[!a-zA-Z0-9_-]*=*) error_exit "Passed bad --cross-prefix-FOO option"
+  ;;
+  --cross-prefix-*) cc_arch=${opt#--cross-prefix-}; cc_arch=${cc_arch%%=*}
+                    eval "cross_prefix_${cc_arch}=\$optarg"
   ;;
   esac
 done
@@ -376,7 +401,6 @@ fi
 ar="${AR-${cross_prefix}ar}"
 as="${AS-${cross_prefix}as}"
 ccas="${CCAS-$cc}"
-cpp="${CPP-$cc -E}"
 objcopy="${OBJCOPY-${cross_prefix}objcopy}"
 ld="${LD-${cross_prefix}ld}"
 ranlib="${RANLIB-${cross_prefix}ranlib}"
@@ -661,6 +685,22 @@ fi
 
 werror=""
 
+meson_option_build_array() {
+  printf '['
+  (if test "$targetos" = windows; then
+    IFS=\;
+  else
+    IFS=:
+  fi
+  for e in $1; do
+    printf '"""'
+    # backslash escape any '\' and '"' characters
+    printf "%s" "$e" | sed -e 's/\([\"]\)/\\\1/g'
+    printf '""",'
+  done)
+  printf ']\n'
+}
+
 . $source_path/scripts/meson-buildoptions.sh
 
 meson_options=
@@ -718,6 +758,8 @@ for opt do
   --extra-ldflags=*)
   ;;
   --cross-cc-*)
+  ;;
+  --cross-prefix-*)
   ;;
   --enable-debug-info) meson_option_add -Ddebug=true
   ;;
@@ -888,10 +930,16 @@ for opt do
   ;;
   --gdb=*) gdb_bin="$optarg"
   ;;
+  --hexagon-lldb=*) hexagon_lldb_bin="$optarg"
+  ;;
   # backwards compatibility options
   --enable-trace-backend=*) meson_option_parse "--enable-trace-backends=$optarg" "$optarg"
   ;;
   --disable-blobs) meson_option_parse --disable-install-blobs ""
+  ;;
+  --enable-vfio-user-server) vfio_user_server="enabled"
+  ;;
+  --disable-vfio-user-server) vfio_user_server="disabled"
   ;;
   --enable-tcmalloc) meson_option_parse --enable-malloc=tcmalloc tcmalloc
   ;;
@@ -944,11 +992,6 @@ case $git_submodules_action in
         exit 1
     ;;
 esac
-
-if eval test -z "\${cross_cc_$cpu}"; then
-    eval "cross_cc_${cpu}=\$cc"
-    cross_cc_vars="$cross_cc_vars cross_cc_${cpu}"
-fi
 
 default_target_list=""
 mak_wilds=""
@@ -1012,6 +1055,7 @@ Advanced options (experts only):
   --extra-ldflags=LDFLAGS  append extra linker flags LDFLAGS
   --cross-cc-ARCH=CC       use compiler when building ARCH guest test cases
   --cross-cc-cflags-ARCH=  use compiler flags when building ARCH guest tests
+  --cross-prefix-ARCH=PREFIX cross compiler prefix when building ARCH guest test cases
   --make=MAKE              use specified make [$make]
   --python=PYTHON          use specified python [$python]
   --meson=MESON            use specified meson [$meson]
@@ -1023,7 +1067,6 @@ Advanced options (experts only):
   --with-git-submodules=ignore   do not update or check git submodules (default if no .git dir)
   --static                 enable static build [$static]
   --bindir=PATH            install binaries in PATH
-  --efi-aarch64=PATH       PATH of efi file to use for aarch64 VMs.
   --with-suffix=SUFFIX     suffix for QEMU data inside datadir/libdir/sysconfdir/docdir [$qemu_suffix]
   --without-default-features default all --enable-* options to "disabled"
   --without-default-devices  do not include any device that is not needed to
@@ -1042,6 +1085,7 @@ Advanced options (experts only):
                            enable plugins via shared library loading
   --disable-containers     don't use containers for cross-building
   --gdb=GDB-path           gdb to use for gdbstub tests [$gdb_bin]
+  --hexagon-lldb=LLDB-path lldb to use for hexagon tests [$hexagon_lldb_bin]
 EOF
   meson_options_help
 cat << EOF
@@ -1335,13 +1379,6 @@ static THREAD int tls_var;
 int main(void) { return tls_var; }
 EOF
 
-# Check we support -fno-pie and -no-pie first; we will need the former for
-# building ROMs, and both for everything if --disable-pie is passed.
-if compile_prog "-Werror -fno-pie" "-no-pie"; then
-  CFLAGS_NOPIE="-fno-pie"
-  LDFLAGS_NOPIE="-no-pie"
-fi
-
 if test "$static" = "yes"; then
   if test "$pie" != "no" && compile_prog "-Werror -fPIE -DPIE" "-static-pie"; then
     CONFIGURE_CFLAGS="-fPIE -DPIE $CONFIGURE_CFLAGS"
@@ -1354,8 +1391,10 @@ if test "$static" = "yes"; then
     pie="no"
   fi
 elif test "$pie" = "no"; then
-  CONFIGURE_CFLAGS="$CFLAGS_NOPIE $CONFIGURE_CFLAGS"
-  CONFIGURE_LDFLAGS="$LDFLAGS_NOPIE $CONFIGURE_LDFLAGS"
+  if compile_prog "-Werror -fno-pie" "-no-pie"; then
+    CONFIGURE_CFLAGS="-fno-pie $CONFIGURE_CFLAGS"
+    CONFIGURE_LDFLAGS="-no-pie $CONFIGURE_LDFLAGS"
+  fi
 elif compile_prog "-Werror -fPIE -DPIE" "-pie"; then
   CONFIGURE_CFLAGS="-fPIE -DPIE $CONFIGURE_CFLAGS"
   CONFIGURE_LDFLAGS="-pie $CONFIGURE_LDFLAGS"
@@ -1398,11 +1437,6 @@ EOF
   fi
 fi
 
-if test "$tcg" = "enabled"; then
-    git_submodules="$git_submodules tests/fp/berkeley-testfloat-3"
-    git_submodules="$git_submodules tests/fp/berkeley-softfloat-3"
-fi
-
 if test -z "${target_list+xxx}" ; then
     default_targets=yes
     for target in $default_target_list; do
@@ -1432,6 +1466,19 @@ case " $target_list " in
   *) softmmu=no
   ;;
 esac
+
+if test "$tcg" = "auto"; then
+  if test -z "$target_list"; then
+    tcg="disabled"
+  else
+    tcg="enabled"
+  fi
+fi
+
+if test "$tcg" = "enabled"; then
+    git_submodules="$git_submodules tests/fp/berkeley-testfloat-3"
+    git_submodules="$git_submodules tests/fp/berkeley-softfloat-3"
+fi
 
 feature_not_found() {
   feature=$1
@@ -1804,6 +1851,416 @@ case "$slirp" in
 esac
 
 ##########################################
+# functions to probe cross compilers
+
+container="no"
+if test $use_containers = "yes"; then
+    if has "docker" || has "podman"; then
+        container=$($python $source_path/tests/docker/docker.py probe)
+    fi
+fi
+
+# cross compilers defaults, can be overridden with --cross-cc-ARCH
+: ${cross_prefix_aarch64="aarch64-linux-gnu-"}
+: ${cross_prefix_aarch64_be="$cross_prefix_aarch64"}
+: ${cross_prefix_alpha="alpha-linux-gnu-"}
+: ${cross_prefix_arm="arm-linux-gnueabihf-"}
+: ${cross_prefix_armeb="$cross_prefix_arm"}
+: ${cross_prefix_hexagon="hexagon-unknown-linux-musl-"}
+: ${cross_prefix_loongarch64="loongarch64-unknown-linux-gnu-"}
+: ${cross_prefix_hppa="hppa-linux-gnu-"}
+: ${cross_prefix_i386="i686-linux-gnu-"}
+: ${cross_prefix_m68k="m68k-linux-gnu-"}
+: ${cross_prefix_microblaze="microblaze-linux-musl-"}
+: ${cross_prefix_mips64el="mips64el-linux-gnuabi64-"}
+: ${cross_prefix_mips64="mips64-linux-gnuabi64-"}
+: ${cross_prefix_mipsel="mipsel-linux-gnu-"}
+: ${cross_prefix_mips="mips-linux-gnu-"}
+: ${cross_prefix_nios2="nios2-linux-gnu-"}
+: ${cross_prefix_ppc="powerpc-linux-gnu-"}
+: ${cross_prefix_ppc64="powerpc64-linux-gnu-"}
+: ${cross_prefix_ppc64le="$cross_prefix_ppc64"}
+: ${cross_prefix_riscv64="riscv64-linux-gnu-"}
+: ${cross_prefix_s390x="s390x-linux-gnu-"}
+: ${cross_prefix_sh4="sh4-linux-gnu-"}
+: ${cross_prefix_sparc64="sparc64-linux-gnu-"}
+: ${cross_prefix_sparc="$cross_prefix_sparc64"}
+: ${cross_prefix_x86_64="x86_64-linux-gnu-"}
+
+: ${cross_cc_aarch64_be="$cross_cc_aarch64"}
+: ${cross_cc_cflags_aarch64_be="-mbig-endian"}
+: ${cross_cc_armeb="$cross_cc_arm"}
+: ${cross_cc_cflags_armeb="-mbig-endian"}
+: ${cross_cc_hexagon="hexagon-unknown-linux-musl-clang"}
+: ${cross_cc_cflags_hexagon="-mv69 -O2 -static"}
+: ${cross_cc_cflags_i386="-m32"}
+: ${cross_cc_cflags_ppc="-m32 -mbig-endian"}
+: ${cross_cc_cflags_ppc64="-m64 -mbig-endian"}
+: ${cross_cc_ppc64le="$cross_cc_ppc64"}
+: ${cross_cc_cflags_ppc64le="-m64 -mlittle-endian"}
+: ${cross_cc_cflags_sparc64="-m64 -mcpu=ultrasparc"}
+: ${cross_cc_sparc="$cross_cc_sparc64"}
+: ${cross_cc_cflags_sparc="-m32 -mcpu=supersparc"}
+: ${cross_cc_cflags_x86_64="-m64"}
+
+compute_target_variable() {
+  eval "$2="
+  if eval test -n "\"\${cross_prefix_$1}\""; then
+    if eval has "\"\${cross_prefix_$1}\$3\""; then
+      eval "$2=\"\${cross_prefix_$1}\$3\""
+    fi
+  fi
+}
+
+# probe_target_compiler TARGET
+#
+# Look for a compiler for the given target, either native or cross.
+# Set variables target_* if a compiler is found, and container_cross_*
+# if a Docker-based cross-compiler image is known for the target.
+# Set got_cross_cc to yes/no depending on whether a non-container-based
+# compiler was found.
+#
+# If TARGET is a user-mode emulation target, also set build_static to
+# "y" if static linking is possible.
+#
+probe_target_compiler() {
+  # reset all output variables
+  got_cross_cc=no
+  container_image=
+  container_hosts=
+  container_cross_cc=
+  container_cross_ar=
+  container_cross_as=
+  container_cross_ld=
+  container_cross_nm=
+  container_cross_objcopy=
+  container_cross_ranlib=
+  container_cross_strip=
+
+  target=$1
+  target_arch=${1%%-*}
+  case $target_arch in
+    aarch64) container_hosts="x86_64 aarch64" ;;
+    alpha) container_hosts=x86_64 ;;
+    arm) container_hosts="x86_64 aarch64" ;;
+    cris) container_hosts=x86_64 ;;
+    hexagon) container_hosts=x86_64 ;;
+    hppa) container_hosts=x86_64 ;;
+    i386) container_hosts=x86_64 ;;
+    loongarch64) container_hosts=x86_64 ;;
+    m68k) container_hosts=x86_64 ;;
+    microblaze) container_hosts=x86_64 ;;
+    mips64el) container_hosts=x86_64 ;;
+    mips64) container_hosts=x86_64 ;;
+    mipsel) container_hosts=x86_64 ;;
+    mips) container_hosts=x86_64 ;;
+    nios2) container_hosts=x86_64 ;;
+    ppc) container_hosts=x86_64 ;;
+    ppc64|ppc64le) container_hosts=x86_64 ;;
+    riscv64) container_hosts=x86_64 ;;
+    s390x) container_hosts=x86_64 ;;
+    sh4) container_hosts=x86_64 ;;
+    sparc64) container_hosts=x86_64 ;;
+    tricore) container_hosts=x86_64 ;;
+    x86_64) container_hosts="aarch64 ppc64el x86_64" ;;
+    xtensa*) container_hosts=x86_64 ;;
+  esac
+
+  for host in $container_hosts; do
+    test "$container" != no || continue
+    test "$host" = "$cpu" || continue
+    case $target_arch in
+      aarch64)
+        # We don't have any bigendian build tools so we only use this for AArch64
+        container_image=debian-arm64-cross
+        container_cross_prefix=aarch64-linux-gnu-
+        container_cross_cc=${container_cross_prefix}gcc-10
+        ;;
+      alpha)
+        container_image=debian-alpha-cross
+        container_cross_prefix=alpha-linux-gnu-
+        ;;
+      arm)
+        # We don't have any bigendian build tools so we only use this for ARM
+        container_image=debian-armhf-cross
+        container_cross_prefix=arm-linux-gnueabihf-
+        ;;
+      cris)
+        container_image=fedora-cris-cross
+        container_cross_prefix=cris-linux-gnu-
+        ;;
+      hexagon)
+        container_image=debian-hexagon-cross
+        container_cross_prefix=hexagon-unknown-linux-musl-
+        container_cross_cc=${container_cross_prefix}clang
+        ;;
+      hppa)
+        container_image=debian-hppa-cross
+        container_cross_prefix=hppa-linux-gnu-
+        ;;
+      i386)
+        container_image=fedora-i386-cross
+        container_cross_prefix=
+        ;;
+      loongarch64)
+        container_image=debian-loongarch-cross
+        container_cross_prefix=loongarch64-unknown-linux-gnu-
+        ;;
+      m68k)
+        container_image=debian-m68k-cross
+        container_cross_prefix=m68k-linux-gnu-
+        ;;
+      microblaze)
+        container_image=debian-microblaze-cross
+        container_cross_prefix=microblaze-linux-musl-
+        ;;
+      mips64el)
+        container_image=debian-mips64el-cross
+        container_cross_prefix=mips64el-linux-gnuabi64-
+        ;;
+      mips64)
+        container_image=debian-mips64-cross
+        container_cross_prefix=mips64-linux-gnuabi64-
+        ;;
+      mipsel)
+        container_image=debian-mipsel-cross
+        container_cross_prefix=mipsel-linux-gnu-
+        ;;
+      mips)
+        container_image=debian-mips-cross
+        container_cross_prefix=mips-linux-gnu-
+        ;;
+      nios2)
+        container_image=debian-nios2-cross
+        container_cross_prefix=nios2-linux-gnu-
+        ;;
+      ppc)
+        container_image=debian-powerpc-test-cross
+        container_cross_prefix=powerpc-linux-gnu-
+        container_cross_cc=${container_cross_prefix}gcc-10
+        ;;
+      ppc64|ppc64le)
+        container_image=debian-powerpc-test-cross
+        container_cross_prefix=powerpc${target_arch#ppc}-linux-gnu-
+        container_cross_cc=${container_cross_prefix}gcc-10
+        ;;
+      riscv64)
+        container_image=debian-riscv64-test-cross
+        container_cross_prefix=riscv64-linux-gnu-
+        ;;
+      s390x)
+        container_image=debian-s390x-cross
+        container_cross_prefix=s390x-linux-gnu-
+        ;;
+      sh4)
+        container_image=debian-sh4-cross
+        container_cross_prefix=sh4-linux-gnu-
+        ;;
+      sparc64)
+        container_image=debian-sparc64-cross
+        container_cross_prefix=sparc64-linux-gnu-
+        ;;
+      tricore)
+        container_image=debian-tricore-cross
+        container_cross_prefix=tricore-
+        container_cross_as=tricore-as
+        container_cross_ld=tricore-ld
+        break
+        ;;
+      x86_64)
+        container_image=debian-amd64-cross
+        container_cross_prefix=x86_64-linux-gnu-
+        ;;
+      xtensa*)
+        container_hosts=x86_64
+        container_image=debian-xtensa-cross
+
+        # default to the dc232b cpu
+        container_cross_prefix=/opt/2020.07/xtensa-dc232b-elf/bin/xtensa-dc232b-elf-
+        ;;
+    esac
+    : ${container_cross_cc:=${container_cross_prefix}gcc}
+    : ${container_cross_ar:=${container_cross_prefix}ar}
+    : ${container_cross_as:=${container_cross_prefix}as}
+    : ${container_cross_ld:=${container_cross_prefix}ld}
+    : ${container_cross_nm:=${container_cross_prefix}nm}
+    : ${container_cross_objcopy:=${container_cross_prefix}objcopy}
+    : ${container_cross_ranlib:=${container_cross_prefix}ranlib}
+    : ${container_cross_strip:=${container_cross_prefix}strip}
+  done
+
+  case $target in
+    hexagon-linux-user)
+      cross_cc_hexagon=hexagon-linux-clang ;;
+    hexagon-softmmu)
+      cross_cc_hexagon=hexagon-clang ;;
+  esac
+
+  local t try
+  try=cross
+  case "$target_arch:$cpu" in
+    aarch64_be:aarch64 | \
+    armeb:arm | \
+    i386:x86_64 | \
+    mips*:mips64 | \
+    ppc*:ppc64 | \
+    sparc:sparc64 | \
+    "$cpu:$cpu")
+      try='native cross' ;;
+  esac
+  eval "target_cflags=\${cross_cc_cflags_$target_arch}"
+  for t in $try; do
+    case $t in
+    native)
+      target_cc=$cc
+      target_ccas=$ccas
+      target_ar=$ar
+      target_as=$as
+      target_ld=$ld
+      target_nm=$nm
+      target_objcopy=$objcopy
+      target_ranlib=$ranlib
+      target_strip=$strip
+      ;;
+    cross)
+      target_cc=
+      if eval test -n "\"\${cross_cc_$target_arch}\""; then
+        if eval has "\"\${cross_cc_$target_arch}\""; then
+          eval "target_cc=\"\${cross_cc_$target_arch}\""
+        fi
+      else
+        compute_target_variable $target_arch target_cc gcc
+      fi
+      target_ccas=$target_cc
+      compute_target_variable $target_arch target_ar ar
+      compute_target_variable $target_arch target_as as
+      compute_target_variable $target_arch target_ld ld
+      compute_target_variable $target_arch target_nm nm
+      compute_target_variable $target_arch target_objcopy objcopy
+      compute_target_variable $target_arch target_ranlib ranlib
+      compute_target_variable $target_arch target_strip strip
+      ;;
+    esac
+
+    if test -n "$target_cc"; then
+      case $target_arch in
+        i386|x86_64)
+          if $target_cc --version | grep -qi "clang"; then
+            continue
+          fi
+          ;;
+      esac
+    elif test -n "$target_as" && test -n "$target_ld"; then
+      # Special handling for assembler only targets
+      case $target in
+        tricore-softmmu)
+          build_static=
+          got_cross_cc=yes
+          break
+          ;;
+        *)
+          continue
+          ;;
+      esac
+    else
+      continue
+    fi
+
+    write_c_skeleton
+    case $1 in
+      *-softmmu)
+        if do_compiler "$target_cc" $target_cflags -o $TMPO -c $TMPC &&
+          do_compiler "$target_cc" $target_cflags -r -nostdlib -o "${TMPDIR1}/${TMPB}2.o" "$TMPO" -lgcc; then
+          got_cross_cc=yes
+          break
+        fi
+        ;;
+      *)
+        if do_compiler "$target_cc" $target_cflags -o $TMPE $TMPC -static ; then
+          build_static=y
+          got_cross_cc=yes
+          break
+        fi
+        if do_compiler "$target_cc" $target_cflags -o $TMPE $TMPC ; then
+          build_static=
+          got_cross_cc=yes
+          break
+        fi
+        ;;
+    esac
+  done
+  if test $got_cross_cc != yes; then
+    build_static=
+    target_cc=
+    target_ccas=
+    target_ar=
+    target_as=
+    target_ld=
+    target_nm=
+    target_objcopy=
+    target_ranlib=
+    target_strip=
+  fi
+}
+
+write_target_makefile() {
+  echo "EXTRA_CFLAGS=$target_cflags"
+  if test -n "$target_cc"; then
+    echo "CC=$target_cc"
+    echo "CCAS=$target_ccas"
+  fi
+  if test -n "$target_ar"; then
+    echo "AR=$target_ar"
+  fi
+  if test -n "$target_as"; then
+    echo "AS=$target_as"
+  fi
+  if test -n "$target_ld"; then
+    echo "LD=$target_ld"
+  fi
+  if test -n "$target_nm"; then
+    echo "NM=$target_nm"
+  fi
+  if test -n "$target_objcopy"; then
+    echo "OBJCOPY=$target_objcopy"
+  fi
+  if test -n "$target_ranlib"; then
+    echo "RANLIB=$target_ranlib"
+  fi
+  if test -n "$target_strip"; then
+    echo "STRIP=$target_strip"
+  fi
+}
+
+write_container_target_makefile() {
+  echo "EXTRA_CFLAGS=$target_cflags"
+  if test -n "$container_cross_cc"; then
+    echo "CC=\$(DOCKER_SCRIPT) cc --cc $container_cross_cc -i qemu/$container_image -s $source_path --"
+    echo "CCAS=\$(DOCKER_SCRIPT) cc --cc $container_cross_cc -i qemu/$container_image -s $source_path --"
+  fi
+  echo "AR=\$(DOCKER_SCRIPT) cc --cc $container_cross_ar -i qemu/$container_image -s $source_path --"
+  echo "AS=\$(DOCKER_SCRIPT) cc --cc $container_cross_as -i qemu/$container_image -s $source_path --"
+  echo "LD=\$(DOCKER_SCRIPT) cc --cc $container_cross_ld -i qemu/$container_image -s $source_path --"
+  echo "NM=\$(DOCKER_SCRIPT) cc --cc $container_cross_nm -i qemu/$container_image -s $source_path --"
+  echo "OBJCOPY=\$(DOCKER_SCRIPT) cc --cc $container_cross_objcopy -i qemu/$container_image -s $source_path --"
+  echo "RANLIB=\$(DOCKER_SCRIPT) cc --cc $container_cross_ranlib -i qemu/$container_image -s $source_path --"
+  echo "STRIP=\$(DOCKER_SCRIPT) cc --cc $container_cross_strip -i qemu/$container_image -s $source_path --"
+}
+
+
+
+##########################################
+# check for vfio_user_server
+
+case "$vfio_user_server" in
+  enabled )
+    if test "$git_submodules_action" != "ignore"; then
+      git_submodules="${git_submodules} subprojects/libvfio-user"
+    fi
+    ;;
+esac
+
+##########################################
 # End of CC checks
 # After here, no more $cc or $ld runs
 
@@ -1812,13 +2269,6 @@ write_c_skeleton
 if test "$fortify_source" = "yes" ; then
   QEMU_CFLAGS="-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 $QEMU_CFLAGS"
 fi
-
-case "$ARCH" in
-alpha)
-  # Ensure there's only a single GP
-  QEMU_CFLAGS="-msmall-data $QEMU_CFLAGS"
-;;
-esac
 
 if test "$have_asan" = "yes"; then
   QEMU_CFLAGS="-fsanitize=address $QEMU_CFLAGS"
@@ -1867,40 +2317,94 @@ if test "$QEMU_GA_VERSION" = ""; then
     QEMU_GA_VERSION=$(cat $source_path/VERSION)
 fi
 
+
+#######################################
+# cross-compiled firmware targets
+
+# Set up build tree symlinks that point back into the source tree
+# (these can be both files and directories).
+# Caution: avoid adding files or directories here using wildcards. This
+# will result in problems later if a new file matching the wildcard is
+# added to the source tree -- nothing will cause configure to be rerun
+# so the build tree will be missing the link back to the new file, and
+# tests might fail. Prefer to keep the relevant files in their own
+# directory and symlink the directory instead.
+LINKS="Makefile"
+LINKS="$LINKS tests/tcg/Makefile.target"
+LINKS="$LINKS pc-bios/optionrom/Makefile"
+LINKS="$LINKS pc-bios/s390-ccw/Makefile"
+LINKS="$LINKS pc-bios/vof/Makefile"
+LINKS="$LINKS .gdbinit scripts" # scripts needed by relative path in .gdbinit
+LINKS="$LINKS tests/avocado tests/data"
+LINKS="$LINKS tests/qemu-iotests/check"
+LINKS="$LINKS python"
+LINKS="$LINKS contrib/plugins/Makefile "
+for f in $LINKS ; do
+    if [ -e "$source_path/$f" ]; then
+        mkdir -p `dirname ./$f`
+        symlink "$source_path/$f" "$f"
+    fi
+done
+
 # Mac OS X ships with a broken assembler
 roms=
-if { test "$cpu" = "i386" || test "$cpu" = "x86_64"; } && \
+probe_target_compiler i386-softmmu
+if test -n "$target_cc" &&
         test "$targetos" != "darwin" && test "$targetos" != "sunos" && \
         test "$targetos" != "haiku" && test "$softmmu" = yes ; then
     # Different host OS linkers have different ideas about the name of the ELF
     # emulation. Linux and OpenBSD/amd64 use 'elf_i386'; FreeBSD uses the _fbsd
     # variant; OpenBSD/i386 uses the _obsd variant; and Windows uses i386pe.
     for emu in elf_i386 elf_i386_fbsd elf_i386_obsd i386pe; do
-        if "$ld" -verbose 2>&1 | grep -q "^[[:space:]]*$emu[[:space:]]*$"; then
+        if "$target_ld" -verbose 2>&1 | grep -q "^[[:space:]]*${emu}[[:space:]]*$"; then
             ld_i386_emulation="$emu"
-            roms="optionrom"
             break
         fi
     done
+    if test -n "$ld_i386_emulation"; then
+        roms="pc-bios/optionrom"
+        config_mak=pc-bios/optionrom/config.mak
+        echo "# Automatically generated by configure - do not modify" > $config_mak
+        echo "TOPSRC_DIR=$source_path" >> $config_mak
+        echo "LD_I386_EMULATION=$ld_i386_emulation" >> $config_mak
+        write_target_makefile >> $config_mak
+    fi
 fi
 
-# Only build s390-ccw bios if we're on s390x and the compiler has -march=z900
-# or -march=z10 (which is the lowest architecture level that Clang supports)
-if test "$cpu" = "s390x" ; then
+probe_target_compiler ppc-softmmu
+if test -n "$target_cc" && test "$softmmu" = yes; then
+    roms="$roms pc-bios/vof"
+    config_mak=pc-bios/vof/config.mak
+    echo "# Automatically generated by configure - do not modify" > $config_mak
+    echo "SRC_DIR=$source_path/pc-bios/vof" >> $config_mak
+    write_target_makefile >> $config_mak
+fi
+
+# Only build s390-ccw bios if the compiler has -march=z900 or -march=z10
+# (which is the lowest architecture level that Clang supports)
+probe_target_compiler s390x-softmmu
+if test -n "$target_cc" && test "$softmmu" = yes; then
   write_c_skeleton
-  compile_prog "-march=z900" ""
+  do_compiler "$target_cc" $target_cc_cflags -march=z900 -o $TMPO -c $TMPC
   has_z900=$?
-  if [ $has_z900 = 0 ] || compile_object "-march=z10 -msoft-float -Werror"; then
+  if [ $has_z900 = 0 ] || do_compiler "$target_cc" $target_cc_cflags -march=z10 -msoft-float -Werror -o $TMPO -c $TMPC; then
     if [ $has_z900 != 0 ]; then
       echo "WARNING: Your compiler does not support the z900!"
       echo "         The s390-ccw bios will only work with guest CPUs >= z10."
     fi
-    roms="$roms s390-ccw"
+    roms="$roms pc-bios/s390-ccw"
+    config_mak=pc-bios/s390-ccw/config-host.mak
+    echo "# Automatically generated by configure - do not modify" > $config_mak
+    echo "SRC_PATH=$source_path/pc-bios/s390-ccw" >> $config_mak
+    write_target_makefile >> $config_mak
     # SLOF is required for building the s390-ccw firmware on s390x,
     # since it is using the libnet code from SLOF for network booting.
     git_submodules="${git_submodules} roms/SLOF"
   fi
 fi
+
+#######################################
+# generate config-host.mak
 
 # Check that the C++ compiler exists and works with the C compiler.
 # All the QEMU_CXXFLAGS are based on QEMU_CFLAGS. Keep this at the end to don't miss any other that could be added.
@@ -1934,7 +2438,7 @@ else
     cxx=
 fi
 
-if !(GIT="$git" "$source_path/scripts/git-submodule.sh" "$git_submodules_action" "$git_submodules"); then
+if ! (GIT="$git" "$source_path/scripts/git-submodule.sh" "$git_submodules_action" "$git_submodules"); then
     exit 1
 fi
 
@@ -2013,12 +2517,6 @@ echo "GENISOIMAGE=$genisoimage" >> $config_host_mak
 echo "MESON=$meson" >> $config_host_mak
 echo "NINJA=$ninja" >> $config_host_mak
 echo "CC=$cc" >> $config_host_mak
-echo "AR=$ar" >> $config_host_mak
-echo "AS=$as" >> $config_host_mak
-echo "CCAS=$ccas" >> $config_host_mak
-echo "CPP=$cpp" >> $config_host_mak
-echo "OBJCOPY=$objcopy" >> $config_host_mak
-echo "LD=$ld" >> $config_host_mak
 echo "QEMU_CFLAGS=$QEMU_CFLAGS" >> $config_host_mak
 echo "QEMU_CXXFLAGS=$QEMU_CXXFLAGS" >> $config_host_mak
 echo "QEMU_OBJCFLAGS=$QEMU_OBJCFLAGS" >> $config_host_mak
@@ -2027,8 +2525,6 @@ echo "GLIB_LIBS=$glib_libs" >> $config_host_mak
 echo "GLIB_BINDIR=$glib_bindir" >> $config_host_mak
 echo "GLIB_VERSION=$(pkg-config --modversion glib-2.0)" >> $config_host_mak
 echo "QEMU_LDFLAGS=$QEMU_LDFLAGS" >> $config_host_mak
-echo "LD_I386_EMULATION=$ld_i386_emulation" >> $config_host_mak
-echo "STRIP=$strip" >> $config_host_mak
 echo "EXESUF=$EXESUF" >> $config_host_mak
 
 # use included Linux headers
@@ -2086,55 +2582,119 @@ if test "$safe_stack" = "yes"; then
   echo "CONFIG_SAFESTACK=y" >> $config_host_mak
 fi
 
-# If we're using a separate build tree, set it up now.
-# LINKS are things to symlink back into the source tree
-# (these can be both files and directories).
-# Caution: do not add files or directories here using wildcards. This
-# will result in problems later if a new file matching the wildcard is
-# added to the source tree -- nothing will cause configure to be rerun
-# so the build tree will be missing the link back to the new file, and
-# tests might fail. Prefer to keep the relevant files in their own
-# directory and symlink the directory instead.
-LINKS="Makefile"
-LINKS="$LINKS tests/tcg/Makefile.target"
-LINKS="$LINKS pc-bios/optionrom/Makefile"
-LINKS="$LINKS pc-bios/s390-ccw/Makefile"
-LINKS="$LINKS .gdbinit scripts" # scripts needed by relative path in .gdbinit
-LINKS="$LINKS tests/avocado tests/data"
-LINKS="$LINKS tests/qemu-iotests/check"
-LINKS="$LINKS python"
-LINKS="$LINKS contrib/plugins/Makefile "
-for bios_file in \
-    $source_path/pc-bios/*.bin \
-    $source_path/pc-bios/*.elf \
-    $source_path/pc-bios/*.lid \
-    $source_path/pc-bios/*.rom \
-    $source_path/pc-bios/*.dtb \
-    $source_path/pc-bios/*.img \
-    $source_path/pc-bios/openbios-* \
-    $source_path/pc-bios/u-boot.* \
-    $source_path/pc-bios/palcode-* \
-    $source_path/pc-bios/qemu_vga.ndrv
+# tests/tcg configuration
+(makefile=tests/tcg/Makefile.prereqs
+echo "# Automatically generated by configure - do not modify" > $makefile
 
-do
-    LINKS="$LINKS pc-bios/$(basename $bios_file)"
-done
-for f in $LINKS ; do
-    if [ -e "$source_path/$f" ]; then
-        mkdir -p `dirname ./$f`
-        symlink "$source_path/$f" "$f"
-    fi
-done
+config_host_mak=tests/tcg/config-host.mak
+echo "# Automatically generated by configure - do not modify" > $config_host_mak
+echo "SRC_PATH=$source_path" >> $config_host_mak
+echo "HOST_CC=$host_cc" >> $config_host_mak
+if test -n "$hexagon_lldb_bin"; then
+    echo "HAVE_HEXAGON_LLDB_BIN=$hexagon_lldb_bin" >> $config_host_mak
+fi
 
-(for i in $cross_cc_vars; do
-  export $i
-done
-export target_list source_path use_containers cpu host_cc
-$source_path/tests/tcg/configure.sh)
+tcg_tests_targets=
+for target in $target_list; do
+  arch=${target%%-*}
 
-config_mak=pc-bios/optionrom/config.mak
-echo "# Automatically generated by configure - do not modify" > $config_mak
-echo "TOPSRC_DIR=$source_path" >> $config_mak
+  config_target_mak=tests/tcg/config-$target.mak
+
+  echo "# Automatically generated by configure - do not modify" > $config_target_mak
+  echo "TARGET_NAME=$arch" >> $config_target_mak
+  case $target in
+    xtensa*-linux-user)
+      # the toolchain is not complete with headers, only build softmmu tests
+      continue
+      ;;
+    *-softmmu)
+      test -f $source_path/tests/tcg/$arch/Makefile.softmmu-target || continue
+      qemu="qemu-system-$arch"
+      ;;
+    *-linux-user|*-bsd-user)
+      qemu="qemu-$arch"
+      ;;
+  esac
+
+  probe_target_compiler $target
+  if test $got_cross_cc = yes; then
+      # Test for compiler features for optional tests. We only do this
+      # for cross compilers because ensuring the docker containers based
+      # compilers is a requirememt for adding a new test that needs a
+      # compiler feature.
+
+      echo "BUILD_STATIC=$build_static" >> $config_target_mak
+      write_target_makefile >> $config_target_mak
+      case $target in
+          aarch64-*)
+              if do_compiler "$target_cc" $target_cflags \
+                             -march=armv8.1-a+sve -o $TMPE $TMPC; then
+                  echo "CROSS_CC_HAS_SVE=y" >> $config_target_mak
+              fi
+              if do_compiler "$target_cc" $target_cflags \
+                             -march=armv8.1-a+sve2 -o $TMPE $TMPC; then
+                  echo "CROSS_CC_HAS_SVE2=y" >> $config_target_mak
+              fi
+              if do_compiler "$target_cc" $target_cflags \
+                             -march=armv8.3-a -o $TMPE $TMPC; then
+                  echo "CROSS_CC_HAS_ARMV8_3=y" >> $config_target_mak
+              fi
+              if do_compiler "$target_cc" $target_cflags \
+                             -mbranch-protection=standard -o $TMPE $TMPC; then
+                  echo "CROSS_CC_HAS_ARMV8_BTI=y" >> $config_target_mak
+              fi
+              if do_compiler "$target_cc" $target_cflags \
+                             -march=armv8.5-a+memtag -o $TMPE $TMPC; then
+                  echo "CROSS_CC_HAS_ARMV8_MTE=y" >> $config_target_mak
+              fi
+              ;;
+          ppc*)
+              if do_compiler "$target_cc" $target_cflags \
+                             -mpower8-vector -o $TMPE $TMPC; then
+                  echo "CROSS_CC_HAS_POWER8_VECTOR=y" >> $config_target_mak
+              fi
+              if do_compiler "$target_cc" $target_cflags \
+                             -mpower10 -o $TMPE $TMPC; then
+                  echo "CROSS_CC_HAS_POWER10=y" >> $config_target_mak
+              fi
+              ;;
+          i386-linux-user)
+              if do_compiler "$target_cc" $target_cflags \
+                             -Werror -fno-pie -o $TMPE $TMPC; then
+                  echo "CROSS_CC_HAS_I386_NOPIE=y" >> $config_target_mak
+              fi
+              ;;
+      esac
+  elif test -n "$container_image"; then
+      echo "build-tcg-tests-$target: docker-image-$container_image" >> $makefile
+      echo "BUILD_STATIC=y" >> $config_target_mak
+      write_container_target_makefile >> $config_target_mak
+      case $target in
+          aarch64-*)
+              echo "CROSS_CC_HAS_SVE=y" >> $config_target_mak
+              echo "CROSS_CC_HAS_SVE2=y" >> $config_target_mak
+              echo "CROSS_CC_HAS_ARMV8_3=y" >> $config_target_mak
+              echo "CROSS_CC_HAS_ARMV8_BTI=y" >> $config_target_mak
+              echo "CROSS_CC_HAS_ARMV8_MTE=y" >> $config_target_mak
+              ;;
+          ppc*)
+              echo "CROSS_CC_HAS_POWER8_VECTOR=y" >> $config_target_mak
+              echo "CROSS_CC_HAS_POWER10=y" >> $config_target_mak
+              ;;
+          i386-linux-user)
+              echo "CROSS_CC_HAS_I386_NOPIE=y" >> $config_target_mak
+              ;;
+      esac
+      got_cross_cc=yes
+  fi
+  if test $got_cross_cc = yes; then
+      mkdir -p tests/tcg/$target
+      echo "QEMU=$PWD/$qemu" >> $config_target_mak
+      echo "run-tcg-tests-$target: $qemu\$(EXESUF)" >> $makefile
+      tcg_tests_targets="$tcg_tests_targets $target"
+  fi
+done
+echo "TCG_TESTS_TARGETS=$tcg_tests_targets" >> $makefile)
 
 if test "$skip_meson" = no; then
   cross="config-meson.cross.new"
@@ -2212,6 +2772,7 @@ if test "$skip_meson" = no; then
   test "$slirp" != auto && meson_option_add "-Dslirp=$slirp"
   test "$smbd" != '' && meson_option_add "-Dsmbd=$smbd"
   test "$tcg" != enabled && meson_option_add "-Dtcg=$tcg"
+  test "$vfio_user_server" != auto && meson_option_add "-Dvfio_user_server=$vfio_user_server"
   run_meson() {
     NINJA=$ninja $meson setup --prefix "$prefix" "$@" $cross_arg "$PWD" "$source_path"
   }
@@ -2259,17 +2820,15 @@ preserve_env() {
 preserve_env AR
 preserve_env AS
 preserve_env CC
-preserve_env CPP
 preserve_env CFLAGS
 preserve_env CXX
 preserve_env CXXFLAGS
-preserve_env INSTALL
 preserve_env LD
 preserve_env LDFLAGS
 preserve_env LD_LIBRARY_PATH
-preserve_env LIBTOOL
 preserve_env MAKE
 preserve_env NM
+preserve_env OBJCFLAGS
 preserve_env OBJCOPY
 preserve_env PATH
 preserve_env PKG_CONFIG
