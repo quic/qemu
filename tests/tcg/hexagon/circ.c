@@ -466,7 +466,7 @@ int main()
     circ_test_store_imm_h();
     circ_test_store_imm_f();
     circ_test_store_imm_w();
-    // QTOOL-75744: disable this for now: circ_test_store_imm_d();
+    circ_test_store_imm_d();
     circ_test_store_imm_bnew();
     circ_test_store_imm_hnew();
     circ_test_store_imm_wnew();
