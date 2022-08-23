@@ -70,23 +70,25 @@ def run_lldb(prog, port_num):
         cwd=THIS_DIR, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return debug_res
 
-def run_one(prog, port_num, cmd_args, timeout_sec, **kwargs):
+def run_one(prog, port_num, cmd_args, timeout_sec, debug_timeout, **kwargs):
     test = test_name(prog)
     with Popen(cmd_args, **kwargs) as process:
         try:
             print(f'running {test} for {timeout_sec} sec')
             output, err = process.communicate('', timeout=timeout_sec)
         except TimeoutExpired as e:
-            debug_res = run_lldb(prog, port_num)
-            process.kill()
             err_text = e.stderr if e.stderr else b''
-            err_text += b'debug:\n---\n' + debug_res.stdout + debug_res.stderr
             out_text = e.stdout if e.stdout else b''
-            out_text += process.stdout.read()
+            if debug_timeout:
+                debug_res = run_lldb(prog, port_num)
+                err_text += b'debug:\n---\n' + debug_res.stdout + debug_res.stderr
+                out_text += process.stdout.read()
+
+            process.terminate()
+            time.sleep(2.)
+            process.kill()
 #           raise TimeoutExpired(process.args, timeout_sec, output=process.stdout.read(), stderr=err_text)
             print(f'\tFAIL: {test} timed out')
-            time.sleep(2.)
-            process.terminate()
             raise TimeoutExpired(process.args, timeout_sec, output=out_text, stderr=err_text)
 
         pass_fail = 'PASS' if process.returncode == 0 else 'FAIL'
@@ -187,6 +189,10 @@ if __name__ == '__main__':
         help='Process count',
         default=int(mp.cpu_count() * .85),
         required=False)
+    parser.add_argument('-d', '--debug-timeouts',
+        help='Debug timeout cases - dump extra info',
+        default=False,
+        required=False)
     args = parser.parse_args()
 
     proc_count = args.proc_count
@@ -223,7 +229,9 @@ if __name__ == '__main__':
         (t, timeout_sec) = t_cfg
 
         port_num = get_avail_port()
-        cmd = '{} -gdb tcp::{} -display none -monitor none -m 4G -no-reboot -kernel {}'.format(prog, port_num, t)
+        gdb_args = '-gdb tcp::{}'.format(port_num) if args.debug_timeouts else ''
+
+        cmd = '{} {} -display none -monitor none -m 4G -no-reboot -kernel {}'.format(prog, gdb_args, t)
 
         if args.icount != None:
             cmd += f' -icount shift={args.icount}'
@@ -275,7 +283,8 @@ if __name__ == '__main__':
         cmd += f' -cpu any,{",".join(cpu_args)}' if cpu_args else ''
         t0 = time.time()
         try:
-            res = run_one(t, port_num, shlex.split(cmd), timeout_sec, stdout=PIPE, stderr=PIPE)
+            res = run_one(t, port_num, shlex.split(cmd), timeout_sec, args.debug_timeouts,
+                stdout=PIPE, stderr=PIPE)
             t_end = time.time()
             return (t, False, res, t_end - t0)
         except subprocess.TimeoutExpired as e:
