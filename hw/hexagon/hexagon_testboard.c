@@ -39,6 +39,10 @@
 #include "target/hexagon/internal.h"
 #include "libgen.h"
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
 static hexagon_config_table *cfgTable;
 static hexagon_config_extensions *cfgExtensions;
 static bool syscfg_is_linux = false;
@@ -62,6 +66,17 @@ static GString *get_exe_dir(GString *exe_dir)
     exe_name[exe_length] = '\0';
 
     gchar *dir_name = g_path_get_dirname(exe_name);
+    g_string_assign(exe_dir, dir_name);
+    free(dir_name);
+    return exe_dir;
+#elif __APPLE__
+    char buf[1024];
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) != 0) {
+        return NULL;
+    }
+
+    gchar *dir_name = g_path_get_dirname(buf);
     g_string_assign(exe_dir, dir_name);
     free(dir_name);
     return exe_dir;

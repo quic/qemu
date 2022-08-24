@@ -64,7 +64,7 @@ static inline desc_id_t desc_tracker_getid(processor_t *proc, int dmanum)
 
 #else
 
-#include <malloc.h>
+#include <stdlib.h>
 
 #define desc_tracker_calloc(tracker, size) calloc(1, size)
 #define desc_tracker_free_pool(tracker, ptr) free(ptr)
