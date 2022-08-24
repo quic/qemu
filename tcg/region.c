@@ -587,6 +587,8 @@ static int alloc_code_gen_buffer_splitwx_memfd(size_t size, Error **errp)
 #endif /* CONFIG_POSIX */
 
 #ifdef CONFIG_DARWIN
+#define processor_t do_not_define_processor_t
+#define thread_t do_not_define_thread_t
 #include <mach/mach.h>
 
 extern kern_return_t mach_vm_remap(vm_map_t target_task,

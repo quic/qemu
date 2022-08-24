@@ -487,9 +487,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             sys_stat.nlink = (uint32_t) st_buf.st_nlink;
             sys_stat.rdev  = st_buf.st_rdev;
             sys_stat.size  = (uint32_t) st_buf.st_size;
+#if defined(__linux__)
             sys_stat.atime = (uint32_t) st_buf.st_atim.tv_sec;
             sys_stat.mtime = (uint32_t) st_buf.st_mtim.tv_sec;
             sys_stat.ctime = (uint32_t) st_buf.st_ctim.tv_sec;
+#endif
         }
         DEBUG_MEMORY_READ(swi_info + 4, 4, &statBufferAddr);
 
@@ -533,7 +535,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         int fd;
         int retval;
-        off64_t size_limit;
+        off_t size_limit;
 
         DEBUG_MEMORY_READ(swi_info, 4, &fd);
         DEBUG_MEMORY_READ(swi_info + 4, 8, &size_limit);

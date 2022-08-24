@@ -65,6 +65,17 @@ static GString *get_exe_dir(GString *exe_dir)
     g_string_assign(exe_dir, dir_name);
     free(dir_name);
     return exe_dir;
+#elif __APPLE__
+    char buf[1024];
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) != 0) {
+        return NULL;
+    }
+
+    gchar *dir_name = g_path_get_dirname(buf);
+    g_string_assign(exe_dir, dir_name);
+    free(dir_name);
+    return exe_dir;
 #else
 #error "No host implementation for get_exe_dir() provided"
 #endif
