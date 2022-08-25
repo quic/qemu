@@ -73,7 +73,6 @@ TESTS += \
 	getcwd \
 	checkforpriv \
 	pend_wake_wait \
-	simple-assign \
 	gregs \
 	$()
 
@@ -147,7 +146,6 @@ getcwd: getcwd.o
 checkforpriv.o: checkforpriv.c mmu.h
 checkforpriv: checkforpriv.o
 pend_wake_wait: pend_wake_wait.o
-simple-assign: simple-assign.o
 gregs: gregs.o
 
 $(TESTS):
@@ -243,6 +241,9 @@ run-hmx_conv_fp16: hmx_conv_fp16
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 hmx_input_fp16.dat hmx_output_fp16.dat","$< on $(TARGET_NAME)")
 
 ifneq ($(HAVE_HEXAGON_LLDB_BIN),)
+
+simple-assign: simple-assign.o
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # hexagon-lldb starts qemu with an empty environment. To bypass that, we create
 # a wrapper script which properly sets the environment before invoking qemu.
