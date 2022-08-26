@@ -764,6 +764,16 @@ def gen_tcg_func(f, tag, regs, imms):
         f.write("#else\n")
     if hex_common.need_ea(tag): gen_decl_ea_tcg(f, tag)
     i=0
+    ## Check for ignored/unimplemented operations on guest registers
+    for regtype,regid,*_ in regs:
+        if hex_common.is_greg(regtype):
+            if hex_common.is_written(regid):
+                f.write("    if (!greg_writable(insn->regno[%d], %s)) {\n" %
+                        (i, str(hex_common.is_pair(regid)).lower()))
+                f.write("        return;\n")
+                f.write("    }\n")
+        i += 1
+    i=0
     ## Declare all the operands (regs and immediates)
     for regtype,regid,toss,numregs in regs:
         genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i)
