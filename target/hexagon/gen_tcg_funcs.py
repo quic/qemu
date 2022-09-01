@@ -772,6 +772,9 @@ def gen_tcg_func(f, tag, regs, imms):
                         (i, str(hex_common.is_pair(regid)).lower()))
                 f.write("        return;\n")
                 f.write("    }\n")
+            else:
+                f.write("    check_greg_impl(insn->regno[%d], %s);\n" %
+                        (i, str(hex_common.is_pair(regid)).lower()))
         i += 1
     i=0
     ## Declare all the operands (regs and immediates)
