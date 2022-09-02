@@ -191,6 +191,13 @@ run-swi_wait: swi_wait
 run-tlblock: tlblock
 run-k0lock: k0lock
 
+run-gregs: gregs
+	$(call run-test, $<, $(QEMU) -d unimp $(QEMU_OPTS) $< 2> _$<.stderr, \
+		"$< on $(TARGET_NAME)") || { cat _$<.stderr; exit 1; }
+	grep -E 'Warning: (guest register|ignoring write to guest register)' \
+		_$<.stderr > _$<.stderr.filtered
+	diff $(HEXAGON_SYSTEM_SRC)/expected-gregs-warnings.txt _$<.stderr.filtered
+
 # Run some tests with paranoid-commit-state turned on
 run-standalone_hw: standalone_hw
 run-standalone_vec: standalone_vec

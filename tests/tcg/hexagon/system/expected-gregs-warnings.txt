@@ -1,0 +1,46 @@
+Warning: ignoring write to guest register G4
+Warning: guest register G4 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G5
+Warning: guest register G5 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G6
+Warning: guest register G6 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G7
+Warning: guest register G7 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G8
+Warning: guest register G8 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G9
+Warning: guest register G9 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G10
+Warning: ignoring write to guest register G11
+Warning: ignoring write to guest register G12
+Warning: ignoring write to guest register G12
+Warning: ignoring write to guest register G14
+Warning: ignoring write to guest register G15
+Warning: ignoring write to guest register G16
+Warning: guest register G16 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G17
+Warning: guest register G17 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G18
+Warning: guest register G18 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G19
+Warning: guest register G19 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G20
+Warning: guest register G20 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G21
+Warning: guest register G21 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G22
+Warning: guest register G22 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G23
+Warning: guest register G23 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G24
+Warning: ignoring write to guest register G25
+Warning: ignoring write to guest register G26
+Warning: ignoring write to guest register G27
+Warning: ignoring write to guest register G28
+Warning: ignoring write to guest register G29
+Warning: ignoring write to guest register G30
+Warning: guest register G30 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register G31
+Warning: guest register G31 is unimplemented or reserved. Read will yield 0.
+Warning: ignoring write to guest register pair G5:4
+Warning: guest register pair G5:4 is unimplemented or reserved. Read will yield 0.
