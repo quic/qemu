@@ -84,7 +84,6 @@ static inline void gen_log_reg_write(int rnum, TCGv val)
 #ifndef CONFIG_USER_ONLY
 static inline void gen_log_greg_write(int rnum, TCGv val)
 {
-    g_assert(rnum <= HEX_GREG_G3);
     tcg_gen_mov_tl(hex_greg_new_value[rnum], val);
     if (HEX_DEBUG) {
         /* Do this so HELPER(debug_commit_end) will know */
@@ -145,6 +144,39 @@ static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
 }
 
 #ifndef CONFIG_USER_ONLY
+static bool greg_writable(int rnum, bool pair)
+{
+    if (pair) {
+        if (rnum < HEX_GREG_G3) {
+            return true;
+        }
+        qemu_log_mask(LOG_UNIMP,
+                "Warning: ignoring write to guest register pair G%d:%d\n",
+                rnum + 1, rnum);
+    } else {
+        if (rnum <= HEX_GREG_G3) {
+            return true;
+        }
+        qemu_log_mask(LOG_UNIMP,
+                "Warning: ignoring write to guest register G%d\n", rnum);
+    }
+    return false;
+}
+
+static void check_greg_impl(int rnum, bool pair)
+{
+    if (pair && (!greg_implemented(rnum) || !greg_implemented(rnum + 1))) {
+        qemu_log_mask(LOG_UNIMP,
+                "Warning: guest register pair G%d:%d is unimplemented or "
+                "reserved. Read will yield 0.\n",
+                rnum + 1, rnum);
+    } else if (!pair && !greg_implemented(rnum)) {
+        qemu_log_mask(LOG_UNIMP,
+                "Warning: guest register G%d is unimplemented or reserved."
+                " Read will yield 0.\n", rnum);
+    }
+}
+
 static void gen_log_greg_write_pair(int rnum, TCGv_i64 val)
 {
     TCGv val32 = tcg_temp_new();
