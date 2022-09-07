@@ -1890,6 +1890,9 @@ config_host_data.set('HAVE_PTY_H', cc.has_header('pty.h'))
 config_host_data.set('HAVE_SYS_DISK_H', cc.has_header('sys/disk.h'))
 config_host_data.set('HAVE_SYS_IOCCOM_H', cc.has_header('sys/ioccom.h'))
 config_host_data.set('HAVE_SYS_KCOV_H', cc.has_header('sys/kcov.h'))
+if targetos == 'windows'
+  config_host_data.set('HAVE_AFUNIX_H', cc.has_header('afunix.h'))
+endif
 
 # has_function
 config_host_data.set('CONFIG_ACCEPT4', cc.has_function('accept4'))
@@ -3406,7 +3409,6 @@ foreach target : target_dirs
     target_inc += include_directories('linux-headers', is_system: true)
   endif
   if target.endswith('-softmmu')
-    qemu_target_name = 'qemu-system-' + target_name
     target_type='system'
     t = target_softmmu_arch[target_base_arch].apply(config_target, strict: false)
     arch_srcs += t.sources()
@@ -3423,7 +3425,6 @@ foreach target : target_dirs
     abi = config_target['TARGET_ABI_DIR']
     target_type='user'
     target_inc += common_user_inc
-    qemu_target_name = 'qemu-' + target_name
     if target_base_arch in target_user_arch
       t = target_user_arch[target_base_arch].apply(config_target, strict: false)
       arch_srcs += t.sources()
