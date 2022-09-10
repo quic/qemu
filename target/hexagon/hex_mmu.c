@@ -48,85 +48,37 @@ typedef enum {
     PGSIZE_256K,
     PGSIZE_1M,
     PGSIZE_4M,
-    PGSIZE_16M
+    PGSIZE_16M,
+    PGSIZE_64M,
+    PGSIZE_256M,
+    PGSIZE_1G,
+    NUM_PGSIZE_TYPES
 } tlb_pgsize_t;
 
-static const char *pgsize_str[] = {
+static const tlb_pgsize_t pgsize[NUM_PGSIZE_TYPES] = {
+    PGSIZE_4K,
+    PGSIZE_16K,
+    PGSIZE_64K,
+    PGSIZE_256K,
+    PGSIZE_1M,
+    PGSIZE_4M,
+    PGSIZE_16M,
+    PGSIZE_64M,
+    PGSIZE_256M,
+    PGSIZE_1G
+};
+
+static const char *pgsize_str[NUM_PGSIZE_TYPES] = {
     "4K",
     "16K",
     "64K",
     "256K",
     "1M",
     "4M",
-    "16M"
-};
-
-/* The lower 6 bits of PPD determine the pgsize */
-static const tlb_pgsize_t ct1_6bit[64] = {
-    PGSIZE_16M,                         /* 000 000 */
-    PGSIZE_4K,                          /* 000 001 */
-    PGSIZE_16K,                         /* 000 010 */
-    PGSIZE_4K,                          /* 000 011 */
-    PGSIZE_64K,                         /* 000 100 */
-    PGSIZE_4K,                          /* 000 101 */
-    PGSIZE_16K,                         /* 000 110 */
-    PGSIZE_4K,                          /* 000 111 */
-    PGSIZE_256K,                        /* 001 000 */
-    PGSIZE_4K,                          /* 001 001 */
-    PGSIZE_16K,                         /* 001 010 */
-    PGSIZE_4K,                          /* 001 011 */
-    PGSIZE_64K,                         /* 001 100 */
-    PGSIZE_4K,                          /* 001 101 */
-    PGSIZE_16K,                         /* 001 110 */
-    PGSIZE_4K,                          /* 001 111 */
-    PGSIZE_1M,                          /* 010 000 */
-    PGSIZE_4K,                          /* 010 001 */
-    PGSIZE_16K,                         /* 010 010 */
-    PGSIZE_4K,                          /* 010 011 */
-    PGSIZE_64K,                         /* 010 100 */
-    PGSIZE_4K,                          /* 010 101 */
-    PGSIZE_16K,                         /* 010 110 */
-    PGSIZE_4K,                          /* 010 111 */
-    PGSIZE_256K,                        /* 011 000 */
-    PGSIZE_4K,                          /* 011 001 */
-    PGSIZE_16K,                         /* 011 010 */
-    PGSIZE_4K,                          /* 011 011 */
-    PGSIZE_64K,                         /* 011 100 */
-    PGSIZE_4K,                          /* 011 101 */
-    PGSIZE_16K,                         /* 011 110 */
-    PGSIZE_4K,                          /* 011 111 */
-    PGSIZE_4M,                          /* 100 000 */
-    PGSIZE_4K,                          /* 100 001 */
-    PGSIZE_16K,                         /* 100 010 */
-    PGSIZE_4K,                          /* 100 011 */
-    PGSIZE_64K,                         /* 100 100 */
-    PGSIZE_4K,                          /* 100 101 */
-    PGSIZE_16K,                         /* 100 110 */
-    PGSIZE_4K,                          /* 100 111 */
-    PGSIZE_256K,                        /* 101 000 */
-    PGSIZE_4K,                          /* 101 001 */
-    PGSIZE_16K,                         /* 101 010 */
-    PGSIZE_4K,                          /* 101 011 */
-    PGSIZE_64K,                         /* 101 100 */
-    PGSIZE_4K,                          /* 101 101 */
-    PGSIZE_16K,                         /* 101 110 */
-    PGSIZE_4K,                          /* 101 111 */
-    PGSIZE_1M,                          /* 110 000 */
-    PGSIZE_4K,                          /* 110 001 */
-    PGSIZE_16K,                         /* 110 010 */
-    PGSIZE_4K,                          /* 110 011 */
-    PGSIZE_64K,                         /* 110 100 */
-    PGSIZE_4K,                          /* 110 101 */
-    PGSIZE_16K,                         /* 110 110 */
-    PGSIZE_4K,                          /* 110 111 */
-    PGSIZE_256K,                        /* 111 000 */
-    PGSIZE_4K,                          /* 111 001 */
-    PGSIZE_16K,                         /* 111 010 */
-    PGSIZE_4K,                          /* 111 011 */
-    PGSIZE_64K,                         /* 111 100 */
-    PGSIZE_4K,                          /* 111 101 */
-    PGSIZE_16K,                         /* 111 110 */
-    PGSIZE_4K,                          /* 111 111 */
+    "16M",
+    "64M",
+    "256M",
+    "1G"
 };
 
 #define INVALID_MASK 0xffffffffLL
@@ -138,14 +90,22 @@ size8u_t encmask_2_mask[] = {
     0x3ffffLL,                          /* 256k, 0011 */
     0xfffffLL,                          /* 1m,   0100 */
     0x3fffffLL,                         /* 4m,   0101 */
-    0xffffffLL,                         /* 16M,  0110 */
+    0xffffffLL,                         /* 16m,  0110 */
+    0x3ffffffLL,                        /* 64m,  0111 */
+    0xfffffffLL,                        /* 256m, 1000 */
+    0x3fffffffLL,                       /* 1g,   1001 */
     INVALID_MASK,                       /* RSVD, 0111 */
 };
 
 static inline tlb_pgsize_t hex_tlb_pgsize(uint64_t entry)
 {
-    uint32_t PPD = GET_PPD(entry);
-    return ct1_6bit[PPD & 0x3f];
+    if (entry == 0) {
+        qemu_log_mask(CPU_LOG_MMU, "%s: Supplied TLB entry was 0!\n", __func__);
+	    return pgsize[0];
+    }
+    int size = __builtin_ctzll(entry);
+    g_assert(size < NUM_PGSIZE_TYPES);
+    return pgsize[size];
 }
 
 static inline uint32_t hex_tlb_page_size(uint64_t entry)
