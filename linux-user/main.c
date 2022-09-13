@@ -400,8 +400,13 @@ static void handle_arg_strace(const char *arg)
 
 static void handle_arg_version(const char *arg)
 {
-    printf("qemu-" TARGET_NAME " version " QEMU_FULL_VERSION
-           "\n" QEMU_COPYRIGHT "\n");
+    printf("qemu-" TARGET_NAME
+#ifdef QEMU_HEXAGON_BRANCH
+           " (branch " QEMU_HEXAGON_BRANCH ".X)"
+#endif
+           "\nCommit " QEMU_HEXAGON_SHA "\n"
+           "Based on upstream QEMU version " QEMU_FULL_VERSION "\n"
+           QEMU_COPYRIGHT "\n");
     exit(EXIT_SUCCESS);
 }
 
