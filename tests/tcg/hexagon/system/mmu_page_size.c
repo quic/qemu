@@ -117,6 +117,9 @@ int main()
     test_page_size(PGSIZE_1M,   20);
     test_page_size(PGSIZE_4M,   22);
     test_page_size(PGSIZE_16M,  24);
+    test_page_size(PGSIZE_64M,  26);
+    test_page_size(PGSIZE_256M, 28);
+    test_page_size(PGSIZE_1G,   30);
 
     puts(err ? "FAIL" : "PASS");
     return err;
