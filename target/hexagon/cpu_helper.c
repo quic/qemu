@@ -300,8 +300,12 @@ void hexagon_wait_thread(CPUHexagonState *env)
 
 {
     qemu_mutex_lock_iothread();
-    g_assert(env->k0_lock_state == HEX_LOCK_UNLOCKED);
-    g_assert(env->tlb_lock_state == HEX_LOCK_UNLOCKED);
+    if (qemu_loglevel_mask(LOG_GUEST_ERROR) &&
+            (env->k0_lock_state != HEX_LOCK_UNLOCKED ||
+             env->tlb_lock_state != HEX_LOCK_UNLOCKED)) {
+        qemu_log("WARNING: executing wait() with acquired lock"
+                 "may lead to deadlock\n");
+    }
     g_assert(get_exe_mode(env) != HEX_EXE_MODE_WAIT);
 
     CPUState *cs = env_cpu(env);
