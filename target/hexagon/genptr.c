@@ -673,7 +673,7 @@ static void gen_callr(DisasContext *ctx, TCGv new_pc)
 static void gen_cond_call(DisasContext *ctx, TCGv pred, bool sense, int pc_off)
 {
     TCGv next_PC;
-    TCGv lsb = tcg_temp_new();
+    TCGv lsb = tcg_temp_local_new();
     TCGLabel *skip = gen_new_label();
     tcg_gen_andi_tl(lsb, pred, 1);
     if (!sense) {

@@ -252,7 +252,8 @@ static void hexagon_cpu_set_pc(CPUState *cs, vaddr value)
     env->gpr[HEX_REG_PC] = value;
 }
 
-static void hexagon_cpu_synchronize_from_tb(CPUState *cs, TranslationBlock *tb)
+static void hexagon_cpu_synchronize_from_tb(CPUState *cs,
+                                            TranslationBlock *tb)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;

@@ -80,6 +80,7 @@
  * in the same packet.  When we see this, we call a helper that probes the
  * load to make sure it doesn't fault.  Then, we process the store ahead of
  * the actual load.
+
  */
 #define CHECK_NOSHUF(VA, SIZE) \
     do { \

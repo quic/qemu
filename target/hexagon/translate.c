@@ -425,24 +425,23 @@ static void mark_store_width(DisasContext *ctx)
 {
     uint16_t opcode = ctx->insn->opcode;
     uint32_t slot = ctx->insn->slot;
+    uint8_t width = 0;
 
-    if (GET_ATTRIB(opcode, A_STORE)) {
+    if (GET_ATTRIB(opcode, A_SCALAR_STORE)) {
         if (GET_ATTRIB(opcode, A_MEMSIZE_1B)) {
-            ctx->store_width[slot] = 1;
-            return;
+            width |= 1;
         }
         if (GET_ATTRIB(opcode, A_MEMSIZE_2B)) {
-            ctx->store_width[slot] = 2;
-            return;
+            width |= 2;
         }
         if (GET_ATTRIB(opcode, A_MEMSIZE_4B)) {
-            ctx->store_width[slot] = 4;
-            return;
+            width |= 4;
         }
         if (GET_ATTRIB(opcode, A_MEMSIZE_8B)) {
-            ctx->store_width[slot] = 8;
-            return;
+            width |= 8;
         }
+        tcg_debug_assert(is_power_of_2(width));
+        ctx->store_width[slot] = width;
     }
 }
 
@@ -1039,12 +1038,6 @@ void hexagon_translate_init(void)
     int i;
 
     opcode_init();
-
-    if (HEX_DEBUG) {
-        if (!qemu_logfile) {
-            qemu_set_log(qemu_loglevel);
-        }
-    }
 
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
         hex_gpr[i] = tcg_global_mem_new(cpu_env,

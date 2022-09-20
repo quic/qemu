@@ -483,7 +483,7 @@ static void test_addipc(void)
 {
     uint32_t pc, addipc_res;
 
-    /* Normal versoin */
+    /* Normal version */
     asm("%0 = pc\n\t"
         "%1 = add(pc, #24)\n\t"
         : "=r"(pc), "=r"(addipc_res));
