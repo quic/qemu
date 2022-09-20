@@ -40,8 +40,17 @@ static const char *creg2str(unsigned int reg)
     return sreg2str(reg + HEX_REG_SA0);
 }
 
+static inline bool valid_insn(Insn *insn)
+{
+    return !!insn->generate;
+}
+
 static void snprintinsn(GString *buf, Insn *insn)
 {
+    if (!valid_insn(insn)) {
+        g_string_append(buf, "<unknown>");
+        return;
+    }
     switch (insn->opcode) {
 #define DEF_VECX_PRINTINFO(TAG, FMT, ...) DEF_PRINTINFO(TAG, FMT, __VA_ARGS__)
 #define DEF_PRINTINFO(TAG, FMT, ...) \
@@ -94,7 +103,8 @@ void snprint_a_pkt_disas(GString *buf, Packet *pkt, uint32_t *words,
              * Subinstructions are two instructions encoded
              * in the same word. Print them on the same line.
              */
-            if (GET_ATTRIB(pkt->insn[i].opcode, A_SUBINSN)) {
+            if (valid_insn(&(pkt->insn[i])) &&
+                GET_ATTRIB(pkt->insn[i].opcode, A_SUBINSN)) {
                 g_string_append(buf, "; ");
                 snprintinsn(buf, &(pkt->insn[i + 1]));
                 i++;
@@ -132,6 +142,10 @@ void snprint_a_pkt_debug(GString *buf, Packet *pkt)
         }
         g_string_append(buf, "\t");
         snprintinsn(buf, &(pkt->insn[i]));
+        if (!valid_insn(&(pkt->insn[i]))) {
+            g_string_append(buf, "\n");
+            continue;
+        }
 
         if (GET_ATTRIB(pkt->insn[i].opcode, A_SUBINSN)) {
             g_string_append(buf, " //subinsn");

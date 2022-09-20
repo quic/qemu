@@ -557,12 +557,10 @@ static char *qemu_chr_compute_filename(SocketChardev *s)
     const char *left = "", *right = "";
 
     switch (ss->ss_family) {
-#ifndef _WIN32
     case AF_UNIX:
         return g_strdup_printf("unix:%s%s",
                                ((struct sockaddr_un *)(ss))->sun_path,
                                s->is_listen ? ",server=on" : "");
-#endif
     case AF_INET6:
         left  = "[";
         right = "]";
@@ -970,8 +968,8 @@ static void tcp_chr_accept_server_sync(Chardev *chr)
 static int tcp_chr_wait_connected(Chardev *chr, Error **errp)
 {
     SocketChardev *s = SOCKET_CHARDEV(chr);
-    const char *opts[] = { "telnet", "tn3270", "websock", "tls-creds" };
-    bool optset[] = { s->is_telnet, s->is_tn3270, s->is_websock, s->tls_creds };
+    const char *opts[] = { "revcon", "telnet", "tn3270", "websock", "tls-creds" };
+    bool optset[] = { s->is_revcon, s->is_telnet, s->is_tn3270, s->is_websock, s->tls_creds };
     size_t i;
 
     QEMU_BUILD_BUG_ON(G_N_ELEMENTS(opts) != G_N_ELEMENTS(optset));
@@ -1325,6 +1323,7 @@ static void qmp_chardev_open_socket(Chardev *chr,
     ChardevSocket *sock = backend->u.socket.data;
     bool do_nodelay     = sock->has_nodelay ? sock->nodelay : false;
     bool is_listen      = sock->has_server  ? sock->server  : true;
+    bool is_revcon      = sock->has_revcon  ? sock->revcon  : false;
     bool is_telnet      = sock->has_telnet  ? sock->telnet  : false;
     bool is_tn3270      = sock->has_tn3270  ? sock->tn3270  : false;
     bool is_waitconnect = sock->has_wait    ? sock->wait    : false;
@@ -1333,6 +1332,11 @@ static void qmp_chardev_open_socket(Chardev *chr,
     SocketAddress *addr;
 
     s->is_listen = is_listen;
+    s->is_revcon = is_revcon;
+    if (s->is_revcon)
+    {
+        s->is_listen = false;
+    }
     s->is_telnet = is_telnet;
     s->is_tn3270 = is_tn3270;
     s->is_websock = is_websock;
@@ -1372,10 +1376,12 @@ static void qmp_chardev_open_socket(Chardev *chr,
     }
 
     qemu_chr_set_feature(chr, QEMU_CHAR_FEATURE_RECONNECTABLE);
+#ifndef _WIN32
     /* TODO SOCKET_ADDRESS_FD where fd has AF_UNIX */
     if (addr->type == SOCKET_ADDRESS_TYPE_UNIX) {
         qemu_chr_set_feature(chr, QEMU_CHAR_FEATURE_FD_PASS);
     }
+#endif
 
     /*
      * In the chardev-change special-case, we shouldn't register a new yank
@@ -1451,6 +1457,13 @@ static void qemu_chr_parse_socket(QemuOpts *opts, ChardevBackend *backend,
      */
     sock->has_server = true;
     sock->server = qemu_opt_get_bool(opts, "server", false);
+    sock->has_revcon = qemu_opt_get(opts, "revcon");
+    sock->revcon = qemu_opt_get_bool(opts, "revcon", false);
+    if (sock->revcon)
+    {
+        sock->has_server = false;
+        sock->server = false;
+    }
     sock->has_telnet = qemu_opt_get(opts, "telnet");
     sock->telnet = qemu_opt_get_bool(opts, "telnet", false);
     sock->has_tn3270 = qemu_opt_get(opts, "tn3270");

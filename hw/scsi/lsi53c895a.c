@@ -864,7 +864,7 @@ static void lsi_do_command(LSIState *s)
     s->current = g_new0(lsi_request, 1);
     s->current->tag = s->select_tag;
     s->current->req = scsi_req_new(dev, s->current->tag, s->current_lun, buf,
-                                   s->current);
+                                   s->dbc, s->current);
 
     n = scsi_req_enqueue(s->current->req);
     if (n) {
@@ -1028,8 +1028,9 @@ static void lsi_do_msgout(LSIState *s)
         case 0x0d:
             /* The ABORT TAG message clears the current I/O process only. */
             trace_lsi_do_msgout_abort(current_tag);
-            if (current_req) {
+            if (current_req && current_req->req) {
                 scsi_req_cancel(current_req->req);
+                current_req = NULL;
             }
             lsi_disconnect(s);
             break;
@@ -1055,6 +1056,7 @@ static void lsi_do_msgout(LSIState *s)
             /* clear the current I/O process */
             if (s->current) {
                 scsi_req_cancel(s->current->req);
+                current_req = NULL;
             }
 
             /* As the current implemented devices scsi_disk and scsi_generic

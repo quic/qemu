@@ -30,7 +30,7 @@
 ##
 { 'enum' : 'SysEmuTarget',
   'data' : [ 'aarch64', 'alpha', 'arm', 'avr', 'cris', 'hppa', 'i386',
-             'm68k', 'microblaze', 'microblazeel', 'mips', 'mips64',
+             'loongarch64', 'm68k', 'microblaze', 'microblazeel', 'mips', 'mips64',
              'mips64el', 'mipsel', 'nios2', 'or1k', 'ppc',
              'ppc64', 'riscv32', 'riscv64', 'rx', 's390x', 'sh4',
              'sh4eb', 'sparc', 'sparc64', 'tricore',
@@ -534,6 +534,19 @@
       'targets': ['str'] }}
 
 ##
+# @CXLFMWProperties:
+#
+# List of CXL Fixed Memory Windows.
+#
+# @cxl-fmw: List of CXLFixedMemoryWindowOptions
+#
+# Since 7.1
+##
+{ 'struct' : 'CXLFMWProperties',
+  'data': { 'cxl-fmw': ['CXLFixedMemoryWindowOptions'] }
+}
+
+##
 # @X86CPURegister32:
 #
 # A X86 32-bit register
@@ -955,9 +968,9 @@
 #
 # -> { "execute": "query-hotpluggable-cpus" }
 # <- {"return": [
-#      { "props": { "core": 8 }, "type": "POWER8-spapr-cpu-core",
+#      { "props": { "core-id": 8 }, "type": "POWER8-spapr-cpu-core",
 #        "vcpus-count": 1 },
-#      { "props": { "core": 0 }, "type": "POWER8-spapr-cpu-core",
+#      { "props": { "core-id": 0 }, "type": "POWER8-spapr-cpu-core",
 #        "vcpus-count": 1, "qom-path": "/machine/unattached/device[0]"}
 #    ]}'
 #
@@ -1071,7 +1084,7 @@
 #
 # -> { "execute": "query-balloon" }
 # <- { "return": {
-#          "actual": 1073741824,
+#          "actual": 1073741824
 #       }
 #    }
 #
@@ -1413,7 +1426,7 @@
 #
 # Example:
 #
-# <- { "event": "MEM_UNPLUG_ERROR"
+# <- { "event": "MEM_UNPLUG_ERROR",
 #      "data": { "device": "dimm1",
 #                "msg": "acpi: device unplug for unsupported device"
 #      },

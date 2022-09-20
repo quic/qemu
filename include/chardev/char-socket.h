@@ -66,6 +66,7 @@ struct SocketChardev {
 
     SocketAddress *addr;
     bool is_listen;
+    bool is_revcon;
     bool is_telnet;
     bool is_tn3270;
     GSource *telnet_source;

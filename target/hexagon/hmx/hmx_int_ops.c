@@ -206,7 +206,12 @@ static inline int64_t ARCH_FUNCTION(acc_bias)(hmx_state_t * state_ptr, size16s_t
     size16s_t acc_rnd;
 
     ulp = cast8s_to_16s( (int64_t)rnd_bit << ulp_bit);
+#ifdef HEX_CONFIG_INT128
+    size8u_t lo = int128_getlo(ulp);
+    ulp= int128_make128(lo, 0);
+#else
     ulp.hi = 0;
+#endif
     acc_scaled = add128(acc_scaled, acc_scaled);
     acc_rnd = add128(acc_scaled, ulp); // + ULP
     ulp_bit += 3;

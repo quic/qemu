@@ -922,11 +922,22 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_mac_reduce)(hmx_state_t * state_ptr, usr_fp_reg_
 }
 
 size16s_t ARCH_FUNCTION(hmx_xfp_to_tb_callback)(hmx_state_t * state_ptr, int32_t * exponent, uint32_t * ovf, hmx_xfp_t acc) {
+#ifdef HEX_CONFIG_INT128
+	size16s_t acc_legacy;
+    acc_legacy = int128_make128(0, acc.sig <<
+        (64-(state_ptr->QDSP6_MX_FP_ACC_FRAC + state_ptr->QDSP6_MX_FP_ACC_INT)));
+#else
 	size16s_t acc_legacy = {.hi = acc.sig << (64-(state_ptr->QDSP6_MX_FP_ACC_FRAC + state_ptr->QDSP6_MX_FP_ACC_INT)), .lo = 0};
+#endif
 	*exponent = acc.exp;
 	*ovf = acc.status.inf;
 	if (acc.status.inf) {
+#ifdef HEX_CONFIG_INT128
+        size8u_t lo = int128_getlo(acc_legacy);
+        acc_legacy = int128_make128(lo, 0);
+#else
 		acc_legacy.hi = 0;
+#endif
 		*exponent = 0;
 		DEBUG_PRINT_XFP(    "xfp to legacy acc              : inf=%d reporting exp and sig as zeros", 	acc.status.inf);
 	}

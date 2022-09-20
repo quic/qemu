@@ -159,15 +159,15 @@ EXTRACT_HELPER(FPL, 25, 1);
 EXTRACT_HELPER(FPFLM, 17, 8);
 EXTRACT_HELPER(FPW, 16, 1);
 
-/* mffscrni */
-EXTRACT_HELPER(RM, 11, 2);
-
 /* addpcis */
 EXTRACT_HELPER_SPLIT_3(DX, 10, 6, 6, 5, 16, 1, 1, 0, 0)
 #if defined(TARGET_PPC64)
 /* darn */
 EXTRACT_HELPER(L, 16, 2);
 #endif
+/* wait */
+EXTRACT_HELPER(WC, 21, 2);
+EXTRACT_HELPER(PL, 16, 2);
 
 /***                            Jump target decoding                       ***/
 /* Immediate address */

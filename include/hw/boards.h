@@ -269,7 +269,6 @@ struct MachineClass {
     bool ignore_boot_device_suffixes;
     bool smbus_no_migration_support;
     bool nvdimm_supported;
-    bool cxl_supported;
     bool numa_mem_supported;
     bool auto_enable_numa;
     SMPCompatProps smp_props;
@@ -360,7 +359,6 @@ struct MachineState {
     CPUArchIdList *possible_cpus;
     CpuTopology smp;
     struct NVDIMMState *nvdimms_state;
-    struct CXLState *cxl_devices_state;
     struct NumaState *numa_state;
 };
 
@@ -380,6 +378,9 @@ struct MachineState {
         type_register_static(&machine_initfn##_typeinfo); \
     } \
     type_init(machine_initfn##_register_types)
+
+extern GlobalProperty hw_compat_7_1[];
+extern const size_t hw_compat_7_1_len;
 
 extern GlobalProperty hw_compat_7_0[];
 extern const size_t hw_compat_7_0_len;

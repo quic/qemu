@@ -149,6 +149,7 @@ struct DisasContext {
     uint64_t pc_tmp;
     uint32_t ilen;
     enum cc_op cc_op;
+    bool exit_to_mainloop;
 };
 
 /* Information carried about a condition to be evaluated.  */
@@ -1123,18 +1124,8 @@ typedef struct {
    exiting the TB.  */
 #define DISAS_PC_UPDATED        DISAS_TARGET_0
 
-/* We have emitted one or more goto_tb.  No fixup required.  */
-#define DISAS_GOTO_TB           DISAS_TARGET_1
-
 /* We have updated the PC and CC values.  */
 #define DISAS_PC_CC_UPDATED     DISAS_TARGET_2
-
-/* We are exiting the TB, but have neither emitted a goto_tb, nor
-   updated the PC for the next instruction to be executed.  */
-#define DISAS_PC_STALE          DISAS_TARGET_3
-
-/* We are exiting the TB to the main loop.  */
-#define DISAS_PC_STALE_NOCHAIN  DISAS_TARGET_4
 
 
 /* Instruction flags */
@@ -1189,7 +1180,7 @@ static DisasJumpType help_goto_direct(DisasContext *s, uint64_t dest)
         tcg_gen_goto_tb(0);
         tcg_gen_movi_i64(psw_addr, dest);
         tcg_gen_exit_tb(s->base.tb, 0);
-        return DISAS_GOTO_TB;
+        return DISAS_NORETURN;
     } else {
         tcg_gen_movi_i64(psw_addr, dest);
         per_branch(s, false);
@@ -1258,7 +1249,7 @@ static DisasJumpType help_branch(DisasContext *s, DisasCompare *c,
             tcg_gen_movi_i64(psw_addr, dest);
             tcg_gen_exit_tb(s->base.tb, 1);
 
-            ret = DISAS_GOTO_TB;
+            ret = DISAS_NORETURN;
         } else {
             /* Fallthru can use goto_tb, but taken branch cannot.  */
             /* Store taken branch destination before the brcond.  This
@@ -3029,7 +3020,8 @@ static DisasJumpType op_lctl(DisasContext *s, DisasOps *o)
     tcg_temp_free_i32(r1);
     tcg_temp_free_i32(r3);
     /* Exit to main loop to reevaluate s390_cpu_exec_interrupt.  */
-    return DISAS_PC_STALE_NOCHAIN;
+    s->exit_to_mainloop = true;
+    return DISAS_TOO_MANY;
 }
 
 static DisasJumpType op_lctlg(DisasContext *s, DisasOps *o)
@@ -3040,7 +3032,8 @@ static DisasJumpType op_lctlg(DisasContext *s, DisasOps *o)
     tcg_temp_free_i32(r1);
     tcg_temp_free_i32(r3);
     /* Exit to main loop to reevaluate s390_cpu_exec_interrupt.  */
-    return DISAS_PC_STALE_NOCHAIN;
+    s->exit_to_mainloop = true;
+    return DISAS_TOO_MANY;
 }
 
 static DisasJumpType op_lra(DisasContext *s, DisasOps *o)
@@ -3996,7 +3989,7 @@ static DisasJumpType op_sacf(DisasContext *s, DisasOps *o)
 {
     gen_helper_sacf(cpu_env, o->in2);
     /* Addressing mode has changed, so end the block.  */
-    return DISAS_PC_STALE;
+    return DISAS_TOO_MANY;
 }
 #endif
 
@@ -4032,7 +4025,7 @@ static DisasJumpType op_sam(DisasContext *s, DisasOps *o)
     tcg_temp_free_i64(tsam);
 
     /* Always exit the TB, since we (may have) changed execution mode.  */
-    return DISAS_PC_STALE;
+    return DISAS_TOO_MANY;
 }
 
 static DisasJumpType op_sar(DisasContext *s, DisasOps *o)
@@ -4290,7 +4283,8 @@ static DisasJumpType op_ssm(DisasContext *s, DisasOps *o)
 {
     tcg_gen_deposit_i64(psw_mask, psw_mask, o->in2, 56, 8);
     /* Exit to main loop to reevaluate s390_cpu_exec_interrupt.  */
-    return DISAS_PC_STALE_NOCHAIN;
+    s->exit_to_mainloop = true;
+    return DISAS_TOO_MANY;
 }
 
 static DisasJumpType op_stap(DisasContext *s, DisasOps *o)
@@ -4555,7 +4549,8 @@ static DisasJumpType op_stnosm(DisasContext *s, DisasOps *o)
     }
 
     /* Exit to main loop to reevaluate s390_cpu_exec_interrupt.  */
-    return DISAS_PC_STALE_NOCHAIN;
+    s->exit_to_mainloop = true;
+    return DISAS_TOO_MANY;
 }
 
 static DisasJumpType op_stura(DisasContext *s, DisasOps *o)
@@ -6185,17 +6180,17 @@ enum DisasInsnEnum {
 #define FAC_Z           S390_FEAT_ZARCH
 #define FAC_CASS        S390_FEAT_COMPARE_AND_SWAP_AND_STORE
 #define FAC_DFP         S390_FEAT_DFP
-#define FAC_DFPR        S390_FEAT_FLOATING_POINT_SUPPPORT_ENH /* DFP-rounding */
+#define FAC_DFPR        S390_FEAT_FLOATING_POINT_SUPPORT_ENH /* DFP-rounding */
 #define FAC_DO          S390_FEAT_STFLE_45 /* distinct-operands */
 #define FAC_EE          S390_FEAT_EXECUTE_EXT
 #define FAC_EI          S390_FEAT_EXTENDED_IMMEDIATE
 #define FAC_FPE         S390_FEAT_FLOATING_POINT_EXT
-#define FAC_FPSSH       S390_FEAT_FLOATING_POINT_SUPPPORT_ENH /* FPS-sign-handling */
-#define FAC_FPRGR       S390_FEAT_FLOATING_POINT_SUPPPORT_ENH /* FPR-GR-transfer */
+#define FAC_FPSSH       S390_FEAT_FLOATING_POINT_SUPPORT_ENH /* FPS-sign-handling */
+#define FAC_FPRGR       S390_FEAT_FLOATING_POINT_SUPPORT_ENH /* FPR-GR-transfer */
 #define FAC_GIE         S390_FEAT_GENERAL_INSTRUCTIONS_EXT
 #define FAC_HFP_MA      S390_FEAT_HFP_MADDSUB
 #define FAC_HW          S390_FEAT_STFLE_45 /* high-word */
-#define FAC_IEEEE_SIM   S390_FEAT_FLOATING_POINT_SUPPPORT_ENH /* IEEE-exception-simulation */
+#define FAC_IEEEE_SIM   S390_FEAT_FLOATING_POINT_SUPPORT_ENH /* IEEE-exception-simulation */
 #define FAC_MIE         S390_FEAT_STFLE_49 /* misc-instruction-extensions */
 #define FAC_LAT         S390_FEAT_STFLE_49 /* load-and-trap */
 #define FAC_LOC         S390_FEAT_STFLE_45 /* load/store on condition 1 */
@@ -6565,13 +6560,13 @@ static DisasJumpType translate_one(CPUS390XState *env, DisasContext *s)
 
     /* io should be the last instruction in tb when icount is enabled */
     if (unlikely(icount && ret == DISAS_NEXT)) {
-        ret = DISAS_PC_STALE;
+        ret = DISAS_TOO_MANY;
     }
 
 #ifndef CONFIG_USER_ONLY
     if (s->base.tb->flags & FLAG_MASK_PER) {
         /* An exception might be triggered, save PSW if not already done.  */
-        if (ret == DISAS_NEXT || ret == DISAS_PC_STALE) {
+        if (ret == DISAS_NEXT || ret == DISAS_TOO_MANY) {
             tcg_gen_movi_i64(psw_addr, s->pc_tmp);
         }
 
@@ -6598,6 +6593,7 @@ static void s390x_tr_init_disas_context(DisasContextBase *dcbase, CPUState *cs)
 
     dc->cc_op = CC_OP_DYNAMIC;
     dc->ex_value = dc->base.tb->cs_base;
+    dc->exit_to_mainloop = (dc->base.tb->flags & FLAG_MASK_PER) || dc->ex_value;
 }
 
 static void s390x_tr_tb_start(DisasContextBase *db, CPUState *cs)
@@ -6613,6 +6609,14 @@ static void s390x_tr_insn_start(DisasContextBase *dcbase, CPUState *cs)
     dc->insn_start = tcg_last_op();
 }
 
+static target_ulong get_next_pc(CPUS390XState *env, DisasContext *s,
+                                uint64_t pc)
+{
+    uint64_t insn = ld_code2(env, s, pc);
+
+    return pc + get_ilen((insn >> 8) & 0xff);
+}
+
 static void s390x_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
 {
     CPUS390XState *env = cs->env_ptr;
@@ -6620,10 +6624,9 @@ static void s390x_tr_translate_insn(DisasContextBase *dcbase, CPUState *cs)
 
     dc->base.is_jmp = translate_one(env, dc);
     if (dc->base.is_jmp == DISAS_NEXT) {
-        uint64_t page_start;
-
-        page_start = dc->base.pc_first & TARGET_PAGE_MASK;
-        if (dc->base.pc_next - page_start >= TARGET_PAGE_SIZE || dc->ex_value) {
+        if (!is_same_page(dcbase, dc->base.pc_next) ||
+            !is_same_page(dcbase, get_next_pc(env, dc, dc->base.pc_next)) ||
+            dc->ex_value) {
             dc->base.is_jmp = DISAS_TOO_MANY;
         }
     }
@@ -6634,12 +6637,9 @@ static void s390x_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
     DisasContext *dc = container_of(dcbase, DisasContext, base);
 
     switch (dc->base.is_jmp) {
-    case DISAS_GOTO_TB:
     case DISAS_NORETURN:
         break;
     case DISAS_TOO_MANY:
-    case DISAS_PC_STALE:
-    case DISAS_PC_STALE_NOCHAIN:
         update_psw_addr(dc);
         /* FALLTHRU */
     case DISAS_PC_UPDATED:
@@ -6649,8 +6649,7 @@ static void s390x_tr_tb_stop(DisasContextBase *dcbase, CPUState *cs)
         /* FALLTHRU */
     case DISAS_PC_CC_UPDATED:
         /* Exit the TB, either by raising a debug exception or by return.  */
-        if ((dc->base.tb->flags & FLAG_MASK_PER) ||
-             dc->base.is_jmp == DISAS_PC_STALE_NOCHAIN) {
+        if (dc->exit_to_mainloop) {
             tcg_gen_exit_tb(NULL, 0);
         } else {
             tcg_gen_lookup_and_goto_ptr();
@@ -6684,11 +6683,12 @@ static const TranslatorOps s390x_tr_ops = {
     .disas_log          = s390x_tr_disas_log,
 };
 
-void gen_intermediate_code(CPUState *cs, TranslationBlock *tb, int max_insns)
+void gen_intermediate_code(CPUState *cs, TranslationBlock *tb, int max_insns,
+                           target_ulong pc, void *host_pc)
 {
     DisasContext dc;
 
-    translator_loop(&s390x_tr_ops, &dc.base, cs, tb, max_insns);
+    translator_loop(cs, tb, max_insns, pc, host_pc, &s390x_tr_ops, &dc.base);
 }
 
 void restore_state_to_opc(CPUS390XState *env, TranslationBlock *tb,

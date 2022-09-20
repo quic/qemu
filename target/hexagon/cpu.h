@@ -27,7 +27,6 @@ typedef struct SystemState system_t;
 #include "fpu/softfloat-types.h"
 
 #include "exec/cpu-defs.h"
-#include "hex_regs.h"
 #include "mmvec/mmvec.h"
 #include "hmx/hmx.h"
 #include "dma/dma.h"
@@ -43,6 +42,8 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define SREG_WRITES_MAX 64
 #define NUM_TLB_REGS(PROC) NUM_TLB_ENTRIES
 #endif
+
+#include "hex_regs.h"
 
 #define TARGET_LONG_BITS 32
 

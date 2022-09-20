@@ -140,13 +140,13 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
-    hex_common.read_overrides_file(sys.argv[3])
-    hex_common.read_overrides_file(sys.argv[4])
+    for arg in sys.argv[3 : -1]:
+        hex_common.read_overrides_file(arg)
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    with open(sys.argv[5], 'w') as f:
+    with open(sys.argv[-1], 'w') as f:
         user_tags = [tag for tag in hex_common.get_user_tags() if not hex_common.skip_qemu_helper(tag)]
         for tag in user_tags:
             if not hex_common.tag_ignore(tag):

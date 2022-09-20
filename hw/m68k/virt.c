@@ -9,6 +9,7 @@
 
 #include "qemu/osdep.h"
 #include "qemu/units.h"
+#include "qemu/guest-random.h"
 #include "sysemu/sysemu.h"
 #include "cpu.h"
 #include "hw/boards.h"
@@ -120,6 +121,7 @@ static void virt_init(MachineState *machine)
     hwaddr io_base;
     int i;
     ResetInfo *reset_info;
+    uint8_t rng_seed[32];
 
     if (ram_size > 3399672 * KiB) {
         /*
@@ -171,6 +173,7 @@ static void virt_init(MachineState *machine)
     io_base = VIRT_GF_RTC_MMIO_BASE;
     for (i = 0; i < VIRT_GF_RTC_NB; i++) {
         dev = qdev_new(TYPE_GOLDFISH_RTC);
+        qdev_prop_set_bit(dev, "big-endian", true);
         sysbus = SYS_BUS_DEVICE(dev);
         sysbus_realize_and_unref(sysbus, &error_fatal);
         sysbus_mmio_map(sysbus, 0, io_base);
@@ -245,6 +248,11 @@ static void virt_init(MachineState *machine)
                         kernel_cmdline);
         }
 
+	/* Pass seed to RNG. */
+	qemu_guest_getrandom_nofail(rng_seed, sizeof(rng_seed));
+	BOOTINFODATA(cs->as, parameters_base, BI_VIRT_RNG_SEED,
+		     rng_seed, sizeof(rng_seed));
+
         /* load initrd */
         if (initrd_filename) {
             initrd_size = get_image_size(initrd_filename);
@@ -315,10 +323,17 @@ type_init(virt_machine_register_types)
     } \
     type_init(machvirt_machine_##major##_##minor##_init);
 
-static void virt_machine_7_1_options(MachineClass *mc)
+static void virt_machine_7_2_options(MachineClass *mc)
 {
 }
-DEFINE_VIRT_MACHINE(7, 1, true)
+DEFINE_VIRT_MACHINE(7, 2, true)
+
+static void virt_machine_7_1_options(MachineClass *mc)
+{
+    virt_machine_7_2_options(mc);
+    compat_props_add(mc->compat_props, hw_compat_7_1, hw_compat_7_1_len);
+}
+DEFINE_VIRT_MACHINE(7, 1, false)
 
 static void virt_machine_7_0_options(MachineClass *mc)
 {

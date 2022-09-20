@@ -32,6 +32,9 @@
 #include "attribs.h"
 #include "gen_tcg.h"
 #include "gen_tcg_hvx.h"
+#ifndef CONFIG_USER_ONLY
+#include "gen_tcg_sys.h"
+#endif
 #include "reg_fields.h"
 
 
@@ -81,7 +84,6 @@ static inline void gen_log_reg_write(int rnum, TCGv val)
 #ifndef CONFIG_USER_ONLY
 static inline void gen_log_greg_write(int rnum, TCGv val)
 {
-    g_assert(rnum <= HEX_GREG_G3);
     tcg_gen_mov_tl(hex_greg_new_value[rnum], val);
     if (HEX_DEBUG) {
         /* Do this so HELPER(debug_commit_end) will know */
@@ -142,6 +144,39 @@ static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
 }
 
 #ifndef CONFIG_USER_ONLY
+static bool greg_writable(int rnum, bool pair)
+{
+    if (pair) {
+        if (rnum < HEX_GREG_G3) {
+            return true;
+        }
+        qemu_log_mask(LOG_UNIMP,
+                "Warning: ignoring write to guest register pair G%d:%d\n",
+                rnum + 1, rnum);
+    } else {
+        if (rnum <= HEX_GREG_G3) {
+            return true;
+        }
+        qemu_log_mask(LOG_UNIMP,
+                "Warning: ignoring write to guest register G%d\n", rnum);
+    }
+    return false;
+}
+
+static void check_greg_impl(int rnum, bool pair)
+{
+    if (pair && (!greg_implemented(rnum) || !greg_implemented(rnum + 1))) {
+        qemu_log_mask(LOG_UNIMP,
+                "Warning: guest register pair G%d:%d is unimplemented or "
+                "reserved. Read will yield 0.\n",
+                rnum + 1, rnum);
+    } else if (!pair && !greg_implemented(rnum)) {
+        qemu_log_mask(LOG_UNIMP,
+                "Warning: guest register G%d is unimplemented or reserved."
+                " Read will yield 0.\n", rnum);
+    }
+}
+
 static void gen_log_greg_write_pair(int rnum, TCGv_i64 val)
 {
     TCGv val32 = tcg_temp_new();
@@ -1444,11 +1479,9 @@ static void vec_to_qvec(size_t size, intptr_t dstoff, intptr_t srcoff,
 
 static void probe_noshuf_load(TCGv va, int s, int mi)
 {
-    TCGv size = tcg_const_tl(s);
-    TCGv mem_idx = tcg_const_tl(mi);
+    TCGv size = tcg_constant_tl(s);
+    TCGv mem_idx = tcg_constant_tl(mi);
     gen_helper_probe_noshuf_load(cpu_env, va, size, mem_idx);
-    tcg_temp_free(size);
-    tcg_temp_free(mem_idx);
 }
 
 #include "tcg_funcs_generated.c.inc"

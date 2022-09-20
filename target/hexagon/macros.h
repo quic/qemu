@@ -105,10 +105,11 @@
         } \
     } while (0)
 
-#define CHECK_NOSHUF_PRED(EA, SIZE, PRED) \
+#define CHECK_NOSHUF_PRED(GET_EA, SIZE, PRED) \
     do { \
         TCGLabel *label = gen_new_label(); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, PRED, 0, label); \
+        GET_EA; \
         if (insn->slot == 0 && pkt->pkt_has_scalar_store_s1) { \
             probe_noshuf_load(EA, SIZE, ctx->mem_idx); \
         } \
@@ -499,7 +500,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fCRND(A) ((((A) & 0x3) == 0x3) ? ((A) + 1) : ((A)))
 #define fRNDN(A, N) ((((N) == 0) ? (A) : (((fSE32_64(A)) + (1 << ((N) - 1))))))
 #define fCRNDN(A, N) (conv_round(A, N))
-/* FIXME - Convert the size16s_t (hex_arch_types.h) to qemu's Int128 */
 #define fADD128(A, B) (add128(A, B))
 #define fSUB128(A, B) (sub128(A, B))
 #define fSHIFTR128(A, B) (shiftr128(A, B))

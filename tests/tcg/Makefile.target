@@ -117,6 +117,11 @@ else
 # For softmmu targets we include a different Makefile fragement as the
 # build options for bare programs are usually pretty different. They
 # are expected to provide their own build recipes.
+
+ifneq ($(TARGET_NAME), hexagon)
+EXTRA_CFLAGS += -ffreestanding
+endif
+
 -include $(SRC_PATH)/tests/tcg/minilib/Makefile.target
 -include $(SRC_PATH)/tests/tcg/multiarch/system/Makefile.softmmu-target
 -include $(SRC_PATH)/tests/tcg/$(TARGET_NAME)/Makefile.softmmu-target
@@ -207,4 +212,4 @@ gdb-%: %
 run: $(RUN_TESTS)
 
 clean:
-	rm -f $(TESTS) *.o
+	rm -f $(TESTS) *.o $(CLEANFILES)

@@ -177,9 +177,11 @@ int target_mprotect(abi_ulong start, abi_ulong len, int target_prot)
             goto error;
         }
     }
+
     page_set_flags(start, start + len, page_flags);
-    mmap_unlock();
-    return 0;
+    tb_invalidate_phys_range(start, start + len);
+    ret = 0;
+
 error:
     mmap_unlock();
     return ret;
@@ -834,4 +836,71 @@ abi_long target_mremap(abi_ulong old_addr, abi_ulong old_size,
     tb_invalidate_phys_range(new_addr, new_addr + new_size);
     mmap_unlock();
     return new_addr;
+}
+
+static bool can_passthrough_madv_dontneed(abi_ulong start, abi_ulong end)
+{
+    ulong addr;
+
+    if ((start | end) & ~qemu_host_page_mask) {
+        return false;
+    }
+
+    for (addr = start; addr < end; addr += TARGET_PAGE_SIZE) {
+        if (!(page_get_flags(addr) & PAGE_ANON)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+abi_long target_madvise(abi_ulong start, abi_ulong len_in, int advice)
+{
+    abi_ulong len, end;
+    int ret = 0;
+
+    if (start & ~TARGET_PAGE_MASK) {
+        return -TARGET_EINVAL;
+    }
+    len = TARGET_PAGE_ALIGN(len_in);
+
+    if (len_in && !len) {
+        return -TARGET_EINVAL;
+    }
+
+    end = start + len;
+    if (end < start) {
+        return -TARGET_EINVAL;
+    }
+
+    if (end == start) {
+        return 0;
+    }
+
+    if (!guest_range_valid_untagged(start, len)) {
+        return -TARGET_EINVAL;
+    }
+
+    /*
+     * A straight passthrough may not be safe because qemu sometimes turns
+     * private file-backed mappings into anonymous mappings.
+     *
+     * This is a hint, so ignoring and returning success is ok.
+     *
+     * This breaks MADV_DONTNEED, completely implementing which is quite
+     * complicated. However, there is one low-hanging fruit: host-page-aligned
+     * anonymous mappings. In this case passthrough is safe, so do it.
+     */
+    mmap_lock();
+    if (advice == MADV_DONTNEED &&
+        can_passthrough_madv_dontneed(start, end)) {
+        ret = get_errno(madvise(g2h_untagged(start), len, MADV_DONTNEED));
+        if (ret == 0) {
+            page_reset_target_data(start, start + len);
+        }
+    }
+    mmap_unlock();
+
+    return ret;
 }

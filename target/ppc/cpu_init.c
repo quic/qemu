@@ -47,6 +47,10 @@
 #include "spr_common.h"
 #include "power8-pmu.h"
 
+#ifndef CONFIG_USER_ONLY
+#include "hw/boards.h"
+#endif
+
 /* #define PPC_DEBUG_SPR */
 /* #define USE_APPLE_GDB */
 
@@ -5908,15 +5912,25 @@ static void init_proc_POWER7(CPUPPCState *env)
     ppcPOWER7_irq_init(env_archcpu(env));
 }
 
-static bool ppc_pvr_match_power7(PowerPCCPUClass *pcc, uint32_t pvr)
+static bool ppc_pvr_match_power7(PowerPCCPUClass *pcc, uint32_t pvr, bool best)
 {
-    if ((pvr & CPU_POWERPC_POWER_SERVER_MASK) == CPU_POWERPC_POWER7P_BASE) {
-        return true;
+    uint32_t base = pvr & CPU_POWERPC_POWER_SERVER_MASK;
+    uint32_t pcc_base = pcc->pvr & CPU_POWERPC_POWER_SERVER_MASK;
+
+    if (!best) {
+        if (base == CPU_POWERPC_POWER7_BASE) {
+            return true;
+        }
+        if (base == CPU_POWERPC_POWER7P_BASE) {
+            return true;
+        }
     }
-    if ((pvr & CPU_POWERPC_POWER_SERVER_MASK) == CPU_POWERPC_POWER7_BASE) {
-        return true;
+
+    if (base != pcc_base) {
+        return false;
     }
-    return false;
+
+    return true;
 }
 
 static bool cpu_has_work_POWER7(CPUState *cs)
@@ -5985,7 +5999,7 @@ POWERPC_FAMILY(POWER7)(ObjectClass *oc, void *data)
                         PPC2_PERM_ISA206 | PPC2_DIVE_ISA206 |
                         PPC2_ATOMIC_ISA206 | PPC2_FP_CVT_ISA206 |
                         PPC2_FP_TST_ISA206 | PPC2_FP_CVT_S64 |
-                        PPC2_PM_ISA206 | PPC2_MEM_LWSYNC;
+                        PPC2_PM_ISA206 | PPC2_MEM_LWSYNC | PPC2_BCDA_ISA206;
     pcc->msr_mask = (1ull << MSR_SF) |
                     (1ull << MSR_VR) |
                     (1ull << MSR_VSX) |
@@ -6069,18 +6083,27 @@ static void init_proc_POWER8(CPUPPCState *env)
     ppcPOWER7_irq_init(env_archcpu(env));
 }
 
-static bool ppc_pvr_match_power8(PowerPCCPUClass *pcc, uint32_t pvr)
+static bool ppc_pvr_match_power8(PowerPCCPUClass *pcc, uint32_t pvr, bool best)
 {
-    if ((pvr & CPU_POWERPC_POWER_SERVER_MASK) == CPU_POWERPC_POWER8NVL_BASE) {
-        return true;
+    uint32_t base = pvr & CPU_POWERPC_POWER_SERVER_MASK;
+    uint32_t pcc_base = pcc->pvr & CPU_POWERPC_POWER_SERVER_MASK;
+
+    if (!best) {
+        if (base == CPU_POWERPC_POWER8_BASE) {
+            return true;
+        }
+        if (base == CPU_POWERPC_POWER8E_BASE) {
+            return true;
+        }
+        if (base == CPU_POWERPC_POWER8NVL_BASE) {
+            return true;
+        }
     }
-    if ((pvr & CPU_POWERPC_POWER_SERVER_MASK) == CPU_POWERPC_POWER8E_BASE) {
-        return true;
+    if (base != pcc_base) {
+        return false;
     }
-    if ((pvr & CPU_POWERPC_POWER_SERVER_MASK) == CPU_POWERPC_POWER8_BASE) {
-        return true;
-    }
-    return false;
+
+    return true;
 }
 
 static bool cpu_has_work_POWER8(CPUState *cs)
@@ -6159,7 +6182,8 @@ POWERPC_FAMILY(POWER8)(ObjectClass *oc, void *data)
                         PPC2_FP_TST_ISA206 | PPC2_BCTAR_ISA207 |
                         PPC2_LSQ_ISA207 | PPC2_ALTIVEC_207 |
                         PPC2_ISA205 | PPC2_ISA207S | PPC2_FP_CVT_S64 |
-                        PPC2_TM | PPC2_PM_ISA206 | PPC2_MEM_LWSYNC;
+                        PPC2_TM | PPC2_PM_ISA206 | PPC2_MEM_LWSYNC |
+                        PPC2_BCDA_ISA206;
     pcc->msr_mask = (1ull << MSR_SF) |
                     (1ull << MSR_HV) |
                     (1ull << MSR_TM) |
@@ -6277,11 +6301,26 @@ static void init_proc_POWER9(CPUPPCState *env)
     ppcPOWER9_irq_init(env_archcpu(env));
 }
 
-static bool ppc_pvr_match_power9(PowerPCCPUClass *pcc, uint32_t pvr)
+static bool ppc_pvr_match_power9(PowerPCCPUClass *pcc, uint32_t pvr, bool best)
 {
-    if ((pvr & CPU_POWERPC_POWER_SERVER_MASK) == CPU_POWERPC_POWER9_BASE) {
+    uint32_t base = pvr & CPU_POWERPC_POWER_SERVER_MASK;
+    uint32_t pcc_base = pcc->pvr & CPU_POWERPC_POWER_SERVER_MASK;
+
+    if (!best) {
+        if (base == CPU_POWERPC_POWER9_BASE) {
+            return true;
+        }
+    }
+
+    if (base != pcc_base) {
+        return false;
+    }
+
+    if ((pvr & 0x0f00) == (pcc->pvr & 0x0f00)) {
+        /* Major DD version matches to power9_v1.0 and power9_v2.0 */
         return true;
     }
+
     return false;
 }
 
@@ -6368,7 +6407,7 @@ POWERPC_FAMILY(POWER9)(ObjectClass *oc, void *data)
                        PPC_FLOAT_EXT |
                        PPC_CACHE | PPC_CACHE_ICBI | PPC_CACHE_DCBZ |
                        PPC_MEM_SYNC | PPC_MEM_EIEIO |
-                       PPC_MEM_TLBSYNC |
+                       PPC_MEM_TLBIE | PPC_MEM_TLBSYNC |
                        PPC_64B | PPC_64H | PPC_64BX | PPC_ALTIVEC |
                        PPC_SEGMENT_64B | PPC_SLBI |
                        PPC_POPCNTB | PPC_POPCNTWD |
@@ -6379,7 +6418,8 @@ POWERPC_FAMILY(POWER9)(ObjectClass *oc, void *data)
                         PPC2_FP_TST_ISA206 | PPC2_BCTAR_ISA207 |
                         PPC2_LSQ_ISA207 | PPC2_ALTIVEC_207 |
                         PPC2_ISA205 | PPC2_ISA207S | PPC2_FP_CVT_S64 |
-                        PPC2_TM | PPC2_ISA300 | PPC2_PRCNTL | PPC2_MEM_LWSYNC;
+                        PPC2_TM | PPC2_ISA300 | PPC2_PRCNTL | PPC2_MEM_LWSYNC |
+                        PPC2_BCDA_ISA206;
     pcc->msr_mask = (1ull << MSR_SF) |
                     (1ull << MSR_HV) |
                     (1ull << MSR_TM) |
@@ -6493,11 +6533,26 @@ static void init_proc_POWER10(CPUPPCState *env)
     ppcPOWER9_irq_init(env_archcpu(env));
 }
 
-static bool ppc_pvr_match_power10(PowerPCCPUClass *pcc, uint32_t pvr)
+static bool ppc_pvr_match_power10(PowerPCCPUClass *pcc, uint32_t pvr, bool best)
 {
-    if ((pvr & CPU_POWERPC_POWER_SERVER_MASK) == CPU_POWERPC_POWER10_BASE) {
+    uint32_t base = pvr & CPU_POWERPC_POWER_SERVER_MASK;
+    uint32_t pcc_base = pcc->pvr & CPU_POWERPC_POWER_SERVER_MASK;
+
+    if (!best) {
+        if (base == CPU_POWERPC_POWER10_BASE) {
+            return true;
+        }
+    }
+
+    if (base != pcc_base) {
+        return false;
+    }
+
+    if ((pvr & 0x0f00) == (pcc->pvr & 0x0f00)) {
+        /* Major DD version matches to power10_v1.0 and power10_v2.0 */
         return true;
     }
+
     return false;
 }
 
@@ -6585,7 +6640,7 @@ POWERPC_FAMILY(POWER10)(ObjectClass *oc, void *data)
                        PPC_FLOAT_EXT |
                        PPC_CACHE | PPC_CACHE_ICBI | PPC_CACHE_DCBZ |
                        PPC_MEM_SYNC | PPC_MEM_EIEIO |
-                       PPC_MEM_TLBSYNC |
+                       PPC_MEM_TLBIE | PPC_MEM_TLBSYNC |
                        PPC_64B | PPC_64H | PPC_64BX | PPC_ALTIVEC |
                        PPC_SEGMENT_64B | PPC_SLBI |
                        PPC_POPCNTB | PPC_POPCNTWD |
@@ -6597,7 +6652,7 @@ POWERPC_FAMILY(POWER10)(ObjectClass *oc, void *data)
                         PPC2_LSQ_ISA207 | PPC2_ALTIVEC_207 |
                         PPC2_ISA205 | PPC2_ISA207S | PPC2_FP_CVT_S64 |
                         PPC2_TM | PPC2_ISA300 | PPC2_PRCNTL | PPC2_ISA310 |
-                        PPC2_MEM_LWSYNC;
+                        PPC2_MEM_LWSYNC | PPC2_BCDA_ISA206;
     pcc->msr_mask = (1ull << MSR_SF) |
                     (1ull << MSR_HV) |
                     (1ull << MSR_TM) |
@@ -6672,7 +6727,6 @@ static void init_ppc_proc(PowerPCCPU *cpu)
 #if !defined(CONFIG_USER_ONLY)
     int i;
 
-    env->irq_inputs = NULL;
     /* Set all exception vectors to an invalid address */
     for (i = 0; i < POWERPC_EXCP_NB; i++) {
         env->excp_vectors[i] = (target_ulong)(-1ULL);
@@ -6802,10 +6856,6 @@ static void init_ppc_proc(PowerPCCPU *cpu)
         /* Pre-compute some useful values */
         env->tlb_per_way = env->nb_tlb / env->nb_ways;
     }
-    if (env->irq_inputs == NULL) {
-        warn_report("no internal IRQ controller registered."
-                    " Attempt QEMU to crash very soon !");
-    }
 #endif
     if (env->check_pow == NULL) {
         warn_report("no power management check handler registered."
@@ -6909,7 +6959,7 @@ static gint ppc_cpu_compare_class_pvr_mask(gconstpointer a, gconstpointer b)
         return -1;
     }
 
-    if (pcc->pvr_match(pcc, pvr)) {
+    if (pcc->pvr_match(pcc, pvr, true)) {
         return 0;
     }
 
@@ -6962,6 +7012,21 @@ static ObjectClass *ppc_cpu_class_by_name(const char *name)
             return OBJECT_CLASS(ppc_cpu_class_by_pvr(pvr));
         }
     }
+
+    /*
+     * All ppc CPUs represent hardware that exists in the real world, i.e.: we
+     * do not have a "max" CPU with all possible emulated features enabled.
+     * Return the default CPU type for the machine because that has greater
+     * chance of being useful as the "max" CPU.
+     */
+#if !defined(CONFIG_USER_ONLY)
+    if (strcmp(name, "max") == 0) {
+        MachineClass *mc = MACHINE_GET_CLASS(qdev_get_machine());
+        if (mc) {
+            return object_class_by_name(mc->default_cpu_type);
+        }
+    }
+#endif
 
     cpu_model = g_ascii_strdown(name, -1);
     p = ppc_cpu_lookup_alias(cpu_model);
@@ -7186,6 +7251,9 @@ static void ppc_cpu_reset(DeviceState *dev)
         }
         pmu_update_summaries(env);
     }
+
+    /* clean any pending stop state */
+    env->resume_as_sreset = 0;
 #endif
     hreg_compute_hflags(env);
     env->reserve_addr = (target_ulong)-1ULL;
@@ -7289,7 +7357,7 @@ static void ppc_cpu_instance_finalize(Object *obj)
     ppc_hash64_finalize(cpu);
 }
 
-static bool ppc_pvr_match_default(PowerPCCPUClass *pcc, uint32_t pvr)
+static bool ppc_pvr_match_default(PowerPCCPUClass *pcc, uint32_t pvr, bool best)
 {
     return pcc->pvr == pvr;
 }
@@ -7452,17 +7520,15 @@ void ppc_cpu_dump_state(CPUState *cs, FILE *f, int flags)
                  "%08x iidx %d didx %d\n",
                  env->msr, env->spr[SPR_HID0], env->hflags,
                  cpu_mmu_index(env, true), cpu_mmu_index(env, false));
-#if !defined(NO_TIMER_DUMP)
-    qemu_fprintf(f, "TB %08" PRIu32 " %08" PRIu64
 #if !defined(CONFIG_USER_ONLY)
-                 " DECR " TARGET_FMT_lu
-#endif
-                 "\n",
-                 cpu_ppc_load_tbu(env), cpu_ppc_load_tbl(env)
-#if !defined(CONFIG_USER_ONLY)
-                 , cpu_ppc_load_decr(env)
-#endif
-        );
+    if (env->tb_env) {
+        qemu_fprintf(f, "TB %08" PRIu32 " %08" PRIu64
+                     " DECR " TARGET_FMT_lu "\n", cpu_ppc_load_tbu(env),
+                     cpu_ppc_load_tbl(env), cpu_ppc_load_decr(env));
+    }
+#else
+    qemu_fprintf(f, "TB %08" PRIu32 " %08" PRIu64 "\n", cpu_ppc_load_tbu(env),
+                 cpu_ppc_load_tbl(env));
 #endif
     for (i = 0; i < 32; i++) {
         if ((i & (RGPL - 1)) == 0) {

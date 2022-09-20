@@ -18,31 +18,6 @@
 #include <assert.h>
 #include "kvx_ieee.h"
 
-#ifdef STANDALONE
-typedef unsigned char size1u_t;
-typedef char size1s_t;
-typedef unsigned short int size2u_t;
-typedef short size2s_t;
-typedef unsigned int size4u_t;
-typedef int size4s_t;
-typedef unsigned long long int size8u_t;
-typedef long long int size8s_t;
-typedef size8u_t paddr_t;
-typedef size4u_t vaddr_t;
-typedef size8u_t pcycles_t;
-
-typedef struct size16s {
-	union{
-		struct {
-			size8u_t lo;
-			size8s_t hi;
-		};
-		size4u_t w[4];
-	};
-//    __int128 acc;
-} size16s_t;
-#endif
-
 #define DF_MANTBITS() 52
 #define SF_MANTBITS() 23
 #define HF_MANTBITS() 10

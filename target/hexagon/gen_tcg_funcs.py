@@ -764,6 +764,19 @@ def gen_tcg_func(f, tag, regs, imms):
         f.write("#else\n")
     if hex_common.need_ea(tag): gen_decl_ea_tcg(f, tag)
     i=0
+    ## Check for ignored/unimplemented operations on guest registers
+    for regtype,regid,*_ in regs:
+        if hex_common.is_greg(regtype):
+            if hex_common.is_written(regid):
+                f.write("    if (!greg_writable(insn->regno[%d], %s)) {\n" %
+                        (i, str(hex_common.is_pair(regid)).lower()))
+                f.write("        return;\n")
+                f.write("    }\n")
+            else:
+                f.write("    check_greg_impl(insn->regno[%d], %s);\n" %
+                        (i, str(hex_common.is_pair(regid)).lower()))
+        i += 1
+    i=0
     ## Declare all the operands (regs and immediates)
     for regtype,regid,toss,numregs in regs:
         genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i)
@@ -848,13 +861,13 @@ def gen_def_tcg_func(f, tag, tagregs, tagimms):
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
-    hex_common.read_overrides_file(sys.argv[3])
-    hex_common.read_overrides_file(sys.argv[4])
+    for arg in sys.argv[3 : -1]:
+        hex_common.read_overrides_file(arg)
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    with open(sys.argv[5], 'w') as f:
+    with open(sys.argv[-1], 'w') as f:
         f.write("#ifndef HEXAGON_TCG_FUNCS_H\n")
         f.write("#define HEXAGON_TCG_FUNCS_H\n\n")
 

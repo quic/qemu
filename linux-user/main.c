@@ -54,6 +54,10 @@
 #include "loader.h"
 #include "user-mmap.h"
 
+#ifdef CONFIG_SEMIHOSTING
+#include "semihosting/semihost.h"
+#endif
+
 #ifndef AT_FLAGS_PRESERVE_ARGV0
 #define AT_FLAGS_PRESERVE_ARGV0_BIT 0
 #define AT_FLAGS_PRESERVE_ARGV0 (1 << AT_FLAGS_PRESERVE_ARGV0_BIT)
@@ -396,8 +400,13 @@ static void handle_arg_strace(const char *arg)
 
 static void handle_arg_version(const char *arg)
 {
-    printf("qemu-" TARGET_NAME " version " QEMU_FULL_VERSION
-           "\n" QEMU_COPYRIGHT "\n");
+    printf("qemu-" TARGET_NAME
+#ifdef QEMU_HEXAGON_BRANCH
+           " (branch " QEMU_HEXAGON_BRANCH ".X)"
+#endif
+           "\nCommit " QEMU_HEXAGON_SHA "\n"
+           "Based on upstream QEMU version " QEMU_FULL_VERSION "\n"
+           QEMU_COPYRIGHT "\n");
     exit(EXIT_SUCCESS);
 }
 
@@ -906,6 +915,11 @@ int main(int argc, char **argv, char **envp)
         }
         gdb_handlesig(cpu, 0);
     }
+
+#ifdef CONFIG_SEMIHOSTING
+    qemu_semihosting_guestfd_init();
+#endif
+
     cpu_loop(env);
     /* never exits */
     return 0;

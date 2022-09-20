@@ -4,10 +4,10 @@
 
 #include "qemu/osdep.h"
 #include "cpu.h"
-#include "hex_arch_types.h"
 #include "int16_emu.h"
 
 
+#ifndef HEX_CONFIG_INT128
 size16s_t cast8s_to_16s(size8s_t a)
 {
     size16s_t result = {.hi = 0, .lo = 0};
@@ -35,8 +35,6 @@ size4u_t count_leading_zeros_16(size16s_t src)
     return count_leading_ones_8(~((size8u_t)src.hi));
 }
 
-
-
 size16s_t add128(size16s_t a, size16s_t b)
 {
     size16s_t result = {.hi = 0, .lo = 0};
@@ -46,7 +44,6 @@ size16s_t add128(size16s_t a, size16s_t b)
     if (result.lo < b.lo) {
         result.hi++;
     }
-
     return result;
 }
 size16s_t sub128(size16s_t a, size16s_t b)
@@ -57,7 +54,6 @@ size16s_t sub128(size16s_t a, size16s_t b)
     if (result.lo > a.lo) {
         result.hi--;
     }
-
     return result;
 }
 
@@ -134,7 +130,6 @@ size16s_t mult64_to_128(size8s_t X, size8s_t Y)
     result = add128(XY_lo, shiftl128(XY_mid0, 32));
     result = add128(result, shiftl128(XY_mid1, 32));
     result = add128(result, shiftl128(XY_hi, 64));
-
     return result;
 }
-
+#endif

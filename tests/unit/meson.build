@@ -86,6 +86,7 @@ if have_block
     'test-io-channel-file': ['io-channel-helpers.c', io],
     'test-io-channel-command': ['io-channel-helpers.c', io],
     'test-io-channel-buffer': ['io-channel-helpers.c', io],
+    'test-io-channel-null': [io],
     'test-crypto-ivgen': [io],
     'test-crypto-afsplit': [io],
     'test-crypto-block': [io],

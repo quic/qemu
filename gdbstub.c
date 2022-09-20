@@ -350,6 +350,7 @@ typedef struct GDBState {
     int line_buf_index;
     int line_sum; /* running checksum */
     int line_csum; /* checksum at the end of the packet */
+    char last_cmd[MAX_PACKET_LENGTH];
     GByteArray *last_packet;
     int signal;
 #ifdef CONFIG_USER_ONLY
@@ -412,6 +413,7 @@ static void reset_gdbserver_state(void)
     g_free(gdbserver_state.processes);
     gdbserver_state.processes = NULL;
     gdbserver_state.process_num = 0;
+    gdbserver_state.last_cmd[0] = '\0';
 }
 #endif
 
@@ -443,6 +445,15 @@ static int get_char(void)
 }
 #endif
 
+/*
+ * Return true if there is a GDB currently connected to the stub
+ * and attached to a CPU
+ */
+static bool gdb_attached(void)
+{
+    return gdbserver_state.init && gdbserver_state.c_cpu;
+}
+
 static enum {
     GDB_SYS_UNKNOWN,
     GDB_SYS_ENABLED,
@@ -464,8 +475,7 @@ int use_gdb_syscalls(void)
     /* -semihosting-config target=auto */
     /* On the first call check if gdb is connected and remember. */
     if (gdb_syscall_mode == GDB_SYS_UNKNOWN) {
-        gdb_syscall_mode = gdbserver_state.init ?
-            GDB_SYS_ENABLED : GDB_SYS_DISABLED;
+        gdb_syscall_mode = gdb_attached() ? GDB_SYS_ENABLED : GDB_SYS_DISABLED;
     }
     return gdb_syscall_mode == GDB_SYS_ENABLED;
 }
@@ -1870,14 +1880,46 @@ static void handle_read_all_regs(GArray *params, void *user_ctx)
 static void handle_file_io(GArray *params, void *user_ctx)
 {
     if (params->len >= 1 && gdbserver_state.current_syscall_cb) {
-        target_ulong ret, err;
+        uint64_t ret;
+        int err;
 
-        ret = (target_ulong)get_param(params, 0)->val_ull;
+        ret = get_param(params, 0)->val_ull;
         if (params->len >= 2) {
-            err = (target_ulong)get_param(params, 1)->val_ull;
+            err = get_param(params, 1)->val_ull;
         } else {
             err = 0;
         }
+
+        /* Convert GDB error numbers back to host error numbers. */
+#define E(X)  case GDB_E##X: err = E##X; break
+        switch (err) {
+        case 0:
+            break;
+        E(PERM);
+        E(NOENT);
+        E(INTR);
+        E(BADF);
+        E(ACCES);
+        E(FAULT);
+        E(BUSY);
+        E(EXIST);
+        E(NODEV);
+        E(NOTDIR);
+        E(ISDIR);
+        E(INVAL);
+        E(NFILE);
+        E(MFILE);
+        E(FBIG);
+        E(NOSPC);
+        E(SPIPE);
+        E(ROFS);
+        E(NAMETOOLONG);
+        default:
+            err = EINVAL;
+            break;
+        }
+#undef E
+
         gdbserver_state.current_syscall_cb(gdbserver_state.c_cpu, ret, err);
         gdbserver_state.current_syscall_cb = NULL;
     }
@@ -2545,7 +2587,7 @@ static void handle_target_halt(GArray *params, void *user_ctx)
     gdb_breakpoint_remove_all();
 }
 
-static int gdb_handle_packet(const char *line_buf)
+static void gdb_handle_packet(const char *line_buf)
 {
     const GdbCmdParseEntry *cmd_parser = NULL;
 
@@ -2787,8 +2829,6 @@ static int gdb_handle_packet(const char *line_buf)
     if (cmd_parser) {
         run_cmd_parser(line_buf, cmd_parser);
     }
-
-    return RS_IDLE;
 }
 
 void gdb_set_stop_cpu(CPUState *cpu)
@@ -2808,8 +2848,14 @@ void gdb_set_stop_cpu(CPUState *cpu)
 }
 
 #ifndef CONFIG_USER_ONLY
+static inline bool char_in(char c, const char *str)
+{
+    return strchr(str, c) != NULL;
+}
+
 static void gdb_vm_state_change(void *opaque, bool running, RunState state)
 {
+    const char *cmd = gdbserver_state.last_cmd;
     CPUState *cpu = gdbserver_state.c_cpu;
     g_autoptr(GString) buf = g_string_new(NULL);
     g_autoptr(GString) tid = g_string_new(NULL);
@@ -2827,6 +2873,18 @@ static void gdb_vm_state_change(void *opaque, bool running, RunState state)
 
     if (cpu == NULL) {
         /* No process attached */
+        return;
+    }
+
+    /*
+     * We don't implement notification packets, so we should only send a
+     * stop-reply in response to a previous GDB command. Commands that accept
+     * stop-reply packages are: C, c, S, s, ?, vCont, vAttach, vRun, and
+     * vStopped. We don't implement vRun, and vStopped. For vAttach and ?, the
+     * stop-reply is already sent from their respective cmd handler functions.
+     */
+    if (gdbserver_state.state != RS_IDLE || /* still parsing the cmd */
+        !(startswith(cmd, "vCont;") || (strlen(cmd) == 1 && char_in(cmd[0], "cCsS")))) {
         return;
     }
 
@@ -2913,7 +2971,7 @@ void gdb_do_syscallv(gdb_syscall_complete_cb cb, const char *fmt, va_list va)
     target_ulong addr;
     uint64_t i64;
 
-    if (!gdbserver_state.init) {
+    if (!gdb_attached()) {
         return;
     }
 
@@ -3117,11 +3175,14 @@ static void gdb_read_byte(uint8_t ch)
                 reply = '-';
                 put_buffer(&reply, 1);
                 gdbserver_state.state = RS_IDLE;
+                gdbserver_state.last_cmd[0] = '\0';
             } else {
                 /* send ACK reply */
                 reply = '+';
                 put_buffer(&reply, 1);
-                gdbserver_state.state = gdb_handle_packet(gdbserver_state.line_buf);
+                strcpy(gdbserver_state.last_cmd, gdbserver_state.line_buf);
+                gdbserver_state.state = RS_IDLE;
+                gdb_handle_packet(gdbserver_state.line_buf);
             }
             break;
         default:

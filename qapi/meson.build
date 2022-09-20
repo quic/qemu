@@ -46,6 +46,7 @@ qapi_all_modules = [
   'replay',
   'run-state',
   'sockets',
+  'stats',
   'trace',
   'transaction',
   'yank',
@@ -66,21 +67,6 @@ if have_system or have_tools
     'ui',
   ]
 endif
-
-qapi_storage_daemon_modules = [
-  'block-core',
-  'block-export',
-  'char',
-  'common',
-  'control',
-  'crypto',
-  'introspect',
-  'job',
-  'qom',
-  'sockets',
-  'pragma',
-  'transaction',
-]
 
 qapi_nonmodule_outputs = [
   'qapi-introspect.c', 'qapi-introspect.h',

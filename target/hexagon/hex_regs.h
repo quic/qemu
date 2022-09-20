@@ -18,6 +18,8 @@
 #ifndef HEXAGON_HEX_REGS_H
 #define HEXAGON_HEX_REGS_H
 
+#include "cpu.h"
+
 enum {
     HEX_REG_R00              = 0,
     HEX_REG_R01              = 1,
@@ -85,28 +87,53 @@ enum {
     HEX_REG_UTIMERHI          = 63,
 };
 
-enum {
-  HEX_GREG_G0         = 0,
-  HEX_GREG_GELR       = 0,
-  HEX_GREG_G1         = 1,
-  HEX_GREG_GSR        = 1,
-  HEX_GREG_G2         = 2,
-  HEX_GREG_GOSP       = 2,
-  HEX_GREG_G3         = 3,
-  HEX_GREG_GBADVA     = 3,
-  HEX_GREG_GCYCLE_1T  = 10,
-  HEX_GREG_GCYCLE_2T  = 11,
-  HEX_GREG_GCYCLE_3T  = 12,
-  HEX_GREG_GCYCLE_4T  = 13,
-  HEX_GREG_GCYCLE_5T  = 14,
-  HEX_GREG_GCYCLE_6T  = 15,
-  HEX_GREG_GPCYCLELO  = 24,
-  HEX_GREG_GPCYCLEHI  = 25,
-  HEX_GREG_GPMUCNT0   = 26,
-  HEX_GREG_GPMUCNT1   = 27,
-  HEX_GREG_GPMUCNT2   = 28,
-  HEX_GREG_GPMUCNT3   = 29,
+#ifndef CONFIG_USER_ONLY
+
+#define HEX_GREG_VALUES \
+  DECL_HEX_GREG(G0,         0) \
+  DECL_HEX_GREG(GELR,       0) \
+  DECL_HEX_GREG(G1,         1) \
+  DECL_HEX_GREG(GSR,        1) \
+  DECL_HEX_GREG(G2,         2) \
+  DECL_HEX_GREG(GOSP,       2) \
+  DECL_HEX_GREG(G3,         3) \
+  DECL_HEX_GREG(GBADVA,     3) \
+  DECL_HEX_GREG(GCYCLE_1T,  10) \
+  DECL_HEX_GREG(GCYCLE_2T,  11) \
+  DECL_HEX_GREG(GCYCLE_3T,  12) \
+  DECL_HEX_GREG(GCYCLE_4T,  13) \
+  DECL_HEX_GREG(GCYCLE_5T,  14) \
+  DECL_HEX_GREG(GCYCLE_6T,  15) \
+  DECL_HEX_GREG(GPCYCLELO,  24) \
+  DECL_HEX_GREG(GPCYCLEHI,  25) \
+  DECL_HEX_GREG(GPMUCNT0,   26) \
+  DECL_HEX_GREG(GPMUCNT1,   27) \
+  DECL_HEX_GREG(GPMUCNT2,   28) \
+  DECL_HEX_GREG(GPMUCNT3,   29) \
+  DECL_HEX_GREG_DONE
+
+#define DECL_HEX_GREG_DONE
+#define DECL_HEX_GREG(name, val) HEX_GREG_ ##name = val,
+enum hex_greg {
+    HEX_GREG_VALUES
 };
+#undef DECL_HEX_GREG
+#undef DECL_HEX_GREG_DONE
+
+#define DECL_HEX_GREG_DONE 0
+#define DECL_HEX_GREG(_, val) (1 << val) |
+static inline bool greg_implemented(enum hex_greg greg)
+{
+#if NUM_GREGS > 32
+#error "NUM_GREGS too large for greg_implemented(): update `impl_bitmap`"
+#endif
+    static int32_t impl_bitmap = HEX_GREG_VALUES;
+    return impl_bitmap & (1 << greg);
+}
+#undef DECL_HEX_GREG
+#undef DECL_HEX_GREG_DONE
+
+#endif /* CONFIG_USER_ONLY */
 
 enum {
     HEX_SREG_SGP0 = 0,

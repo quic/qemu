@@ -52,6 +52,7 @@ Supported guest CPU types:
 
 - ``cortex-a7`` (32-bit)
 - ``cortex-a15`` (32-bit; the default)
+- ``cortex-a35`` (64-bit)
 - ``cortex-a53`` (64-bit)
 - ``cortex-a57`` (64-bit)
 - ``cortex-a72`` (64-bit)
@@ -126,13 +127,18 @@ ras
   Set ``on``/``off`` to enable/disable reporting host memory errors to a guest
   using ACPI and guest external abort exceptions. The default is off.
 
+dtb-randomness
+  Set ``on``/``off`` to pass random seeds via the guest DTB
+  rng-seed and kaslr-seed nodes (in both "/chosen" and
+  "/secure-chosen") to use for features like the random number
+  generator and address space randomisation. The default is
+  ``on``. You will want to disable it if your trusted boot chain
+  will verify the DTB it is passed, since this option causes the
+  DTB to be non-deterministic. It would be the responsibility of
+  the firmware to come up with a seed and pass it on if it wants to.
+
 dtb-kaslr-seed
-  Set ``on``/``off`` to pass a random seed via the guest dtb
-  kaslr-seed node (in both "/chosen" and /secure-chosen) to use
-  for features like address space randomisation. The default is
-  ``on``. You will want to disable it if your trusted boot chain will
-  verify the DTB it is passed. It would be the responsibility of the
-  firmware to come up with a seed and pass it on if it wants to.
+  A deprecated synonym for dtb-randomness.
 
 Linux guest kernel configuration
 """"""""""""""""""""""""""""""""

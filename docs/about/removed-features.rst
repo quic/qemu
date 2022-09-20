@@ -370,6 +370,40 @@ The ``opened=on`` option in the command line or QMP ``object-add`` either had
 no effect (if ``opened`` was the last option) or caused errors.  The property
 is therefore useless and should simply be removed.
 
+``-display sdl,window_close=...`` (removed in 7.1)
+''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use ``-display sdl,window-close=...`` instead (i.e. with a minus instead of
+an underscore between "window" and "close").
+
+``-alt-grab`` and ``-display sdl,alt_grab=on`` (removed in 7.1)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use ``-display sdl,grab-mod=lshift-lctrl-lalt`` instead.
+
+``-ctrl-grab`` and ``-display sdl,ctrl_grab=on`` (removed in 7.1)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Use ``-display sdl,grab-mod=rctrl`` instead.
+
+``-sdl`` (removed in 7.1)
+'''''''''''''''''''''''''
+
+Use ``-display sdl`` instead.
+
+``-curses`` (removed in 7.1)
+''''''''''''''''''''''''''''
+
+Use ``-display curses`` instead.
+
+Creating sound card devices using ``-soundhw`` (removed in 7.1)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Sound card devices should be created using ``-device`` or ``-audio``.
+The exception is ``pcspk`` which can be activated using ``-machine
+pcspk-audiodev=<name>``.
+
+
 QEMU Machine Protocol (QMP) commands
 ------------------------------------
 
@@ -634,6 +668,12 @@ Aspeed ``swift-bmc`` machine (removed in 7.0)
 This machine was removed because it was unused. Alternative AST2500 based
 OpenPOWER machines are ``witherspoon-bmc`` and ``romulus-bmc``.
 
+ppc ``taihu`` machine (removed in 7.2)
+'''''''''''''''''''''''''''''''''''''''''''''
+
+This machine was removed because it was partially emulated and 405
+machines are very similar. Use the ``ref405ep`` machine instead.
+
 linux-user mode CPUs
 --------------------
 
@@ -653,13 +693,6 @@ The ``ppc64abi32`` architecture has a number of issues which regularly
 tripped up the CI testing and was suspected to be quite broken. For that
 reason the maintainers strongly suspected no one actually used it.
 
-
-Creating sound card devices using ``-soundhw`` (removed in 7.1)
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-Sound card devices should be created using ``-device`` or ``-audio``.
-The exception is ``pcspk`` which can be activated using ``-machine
-pcspk-audiodev=<name>``.
 
 TCG introspection features
 --------------------------

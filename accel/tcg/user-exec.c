@@ -80,10 +80,7 @@ MMUAccessType adjust_signal_pc(uintptr_t *pc, bool is_write)
          * (and if the translator doesn't handle page boundaries correctly
          * there's little we can do about that here).  Therefore, do not
          * trigger the unwinder.
-         *
-         * Like tb_gen_code, release the memory lock before cpu_loop_exit.
          */
-        mmap_unlock();
         *pc = 0;
         return MMU_INST_FETCH;
     }
@@ -101,10 +98,10 @@ MMUAccessType adjust_signal_pc(uintptr_t *pc, bool is_write)
  * Return true if the write fault has been handled, and should be re-tried.
  *
  * Note that it is important that we don't call page_unprotect() unless
- * this is really a "write to nonwriteable page" fault, because
+ * this is really a "write to nonwritable page" fault, because
  * page_unprotect() assumes that if it is called for an access to
- * a page that's writeable this means we had two threads racing and
- * another thread got there first and already made the page writeable;
+ * a page that's writable this means we had two threads racing and
+ * another thread got there first and already made the page writable;
  * so we will retry the access. If we were to call page_unprotect()
  * for some other kind of fault that should really be passed to the
  * guest, we'd end up in an infinite loop of retrying the faulting access.
@@ -197,6 +194,20 @@ void *probe_access(CPUArchState *env, target_ulong addr, int size,
     g_assert(flags == 0);
 
     return size ? g2h(env_cpu(env), addr) : NULL;
+}
+
+tb_page_addr_t get_page_addr_code_hostp(CPUArchState *env, target_ulong addr,
+                                        void **hostp)
+{
+    int flags;
+
+    flags = probe_access_internal(env, addr, 1, MMU_INST_FETCH, false, 0);
+    g_assert(flags == 0);
+
+    if (hostp) {
+        *hostp = g2h_untagged(addr);
+    }
+    return addr;
 }
 
 /* The softmmu versions of these helpers are in cputlb.c.  */

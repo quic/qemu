@@ -39,15 +39,20 @@ typedef int64_t size8s_t;
 typedef uint64_t    paddr_t;
 typedef uint32_t    vaddr_t;
 
-typedef struct size16s {
-    union {
-        struct {
+#define HEX_CONFIG_INT128 1
+#ifdef HEX_CONFIG_INT128
+#define size16s_t Int128
+#else
+ typedef struct size16s {
+     union {
+         struct {
             uint64_t lo;
             int64_t hi;
-        };
-        uint32_t w[4];
-    };
-} size16s_t;
+         };
+         uint32_t w[4];
+     };
+ } size16s_t;
+#endif
 
 typedef MMVector          mmvector_t;
 typedef MMVectorPair      mmvector_pair_t;

@@ -491,9 +491,9 @@ static TestServer *test_server_new(const gchar *name,
     /* run the main loop thread so the chardev may operate */
     server->thread = g_thread_new(NULL, thread_function, server->loop);
 
-    tmpfs = mkdtemp(template);
+    tmpfs = g_mkdtemp(template);
     if (!tmpfs) {
-        g_test_message("mkdtemp on path (%s): %s", template, strerror(errno));
+        g_test_message("g_mkdtemp on path (%s): %s", template, strerror(errno));
     }
     g_assert(tmpfs);
 
@@ -524,14 +524,13 @@ static void chr_event(void *opaque, QEMUChrEvent event)
 
 static void test_server_create_chr(TestServer *server, const gchar *opt)
 {
-    gchar *chr_path;
+    g_autofree gchar *chr_path = g_strdup_printf("unix:%s%s",
+                                                 server->socket_path, opt);
     Chardev *chr;
 
-    chr_path = g_strdup_printf("unix:%s%s", server->socket_path, opt);
     chr = qemu_chr_new(server->chr_name, chr_path, server->context);
-    g_free(chr_path);
+    g_assert(chr);
 
-    g_assert_nonnull(chr);
     qemu_chr_fe_init(&server->chr, chr, &error_abort);
     qemu_chr_fe_set_handlers(&server->chr, chr_can_read, chr_read,
                              chr_event, NULL, server, server->context, true);
