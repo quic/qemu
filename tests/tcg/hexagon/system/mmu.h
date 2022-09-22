@@ -325,6 +325,16 @@ static inline uint32_t getbadva()
     return badva;
 }
 
+static void inc_elr(uint32_t inc)
+{
+
+    asm volatile ("r1 = %0\n\t"
+                  "r2 = elr\n\t"
+                  "r1 = add(r2, r1)\n\t"
+                  "elr = r1\n\t"
+                  :  : "r"(inc) : "r1", "r2");
+}
+
 static inline void do_coredump(void)
 {
     asm volatile("r0 = #2\n\t"
@@ -469,6 +479,8 @@ enum {
  * install_my_event_vectors  Change from the default event handlers
  */
 
+extern void *my_event_vectors;
+
 #define MY_EVENT_HANDLE(name, helper) \
 void name(void) \
 { \
@@ -510,6 +522,7 @@ void name(void) \
                  "rte\n\t"); \
 }
 
+#ifndef NO_DEFAULT_EVENT_HANDLES
 
 #define DEFAULT_EVENT_HANDLE(name, offset) \
 void name(void) \
@@ -519,6 +532,7 @@ void name(void) \
                  "jumpr r0\n\t" \
                  : : "r"(old_evb) : "r0"); \
 }
+
 
 /* Use these values as the offset for DEFAULT_EVENT_HANDLE */
 asm (
@@ -533,7 +547,6 @@ asm (
 ".set HANDLE_INT_OFFSET,                 0x40\n\t"
 );
 
-extern void *my_event_vectors;
 asm(
 ".align 0x1000\n\t"
 "my_event_vectors:\n\t"
@@ -597,6 +610,8 @@ DEFAULT_EVENT_HANDLE(my_event_handle_rsvd,        HANDLE_RSVD_OFFSET) \
 DEFAULT_EVENT_HANDLE(my_event_handle_trap0,       HANDLE_TRAP0_OFFSET) \
 DEFAULT_EVENT_HANDLE(my_event_handle_trap1,       HANDLE_TRAP1_OFFSET) \
 DEFAULT_EVENT_HANDLE(my_event_handle_int,         HANDLE_INT_OFFSET) \
+
+#endif /* NO_DEFAULT_EVENT_HANDLES */
 
 /* When a permission error happens, add the permission to the TLB entry */
 void my_event_handle_error_helper(uint32_t ssr)
@@ -725,6 +740,31 @@ static inline void install_my_event_vectors(void)
     old_evb = getevb();
     setevb(&my_event_vectors);
 }
+
+#define MAKE_GOTO(name) \
+void goto_##name(void) \
+{ \
+    asm volatile("r0 = ##" #name "\n\t" \
+                 "jumpr r0\n\t" \
+                 : : : "r0"); \
+}
+
+#define MAKE_ERR_HANDLER(name, helper_fn) \
+    MY_EVENT_HANDLE(name, helper_fn) \
+    MAKE_GOTO(name)
+
+#define INSTALL_ERR_HANDLER(name) { \
+    /*
+     * Install our own privelege exception handler.
+     * The normal behavior is to coredump
+     * Read and decode the jump displacemnts from evb
+     * ASSUME negative displacement which is the standard.
+     */ \
+    uint32_t *evb_err = getevb() + 2; \
+    uint32_t err_distance = -(0xfe000000 | *evb_err) << 1; \
+    uint32_t err_handler = (uint32_t)evb_err - err_distance; \
+    memcpy((void *)err_handler, goto_##name, 12); \
+} while (0)
 
 static inline void remove_trans(int index)
 {
