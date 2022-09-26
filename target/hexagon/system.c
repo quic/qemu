@@ -27,6 +27,7 @@
 #include "qemu/qemu-print.h"
 #include "cpu.h"
 #include "arch.h"
+#include "internal.h"
 #endif
 #include <assert.h>
 #include "macros.h"
@@ -68,6 +69,10 @@ void iic_flush_cache(processor_t * proc)
 {
 }
 
+static inline size8u_t get_size_for_xinfo(size8u_t entry_pg_size){
+    return 12 + 2*entry_pg_size;
+}
+
 paddr_t
 mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 				enum mem_access_types mtype, int type_for_xlate)
@@ -102,6 +107,10 @@ mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 	/* Attributes of the packet that are needed by the uarch */
     maptr->slot = slot;
     maptr->paddr = vaddr;
+    maptr->size = get_size_for_xinfo(4);
+    xlate_info_t *xinfo = &(maptr->xlate_info);
+    memset(xinfo,0,sizeof(*xinfo));
+    xinfo->size = maptr->size;
 
 	return (maptr->paddr);
 }
@@ -194,20 +203,169 @@ mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, i
 
 }
 
+#define warn(...)
+#define env thread
+#define Regs gpr
+#define REG_PC HEX_REG_PC
+#define EXCEPT_TYPE_PRECISE                 HEX_EVENT_PRECISE
+#define EXCEPT_TYPE_TLB_MISS_RW             HEX_EVENT_TLB_MISS_RW
+#define PRECISE_CAUSE_BIU_PRECISE           HEX_CAUSE_BIU_PRECISE
+#define PRECISE_CAUSE_REG_WRITE_CONFLICT    HEX_CAUSE_REG_WRITE_CONFLICT
+#define PRECISE_CAUSE_DOUBLE_EXCEPT         HEX_CAUSE_DOUBLE_EXCEPT
+
+#ifndef CONFIG_USER_ONLY
+static
+bool is_du_badva_affecting_exception(int type, int cause)
+{
+	if (type == EXCEPT_TYPE_TLB_MISS_RW) {
+		return true;
+	}
+	if ((type == EXCEPT_TYPE_PRECISE) && (cause >= 0x20)
+		&& (cause <= 0x28)) {
+		return true;
+	}
+	return false;
+}
+
+static
+void
+raise_coproc_ldst_exception(thread_t *env, size4u_t de_slotmask)
+
+{
+    CPUState *cs = env_cpu(env);
+    size4u_t slot = (de_slotmask & 0x1) ? 0 : 1;
+    raise_perm_exception(cs, thread->einfo.badva1, slot, MMU_DATA_LOAD, thread->einfo.type);
+    env->cause_code = thread->einfo.cause;
+    do_raise_exception_err(env, cs->exception_index, GETPC());
+}
+
+static
+void
+register_exception_info(thread_t * thread, size4u_t type, size4u_t cause,
+						size4u_t badva0, size4u_t badva1, size4u_t bvs,
+						size4u_t bv0, size4u_t bv1, size4u_t elr,
+						size4u_t diag, size4u_t de_slotmask)
+{
+#ifdef VERIFICATION
+	warn("Oldtype=%d oldcause=0x%x newtype=%d newcause=%x de_slotmask=%x diag=%x", thread->einfo.type, thread->einfo.cause, type, cause, de_slotmask, diag);
+#endif
+	if ((EXCEPTION_DETECTED)
+		&& (thread->einfo.type == EXCEPT_TYPE_TLB_MISS_RW)
+		&& ((type == EXCEPT_TYPE_PRECISE)
+			&& ((cause == 0x28) || (cause == 0x29)))) {
+		warn("Footnote in v2 System Architecture Spec 5.1 says: TLB miss RW has higher priority than multi write / bad cacheability");
+	}
+
+	else if ((EXCEPTION_DETECTED) && (thread->einfo.cause == PRECISE_CAUSE_BIU_PRECISE) && (cause == PRECISE_CAUSE_REG_WRITE_CONFLICT)) {
+		warn("RTL Takes Multi-write before BIU, overwriting BIU");
+		thread->einfo.type = type;
+		thread->einfo.cause = cause;
+		thread->einfo.badva0 = badva0;
+		thread->einfo.badva1 = badva1;
+		thread->einfo.bvs = bvs;
+		thread->einfo.bv0 = bv0;
+		thread->einfo.bv1 = bv1;
+		thread->einfo.elr = elr;
+		thread->einfo.diag = diag;
+	} else if ((EXCEPTION_DETECTED) && (thread->einfo.bv1 && bv0)  &&
+			/*We've already seen a slot1 exception */
+			   is_du_badva_affecting_exception(thread->einfo.type,
+							   thread->einfo.cause)
+			   && is_du_badva_affecting_exception(type, cause)) {
+
+		/* We've already seen a slot1 D-side exception, so only
+		   need to record the BADVA0 info */
+		thread->einfo.badva0 = badva0;
+		thread->einfo.bv0 = bv0;
+	} else if ((!EXCEPTION_DETECTED) || (type < thread->einfo.type)) {
+		SET_EXCEPTION;
+		thread->einfo.type = type;
+		thread->einfo.cause = cause;
+		thread->einfo.badva0 = badva0;
+		thread->einfo.badva1 = badva1;
+		thread->einfo.bvs = bvs;
+		thread->einfo.bv0 = bv0;
+		thread->einfo.bv1 = bv1;
+		thread->einfo.elr = elr;
+		thread->einfo.diag = diag;
+		thread->einfo.de_slotmask |= de_slotmask;
+        raise_coproc_ldst_exception(thread, de_slotmask);
+	} else if ((type == thread->einfo.type)
+			   && (cause < thread->einfo.cause)) {
+		thread->einfo.cause = cause;
+		thread->einfo.badva0 = badva0;
+		thread->einfo.badva1 = badva1;
+		thread->einfo.bvs = bvs;
+		thread->einfo.bv0 = bv0;
+		thread->einfo.bv1 = bv1;
+		thread->einfo.elr = elr;
+		thread->einfo.diag = diag;
+	} else if ((type == thread->einfo.type)
+			   && (cause == thread->einfo.cause)
+			   && (cause == PRECISE_CAUSE_DOUBLE_EXCEPT)) {
+		if ((de_slotmask == 0)
+			|| (thread->einfo.de_slotmask < de_slotmask)) {
+			if (diag < thread->einfo.diag) {
+				warn("Picking better proiroty root exception cause for DIAG: 0x%x", diag);
+				thread->einfo.diag = diag;
+			} else {
+				warn("Not selecting lower priority DIAG: 0x%x", diag);
+			}
+			thread->einfo.de_slotmask |= de_slotmask;
+		} else {
+			warn("Trying to avoid slot0 DE in the presence of a slot1 DE, not setting slot0 DIAG of 0x%x", diag);
+		}
+	} else {
+		/* do nothing, lower prio */
+	}
+}
+
+static
+void
+register_error_exception(thread_t * thread, size4u_t error_code,
+						 size4u_t badva0, size4u_t badva1, size4u_t bvs,
+						 size4u_t bv0, size4u_t bv1, size4u_t slotmask)
+{
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_SSR);
+	/*warn("Error exception detected, tnum=%d code=0x%x pc=0x%x badva0=0x%x badva1=0x%x, bvs=%x, Pcycle=%lld msg=%s\n", thread->threadId, error_code, thread->Regs[REG_PC], badva0, badva1, bvs, thread->processor_ptr->monotonic_pcycles, thread->exception_msg ? thread->exception_msg : "");*/
+	/*thread->exception_msg = NULL;*/
+	if ((error_code > HEX_CAUSE_DOUBLE_EXCEPT)
+		&& GET_SSR_FIELD(SSR_EX, ssr)) {
+		/*warn("Double Exception...");*/
+		register_exception_info(thread, EXCEPT_TYPE_PRECISE,
+								HEX_CAUSE_DOUBLE_EXCEPT,
+								ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA0),
+								ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1),
+								GET_SSR_FIELD(SSR_BVS, ssr),
+								GET_SSR_FIELD(SSR_V0, ssr),
+								GET_SSR_FIELD(SSR_V1, ssr),
+								thread->Regs[REG_PC], error_code,
+								slotmask);
+		return;
+	}
+
+	register_exception_info(thread, EXCEPT_TYPE_PRECISE, error_code,
+							badva0, badva1, bvs, bv0, bv1,
+							thread->Regs[REG_PC],
+							ARCH_GET_SYSTEM_REG(thread, HEX_SREG_DIAG),
+							0);
+}
+#endif
+
 void register_coproc_ldst_exception(thread_t * thread, int slot, size4u_t badva)
 {
-#ifdef FIXME
-	warn("Coprocessor LDST Exception, tnum=%d npc=%x\n", thread->threadId, thread->Regs[REG_PC]);
+#ifndef CONFIG_USER_ONLY
+	/*warn("Coprocessor LDST Exception, tnum=%d npc=%x\n", thread->threadId, thread->Regs[REG_PC]);*/
 	if (slot == 0) {
-		register_error_exception(thread, PRECISE_CAUSE_COPROC_LDST,
+		register_error_exception(thread, HEX_CAUSE_COPROC_LDST,
 			 badva,
-			 thread->Regs[REG_BADVA1],
+			 ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA),
 			 0 /* select 0 */,
 			 1 /* set bv0 */,
 			 0 /* clear bv1 */, 1<<slot);
 	} else {
-		register_error_exception(thread,PRECISE_CAUSE_COPROC_LDST,
-			thread->Regs[REG_BADVA0],
+		register_error_exception(thread, HEX_CAUSE_COPROC_LDST,
+			ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA0),
 			badva,
 			1 /* select 1 */,
 			0 /* clear bv0 */,

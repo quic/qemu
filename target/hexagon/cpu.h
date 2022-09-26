@@ -367,6 +367,7 @@ typedef struct {
     uint64_t stdata;
     int cancelled;
     int tnum;
+    int size;
     enum mem_access_types type;
     unsigned char cdata[512];
     uint32_t width;
@@ -537,6 +538,7 @@ typedef struct CPUArchState {
     uint64_t *g_pcycle_base;
 #ifndef CONFIG_USER_ONLY
     int slot;                    /* Needed for exception generation */
+    exception_info einfo;
     systemstate_t systemstate;
     const char *cmdline;
     CPUHexagonTLBContext *hex_tlb;

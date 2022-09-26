@@ -18,12 +18,44 @@
 #ifndef _ARCH_OPTIONS_CALC_H_
 #define _ARCH_OPTIONS_CALC_H_
 
+#ifndef CONFIG_USER_ONLY
+
+#define VTCM_CFG_BASE_OFF 0x38
+#define VTCM_CFG_SIZE_OFF 0x3c
+
+#define in_vtcm_space(proc, paddr, warning) \
+    in_vtcm_space_impl(thread, paddr, warning)
+
+static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr,
+    int warning)
+
+{
+    static bool init_needed = true;
+    static paddr_t vtcm_base;
+    static target_ulong vtcm_size;
+
+    if (init_needed == true) {
+        init_needed = false;
+        hwaddr cfgbase = (hwaddr)ARCH_GET_SYSTEM_REG(thread, HEX_SREG_CFGBASE)
+            << 16;
+        cpu_physical_memory_read(cfgbase + VTCM_CFG_BASE_OFF, &vtcm_base,
+            sizeof(target_ulong));
+        vtcm_base <<= 16;
+        cpu_physical_memory_read(cfgbase + VTCM_CFG_SIZE_OFF, &vtcm_size,
+            sizeof(target_ulong));
+        vtcm_size *= 1024;
+    }
+
+    return paddr >= vtcm_base && paddr < (vtcm_base + vtcm_size);
+}
+#else
 #define in_vtcm_space(proc, paddr, warning) 1
+#endif
 
 struct ProcessorState;
 enum {
-	HIDE_WARNING,
-	SHOW_WARNING
+    HIDE_WARNING,
+    SHOW_WARNING
 };
 /**********   Arch Options Calculated Functions   **********/
 
