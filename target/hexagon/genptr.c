@@ -57,6 +57,8 @@ static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot, TC
     tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
     tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, zero,
                            val, hex_new_value[rnum]);
+    gen_helper_check_cond_reg_write(cpu_env, tcg_constant_tl(rnum), slot_mask);
+
     if (HEX_DEBUG) {
         /*
          * Do this so HELPER(debug_commit_end) will know
@@ -75,6 +77,7 @@ static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot, TC
 static inline void gen_log_reg_write(int rnum, TCGv val)
 {
     tcg_gen_mov_tl(hex_new_value[rnum], val);
+    gen_helper_check_reg_write(cpu_env, tcg_constant_tl(rnum));
     if (HEX_DEBUG) {
         /* Do this so HELPER(debug_commit_end) will know */
         tcg_gen_movi_tl(hex_reg_written[rnum], 1);
@@ -103,11 +106,15 @@ static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot, 
     tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum],
                        slot_mask, zero,
                        val32, hex_new_value[rnum]);
+
     /* High word */
     tcg_gen_extrh_i64_i32(val32, val);
     tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum + 1],
                        slot_mask, zero,
                        val32, hex_new_value[rnum + 1]);
+
+    gen_helper_check_cond_reg_write_pair(cpu_env, tcg_constant_tl(rnum), slot_mask);
+
     if (HEX_DEBUG) {
         /*
          * Do this so HELPER(debug_commit_end) will know
@@ -141,6 +148,8 @@ static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
         /* Do this so HELPER(debug_commit_end) will know */
         tcg_gen_movi_tl(hex_reg_written[rnum + 1], 1);
     }
+
+    gen_helper_check_reg_write_pair(cpu_env, tcg_constant_tl(rnum));
 }
 
 #ifndef CONFIG_USER_ONLY

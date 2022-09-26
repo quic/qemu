@@ -80,10 +80,6 @@ typedef struct DisasContext {
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
 {
-    if (test_bit(rnum, ctx->regs_written)) {
-        HEX_DEBUG_LOG("WARNING: Multiple writes to r%d\n", rnum);
-        return;
-    }
     ctx->reg_log[ctx->reg_log_idx] = rnum;
     ctx->reg_log_idx++;
     set_bit(rnum, ctx->regs_written);
@@ -169,6 +165,7 @@ extern TCGv hex_slot_cancelled;
 extern TCGv hex_branch_taken;
 extern TCGv hex_new_value[TOTAL_PER_THREAD_REGS];
 extern TCGv hex_reg_written[TOTAL_PER_THREAD_REGS];
+extern TCGv hex_gpreg_written;
 extern TCGv hex_new_pred_value[NUM_PREGS];
 extern TCGv hex_pred_written;
 extern TCGv hex_store_addr[STORES_MAX];

@@ -75,6 +75,7 @@ TESTS += \
 	checkforpriv \
 	pend_wake_wait \
 	gregs \
+	multiple_writes \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -149,6 +150,7 @@ checkforpriv.o: checkforpriv.c mmu.h
 checkforpriv: checkforpriv.o
 pend_wake_wait: pend_wake_wait.o
 gregs: gregs.o
+multiple_writes: multiple_writes.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)

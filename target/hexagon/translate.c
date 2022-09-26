@@ -41,6 +41,7 @@ TCGv hex_slot_cancelled;
 TCGv hex_branch_taken;
 TCGv hex_new_value[TOTAL_PER_THREAD_REGS];
 TCGv hex_reg_written[TOTAL_PER_THREAD_REGS];
+TCGv hex_gpreg_written;
 TCGv hex_new_pred_value[NUM_PREGS];
 TCGv hex_pred_written;
 TCGv hex_store_addr[STORES_MAX];
@@ -458,6 +459,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         }
     }
 
+    tcg_gen_movi_tl(hex_gpreg_written, 0);
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
         gen_helper_debug_start_packet(cpu_env);
@@ -1356,6 +1358,8 @@ void hexagon_translate_init(void)
                 reg_written_names[i]);
         }
     }
+    hex_gpreg_written = tcg_global_mem_new(cpu_env,
+                offsetof(CPUHexagonState, gpreg_written), "gpreg_written");
 #ifndef CONFIG_USER_ONLY
     for (i = 0; i < NUM_GREGS; i++) {
             hex_greg[i] = tcg_global_mem_new(cpu_env,

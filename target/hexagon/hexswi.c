@@ -1147,6 +1147,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
         case HEX_CAUSE_INVALID_OPCODE:
         case HEX_CAUSE_NO_COPROC_ENABLE:
         case HEX_CAUSE_NO_COPROC2_ENABLE:
+        case HEX_CAUSE_REG_WRITE_CONFLICT:
             hexagon_ssr_set_cause(env, env->cause_code);
             set_addresses(env, 0, cs->exception_index);
             break;
