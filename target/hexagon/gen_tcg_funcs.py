@@ -656,49 +656,6 @@ def genptr_dst_write_ext(f, tag, regtype, regid, newv="EXT_DFL"):
     else:
         print("Bad register parse: ", regtype, regid)
 
-def genptr_dst_write_ext(f, tag, regtype, regid, newv="EXT_DFL"):
-    if (regtype == "V"):
-        if (regid in {"dd", "xx", "yy"}):
-            if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                is_predicated = "true"
-            else:
-                is_predicated = "false"
-            f.write("    gen_log_vreg_write_pair(ctx, %s%sV_off, %s%sN, " % \
-                (regtype, regid, regtype, regid))
-            f.write("%s, insn->slot, %s);\n" % \
-                (newv, is_predicated))
-            f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
-                (regtype, regid, newv))
-            f.write("        %s);\n" % (is_predicated))
-        elif (regid in {"d", "x", "y"}):
-            if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                is_predicated = "true"
-            else:
-                is_predicated = "false"
-            f.write("    gen_log_vreg_write(ctx, %s%sV_off, %s%sN, %s, " % \
-                (regtype, regid, regtype, regid, newv))
-            f.write("insn->slot, %s);\n" % \
-                (is_predicated))
-            f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, %s);\n" % \
-                (regtype, regid, newv, is_predicated))
-        else:
-            print("Bad register parse: ", regtype, regid)
-    elif (regtype == "Q"):
-        if (regid in {"d", "e", "x"}):
-            if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                is_predicated = "true"
-            else:
-                is_predicated = "false"
-            f.write("    gen_log_qreg_write(%s%sV_off, %s%sN, %s, " % \
-                (regtype, regid, regtype, regid, newv))
-            f.write("insn->slot, %s);\n" % (is_predicated))
-            f.write("    ctx_log_qreg_write(ctx, %s%sN, %s);\n" % \
-                (regtype, regid, is_predicated))
-        else:
-            print("Bad register parse: ", regtype, regid)
-    else:
-        print("Bad register parse: ", regtype, regid)
-
 def genptr_dst_write_opn(f,regtype, regid, tag):
     if (hex_common.is_pair(regid)):
         if (hex_common.is_hvx_reg(regtype)):
