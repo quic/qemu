@@ -434,6 +434,8 @@ FUNC_P_OP_PP(vnavgwr,           "%0 = vnavgw(%2, %3):rnd:sat")
 FUNC_R_OP_RI(round_ri_sat,      "%0 = round(%2, #%3):sat")
 FUNC_R_OP_RR(asr_r_r_sat,       "%0 = asr(%2, %3):sat")
 FUNC_R_OP_RR(asl_r_r_sat,       "%0 = asl(%2, %3):sat")
+FUNC_R_OP_RR(asr_r_r,           "%0 = asr(%2, %3)")
+FUNC_R_OP_RR(asl_r_r,           "%0 = asl(%2, %3)")
 
 FUNC_XPp_OP_PP(ACS,             "%0, p2 = vacsh(%3, %4)")
 
@@ -919,6 +921,10 @@ int main()
     TEST_R_OP_RR(asr_r_r_sat,  0x80000000, 0xf5, 0x80000000, USR_OVF);
     TEST_R_OP_RR(asr_r_r_sat,  0x7fff0000, 0x42, 0x7fffffff, USR_OVF);
     TEST_R_OP_RR(asr_r_r_sat,  0xff000000, 0x42, 0x80000000, USR_OVF);
+    TEST_R_OP_RR(asr_r_r_sat,        4096,   32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asr_r_r_sat,        4096,  -32, 0x7fffffff, USR_OVF);
+    TEST_R_OP_RR(asr_r_r_sat,       -4096,   32, 0xffffffff, USR_CLEAR);
+    TEST_R_OP_RR(asr_r_r_sat,       -4096,  -32, 0x80000000, USR_OVF);
 
     TEST_R_OP_RR(asl_r_r_sat,  0x00000000, 0x40, 0x00000000, USR_CLEAR);
     TEST_R_OP_RR(asl_r_r_sat,  0x80000000, 0xff, 0xc0000000, USR_CLEAR);
@@ -927,6 +933,20 @@ int main()
     TEST_R_OP_RR(asl_r_r_sat,  0x80000000, 0x0b, 0x80000000, USR_OVF);
     TEST_R_OP_RR(asl_r_r_sat,  0x7fff0000, 0xbe, 0x7fffffff, USR_OVF);
     TEST_R_OP_RR(asl_r_r_sat,  0xff000000, 0xbe, 0x80000000, USR_OVF);
+    TEST_R_OP_RR(asl_r_r_sat,        4096,   32, 0x7fffffff, USR_OVF);
+    TEST_R_OP_RR(asl_r_r_sat,        4096,  -32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asl_r_r_sat,       -4096,   32, 0x80000000, USR_OVF);
+    TEST_R_OP_RR(asl_r_r_sat,       -4096,  -32, 0xffffffff, USR_CLEAR);
+
+    TEST_R_OP_RR(asr_r_r,        4096,   32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asr_r_r,        4096,  -32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asr_r_r,       -4096,   32, 0xffffffff, USR_CLEAR);
+    TEST_R_OP_RR(asr_r_r,       -4096,  -32, 0x00000000, USR_CLEAR);
+
+    TEST_R_OP_RR(asl_r_r,        4096,   32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asl_r_r,        4096,  -32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asl_r_r,       -4096,   32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asl_r_r,       -4096,  -32, 0xffffffff, USR_CLEAR);
 
     TEST_XPp_OP_PP(ACS, 0x0004000300020001ULL, 0x0001000200030004ULL,
                    0x0000000000000000ULL, 0x0004000300030004ULL, 0xf0,
