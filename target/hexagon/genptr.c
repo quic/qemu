@@ -1259,6 +1259,33 @@ static void gen_shl_sat(TCGv RdV, TCGv RsV, TCGv shift_amt)
     tcg_temp_free(tmp);
 }
 
+static void gen_sar(TCGv RdV, TCGv RsV, TCGv shift_amt)
+{
+    /*
+     * if (shift_amt < 32) {
+     *     RdV = sar(RsV, shift_amt);
+     * } else {
+     *     if (RsV > 0) {
+     *         RdV = 0;
+     *     } else {
+     *         RdV = ~0;
+     *     }
+     * }
+     */
+    TCGLabel *shift_ge_32 = gen_new_label();
+    TCGLabel *done = gen_new_label();
+
+    tcg_gen_brcondi_tl(TCG_COND_GE, shift_amt, 32, shift_ge_32);
+    tcg_gen_sar_tl(RdV, RsV, shift_amt);
+    tcg_gen_br(done);
+
+    gen_set_label(shift_ge_32);
+    tcg_gen_movcond_tl(TCG_COND_LT, RdV, RsV, tcg_constant_tl(0),
+                       tcg_constant_tl(~0), tcg_constant_tl(0));
+
+    gen_set_label(done);
+}
+
 /* Bidirectional shift right with saturation */
 static void gen_asr_r_r_sat(TCGv RdV, TCGv RsV, TCGv RtV)
 {
@@ -1276,7 +1303,7 @@ static void gen_asr_r_r_sat(TCGv RdV, TCGv RsV, TCGv RtV)
 
     gen_set_label(positive);
     /* Positive shift amount => shift right */
-    tcg_gen_sar_tl(RdV, RsV, shift_amt);
+    gen_sar(RdV, RsV, shift_amt);
 
     gen_set_label(done);
 
@@ -1295,7 +1322,7 @@ static void gen_asl_r_r_sat(TCGv RdV, TCGv RsV, TCGv RtV)
 
     /* Negative shift amount => shift right */
     tcg_gen_neg_tl(shift_amt, shift_amt);
-    tcg_gen_sar_tl(RdV, RsV, shift_amt);
+    gen_sar(RdV, RsV, shift_amt);
     tcg_gen_br(done);
 
     gen_set_label(positive);
