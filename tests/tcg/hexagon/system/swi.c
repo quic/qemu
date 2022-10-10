@@ -51,16 +51,15 @@ uint32_t getimask(int thread)
     return imask;
 }
 
-/* enables ints for mulitple threads */
-void setimask(int thread, unsigned int imask_irq)
+/* enables ints for multiple threads */
+void setimask(unsigned int tid, unsigned int imask_irq)
 {
-    unsigned thread_mask = 0x1 << thread;
     asm volatile("r0 = %0\n\t"
                  "p0 = %1\n\t"
                  "setimask(p0, r0)\n\t"
                  "isync\n\t"
-                 : : "r"(imask_irq), "r"(thread_mask)
-                 : "r0", "r1", "p0");
+                 : : "r"(imask_irq), "r"(tid)
+                 : "r0", "p0");
 }
 
 typedef void (*ThreadT)(void *);
