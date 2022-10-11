@@ -630,7 +630,8 @@ static void mark_store_width(DisasContext *ctx, Insn *insn)
         if (GET_ATTRIB(opcode, A_MEMSIZE_8B)) {
             width |= 8;
         }
-        tcg_debug_assert(is_power_of_2(width));
+        tcg_debug_assert(is_power_of_2(width) ||
+                         (width == 0 && GET_ATTRIB(opcode, A_MEMSIZE_0B)));
         ctx->store_width[slot] = width;
     }
 }
