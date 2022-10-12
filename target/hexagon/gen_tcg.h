@@ -1761,6 +1761,7 @@
  *      cmpgtn1  compare greater than negative 1
  *      cmpeq    compare equal (two registers)
  *      cmpgtu   compare greater than unsigned (two registers)
+ *      tstbit0  test bit zero
  *
  * Condition
  *      tp0      p0 is true     p0 = cmp.eq(r0,#5); if (p0.new) jump:nt address
@@ -1772,90 +1773,158 @@
  *      _nt      not taken
  *      _t       taken
  */
-#define fGEN_TCG_J4_cmpeqi_tp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_EQ, true, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpeqi_fp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_EQ, false, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpeq_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_EQ, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_tp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_EQ, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_fp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_EQ, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_EQ, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_EQ, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_tp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_EQ, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_fp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_EQ, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_EQ, false, RsV, RtV, riV)
+
+#define fGEN_TCG_J4_cmpgt_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_GT, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_tp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_GT, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_fp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_GT, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_GT, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GT, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_tp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GT, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_fp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GT, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GT, false, RsV, RtV, riV)
+
+#define fGEN_TCG_J4_cmpgtu_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_GTU, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_tp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_GTU, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_fp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_GTU, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_GTU, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GTU, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_tp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GTU, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_fp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GTU, false, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GTU, false, RsV, RtV, riV)
+
 #define fGEN_TCG_J4_cmpeqi_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_EQ, true, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpeqi_tp0_jump_nt(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_EQ, true, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpeqi_fp0_jump_t(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_EQ, false, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpeqi_tp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_EQ, true, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpeqi_fp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_EQ, false, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpeqi_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_EQ, false, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpeqi_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_EQ, true, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpeqi_tp1_jump_nt(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_EQ, true, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpeqi_fp1_jump_t(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_EQ, false, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpgti_tp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GT, true, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpgti_fp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GT, false, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpeqi_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_EQ, false, RsV, UiV, riV)
+
 #define fGEN_TCG_J4_cmpgti_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GT, true, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpgti_tp0_jump_nt(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GT, true, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpgti_fp0_jump_t(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GT, false, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpgti_tp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GT, true, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpgti_fp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GT, false, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpgti_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GT, false, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpgti_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GT, true, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpgti_tp1_jump_nt(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GT, true, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpgti_fp1_jump_t(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GT, false, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpgtui_tp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GTU, true, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpgtui_fp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GTU, false, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpgti_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GT, false, RsV, UiV, riV)
+
 #define fGEN_TCG_J4_cmpgtui_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GTU, true, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpgtui_tp0_jump_nt(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GTU, true, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpgtui_fp0_jump_t(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GTU, false, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpgtui_tp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GTU, true, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpgtui_fp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GTU, false, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpgtui_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 0, TCG_COND_GTU, false, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpgtui_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GTU, true, RsV, UiV, riV)
+#define fGEN_TCG_J4_cmpgtui_tp1_jump_nt(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GTU, true, RsV, UiV, riV)
 #define fGEN_TCG_J4_cmpgtui_fp1_jump_t(SHORTCODE) \
     gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GTU, false, RsV, UiV, riV)
-#define fGEN_TCG_J4_cmpeqn1_tp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_EQ, true, RsV, riV)
-#define fGEN_TCG_J4_cmpeqn1_fp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_EQ, false, RsV, riV)
+#define fGEN_TCG_J4_cmpgtui_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmpi_jmp(ctx, 1, TCG_COND_GTU, false, RsV, UiV, riV)
+
 #define fGEN_TCG_J4_cmpeqn1_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_EQ, true, RsV, riV)
+#define fGEN_TCG_J4_cmpeqn1_tp0_jump_nt(SHORTCODE) \
     gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_EQ, true, RsV, riV)
 #define fGEN_TCG_J4_cmpeqn1_fp0_jump_t(SHORTCODE) \
     gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_EQ, false, RsV, riV)
-#define fGEN_TCG_J4_cmpeqn1_tp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_EQ, true, RsV, riV)
-#define fGEN_TCG_J4_cmpeqn1_fp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_EQ, false, RsV, riV)
+#define fGEN_TCG_J4_cmpeqn1_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_EQ, false, RsV, riV)
 #define fGEN_TCG_J4_cmpeqn1_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_EQ, true, RsV, riV)
+#define fGEN_TCG_J4_cmpeqn1_tp1_jump_nt(SHORTCODE) \
     gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_EQ, true, RsV, riV)
 #define fGEN_TCG_J4_cmpeqn1_fp1_jump_t(SHORTCODE) \
     gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_EQ, false, RsV, riV)
-#define fGEN_TCG_J4_cmpgtn1_tp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_GT, true, RsV, riV)
-#define fGEN_TCG_J4_cmpgtn1_fp0_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_GT, false, RsV, riV)
+#define fGEN_TCG_J4_cmpeqn1_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_EQ, false, RsV, riV)
+
 #define fGEN_TCG_J4_cmpgtn1_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_GT, true, RsV, riV)
+#define fGEN_TCG_J4_cmpgtn1_tp0_jump_nt(SHORTCODE) \
     gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_GT, true, RsV, riV)
 #define fGEN_TCG_J4_cmpgtn1_fp0_jump_t(SHORTCODE) \
     gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_GT, false, RsV, riV)
-#define fGEN_TCG_J4_cmpgtn1_tp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_GT, true, RsV, riV)
-#define fGEN_TCG_J4_cmpgtn1_fp1_jump_nt(SHORTCODE) \
-    gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_GT, false, RsV, riV)
+#define fGEN_TCG_J4_cmpgtn1_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_n1_jmp(ctx, 0, TCG_COND_GT, false, RsV, riV)
 #define fGEN_TCG_J4_cmpgtn1_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_GT, true, RsV, riV)
+#define fGEN_TCG_J4_cmpgtn1_tp1_jump_nt(SHORTCODE) \
     gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_GT, true, RsV, riV)
 #define fGEN_TCG_J4_cmpgtn1_fp1_jump_t(SHORTCODE) \
     gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_GT, false, RsV, riV)
-#define fGEN_TCG_J4_cmpeq_tp0_jump_t(SHORTCODE) \
-    gen_cmpnd_cmp_jmp(ctx, 0, TCG_COND_EQ, true, RsV, RtV, riV)
-#define fGEN_TCG_J4_cmpgtu_tp1_jump_t(SHORTCODE) \
-    gen_cmpnd_cmp_jmp(ctx, 1, TCG_COND_GTU, true, RsV, RtV, riV)
+#define fGEN_TCG_J4_cmpgtn1_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_cmp_n1_jmp(ctx, 1, TCG_COND_GT, false, RsV, riV)
+
+#define fGEN_TCG_J4_tstbit0_tp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_tstbit0_jmp(ctx, 0, true, RsV, riV)
+#define fGEN_TCG_J4_tstbit0_tp0_jump_t(SHORTCODE) \
+    gen_cmpnd_tstbit0_jmp(ctx, 0, true, RsV, riV)
+#define fGEN_TCG_J4_tstbit0_fp0_jump_nt(SHORTCODE) \
+    gen_cmpnd_tstbit0_jmp(ctx, 0, false, RsV, riV)
+#define fGEN_TCG_J4_tstbit0_fp0_jump_t(SHORTCODE) \
+    gen_cmpnd_tstbit0_jmp(ctx, 0, false, RsV, riV)
+#define fGEN_TCG_J4_tstbit0_tp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_tstbit0_jmp(ctx, 1, true, RsV, riV)
+#define fGEN_TCG_J4_tstbit0_tp1_jump_t(SHORTCODE) \
+    gen_cmpnd_tstbit0_jmp(ctx, 1, true, RsV, riV)
+#define fGEN_TCG_J4_tstbit0_fp1_jump_nt(SHORTCODE) \
+    gen_cmpnd_tstbit0_jmp(ctx, 1, false, RsV, riV)
+#define fGEN_TCG_J4_tstbit0_fp1_jump_t(SHORTCODE) \
+    gen_cmpnd_tstbit0_jmp(ctx, 1, false, RsV, riV)
 
 /* p0 = cmp.eq(r0, #7) */
 #define fGEN_TCG_SA1_cmpeqi(SHORTCODE) \
@@ -1960,6 +2029,11 @@
     gen_jump(ctx, riV)
 #define fGEN_TCG_J2_jumpr(SHORTCODE) \
     gen_jumpr(ctx, RsV)
+#define fGEN_TCG_J4_jumpseti(SHORTCODE) \
+    do { \
+        tcg_gen_movi_tl(RdV, UiV); \
+        gen_jump(ctx, riV); \
+    } while (0)
 
 #define fGEN_TCG_cond_jump(COND) \
     do { \
@@ -1977,56 +2051,161 @@
     fGEN_TCG_cond_jump(fLSBOLDNOT(PuV))
 #define fGEN_TCG_J2_jumpfpt(SHORTCODE) \
     fGEN_TCG_cond_jump(fLSBOLDNOT(PuV))
-#define fGEN_TCG_J2_jumpfnewpt(SHORTCODE) \
-    fGEN_TCG_cond_jump(fLSBNEWNOT(PuN))
-#define fGEN_TCG_J2_jumpfnew(SHORTCODE) \
-    fGEN_TCG_cond_jump(fLSBNEWNOT(PuN))
-
-#define fGEN_TCG_J2_jumprfnew(SHORTCODE) \
-    do { \
-        TCGv LSB = tcg_temp_new(); \
-        tcg_gen_andi_tl(LSB, PuN, 1); \
-        tcg_gen_xori_tl(LSB, LSB, 1); \
-        gen_cond_jumpr(ctx, LSB, RsV); \
-        tcg_temp_free(LSB); \
-    } while (0)
-
 #define fGEN_TCG_J2_jumptnew(SHORTCODE) \
     gen_cond_jump(ctx, PuN, riV)
 #define fGEN_TCG_J2_jumptnewpt(SHORTCODE) \
     gen_cond_jump(ctx, PuN, riV)
+#define fGEN_TCG_J2_jumpfnewpt(SHORTCODE) \
+    fGEN_TCG_cond_jump(fLSBNEWNOT(PuN))
+#define fGEN_TCG_J2_jumpfnew(SHORTCODE) \
+    fGEN_TCG_cond_jump(fLSBNEWNOT(PuN))
+#define fGEN_TCG_J2_jumprz(SHORTCODE) \
+    fGEN_TCG_cond_jump(tcg_gen_setcondi_tl(TCG_COND_NE, LSB, RsV, 0))
+#define fGEN_TCG_J2_jumprzpt(SHORTCODE) \
+    fGEN_TCG_cond_jump(tcg_gen_setcondi_tl(TCG_COND_NE, LSB, RsV, 0))
+#define fGEN_TCG_J2_jumprnz(SHORTCODE) \
+    fGEN_TCG_cond_jump(tcg_gen_setcondi_tl(TCG_COND_EQ, LSB, RsV, 0))
+#define fGEN_TCG_J2_jumprnzpt(SHORTCODE) \
+    fGEN_TCG_cond_jump(tcg_gen_setcondi_tl(TCG_COND_EQ, LSB, RsV, 0))
+#define fGEN_TCG_J2_jumprgtez(SHORTCODE) \
+    fGEN_TCG_cond_jump(tcg_gen_setcondi_tl(TCG_COND_GE, LSB, RsV, 0))
+#define fGEN_TCG_J2_jumprgtezpt(SHORTCODE) \
+    fGEN_TCG_cond_jump(tcg_gen_setcondi_tl(TCG_COND_GE, LSB, RsV, 0))
+#define fGEN_TCG_J2_jumprltez(SHORTCODE) \
+    fGEN_TCG_cond_jump(tcg_gen_setcondi_tl(TCG_COND_LE, LSB, RsV, 0))
+#define fGEN_TCG_J2_jumprltezpt(SHORTCODE) \
+    fGEN_TCG_cond_jump(tcg_gen_setcondi_tl(TCG_COND_LE, LSB, RsV, 0))
+
+#define fGEN_TCG_cond_jumpr(COND) \
+    do { \
+        TCGv LSB = tcg_temp_new(); \
+        COND; \
+        gen_cond_jumpr(ctx, LSB, RsV); \
+        tcg_temp_free(LSB); \
+    } while (0)
+
+#define fGEN_TCG_J2_jumprt(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBOLD(PuV))
+#define fGEN_TCG_J2_jumprtpt(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBOLD(PuV))
+#define fGEN_TCG_J2_jumprf(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBOLDNOT(PuV))
+#define fGEN_TCG_J2_jumprfpt(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBOLDNOT(PuV))
+#define fGEN_TCG_J2_jumprtnew(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBNEW(PuN))
+#define fGEN_TCG_J2_jumprtnewpt(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBNEW(PuN))
+#define fGEN_TCG_J2_jumprfnew(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBNEWNOT(PuN))
+#define fGEN_TCG_J2_jumprfnewpt(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBNEWNOT(PuN))
+#define fGEN_TCG_J2_jumprfnewpt(SHORTCODE) \
+    fGEN_TCG_cond_jumpr(fLSBNEWNOT(PuN))
 
 /*
  * New value compare & jump instructions
  * if ([!]COND(r0.new, r1) jump:t address
  * if ([!]COND(r0.new, #7) jump:t address
  */
-#define fGEN_TCG_J4_cmpgt_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(ctx, TCG_COND_LE, NsN, RtV, riV)
-#define fGEN_TCG_J4_cmpeq_f_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(ctx, TCG_COND_NE, NsN, RtV, riV)
-#define fGEN_TCG_J4_cmpeq_t_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(ctx, TCG_COND_EQ, NsN, RtV, riV)
-#define fGEN_TCG_J4_cmplt_f_jumpnv_nt(SHORTCODE) \
-    gen_cmp_jumpnv(ctx, TCG_COND_GE, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgt_t_jumpnv_t(SHORTCODE) \
     gen_cmp_jumpnv(ctx, TCG_COND_GT, NsN, RtV, riV)
-#define fGEN_TCG_J4_cmpeqi_t_jumpnv_nt(SHORTCODE) \
-    gen_cmpi_jumpnv(ctx, TCG_COND_EQ, NsN, UiV, riV)
-#define fGEN_TCG_J4_cmpltu_f_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(ctx, TCG_COND_GEU, NsN, RtV, riV)
-#define fGEN_TCG_J4_cmpgtui_t_jumpnv_t(SHORTCODE) \
-    gen_cmpi_jumpnv(ctx, TCG_COND_GTU, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpgt_t_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_GT, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_f_jumpnv_t(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_LE, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpgt_f_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_LE, NsN, RtV, riV)
+
+#define fGEN_TCG_J4_cmpeq_t_jumpnv_t(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_EQ, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_t_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_EQ, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpeq_f_jumpnv_t(SHORTCODE) \
     gen_cmp_jumpnv(ctx, TCG_COND_NE, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpeq_f_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_NE, NsN, RtV, riV)
+
+#define fGEN_TCG_J4_cmplt_t_jumpnv_t(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_LT, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmplt_t_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_LT, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmplt_f_jumpnv_t(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_GE, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmplt_f_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_GE, NsN, RtV, riV)
+
+#define fGEN_TCG_J4_cmpeqi_t_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_EQ, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpeqi_t_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_EQ, NsN, UiV, riV)
 #define fGEN_TCG_J4_cmpeqi_f_jumpnv_t(SHORTCODE) \
     gen_cmpi_jumpnv(ctx, TCG_COND_NE, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpeqi_f_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_NE, NsN, UiV, riV)
+
+#define fGEN_TCG_J4_cmpgti_t_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_GT, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpgti_t_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_GT, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpgti_f_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_LE, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpgti_f_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_LE, NsN, UiV, riV)
+
+#define fGEN_TCG_J4_cmpltu_t_jumpnv_t(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_LTU, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpltu_t_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_LTU, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpltu_f_jumpnv_t(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_GEU, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpltu_f_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_GEU, NsN, RtV, riV)
+
+#define fGEN_TCG_J4_cmpgtui_t_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_GTU, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpgtui_t_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_GTU, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpgtui_f_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_LEU, NsN, UiV, riV)
+#define fGEN_TCG_J4_cmpgtui_f_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_LEU, NsN, UiV, riV)
+
 #define fGEN_TCG_J4_cmpgtu_t_jumpnv_t(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_GTU, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_t_jumpnv_nt(SHORTCODE) \
     gen_cmp_jumpnv(ctx, TCG_COND_GTU, NsN, RtV, riV)
 #define fGEN_TCG_J4_cmpgtu_f_jumpnv_t(SHORTCODE) \
     gen_cmp_jumpnv(ctx, TCG_COND_LEU, NsN, RtV, riV)
-#define fGEN_TCG_J4_cmplt_t_jumpnv_t(SHORTCODE) \
-    gen_cmp_jumpnv(ctx, TCG_COND_LT, NsN, RtV, riV)
+#define fGEN_TCG_J4_cmpgtu_f_jumpnv_nt(SHORTCODE) \
+    gen_cmp_jumpnv(ctx, TCG_COND_LEU, NsN, RtV, riV)
+
+#define fGEN_TCG_J4_cmpeqn1_t_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_EQ, NsN, -1, riV)
+#define fGEN_TCG_J4_cmpeqn1_t_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_EQ, NsN, -1, riV)
+#define fGEN_TCG_J4_cmpeqn1_f_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_NE, NsN, -1, riV)
+#define fGEN_TCG_J4_cmpeqn1_f_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_NE, NsN, -1, riV)
+
+#define fGEN_TCG_J4_cmpgtn1_t_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_GT, NsN, -1, riV)
+#define fGEN_TCG_J4_cmpgtn1_t_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_GT, NsN, -1, riV)
+#define fGEN_TCG_J4_cmpgtn1_f_jumpnv_t(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_LE, NsN, -1, riV)
+#define fGEN_TCG_J4_cmpgtn1_f_jumpnv_nt(SHORTCODE) \
+    gen_cmpi_jumpnv(ctx, TCG_COND_LE, NsN, -1, riV)
+
+#define fGEN_TCG_J4_tstbit0_t_jumpnv_t(SHORTCODE) \
+    gen_testbit0_jumpnv(ctx, true, NsN, riV)
+#define fGEN_TCG_J4_tstbit0_t_jumpnv_nt(SHORTCODE) \
+    gen_testbit0_jumpnv(ctx, true, NsN, riV)
+#define fGEN_TCG_J4_tstbit0_f_jumpnv_t(SHORTCODE) \
+    gen_testbit0_jumpnv(ctx, false, NsN, riV)
+#define fGEN_TCG_J4_tstbit0_f_jumpnv_nt(SHORTCODE) \
+    gen_testbit0_jumpnv(ctx, false, NsN, riV)
 
 /* r0 = r1 ; jump address */
 #define fGEN_TCG_J4_jumpsetr(SHORTCODE) \
@@ -2510,8 +2689,23 @@
 #define fGEN_TCG_SL2_jumpr31(SHORTCODE) \
     gen_jumpr(ctx, hex_gpr[HEX_REG_LR])
 
+#define fGEN_TCG_COND_JUMPR31(COND) \
+    do { \
+        TCGv LSB = tcg_temp_new(); \
+        COND; \
+        gen_cond_jumpr(ctx, LSB, hex_gpr[HEX_REG_LR]); \
+        tcg_temp_free(LSB); \
+    } while (0)
+
+#define fGEN_TCG_SL2_jumpr31_t(SHORTCODE) \
+    fGEN_TCG_COND_JUMPR31(fLSBOLD(hex_pred[0]))
+#define fGEN_TCG_SL2_jumpr31_f(SHORTCODE) \
+    fGEN_TCG_COND_JUMPR31(fLSBOLDNOT(hex_pred[0]))
+
 #define fGEN_TCG_SL2_jumpr31_tnew(SHORTCODE) \
-    gen_cond_jumpr(ctx, hex_new_pred_value[0], hex_gpr[HEX_REG_LR])
+    fGEN_TCG_COND_JUMPR31(fLSBNEW0)
+#define fGEN_TCG_SL2_jumpr31_fnew(SHORTCODE) \
+    fGEN_TCG_COND_JUMPR31(fLSBNEW0NOT)
 
 #define fGEN_TCG_J2_pause(SHORTCODE) \
     do { \
