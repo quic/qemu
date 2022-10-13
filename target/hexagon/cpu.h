@@ -453,7 +453,6 @@ typedef struct Einfo exception_info;
 typedef struct Instruction Insn;
 typedef unsigned systemstate_t;
 
-// mgl struct CPUHexagonState
 typedef struct CPUArchState {
     target_ulong gpr[TOTAL_PER_THREAD_REGS];
     target_ulong pred[NUM_PREGS];

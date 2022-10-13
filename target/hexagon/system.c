@@ -28,6 +28,7 @@
 #include "cpu.h"
 #include "arch.h"
 #include "internal.h"
+#include "hex_mmu.h"
 #endif
 #include <assert.h>
 #include "macros.h"
@@ -69,10 +70,6 @@ void iic_flush_cache(processor_t * proc)
 {
 }
 
-static inline size8u_t get_size_for_xinfo(size8u_t entry_pg_size){
-    return 12 + 2*entry_pg_size;
-}
-
 paddr_t
 mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 				enum mem_access_types mtype, int type_for_xlate)
@@ -104,10 +101,26 @@ mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
     maptr->cancelled = 0;
     maptr->valid = 1;
 
+    int size = 1024 * 1024;
+#ifndef CONFIG_USER_ONLY
+    hwaddr phys;
+    int prot;
+    int32_t excp;
+    /* make sure vaddr in tlb */
+    hexagon_touch_memory(thread, vaddr, width);
+    /* now get tlb size for this vaddr */
+    if (!hex_tlb_find_match(thread, vaddr, MMU_DATA_LOAD, &phys, &prot, &size,
+                            &excp, cpu_mmu_index(thread, false))) {
+        HEX_DEBUG_LOG("%s: tlb lookup failed: vaddr=0x%x\n",
+            __func__, vaddr);
+        g_assert_not_reached();
+    }
+#endif
+    maptr->size = 31 - clz32(size); /* range validation not done in user mode */
+
 	/* Attributes of the packet that are needed by the uarch */
     maptr->slot = slot;
     maptr->paddr = vaddr;
-    maptr->size = get_size_for_xinfo(4);
     xlate_info_t *xinfo = &(maptr->xlate_info);
     memset(xinfo,0,sizeof(*xinfo));
     xinfo->size = maptr->size;

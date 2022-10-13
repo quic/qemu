@@ -58,12 +58,14 @@
 static int check_mxmem_page_cross(thread_t* thread, vaddr_t base,
     int length, int page_size)
 {
+#ifndef CONFIG_USER_ONLY
 	vaddr_t page_mask = (1ULL<<page_size)-1;
 	if (((base+length) & ~page_mask) != (base & ~page_mask)) {
 		warn("HMX Op crossed page: start =%x end=%x Page Size=%x Page Mask=%x",
             base, base+length, page_size,page_mask);
 		return 1;
 	}
+#endif
     return 0;
 }
 
