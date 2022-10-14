@@ -102,6 +102,10 @@ def add_qemu_macro_attrib(name, attrib):
     macros[name].attribs.add(attrib)
 
 immextre = re.compile(r'f(MUST_)?IMMEXT[(]([UuSsRr])')
+
+def is_cond_call(tag):
+    return re.compile(r"(if.*fCALL)").search(semdict[tag])
+
 def calculate_attribs():
     add_qemu_macro_attrib('fREAD_PC', 'A_IMPLICIT_READS_PC')
     add_qemu_macro_attrib('fTRAP', 'A_IMPLICIT_READS_PC')
@@ -135,6 +139,11 @@ def calculate_attribs():
         for regtype, regid, toss, numregs in regs:
             if regtype == "P" and is_written(regid):
                 attribdict[tag].add('A_WRITES_PRED_REG')
+    # Mark conditional jumps and calls
+    #     Not all instructions are properly marked with A_CONDEXEC
+    for tag in tags:
+        if is_cond_call(tag):
+            attribdict[tag].add('A_CONDEXEC')
 
 def SEMANTICS(tag, beh, sem):
     #print tag,beh,sem

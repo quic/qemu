@@ -439,6 +439,42 @@ static void test_addipc(void)
         : "=r"(pc), "=r"(addipc_res));
     check(addipc_res - pc, 104);
 }
+
+static void test_cond_call(void)
+{
+    /*
+     * Make sure that conditional calls don't modify r31 when the
+     * condition is false
+     *
+     * 1 - Set up a frame to preserve the current r31
+     * 2 - Call the test function
+     * 3 - Do a series of contidional calls where the condition is not met
+     * 4 - Return from the test function to ensure r31 not modified
+     * 5 - Deallocate the frame and jump to the end
+     */
+    asm volatile("    allocframe(#0)\n\t"
+                 "    call 1f\n\t"
+                 "    deallocframe\n\t"
+                 "    jump 4f\n\t"
+                 "1:\n\t"
+                 "    p0 = cmp.eq(r0, r0)\n\t"   /* true */
+                 "    p1 = !cmp.eq(r0, r0)\n\t"  /* false */
+                 "    jump 2f\n\t"
+                 "    .word 3f\n\t"              /* Address for callr */
+                 "2:\n\t"
+                 "    r5 = add(pc, #-4)\n\t"
+                 "    r5 = memw(r5)\n\t"         /* Loadd address for callr */
+                 "    if (p1) call 3f\n\t"
+                 "    if (!p0) call 3f\n\t"
+                 "    if (p1) callr r5\n\t"
+                 "    if (!p0) callr r5\n\t"
+                 "    jumpr r31\n\t"
+                 "3:\n\t"                        /* Dummy (never called) */
+                 "    jumpr r31\n\t"
+                 "4:\n\t"                        /* End */
+                 : : : "p0", "p1", "r5");
+}
+
 int main()
 {
     int res;
@@ -591,6 +627,8 @@ int main()
     test_bitspliti();
 
     test_addipc();
+
+    test_cond_call();
 
     puts(err ? "FAIL" : "PASS");
     return err;

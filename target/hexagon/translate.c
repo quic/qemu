@@ -335,7 +335,14 @@ static bool need_pc(Packet *pkt)
 
 static bool need_slot_cancelled(Packet *pkt)
 {
-    return check_for_attrib(pkt, A_CONDEXEC);
+    for (int i = 0; i < pkt->num_insns; i++) {
+        uint16_t opcode = pkt->insn[i].opcode;
+        if (GET_ATTRIB(opcode, A_CONDEXEC) &&
+            !GET_ATTRIB(opcode, A_CALL)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static bool need_pred_written(Packet *pkt)
