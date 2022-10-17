@@ -697,10 +697,12 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
           printf("0x44, Multi TLB match");
           break;
       case HEX_CAUSE_BIU_PRECISE:
-          printf("0x01, Bus Error (Precise BIU error)");
+          printf("0x%x, Bus Error (Precise BIU error)",
+                 HEX_CAUSE_BIU_PRECISE);
           break;
       case HEX_CAUSE_DOUBLE_EXCEPT:
-          printf("0x03, Exception observed when EX = 1 (double exception)");
+          printf("0x%x, Exception observed when EX = 1 (double exception)",
+                 HEX_CAUSE_DOUBLE_EXCEPT);
           break;
       case HEX_CAUSE_FETCH_NO_XPAGE:
           printf("0x%x, Privilege violation: User/Guest mode execute"
@@ -716,25 +718,31 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
           printf("0x%x, Invalid packet",
                  HEX_CAUSE_INVALID_PACKET);
           break;
-      case 0x1a:
-          printf("0x1a, Privilege violation: guest mode insn in user mode");
+      case HEX_CAUSE_PRIV_USER_NO_GINSN:
+          printf("0x%x, Privilege violation: guest mode insn in user mode",
+                 HEX_CAUSE_PRIV_USER_NO_GINSN);
           break;
-      case 0x1b:
-          printf("0x1b, Privilege violation: "
-                 "monitor mode insn ins user/guest mode");
+      case HEX_CAUSE_PRIV_USER_NO_SINSN:
+          printf("0x%x, Privilege violation: "
+                 "monitor mode insn ins user/guest mode",
+                 HEX_CAUSE_PRIV_USER_NO_SINSN);
           break;
       case HEX_CAUSE_REG_WRITE_CONFLICT:
-          printf("0x1d, Multiple writes to same register");
+          printf("0x%x, Multiple writes to same register",
+                 HEX_CAUSE_REG_WRITE_CONFLICT);
           break;
-      case 0x1e:
-          printf("0x1e, PC not aligned");
+      case HEX_CAUSE_PC_NOT_ALIGNED:
+          printf("0x%x, PC not aligned",
+                 HEX_CAUSE_PC_NOT_ALIGNED);
           break;
-      case 0x20:
-          printf("0x20, Misaligned Load @ 0x%x",
+      case HEX_CAUSE_MISALIGNED_LOAD:
+          printf("0x%x, Misaligned Load @ 0x%x",
+                 HEX_CAUSE_MISALIGNED_LOAD,
                  ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           break;
-      case 0x21:
-          printf("0x21, Misaligned Store @ 0x%x",
+      case HEX_CAUSE_MISALIGNED_STORE:
+          printf("0x%x, Misaligned Store @ 0x%x",
+                 HEX_CAUSE_MISALIGNED_STORE,
                  ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           break;
       case HEX_CAUSE_PRIV_NO_READ:
@@ -760,7 +768,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
                  ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           break;
       case HEX_CAUSE_COPROC_LDST:
-          printf("0x26, Coprocessor VMEM address error. @ 0x%x",
+          printf("0x%x, Coprocessor VMEM address error. @ 0x%x",
+                 HEX_CAUSE_COPROC_LDST,
                  ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA));
           break;
       case HEX_CAUSE_STACK_LIMIT:
