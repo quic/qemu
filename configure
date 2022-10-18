@@ -348,6 +348,15 @@ for opt do
   ;;
   esac
 done
+
+# QUIC-specific
+# We currently get 401 when trying to pull the container image for aarch64
+# cross compiler from docker.io. We should probably use our internal registry
+# instance instea but, for now, let's just skip the container and use a cross
+# compiler from the mounted dirs.
+cross_prefix_aarch64="/pkg/qct/software/llvm/build_tools/gcc-arm-8.3-2019.03-x86_64-aarch64-linux-gnu/bin/aarch64-linux-gnu-"
+# QUIC-end
+
 # OS specific
 # Using uname is really, really broken.  Once we have the right set of checks
 # we can eliminate its usage altogether.
