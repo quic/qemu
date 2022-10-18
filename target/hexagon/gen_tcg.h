@@ -2394,6 +2394,12 @@
 #define fGEN_TCG_SL2_jumpr31_tnew(SHORTCODE) \
     gen_cond_jumpr(ctx, hex_new_pred_value[0], hex_gpr[HEX_REG_LR])
 
+#define fGEN_TCG_J2_pause(SHORTCODE) \
+    do { \
+        uiV = uiV; \
+        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->next_PC); \
+    } while (0)
+
 /*
  * r5:4 = valignb(r1:0, r3:2, p0)
  *

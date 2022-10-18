@@ -252,7 +252,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             if i > 0: f.write(", ")
             f.write("target_ulong PC")
             i += 1
-        if hex_common.need_next_PC(tag):
+        if hex_common.helper_needs_next_PC(tag):
             if i > 0: f.write(", ")
             f.write("target_ulong next_PC")
             i += 1

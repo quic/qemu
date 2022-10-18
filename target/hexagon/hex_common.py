@@ -227,7 +227,7 @@ def need_ea(tag):
 def need_PC(tag):
     return 'A_IMPLICIT_READS_PC' in attribdict[tag]
 
-def need_next_PC(tag):
+def helper_needs_next_PC(tag):
     return 'A_CALL' in attribdict[tag]
 
 def need_pkt_has_multi_cof(tag):

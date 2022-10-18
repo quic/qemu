@@ -249,16 +249,6 @@ static bool check_for_attrib(Packet *pkt, int attrib)
     return false;
 }
 
-static bool check_for_opcode(Packet *pkt, uint16_t opcode)
-{
-    for (int i = 0; i < pkt->num_insns; i++) {
-        if (pkt->insn[i].opcode == opcode) {
-            return true;
-        }
-    }
-    return false;
-}
-
 static bool need_slot_cancelled(Packet *pkt)
 {
     /* We only need slot_cancelled for conditional store and HVX instructions */
@@ -281,14 +271,19 @@ static bool need_pred_written(Packet *pkt)
 static bool need_next_PC(DisasContext *ctx)
 {
     Packet *pkt = ctx->pkt;
-    bool res = check_for_attrib(pkt, A_CONDEXEC);
-    res |= check_for_attrib(pkt, A_CALL);
-    res |= check_for_attrib(pkt, A_SUBINSN);
-    res |= check_for_attrib(pkt, A_HWLOOP0_END);
-    res |= check_for_attrib(pkt, A_HWLOOP1_END);
-    res |= check_for_attrib(pkt, A_NEWCMPJUMP);
-    res |= check_for_opcode(pkt, J2_pause);
-    return res;
+
+    /* Check for conditional control flow or HW loop end */
+    for (int i = 0; i < pkt->num_insns; i++) {
+        uint16_t opcode = pkt->insn[i].opcode;
+        if (GET_ATTRIB(opcode, A_CONDEXEC) && GET_ATTRIB(opcode, A_COF)) {
+            return true;
+        }
+        if (GET_ATTRIB(opcode, A_HWLOOP0_END) ||
+            GET_ATTRIB(opcode, A_HWLOOP1_END)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static void gen_start_packet(DisasContext *ctx)

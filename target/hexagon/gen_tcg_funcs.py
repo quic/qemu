@@ -787,7 +787,7 @@ def gen_tcg_func(f, tag, regs, imms):
             f.write("    TCGv slot = tcg_const_tl(insn->slot);\n")
         if hex_common.need_PC(tag):
             f.write("    TCGv PC = tcg_const_tl(ctx->pkt->pc);\n")
-        if hex_common.need_next_PC(tag):
+        if hex_common.helper_needs_next_PC(tag):
             f.write("    TCGv next_PC = tcg_const_tl(ctx->next_PC);\n")
         f.write("    gen_helper_%s(" % (tag))
         i=0
@@ -828,7 +828,7 @@ def gen_tcg_func(f, tag, regs, imms):
         if hex_common.need_pkt_has_multi_cof(tag):
             f.write(", pkt_has_multi_cof")
         if hex_common.need_PC(tag): f.write(", PC")
-        if hex_common.need_next_PC(tag): f.write(", next_PC")
+        if hex_common.helper_needs_next_PC(tag): f.write(", next_PC")
         if hex_common.need_slot(tag): f.write(", slot")
         if hex_common.need_part1(tag): f.write(", part1" )
         f.write(");\n")
@@ -836,7 +836,7 @@ def gen_tcg_func(f, tag, regs, imms):
             f.write("    tcg_temp_free(pkt_has_multi_cof);\n")
         if hex_common.need_PC(tag):
             f.write("    tcg_temp_free(PC);\n")
-        if hex_common.need_next_PC(tag):
+        if hex_common.helper_needs_next_PC(tag):
             f.write("    tcg_temp_free(next_PC);\n")
         if hex_common.need_slot(tag):
             f.write("    tcg_temp_free(slot);\n")
