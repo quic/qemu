@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -161,6 +161,7 @@ Q6INSN(L2_deallocframe,"deallocframe", ATTRIBS(A_REGWRSIZE_8B,A_MEMSIZE_8B,A_LOA
 //#define A_JINDIR A_JUMP,A_INDIRECT,A_COFSTD
 
 #if FRAME_EXPLICIT
+
 Q6INSN(L4_return,"Rdd32=dealloc_return(Rs32):raw", ATTRIBS(A_REGWRSIZE_8B,A_ROPS_2,A_JINDIR,A_MEMSIZE_8B,A_LOAD,A_RETURN), "Deallocate stack frame and return",
 { fHIDE(size8u_t tmp;) fEA_REG(RsV);
 	fLOAD(1,8,u,EA,tmp);
@@ -262,7 +263,7 @@ Q6INSN(L4_loadw_phys,"Rd32=memw_phys(Rs32,Rt32)", ATTRIBS(A_REGWRSIZE_4B,A_PRIV,
 
 
 Q6INSN(S4_stored_locked,"memd_locked(Rs32,Pd4)=Rtt32", ATTRIBS(A_REGWRSIZE_8B,A_MEMSIZE_8B,A_STORE,A_RESTRICT_SLOT0ONLY,A_RESTRICT_PACKET_AXOK,A_NOTE_AXOK,A_RESTRICT_LATEPRED,A_NOTE_LATEPRED), "Store word with lock",
-{ fEA_REG(RsV); fSTORE_LOCKED(1,8,EA,RttV,PdV) fHIDE(MARK_LATE_PRED_WRITE(PdN)) })
+	{ fEA_REG(RsV); fSTORE_LOCKED(1,8,EA,RttV,PdV) fHIDE(MARK_LATE_PRED_WRITE(PdN)) })
 
 
 
