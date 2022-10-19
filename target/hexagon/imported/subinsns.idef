@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -154,6 +154,3 @@ Q6INSN(SS2_storebi1,   "memb(Rs16+#u4:0)=#1", ATTRIBS(A_MEMSIZE_1B,A_STORE,A_SUB
 
 Q6INSN(SS2_allocframe,"allocframe(#u5:3)", ATTRIBS(A_REGWRSIZE_8B,A_SUBINSN,A_MEMSIZE_8B,A_STORE,A_RESTRICT_SLOT0ONLY), "Allocate stack frame",
 { fEA_RI(fREAD_SP(),-8);  fSTORE(1,8,EA,fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | fCAST4_4u(fREAD_FP()))); fWRITE_FP(EA); fFRAMECHECK(EA-uiV,EA); fWRITE_SP(EA-uiV); })
-
-
-

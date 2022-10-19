@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -184,7 +184,6 @@ DEF_ATTRIB(MEMOP, "memop", "", "")
 
 DEF_ATTRIB(ROPS_2, "Compound instruction worth 2 wimpy RISC-ops", "", "")
 DEF_ATTRIB(ROPS_3, "Compound instruction worth 3 wimpy RISC-ops", "", "")
-
 
 /* access to implicit registers */
 DEF_ATTRIB(IMPLICIT_WRITES_LR, "Writes the link register", "", "UREG.LR")
