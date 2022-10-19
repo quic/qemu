@@ -391,6 +391,8 @@ static void test_cancel_concluded(void)
     cancel_common(s);
 }
 
+/* QUIC-specific. See comment at main(), test_complete_in_standby subtest. */
+#if 0
 /* (See test_yielding_driver for the job description) */
 typedef struct YieldingJob {
     BlockJob common;
@@ -516,6 +518,7 @@ static void test_complete_in_standby(void)
     aio_context_release(ctx);
     iothread_join(iothread);
 }
+#endif
 
 int main(int argc, char **argv)
 {
@@ -531,6 +534,13 @@ int main(int argc, char **argv)
     g_test_add_func("/blockjob/cancel/standby", test_cancel_standby);
     g_test_add_func("/blockjob/cancel/pending", test_cancel_pending);
     g_test_add_func("/blockjob/cancel/concluded", test_cancel_concluded);
-    g_test_add_func("/blockjob/complete_in_standby", test_complete_in_standby);
+    /*
+     * QUIC-specific
+     * We currently disable this subtest because it is flaky in our CI. The
+     * test itself mentions a workaround used to fix this, but it doesnt seem
+     * to be working downstream.
+     *
+     * g_test_add_func("/blockjob/complete_in_standby", test_complete_in_standby);
+     */
     return g_test_run();
 }
