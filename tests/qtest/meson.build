@@ -297,7 +297,7 @@ qtests = {
   'migration-test': migration_files,
   'pxe-test': files('boot-sector.c'),
 # QTOOL-81945
-# 'qos-test': [chardev, io, qos_test_ss.apply(config_host, strict: false).sources()],
+  'qos-test': [chardev, io, qos_test_ss.apply(config_host, strict: false).sources()],
   'tpm-crb-swtpm-test': [io, tpmemu_files],
   'tpm-crb-test': [io, tpmemu_files],
   'tpm-tis-swtpm-test': [io, tpmemu_files, 'tpm-tis-util.c'],
