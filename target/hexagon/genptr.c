@@ -455,11 +455,12 @@ static TCGv gen_8bitsof(TCGv result, TCGv value)
 static void gen_write_new_pc_addr(DisasContext *ctx, TCGv addr, TCGv pred)
 {
     TCGLabel *pred_false = NULL;
+    if (pred != NULL) {
+        pred_false = gen_new_label();
+        tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, pred_false);
+    }
+
     if (ctx->pkt->pkt_has_multi_cof) {
-        if (pred != NULL) {
-            pred_false = gen_new_label();
-            tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, pred_false);
-        }
         /* If there are multiple branches in a packet, ignore the second one */
         TCGv zero = tcg_const_tl(0);
         tcg_gen_movcond_tl(TCG_COND_NE, hex_gpr[HEX_REG_PC],
@@ -467,18 +468,12 @@ static void gen_write_new_pc_addr(DisasContext *ctx, TCGv addr, TCGv pred)
                            hex_gpr[HEX_REG_PC], addr);
         tcg_gen_movi_tl(hex_branch_taken, 1);
         tcg_temp_free(zero);
-        if (pred != NULL) {
-            gen_set_label(pred_false);
-        }
     } else {
-        if (pred != NULL) {
-            pred_false = gen_new_label();
-            tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, pred_false);
-        }
         tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], addr);
-        if (pred != NULL) {
-            gen_set_label(pred_false);
-        }
+    }
+
+    if (pred != NULL) {
+        gen_set_label(pred_false);
     }
 }
 
@@ -486,20 +481,10 @@ static void gen_write_new_pc_pcrel(DisasContext *ctx, int pc_off, TCGv pred)
 {
     target_ulong dest = ctx->pkt->pc + pc_off;
     if (ctx->pkt->pkt_has_multi_cof) {
-        TCGLabel *pred_false = NULL;
-        if (pred != NULL) {
-            pred_false = gen_new_label();
-            tcg_gen_brcondi_tl(TCG_COND_EQ, pred, 0, pred_false);
-        }
-        /* If there are multiple branches in a packet, ignore the second one */
-        TCGLabel *skip = gen_new_label();
-        tcg_gen_brcondi_tl(TCG_COND_NE, hex_branch_taken, 0, skip);
-        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], dest);
-        tcg_gen_movi_tl(hex_branch_taken, 1);
-        gen_set_label(skip);
-        if (pred != NULL) {
-            gen_set_label(pred_false);
-        }
+        TCGv d = tcg_temp_local_new();
+        tcg_gen_movi_tl(d, dest);
+        gen_write_new_pc_addr(ctx, d, pred);
+        tcg_temp_free(d);
     } else {
         /* Defer this jump to the end of the TB */
         g_assert(ctx->branch_cond == NULL);
