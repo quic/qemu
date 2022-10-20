@@ -161,7 +161,7 @@
         __builtin_choose_expr(TYPE_TCGV(X), \
             gen_store1, (void)0))
 #define MEM_STORE1(VA, DATA, SLOT) \
-    MEM_STORE1_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
+    MEM_STORE1_FUNC(DATA)(cpu_env, VA, DATA, SLOT)
 
 #define MEM_STORE2_FUNC(X) \
     __builtin_choose_expr(TYPE_INT(X), \
@@ -169,7 +169,7 @@
         __builtin_choose_expr(TYPE_TCGV(X), \
             gen_store2, (void)0))
 #define MEM_STORE2(VA, DATA, SLOT) \
-    MEM_STORE2_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
+    MEM_STORE2_FUNC(DATA)(cpu_env, VA, DATA, SLOT)
 
 #define MEM_STORE4_FUNC(X) \
     __builtin_choose_expr(TYPE_INT(X), \
@@ -177,7 +177,7 @@
         __builtin_choose_expr(TYPE_TCGV(X), \
             gen_store4, (void)0))
 #define MEM_STORE4(VA, DATA, SLOT) \
-    MEM_STORE4_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
+    MEM_STORE4_FUNC(DATA)(cpu_env, VA, DATA, SLOT)
 
 #define MEM_STORE8_FUNC(X) \
     __builtin_choose_expr(TYPE_INT(X), \
@@ -185,7 +185,7 @@
         __builtin_choose_expr(TYPE_TCGV_I64(X), \
             gen_store8, (void)0))
 #define MEM_STORE8(VA, DATA, SLOT) \
-    MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, ctx, SLOT)
+    MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, SLOT)
 #endif
 
 #define CANCEL cancel_slot(env, slot)

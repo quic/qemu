@@ -114,10 +114,10 @@ G_NORETURN void HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
 
 static void do_check_reg_write(CPUHexagonState *env, int rnum)
 {
-    target_ulong mask = 1 << rnum;
     if (rnum >= NUM_GPREGS) {
         return;
     }
+    target_ulong mask = 1 << rnum;
     if ((env->gpreg_written & mask) == 0) {
         env->gpreg_written |= mask;
         return;

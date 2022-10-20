@@ -404,12 +404,19 @@ static void hexagon_cpu_set_pc(CPUState *cs, vaddr value)
     env->gpr[HEX_REG_PC] = value;
 }
 
+static vaddr hexagon_cpu_get_pc(CPUState *cs)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+    return env->gpr[HEX_REG_PC];
+}
+
 static void hexagon_cpu_synchronize_from_tb(CPUState *cs,
                                             const TranslationBlock *tb)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
-    env->gpr[HEX_REG_PC] = tb->pc;
+    env->gpr[HEX_REG_PC] = tb_pc(tb);
 }
 
 void restore_state_to_opc(CPUHexagonState *env, TranslationBlock *tb,
@@ -954,6 +961,7 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 #endif
     cc->dump_state = hexagon_dump_state;
     cc->set_pc = hexagon_cpu_set_pc;
+    cc->get_pc = hexagon_cpu_get_pc;
     cc->gdb_read_register = hexagon_gdb_read_register;
     cc->gdb_write_register = hexagon_gdb_write_register;
     cc->gdb_qreg_info_lines = (const char **)hexagon_qreg_descs;
