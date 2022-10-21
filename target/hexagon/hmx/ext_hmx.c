@@ -112,7 +112,11 @@ void hmx_ext_init(processor_t *proc, int extno) {
 }
 
 
-int hmx_ext_decode_checks(thread_t *thread, Packet *pkt, exception_info *einfo) {	return 0; }
+int hmx_ext_decode_checks(thread_t *thread, Packet *pkt,
+                          hex_exception_info *einfo)
+{
+    return 0;
+}
 const char * hmx_ext_decode_find_iclass_slots(int opcode) { return ""; }
 
 void hmx_ext_print_reg(thread_t *thread, FILE *fp, int rnum, int extno)

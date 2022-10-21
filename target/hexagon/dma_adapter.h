@@ -91,12 +91,12 @@ typedef struct dma_memaccess_info {
 //! at the adapter side.
 
 typedef struct dma_adapter_engine_info_t {
-	exception_info  einfo;       //!> Exception information stored for later use.
-	thread_t * owner;            //!> Owner HW thread to take an exception.
+    hex_exception_info einfo; //!> Exception information stored for later use.
+    thread_t *owner; //!> Owner HW thread to take an exception.
 
-	desc_tracker_t desc_tracker;
-	queue_t desc_queue;
-	desc_tracker_entry_t * desc_entries[DESC_TABLESIZE];
+    desc_tracker_t desc_tracker;
+    queue_t desc_queue;
+    desc_tracker_entry_t *desc_entries[DESC_TABLESIZE];
 
 } dma_adapter_engine_info_t;
 
