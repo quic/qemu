@@ -171,7 +171,7 @@ static void l2vic_write(void *opaque, hwaddr offset,
     L2VICState *s = (L2VICState *) opaque;
     qemu_mutex_lock(&s->active);
     trace_l2vic_reg_write((unsigned) offset, (uint32_t) val);
-    D("L2Vic write 0x%lx 0x%lx\n", offset, val);
+    D("L2Vic write 0x%" PRIx64 " 0x%" PRIx64 "\n", offset, val);
 
     if (offset == L2VIC_VID_0) {
         if ((int)val != L2VIC_NO_PENDING) {
@@ -246,7 +246,7 @@ static uint64_t l2vic_read(void *opaque, hwaddr offset,
 {
     uint64_t value;
     L2VICState *s = (L2VICState *)opaque;
-    D("L2Vic read 0x%lx\n", offset);
+    D("L2Vic read 0x%" PRIx64 "\n", offset);
     qemu_mutex_lock(&s->active);
 
     if (offset == L2VIC_VID_GRP_0) {

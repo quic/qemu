@@ -97,8 +97,8 @@ void do_raise_exception_err(CPUHexagonState *env,
 #ifdef CONFIG_USER_ONLY
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
 #else
-    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08lx, tbl =%d\n", __func__,
-                  exception, env->gpr[HEX_REG_PC], pc,
+    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08" PRIxPTR ", tbl =%d\n",
+                  __func__, exception, env->gpr[HEX_REG_PC], pc,
                   env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
 #endif
 
@@ -1793,7 +1793,7 @@ void HELPER(debug_value)(CPUHexagonState *env, int32_t value)
 
 void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
 {
-    HEX_DEBUG_LOG("value_i64 = 0x%lx\n", value);
+    HEX_DEBUG_LOG("value_i64 = 0x%" PRIx64 "\n", value);
 }
 
 /* Histogram instructions */

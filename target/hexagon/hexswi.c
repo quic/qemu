@@ -1229,10 +1229,12 @@ void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
     int traptype, int imm)
 
 {
-    HEX_DEBUG_LOG("%s:\n\ttid = %d, pc = 0x%x, npc = 0x%lx, traptype %d, "
-        "imm %d\n",
-        __func__, env->threadId, ARCH_GET_THREAD_REG(env, HEX_REG_PC),
-        next_pc, traptype, imm);
+    HEX_DEBUG_LOG("%s:\n\ttid = %d, pc = 0x%" PRIx32 ", npc = 0x%" PRIx32
+                  ", traptype %d, "
+                  "imm %d\n",
+                  __func__, env->threadId,
+                  ARCH_GET_THREAD_REG(env, HEX_REG_PC), (target_ulong)next_pc,
+                  traptype, imm);
 
     CPUState *cs = env_cpu(env);
     /* assert(cs->exception_index == HEX_EVENT_NONE); */

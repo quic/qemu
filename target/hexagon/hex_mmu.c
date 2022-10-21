@@ -27,9 +27,9 @@
 #include "sys_macros.h"
 #include "reg_fields.h"
 
-#define GET_TLB_FIELD(ENTRY, FIELD) \
-    fEXTRACTU_BITS(ENTRY, reg_field_info[FIELD].width, \
-                   reg_field_info[FIELD].offset)
+#define GET_TLB_FIELD(ENTRY, FIELD)                               \
+    ((uint64_t)fEXTRACTU_BITS(ENTRY, reg_field_info[FIELD].width, \
+                              reg_field_info[FIELD].offset))
 
 /*
  * PPD (physical page descriptor) is formed by putting the PTE_PA35 field
@@ -135,27 +135,22 @@ static inline uint64_t hex_tlb_virt_addr(uint64_t entry)
 static bool hex_dump_mmu_entry(FILE *f, uint64_t entry)
 {
     if (GET_TLB_FIELD(entry, PTE_V)) {
-        fprintf(f, "0x%016lx: ", entry);
+        fprintf(f, "0x%016" PRIx64 ": ", entry);
         uint64_t PA = hex_tlb_phys_addr(entry);
         uint64_t VA = hex_tlb_virt_addr(entry);
-        fprintf(f, "V:%lld G:%lld A1:%lld A0:%lld",
-                 GET_TLB_FIELD(entry, PTE_V),
-                 GET_TLB_FIELD(entry, PTE_G),
-                 GET_TLB_FIELD(entry, PTE_ATR1),
-                 GET_TLB_FIELD(entry, PTE_ATR0));
-        fprintf(f, " ASID:0x%02llx VA:0x%08lx",
-                GET_TLB_FIELD(entry, PTE_ASID),
-                VA);
-        fprintf(f, " X:%lld W:%lld R:%lld U:%lld C:%lld",
-                GET_TLB_FIELD(entry, PTE_X),
-                GET_TLB_FIELD(entry, PTE_W),
-                GET_TLB_FIELD(entry, PTE_R),
-                GET_TLB_FIELD(entry, PTE_U),
+        fprintf(f, "V:%" PRId64 " G:%" PRId64 " A1:%" PRId64 " A0:%" PRId64,
+                GET_TLB_FIELD(entry, PTE_V), GET_TLB_FIELD(entry, PTE_G),
+                GET_TLB_FIELD(entry, PTE_ATR1), GET_TLB_FIELD(entry, PTE_ATR0));
+        fprintf(f, " ASID:0x%02" PRIx64 " VA:0x%08" PRIx64,
+                GET_TLB_FIELD(entry, PTE_ASID), VA);
+        fprintf(f,
+                " X:%" PRId64 " W:%" PRId64 " R:%" PRId64 " U:%" PRId64
+                " C:%" PRId64,
+                GET_TLB_FIELD(entry, PTE_X), GET_TLB_FIELD(entry, PTE_W),
+                GET_TLB_FIELD(entry, PTE_R), GET_TLB_FIELD(entry, PTE_U),
                 GET_TLB_FIELD(entry, PTE_C));
-        fprintf(f, " PA:0x%09lx SZ:%s (0x%x)",
-                PA,
-                pgsize_str[hex_tlb_pgsize(entry)],
-                hex_tlb_page_size(entry));
+        fprintf(f, " PA:0x%09" PRIx64 " SZ:%s (0x%x)", PA,
+                pgsize_str[hex_tlb_pgsize(entry)], hex_tlb_page_size(entry));
         fprintf(f, "\n");
         return true;
     }
@@ -171,27 +166,24 @@ void dump_mmu(CPUHexagonState *env)
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         uint64_t entry = env->hex_tlb->entries[i];
         if (GET_TLB_FIELD(entry, PTE_V)) {
-            qemu_printf("0x%016lx: ", entry);
+            qemu_printf("0x%016" PRIx64 ": ", entry);
             uint64_t PA = hex_tlb_phys_addr(entry);
             uint64_t VA = hex_tlb_virt_addr(entry);
-            qemu_printf("V:%lld G:%lld A1:%lld A0:%lld",
-                    GET_TLB_FIELD(entry, PTE_V),
-                    GET_TLB_FIELD(entry, PTE_G),
-                    GET_TLB_FIELD(entry, PTE_ATR1),
-                    GET_TLB_FIELD(entry, PTE_ATR0));
-            qemu_printf(" ASID:0x%02llx VA:0x%08lx",
-                    GET_TLB_FIELD(entry, PTE_ASID),
-                    VA);
-            qemu_printf(" X:%lld W:%lld R:%lld U:%lld C:%lld",
-                    GET_TLB_FIELD(entry, PTE_X),
-                    GET_TLB_FIELD(entry, PTE_W),
-                    GET_TLB_FIELD(entry, PTE_R),
-                    GET_TLB_FIELD(entry, PTE_U),
-                    GET_TLB_FIELD(entry, PTE_C));
-            qemu_printf(" PA:0x%09lx SZ:%s (0x%x)",
-                    PA,
-                    pgsize_str[hex_tlb_pgsize(entry)],
-                    hex_tlb_page_size(entry));
+            qemu_printf(
+                "V:%" PRId64 " G:%" PRId64 " A1:%" PRId64 " A0:%" PRId64,
+                GET_TLB_FIELD(entry, PTE_V), GET_TLB_FIELD(entry, PTE_G),
+                GET_TLB_FIELD(entry, PTE_ATR1), GET_TLB_FIELD(entry, PTE_ATR0));
+            qemu_printf(" ASID:0x%02" PRIx64 " VA:0x%08" PRIx64,
+                        GET_TLB_FIELD(entry, PTE_ASID), VA);
+            qemu_printf(
+                " X:%" PRId64 " W:%" PRId64 " R:%" PRId64 " U:%" PRId64
+                " C:%" PRId64,
+                GET_TLB_FIELD(entry, PTE_X), GET_TLB_FIELD(entry, PTE_W),
+                GET_TLB_FIELD(entry, PTE_R), GET_TLB_FIELD(entry, PTE_U),
+                GET_TLB_FIELD(entry, PTE_C));
+            qemu_printf(" PA:0x%09" PRIx64 " SZ:%s (0x%x)", PA,
+                        pgsize_str[hex_tlb_pgsize(entry)],
+                        hex_tlb_page_size(entry));
             qemu_printf("\n");
         }
     }

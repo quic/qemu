@@ -259,7 +259,7 @@ static void hex_timer_write(void *opaque, hwaddr offset,
                             uint64_t value, unsigned size)
 {
     QCTHextimerState *s = (QCTHextimerState *)opaque;
-    HEX_TIMER_LOG("\ta timer write: %lu, %lu\n", offset, value);
+    HEX_TIMER_LOG("\ta timer write: %" PRIu64 ", %" PRIu64 "\n", offset, value);
 
     switch (offset) {
         case (QCT_QTIMER_CNTP_CVAL_LO): /* TimerLoad */
@@ -270,8 +270,9 @@ static void hex_timer_write(void *opaque, hwaddr offset,
               HEX_TIMER_LOG ("s->cntcval        = %d\n", s->cntval);
               HEX_TIMER_LOG ("value - cntcval   = %d\n", value - s->cntval);
              */
-            HEX_TIMER_LOG("value(%ld) - cntcval(%ld) = %ld\n",
-                           value, s->cntval, value - s->cntval);
+            HEX_TIMER_LOG("value(%" PRId64 ") - cntcval(%" PRId64 ") = %" PRId64
+                          "\n",
+                          value, s->cntval, value - s->cntval);
             s->int_level = 0;
             s->cntval = value;
             ptimer_transaction_begin(s->timer);
@@ -291,7 +292,7 @@ static void hex_timer_write(void *opaque, hwaddr offset,
                           "%s: QCT_QTIMER_CNTP_CVAL_HI is read-only\n", __func__);
             break;
         case (QCT_QTIMER_CNTP_CTL): /* Timer control register */
-            HEX_TIMER_LOG("\tctl write: %lu\n", value);
+            HEX_TIMER_LOG("\tctl write: %" PRIu64 "\n", value);
             ptimer_transaction_begin(s->timer);
             if (s->control & QCT_QTIMER_CNTP_CTL_ENABLE) {
                 /* Pause the timer if it is running.  This may cause some
@@ -335,7 +336,7 @@ static void hex_timer_tick(void *opaque)
     QCTHextimerState *s = (QCTHextimerState *)opaque;
     if ((s->cntpct >= s->cntval) && (s->int_level != 1)) {
         s->int_level = 1;
-        HEX_TIMER_LOG("\nFIRE!!! %ld\n", s->cntpct);
+        HEX_TIMER_LOG("\nFIRE!!! %" PRId64 "\n", s->cntpct);
         hex_timer_update(s);
         return;
     }

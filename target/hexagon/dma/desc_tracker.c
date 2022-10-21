@@ -150,9 +150,6 @@ desc_unreleased_check ( processor_t *proc, int dmanum)
       	desc = (desc_tracker_entry_t *)((char *)walk - offsetof(desc_tracker_entry_t, node));
         if (desc) {
             if (desc->pcycle) {
-				#ifndef VERIFICATION
-          		printf("DMA%d: descriptor hasn't been released at exit: desc id:%lld, birth:%ld va:%x\n", dmanum, desc->id, desc->pcycle, desc->desc.va);
-				#endif
                 stuck = 1;
             }
         }
