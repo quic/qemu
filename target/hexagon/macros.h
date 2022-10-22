@@ -419,7 +419,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 
 #define MARK_LATE_PRED_WRITE(RNUM) /* Not modelled in qemu */
 
-#define CALLBACK(...)
 #define fBRANCH(LOC, TYPE)          fWRITE_NPC(LOC)
 #define fJUMPR(REGNO, TARGET, TYPE) fBRANCH(TARGET, COF_TYPE_JUMPR)
 #define fHINTJR(TARGET) { /* Not modelled in qemu */}

@@ -71,7 +71,7 @@ Q6INSN(J2_rte,  "rte", ATTRIBS(A_PRIV,A_NOTE_PRIV,A_NO_TIMING_LOG),
 "Return from Exception",
 {
 fHIDE(if((thread->timing_on) && (thread->status & EXEC_STATUS_REPLAY)) { return; })
-fHIDE(CALLBACK(thread->processor_ptr->options->rte_callback,
+fHIDE(HEX_CALLBACK(thread->processor_ptr->options->rte_callback,
       thread->system_ptr,thread->processor_ptr,
       thread->threadId,0);)
 fCLEAR_RTE_EX();
@@ -83,7 +83,7 @@ Q6INSN(J2_rteunlock,  "rteunlock", ATTRIBS(A_PRIV,A_NOTE_PRIV),
 "Return from Exception and unlock TLB",
 {
 fHIDE(if((thread->timing_on) && (thread->status & EXEC_STATUS_REPLAY)) { return; })
-fHIDE(CALLBACK(thread->processor_ptr->options->rte_callback,
+fHIDE(HEX_CALLBACK(thread->processor_ptr->options->rte_callback,
       thread->system_ptr,thread->processor_ptr,
       thread->threadId,0);)
 fCLEAR_RTE_EX();

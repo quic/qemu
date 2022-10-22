@@ -8,7 +8,9 @@
 #ifndef _UTILS_H_
 #define _UTILS_H_ 1
 
-#define CALLBACK(X,...)  if ((X) != NULL) X(__VA_ARGS__);
+#define HEX_CALLBACK(X, ...) \
+    if ((X) != NULL)         \
+        X(__VA_ARGS__);
 #define CALLBACKP(X,...)  if ((X) != NULL) X(__VA_ARGS__);
 #define CALLBACK_DEFINED(X) ((X) != NULL)
 
