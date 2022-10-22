@@ -2062,13 +2062,15 @@ int hexagon_find_l2vic_pending(CPUHexagonState *env)
     uint64_t status[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
     cpu_physical_memory_read(stat, status, sizeof(status));
 
-    intnum = find_next_bit(pending, L2VIC_INTERRUPT_MAX, intnum);
+    intnum = find_next_bit((const unsigned long *)pending, L2VIC_INTERRUPT_MAX,
+                           intnum);
     while (intnum < L2VIC_INTERRUPT_MAX) {
         /* Pending is set but status isn't the interrupt is pending */
-        if (!test_bit(intnum, status)) {
+        if (!test_bit(intnum, (const unsigned long *)status)) {
             break;
         }
-        intnum = find_next_bit(pending, L2VIC_INTERRUPT_MAX, intnum+1);
+        intnum = find_next_bit((const unsigned long *)pending,
+                               L2VIC_INTERRUPT_MAX, intnum + 1);
     }
     return (intnum < L2VIC_INTERRUPT_MAX) ? intnum : L2VIC_NO_PENDING;
 }
