@@ -63,7 +63,7 @@ static bool all_ints_delivered(int n)
 
 static void cycle_thread_imask(int delay_amt)
 {
-    set_thread_imask(ALL_INTERRUPTS_MASK);
+    set_thread_imask(0);
     delay(delay_amt);
     set_thread_imask(ALL_INTERRUPTS_MASK);
 }
