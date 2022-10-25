@@ -28,7 +28,9 @@
 #include "arch_options_calc.h"
 #include <math.h>
 
+#ifndef min
 #define min(a,b) ((a > b) ? a: b)
+#endif
 
 /**********   Arch Options Calculated Functions   **********/
 

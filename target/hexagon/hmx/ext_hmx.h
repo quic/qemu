@@ -40,7 +40,8 @@ void hmx_ext_alloc(processor_t *proc, int slots);
 
 /* Replace execution pointers, opcode already determined */
 
-int hmx_ext_decode_checks(thread_t * thread, Packet *pkt, exception_info *einfo);
+int hmx_ext_decode_checks(thread_t *thread, Packet *pkt,
+                          hex_exception_info *einfo);
 const char * hmx_ext_decode_find_iclass_slots(int opcode);
 void hmx_ext_print_regs(thread_t *thread, FILE *fp, int extno);
 void hmx_ext_print_reg(thread_t *thread, FILE *fp, int rnum, int extno);

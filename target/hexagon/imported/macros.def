@@ -1638,7 +1638,7 @@ DEF_MACRO(fDO_NMI,
 
 DEF_MACRO(fDO_TRACE,
     {
-        fHIDE(CALLBACK(thread->processor_ptr->options->trace_callback,
+        fHIDE(HEX_CALLBACK(thread->processor_ptr->options->trace_callback,
             thread->system_ptr,thread->processor_ptr,
             thread->threadId,SREG);)
     },
@@ -1660,7 +1660,7 @@ DEF_MACRO(DO_IASSIGNR,
 )
 
 DEF_MACRO(DO_SWI,
-        {fHIDE(CALLBACK(thread->processor_ptr->options->swi_callback,
+        {fHIDE(HEX_CALLBACK(thread->processor_ptr->options->swi_callback,
          thread->system_ptr,thread->processor_ptr,
          thread->threadId,REG));
          LOG_GLOBAL_REG_WRITE(REG_IPEND,(GLOBAL_REG_READ(REG_IPEND) | (REG & GLOBAL_REG_READ(REG_IEL))));
@@ -1927,7 +1927,7 @@ DEF_MACRO(fTLB_NONPOW2WRAP,
 DEF_MACRO(fTLBW,
     do {size4u_t __myidx = fTLB_NONPOW2WRAP(fTLB_IDXMASK(INDEX));
         TLB_REG_WRITE(__myidx,VALUE);
-        fHIDE(CALLBACK(thread->processor_ptr->options->tlbw_callback,thread->system_ptr,thread->processor_ptr,thread->threadId,__myidx);)
+        fHIDE(HEX_CALLBACK(thread->processor_ptr->options->tlbw_callback,thread->system_ptr,thread->processor_ptr,thread->threadId,__myidx);)
         fHIDE(sys_tlb_write(thread,__myidx,VALUE);)} while (0),
     /* ATTRIBS */
 )

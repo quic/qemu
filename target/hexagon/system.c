@@ -84,7 +84,7 @@ mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 	maptr->is_dealloc = 0;
 	maptr->dropped_z = 0;
 
-	exception_info einfo;
+        hex_exception_info einfo;
 #endif
 
 	/* The basic stuff */
@@ -141,8 +141,10 @@ mem_init_access_unaligned(thread_t *thread, int slot, size4u_t vaddr, size4u_t r
 	return ret;
 }
 
-int
-sys_xlate_dma(thread_t *thread, size8u_t va, int access_type, int maptr_type, int slot, size4u_t align_mask, xlate_info_t *xinfo, exception_info *einfo, int extended_va, int vtcm_invalid, int dlbc, int forget)
+int sys_xlate_dma(thread_t *thread, size8u_t va, int access_type,
+                  int maptr_type, int slot, size4u_t align_mask,
+                  xlate_info_t *xinfo, hex_exception_info *einfo,
+                  int extended_va, int vtcm_invalid, int dlbc, int forget)
 {
   int ret = 1;
 
@@ -173,9 +175,9 @@ mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, i
 	maptr->is_dealloc = 0;
 	//maptr->dropped_z = 0;
 
-	//exception_info einfo = {0};
+        // hex_exception_info einfo = {0};
 
-	/* The basic stuff */
+        /* The basic stuff */
 	maptr->bad_vaddr = maptr->vaddr = vaddr;
 	maptr->width = width;
 	maptr->type = access_type_store;

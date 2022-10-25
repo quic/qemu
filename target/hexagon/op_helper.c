@@ -97,8 +97,8 @@ void do_raise_exception_err(CPUHexagonState *env,
 #ifdef CONFIG_USER_ONLY
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
 #else
-    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08lx, tbl =%d\n", __func__,
-                  exception, env->gpr[HEX_REG_PC], pc,
+    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08" PRIxPTR ", tbl =%d\n",
+                  __func__, exception, env->gpr[HEX_REG_PC], pc,
                   env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
 #endif
 
@@ -1793,7 +1793,7 @@ void HELPER(debug_value)(CPUHexagonState *env, int32_t value)
 
 void HELPER(debug_value_i64)(CPUHexagonState *env, int64_t value)
 {
-    HEX_DEBUG_LOG("value_i64 = 0x%lx\n", value);
+    HEX_DEBUG_LOG("value_i64 = 0x%" PRIx64 "\n", value);
 }
 
 /* Histogram instructions */
@@ -2062,13 +2062,15 @@ int hexagon_find_l2vic_pending(CPUHexagonState *env)
     uint64_t status[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
     cpu_physical_memory_read(stat, status, sizeof(status));
 
-    intnum = find_next_bit(pending, L2VIC_INTERRUPT_MAX, intnum);
+    intnum = find_next_bit((const unsigned long *)pending, L2VIC_INTERRUPT_MAX,
+                           intnum);
     while (intnum < L2VIC_INTERRUPT_MAX) {
         /* Pending is set but status isn't the interrupt is pending */
-        if (!test_bit(intnum, status)) {
+        if (!test_bit(intnum, (const unsigned long *)status)) {
             break;
         }
-        intnum = find_next_bit(pending, L2VIC_INTERRUPT_MAX, intnum+1);
+        intnum = find_next_bit((const unsigned long *)pending,
+                               L2VIC_INTERRUPT_MAX, intnum + 1);
     }
     return (intnum < L2VIC_INTERRUPT_MAX) ? intnum : L2VIC_NO_PENDING;
 }

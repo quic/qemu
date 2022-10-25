@@ -449,7 +449,7 @@ struct Einfo {
   uint16_t diag;
   uint16_t de_slotmask;
 };
-typedef struct Einfo exception_info;
+typedef struct Einfo hex_exception_info;
 typedef struct Instruction Insn;
 typedef unsigned systemstate_t;
 
@@ -541,7 +541,7 @@ typedef struct CPUArchState {
     uint64_t *g_pcycle_base;
 #ifndef CONFIG_USER_ONLY
     int slot;                    /* Needed for exception generation */
-    exception_info einfo;
+    hex_exception_info einfo;
     systemstate_t systemstate;
     const char *cmdline;
     CPUHexagonTLBContext *hex_tlb;

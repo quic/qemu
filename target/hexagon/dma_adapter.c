@@ -300,7 +300,7 @@ void do_callback(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info,
 	info.desc_id = id;
 	// Translate a VA.
 	xlate_info_t xlate_task;   // Storage to get a PA returned back.
-	exception_info e_info;     // Storage to retrieve an exception if it occurs.
+	hex_exception_info e_info;     // Storage to retrieve an exception if it occurs.
 
 	sys_xlate(thread, desc_va, TYPE_LOAD, access_type_load, 0, 4-1, &xlate_task, &e_info);
 	info.desc_pa = xlate_task.pa;
@@ -361,8 +361,10 @@ uint32_t dma_adapter_xlate_desc_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_me
 
 	// Translate a VA.
 	xlate_info_t xlate_task;   // Storage to get a PA returned back.
-	exception_info e_info = {0};     // Storage to retrieve an exception if it occurs.
-	thread_t * thread = dma_adapter_retrieve_thread(dma);
+        hex_exception_info e_info = {
+            0
+        }; // Storage to retrieve an exception if it occurs.
+        thread_t * thread = dma_adapter_retrieve_thread(dma);
 
 	uint32_t ret = sys_xlate_dma(thread, (uint32_t)va, TYPE_DMA_FETCH,  access_type_load,  0, 0, &xlate_task, &e_info, 0, 0, 0, 0);
 
@@ -424,8 +426,10 @@ uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memacce
 
 	// Translate a VA.
 	xlate_info_t xlate_task;   // Storage to get a PA returned back.
-	exception_info e_info = {0};      // Storage to retrieve an exception if it occurs.
-	thread_t * thread = dma_adapter_retrieve_thread(dma);
+        hex_exception_info e_info = {
+            0
+        }; // Storage to retrieve an exception if it occurs.
+        thread_t * thread = dma_adapter_retrieve_thread(dma);
 
 	uint32_t ret = sys_xlate_dma(thread, va, access_type, maptr_type, 0, width-1, &xlate_task, &e_info, extended_va, except_vtcm, is_dlbc, is_forget);
 	// If an exception occurs, keep it for future.
@@ -493,7 +497,7 @@ int dma_adapter_register_error_exception(dma_t *dma, uint32_t va) {
 #if 0
 	thread_t * thread = dma_adapter_retrieve_thread(dma);
 	dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
-	exception_info e_info;
+	hex_exception_info e_info;
 	register_dma_error_exception(thread, &e_info, va);
 	dma_info->einfo = e_info;
 	warn("DMA %d: Registering DMA error exception cause=%x badva=%x", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), e_info.cause, va);
@@ -512,9 +516,9 @@ int dma_adapter_register_perm_exception(dma_t *dma, uint32_t va,  dma_access_rig
 
 	thread_t * thread = dma_adapter_retrieve_thread(dma);
 	dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
-	exception_info e_info;
+        hex_exception_info e_info;
 
-	e_info.valid = 1;
+        e_info.valid = 1;
 	e_info.type = EXCEPT_TYPE_PRECISE;
 
 
@@ -1195,7 +1199,7 @@ void dma_adapter_set_dm5(dma_t *dma, uint32_t addr) {
 size4u_t dma_adapter_cmd(thread_t *thread, dma_cmd_t opcode,
                          size4u_t arg1, size4u_t arg2) {
 #if 0
-	exception_info einfo = {0};     // Storage to retrieve an exception if it occurs.
+	hex_exception_info einfo = {0};     // Storage to retrieve an exception if it occurs.
 	/* Check if DMA is present. If there is none, just do a noop */
 	if(!thread->processor_ptr->arch_proc_options->QDSP6_DMA_PRESENT) {
 		if(!sys_in_monitor_mode(thread)) {
