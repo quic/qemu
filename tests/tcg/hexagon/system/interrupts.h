@@ -25,6 +25,7 @@ void global_int_disable()
     asm volatile("r0 = syscfg\n\t"
                  "r0 = clrbit(r0, #4)\n\t"
                  "syscfg = r0\n\t"
+                 "isync\n\t"
                  :
                  :
                  : "r0");
@@ -35,6 +36,7 @@ void global_int_enable()
     asm volatile("r0 = syscfg\n\t"
                  "r0 = setbit(r0, #4)\n\t"
                  "syscfg = r0\n\t"
+                 "isync\n\t"
                  :
                  :
                  : "r0");
