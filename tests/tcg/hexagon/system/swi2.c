@@ -21,44 +21,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #define MAX_INT_NUM (8)
 #define ALL_INTERRUPTS_MASK (0xff)
 #define MAX_THREADS (4 - 1) /* 1 for cycling settings */
-
-#define check(a, b) check_(a, b, __LINE__)
-static inline void check_(int a, int b, int linenum)
-{
-    if (a != b) {
-        fprintf(stderr, "error: %d != %d at line %d\n", a, b, linenum);
-        abort();
-    }
-}
-
-static inline uint32_t get_stid(void)
-{
-    uint32_t stid;
-    asm volatile("%0 = stid\n\t" : "=r"(stid));
-    return stid;
-}
-
-static inline uint32_t get_htid(void)
-{
-    uint32_t htid;
-    asm volatile("%0 = htid\n\t" : "=r"(htid));
-    return htid;
-}
 
 /* volatile bacause it tracks when interrupts have been processed */
 volatile int ints_by_irq[MAX_INT_NUM];
 
 static bool all_ints_delivered(int n)
 {
-    bool all_delivered = true;
     for (int i = 0; i < MAX_INT_NUM; i++) {
-        all_delivered = all_delivered && (ints_by_irq[i] == n);
+        if (ints_by_irq[i] != n) {
+            return false;
+        }
     }
-    return all_delivered;
+    return true;
 }
 
 static void cycle_thread_imask(int delay_amt)
@@ -125,9 +104,7 @@ static void interrupt_handler(int intno)
 long long task_stack[MAX_THREADS][1024];
 void run_test()
 {
-    for (int i = 0; i < MAX_INT_NUM; i++) {
-        ints_by_irq[i] = 0;
-    }
+    memset((void *)ints_by_irq, 0, sizeof(ints_by_irq));
 
     for (int i = 0; i < INTS_PER_ITER; i++) {
         swi(ALL_INTERRUPTS_MASK);
@@ -136,12 +113,7 @@ void run_test()
             delay(5);
         }
     }
-
-    for (int i = 0; i < MAX_INT_NUM; i++) {
-        check(ints_by_irq[i], INTS_PER_ITER);
-    }
 }
-
 
 int main()
 {
