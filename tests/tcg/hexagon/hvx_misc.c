@@ -675,6 +675,66 @@ static void test_vmpyewuh(void)
     check_output_w(__LINE__, BUFSIZE);
 }
 
+static void test_vccombine(void)
+{
+    bool predicate = true;
+    void *pout = output;
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("r1 = #1\n\t"
+            "v13 = vsplat(r1)\n\t"
+            "r1 = #2\n\t"
+            "v12 = vsplat(r1)\n\t"
+            "r1 = #3\n\t"
+            "v4 = vsplat(r1)\n\t"
+            "r1 = #4\n\t"
+            "v5 = vsplat(r1)\n\t"
+            "p1 = !cmp.eq(%0, #0)\n\t"
+            "if (p1) V13:12 = vcombine(v4, v5)\n\t"
+            "vmem(%1 + #0) = v12\n\t"
+            : : "r"(predicate), "r"(pout)
+            : "r1", "p1", "v12", "v13", "v4", "v5", "memory");
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            expect[i].w[j] = predicate ? 4 : 2;
+        }
+        predicate = !predicate;
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
+static void test_vnccombine(void)
+{
+    bool predicate = true;
+    void *pout = output;
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("r1 = #1\n\t"
+            "v13 = vsplat(r1)\n\t"
+            "r1 = #2\n\t"
+            "v12 = vsplat(r1)\n\t"
+            "r1 = #3\n\t"
+            "v4 = vsplat(r1)\n\t"
+            "r1 = #4\n\t"
+            "v5 = vsplat(r1)\n\t"
+            "p1 = !cmp.eq(%0, #0)\n\t"
+            "if (!p1) V13:12 = vcombine(v4, v5)\n\t"
+            "vmem(%1 + #0) = v12\n\t"
+            : : "r"(predicate), "r"(pout)
+            : "r1", "p1", "v12", "v13", "v4", "v5", "memory");
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            expect[i].w[j] = predicate ? 2 : 4;
+        }
+        predicate = !predicate;
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
 int main()
 {
     init_buffers();
@@ -717,6 +777,9 @@ int main()
 
     test_vrmpyub_acc();
     test_vmpyewuh();
+
+    test_vccombine();
+    test_vnccombine();
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;

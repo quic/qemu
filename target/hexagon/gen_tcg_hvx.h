@@ -130,6 +130,34 @@ static inline void assert_vhist_tmp(DisasContext *ctx)
     tcg_gen_gvec_mov(MO_64, VdV_off, VuV_off, \
                      sizeof(MMVector), sizeof(MMVector))
 
+/* Vector combine predicated */
+#define fGEN_TCG_PRED_COMBINE(PRED) \
+    do { \
+        TCGv lsb = tcg_temp_new(); \
+        TCGLabel *false_label = gen_new_label(); \
+        TCGLabel *end_label = gen_new_label(); \
+        tcg_gen_andi_tl(lsb, PsV, 1); \
+        tcg_gen_brcondi_tl(TCG_COND_NE, lsb, PRED, false_label); \
+        tcg_temp_free(lsb); \
+        tcg_gen_gvec_mov(MO_64, VddV_off, VvV_off, \
+                         sizeof(MMVector), sizeof(MMVector)); \
+        tcg_gen_gvec_mov(MO_64, VddV_off + sizeof(MMVector), VuV_off, \
+                         sizeof(MMVector), sizeof(MMVector)); \
+        tcg_gen_br(end_label); \
+        gen_set_label(false_label); \
+        tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, \
+                       1 << insn->slot); \
+        gen_set_label(end_label); \
+    } while (0)
+
+/* Vector combine predicated (true) */
+#define fGEN_TCG_V6_vccombine(SHORTCODE) \
+    fGEN_TCG_PRED_COMBINE(1)
+
+/* Vector combine predicated (false) */
+#define fGEN_TCG_V6_vnccombine(SHORTCODE) \
+    fGEN_TCG_PRED_COMBINE(0)
+
 /* Vector conditional move */
 #define fGEN_TCG_VEC_CMOV(PRED) \
     do { \
