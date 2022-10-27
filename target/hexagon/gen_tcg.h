@@ -2199,6 +2199,26 @@
         tcg_temp_free(zero); \
     } while (0)
 
+#define fGEN_TCG_cond_combine(PRED) \
+    do { \
+        TCGLabel *skip = gen_new_label(); \
+        TCGv LSB = tcg_temp_new(); \
+        PRED; \
+        tcg_gen_brcondi_i32(TCG_COND_EQ, LSB, 0, skip); \
+        tcg_temp_free(LSB); \
+        tcg_gen_concat_i32_i64(RddV, RtV, RsV); \
+        gen_set_label(skip); \
+    } while (0)
+
+#define fGEN_TCG_C2_ccombinewt(SHORTCODE) \
+    fGEN_TCG_cond_combine(fLSBOLD(PuV))
+#define fGEN_TCG_C2_ccombinewnewt(SHORTCODE) \
+    fGEN_TCG_cond_combine(fLSBNEW(PuN))
+#define fGEN_TCG_C2_ccombinewf(SHORTCODE) \
+    fGEN_TCG_cond_combine(fLSBOLDNOT(PuV))
+#define fGEN_TCG_C2_ccombinewnewf(SHORTCODE) \
+    fGEN_TCG_cond_combine(fLSBNEWNOT(PuN))
+
 /* r0 = or(#8, asl(r0, #5)) */
 #define fGEN_TCG_S4_ori_asl_ri(SHORTCODE) \
     do { \
