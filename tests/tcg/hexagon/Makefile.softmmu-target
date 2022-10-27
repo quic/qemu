@@ -77,6 +77,7 @@ TESTS += \
 	pend_wake_wait \
 	gregs \
 	multiple_writes \
+	thread_scheduling \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -153,6 +154,7 @@ checkforpriv: checkforpriv.o
 pend_wake_wait: pend_wake_wait.o
 gregs: gregs.o
 multiple_writes: multiple_writes.o
+thread_scheduling: thread_scheduling.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -205,6 +207,7 @@ run-swi2: swi2
 run-swi_wait: swi_wait
 run-tlblock: tlblock
 run-k0lock: k0lock
+run-thread_scheduling: thread_scheduling
 
 run-gregs: gregs
 	$(call run-test, $<, $(QEMU) -d unimp $(QEMU_OPTS) $< 2> _$<.stderr, \
@@ -227,13 +230,15 @@ run-tlblock run-k0lock run-swi_wait run-timer_reg run-qtimer_test run-vid-group:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
-run-swi:
+run-swi run-thread_scheduling:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
 run-swi2:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
-	# TODO: debug failure on icount execution and re-enable this test case.
+	# TODO: this test case is currently disable because it occasionally
+	# hangs (and thus, is killed by timeout). There might be some race
+	# condition when running with -icount mode.
 	# $(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
 run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
