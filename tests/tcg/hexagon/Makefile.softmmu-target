@@ -236,7 +236,9 @@ run-swi run-thread_scheduling:
 
 run-swi2:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<,"$< on $(TARGET_NAME)")
-	# TODO: debug failure on icount execution and re-enable this test case.
+	# TODO: this test case is currently disable because it occasionally
+	# hangs (and thus, is killed by timeout). There might be some race
+	# condition when running with -icount mode.
 	# $(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< $(ICOUNT_OPTS),"$< on $(TARGET_NAME) icount")
 
 run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
