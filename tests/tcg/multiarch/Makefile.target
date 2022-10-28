@@ -40,8 +40,7 @@ testthread: LDFLAGS+=-lpthread
 threadcount: LDFLAGS+=-lpthread
 # QUIC-specific
 run-threadcount: threadcount
-	$(call run-test, threadcount, $(QEMU) $< 3, \
-		"$< (default) on $(TARGET_NAME)")
+	$(call run-test, threadcount, $(QEMU) $< 3)
 # QUIC-end
 
 
