@@ -2476,6 +2476,84 @@
         tcg_temp_free(tmp); \
     } while (0)
 
+/* r1:0 = mpy(r2, r3) */
+#define fGEN_TCG_M2_dpmpyss_s0(SHORTCODE) \
+    do { \
+        TCGv rl = tcg_temp_new(); \
+        TCGv rh = tcg_temp_new(); \
+        tcg_gen_muls2_i32(rl, rh, RsV, RtV); \
+        tcg_gen_concat_i32_i64(RddV, rl, rh); \
+        tcg_temp_free(rl); \
+        tcg_temp_free(rh); \
+    } while (0)
+
+/* r1:0 += mpy(r2, r3) */
+#define fGEN_TCG_M2_dpmpyss_acc_s0(SHORTCODE) \
+    do { \
+        TCGv rl = tcg_temp_new(); \
+        TCGv rh = tcg_temp_new(); \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        tcg_gen_muls2_i32(rl, rh, RsV, RtV); \
+        tcg_gen_concat_i32_i64(tmp, rl, rh); \
+        tcg_gen_add_i64(RxxV, RxxV, tmp); \
+        tcg_temp_free(rl); \
+        tcg_temp_free(rh); \
+        tcg_temp_free_i64(tmp); \
+    } while (0)
+
+/* r1:0 -= mpy(r2, r3) */
+#define fGEN_TCG_M2_dpmpyss_nac_s0(SHORTCODE) \
+    do { \
+        TCGv rl = tcg_temp_new(); \
+        TCGv rh = tcg_temp_new(); \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        tcg_gen_muls2_i32(rl, rh, RsV, RtV); \
+        tcg_gen_concat_i32_i64(tmp, rl, rh); \
+        tcg_gen_sub_i64(RxxV, RxxV, tmp); \
+        tcg_temp_free(rl); \
+        tcg_temp_free(rh); \
+        tcg_temp_free_i64(tmp); \
+    } while (0)
+
+/* r1:0 = mpyu(r2, r3) */
+#define fGEN_TCG_M2_dpmpyuu_s0(SHORTCODE) \
+    do { \
+        TCGv rl = tcg_temp_new(); \
+        TCGv rh = tcg_temp_new(); \
+        tcg_gen_mulu2_i32(rl, rh, RsV, RtV); \
+        tcg_gen_concat_i32_i64(RddV, rl, rh); \
+        tcg_temp_free(rl); \
+        tcg_temp_free(rh); \
+    } while (0)
+
+/* r1:0 += mpyu(r2, r3) */
+#define fGEN_TCG_M2_dpmpyuu_acc_s0(SHORTCODE) \
+    do { \
+        TCGv rl = tcg_temp_new(); \
+        TCGv rh = tcg_temp_new(); \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        tcg_gen_mulu2_i32(rl, rh, RsV, RtV); \
+        tcg_gen_concat_i32_i64(tmp, rl, rh); \
+        tcg_gen_add_i64(RxxV, RxxV, tmp); \
+        tcg_temp_free(rl); \
+        tcg_temp_free(rh); \
+        tcg_temp_free_i64(tmp); \
+    } while (0)
+
+/* r1:0 -= mpyu(r2, r3) */
+#define fGEN_TCG_M2_dpmpyuu_nac_s0(SHORTCODE) \
+    do { \
+        TCGv rl = tcg_temp_new(); \
+        TCGv rh = tcg_temp_new(); \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        tcg_gen_mulu2_i32(rl, rh, RsV, RtV); \
+        tcg_gen_concat_i32_i64(tmp, rl, rh); \
+        tcg_gen_sub_i64(RxxV, RxxV, tmp); \
+        tcg_temp_free(rl); \
+        tcg_temp_free(rh); \
+        tcg_temp_free_i64(tmp); \
+    } while (0)
+
 /* r0 += add(r1, r2) */
 #define fGEN_TCG_M2_acci(SHORTCODE) \
     do { \
