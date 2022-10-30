@@ -50,14 +50,32 @@ static inline TCGv gen_read_preg(TCGv pred, uint8_t num)
     return pred;
 }
 
-static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot, TCGv zero)
+
+static void gen_check_reg_write(DisasContext *ctx, int rnum, TCGv cancelled)
 {
-    TCGv slot_mask = tcg_temp_new();
+    if (rnum < NUM_GPREGS && test_bit(rnum, ctx->wreg_mult_gprs)) {
+        TCGv mult_reg = tcg_temp_local_new();
+
+        TCGLabel *skip = gen_new_label();
+        tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, skip);
+        tcg_gen_andi_tl(mult_reg, hex_gpreg_written, 1 << rnum);
+        tcg_gen_or_tl(hex_mult_reg_written, hex_mult_reg_written, mult_reg);
+        tcg_gen_ori_tl(hex_gpreg_written, hex_gpreg_written, 1 << rnum);
+        gen_set_label(skip);
+        tcg_temp_free(mult_reg);
+    }
+}
+
+static inline void gen_log_predicated_reg_write(DisasContext *ctx, int rnum,
+                                                TCGv val, int slot)
+{
+    TCGv slot_mask = tcg_temp_local_new();
 
     tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, zero,
-                           val, hex_new_value[rnum]);
-    gen_helper_check_cond_reg_write(cpu_env, tcg_constant_tl(rnum), slot_mask);
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, ctx->zero,
+                       val, hex_new_value[rnum]);
+
+    gen_check_reg_write(ctx, rnum, slot_mask);
 
     if (HEX_DEBUG) {
         /*
@@ -67,7 +85,7 @@ static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot, TC
          * (i.e., slot was cancelled), so we create a true/false value before
          * or'ing with hex_reg_written[rnum].
          */
-        tcg_gen_setcond_tl(TCG_COND_EQ, slot_mask, slot_mask, zero);
+        tcg_gen_setcond_tl(TCG_COND_EQ, slot_mask, slot_mask, ctx->zero);
         tcg_gen_or_tl(hex_reg_written[rnum], hex_reg_written[rnum], slot_mask);
     }
 
@@ -77,7 +95,6 @@ static inline void gen_log_predicated_reg_write(int rnum, TCGv val, int slot, TC
 static inline void gen_log_reg_write(int rnum, TCGv val)
 {
     tcg_gen_mov_tl(hex_new_value[rnum], val);
-    gen_helper_check_reg_write(cpu_env, tcg_constant_tl(rnum));
     if (HEX_DEBUG) {
         /* Do this so HELPER(debug_commit_end) will know */
         tcg_gen_movi_tl(hex_reg_written[rnum], 1);
@@ -95,25 +112,26 @@ static inline void gen_log_greg_write(int rnum, TCGv val)
 }
 #endif
 
-static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot, TCGv zero)
+static void gen_log_predicated_reg_write_pair(DisasContext *ctx, int rnum,
+                                              TCGv_i64 val, int slot)
 {
     TCGv val32 = tcg_temp_new();
-    TCGv slot_mask = tcg_temp_new();
+    TCGv slot_mask = tcg_temp_local_new();
 
     tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
+
     /* Low word */
     tcg_gen_extrl_i64_i32(val32, val);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum],
-                       slot_mask, zero,
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, ctx->zero,
                        val32, hex_new_value[rnum]);
 
     /* High word */
     tcg_gen_extrh_i64_i32(val32, val);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum + 1],
-                       slot_mask, zero,
-                       val32, hex_new_value[rnum + 1]);
+    tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum + 1], slot_mask,
+                       ctx->zero, val32, hex_new_value[rnum + 1]);
 
-    gen_helper_check_cond_reg_write_pair(cpu_env, tcg_constant_tl(rnum), slot_mask);
+    gen_check_reg_write(ctx, rnum, slot_mask);
+    gen_check_reg_write(ctx, rnum + 1, slot_mask);
 
     if (HEX_DEBUG) {
         /*
@@ -123,7 +141,7 @@ static void gen_log_predicated_reg_write_pair(int rnum, TCGv_i64 val, int slot, 
          * (i.e., slot was cancelled), so we create a true/false value before
          * or'ing with hex_reg_written[rnum].
          */
-        tcg_gen_setcond_tl(TCG_COND_EQ, slot_mask, slot_mask, zero);
+        tcg_gen_setcond_tl(TCG_COND_EQ, slot_mask, slot_mask, ctx->zero);
         tcg_gen_or_tl(hex_reg_written[rnum], hex_reg_written[rnum], slot_mask);
         tcg_gen_or_tl(hex_reg_written[rnum + 1], hex_reg_written[rnum + 1],
                       slot_mask);
@@ -148,8 +166,6 @@ static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
         /* Do this so HELPER(debug_commit_end) will know */
         tcg_gen_movi_tl(hex_reg_written[rnum + 1], 1);
     }
-
-    gen_helper_check_reg_write_pair(cpu_env, tcg_constant_tl(rnum));
 }
 
 #ifndef CONFIG_USER_ONLY

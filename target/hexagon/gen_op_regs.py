@@ -21,6 +21,9 @@ import sys
 import re
 import string
 import hex_common
+from hex_common import is_pair
+from itertools import accumulate
+from operator import or_
 
 ##
 ##     Generate the register and immediate operands for each instruction
@@ -77,6 +80,7 @@ def main():
             rregs = []
             wregs = []
             regids = ""
+            regid_seq = []
             for regtype,regid,toss,numregs in regs:
                 if hex_common.is_read(regid):
                     if regid[0] not in regids: regids += regid[0]
@@ -84,14 +88,22 @@ def main():
                 if hex_common.is_written(regid):
                     wregs.append(regtype+regid+numregs)
                     if regid[0] not in regids: regids += regid[0]
+                regid_seq.append(regid)
             for attrib in hex_common.attribdict[tag]:
                 if hex_common.attribinfo[attrib]['rreg']:
                     rregs.append(strip_verif_info_in_regs(attribinfo[attrib]['rreg']))
                 if hex_common.attribinfo[attrib]['wreg']:
                     wregs.append(strip_verif_info_in_regs(attribinfo[attrib]['wreg']))
             regids += calculate_regid_letters(tag)
-            f.write('REGINFO(%s,"%s",\t/*RD:*/\t"%s",\t/*WR:*/\t"%s")\n' % \
-                (tag,regids,",".join(rregs),",".join(wregs)))
+
+            reg_is_pair = [(1 << n) if is_pair(regid) else 0 for n, regid in enumerate(regid_seq)]
+            reg_pair_list = list(accumulate((bit for bit in reg_is_pair), or_))
+            reg_pair_mask = reg_pair_list[-1] if reg_pair_list else 0
+
+            f.write(
+                'REGINFO(%s,"%s",\t/*RD:*/\t"%s",\t/*WR:*/\t"%s",'
+                        '\t/*WRCNT:*/\t%d,\t/*PAIRMASK:*/\t0x%08x)\n' % \
+                (tag,regids,",".join(rregs),",".join(wregs), len(wregs), reg_pair_mask))
 
         for tag in hex_common.get_all_tags():
             imms = tagimms[tag]

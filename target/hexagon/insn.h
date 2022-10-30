@@ -36,7 +36,7 @@ typedef void (*SemanticInsn)(CPUHexagonState *env,
 
 struct Instruction {
     SemanticInsn generate;            /* pointer to genptr routine */
-    uint8_t regno[REG_OPERANDS_MAX];    /* reg operands including predicates */
+    uint8_t regno[REG_OPERANDS_MAX]; /* reg operands including predicates */
     uint16_t opcode;
 
     uint32_t iclass:6;

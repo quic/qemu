@@ -43,6 +43,8 @@ extern const char * const opcode_names[];
 extern const char * const opcode_reginfo[];
 extern const char * const opcode_rregs[];
 extern const char * const opcode_wregs[];
+extern const int opcode_wreg_count[];
+extern const int opcode_reg_pairs[];
 
 typedef struct {
     const char * const encoding;

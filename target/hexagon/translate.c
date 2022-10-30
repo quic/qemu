@@ -42,6 +42,7 @@ TCGv hex_branch_taken;
 TCGv hex_new_value[TOTAL_PER_THREAD_REGS];
 TCGv hex_reg_written[TOTAL_PER_THREAD_REGS];
 TCGv hex_gpreg_written;
+TCGv hex_mult_reg_written;
 TCGv hex_new_pred_value[NUM_PREGS];
 TCGv hex_pred_written;
 TCGv hex_store_addr[STORES_MAX];
@@ -350,6 +351,63 @@ static bool need_pred_written(Packet *pkt)
     return (check_for_attrib(pkt, A_WRITES_PRED_REG) || check_for_opcode(pkt, A2_tfrrcr));
 }
 
+static void decode_wregs(DisasContext *ctx, Packet *pkt)
+{
+    int i;
+    ctx->pkt_has_uncond_mult_reg_write = false;
+    bitmap_zero(ctx->wreg_mult_gprs, NUM_GPREGS);
+    bitmap_zero(ctx->uncond_wreg_gprs, NUM_GPREGS);
+
+    /*
+     * The GPRs which have register writes in this packet:
+     */
+    DECLARE_BITMAP(all_wreg_gprs, NUM_GPREGS);
+    bitmap_zero(all_wreg_gprs, NUM_GPREGS);
+
+    for (i = 0; i < pkt->num_insns; i++) {
+        int reg_pair_mask = opcode_reg_pairs[pkt->insn[i].opcode];
+        int def_count = opcode_wreg_count[pkt->insn[i].opcode];
+        gchar **wregs = g_strsplit(opcode_wregs[pkt->insn[i].opcode], ",", 0);
+        int j;
+        for (j = 0; j < def_count; j++) {
+            gchar reg_class = wregs[j][0];
+            bool condexec = GET_ATTRIB(pkt->insn[i].opcode, A_CONDEXEC);
+            /*
+             * For CONDEXEC, predicate regs are the zero'th
+             * reg operand, skip those to get to the first def:
+             */
+            int def_idx = condexec ? (j + 1) : j;
+            int rnum = pkt->insn[i].regno[def_idx];
+            bool is_pair = (reg_pair_mask & (1 << def_idx)) != 0;
+
+            if (reg_class != 'R') {
+                continue;
+            }
+            bool any_set = test_and_set_bit(rnum, all_wreg_gprs);
+            if (any_set) {
+                set_bit(rnum, ctx->wreg_mult_gprs);
+            }
+            if (is_pair) {
+                any_set = test_and_set_bit(rnum + 1, all_wreg_gprs);
+                if (any_set) {
+                    set_bit(rnum + 1, ctx->wreg_mult_gprs);
+                }
+            }
+            if (!condexec) {
+                bool uncond_set = test_and_set_bit(rnum, ctx->uncond_wreg_gprs);
+                ctx->pkt_has_uncond_mult_reg_write |= uncond_set;
+                if (is_pair) {
+                    uncond_set =
+                        test_and_set_bit(rnum + 1, ctx->uncond_wreg_gprs);
+                    ctx->pkt_has_uncond_mult_reg_write |= uncond_set;
+                }
+            }
+        }
+        g_strfreev(wregs);
+    }
+
+}
+
 #if !defined(CONFIG_USER_ONLY)
 static void gen_coproc_check(int ssr_field_index, int cause_code) {
     TCGv xe = tcg_temp_new();
@@ -365,6 +423,29 @@ static void gen_coproc_check(int ssr_field_index, int cause_code) {
     tcg_temp_free(xe);
 }
 #endif
+
+static void gen_check_mult_reg_write(DisasContext *ctx)
+{
+    if (ctx->pkt_has_uncond_mult_reg_write) {
+        gen_exception_end_tb(ctx, HEX_CAUSE_REG_WRITE_CONFLICT);
+    } else if (!bitmap_empty(ctx->wreg_mult_gprs, NUM_GPREGS)) {
+        TCGLabel *skip_exception = gen_new_label();
+        tcg_gen_brcondi_tl(TCG_COND_EQ, hex_mult_reg_written, 0,
+                           skip_exception);
+#ifdef CONFIG_USER_ONLY
+        gen_exception_raw(HEX_CAUSE_REG_WRITE_CONFLICT);
+#else
+        tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_REG_WRITE_CONFLICT);
+        gen_exception_raw(HEX_EVENT_PRECISE);
+#endif
+        gen_set_label(skip_exception);
+    }
+}
+
+typedef union {
+    uint32_t mask;
+    unsigned long mask_l;
+} RegWriteMask;
 
 static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
                              Packet *pkt)
@@ -409,6 +490,8 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
     }
     ctx->s1_store_processed = false;
     ctx->pre_commit = true;
+
+    decode_wregs(ctx, pkt);
 
     if (ctx->paranoid_commit_state) {
         for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
@@ -466,7 +549,15 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         }
     }
 
-    tcg_gen_movi_tl(hex_gpreg_written, 0);
+    if (!bitmap_empty(ctx->wreg_mult_gprs, NUM_GPREGS)) {
+        RegWriteMask write_mask;
+        write_mask.mask = -1;
+        bitmap_copy(&write_mask.mask_l, ctx->uncond_wreg_gprs, NUM_GPREGS);
+        g_assert(NUM_GPREGS <= sizeof(write_mask) * BITS_PER_BYTE);
+
+        tcg_gen_movi_tl(hex_gpreg_written, write_mask.mask);
+        tcg_gen_movi_tl(hex_mult_reg_written, 0);
+    }
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
         gen_helper_debug_start_packet(cpu_env);
@@ -499,7 +590,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx,
         tcg_gen_movi_tl(hex_VRegs_updated, 0);
         tcg_gen_movi_tl(hex_QRegs_updated, 0);
     }
-
 
 #ifndef CONFIG_USER_ONLY
     HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
@@ -652,6 +742,7 @@ static void gen_insn(CPUHexagonState *env, DisasContext *ctx,
 /*
  * Helpers for generating the packet commit
  */
+
 static void gen_reg_writes(DisasContext *ctx)
 {
     int i;
@@ -1043,6 +1134,8 @@ static void check_imprecise_exception(Packet *pkt)
 static void gen_commit_packet(CPUHexagonState *env, DisasContext *ctx,
                               Packet *pkt)
 {
+    gen_check_mult_reg_write(ctx);
+
     /*
      * If there is more than one store in a packet, make sure they are all OK
      * before proceeding with the rest of the packet commit.
@@ -1181,6 +1274,7 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
         }
 #endif
         gen_start_packet(env, ctx, &pkt);
+
         for (i = 0; i < pkt.num_insns; i++) {
             gen_insn(env, ctx, &pkt.insn[i], &pkt);
         }
@@ -1393,6 +1487,9 @@ void hexagon_translate_init(void)
     }
     hex_gpreg_written = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, gpreg_written), "gpreg_written");
+    hex_mult_reg_written =
+        tcg_global_mem_new(cpu_env, offsetof(CPUHexagonState, mult_reg_written),
+                           "mult_reg_written");
 #ifndef CONFIG_USER_ONLY
     for (i = 0; i < NUM_GREGS; i++) {
             hex_greg[i] = tcg_global_mem_new(cpu_env,
