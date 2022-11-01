@@ -646,6 +646,35 @@ static void test_vrmpyub_acc(void)
     check_output_w(__LINE__, BUFSIZE);
 }
 
+static void test_vmpyewuh(void)
+{
+    void *p0 = buffer0;
+    void *p1 = buffer1;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(output));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v2 = vmem(%0 + #0)\n\t"
+            "v3 = vmem(%1 + #0)\n\t"
+            "v3.w = vmpye(v2.w, v3.uh)\n\t"
+            "vmem(%2 + #0) = v3\n\t"
+            : : "r"(p0), "r"(p1), "r"(pout) : "v2", "v3", "memory");
+        p0 += sizeof(MMVector);
+        p1 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            int64_t x = buffer0[i].w[j];
+            uint64_t y = buffer1[i].uh[j * 2];
+            expect[i].w[j] = (x * y) >> 16;
+        }
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
 int main()
 {
     init_buffers();
@@ -687,6 +716,7 @@ int main()
     test_load_cur_predicated();
 
     test_vrmpyub_acc();
+    test_vmpyewuh();
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;

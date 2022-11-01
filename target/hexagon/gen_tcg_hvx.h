@@ -915,4 +915,7 @@ static inline void assert_vhist_tmp(DisasContext *ctx)
 #define fGEN_TCG_V6_vrmpyubi_acc(SHOTRCODE) \
     gen_vrmpyubi(VxxV_off, VuuV_off, RtV, uiV, true)
 
+#define fGEN_TCG_V6_vmpyewuh(SHORTCODE) \
+    gen_vmpyewuh(VdV_off, VuV_off, VvV_off)
+
 #endif

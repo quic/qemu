@@ -1478,6 +1478,34 @@ static void gen_vrmpyubi(intptr_t dst_off, intptr_t VuuV_off, TCGv RtV,
     tcg_temp_free(prod);
 }
 
+static void gen_vmpyewuh(intptr_t VdV_off, intptr_t VuV_off, intptr_t VvV_off)
+{
+    /*
+     *    fVFOREACH(32, i) {
+     *        VdV.w[i] = fMPY3216SU(VuV.w[i], fGETUHALF(0, VvV.w[i])) >> 16;
+     *    }
+     */
+    int i;
+    TCGv_i64 VuV_word = tcg_temp_new_i64();
+    TCGv_i64 VvV_half = tcg_temp_new_i64();
+    TCGv_i64 prod = tcg_temp_new_i64();
+
+    for (i = 0; i < sizeof(MMVector) / 4; i++) {
+        tcg_gen_ld32s_i64(VuV_word, cpu_env, VuV_off);
+        tcg_gen_ld16u_i64(VvV_half, cpu_env, VvV_off);
+        tcg_gen_mul_i64(prod, VuV_word, VvV_half);
+        tcg_gen_shri_i64(prod, prod, 16);
+        tcg_gen_st32_i64(prod, cpu_env, VdV_off);
+
+        VdV_off += 4;
+        VuV_off += 4;
+        VvV_off += 4;
+    }
+    tcg_temp_free_i64(VuV_word);
+    tcg_temp_free_i64(VvV_half);
+    tcg_temp_free_i64(prod);
+}
+
 static void probe_noshuf_load(TCGv va, int s, int mi)
 {
     TCGv size = tcg_const_tl(s);
