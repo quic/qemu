@@ -2255,36 +2255,135 @@
         tcg_gen_add_tl(RdV, RuV, RdV); \
     } while (0)
 
-/* Predicated add instructions */
-#define GEN_TCG_padd(PRED, ADD) \
+/* Predicated instruction template */
+#define fGEN_TCG_PRED_INSN(PRED, INSN) \
     do { \
         TCGv LSB = tcg_temp_new(); \
         TCGLabel *skip = gen_new_label(); \
         PRED; \
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, skip); \
         tcg_temp_free(LSB); \
-        ADD; \
+        INSN; \
         gen_set_label(skip); \
     } while (0)
 
+/* predicated add */
 #define fGEN_TCG_A2_paddt(SHORTCODE) \
-    GEN_TCG_padd(fLSBOLD(PuV), tcg_gen_add_tl(RdV, RsV, RtV))
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_add_tl(RdV, RsV, RtV))
 #define fGEN_TCG_A2_paddf(SHORTCODE) \
-    GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_add_tl(RdV, RsV, RtV))
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_add_tl(RdV, RsV, RtV))
 #define fGEN_TCG_A2_paddit(SHORTCODE) \
-    GEN_TCG_padd(fLSBOLD(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
 #define fGEN_TCG_A2_paddif(SHORTCODE) \
-    GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
 #define fGEN_TCG_A2_paddtnew(SHORTCODE) \
-    GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
 #define fGEN_TCG_A2_paddfnew(SHORTCODE) \
-    GEN_TCG_padd(fLSBNEWNOT(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
 #define fGEN_TCG_A2_padditnew(SHORTCODE) \
-    GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_addi_tl(RdV, RsV, siV))
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_addi_tl(RdV, RsV, siV))
+#define fGEN_TCG_A2_paddifnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_addi_tl(RdV, RsV, siV))
+
+/* predicated sub */
+#define fGEN_TCG_A2_psubt(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_sub_tl(RdV, RtV, RsV))
+#define fGEN_TCG_A2_psubf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_sub_tl(RdV, RtV, RsV))
 #define fGEN_TCG_A2_psubtnew(SHORTCODE) \
-    GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_sub_tl(RdV, RtV, RsV))
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_sub_tl(RdV, RtV, RsV))
+#define fGEN_TCG_A2_psubfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_sub_tl(RdV, RtV, RsV))
+
+/* predicated xor */
+#define fGEN_TCG_A2_pxort(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_xor_tl(RdV, RsV, RtV))
 #define fGEN_TCG_A2_pxorf(SHORTCODE) \
-    GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_xor_tl(RdV, RsV, RtV))
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_xor_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_pxortnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_xor_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_pxorfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_xor_tl(RdV, RsV, RtV))
+
+/* predicated and */
+#define fGEN_TCG_A2_pandt(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_and_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_pandf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_and_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_pandtnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_and_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_pandfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_and_tl(RdV, RsV, RtV))
+
+/* predicated or */
+#define fGEN_TCG_A2_port(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_or_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_porf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_or_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_portnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_or_tl(RdV, RsV, RtV))
+#define fGEN_TCG_A2_porfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_or_tl(RdV, RsV, RtV))
+
+/* predicated sign extend byte */
+#define fGEN_TCG_A4_psxtbt(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_sextract_tl(RdV, RsV, 0, 8))
+#define fGEN_TCG_A4_psxtbf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_sextract_tl(RdV, RsV, 0, 8))
+#define fGEN_TCG_A4_psxtbtnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_sextract_tl(RdV, RsV, 0, 8))
+#define fGEN_TCG_A4_psxtbfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_sextract_tl(RdV, RsV, 0, 8))
+
+/* predicated zero extend byte */
+#define fGEN_TCG_A4_pzxtbt(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_extract_tl(RdV, RsV, 0, 8))
+#define fGEN_TCG_A4_pzxtbf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_extract_tl(RdV, RsV, 0, 8))
+#define fGEN_TCG_A4_pzxtbtnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_extract_tl(RdV, RsV, 0, 8))
+#define fGEN_TCG_A4_pzxtbfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_extract_tl(RdV, RsV, 0, 8))
+
+/* predicated sign extend half */
+#define fGEN_TCG_A4_psxtht(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_sextract_tl(RdV, RsV, 0, 16))
+#define fGEN_TCG_A4_psxthf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_sextract_tl(RdV, RsV, 0, 16))
+#define fGEN_TCG_A4_psxthtnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_sextract_tl(RdV, RsV, 0, 16))
+#define fGEN_TCG_A4_psxthfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_sextract_tl(RdV, RsV, 0, 16))
+
+/* predicated zero extend half */
+#define fGEN_TCG_A4_pzxtht(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_extract_tl(RdV, RsV, 0, 16))
+#define fGEN_TCG_A4_pzxthf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_extract_tl(RdV, RsV, 0, 16))
+#define fGEN_TCG_A4_pzxthtnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_extract_tl(RdV, RsV, 0, 16))
+#define fGEN_TCG_A4_pzxthfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_extract_tl(RdV, RsV, 0, 16))
+
+/* predicated shift left half */
+#define fGEN_TCG_A4_paslht(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_shli_tl(RdV, RsV, 16))
+#define fGEN_TCG_A4_paslhf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_shli_tl(RdV, RsV, 16))
+#define fGEN_TCG_A4_paslhtnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_shli_tl(RdV, RsV, 16))
+#define fGEN_TCG_A4_paslhfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_shli_tl(RdV, RsV, 16))
+
+/* predicated arithmetic shift right half */
+#define fGEN_TCG_A4_pasrht(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLD(PuV), tcg_gen_sari_tl(RdV, RsV, 16))
+#define fGEN_TCG_A4_pasrhf(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBOLDNOT(PuV), tcg_gen_sari_tl(RdV, RsV, 16))
+#define fGEN_TCG_A4_pasrhtnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEW(PuN), tcg_gen_sari_tl(RdV, RsV, 16))
+#define fGEN_TCG_A4_pasrhfnew(SHORTCODE) \
+    fGEN_TCG_PRED_INSN(fLSBNEWNOT(PuN), tcg_gen_sari_tl(RdV, RsV, 16))
 
 /* Conditional move instructions */
 #define fGEN_TCG_COND_MOVE(VAL) \
