@@ -264,6 +264,13 @@ static void gen_set_half(int N, TCGv result, TCGv src)
     tcg_gen_deposit_tl(result, result, src, N * 16, 16);
 }
 
+static void gen_seti_half(int N, TCGv result, int val)
+{
+    TCGv tmp = tcg_const_tl(val);
+    gen_set_half(N, result, tmp);
+    tcg_temp_free(tmp);
+}
+
 static void gen_set_half_i64(int N, TCGv_i64 result, TCGv src)
 {
     TCGv_i64 src64 = tcg_temp_new_i64();

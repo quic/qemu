@@ -1985,6 +1985,18 @@
     tcg_gen_mov_tl(RdV, CsV)
 #define fGEN_TCG_A2_tfrrcr(SHORTCODE) \
     tcg_gen_mov_tl(CdV, RsV)
+#define fGEN_TCG_C2_tfrpr(SHORTCODE) \
+    tcg_gen_extract_tl(RdV, PsV, 0, 8)
+#define fGEN_TCG_C2_tfrrp(SHORTCODE) \
+    tcg_gen_andi_tl(PdV, RsV, 0xff);
+#define fGEN_TCG_A2_tfril(SHORTCODE) \
+    gen_seti_half(0, RxV, uiV)
+#define fGEN_TCG_A2_tfrih(SHORTCODE) \
+    gen_seti_half(1, RxV, uiV)
+#define fGEN_TCG_A4_tfrcpp(SHORTCODE) \
+    tcg_gen_mov_i64(RddV, CssV)
+#define fGEN_TCG_A4_tfrpcp(SHORTCODE) \
+    tcg_gen_mov_i64(CddV, RssV)
 
 #define fGEN_TCG_A2_nop(SHORTCODE) \
     do { } while (0)
