@@ -2004,35 +2004,65 @@
 /* Compare instructions */
 #define fGEN_TCG_C2_cmpeq(SHORTCODE) \
     gen_compare(TCG_COND_EQ, PdV, RsV, RtV)
+#define fGEN_TCG_C2_cmpeqi(SHORTCODE) \
+    gen_comparei(TCG_COND_EQ, PdV, RsV, siV)
 #define fGEN_TCG_C4_cmpneq(SHORTCODE) \
     gen_compare(TCG_COND_NE, PdV, RsV, RtV)
+#define fGEN_TCG_C4_cmpneqi(SHORTCODE) \
+    gen_comparei(TCG_COND_NE, PdV, RsV, siV)
+
 #define fGEN_TCG_C2_cmpgt(SHORTCODE) \
     gen_compare(TCG_COND_GT, PdV, RsV, RtV)
+#define fGEN_TCG_C2_cmpgti(SHORTCODE) \
+    gen_comparei(TCG_COND_GT, PdV, RsV, siV)
 #define fGEN_TCG_C2_cmpgtu(SHORTCODE) \
     gen_compare(TCG_COND_GTU, PdV, RsV, RtV)
+#define fGEN_TCG_C2_cmpgtui(SHORTCODE) \
+    gen_comparei(TCG_COND_GTU, PdV, RsV, uiV)
+
 #define fGEN_TCG_C4_cmplte(SHORTCODE) \
     gen_compare(TCG_COND_LE, PdV, RsV, RtV)
+#define fGEN_TCG_C4_cmpltei(SHORTCODE) \
+    gen_comparei(TCG_COND_LE, PdV, RsV, siV)
 #define fGEN_TCG_C4_cmplteu(SHORTCODE) \
     gen_compare(TCG_COND_LEU, PdV, RsV, RtV)
+#define fGEN_TCG_C4_cmplteui(SHORTCODE) \
+    gen_comparei(TCG_COND_LEU, PdV, RsV, uiV)
+
 #define fGEN_TCG_C2_cmpeqp(SHORTCODE) \
     gen_compare_i64(TCG_COND_EQ, PdV, RssV, RttV)
 #define fGEN_TCG_C2_cmpgtp(SHORTCODE) \
     gen_compare_i64(TCG_COND_GT, PdV, RssV, RttV)
 #define fGEN_TCG_C2_cmpgtup(SHORTCODE) \
     gen_compare_i64(TCG_COND_GTU, PdV, RssV, RttV)
-#define fGEN_TCG_C2_cmpeqi(SHORTCODE) \
-    gen_comparei(TCG_COND_EQ, PdV, RsV, siV)
-#define fGEN_TCG_C2_cmpgti(SHORTCODE) \
-    gen_comparei(TCG_COND_GT, PdV, RsV, siV)
-#define fGEN_TCG_C2_cmpgtui(SHORTCODE) \
-    gen_comparei(TCG_COND_GTU, PdV, RsV, uiV)
+
+/* byte compares */
+#define fGEN_TCG_A4_cmpbeq(SHORTCODE) \
+    gen_compare_byte(TCG_COND_EQ, PdV, RsV, RtV, true)
+#define fGEN_TCG_A4_cmpbeqi(SHORTCODE) \
+    gen_comparei_byte(TCG_COND_EQ, PdV, RsV, false, uiV)
+#define fGEN_TCG_A4_cmpbgtu(SHORTCODE) \
+    gen_compare_byte(TCG_COND_GTU, PdV, RsV, RtV, false)
 #define fGEN_TCG_A4_cmpbgtui(SHORTCODE) \
-    do { \
-        TCGv byte = tcg_temp_new(); \
-        tcg_gen_extract_tl(byte, RsV, 0, 8); \
-        gen_comparei(TCG_COND_GTU, PdV, byte, uiV); \
-        tcg_temp_free(byte); \
-    } while (0)
+    gen_comparei_byte(TCG_COND_GTU, PdV, RsV, false, uiV)
+#define fGEN_TCG_A4_cmpbgt(SHORTCODE) \
+    gen_compare_byte(TCG_COND_GT, PdV, RsV, RtV, true)
+#define fGEN_TCG_A4_cmpbgti(SHORTCODE) \
+    gen_comparei_byte(TCG_COND_GT, PdV, RsV, true, siV)
+
+/* half compares */
+#define fGEN_TCG_A4_cmpheq(SHORTCODE) \
+    gen_compare_half(TCG_COND_EQ, PdV, RsV, RtV, true)
+#define fGEN_TCG_A4_cmpheqi(SHORTCODE) \
+    gen_comparei_half(TCG_COND_EQ, PdV, RsV, true, siV)
+#define fGEN_TCG_A4_cmphgtu(SHORTCODE) \
+    gen_compare_half(TCG_COND_GTU, PdV, RsV, RtV, false)
+#define fGEN_TCG_A4_cmphgtui(SHORTCODE) \
+    gen_comparei_half(TCG_COND_GTU, PdV, RsV, false, uiV)
+#define fGEN_TCG_A4_cmphgt(SHORTCODE) \
+    gen_compare_half(TCG_COND_GT, PdV, RsV, RtV, true)
+#define fGEN_TCG_A4_cmphgti(SHORTCODE) \
+    gen_comparei_half(TCG_COND_GT, PdV, RsV, true, siV)
 
 #define fGEN_TCG_SA1_zxtb(SHORTCODE) \
     tcg_gen_ext8u_tl(RdV, RsV)

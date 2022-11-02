@@ -582,6 +582,48 @@ static void gen_comparei(TCGCond cond, TCGv res, TCGv arg1, int arg2)
     tcg_temp_free(tmp);
 }
 
+static void gen_compare_byte(TCGCond cond, TCGv res, TCGv arg1, TCGv arg2,
+                             bool sign)
+{
+    TCGv byte1 = tcg_temp_new();
+    TCGv byte2 = tcg_temp_new();
+    gen_get_byte(byte1, 0, arg1, sign);
+    gen_get_byte(byte2, 0, arg2, sign);
+    gen_compare(cond, res, byte1, byte2);
+    tcg_temp_free(byte1);
+    tcg_temp_free(byte2);
+}
+
+static void gen_comparei_byte(TCGCond cond, TCGv res, TCGv arg1, bool sign,
+                              int arg2)
+{
+    TCGv byte = tcg_temp_new();
+    gen_get_byte(byte, 0, arg1, sign);
+    gen_comparei(cond, res, byte, arg2);
+    tcg_temp_free(byte);
+}
+
+static void gen_compare_half(TCGCond cond, TCGv res, TCGv arg1, TCGv arg2,
+                             bool sign)
+{
+    TCGv half1 = tcg_temp_new();
+    TCGv half2 = tcg_temp_new();
+    gen_get_half(half1, 0, arg1, sign);
+    gen_get_half(half2, 0, arg2, sign);
+    gen_compare(cond, res, half1, half2);
+    tcg_temp_free(half1);
+    tcg_temp_free(half2);
+}
+
+static void gen_comparei_half(TCGCond cond, TCGv res, TCGv arg1, bool sign,
+                              int arg2)
+{
+    TCGv half = tcg_temp_new();
+    gen_get_half(half, 0, arg1, sign);
+    gen_comparei(cond, res, half, arg2);
+    tcg_temp_free(half);
+}
+
 static void gen_compare_i64(TCGCond cond, TCGv res,
                             TCGv_i64 arg1, TCGv_i64 arg2)
 {
