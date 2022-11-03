@@ -139,6 +139,26 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 f.write("        ctx_future_vreg_off(ctx, %s%sN," % \
                      (regtype, regid))
                 f.write(" 2, true);\n")
+            if ('A_CONDEXEC' in hex_common.attribdict[tag]):
+                f.write("    if (!is_vreg_preloaded(ctx, %s)) {\n" % regN)
+                f.write("        intptr_t src_off =")
+                f.write(" offsetof(CPUHexagonState, VRegs[%s%sN]);\n"% \
+                                     (regtype, regid))
+                f.write("        tcg_gen_gvec_mov(MO_64, %s%sV_off,\n" % \
+                                     (regtype, regid))
+                f.write("                         src_off,\n")
+                f.write("                         sizeof(MMVector),\n")
+                f.write("                         sizeof(MMVector));\n")
+                f.write("        src_off = ")
+                f.write("offsetof(CPUHexagonState, VRegs[%s%sN + 1]);\n" % \
+                                     (regtype, regid))
+                f.write("        tcg_gen_gvec_mov(MO_64, %s%sV_off +" % \
+                                     (regtype, regid))
+                f.write(" sizeof(MMVector),\n")
+                f.write("                         src_off,\n")
+                f.write("                         sizeof(MMVector),\n")
+                f.write("                         sizeof(MMVector));\n")
+                f.write("    }\n")
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_new_ptr();\n" % \
                     (regtype, regid))
@@ -654,41 +674,26 @@ def genptr_dst_write(f, tag, regtype, regid):
 def genptr_dst_write_ext(f, tag, regtype, regid, newv="EXT_DFL"):
     if (regtype == "V"):
         if (regid in {"dd", "xx", "yy"}):
-            if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                is_predicated = "true"
-            else:
-                is_predicated = "false"
             f.write("    gen_log_vreg_write_pair(ctx, %s%sV_off, %s%sN, " % \
                 (regtype, regid, regtype, regid))
-            f.write("%s, insn->slot, %s);\n" % \
-                (newv, is_predicated))
-            f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s,\n" % \
+            f.write("%s);\n" % \
+                (newv))
+            f.write("    ctx_log_vreg_write_pair(ctx, %s%sN, %s);\n" % \
                 (regtype, regid, newv))
-            f.write("        %s);\n" % (is_predicated))
         elif (regid in {"d", "x", "y"}):
-            if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                is_predicated = "true"
-            else:
-                is_predicated = "false"
-            f.write("    gen_log_vreg_write(ctx, %s%sV_off, %s%sN, %s, " % \
+            f.write("    gen_log_vreg_write(ctx, %s%sV_off, %s%sN, %s);\n" % \
                 (regtype, regid, regtype, regid, newv))
-            f.write("insn->slot, %s);\n" % \
-                (is_predicated))
-            f.write("    ctx_log_vreg_write(ctx, %s%sN, %s, %s);\n" % \
-                (regtype, regid, newv, is_predicated))
+            f.write("    ctx_log_vreg_write(ctx, %s%sN, %s);\n" % \
+                (regtype, regid, newv))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "Q"):
         if (regid in {"d", "e", "x"}):
-            if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                is_predicated = "true"
-            else:
-                is_predicated = "false"
             f.write("    gen_log_qreg_write(%s%sV_off, %s%sN, %s, " % \
                 (regtype, regid, regtype, regid, newv))
-            f.write("insn->slot, %s);\n" % (is_predicated))
-            f.write("    ctx_log_qreg_write(ctx, %s%sN, %s);\n" % \
-                (regtype, regid, is_predicated))
+            f.write("insn->slot);\n")
+            f.write("    ctx_log_qreg_write(ctx, %s%sN);\n" % \
+                (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     else:

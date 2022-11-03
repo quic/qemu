@@ -48,13 +48,11 @@ typedef struct DisasContext {
     int tmp_vregs_idx;
     int tmp_vregs_num[VECTOR_TEMPS_MAX];
     int vreg_log[NUM_VREGS];
-    bool vreg_is_predicated[NUM_VREGS];
     int vreg_log_idx;
     DECLARE_BITMAP(vregs_updated_tmp, NUM_VREGS);
     DECLARE_BITMAP(vregs_updated, NUM_VREGS);
     DECLARE_BITMAP(vregs_select, NUM_VREGS);
     int qreg_log[NUM_QREGS];
-    bool qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
     bool pre_commit;
     bool has_single_direct_branch;
@@ -104,12 +102,10 @@ intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
                           int num, bool alloc_ok);
 
 static inline void ctx_log_vreg_write(DisasContext *ctx,
-                                      int rnum, VRegWriteType type,
-                                      bool is_predicated)
+                                      int rnum, VRegWriteType type)
 {
     if (type != EXT_TMP) {
         ctx->vreg_log[ctx->vreg_log_idx] = rnum;
-        ctx->vreg_is_predicated[ctx->vreg_log_idx] = is_predicated;
         ctx->vreg_log_idx++;
 
         set_bit(rnum, ctx->vregs_updated);
@@ -123,18 +119,15 @@ static inline void ctx_log_vreg_write(DisasContext *ctx,
 }
 
 static inline void ctx_log_vreg_write_pair(DisasContext *ctx,
-                                           int rnum, VRegWriteType type,
-                                           bool is_predicated)
+                                           int rnum, VRegWriteType type)
 {
-    ctx_log_vreg_write(ctx, rnum ^ 0, type, is_predicated);
-    ctx_log_vreg_write(ctx, rnum ^ 1, type, is_predicated);
+    ctx_log_vreg_write(ctx, rnum ^ 0, type);
+    ctx_log_vreg_write(ctx, rnum ^ 1, type);
 }
 
-static inline void ctx_log_qreg_write(DisasContext *ctx,
-                                      int rnum, bool is_predicated)
+static inline void ctx_log_qreg_write(DisasContext *ctx, int rnum)
 {
     ctx->qreg_log[ctx->qreg_log_idx] = rnum;
-    ctx->qreg_is_predicated[ctx->qreg_log_idx] = is_predicated;
     ctx->qreg_log_idx++;
 }
 
@@ -155,8 +148,6 @@ extern TCGv hex_dczero_addr;
 extern TCGv hex_llsc_addr;
 extern TCGv hex_llsc_val;
 extern TCGv_i64 hex_llsc_val_i64;
-extern TCGv hex_VRegs_updated;
-extern TCGv hex_QRegs_updated;
 extern TCGv hex_vstore_addr[VSTORES_MAX];
 extern TCGv hex_vstore_size[VSTORES_MAX];
 extern TCGv hex_vstore_pending[VSTORES_MAX];
