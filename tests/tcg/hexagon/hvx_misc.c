@@ -607,6 +607,42 @@ static void test_load_cur_predicated(void)
         expect[i] = pred ? buffer1[i] : buffer0[i];
         pred = !pred;
     }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
+#define fGETUBYTE(N, SRC) ((uint8_t)((SRC >> ((N) * 8)) & 0xff))
+
+static void test_vrmpyub_acc(void)
+{
+    void *p0 = buffer0;
+    uint32_t arg2 = 0xffeeddcc;
+    int16_t arg2_b0 = fGETUBYTE(0, arg2);
+    int16_t arg2_b1 = fGETUBYTE(1, arg2);
+    int16_t arg2_b2 = fGETUBYTE(2, arg2);
+    int16_t arg2_b3 = fGETUBYTE(3, arg2);
+    void *pout = output;
+
+    memset(expect, 0x00, sizeof(expect));
+    memset(output, 0x00, sizeof(output));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v2 = vmem(%0 + #0)\n\t"
+            "v3 = vmem(%1 + #0)\n\t"
+            "v3.uw += vrmpy(v2.ub, %2.ub)\n\t"
+            "vmem(%1 + #0) = v3\n\t"
+            : : "r"(p0), "r"(pout), "r"(arg2) : "v2", "v3", "memory");
+        p0 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            expect[i].uw[j] += fGETUBYTE(0, buffer0[i].uw[j]) * arg2_b0;
+            expect[i].uw[j] += fGETUBYTE(1, buffer0[i].uw[j]) * arg2_b1;
+            expect[i].uw[j] += fGETUBYTE(2, buffer0[i].uw[j]) * arg2_b2;
+            expect[i].uw[j] += fGETUBYTE(3, buffer0[i].uw[j]) * arg2_b3;
+        }
+    }
+
     check_output_w(__LINE__, BUFSIZE);
 }
 
@@ -649,6 +685,8 @@ int main()
 
     test_load_tmp_predicated();
     test_load_cur_predicated();
+
+    test_vrmpyub_acc();
 
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;

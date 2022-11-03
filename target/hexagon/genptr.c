@@ -1259,6 +1259,225 @@ static void vec_to_qvec(size_t size, intptr_t dstoff, intptr_t srcoff)
     tcg_temp_free_i64(ones);
 }
 
+static void gen_vrmpyub(intptr_t dst_off, intptr_t VuV_off, TCGv RtV, bool acc)
+{
+    /*
+     * fVFOREACH(32, i) {
+     *     dst.uw[i] += fMPY8UU(fGETUBYTE(0,VuV.uw[i]), fGETUBYTE(0,RtV));
+     *     dst.uw[i] += fMPY8UU(fGETUBYTE(1,VuV.uw[i]), fGETUBYTE(1,RtV));
+     *     dst.uw[i] += fMPY8UU(fGETUBYTE(2,VuV.uw[i]), fGETUBYTE(2,RtV));
+     *     dst.uw[i] += fMPY8UU(fGETUBYTE(3,VuV.uw[i]), fGETUBYTE(3,RtV));
+     * }
+     */
+    TCGv RtV_bytes[4];
+    TCGv VuV_word = tcg_temp_new();
+    TCGv VuV_byte = tcg_temp_new();
+    TCGv sum = tcg_temp_new();
+    TCGv prod = tcg_temp_new();
+    int i;
+
+    for (i = 0; i < 4; i++) {
+        RtV_bytes[i] = tcg_temp_new();
+        gen_get_byte(RtV_bytes[i], i, RtV, false);
+    }
+
+    for (i = 0; i < sizeof(MMVector) / 4; i++) {
+        if (acc) {
+            /* Load sum from dst.uw[i] */
+            tcg_gen_ld_tl(sum, cpu_env, dst_off);
+        } else {
+            tcg_gen_movi_tl(sum, 0);
+        }
+
+        /* Load from VuV.uw[i] */
+        tcg_gen_ld_tl(VuV_word, cpu_env, VuV_off);
+
+        for (int j = 0; j < 4; j++) {
+            gen_get_byte(VuV_byte, j, VuV_word, false);
+            tcg_gen_mul_tl(prod, VuV_byte, RtV_bytes[j]);
+            tcg_gen_add_tl(sum, sum, prod);
+        }
+
+        /* Store sum to dst.uw[i] */
+        tcg_gen_st_tl(sum, cpu_env, dst_off);
+
+        dst_off += 4;
+        VuV_off += 4;
+    }
+
+    for (i = 0; i < 4; i++) {
+        tcg_temp_free(RtV_bytes[i]);
+    }
+    tcg_temp_free(VuV_word);
+    tcg_temp_free(VuV_byte);
+    tcg_temp_free(sum);
+    tcg_temp_free(prod);
+}
+
+static void gen_vrmpyubv(intptr_t dst_off, intptr_t VuV_off, intptr_t VvV_off,
+                         bool acc)
+{
+    /*
+     *    fVFOREACH(32, i) {
+     *        dst.uw[i] += fMPY8UU(fGETUBYTE(0,VuV.uw[i]),
+     *                             fGETUBYTE(0,VvV.uw[i]));
+     *        dst.uw[i] += fMPY8UU(fGETUBYTE(1,VuV.uw[i]),
+     *                             fGETUBYTE(1,VvV.uw[i]));
+     *        dst.uw[i] += fMPY8UU(fGETUBYTE(2,VuV.uw[i]),
+     *                             fGETUBYTE(2,VvV.uw[i]));
+     *        dst.uw[i] += fMPY8UU(fGETUBYTE(3,VuV.uw[i]),
+     *                             fGETUBYTE(3,VvV.uw[i])) ;
+     *    }
+     */
+    TCGv VuV_word = tcg_temp_new();
+    TCGv VvV_word = tcg_temp_new();
+    TCGv VuV_byte = tcg_temp_new();
+    TCGv VvV_byte = tcg_temp_new();
+    TCGv sum = tcg_temp_new();
+    TCGv prod = tcg_temp_new();
+    int i;
+
+    for (i = 0; i < sizeof(MMVector) / 4; i++) {
+        if (acc) {
+            /* Load sum from dst.uw[i] */
+            tcg_gen_ld_tl(sum, cpu_env, dst_off);
+        } else {
+            tcg_gen_movi_tl(sum, 0);
+        }
+
+        /* Load from VuV.uw[i] */
+        tcg_gen_ld_tl(VuV_word, cpu_env, VuV_off);
+        /* Load from VvV.uw[i] */
+        tcg_gen_ld_tl(VvV_word, cpu_env, VvV_off);
+
+        for (int j = 0; j < 4; j++) {
+            gen_get_byte(VuV_byte, j, VuV_word, false);
+            gen_get_byte(VvV_byte, j, VvV_word, false);
+            tcg_gen_mul_tl(prod, VuV_byte, VvV_byte);
+            tcg_gen_add_tl(sum, sum, prod);
+        }
+
+        /* Store sum to dst.uw[i] */
+        tcg_gen_st_tl(sum, cpu_env, dst_off);
+
+        dst_off += 4;
+        VuV_off += 4;
+        VvV_off += 4;
+    }
+
+    tcg_temp_free(VuV_word);
+    tcg_temp_free(VvV_word);
+    tcg_temp_free(VuV_byte);
+    tcg_temp_free(VvV_byte);
+    tcg_temp_free(sum);
+    tcg_temp_free(prod);
+}
+
+static void gen_vrmpyubi(intptr_t dst_off, intptr_t VuuV_off, TCGv RtV,
+                         int uiV, bool acc)
+{
+    /*
+     *    fVFOREACH(32, i) {
+     *        dst.v[0].uw[i] += fMPY8UU(fGETUBYTE(0, VuuV.v[uiV ? 1:0].uw[i]),
+     *                                  fGETUBYTE((0-uiV) & 0x3,RtV));
+     *        dst.v[0].uw[i] += fMPY8UU(fGETUBYTE(1, VuuV.v[0        ].uw[i]),
+     *                                  fGETUBYTE((1-uiV) & 0x3,RtV));
+     *        dst.v[0].uw[i] += fMPY8UU(fGETUBYTE(2, VuuV.v[0        ].uw[i]),
+     *                                  fGETUBYTE((2-uiV) & 0x3,RtV));
+     *        dst.v[0].uw[i] += fMPY8UU(fGETUBYTE(3, VuuV.v[0        ].uw[i]),
+     *                                  fGETUBYTE((3-uiV) & 0x3,RtV));
+     *
+     *        dst.v[1].uw[i] += fMPY8UU(fGETUBYTE(0, VuuV.v[1        ].uw[i]),
+     *                                  fGETUBYTE((2-uiV) & 0x3,RtV));
+     *        dst.v[1].uw[i] += fMPY8UU(fGETUBYTE(1, VuuV.v[1        ].uw[i]),
+     *                                  fGETUBYTE((3-uiV) & 0x3,RtV));
+     *        dst.v[1].uw[i] += fMPY8UU(fGETUBYTE(2, VuuV.v[uiV ? 1:0].uw[i]),
+     *                                  fGETUBYTE((0-uiV) & 0x3,RtV));
+     *        dst.v[1].uw[i] += fMPY8UU(fGETUBYTE(3, VuuV.v[0        ].uw[i]),
+     *                                  fGETUBYTE((1-uiV) & 0x3,RtV)) ;
+     *    }
+     */
+    TCGv RtV_bytes[8];
+    int VuuV_vectors[8];
+    TCGv VuuV_word = tcg_temp_new();
+    TCGv VuuV_byte = tcg_temp_new();
+    TCGv sum = tcg_temp_new();
+    TCGv prod = tcg_temp_new();
+    int i;
+
+    for (i = 0; i < 8; i++) {
+        RtV_bytes[i] = tcg_temp_new();
+    }
+    gen_get_byte(RtV_bytes[0], (0 - uiV) & 0x3, RtV, false);
+    gen_get_byte(RtV_bytes[1], (1 - uiV) & 0x3, RtV, false);
+    gen_get_byte(RtV_bytes[2], (2 - uiV) & 0x3, RtV, false);
+    gen_get_byte(RtV_bytes[3], (3 - uiV) & 0x3, RtV, false);
+    gen_get_byte(RtV_bytes[4], (2 - uiV) & 0x3, RtV, false);
+    gen_get_byte(RtV_bytes[5], (3 - uiV) & 0x3, RtV, false);
+    gen_get_byte(RtV_bytes[6], (0 - uiV) & 0x3, RtV, false);
+    gen_get_byte(RtV_bytes[7], (1 - uiV) & 0x3, RtV, false);
+
+    VuuV_vectors[0] = uiV ? 1 : 0;
+    VuuV_vectors[1] = 0;
+    VuuV_vectors[2] = 0;
+    VuuV_vectors[3] = 0;
+    VuuV_vectors[4] = 1;
+    VuuV_vectors[5] = 1;
+    VuuV_vectors[6] = uiV ? 1 : 0;
+    VuuV_vectors[7] = 0;
+
+    for (i = 0; i < sizeof(MMVector) / 4; i++) {
+        if (acc) {
+            /* Load sum from dst.v[0].uw[i] */
+            tcg_gen_ld_tl(sum, cpu_env, dst_off);
+        } else {
+            tcg_gen_movi_tl(sum, 0);
+        }
+
+        for (int j = 0; j < 4; j++) {
+            /* Load from VuuV.v[?].uw[i] */
+            tcg_gen_ld_tl(VuuV_word, cpu_env,
+                          VuuV_off + VuuV_vectors[j] * sizeof(MMVector));
+            gen_get_byte(VuuV_byte, j, VuuV_word, false);
+            tcg_gen_mul_tl(prod, VuuV_byte, RtV_bytes[j]);
+            tcg_gen_add_tl(sum, sum, prod);
+        }
+
+        /* Store sum to dst.v[0].uw[i] */
+        tcg_gen_st_tl(sum, cpu_env, dst_off);
+
+        if (acc) {
+            /* Load sum from dst.v[1].uw[i] */
+            tcg_gen_ld_tl(sum, cpu_env, dst_off + sizeof(MMVector));
+        } else {
+            tcg_gen_movi_tl(sum, 0);
+        }
+
+        for (int j = 0; j < 4; j++) {
+            /* Load from VuuV.v[?].uw[i] */
+            tcg_gen_ld_tl(VuuV_word, cpu_env,
+                          VuuV_off + VuuV_vectors[j + 4] * sizeof(MMVector));
+            gen_get_byte(VuuV_byte, j, VuuV_word, false);
+            tcg_gen_mul_tl(prod, VuuV_byte, RtV_bytes[j + 4]);
+            tcg_gen_add_tl(sum, sum, prod);
+        }
+
+        /* Store sum to dst.v[1].uw[i] */
+        tcg_gen_st_tl(sum, cpu_env, dst_off + sizeof(MMVector));
+
+        dst_off += 4;
+        VuuV_off += 4;
+    }
+
+    for (i = 0; i < 8; i++) {
+        tcg_temp_free(RtV_bytes[i]);
+    }
+    tcg_temp_free(VuuV_word);
+    tcg_temp_free(VuuV_byte);
+    tcg_temp_free(sum);
+    tcg_temp_free(prod);
+}
+
 static void probe_noshuf_load(TCGv va, int s, int mi)
 {
     TCGv size = tcg_const_tl(s);

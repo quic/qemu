@@ -902,4 +902,17 @@ static inline void assert_vhist_tmp(DisasContext *ctx)
         MuV = MuV; \
     } while (0)
 
+#define fGEN_TCG_V6_vrmpyub(SHOTRCODE) \
+    gen_vrmpyub(VdV_off, VuV_off, RtV, false)
+#define fGEN_TCG_V6_vrmpyub_acc(SHOTRCODE) \
+    gen_vrmpyub(VxV_off, VuV_off, RtV, true)
+#define fGEN_TCG_V6_vrmpyubv(SHOTRCODE) \
+    gen_vrmpyubv(VdV_off, VuV_off, VvV_off, false)
+#define fGEN_TCG_V6_vrmpyubv_acc(SHOTRCODE) \
+    gen_vrmpyubv(VxV_off, VuV_off, VvV_off, true)
+#define fGEN_TCG_V6_vrmpyubi(SHOTRCODE) \
+    gen_vrmpyubi(VddV_off, VuuV_off, RtV, uiV, false)
+#define fGEN_TCG_V6_vrmpyubi_acc(SHOTRCODE) \
+    gen_vrmpyubi(VxxV_off, VuuV_off, RtV, uiV, true)
+
 #endif
