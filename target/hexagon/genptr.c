@@ -1006,146 +1006,88 @@ static void gen_sat(TCGv dst, TCGv src, bool sign, uint32_t bits)
 {
     uint32_t min = sign ? -(1 << (bits - 1)) : 0;
     uint32_t max = sign ? (1 << (bits - 1)) - 1 : (1 << bits) - 1;
-    TCGLabel *label = gen_new_label();
+    TCGv tcg_min = tcg_const_tl(min);
+    TCGv tcg_max = tcg_const_tl(max);
+    TCGv satval = tcg_temp_new();
+    TCGv ovf = tcg_temp_new();
 
     if (sign) {
         tcg_gen_sextract_tl(dst, src, 0, bits);
     } else {
         tcg_gen_extract_tl(dst, src, 0, bits);
     }
-    tcg_gen_brcond_tl(TCG_COND_EQ, dst, src, label);
-    {
-        TCGv tcg_min = tcg_const_tl(min);
-        TCGv tcg_max = tcg_const_tl(max);
-        tcg_gen_movcond_tl(TCG_COND_LT, dst, src, tcg_min, tcg_min, tcg_max);
-        tcg_temp_free(tcg_min);
-        tcg_temp_free(tcg_max);
-        gen_set_usr_fieldi(USR_OVF, 1);
-    }
-    gen_set_label(label);
-}
+    tcg_gen_movcond_tl(TCG_COND_LT, satval, src, tcg_min, tcg_min, tcg_max);
+    tcg_gen_movcond_tl(TCG_COND_EQ, dst, dst, src, dst, satval);
 
-static void gen_sat_i64(TCGv_i64 dst, TCGv_i64 src, uint32_t bits)
-{
-    TCGLabel *label = gen_new_label();
+    tcg_gen_setcond_tl(TCG_COND_NE, ovf, dst, src);
+    tcg_gen_shli_tl(ovf, ovf, reg_field_info[USR_OVF].offset);
+    tcg_gen_or_tl(hex_new_value[HEX_REG_USR], hex_new_value[HEX_REG_USR], ovf);
 
-    tcg_gen_sextract_i64(dst, src, 0, bits);
-    tcg_gen_brcond_i64(TCG_COND_EQ, dst, src, label);
-    {
-        TCGv_i64 min = tcg_const_i64(-(1LL << (bits - 1)));
-        TCGv_i64 max = tcg_const_i64((1LL << (bits - 1)) - 1);
-        TCGv_i64 zero = tcg_const_i64(0);
-        tcg_gen_movcond_i64(TCG_COND_LT, dst, src, zero, min, max);
-        gen_set_usr_fieldi(USR_OVF, 1);
-        tcg_temp_free_i64(min);
-        tcg_temp_free_i64(max);
-        tcg_temp_free_i64(zero);
-    }
-    gen_set_label(label);
-}
-
-static void gen_satval(TCGv_i64 dest, TCGv_i64 source, uint32_t bits)
-{
-    TCGv_i64 min = tcg_const_i64(-(1LL << (bits - 1)));
-    TCGv_i64 max = tcg_const_i64((1LL << (bits - 1)) - 1);
-    TCGv_i64 zero = tcg_const_i64(0);
-
-    gen_set_usr_fieldi(USR_OVF, 1);
-    tcg_gen_movcond_i64(TCG_COND_LT, dest, source, zero,
-                        min, max);
-
-    tcg_temp_free_i64(min);
-    tcg_temp_free_i64(max);
-    tcg_temp_free_i64(zero);
+    tcg_temp_free(tcg_min);
+    tcg_temp_free(tcg_max);
+    tcg_temp_free(satval);
+    tcg_temp_free(ovf);
 }
 
 /* Shift left with saturation */
-static void gen_shl_sat(TCGv RdV, TCGv RsV, TCGv shift_amt)
+static void gen_shl_sat(TCGv dst, TCGv src, TCGv shift_amt)
 {
+    TCGv sh32 = tcg_temp_new();
+    TCGv dst_sar = tcg_temp_new();
+    TCGv ovf = tcg_temp_new();
+    TCGv satval = tcg_temp_new();
+    TCGv min = tcg_const_tl(0x80000000);
+    TCGv max = tcg_const_tl(0x7fffffff);
+    TCGv zero = tcg_const_tl(0);
+
     /*
-     * int64_t A = (fCAST4_8s(RsV) << shift_amt;
-     * if (((int32_t)((fSAT(A)) ^ ((int32_t)(RsV)))) < 0) {
-     *     RdV = fSATVALN(32, ((int32_t)(RsV)))
-     * } else if (((RsV) > 0) && ((A) == 0)) {
-     *     RdV = fSATVALN(32, (RsV));
-     * } else {
-     *     RdV = fSAT(A);
-     * }
+     *    Possible values for shift_amt are 0 .. 64
+     *    We need special handling for values above 31
+     *
+     *    sh32 = shift & 31;
+     *    dst = sh32 == shift ? src : 0;
+     *    dst <<= sh32;
+     *    dst_sar = dst >> sh32;
+     *    satval = src < 0 ? min : max;
+     *    if (dst_asr != src) {
+     *        usr.OVF |= 1;
+     *        dst = satval;
+     *    }
      */
-    TCGv_i64 RsV_i64 = tcg_temp_local_new_i64();
-    TCGv_i64 shift_amt_i64 = tcg_temp_local_new_i64();
-    TCGv_i64 A = tcg_temp_local_new_i64();
-    TCGv_i64 A_sat_i64 = tcg_temp_local_new_i64();
-    TCGv A_sat = tcg_temp_local_new();
-    TCGv_i64 RdV_i64 = tcg_temp_local_new_i64();
-    TCGv tmp = tcg_temp_new();
-    TCGLabel *label1 = gen_new_label();
-    TCGLabel *label2 = gen_new_label();
-    TCGLabel *done = gen_new_label();
 
-    tcg_gen_ext_i32_i64(RsV_i64, RsV);
-    tcg_gen_ext_i32_i64(shift_amt_i64, shift_amt);
-    tcg_gen_shl_i64(A, RsV_i64, shift_amt_i64);
+    tcg_gen_andi_tl(sh32, shift_amt, 31);
+    tcg_gen_movcond_tl(TCG_COND_EQ, dst, sh32, shift_amt, src, zero);
+    tcg_gen_shl_tl(dst, dst, sh32);
+    tcg_gen_sar_tl(dst_sar, dst, sh32);
+    tcg_gen_movcond_tl(TCG_COND_LT, satval, src, zero, min, max);
 
-    /* Check for saturation */
-    gen_sat_i64(A_sat_i64, A, 32);
-    tcg_gen_extrl_i64_i32(A_sat, A_sat_i64);
-    tcg_gen_xor_tl(tmp, A_sat, RsV);
-    tcg_gen_brcondi_tl(TCG_COND_GE, tmp, 0, label1);
-    gen_satval(RdV_i64, RsV_i64, 32);
-    tcg_gen_extrl_i64_i32(RdV, RdV_i64);
-    tcg_gen_br(done);
+    tcg_gen_setcond_tl(TCG_COND_NE, ovf, dst_sar, src);
+    tcg_gen_shli_tl(ovf, ovf, reg_field_info[USR_OVF].offset);
+    tcg_gen_or_tl(hex_new_value[HEX_REG_USR], hex_new_value[HEX_REG_USR], ovf);
 
-    gen_set_label(label1);
-    tcg_gen_brcondi_tl(TCG_COND_LE, RsV, 0, label2);
-    tcg_gen_brcondi_i64(TCG_COND_NE, A, 0, label2);
-    gen_satval(RdV_i64, RsV_i64, 32);
-    tcg_gen_extrl_i64_i32(RdV, RdV_i64);
-    tcg_gen_br(done);
+    tcg_gen_movcond_tl(TCG_COND_EQ, dst, dst_sar, src, dst, satval);
 
-    gen_set_label(label2);
-    tcg_gen_mov_tl(RdV, A_sat);
-
-    gen_set_label(done);
-
-    tcg_temp_free_i64(RsV_i64);
-    tcg_temp_free_i64(shift_amt_i64);
-    tcg_temp_free_i64(A);
-    tcg_temp_free_i64(A_sat_i64);
-    tcg_temp_free(A_sat);
-    tcg_temp_free_i64(RdV_i64);
-    tcg_temp_free(tmp);
+    tcg_temp_free(sh32);
+    tcg_temp_free(dst_sar);
+    tcg_temp_free(ovf);
+    tcg_temp_free(satval);
+    tcg_temp_free(min);
+    tcg_temp_free(max);
+    tcg_temp_free(zero);
 }
 
-static void gen_sar(TCGv RdV, TCGv RsV, TCGv shift_amt)
+static void gen_sar(TCGv dst, TCGv src, TCGv shift_amt)
 {
     /*
-     * if (shift_amt < 32) {
-     *     RdV = sar(RsV, shift_amt);
-     * } else {
-     *     if (RsV > 0) {
-     *         RdV = 0;
-     *     } else {
-     *         RdV = ~0;
-     *     }
-     * }
+     *  Shift arithmetic right
+     *  Robust when shift_amt is >31 bits
      */
-    TCGLabel *shift_ge_32 = gen_new_label();
-    TCGLabel *done = gen_new_label();
-
-    tcg_gen_brcondi_tl(TCG_COND_GE, shift_amt, 32, shift_ge_32);
-    tcg_gen_sar_tl(RdV, RsV, shift_amt);
-    tcg_gen_br(done);
-
-    gen_set_label(shift_ge_32);
-    TCGv zero = tcg_const_tl(0);
-    TCGv ones = tcg_const_tl(~0);
-    tcg_gen_movcond_tl(TCG_COND_LT, RdV, RsV, zero,
-                       ones, zero);
-    tcg_temp_free(zero);
-    tcg_temp_free(ones);
-
-    gen_set_label(done);
+    TCGv tmp = tcg_temp_new();
+    TCGv max_shift = tcg_const_tl(31);
+    tcg_gen_umin_tl(tmp, shift_amt, max_shift);
+    tcg_gen_sar_tl(dst, src, tmp);
+    tcg_temp_free(tmp);
+    tcg_temp_free(max_shift);
 }
 
 /* Bidirectional shift right with saturation */
