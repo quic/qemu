@@ -26,6 +26,7 @@ typedef struct CPUHexagonState CPUHexagonState;
 #include "exec/cpu-defs.h"
 #include "hex_regs.h"
 #include "mmvec/mmvec.h"
+#include "hw/registerfields.h"
 
 #define NUM_PREGS 4
 #define TOTAL_PER_THREAD_REGS 64
@@ -157,23 +158,18 @@ typedef struct HexagonCPU {
 #define cpu_signal_handler cpu_hexagon_signal_handler
 int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 
-typedef union {
-    uint32_t i;
-    struct {
-        bool is_tight_loop:1;
-    };
-} HexStateFlags;
+FIELD(TB_FLAGS, IS_TIGHT_LOOP, 0, 1)
 
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
 {
-    HexStateFlags hex_flags = { 0 };
+    uint32_t hex_flags = 0;
     *pc = env->gpr[HEX_REG_PC];
     *cs_base = 0;
     if (*pc == env->gpr[HEX_REG_SA0]) {
-        hex_flags.is_tight_loop = true;
+        hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP, 1);
     }
-    *flags = hex_flags.i;
+    *flags = hex_flags;
 }
 
 typedef struct CPUHexagonState CPUArchState;
