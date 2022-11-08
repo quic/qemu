@@ -507,9 +507,22 @@ static void gen_set_usr_field(int field, TCGv val)
 
 static void gen_set_usr_fieldi(int field, int x)
 {
-    TCGv val = tcg_const_tl(x);
-    gen_set_usr_field(field, val);
-    tcg_temp_free(val);
+    if (reg_field_info[field].width == 1) {
+        target_ulong bit = 1 << reg_field_info[field].offset;
+        if ((x & 1) == 1) {
+            tcg_gen_ori_tl(hex_new_value[HEX_REG_USR],
+                           hex_new_value[HEX_REG_USR],
+                           bit);
+        } else {
+            tcg_gen_andi_tl(hex_new_value[HEX_REG_USR],
+                            hex_new_value[HEX_REG_USR],
+                            ~bit);
+        }
+    } else {
+        TCGv val = tcg_const_tl(x);
+        gen_set_usr_field(field, val);
+        tcg_temp_free(val);
+    }
 }
 
 static void gen_loop0r(DisasContext *ctx, TCGv RsV, int riV, Insn *insn)
