@@ -861,21 +861,19 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
                                           CPUState *cs)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
+    uint32_t hex_flags = dcbase->tb->flags;
 
     ctx->mem_idx = MMU_USER_IDX;
     ctx->num_packets = 0;
     ctx->num_insns = 0;
     ctx->num_hvx_insns = 0;
+    ctx->has_single_direct_branch = false;
+    ctx->branch_cond = NULL;
+    ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 {
-    DisasContext *ctx = container_of(db, DisasContext, base);
-    uint32_t hex_flags = db->tb->flags;
-
-    ctx->has_single_direct_branch = false;
-    ctx->branch_cond = NULL;
-    ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
 }
 
 static void hexagon_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
