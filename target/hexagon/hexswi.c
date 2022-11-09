@@ -1008,7 +1008,32 @@ static void set_addresses(CPUHexagonState *env,
         ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB) | (exception_index << 2));
 }
 
-#define CHECK_EX 0
+static const char *event_name[] = {
+         [HEX_EVENT_RESET] = "HEX_EVENT_RESET",
+         [HEX_EVENT_IMPRECISE] = "HEX_EVENT_IMPRECISE",
+         [HEX_EVENT_TLB_MISS_X] = "HEX_EVENT_TLB_MISS_X",
+         [HEX_EVENT_TLB_MISS_RW] = "HEX_EVENT_TLB_MISS_RW",
+         [HEX_EVENT_TRAP0] = "HEX_EVENT_TRAP0",
+         [HEX_EVENT_TRAP1] = "HEX_EVENT_TRAP1",
+         [HEX_EVENT_FPTRAP] = "HEX_EVENT_FPTRAP",
+         [HEX_EVENT_DEBUG] = "HEX_EVENT_DEBUG",
+         [HEX_EVENT_INT0] = "HEX_EVENT_INT0",
+         [HEX_EVENT_INT1] = "HEX_EVENT_INT1",
+         [HEX_EVENT_INT2] = "HEX_EVENT_INT2",
+         [HEX_EVENT_INT3] = "HEX_EVENT_INT3",
+         [HEX_EVENT_INT4] = "HEX_EVENT_INT4",
+         [HEX_EVENT_INT5] = "HEX_EVENT_INT5",
+         [HEX_EVENT_INT6] = "HEX_EVENT_INT6",
+         [HEX_EVENT_INT7] = "HEX_EVENT_INT7",
+         [HEX_EVENT_INT8] = "HEX_EVENT_INT8",
+         [HEX_EVENT_INT9] = "HEX_EVENT_INT9",
+         [HEX_EVENT_INTA] = "HEX_EVENT_INTA",
+         [HEX_EVENT_INTB] = "HEX_EVENT_INTB",
+         [HEX_EVENT_INTC] = "HEX_EVENT_INTC",
+         [HEX_EVENT_INTD] = "HEX_EVENT_INTD",
+         [HEX_EVENT_INTE] = "HEX_EVENT_INTE",
+         [HEX_EVENT_INTF] = "HEX_EVENT_INTF"
+};
 
 void hexagon_cpu_do_interrupt(CPUState *cs)
 
@@ -1019,8 +1044,8 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     HEX_DEBUG_LOG("%s: tid %d, event 0x%x, cause 0x%x\n",
       __func__, env->threadId, cs->exception_index, env->cause_code);
     qemu_log_mask(CPU_LOG_INT,
-            "\t%s: event 0x%x, cause 0x%x\n", __func__,
-            cs->exception_index, env->cause_code);
+            "\t%s: event 0x%x:%s, cause 0x%x(%d)\n", __func__,
+            cs->exception_index, event_name[cs->exception_index], env->cause_code, env->cause_code);
 
     switch (cs->exception_index) {
     case HEX_EVENT_TRAP0:
