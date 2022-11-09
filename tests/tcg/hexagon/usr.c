@@ -919,6 +919,8 @@ int main()
     TEST_R_OP_RR(asr_r_r_sat,        4096,  -32, 0x7fffffff, USR_OVF);
     TEST_R_OP_RR(asr_r_r_sat,       -4096,   32, 0xffffffff, USR_CLEAR);
     TEST_R_OP_RR(asr_r_r_sat,       -4096,  -32, 0x80000000, USR_OVF);
+    TEST_R_OP_RR(asr_r_r_sat,           0,  -32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asr_r_r_sat,           1,  -32, 0x7fffffff, USR_OVF);
 
     TEST_R_OP_RR(asl_r_r_sat,  0x00000000, 0x40, 0x00000000, USR_CLEAR);
     TEST_R_OP_RR(asl_r_r_sat,  0x80000000, 0xff, 0xc0000000, USR_CLEAR);
@@ -931,6 +933,8 @@ int main()
     TEST_R_OP_RR(asl_r_r_sat,        4096,  -32, 0x00000000, USR_CLEAR);
     TEST_R_OP_RR(asl_r_r_sat,       -4096,   32, 0x80000000, USR_OVF);
     TEST_R_OP_RR(asl_r_r_sat,       -4096,  -32, 0xffffffff, USR_CLEAR);
+    TEST_R_OP_RR(asl_r_r_sat,           0,   32, 0x00000000, USR_CLEAR);
+    TEST_R_OP_RR(asl_r_r_sat,           1,   32, 0x7fffffff, USR_OVF);
 
     TEST_XPp_OP_PP(ACS, 0x0004000300020001ULL, 0x0001000200030004ULL,
                    0x0000000000000000ULL, 0x0004000300030004ULL, 0xf0,
