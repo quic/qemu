@@ -147,15 +147,13 @@ static void gen_end_tb(DisasContext *ctx)
         return;
     }
 
-    if (ctx->has_single_direct_branch) {
-        if (ctx->branch_cond != NULL) {
+    if (ctx->branch_cond != TCG_COND_NEVER) {
+        if (ctx->branch_cond != TCG_COND_ALWAYS) {
             TCGLabel *skip = gen_new_label();
-            tcg_gen_brcondi_tl(TCG_COND_EQ, ctx->branch_cond, 0, skip);
+            tcg_gen_brcondi_tl(ctx->branch_cond, hex_branch_taken, 0, skip);
             gen_goto_tb(ctx, 0, ctx->branch_dest);
             gen_set_label(skip);
             gen_goto_tb(ctx, 1, ctx->next_PC);
-            tcg_temp_free(ctx->branch_cond);
-            ctx->branch_cond = NULL;
         } else {
             gen_goto_tb(ctx, 0, ctx->branch_dest);
         }
@@ -175,7 +173,6 @@ static void gen_end_tb(DisasContext *ctx)
         tcg_gen_lookup_and_goto_ptr();
     }
 
-    g_assert(ctx->branch_cond == NULL);
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -867,8 +864,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->num_packets = 0;
     ctx->num_insns = 0;
     ctx->num_hvx_insns = 0;
-    ctx->has_single_direct_branch = false;
-    ctx->branch_cond = NULL;
+    ctx->branch_cond = TCG_COND_NEVER;
     ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
 }
 

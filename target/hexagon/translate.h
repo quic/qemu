@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,8 +55,7 @@ typedef struct DisasContext {
     int qreg_log[NUM_QREGS];
     int qreg_log_idx;
     bool pre_commit;
-    bool has_single_direct_branch;
-    TCGv branch_cond;
+    TCGCond branch_cond;
     target_ulong branch_dest;
     bool is_tight_loop;
 } DisasContext;
