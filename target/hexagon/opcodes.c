@@ -39,7 +39,7 @@ const char * const opcode_names[] = {
 
 const char * const opcode_reginfo[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
-#define REGINFO(TAG, REGINFO, RREGS, WREGS) REGINFO,
+#define REGINFO(TAG, REGINFO, RREGS, WREGS, WREG_COUNT, PAIRMASK) REGINFO,
 #include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
@@ -49,19 +49,35 @@ const char * const opcode_reginfo[] = {
 
 const char * const opcode_rregs[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
-#define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
+#define REGINFO(TAG, REGINFO, RREGS, WREGS, WREG_COUNT, PAIRMASK) RREGS,
 #include "op_regs_generated.h.inc"
     NULL
 #undef REGINFO
 #undef IMMINFO
 };
 
+const int opcode_wreg_count[] = {
+#define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2) /* nothing */
+#define REGINFO(TAG, REGINFO, RREGS, WREGS, WREG_COUNT, PAIRMASK) WREG_COUNT,
+#include "op_regs_generated.h.inc"
+    -1
+#undef REGINFO
+#undef IMMINFO
+};
 
 const char * const opcode_wregs[] = {
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)    /* nothing */
-#define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
+#define REGINFO(TAG, REGINFO, RREGS, WREGS, WREG_COUNT, PAIRMASK) WREGS,
 #include "op_regs_generated.h.inc"
     NULL
+#undef REGINFO
+#undef IMMINFO
+};
+
+const int opcode_reg_pairs[] = {
+#define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2) /* nothing */
+#define REGINFO(TAG, REGINFO, RREGS, WREGS, WREG_COUNT, PAIRMASK) PAIRMASK,
+#include "op_regs_generated.h.inc"
 #undef REGINFO
 #undef IMMINFO
 };

@@ -112,24 +112,6 @@ G_NORETURN void HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
     do_raise_exception_err(env, excp, 0);
 }
 
-static void do_check_reg_write(CPUHexagonState *env, int rnum)
-{
-    if (rnum >= NUM_GPREGS) {
-        return;
-    }
-    target_ulong mask = 1 << rnum;
-    if ((env->gpreg_written & mask) == 0) {
-        env->gpreg_written |= mask;
-        return;
-    }
-#ifdef CONFIG_USER_ONLY
-    do_raise_exception_err(env, HEX_CAUSE_REG_WRITE_CONFLICT, 0);
-#else
-    env->cause_code = HEX_CAUSE_REG_WRITE_CONFLICT;
-    do_raise_exception_err(env, HEX_EVENT_PRECISE, 0);
-#endif
-}
-
 static void log_reg_write(CPUHexagonState *env, int rnum,
                           target_ulong val, uint32_t slot)
 {
@@ -141,7 +123,6 @@ static void log_reg_write(CPUHexagonState *env, int rnum,
     HEX_DEBUG_LOG("\n");
 
     env->new_value[rnum] = val;
-    do_check_reg_write(env, rnum);
     if (HEX_DEBUG) {
         /* Do this so HELPER(debug_commit_end) will know */
         env->reg_written[rnum] = 1;
@@ -184,32 +165,6 @@ static void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
     } else {
         fCHECK_PCALIGN(addr);
         env->next_PC = addr;
-    }
-}
-
-void HELPER(check_reg_write)(CPUHexagonState *env, int rnum)
-{
-    do_check_reg_write(env, rnum);
-}
-
-void HELPER(check_cond_reg_write)(CPUHexagonState *env, int rnum, int skip)
-{
-    if (!skip) {
-        do_check_reg_write(env, rnum);
-    }
-}
-
-void HELPER(check_reg_write_pair)(CPUHexagonState *env, int rnum)
-{
-    do_check_reg_write(env, rnum);
-    do_check_reg_write(env, rnum + 1);
-}
-
-void HELPER(check_cond_reg_write_pair)(CPUHexagonState *env, int rnum, int skip)
-{
-    if (!skip) {
-        do_check_reg_write(env, rnum);
-        do_check_reg_write(env, rnum + 1);
     }
 }
 

@@ -31,10 +31,6 @@ DEF_HELPER_3(sfrecipa, i64, env, f32, f32)
 DEF_HELPER_2(sfinvsqrta, i64, env, f32)
 DEF_HELPER_4(vacsh_val, s64, env, s64, s64, s64)
 DEF_HELPER_FLAGS_4(vacsh_pred, TCG_CALL_NO_RWG_SE, s32, env, s64, s64, s64)
-DEF_HELPER_2(check_reg_write, void, env, int)
-DEF_HELPER_3(check_cond_reg_write, void, env, int, int)
-DEF_HELPER_2(check_reg_write_pair, void, env, int)
-DEF_HELPER_3(check_cond_reg_write_pair, void, env, int, int)
 
 #ifndef CONFIG_USER_ONLY
 DEF_HELPER_4(data_cache_op, void, env, i32, int, int)

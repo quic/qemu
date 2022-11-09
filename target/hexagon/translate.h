@@ -37,6 +37,17 @@ typedef struct DisasContext {
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
     DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
+    bool pkt_has_uncond_mult_reg_write;
+    /*
+     * The GPRs which have *multiple* register
+     * writes (predicated and not) in this packet:
+     */
+    DECLARE_BITMAP(wreg_mult_gprs, NUM_GPREGS);
+    /*
+     * The GPRs which have unconditional register
+     * writes in this packet:
+     */
+    DECLARE_BITMAP(uncond_wreg_gprs, NUM_GPREGS);
 #ifndef CONFIG_USER_ONLY
     int greg_log[GREG_WRITES_MAX];
     int greg_log_idx;
@@ -166,6 +177,7 @@ extern TCGv hex_branch_taken;
 extern TCGv hex_new_value[TOTAL_PER_THREAD_REGS];
 extern TCGv hex_reg_written[TOTAL_PER_THREAD_REGS];
 extern TCGv hex_gpreg_written;
+extern TCGv hex_mult_reg_written;
 extern TCGv hex_new_pred_value[NUM_PREGS];
 extern TCGv hex_pred_written;
 extern TCGv hex_store_addr[STORES_MAX];

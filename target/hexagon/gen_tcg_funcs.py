@@ -543,7 +543,7 @@ def gen_helper_call_imm(f,immlett):
 
 def genptr_dst_write_pair(f, tag, regtype, regid):
     if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-        f.write("    gen_log_predicated_reg_write_pair(%s%sN, %s%sV, insn->slot, ctx->zero);\n" % \
+        f.write("    gen_log_predicated_reg_write_pair(ctx, %s%sN, %s%sV, insn->slot);\n" % \
             (regtype, regid, regtype, regid))
     else:
         f.write("    gen_log_reg_write_pair(%s%sN, %s%sV);\n" % \
@@ -557,9 +557,9 @@ def genptr_dst_write(f, tag, regtype, regid):
             genptr_dst_write_pair(f, tag, regtype, regid)
         elif (regid in {"d", "e", "x", "y"}):
             if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-                f.write("    gen_log_predicated_reg_write(%s%sN, %s%sV,\n" % \
+                f.write("    gen_log_predicated_reg_write(ctx, %s%sN, %s%sV,\n" % \
                     (regtype, regid, regtype, regid))
-                f.write("                                 insn->slot, ctx->zero);\n")
+                f.write("                                 insn->slot);\n")
             else:
                 f.write("    gen_log_reg_write(%s%sN, %s%sV);\n" % \
                     (regtype, regid, regtype, regid))

@@ -467,6 +467,11 @@ typedef struct CPUArchState {
     uint8_t slot_cancelled;
     target_ulong new_value[TOTAL_PER_THREAD_REGS];
     target_ulong gpreg_written;
+    /*
+     * This value will be a TCGv treated as a mask of the registers
+     * written multiple times in this packet.
+     */
+    target_ulong mult_reg_written;
     QEMU_BUILD_BUG_MSG(NUM_GPREGS > CHAR_BIT * sizeof(target_ulong),
                        "Hexagon's CPUArchState.gpreg_written type is too small");
 
