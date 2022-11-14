@@ -64,7 +64,6 @@ static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
 {
     if (test_bit(rnum, ctx->regs_written)) {
         HEX_DEBUG_LOG("WARNING: Multiple writes to r%d\n", rnum);
-        return;
     }
     ctx->reg_log[ctx->reg_log_idx] = rnum;
     ctx->reg_log_idx++;
