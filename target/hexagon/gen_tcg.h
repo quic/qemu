@@ -1473,7 +1473,8 @@
         { \
           fEA_REG(RsV); \
           fLOAD(1, 8, u, EA, tmp_i64); \
-          tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
+          gen_frame_unscramble(tmp_i64); \
+          tcg_gen_mov_i64(RddV, tmp_i64); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
         } \
@@ -1487,131 +1488,90 @@
         TCGv tmp = tcg_temp_new(); \
         TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
         { \
-          fEA_REG(gen_read_reg(tmp, HEX_REG_FP)); \
+          tcg_gen_mov_tl(EA, hex_gpr[HEX_REG_FP]); \
           fLOAD(1, 8, u, EA, tmp_i64); \
           gen_frame_unscramble(tmp_i64); \
-          gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
-          gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
+          gen_log_reg_write_pair(HEX_REG_FP, tmp_i64); \
           tcg_gen_addi_tl(tmp, EA, 8); \
           gen_log_reg_write(HEX_REG_SP, tmp); \
         } \
         tcg_temp_free(WORD); \
         tcg_temp_free(tmp); \
         tcg_temp_free_i64(tmp_i64); \
-    } while (0)
-
-#define fGEN_TCG_L4_return(SHORTCODE) \
-    do { \
-        TCGv tmp = tcg_temp_new(); \
-        TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
-        TCGv WORD = tcg_temp_new(); \
-        { \
-          fEA_REG(RsV); \
-          fLOAD(1, 8, u, EA, tmp_i64); \
-          tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
-          tcg_gen_addi_tl(tmp, EA, 8); \
-          gen_log_reg_write(HEX_REG_SP, tmp); \
-          gen_jumpr(ctx, fGETWORD(1, RddV)); \
-        } \
-        tcg_temp_free(tmp); \
-        tcg_temp_free_i64(tmp_i64); \
-        tcg_temp_free(WORD); \
-    } while (0)
-
-#define fGEN_TCG_SL2_return(SHORTCODE) \
-    do { \
-        TCGv tmp = tcg_temp_new(); \
-        TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
-        TCGv WORD = tcg_temp_new(); \
-        { \
-          fEA_REG(gen_read_reg(tmp, HEX_REG_FP)); \
-          fLOAD(1, 8, u, EA, tmp_i64); \
-          gen_frame_unscramble(tmp_i64); \
-          gen_log_reg_write(HEX_REG_LR, fGETWORD(1, tmp_i64)); \
-          gen_log_reg_write(HEX_REG_FP, fGETWORD(0, tmp_i64)); \
-          tcg_gen_addi_tl(tmp, EA, 8); \
-          gen_log_reg_write(HEX_REG_SP, tmp); \
-          gen_jumpr(ctx, fGETWORD(1, tmp_i64)); \
-        } \
-        tcg_temp_free(tmp); \
-        tcg_temp_free_i64(tmp_i64); \
-        tcg_temp_free(WORD); \
     } while (0)
 
 /*
- * Conditional returns follow the same predicate naming convention as
- * predicated loads above
+ * dealloc_return
+ * Assembler mapped to
+ * r31:30 = dealloc_return(r30):raw
  */
-#define fGEN_TCG_COND_RETURN(PRED) \
-    do { \
-        TCGv LSB = tcg_temp_new(); \
-        TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
-        TCGv tmp = tcg_temp_new(); \
-        TCGv WORD = tcg_temp_new(); \
-        TCGLabel *skip = gen_new_label(); \
-        fEA_REG(RsV); \
-        PRED; \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, skip); \
-        tcg_temp_free(LSB); \
-        fLOAD(1, 8, u, EA, tmp_i64); \
-        tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
-        tcg_gen_addi_tl(tmp, EA, 8); \
-        gen_log_reg_write(HEX_REG_SP, tmp); \
-        gen_jumpr(ctx, fGETWORD(1, RddV)); \
-        tcg_temp_free_i64(tmp_i64); \
-        tcg_temp_free(tmp); \
-        tcg_temp_free(WORD); \
-        gen_set_label(skip); \
-    } while (0)
+#define fGEN_TCG_L4_return(SHORTCODE) \
+    gen_return(ctx, RddV, RsV)
 
-#define fGEN_TCG_L4_return_t(SHORTCODE) \
-    fGEN_TCG_COND_RETURN(fLSBOLD(PvV))
-#define fGEN_TCG_L4_return_f(SHORTCODE) \
-    fGEN_TCG_COND_RETURN(fLSBOLDNOT(PvV))
-#define fGEN_TCG_L4_return_tnew_pt(SHORTCODE) \
-    fGEN_TCG_COND_RETURN(fLSBNEW(PvN))
-#define fGEN_TCG_L4_return_fnew_pt(SHORTCODE) \
-    fGEN_TCG_COND_RETURN(fLSBNEWNOT(PvN))
-#define fGEN_TCG_L4_return_tnew_pnt(SHORTCODE) \
-    fGEN_TCG_COND_RETURN(fLSBNEW(PvN))
-#define fGEN_TCG_L4_return_tnew_pnt(SHORTCODE) \
-    fGEN_TCG_COND_RETURN(fLSBNEW(PvN))
-#define fGEN_TCG_L4_return_fnew_pnt(SHORTCODE) \
-    fGEN_TCG_COND_RETURN(fLSBNEWNOT(PvN))
-
-#define fGEN_TCG_COND_RETURN_SUBINSN(PRED) \
+/*
+ * sub-instruction version (no RddV, so handle it manually)
+ */
+#define fGEN_TCG_SL2_return(SHORTCODE) \
     do { \
-        TCGv LSB = tcg_temp_new(); \
         TCGv_i64 RddV = tcg_temp_new_i64(); \
-        TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
-        TCGv tmp = tcg_temp_new(); \
-        TCGv WORD = tcg_temp_new(); \
-        TCGLabel *skip = gen_new_label(); \
-        fEA_REG(gen_read_reg(tmp, HEX_REG_FP)); \
-        PRED; \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, skip); \
-        fLOAD(1, 8, u, EA, tmp_i64); \
-        tcg_gen_mov_i64(RddV, gen_frame_unscramble(tmp_i64)); \
-        tcg_temp_free(LSB); \
-        tcg_gen_addi_tl(tmp, EA, 8); \
-        gen_log_reg_write(HEX_REG_SP, tmp); \
-        gen_jumpr(ctx, fGETWORD(1, RddV)); \
+        gen_return(ctx, RddV, hex_gpr[HEX_REG_FP]); \
         gen_log_reg_write_pair(HEX_REG_FP, RddV); \
         tcg_temp_free_i64(RddV); \
-        tcg_temp_free_i64(tmp_i64); \
-        tcg_temp_free(tmp); \
-        tcg_temp_free(WORD); \
-        gen_set_label(skip); \
+    } while (0)
+
+/*
+ * Conditional returns follow this naming convention
+ *     _t                 predicate true
+ *     _f                 predicate false
+ *     _tnew_pt           predicate.new true predict taken
+ *     _fnew_pt           predicate.new false predict taken
+ *     _tnew_pnt          predicate.new true predict not taken
+ *     _fnew_pnt          predicate.new false predict not taken
+ * Predictions are not modelled in QEMU
+ *
+ * Example:
+ *     if (p1) r31:30 = dealloc_return(r30):raw
+ */
+#define fGEN_TCG_L4_return_t(SHORTCODE) \
+    gen_cond_return(ctx, RddV, RsV, PvV, TCG_COND_EQ);
+#define fGEN_TCG_L4_return_f(SHORTCODE) \
+    gen_cond_return(ctx, RddV, RsV, PvV, TCG_COND_NE)
+#define fGEN_TCG_L4_return_tnew_pt(SHORTCODE) \
+    gen_cond_return(ctx, RddV, RsV, PvN, TCG_COND_EQ)
+#define fGEN_TCG_L4_return_fnew_pt(SHORTCODE) \
+    gen_cond_return(ctx, RddV, RsV, PvN, TCG_COND_NE)
+#define fGEN_TCG_L4_return_tnew_pnt(SHORTCODE) \
+    gen_cond_return(ctx, RddV, RsV, PvN, TCG_COND_EQ)
+#define fGEN_TCG_L4_return_fnew_pnt(SHORTCODE) \
+    gen_cond_return(ctx, RddV, RsV, PvN, TCG_COND_NE)
+
+/*
+ * sub-instruction version (no RddV, so handle it manually)
+ */
+#define fGEN_TCG_COND_RETURN_SUBINSN(PRED, COND) \
+    do { \
+        TCGv_i64 RddV = tcg_temp_local_new_i64(); \
+        if (!is_preloaded(ctx, HEX_REG_FP)) { \
+            tcg_gen_mov_tl(hex_new_value[HEX_REG_FP], hex_gpr[HEX_REG_FP]); \
+        } \
+        if (!is_preloaded(ctx, HEX_REG_LR)) { \
+            tcg_gen_mov_tl(hex_new_value[HEX_REG_LR], hex_gpr[HEX_REG_LR]); \
+        } \
+        tcg_gen_concat_i32_i64(RddV, hex_new_value[HEX_REG_FP], \
+                                     hex_new_value[HEX_REG_LR]); \
+        gen_cond_return(ctx, RddV, hex_gpr[HEX_REG_FP], PRED, COND); \
+        gen_log_reg_write_pair(HEX_REG_FP, RddV); \
+        tcg_temp_free_i64(RddV); \
     } while (0)
 
 #define fGEN_TCG_SL2_return_t(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(fLSBOLD(gen_read_preg(tmp, 0)))
+    fGEN_TCG_COND_RETURN_SUBINSN(hex_pred[0], TCG_COND_EQ)
 #define fGEN_TCG_SL2_return_f(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(fLSBOLDNOT(gen_read_preg(tmp, 0)))
+    fGEN_TCG_COND_RETURN_SUBINSN(hex_pred[0], TCG_COND_NE)
 #define fGEN_TCG_SL2_return_tnew(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(fLSBNEW0)
+    fGEN_TCG_COND_RETURN_SUBINSN(hex_new_pred_value[0], TCG_COND_EQ)
 #define fGEN_TCG_SL2_return_fnew(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(fLSBNEW0NOT)
+    fGEN_TCG_COND_RETURN_SUBINSN(hex_new_pred_value[0], TCG_COND_NE)
 
 /*
  * Mathematical operations with more than one definition require
