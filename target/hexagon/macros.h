@@ -533,23 +533,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 
 #define fMEMOP(NUM, SIZE, SIGN, EA, FNTYPE, VALUE)
 
-#ifdef QEMU_GENERATE
-static inline TCGv_i64 gen_frame_scramble(TCGv_i64 result)
-{
-    /* ((LR << 32) | FP) ^ (FRAMEKEY << 32)) */
-    TCGv_i64 FRAMEKEY_i64 = tcg_temp_new_i64();
-
-    tcg_gen_extu_i32_i64(FRAMEKEY_i64, hex_gpr[HEX_REG_FRAMEKEY]);
-    tcg_gen_shli_i64(FRAMEKEY_i64, FRAMEKEY_i64, 32);
-
-    tcg_gen_concat_i32_i64(result, hex_gpr[HEX_REG_FP], hex_gpr[HEX_REG_LR]);
-    tcg_gen_xor_i64(result, result, FRAMEKEY_i64);
-
-    tcg_temp_free_i64(FRAMEKEY_i64);
-    return result;
-}
-#endif
-
 #ifdef CONFIG_USER_ONLY
 #define fFRAMECHECK(ADDR, EA) do { } while (0) /* Not modelled in linux-user */
 #else
