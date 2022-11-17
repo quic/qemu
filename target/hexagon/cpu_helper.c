@@ -309,7 +309,12 @@ void hexagon_wait_thread(CPUHexagonState *env)
     g_assert(get_exe_mode(env) != HEX_EXE_MODE_WAIT);
 
     CPUState *cs = env_cpu(env);
-    if (cs->exception_index != HEX_EVENT_NONE) {
+    /*
+     * The addtion of cpu_has_work is borrowed from arm's wfi helper
+     * and is critical for our stability
+     */
+    if ((cs->exception_index != HEX_EVENT_NONE) ||
+        (cpu_has_work(cs))) {
         qemu_mutex_unlock_iothread();
         return;
     }

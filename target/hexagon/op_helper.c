@@ -1652,7 +1652,7 @@ static void hex_k0_lock(CPUHexagonState *env)
         HEX_DEBUG_LOG("\tWaiting\n");
         env->k0_lock_state = HEX_LOCK_WAITING;
         env->next_PC = env->gpr[HEX_REG_PC];
-        cpu_stop_current();
+        cpu_exit(env_cpu(env));
     } else {
         HEX_DEBUG_LOG("\tAcquired\n");
         env->k0_lock_state = HEX_LOCK_OWNER;
