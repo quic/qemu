@@ -198,17 +198,15 @@ static void gen_end_tb(DisasContext *ctx)
 
     gen_exec_counters(ctx);
 
-    if (ctx->has_single_direct_branch) {
-        if (ctx->branch_cond != NULL) {
+    if (ctx->branch_cond != TCG_COND_NEVER) {
+        if (ctx->branch_cond != TCG_COND_ALWAYS) {
             TCGLabel *skip = gen_new_label();
-            tcg_gen_brcondi_tl(TCG_COND_EQ, ctx->branch_cond, 0, skip);
+            tcg_gen_brcondi_tl(ctx->branch_cond, hex_branch_taken, 0, skip);
             gen_cpu_limit(ctx, tcg_constant_tl(ctx->branch_dest));
             gen_goto_tb(ctx, 0, ctx->branch_dest);
             gen_set_label(skip);
             gen_cpu_limit(ctx, tcg_constant_tl(ctx->next_PC));
             gen_goto_tb(ctx, 1, ctx->next_PC);
-            tcg_temp_free(ctx->branch_cond);
-            ctx->branch_cond = NULL;
         } else {
             gen_cpu_limit(ctx, tcg_constant_tl(ctx->branch_dest));
             gen_goto_tb(ctx, 0, ctx->branch_dest);
@@ -234,7 +232,6 @@ static void gen_end_tb(DisasContext *ctx)
         tcg_gen_lookup_and_goto_ptr();
     }
 
-    g_assert(ctx->branch_cond == NULL);
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
@@ -1257,6 +1254,7 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
     }
 
     if (decode_packet(nwords, words, &pkt, false) > 0) {
+        pkt.pc = ctx->base.pc_next;
         HEX_DEBUG_PRINT_PKT(&pkt);
         ctx->pkt = &pkt;
 
@@ -1321,8 +1319,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
 #endif
-    ctx->has_single_direct_branch = false;
-    ctx->branch_cond = NULL;
+    ctx->branch_cond = TCG_COND_NEVER;
     ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
 }
 
