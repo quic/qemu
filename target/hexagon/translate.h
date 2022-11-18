@@ -23,11 +23,13 @@
 #include "cpu.h"
 #include "exec/translator.h"
 #include "tcg/tcg-op.h"
+#include "insn.h"
 #include "internal.h"
 
 typedef struct DisasContext {
     DisasContextBase base;
     Packet *pkt;
+    Insn *insn;
     uint32_t next_PC;
     uint32_t mem_idx;
     uint32_t num_packets;
@@ -209,6 +211,6 @@ extern TCGv hex_imprecise_exception;
 
 void gen_exception(int excp);
 void gen_exception_end_tb(DisasContext *ctx, int excp);
-bool is_gather_store_insn(Insn *insn, Packet *pkt);
-void process_store(DisasContext *ctx, Packet *pkt, int slot_num);
+bool is_gather_store_insn(DisasContext *ctx);
+void process_store(DisasContext *ctx, int slot_num);
 #endif

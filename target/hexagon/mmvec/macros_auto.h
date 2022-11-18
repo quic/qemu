@@ -123,7 +123,7 @@
 #endif
 #define fSTOREMMV_AL(EA, ALIGNMENT, LEN, SRC) { fV_AL_CHECK(EA,ALIGNMENT-1); mem_store_vector_oddva(thread, 0, EA&~(ALIGNMENT-1), EA, slot, LEN, &SRC.ub[0], 0, 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
 #ifdef QEMU_GENERATE
-#define fSTOREMMV(EA, SRC) gen_vreg_store(ctx, insn, pkt, EA, SRC##_off, insn->slot, true)
+#define fSTOREMMV(EA, SRC) gen_vreg_store(ctx, EA, SRC##_off, insn->slot, true)
 #else
 #define fSTOREMMV(EA, SRC) fSTOREMMV_AL(EA,fVECSIZE(),fVECSIZE(),SRC)
 #endif
@@ -144,7 +144,7 @@
 #define fSTOREMMVU_AL(EA, ALIGNMENT, LEN, SRC) { size4u_t size1 = ALIGNMENT-((EA)&(ALIGNMENT-1)); size4u_t size2; if (size1>LEN) size1 = LEN; size2 = LEN-size1; mem_store_vector_oddva(thread, 0, EA+size1, EA+fVECSIZE(), 1, size2, &SRC.ub[size1], 0, 0, fUSE_LOOKUP_ADDRESS()); mem_store_vector_oddva(thread, 0, EA, EA, 0, size1, &SRC.ub[0], 0, 0, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
 #ifdef QEMU_GENERATE
 #define fSTOREMMVU(EA, SRC) \
-    gen_vreg_store(ctx, insn, pkt, EA, SRC##_off, insn->slot, false)
+    gen_vreg_store(ctx, EA, SRC##_off, insn->slot, false)
 #else
 #define fSTOREMMVU(EA, SRC) { /*thread->last_pkt->pkt_has_vtcm_access = 0; thread->last_pkt->pkt_access_count = 0;*/ if ( (EA & (fVECSIZE()-1)) == 0) { /*thread->last_pkt->double_access = 0;*/ fSTOREMMV_AL(EA,fVECSIZE(),fVECSIZE(),SRC); } else { /*thread->last_pkt->double_access = 1; thread->last_pkt->pkt_has_vmemu_access = 1;*/ fSTOREMMVU_AL(EA,fVECSIZE(),fVECSIZE(),SRC); } }
 #endif

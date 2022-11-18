@@ -129,7 +129,7 @@
 
 #define fGEN_TCG_J2_rte(SHORTCODE) \
     do { \
-        TCGv pkt_has_multi_cof = tcg_constant_tl(pkt->pkt_has_multi_cof); \
+        TCGv pkt_has_multi_cof = tcg_constant_tl(ctx->pkt->pkt_has_multi_cof); \
         gen_helper_rte(cpu_env, pkt_has_multi_cof); \
         ctx->base.is_jmp = DISAS_NORETURN; \
     } while (0)
