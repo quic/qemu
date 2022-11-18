@@ -768,7 +768,21 @@ static inline void gen_set_usr_field(int field, TCGv val)
 
 static inline void gen_set_usr_fieldi(int field, int x)
 {
-    gen_set_usr_field(field, tcg_constant_tl(x));
+    if (reg_field_info[field].width == 1) {
+        target_ulong bit = 1 << reg_field_info[field].offset;
+        if ((x & 1) == 1) {
+            tcg_gen_ori_tl(hex_new_value[HEX_REG_USR],
+                           hex_new_value[HEX_REG_USR],
+                           bit);
+        } else {
+            tcg_gen_andi_tl(hex_new_value[HEX_REG_USR],
+                            hex_new_value[HEX_REG_USR],
+                            ~bit);
+        }
+    } else {
+        TCGv val = tcg_constant_tl(x);
+        gen_set_usr_field(field, val);
+    }
 }
 
 static inline void gen_cond_return(TCGv pred, TCGv addr, TCGv zero)
