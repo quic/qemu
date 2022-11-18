@@ -1295,6 +1295,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
     HexagonCPU *hex_cpu = HEXAGON_CPU(cs);
+    uint32_t hex_flags = dcbase->tb->flags;
 
     ctx->num_packets = 0;
     ctx->num_insns = 0;
@@ -1306,17 +1307,10 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->ones64 = tcg_constant_i64(0xff);
     ctx->pcycle_enabled = false;
     ctx->paranoid_commit_state = hex_cpu->paranoid_commit_state;
-}
-
-static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
-{
-    DisasContext *ctx = container_of(db, DisasContext, base);
-    uint32_t hex_flags = db->tb->flags;
 
     ctx->mem_idx = FIELD_EX32(hex_flags, TB_FLAGS, MMU_INDEX);
 
 #if !defined(CONFIG_USER_ONLY)
-    HexagonCPU *hex_cpu = HEXAGON_CPU(cpu);
     ctx->need_cpu_limit = hex_cpu->sched_limit &&
                           (!(tb_cflags(ctx->base.tb) & CF_PARALLEL));
     if (ctx->need_cpu_limit) {
@@ -1330,6 +1324,10 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     ctx->has_single_direct_branch = false;
     ctx->branch_cond = NULL;
     ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
+}
+
+static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
+{
 }
 
 static void hexagon_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
