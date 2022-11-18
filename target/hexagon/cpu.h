@@ -30,6 +30,7 @@ typedef struct SystemState system_t;
 #include "mmvec/mmvec.h"
 #include "hmx/hmx.h"
 #include "dma/dma.h"
+#include "hw/registerfields.h"
 
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
@@ -602,21 +603,14 @@ struct ArchCPU {
 #define cpu_signal_handler cpu_hexagon_signal_handler
 extern int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 
-typedef union {
-    uint32_t i;
-    struct {
-        int mmu_index:3;
-#ifndef CONFIG_USER_ONLY
-        bool pcycle_enabled:1;
-#endif
-        bool is_tight_loop:1;
-    };
-} HexStateFlags;
+FIELD(TB_FLAGS, IS_TIGHT_LOOP, 0, 1)
+FIELD(TB_FLAGS, MMU_INDEX, 1, 3)
+FIELD(TB_FLAGS, PCYCLE_ENABLED, 4, 1)
 
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
 {
-    HexStateFlags hex_flags = { 0 };
+    uint32_t hex_flags = 0;
     *pc = env->gpr[HEX_REG_PC];
     *cs_base = 0;
 
@@ -626,20 +620,21 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                     reg_field_info[SYSCFG_PCYCLEEN].offset,
                                     reg_field_info[SYSCFG_PCYCLEEN].width);
 
-    hex_flags.mmu_index = cpu_mmu_index(env, false);
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, MMU_INDEX,
+                           cpu_mmu_index(env, false));
 
     if (pcycle_enabled) {
-        hex_flags.pcycle_enabled = true;
+        hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, PCYCLE_ENABLED, 1);
     }
 #else
-    hex_flags.mmu_index = MMU_USER_IDX;
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, MMU_INDEX, MMU_USER_IDX);
 #endif
 
     if (*pc == env->gpr[HEX_REG_SA0]) {
-        hex_flags.is_tight_loop = true;
+        hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP, 1);
     }
 
-    *flags = hex_flags.i;
+    *flags = hex_flags;
 }
 
 #ifndef CONFIG_USER_ONLY

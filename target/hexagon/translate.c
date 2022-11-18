@@ -1311,9 +1311,9 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
 {
     DisasContext *ctx = container_of(db, DisasContext, base);
-    HexStateFlags hex_flags = { db->tb->flags };
+    uint32_t hex_flags = db->tb->flags;
 
-    ctx->mem_idx = hex_flags.mmu_index;
+    ctx->mem_idx = FIELD_EX32(hex_flags, TB_FLAGS, MMU_INDEX);
 
 #if !defined(CONFIG_USER_ONLY)
     HexagonCPU *hex_cpu = HEXAGON_CPU(cpu);
@@ -1324,12 +1324,12 @@ static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
     }
     ctx->hvx_check_emitted = false;
     ctx->hmx_check_emitted = false;
-    ctx->pcycle_enabled = hex_flags.pcycle_enabled;
+    ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
 #endif
     ctx->has_single_direct_branch = false;
     ctx->branch_cond = NULL;
-    ctx->is_tight_loop = hex_flags.is_tight_loop;
+    ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
 }
 
 static void hexagon_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
