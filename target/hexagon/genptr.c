@@ -498,32 +498,6 @@ static inline void gen_write_ctrl_reg_pair(DisasContext *ctx, int reg_num,
     }
 }
 
-static TCGv gen_get_word(TCGv result, int N, TCGv_i64 src, bool sign)
-{
-    if (N == 0) {
-        tcg_gen_extrl_i64_i32(result, src);
-    } else if (N == 1) {
-        tcg_gen_extrh_i64_i32(result, src);
-    } else {
-      g_assert_not_reached();
-    }
-    return result;
-}
-
-static TCGv_i64 gen_get_word_i64(TCGv_i64 result, int N, TCGv_i64 src,
-                                        bool sign)
-{
-    TCGv word = tcg_temp_new();
-    gen_get_word(word, N, src, sign);
-    if (sign) {
-        tcg_gen_ext_i32_i64(result, word);
-    } else {
-        tcg_gen_extu_i32_i64(result, word);
-    }
-    tcg_temp_free(word);
-    return result;
-}
-
 static TCGv gen_get_byte(TCGv result, int N, TCGv src, bool sign)
 {
     if (sign) {
@@ -772,11 +746,6 @@ static inline void gen_set_usr_fieldi(int field, int x)
     }
 }
 
-static inline void gen_cond_return(TCGv pred, TCGv addr, TCGv zero)
-{
-    tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC, pred, zero, addr, hex_next_PC);
-}
-
 static inline void gen_loop0r(TCGv RsV, int riV, Insn *insn)
 {
     TCGv tmp = tcg_temp_new();
@@ -988,6 +957,90 @@ static void gen_cond_callr(DisasContext *ctx,
     tcg_temp_free(lsb);
     gen_callr(ctx, new_pc);
     gen_set_label(skip);
+}
+
+/* frame ^= (int64_t)FRAMEKEY << 32 */
+static void gen_frame_unscramble(TCGv_i64 frame)
+{
+    TCGv_i64 framekey = tcg_temp_new_i64();
+    tcg_gen_extu_i32_i64(framekey, hex_gpr[HEX_REG_FRAMEKEY]);
+    tcg_gen_shli_i64(framekey, framekey, 32);
+    tcg_gen_xor_i64(frame, frame, framekey);
+    tcg_temp_free_i64(framekey);
+}
+
+static void probe_noshuf_load(TCGv va, int s, int mi)
+{
+    TCGv size = tcg_constant_tl(s);
+    TCGv mem_idx = tcg_constant_tl(mi);
+    gen_helper_probe_noshuf_load(cpu_env, va, size, mem_idx);
+}
+
+static void gen_load_frame(DisasContext *ctx, TCGv_i64 frame, TCGv EA)
+{
+    Insn *insn = ctx->insn;  /* Needed for CHECK_NOSHUF */
+    CHECK_NOSHUF(EA, 8);
+    tcg_gen_qemu_ld64(frame, EA, ctx->mem_idx);
+}
+
+static void gen_return_base(DisasContext *ctx, TCGv_i64 dst, TCGv src,
+                            TCGv r29)
+{
+    /*
+     * frame = *src
+     * dst = frame_unscramble(frame)
+     * SP = src + 8
+     * PC = dst.w[1]
+     */
+    TCGv_i64 frame = tcg_temp_new_i64();
+    TCGv r31 = tcg_temp_new();
+
+    gen_load_frame(ctx, frame, src);
+    gen_frame_unscramble(frame);
+    tcg_gen_mov_i64(dst, frame);
+    tcg_gen_addi_tl(r29, src, 8);
+    tcg_gen_extrh_i64_i32(r31, dst);
+    gen_jumpr(ctx, r31);
+
+    tcg_temp_free_i64(frame);
+    tcg_temp_free(r31);
+}
+
+static void gen_return(DisasContext *ctx, TCGv_i64 dst, TCGv src)
+{
+    TCGv r29 = tcg_temp_new();
+    gen_return_base(ctx, dst, src, r29);
+    gen_log_reg_write(HEX_REG_SP, r29);
+    tcg_temp_free(r29);
+}
+
+/* if (pred) dst = dealloc_return(src):raw */
+static void gen_cond_return(DisasContext *ctx, TCGv_i64 dst, TCGv src,
+                            TCGv pred, TCGCond cond)
+{
+    TCGv LSB = tcg_temp_new();
+    TCGv mask = tcg_temp_new();
+    TCGv r29 = tcg_temp_local_new();
+    TCGLabel *skip = gen_new_label();
+    tcg_gen_andi_tl(LSB, pred, 1);
+
+    /* Initialize the results in case the predicate is false */
+    tcg_gen_movi_i64(dst, 0);
+    tcg_gen_movi_tl(r29, 0);
+
+    /* Set the bit in hex_slot_cancelled if the predicate is flase */
+    tcg_gen_movi_tl(mask, 1 << ctx->insn->slot);
+    tcg_gen_or_tl(mask, hex_slot_cancelled, mask);
+    tcg_gen_movcond_tl(cond, hex_slot_cancelled, LSB, tcg_constant_tl(0),
+                       mask, hex_slot_cancelled);
+    tcg_temp_free(mask);
+
+    tcg_gen_brcondi_tl(cond, LSB, 0, skip);
+    tcg_temp_free(LSB);
+    gen_return_base(ctx, dst, src, r29);
+    gen_set_label(skip);
+    gen_log_predicated_reg_write(ctx, HEX_REG_SP, r29, ctx->insn->slot);
+    tcg_temp_free(r29);
 }
 
 static void gen_endloop0(DisasContext *ctx)
@@ -1516,13 +1569,6 @@ static void vec_to_qvec(size_t size, intptr_t dstoff, intptr_t srcoff,
     tcg_temp_free_i64(word);
     tcg_temp_free_i64(bits);
     tcg_temp_free_i64(mask);
-}
-
-static void probe_noshuf_load(TCGv va, int s, int mi)
-{
-    TCGv size = tcg_constant_tl(s);
-    TCGv mem_idx = tcg_constant_tl(mi);
-    gen_helper_probe_noshuf_load(cpu_env, va, size, mem_idx);
 }
 
 #include "tcg_funcs_generated.c.inc"

@@ -263,11 +263,6 @@ static inline void gen_pred_cancel(DisasContext *ctx, TCGv pred, int slot_num)
         tcg_gen_andi_tl(LSB, (PNUM), 1); \
         tcg_gen_xori_tl(LSB, LSB, 1); \
     } while (0)
-#define fLSBNEW0NOT \
-    do { \
-        tcg_gen_andi_tl(LSB, hex_new_pred_value[0], 1); \
-        tcg_gen_xori_tl(LSB, LSB, 1); \
-    } while (0)
 #else
 #define fLSBNEWNOT(PNUM) (!fLSBNEW(PNUM))
 #define fLSBOLDNOT(VAL) (!fLSBOLD(VAL))
@@ -645,15 +640,7 @@ static inline TCGv_i64 gen_frame_scramble(TCGv_i64 result)
     tcg_temp_free_i64(FRAMEKEY_i64);
     return result;
 }
-static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
-{
-    TCGv_i64 FRAMEKEY_i64 = tcg_temp_new_i64();
-    tcg_gen_extu_i32_i64(FRAMEKEY_i64, hex_gpr[HEX_REG_FRAMEKEY]);
-    tcg_gen_shli_i64(FRAMEKEY_i64, FRAMEKEY_i64, 32);
-    tcg_gen_xor_i64(frame, frame, FRAMEKEY_i64);
-    tcg_temp_free_i64(FRAMEKEY_i64);
-    return frame;
-}
+
 #endif
 
 #ifdef CONFIG_USER_ONLY
@@ -710,20 +697,10 @@ static inline TCGv_i64 gen_frame_unscramble(TCGv_i64 frame)
 #define fSETHALFw fSETHALF
 #define fSETHALFd fSETHALF
 
-#ifdef QEMU_GENERATE
-#define GETWORD_FUNC(X) \
-    __builtin_choose_expr(TYPE_TCGV(X), \
-        gen_get_word, \
-        __builtin_choose_expr(TYPE_TCGV_I64(X), \
-            gen_get_word_i64, (void)0))
-#define fGETWORD(N, SRC)  GETWORD_FUNC(WORD)(WORD, N, SRC, true)
-#define fGETUWORD(N, SRC) GETWORD_FUNC(WORD)(WORD, N, SRC, false)
-#else
 #define fGETWORD(N, SRC) \
     ((int64_t)((int32_t)((SRC >> ((N) * 32)) & 0x0ffffffffLL)))
 #define fGETUWORD(N, SRC) \
     ((uint64_t)((uint32_t)((SRC >> ((N) * 32)) & 0x0ffffffffLL)))
-#endif
 
 #define fSETWORD(N, DST, VAL) \
     do { \
