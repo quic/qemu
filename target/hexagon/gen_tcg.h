@@ -1474,76 +1474,38 @@
     fGEN_TCG_CACHEOP(gen_helper_insn_cache_op)
 #endif
 
-/* We have to brute force allocframe because it has C math in the semantics */
+/*
+ * allocframe(#uiV)
+ *     RxV == r29
+ */
 #define fGEN_TCG_S2_allocframe(SHORTCODE) \
-    do { \
-        TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
-        { fEA_RI(RxV, -8); \
-          gen_frame_scramble(scramble_tmp); \
-          fSTORE(1, 8, EA, scramble_tmp); \
-          gen_log_reg_write(HEX_REG_FP, EA); \
-          ctx_log_reg_write(ctx, HEX_REG_FP); \
-          fFRAMECHECK(EA - uiV, EA); \
-          tcg_gen_subi_tl(RxV, EA, uiV); \
-        } \
-        tcg_temp_free_i64(scramble_tmp); \
-    } while (0)
+    gen_allocframe(ctx, RxV, uiV)
 
+/* sub-instruction version (no RxV, so handle it manually) */
 #define fGEN_TCG_SS2_allocframe(SHORTCODE) \
     do { \
-        TCGv_i64 scramble_tmp = tcg_temp_new_i64(); \
-        TCGv tmp = tcg_temp_new(); \
-        { tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_SP], -8); \
-          gen_frame_scramble(scramble_tmp); \
-          fSTORE(1, 8, EA, scramble_tmp); \
-          gen_log_reg_write(HEX_REG_FP, EA); \
-          ctx_log_reg_write(ctx, HEX_REG_FP); \
-          fFRAMECHECK(EA - uiV, EA); \
-          tcg_gen_subi_tl(tmp, EA, uiV); \
-          gen_log_reg_write(HEX_REG_SP, tmp); \
-          ctx_log_reg_write(ctx, HEX_REG_SP); \
-        } \
-        tcg_temp_free_i64(scramble_tmp); \
-        tcg_temp_free(tmp); \
+        TCGv r29 = tcg_temp_new(); \
+        tcg_gen_mov_tl(r29, hex_gpr[HEX_REG_SP]); \
+        gen_allocframe(ctx, r29, uiV); \
+        gen_log_reg_write(HEX_REG_SP, r29); \
+        tcg_temp_free(r29); \
     } while (0)
 
-/* Also have to brute force the deallocframe variants */
+/*
+ * Rdd32 = deallocframe(Rs32):raw
+ *     RddV == r31:30
+ *     RsV  == r30
+ */
 #define fGEN_TCG_L2_deallocframe(SHORTCODE) \
-    do { \
-        TCGv tmp = tcg_temp_new(); \
-        TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
-        { \
-          fEA_REG(RsV); \
-          fLOAD(1, 8, u, EA, tmp_i64); \
-          gen_frame_unscramble(tmp_i64); \
-          tcg_gen_mov_i64(RddV, tmp_i64); \
-          tcg_gen_addi_tl(tmp, EA, 8); \
-          gen_log_reg_write(HEX_REG_SP, tmp); \
-          ctx_log_reg_write(ctx, HEX_REG_SP); \
-        } \
-        tcg_temp_free(tmp); \
-        tcg_temp_free_i64(tmp_i64); \
-    } while (0)
+    gen_deallocframe(ctx, RddV, RsV)
 
+/* sub-instruction version (no RddV/RsV, so handle it manually) */
 #define fGEN_TCG_SL2_deallocframe(SHORTCODE) \
     do { \
-        TCGv WORD = tcg_temp_new(); \
-        TCGv tmp = tcg_temp_new(); \
-        TCGv_i64 tmp_i64 = tcg_temp_new_i64(); \
-        { \
-          fEA_REG(fREAD_FP()); \
-          fLOAD(1, 8, u, EA, tmp_i64); \
-          gen_frame_unscramble(tmp_i64); \
-          gen_log_reg_write_pair(HEX_REG_FP, tmp_i64); \
-          ctx_log_reg_write(ctx, HEX_REG_LR); \
-          ctx_log_reg_write(ctx, HEX_REG_FP); \
-          tcg_gen_addi_tl(tmp, EA, 8); \
-          gen_log_reg_write(HEX_REG_SP, tmp); \
-          ctx_log_reg_write(ctx, HEX_REG_SP); \
-        } \
-        tcg_temp_free(WORD); \
-        tcg_temp_free(tmp); \
-        tcg_temp_free_i64(tmp_i64); \
+        TCGv_i64 r31_30 = tcg_temp_new_i64(); \
+        gen_deallocframe(ctx, r31_30, hex_gpr[HEX_REG_FP]); \
+        gen_log_reg_write_pair(HEX_REG_FP, r31_30); \
+        tcg_temp_free_i64(r31_30); \
     } while (0)
 
 /*

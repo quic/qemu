@@ -959,6 +959,17 @@ static void gen_cond_callr(DisasContext *ctx,
     gen_set_label(skip);
 }
 
+/* frame = ((LR << 32) | FP) ^ (FRAMEKEY << 32)) */
+static void gen_frame_scramble(TCGv_i64 result)
+{
+    TCGv_i64 framekey = tcg_temp_new_i64();
+    tcg_gen_extu_i32_i64(framekey, hex_gpr[HEX_REG_FRAMEKEY]);
+    tcg_gen_shli_i64(framekey, framekey, 32);
+    tcg_gen_concat_i32_i64(result, hex_gpr[HEX_REG_FP], hex_gpr[HEX_REG_LR]);
+    tcg_gen_xor_i64(result, result, framekey);
+    tcg_temp_free_i64(framekey);
+}
+
 /* frame ^= (int64_t)FRAMEKEY << 32 */
 static void gen_frame_unscramble(TCGv_i64 frame)
 {
@@ -967,6 +978,27 @@ static void gen_frame_unscramble(TCGv_i64 frame)
     tcg_gen_shli_i64(framekey, framekey, 32);
     tcg_gen_xor_i64(frame, frame, framekey);
     tcg_temp_free_i64(framekey);
+}
+
+/* Stack overflow check */
+static void gen_framecheck(TCGv EA, int framesize)
+{
+    /* Not modelled in linux-user mode */
+    /* Placeholder for system mode */
+}
+
+static void gen_allocframe(DisasContext *ctx, TCGv r29, int framesize)
+{
+    TCGv r30 = tcg_temp_new();
+    TCGv_i64 frame = tcg_temp_new_i64();
+    tcg_gen_addi_tl(r30, r29, -8);
+    gen_frame_scramble(frame);
+    gen_store8(cpu_env, r30, frame, ctx->insn->slot);
+    gen_log_reg_write(HEX_REG_FP, r30);
+    gen_framecheck(r30, framesize);
+    tcg_gen_subi_tl(r29, r30, framesize);
+    tcg_temp_free(r30);
+    tcg_temp_free_i64(frame);
 }
 
 static void probe_noshuf_load(TCGv va, int s, int mi)
@@ -981,6 +1013,19 @@ static void gen_load_frame(DisasContext *ctx, TCGv_i64 frame, TCGv EA)
     Insn *insn = ctx->insn;  /* Needed for CHECK_NOSHUF */
     CHECK_NOSHUF(EA, 8);
     tcg_gen_qemu_ld64(frame, EA, ctx->mem_idx);
+}
+
+static void gen_deallocframe(DisasContext *ctx, TCGv_i64 r31_30, TCGv r30)
+{
+    TCGv r29 = tcg_temp_new();
+    TCGv_i64 frame = tcg_temp_new_i64();
+    gen_load_frame(ctx, frame, r30);
+    gen_frame_unscramble(frame);
+    tcg_gen_mov_i64(r31_30, frame);
+    tcg_gen_addi_tl(r29, r30, 8);
+    gen_log_reg_write(HEX_REG_SP, r29);
+    tcg_temp_free(r29);
+    tcg_temp_free_i64(frame);
 }
 
 static void gen_return_base(DisasContext *ctx, TCGv_i64 dst, TCGv src,
