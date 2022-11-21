@@ -108,3 +108,26 @@ aarch64_check-tcg:
 aarch64_check:
   needs: [aarch64_build]
   extends: .base-check
+
+# NEEDSWORK: We want to use `--inspector perf-stat` in the future (and that is
+# why we set the performance-hardware tag), but it currently fails due to
+# insufficient /proc/sys/kernel/perf_event_paranoid permissions (and docker
+# mounts procfs as read-only).
+test_hexagon_perf:
+  needs: [hexagon_build]
+  tags:
+    - performance-hardware
+  script:
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/qemu/qemu-hexagon-perf.git
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/qemu/qemu-hexagon-benchmarks.git
+    - mkdir perf_results
+    - ./qemu-hexagon-perf/customer_test_suite.py
+        --bench-dir ./qemu-hexagon-benchmarks/
+        --qemu-user-bin-dir ${PWD}/hexagon_build/ --qemu-bin-dir ${PWD}/hexagon_build/
+        --output-file ./perf-results.json
+  artifacts:
+    paths: [ "perf-results.json" ]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+
