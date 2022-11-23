@@ -8,7 +8,7 @@ image: $CI_REGISTRY/qqvp/containers/qqvp-dev:latest
 ###################################################################
 
 variables:
-  COMMON_CONFIG_OPTS: --enable-lto --disable-capstone --disable-guest-agent --enable-plugins
+  COMMON_CONFIG_OPTS: --enable-lto --disable-capstone --disable-guest-agent --enable-plugins --assert-target-compiler
   HEX_CONFIG_OPTS: --disable-fdt --disable-tools --disable-slirp --disable-sdl --disable-vnc --disable-gtk --disable-blobs
   AARCH64_CONFIG_OPTS: --enable-fdt --enable-slirp --disable-debug-info --disable-debug-tcg --enable-virtfs --enable-avx2 --enable-avx512f --disable-png --disable-sanitizers
 

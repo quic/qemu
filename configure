@@ -231,6 +231,7 @@ use_containers="yes"
 gdb_bin=$(command -v "gdb-multiarch" || command -v "gdb")
 
 hexagon_lldb_bin=$(command -v "hexagon-lldb")
+assert_target_compiler=no
 
 if test -e "$source_path/.git"
 then
@@ -911,6 +912,8 @@ for opt do
   ;;
   --hexagon-lldb=*) hexagon_lldb_bin="$optarg"
   ;;
+  --assert-target-compiler) assert_target_compiler="yes"
+  ;;
   # backwards compatibility options
   --enable-trace-backend=*) meson_option_parse "--enable-trace-backends=$optarg" "$optarg"
   ;;
@@ -1065,6 +1068,7 @@ Advanced options (experts only):
   --disable-containers     don't use containers for cross-building
   --gdb=GDB-path           gdb to use for gdbstub tests [$gdb_bin]
   --hexagon-lldb=LLDB-path lldb to use for hexagon tests [$hexagon_lldb_bin]
+  --assert-target-compiler abort if no target CC or container image is found [$assert_target_compiler]
 EOF
   meson_options_help
 cat << EOF
@@ -2571,12 +2575,12 @@ for target in $target_list; do
       echo "QEMU=$PWD/$qemu" >> "$config_target_mak"
       echo "run-tcg-tests-$target: $qemu\$(EXESUF)" >> Makefile.prereqs
       tcg_tests_targets="$tcg_tests_targets $target"
-  else
+  elif test "$assert_target_compiler" = yes; then
       error_exit "didn't find cross-compiler or container image for '$target'"
   fi
 done
-echo "TCG_TESTS_TARGETS=$tcg_tests_targets" >> config-host.mak) \
-	|| error_exit 'tests/tcg config failed'
+echo "TCG_TESTS_TARGETS=$tcg_tests_targets" >> config-host.mak) || \
+    { test "$assert_target_compiler" = yes && error_exit 'tests/tcg config failed'; }
 
 if test "$skip_meson" = no; then
   cross="config-meson.cross.new"
