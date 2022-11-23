@@ -2571,9 +2571,12 @@ for target in $target_list; do
       echo "QEMU=$PWD/$qemu" >> "$config_target_mak"
       echo "run-tcg-tests-$target: $qemu\$(EXESUF)" >> Makefile.prereqs
       tcg_tests_targets="$tcg_tests_targets $target"
+  else
+      error_exit "didn't find cross-compiler or container image for '$target'"
   fi
 done
-echo "TCG_TESTS_TARGETS=$tcg_tests_targets" >> config-host.mak)
+echo "TCG_TESTS_TARGETS=$tcg_tests_targets" >> config-host.mak) \
+	|| error_exit 'tests/tcg config failed'
 
 if test "$skip_meson" = no; then
   cross="config-meson.cross.new"
