@@ -133,6 +133,14 @@ static void gen_exception_raw(int excp)
     gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
 }
 
+#ifndef CONFIG_USER_ONLY
+static inline void gen_precise_exception(int excp)
+{
+    tcg_gen_movi_tl(hex_cause_code, excp);
+    gen_exception_raw(HEX_EVENT_PRECISE);
+}
+#endif
+
 static void gen_exec_counters(DisasContext *ctx)
 {
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],
@@ -250,8 +258,7 @@ void gen_exception_end_tb(DisasContext *ctx, int excp)
 #ifdef CONFIG_USER_ONLY
     gen_exception_raw(excp);
 #else
-    tcg_gen_movi_tl(hex_cause_code, excp);
-    gen_exception_raw(HEX_EVENT_PRECISE);
+    gen_precise_exception(excp);
 #endif
     ctx->base.is_jmp = DISAS_NORETURN;
 }
@@ -414,8 +421,7 @@ static void gen_hmx_check(void)
             reg_field_info[SSR_XE2].offset,
             reg_field_info[SSR_XE2].width);
     tcg_gen_brcondi_tl(TCG_COND_NE, xe, 0, skip_exception);
-    tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_NO_COPROC2_ENABLE);
-    gen_exception_raw(HEX_EVENT_PRECISE);
+    gen_precise_exception(HEX_CAUSE_NO_COPROC2_ENABLE);
     gen_set_label(skip_exception);
 
     tcg_temp_free(xe);
@@ -433,8 +439,7 @@ static void gen_check_mult_reg_write(DisasContext *ctx)
 #ifdef CONFIG_USER_ONLY
         gen_exception_raw(HEX_CAUSE_REG_WRITE_CONFLICT);
 #else
-        tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_REG_WRITE_CONFLICT);
-        gen_exception_raw(HEX_EVENT_PRECISE);
+        gen_precise_exception(HEX_CAUSE_REG_WRITE_CONFLICT);
 #endif
         gen_set_label(skip_exception);
     }
@@ -596,8 +601,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         gen_helper_inc_gcycle_xt(cpu_env);
     }
     if (pkt->pkt_has_hvx && !ctx->hvx_coproc_enabled && !ctx->hvx_check_emitted) {
-        tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_NO_COPROC_ENABLE);
-        gen_exception_raw(HEX_EVENT_PRECISE);
+        gen_precise_exception(HEX_CAUSE_NO_COPROC_ENABLE);
         ctx->hvx_check_emitted = true;
     }
     if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
@@ -612,8 +616,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
          * HVX while in this mode.
          */
 #ifndef CONFIG_USER_ONLY
-        tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_UNSUPORTED_HVX_64B);
-        gen_exception_raw(HEX_EVENT_PRECISE);
+        gen_precise_exception(HEX_CAUSE_UNSUPORTED_HVX_64B);
 #else
         gen_exception_raw(HEX_CAUSE_UNSUPORTED_HVX_64B);
 #endif
