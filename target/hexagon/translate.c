@@ -406,14 +406,15 @@ static void decode_wregs(DisasContext *ctx, Packet *pkt)
 }
 
 #if !defined(CONFIG_USER_ONLY)
-static void gen_coproc_check(int ssr_field_index, int cause_code) {
+static void gen_hmx_check(void)
+{
     TCGv xe = tcg_temp_new();
     TCGLabel *skip_exception = gen_new_label();
     tcg_gen_extract_tl(xe, hex_t_sreg[HEX_SREG_SSR],
-            reg_field_info[ssr_field_index].offset,
-            reg_field_info[ssr_field_index].width);
+            reg_field_info[SSR_XE2].offset,
+            reg_field_info[SSR_XE2].width);
     tcg_gen_brcondi_tl(TCG_COND_NE, xe, 0, skip_exception);
-    tcg_gen_movi_tl(hex_cause_code, cause_code);
+    tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_NO_COPROC2_ENABLE);
     gen_exception_raw(HEX_EVENT_PRECISE);
     gen_set_label(skip_exception);
 
@@ -594,12 +595,13 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     if (hex_cpu->count_gcycle_xt) {
         gen_helper_inc_gcycle_xt(cpu_env);
     }
-    if (pkt->pkt_has_hvx && !ctx->hvx_check_emitted) {
-        gen_coproc_check(SSR_XE, HEX_CAUSE_NO_COPROC_ENABLE);
+    if (pkt->pkt_has_hvx && !ctx->hvx_coproc_enabled && !ctx->hvx_check_emitted) {
+        tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_NO_COPROC_ENABLE);
+        gen_exception_raw(HEX_EVENT_PRECISE);
         ctx->hvx_check_emitted = true;
     }
     if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
-        gen_coproc_check(SSR_XE2, HEX_CAUSE_NO_COPROC2_ENABLE);
+        gen_hmx_check();
         ctx->hmx_check_emitted = true;
     }
 #endif
