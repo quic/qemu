@@ -2161,6 +2161,13 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
         qemu_log_mask(CPU_LOG_INT, "%s: global interrupts enabled\n", __func__);
         hex_interrupt_update(env);
     }
+
+    if (qemu_loglevel_mask(LOG_UNIMP)) {
+        int new_v2x = GET_SYSCFG_FIELD(SYSCFG_V2X, val);
+        if (!new_v2x) {
+            qemu_log("HVX: 64 bits vector length is unsupported\n");
+        }
+    }
 }
 
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
