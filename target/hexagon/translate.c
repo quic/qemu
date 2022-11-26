@@ -128,16 +128,11 @@ void gen_exception(int excp)
     gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
 }
 
-static void gen_exception_raw(int excp)
-{
-    gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
-}
-
 #ifndef CONFIG_USER_ONLY
 static inline void gen_precise_exception(int excp)
 {
     tcg_gen_movi_tl(hex_cause_code, excp);
-    gen_exception_raw(HEX_EVENT_PRECISE);
+    gen_exception(HEX_EVENT_PRECISE);
 }
 #endif
 
@@ -246,7 +241,7 @@ static void gen_end_tb(DisasContext *ctx)
 static void gen_exception_debug(DisasContext *ctx)
 {
     if (ctx->base.singlestep_enabled) {
-        gen_exception_raw(EXCP_DEBUG);
+        gen_exception(EXCP_DEBUG);
     } else {
         tcg_gen_exit_tb(NULL, 0);
     }
@@ -256,7 +251,7 @@ static void gen_exception_debug(DisasContext *ctx)
 void gen_exception_end_tb(DisasContext *ctx, int excp)
 {
 #ifdef CONFIG_USER_ONLY
-    gen_exception_raw(excp);
+    gen_exception(excp);
 #else
     gen_precise_exception(excp);
 #endif
@@ -437,7 +432,7 @@ static void gen_check_mult_reg_write(DisasContext *ctx)
         tcg_gen_brcondi_tl(TCG_COND_EQ, hex_mult_reg_written, 0,
                            skip_exception);
 #ifdef CONFIG_USER_ONLY
-        gen_exception_raw(HEX_CAUSE_REG_WRITE_CONFLICT);
+        gen_exception(HEX_CAUSE_REG_WRITE_CONFLICT);
 #else
         gen_precise_exception(HEX_CAUSE_REG_WRITE_CONFLICT);
 #endif
@@ -618,7 +613,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
 #ifndef CONFIG_USER_ONLY
         gen_precise_exception(HEX_CAUSE_UNSUPORTED_HVX_64B);
 #else
-        gen_exception_raw(HEX_CAUSE_UNSUPORTED_HVX_64B);
+        gen_exception(HEX_CAUSE_UNSUPORTED_HVX_64B);
 #endif
     }
 }
@@ -1363,7 +1358,7 @@ static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase,
 
     tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
     ctx->base.is_jmp = DISAS_NORETURN;
-    gen_exception_raw(EXCP_DEBUG);
+    gen_exception(EXCP_DEBUG);
     /*
      * The address covered by the breakpoint must be included in
      * [tb->pc, tb->pc + tb->size) in order to for it to be
