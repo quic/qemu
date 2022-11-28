@@ -27,6 +27,7 @@ variables:
   script:
     mkdir $BUILDDIR &&
     cd $BUILDDIR &&
+    echo "Configuring with: '$CONFIG_CMD'" &&
     eval $CONFIG_CMD &&
     make -j
   artifacts:
