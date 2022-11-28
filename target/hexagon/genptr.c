@@ -684,12 +684,10 @@ static void gen_write_new_pc_addr(DisasContext *ctx, TCGv addr,
 
     if (ctx->pkt->pkt_has_multi_cof) {
         /* If there are multiple branches in a packet, ignore the second one */
-        TCGv zero = tcg_const_tl(0);
         tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC,
-                           hex_branch_taken, zero,
+                           hex_branch_taken, tcg_constant_tl(0),
                            hex_next_PC, addr);
         tcg_gen_movi_tl(hex_branch_taken, 1);
-        tcg_temp_free(zero);
     } else {
         tcg_gen_mov_tl(hex_next_PC, addr);
     }
@@ -852,18 +850,16 @@ static void gen_cmpnd_cmpi_jmp_t(DisasContext *ctx,
                                  int pnum, TCGCond cond, TCGv arg1, int arg2,
                                  int pc_off)
 {
-    TCGv tmp = tcg_const_tl(arg2);
+    TCGv tmp = tcg_constant_tl(arg2);
     gen_cmpnd_cmp_jmp(ctx, pnum, cond, arg1, tmp, TCG_COND_EQ, pc_off);
-    tcg_temp_free(tmp);
 }
 
 static void gen_cmpnd_cmpi_jmp_f(DisasContext *ctx,
                                  int pnum, TCGCond cond, TCGv arg1, int arg2,
                                  int pc_off)
 {
-    TCGv tmp = tcg_const_tl(arg2);
+    TCGv tmp = tcg_constant_tl(arg2);
     gen_cmpnd_cmp_jmp(ctx, pnum, cond, arg1, tmp, TCG_COND_NE, pc_off);
-    tcg_temp_free(tmp);
 }
 
 static void gen_cmpnd_cmp_n1_jmp_t(DisasContext *ctx, int pnum, TCGCond cond,
@@ -917,7 +913,7 @@ static void gen_jumpr(DisasContext *ctx, TCGv new_pc)
 static void gen_call(DisasContext *ctx, int pc_off)
 {
     TCGv next_PC =
-        tcg_const_tl(ctx->pkt->pc + ctx->pkt->encod_pkt_size_in_bytes);
+        tcg_constant_tl(ctx->pkt->pc + ctx->pkt->encod_pkt_size_in_bytes);
     gen_log_reg_write(HEX_REG_LR, next_PC);
     gen_write_new_pc_pcrel(ctx, pc_off, TCG_COND_ALWAYS, NULL);
 }
@@ -925,10 +921,9 @@ static void gen_call(DisasContext *ctx, int pc_off)
 static void gen_callr(DisasContext *ctx, TCGv new_pc)
 {
     TCGv next_PC =
-        tcg_const_tl(ctx->pkt->pc + ctx->pkt->encod_pkt_size_in_bytes);
+        tcg_constant_tl(ctx->pkt->pc + ctx->pkt->encod_pkt_size_in_bytes);
     gen_log_reg_write(HEX_REG_LR, next_PC);
     gen_write_new_pc_addr(ctx, new_pc, TCG_COND_ALWAYS, NULL);
-    tcg_temp_free(next_PC);
 }
 
 static void gen_cond_call(DisasContext *ctx, TCGv pred,
@@ -941,9 +936,9 @@ static void gen_cond_call(DisasContext *ctx, TCGv pred,
     gen_write_new_pc_pcrel(ctx, pc_off, cond, lsb);
     tcg_gen_brcondi_tl(cond, lsb, 0, skip);
     tcg_temp_free(lsb);
-    next_PC = tcg_const_tl(ctx->pkt->pc + ctx->pkt->encod_pkt_size_in_bytes);
+    next_PC =
+        tcg_constant_tl(ctx->pkt->pc + ctx->pkt->encod_pkt_size_in_bytes);
     gen_log_reg_write(HEX_REG_LR, next_PC);
-    tcg_temp_free(next_PC);
     gen_set_label(skip);
 }
 
