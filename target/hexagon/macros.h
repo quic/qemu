@@ -380,7 +380,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #else
 #define fREAD_FP() (READ_REG(HEX_REG_FP))
 #endif
-#define fREAD_PC() (READ_REG(HEX_REG_PC))
+#define fREAD_PC() (PC)
 
 /* FIXME - override J2_callrh and we can remove this */
 #define fREAD_NPC() (env->next_PC & (0xfffffffe))
@@ -723,7 +723,11 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fECHO(A) (A)
 
 #ifdef CONFIG_USER_ONLY
-#define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EVENT_TRAP0)
+#define fTRAP(TRAPTYPE, IMM) \
+    do { \
+        env->gpr[HEX_REG_PC] = PC; \
+        HELPER(raise_exception)(env, HEX_EVENT_TRAP0); \
+    } while (0)
 #endif
 
 #define fDO_TRACE(SREG)

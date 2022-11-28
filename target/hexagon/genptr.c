@@ -744,38 +744,38 @@ static inline void gen_set_usr_fieldi(int field, int x)
     }
 }
 
-static inline void gen_loop0r(TCGv RsV, int riV, Insn *insn)
+static inline void gen_loop0r(DisasContext *ctx, TCGv RsV, int riV)
 {
     TCGv tmp = tcg_temp_new();
     fIMMEXT(riV);
     fPCALIGN(riV);
     /* fWRITE_LOOP_REGS0( fREAD_PC()+riV, RsV); */
-    tcg_gen_addi_tl(tmp, hex_gpr[HEX_REG_PC], riV);
+    tcg_gen_movi_tl(tmp, ctx->pkt->pc + riV);
     gen_log_reg_write(HEX_REG_LC0, RsV);
     gen_log_reg_write(HEX_REG_SA0, tmp);
     fSET_LPCFG(0);
     tcg_temp_free(tmp);
 }
-static void gen_loop0i(int count, int riV, Insn *insn)
+static void gen_loop0i(DisasContext *ctx, int count, int riV)
 {
-    gen_loop0r(tcg_constant_tl(count), riV, insn);
+    gen_loop0r(ctx, tcg_constant_tl(count), riV);
 }
 
-static inline void gen_loop1r(TCGv RsV, int riV, Insn *insn)
+static inline void gen_loop1r(DisasContext *ctx, TCGv RsV, int riV)
 {
     TCGv tmp = tcg_temp_new();
     fIMMEXT(riV);
     fPCALIGN(riV);
     /* fWRITE_LOOP_REGS1( fREAD_PC()+riV, RsV); */
-    tcg_gen_addi_tl(tmp, hex_gpr[HEX_REG_PC], riV);
+    tcg_gen_movi_tl(tmp, ctx->pkt->pc + riV);
     gen_log_reg_write(HEX_REG_LC1, RsV);
     gen_log_reg_write(HEX_REG_SA1, tmp);
     tcg_temp_free(tmp);
 }
 
-static void gen_loop1i(int count, int riV, Insn *insn)
+static void gen_loop1i(DisasContext *ctx, int count, int riV)
 {
-    gen_loop1r(tcg_constant_tl(count), riV, insn);
+    gen_loop1r(ctx, tcg_constant_tl(count), riV);
 }
 
 static inline void gen_compare(TCGCond cond, TCGv res, TCGv arg1, TCGv arg2,

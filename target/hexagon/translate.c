@@ -330,7 +330,15 @@ static bool check_for_opcode(Packet *pkt, uint16_t opcode)
 }
 static bool need_pc(Packet *pkt)
 {
-    return true; // return check_for_attrib(pkt, A_IMPLICIT_READS_PC);
+#ifdef CONFIG_USER_ONLY
+    return false;
+#else
+    /*
+     * FIXME
+     * QTOOL-89075: Reduce instructions where need_pc returns true
+     */
+    return true;
+#endif
 }
 
 static bool need_slot_cancelled(Packet *pkt)
