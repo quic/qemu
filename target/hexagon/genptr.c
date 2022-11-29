@@ -684,12 +684,22 @@ static void gen_write_new_pc_addr(DisasContext *ctx, TCGv addr,
 
     if (ctx->pkt->pkt_has_multi_cof) {
         /* If there are multiple branches in a packet, ignore the second one */
+#ifdef CONFIG_USER_ONLY
+        tcg_gen_movcond_tl(TCG_COND_NE, hex_gpr[HEX_REG_PC],
+                           hex_branch_taken, tcg_constant_tl(0),
+                           hex_gpr[HEX_REG_PC], addr);
+#else
         tcg_gen_movcond_tl(TCG_COND_NE, hex_next_PC,
                            hex_branch_taken, tcg_constant_tl(0),
                            hex_next_PC, addr);
+#endif
         tcg_gen_movi_tl(hex_branch_taken, 1);
     } else {
+#ifdef CONFIG_USER_ONLY
+        tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], addr);
+#else
         tcg_gen_mov_tl(hex_next_PC, addr);
+#endif
     }
 
     if (cond != TCG_COND_ALWAYS) {
@@ -1514,9 +1524,9 @@ static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
     }
 }
 
-static void gen_pause(void)
+static void gen_pause(DisasContext *ctx)
 {
-    tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+    tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->next_PC);
 #ifndef CONFIG_USER_ONLY
     gen_exception(EXCP_YIELD);
 #endif

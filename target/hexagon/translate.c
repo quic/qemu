@@ -35,7 +35,9 @@
 
 TCGv hex_gpr[TOTAL_PER_THREAD_REGS];
 TCGv hex_pred[NUM_PREGS];
+#ifndef CONFIG_USER_ONLY
 TCGv hex_next_PC;
+#endif
 TCGv hex_this_PC;
 TCGv hex_slot_cancelled;
 TCGv hex_branch_taken;
@@ -230,8 +232,10 @@ static void gen_end_tb(DisasContext *ctx)
             tcg_constant_tl(ctx->base.pc_next + pkt->encod_pkt_size_in_bytes));
         gen_goto_tb(ctx, 1, ctx->base.pc_next + pkt->encod_pkt_size_in_bytes);
     } else {
+#ifndef CONFIG_USER_ONLY
         gen_cpu_limit(ctx, hex_next_PC);
         tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
+#endif
         tcg_gen_lookup_and_goto_ptr();
     }
 
@@ -453,6 +457,92 @@ typedef union {
     unsigned long mask_l;
 } RegWriteMask;
 
+#ifndef CONFIG_USER_ONLY
+static bool sreg_write_ends_tb(int reg_num)
+{
+    return reg_num == HEX_SREG_SSR ||
+           reg_num == HEX_SREG_STID ||
+           reg_num == HEX_SREG_IMASK ||
+           reg_num == HEX_SREG_IPENDAD ||
+           reg_num == HEX_SREG_BESTWAIT ||
+           reg_num == HEX_SREG_SCHEDCFG;
+}
+#endif
+
+static bool pkt_ends_tb(Packet *pkt)
+{
+    if (pkt->pkt_has_cof) {
+        return true;
+    }
+#ifndef CONFIG_USER_ONLY
+    if (pkt->pkt_has_sys_visibility) {
+        return true;
+    }
+    if (check_for_opcode(pkt, Y2_swi) ||
+        check_for_opcode(pkt, Y2_cswi) ||
+        check_for_opcode(pkt, Y2_ciad) ||
+        check_for_opcode(pkt, Y4_siad) ||
+        check_for_opcode(pkt, Y2_wait) ||
+        check_for_opcode(pkt, Y2_resume) ||
+        check_for_opcode(pkt, Y2_iassignw) ||
+        check_for_opcode(pkt, Y2_setimask) ||
+        check_for_opcode(pkt, Y4_nmi) ||
+        check_for_opcode(pkt, Y2_setprio) ||
+        check_for_opcode(pkt, Y2_start) ||
+        check_for_opcode(pkt, Y2_stop) ||
+        check_for_opcode(pkt, J2_rte)) {
+        return true;
+    }
+    /*
+     * Check for sreg writes that would end the TB
+     */
+    if (check_for_attrib(pkt, A_IMPLICIT_WRITES_SSR)) {
+        return true;
+    }
+    for (int i = 0; i < pkt->num_insns; i++) {
+        Insn *insn = &pkt->insn[i];
+        uint16_t opcode = insn->opcode;
+        if (opcode == Y2_tfrsrcr) {
+            /* Write to a single sreg */
+            int reg_num = insn->regno[0];
+            if (sreg_write_ends_tb(reg_num)) {
+                return true;
+            }
+        } else if (opcode == Y4_tfrspcp) {
+            /* Write to a sreg pair */
+            int reg_num = insn->regno[0];
+            if (sreg_write_ends_tb(reg_num)) {
+                return true;
+            }
+            if (sreg_write_ends_tb(reg_num + 1)) {
+                return true;
+            }
+        }
+    }
+#endif
+    return false;
+}
+
+#ifdef CONFIG_USER_ONLY
+static bool need_next_PC(DisasContext *ctx)
+{
+    Packet *pkt = ctx->pkt;
+
+    /* Check for conditional control flow or HW loop end */
+    for (int i = 0; i < pkt->num_insns; i++) {
+        uint16_t opcode = pkt->insn[i].opcode;
+        if (GET_ATTRIB(opcode, A_CONDEXEC) && GET_ATTRIB(opcode, A_COF)) {
+            return true;
+        }
+        if (GET_ATTRIB(opcode, A_HWLOOP0_END) ||
+            GET_ATTRIB(opcode, A_HWLOOP1_END)) {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
 {
     Packet *pkt = ctx->pkt;
@@ -585,9 +675,17 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         if (pkt->pkt_has_multi_cof) {
             tcg_gen_movi_tl(hex_branch_taken, 0);
         }
+#ifdef CONFIG_USER_ONLY
+        if (need_next_PC(ctx)) {
+            tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], next_PC);
+        }
+#endif
     }
-    // FIXME: this was moved out of the conditional init above:
-    tcg_gen_movi_tl(hex_next_PC, next_PC);
+#ifndef CONFIG_USER_ONLY
+    if (pkt_ends_tb(pkt)) {
+        tcg_gen_movi_tl(hex_next_PC, next_PC);
+    }
+#endif
     if (need_pred_written(pkt)) {
         tcg_gen_movi_tl(hex_pred_written, 0);
     }
@@ -1237,7 +1335,8 @@ static void gen_commit_packet(DisasContext *ctx)
                          !pkt->pkt_has_dczeroa);
 
         /* Handy place to set a breakpoint at the end of execution */
-        gen_helper_debug_commit_end(cpu_env, has_st0, has_st1);
+        gen_helper_debug_commit_end(cpu_env, has_st0, has_st1,
+                                    tcg_constant_tl(ctx->next_PC));
     }
 
     if (pkt->vhist_insn != NULL) {
@@ -1250,12 +1349,7 @@ static void gen_commit_packet(DisasContext *ctx)
     check_imprecise_exception(pkt);
 #endif
 
-    if (pkt->pkt_has_cof
-#if !defined(CONFIG_USER_ONLY)
-        || pkt->pkt_has_sys_visibility
-        || ctx->base.is_jmp == DISAS_NORETURN
-#endif
-        ) {
+    if (pkt_ends_tb(pkt) || ctx->base.is_jmp == DISAS_NORETURN) {
         gen_end_tb(ctx);
     }
 }
@@ -1557,8 +1651,10 @@ void hexagon_translate_init(void)
     }
     hex_pred_written = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, pred_written), "pred_written");
+    #ifndef CONFIG_USER_ONLY
     hex_next_PC = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, next_PC), "next_PC");
+    #endif
     hex_this_PC = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, this_PC), "this_PC");
     hex_slot_cancelled = tcg_global_mem_new(cpu_env,

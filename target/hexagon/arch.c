@@ -222,7 +222,7 @@ void arch_fpop_start(CPUHexagonState *env)
         CPUState *cs = env_cpu(env); \
         cs->exception_index = HEX_EVENT_FPTRAP; \
         env->cause_code = HEX_CAUSE_FPTRAP_CAUSE_BADFLOAT; \
-        do_raise_exception_err(env, cs->exception_index, env->next_PC); \
+        do_raise_exception_err(env, cs->exception_index, GETPC()); \
     } while (0)
 #endif
 

@@ -103,8 +103,17 @@ def add_qemu_macro_attrib(name, attrib):
 
 immextre = re.compile(r'f(MUST_)?IMMEXT[(]([UuSsRr])')
 
+def is_cond_jump(tag):
+    if tag == 'J2_rte':
+        return False
+    if ('A_HWLOOP0_END' in attribdict[tag] or
+        'A_HWLOOP1_END' in attribdict[tag]):
+        return False
+    return \
+        re.compile(r"(if.*fBRANCH)|(if.*fJUMPR)").search(semdict[tag]) != None
+
 def is_cond_call(tag):
-    return re.compile(r"(if.*fCALL)").search(semdict[tag])
+    return re.compile(r"(if.*fCALL)").search(semdict[tag]) != None
 
 def calculate_attribs():
     add_qemu_macro_attrib('fREAD_PC', 'A_IMPLICIT_READS_PC')
@@ -119,6 +128,8 @@ def calculate_attribs():
     add_qemu_macro_attrib('fSTORE_LOCKED', 'A_LLSC')
     add_qemu_macro_attrib('fCLEAR_RTE_EX', 'A_IMPLICIT_WRITES_SSR')
     add_qemu_macro_attrib('fSTORE', 'A_SCALAR_STORE')
+    add_qemu_macro_attrib('fSET_K0_LOCK', 'A_IMPLICIT_READS_PC')
+    add_qemu_macro_attrib('fSET_TLB_LOCK', 'A_IMPLICIT_READS_PC')
 
     # Recurse down macros, find attributes from sub-macros
     macroValues = list(macros.values())
@@ -142,7 +153,7 @@ def calculate_attribs():
     # Mark conditional jumps and calls
     #     Not all instructions are properly marked with A_CONDEXEC
     for tag in tags:
-        if is_cond_call(tag):
+        if is_cond_jump(tag) or is_cond_call(tag):
             attribdict[tag].add('A_CONDEXEC')
 
 def SEMANTICS(tag, beh, sem):
@@ -268,6 +279,11 @@ def need_ea(tag):
 
 def need_PC(tag):
     return 'A_IMPLICIT_READS_PC' in attribdict[tag]
+
+def helper_needs_next_PC(tag):
+    return ('A_CALL' in attribdict[tag] or
+            tag == 'J2_trap0' or
+            tag == 'J2_trap1')
 
 def need_pkt_has_multi_cof(tag):
     if ('A_JUMP' in attribdict[tag] or

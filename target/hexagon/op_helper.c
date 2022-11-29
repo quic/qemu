@@ -144,6 +144,7 @@ static void log_pred_write(CPUHexagonState *env, int pnum, target_ulong val)
     }
 }
 
+#ifndef CONFIG_USER_ONLY
 static void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
                          target_ulong addr)
 {
@@ -167,6 +168,7 @@ static void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
         env->next_PC = addr;
     }
 }
+#endif
 
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
@@ -322,7 +324,8 @@ static void print_store(CPUHexagonState *env, int slot)
 }
 
 /* This function is a handy place to set a breakpoint */
-void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
+void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1,
+                              target_ulong next_PC)
 {
     bool reg_printed = false;
     bool pred_printed = false;
@@ -402,9 +405,9 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
     }
 
 #ifdef CONFIG_USER_ONLY
-    HEX_DEBUG_LOG("Next PC = " TARGET_FMT_lx "\n", env->next_PC);
+    HEX_DEBUG_LOG("Next PC = " TARGET_FMT_lx "\n", next_PC);
 #else
-    HEX_DEBUG_LOG("tid[%d], Next PC = 0x%x\n", env->threadId, env->next_PC);
+    HEX_DEBUG_LOG("tid[%d], Next PC = 0x%x\n", env->threadId, next_PC);
 #endif
     HEX_DEBUG_LOG("Exec counters: pkt = " TARGET_FMT_lx
                   ", insn = " TARGET_FMT_lx

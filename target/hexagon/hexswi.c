@@ -1058,7 +1058,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             "index 0x%x, cause 0x%x\n",
             env->threadId,
             ARCH_GET_THREAD_REG(env, HEX_REG_PC),
-            env->next_PC,
+            ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4,
             cs->exception_index,
             env->cause_code);
 
@@ -1076,7 +1076,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             "index 0x%x, cause 0x%x\n",
             env->threadId,
             ARCH_GET_THREAD_REG(env, HEX_REG_PC),
-            env->next_PC,
+            ARCH_GET_THREAD_REG(env, HEX_REG_PC) + 4,
             cs->exception_index,
             env->cause_code);
         HEX_DEBUG_LOG("\tEVB 0x%x, shifted index %d/0x%x, final 0x%x\n",

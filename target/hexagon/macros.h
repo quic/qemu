@@ -383,7 +383,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fREAD_PC() (PC)
 
 /* FIXME - override J2_callrh and we can remove this */
-#define fREAD_NPC() (env->next_PC & (0xfffffffe))
+#define fREAD_NPC() (next_PC & (0xfffffffe))
 
 #ifdef QEMU_GENERATE
 #define fREAD_P0() gen_read_preg(tmp, 0)

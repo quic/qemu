@@ -320,7 +320,6 @@ void hexagon_wait_thread(CPUHexagonState *env)
     }
     set_wait_mode(env);
     env->wait_next_pc = env->gpr[HEX_REG_PC] + 4;
-    env->next_PC = env->gpr[HEX_REG_PC];
 
     qemu_mutex_unlock_iothread();
     cpu_stop_current();

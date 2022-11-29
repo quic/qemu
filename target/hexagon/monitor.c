@@ -25,7 +25,6 @@
 #include "hex_mmu.h"
 
 const MonitorDef monitor_defs[] = {
-    { "next_pc", offsetof(CPUHexagonState,  next_PC) },
     { "packet_count", offsetof(CPUHexagonState,  t_packet_count) },
 #if !defined(CONFIG_USER_ONLY)
     { "tlb_lock", offsetof(CPUHexagonState, tlb_lock_state) },
