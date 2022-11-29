@@ -610,6 +610,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 #ifndef CONFIG_USER_ONLY
     if (cs->cpu_index == 0) {
         env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
+        env->g_gcycle = g_malloc0(sizeof(target_ulong) * NUM_GLOBAL_GCYCLE);
         env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
         hmx_configure_state(env);
         hex_mmu_init(env);
@@ -641,6 +642,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
             break;
         }
         env->g_sreg = env0->g_sreg;
+        env->g_gcycle = env0->g_gcycle;
         env->hex_tlb = env0->hex_tlb;
         env->cmdline = env0->cmdline;
         env->lib_search_dir = env0->lib_search_dir;
@@ -1042,7 +1044,7 @@ uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg)
     case HEX_GREG_GCYCLE_5T:
     case HEX_GREG_GCYCLE_6T:
         off = reg - HEX_GREG_GCYCLE_1T;
-        return ssr_pe ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_GCYCLE_1T + off) : 0;
+        return ssr_pe ? env->g_gcycle[off] : 0;
 
     case HEX_GREG_GPCYCLELO:
         return ssr_ce ? hexagon_get_sys_pcycle_count_low(env) : 0;

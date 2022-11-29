@@ -2446,7 +2446,7 @@ void HELPER(inc_gcycle_xt)(CPUHexagonState *env)
 {
     uint32_t num_threads = get_ready_count(env);
     if (1 <= num_threads && num_threads <= 6) {
-        env->g_sreg[HEX_SREG_GCYCLE_1T + num_threads - 1]++;
+        env->g_gcycle[num_threads - 1]++;
     }
 }
 

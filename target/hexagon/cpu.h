@@ -58,6 +58,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define NUM_PREGS 4
 #define TOTAL_PER_THREAD_REGS 64
 #define NUM_GPREGS 32
+#define NUM_GLOBAL_GCYCLE 6
 
 #define SLOTS_MAX 4
 #define STORES_MAX 2
@@ -488,6 +489,7 @@ typedef struct CPUArchState {
     target_ulong t_sreg_new_value[NUM_SREGS];
     target_ulong t_sreg_written[NUM_SREGS];
     target_ulong *g_sreg;
+    target_ulong *g_gcycle;
 
     target_ulong greg[NUM_GREGS];
     target_ulong greg_new_value[NUM_GREGS];

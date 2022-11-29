@@ -184,18 +184,6 @@ enum {
     HEX_SREG_PMUSTID = 55,
     HEX_SREG_TIMERLO = 56,
     HEX_SREG_TIMERHI = 57,
-
-    /*
-     * These aren't sregs per se bug we need global space for them.
-     * They count the number of cycles executed with X threads running.
-     */
-    HEX_SREG_GCYCLE_1T       = 58,
-    HEX_SREG_GCYCLE_2T       = 59,
-    HEX_SREG_GCYCLE_3T       = 60,
-    HEX_SREG_GCYCLE_4T       = 61,
-    HEX_SREG_GCYCLE_5T       = 62,
-    HEX_SREG_GCYCLE_6T       = 63,
-
 };
 
 #endif
