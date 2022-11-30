@@ -488,7 +488,7 @@ static void gen_set_usr_fieldi(int field, int x)
     }
 }
 
-static void gen_loop0r(DisasContext *ctx, TCGv RsV, int riV, Insn *insn)
+static void gen_loop0r(DisasContext *ctx, TCGv RsV, int riV)
 {
     TCGv tmp = tcg_temp_new();
     fIMMEXT(riV);
@@ -500,14 +500,14 @@ static void gen_loop0r(DisasContext *ctx, TCGv RsV, int riV, Insn *insn)
     tcg_temp_free(tmp);
 }
 
-static void gen_loop0i(DisasContext *ctx, int count, int riV, Insn *insn)
+static void gen_loop0i(DisasContext *ctx, int count, int riV)
 {
     TCGv tmp = tcg_const_tl(count);
-    gen_loop0r(ctx, tmp, riV, insn);
+    gen_loop0r(ctx, tmp, riV);
     tcg_temp_free(tmp);
 }
 
-static void gen_loop1r(DisasContext *ctx, TCGv RsV, int riV, Insn *insn)
+static void gen_loop1r(DisasContext *ctx, TCGv RsV, int riV)
 {
     TCGv tmp = tcg_temp_new();
     fIMMEXT(riV);
@@ -518,10 +518,10 @@ static void gen_loop1r(DisasContext *ctx, TCGv RsV, int riV, Insn *insn)
     tcg_temp_free(tmp);
 }
 
-static void gen_loop1i(DisasContext *ctx, int count, int riV, Insn *insn)
+static void gen_loop1i(DisasContext *ctx, int count, int riV)
 {
     TCGv tmp = tcg_const_tl(count);
-    gen_loop1r(ctx, tmp, riV, insn);
+    gen_loop1r(ctx, tmp, riV);
     tcg_temp_free(tmp);
 }
 
