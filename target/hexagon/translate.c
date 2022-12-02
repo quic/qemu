@@ -598,21 +598,24 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         gen_coproc_check(SSR_XE, HEX_CAUSE_NO_COPROC_ENABLE);
         ctx->hvx_check_emitted = true;
     }
+    if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
+        gen_coproc_check(SSR_XE2, HEX_CAUSE_NO_COPROC2_ENABLE);
+        ctx->hmx_check_emitted = true;
+    }
+#endif
     if (pkt->pkt_has_hvx && ctx->hvx_coproc_enabled && ctx->hvx_64b_mode) {
         /*
          * HVX's 64b mode is unsupported by QEMU, we will
          * generate an exception if there's any attempt to use
          * HVX while in this mode.
          */
+#ifndef CONFIG_USER_ONLY
         tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_UNSUPORTED_HVX_64B);
         gen_exception_raw(HEX_EVENT_PRECISE);
-    }
-    if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
-        gen_coproc_check(SSR_XE2, HEX_CAUSE_NO_COPROC2_ENABLE);
-        ctx->hmx_check_emitted = true;
-    }
-
+#else
+        gen_exception_raw(HEX_CAUSE_UNSUPORTED_HVX_64B);
 #endif
+    }
 }
 
 bool is_gather_store_insn(DisasContext *ctx)
@@ -1329,9 +1332,9 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->hmx_check_emitted = false;
     ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
+#endif
     ctx->hvx_coproc_enabled = FIELD_EX32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED);
     ctx->hvx_64b_mode = FIELD_EX32(hex_flags, TB_FLAGS, HVX_64B_MODE);
-#endif
     ctx->branch_cond = TCG_COND_NEVER;
     ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
 }

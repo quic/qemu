@@ -98,6 +98,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define CPU_RESOLVING_TYPE TYPE_HEXAGON_CPU
 
 #define TYPE_HEXAGON_CPU_ANY HEXAGON_CPU_TYPE_NAME("any")
+#define TYPE_HEXAGON_CPU_V66 HEXAGON_CPU_TYPE_NAME("v66")
 #define TYPE_HEXAGON_CPU_V67 HEXAGON_CPU_TYPE_NAME("v67")
 
 void hexagon_cpu_list(void);
@@ -589,13 +590,13 @@ struct ArchCPU {
     bool cacheop_exceptions;
     gchar *usefs;
     uint64_t config_table_addr;
-    uint32_t rev_reg;
     bool vp_mode;
     uint32_t boot_addr;
     uint32_t boot_evb;
     uint32_t l2vic_base_addr;
     uint32_t qtimer_base_addr;
 #endif
+    uint32_t rev_reg;
     bool lldb_compat;
     target_ulong lldb_stack_adjust;
     bool paranoid_commit_state;
@@ -612,13 +613,11 @@ FIELD(TB_FLAGS, PCYCLE_ENABLED, 4, 1)
 FIELD(TB_FLAGS, HVX_COPROC_ENABLED, 5, 1)
 FIELD(TB_FLAGS, HVX_64B_MODE, 6, 1)
 
-#ifndef CONFIG_USER_ONLY
 static inline bool rev_implements_64b_hvx(CPUHexagonState *env)
 {
     HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
     return (hex_cpu->rev_reg & 255) <= (v66_rev & 255);
 }
-#endif
 
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
@@ -652,7 +651,10 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
         hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_64B_MODE, !v2x);
     }
 #else
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED, true);
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, MMU_INDEX, MMU_USER_IDX);
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_64B_MODE,
+                           rev_implements_64b_hvx(env));
 #endif
 
     if (*pc == env->gpr[HEX_REG_SA0]) {
