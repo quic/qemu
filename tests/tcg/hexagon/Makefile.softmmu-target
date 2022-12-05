@@ -181,9 +181,10 @@ timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
 qtimer.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
 
-QEMU_BASE_MACHINE=-M V68N_1024 -cpu any,count-gcycle-xt=on,cacheop-exceptions=true,usefs=$(SRC_PATH)/tests/tcg/hexagon/system $(QEMU_SMP)
+QEMU_BASE_MACHINE=-M V68N_1024 -cpu any,count-gcycle-xt=on,cacheop-exceptions=true,usefs=$(SRC_PATH)/tests/tcg/hexagon/system
 QEMU_OPTS+=-display none
-QEMU_OPTS+=$(QEMU_BASE_MACHINE) -kernel
+QEMU_EXTRA_OPTS=
+QEMU_OPTS+=$(QEMU_BASE_MACHINE) $(QEMU_EXTRA_OPTS) -kernel
 
 run-neg-framelimit: neg-framelimit
 run-neg-float_excp: neg-float_excp
@@ -243,12 +244,13 @@ run-swi2:
 
 run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
 
-QEMU_MTTCG=-accel tcg,thread=multi
-run-test-thread: QEMU_SMP=-smp cpus=8
-run-test-thread: test-thread
-	$(call run-test, $<, $(QEMU) -M V68N_1024  $(QEMU_OPTS) $< ,"$< on $(TARGET_NAME)")
-	$(call run-test, $<, $(QEMU) -M V73NA_1024 $(QEMU_OPTS) $< ,"$< on $(TARGET_NAME)")
-	$(call run-test, $<, $(QEMU) -M V73NA_1024 $(QEMU_MTTCG) $(QEMU_OPTS)  $< ,"$< on $(TARGET_NAME) mttcg")
+run-test-thread: QEMU_EXTRA_OPTS=-smp cpus=8
+run-test-thread: run-test-thread-v68 run-test-thread-v73 run-test-thread-v73-mttcg
+
+run-test-thread-v73: QEMU_EXTRA_OPS+=-M V73NA_1024
+run-test-thread-v73-mttcg: QEMU_EXTRA_OPTS+=-M V73NA_1024 -accel tcg,thread=multi
+run-test-thread-v68 run-test-thread-v73 run-test-thread-v73-mttcg: test-thread
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< ,"$< on $(TARGET_NAME) $(@:run-$<-%=%)")
 
 run-fopen: fopen
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< -append dummy.so,"$< on $(TARGET_NAME)")
