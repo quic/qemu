@@ -1172,7 +1172,7 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
     ARMCPU *cpu = env_archcpu(env);
     ARMMMUIdx mmu_idx = ptw->in_mmu_idx;
     bool is_secure = ptw->in_secure;
-    uint32_t level;
+    int32_t level;
     ARMVAParameters param;
     uint64_t ttbr;
     hwaddr descaddr, indexmask, indexmask_grainsize;
@@ -1222,6 +1222,14 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
         ps = MIN(ps, param.ps);
         assert(ps < ARRAY_SIZE(pamax_map));
         outputsize = pamax_map[ps];
+
+        /*
+         * With LPA2, the effective output address (OA) size is at most 48 bits
+         * unless TCR.DS == 1
+         */
+        if (!param.ds && param.gran != Gran64K) {
+            outputsize = MIN(outputsize, 48);
+        }
     } else {
         param = aa32_va_parameters(env, address, mmu_idx);
         level = 1;
@@ -1294,7 +1302,7 @@ static bool get_phys_addr_lpae(CPUARMState *env, S1Translate *ptw,
          */
         uint32_t sl0 = extract32(tcr, 6, 2);
         uint32_t sl2 = extract64(tcr, 33, 1);
-        uint32_t startlevel;
+        int32_t startlevel;
         bool ok;
 
         /* SL2 is RES0 unless DS=1 & 4kb granule. */
@@ -2604,8 +2612,8 @@ static bool get_phys_addr_twostage(CPUARMState *env, S1Translate *ptw,
 
     ret = get_phys_addr_with_struct(env, ptw, address, access_type, result, fi);
 
-    /* If S1 fails or S2 is disabled, return early.  */
-    if (ret || regime_translation_disabled(env, ARMMMUIdx_Stage2, is_secure)) {
+    /* If S1 fails, return early.  */
+    if (ret) {
         return ret;
     }
 
@@ -2731,7 +2739,8 @@ static bool get_phys_addr_with_struct(CPUARMState *env, S1Translate *ptw,
          * Otherwise, a stage1+stage2 translation is just stage 1.
          */
         ptw->in_mmu_idx = mmu_idx = s1_mmu_idx;
-        if (arm_feature(env, ARM_FEATURE_EL2)) {
+        if (arm_feature(env, ARM_FEATURE_EL2) &&
+            !regime_translation_disabled(env, ARMMMUIdx_Stage2, is_secure)) {
             return get_phys_addr_twostage(env, ptw, address, access_type,
                                           result, fi);
         }
