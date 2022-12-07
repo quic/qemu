@@ -27,6 +27,7 @@
 #include "hmx/ext_hmx.h"
 #include "dma/dma.h"
 #include "trace.h"
+#include "hw/hexagon/hexagon.h"
 
 #if !defined(CONFIG_USER_ONLY)
 #include "migration/vmstate.h"
@@ -43,6 +44,15 @@
 
 static void hexagon_common_cpu_init(Object *obj)
 {
+}
+
+static void hexagon_v67_cpu_init(Object *obj)
+{
+#ifndef CONFIG_USER_ONLY
+    HexagonCPU *cpu = HEXAGON_CPU(obj);
+    cpu->rev_reg = v67_rev;
+    hexagon_common_cpu_init(obj);
+#endif
 }
 
 static void hexagon_cpu_list_entry(gpointer data, gpointer user_data)
@@ -90,7 +100,7 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_STRING("usefs", HexagonCPU, usefs),
     DEFINE_PROP_UINT64("config-table-addr", HexagonCPU, config_table_addr,
         0xffffffffULL),
-    DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, /*v73:*/0x8c73),
+    DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, 0),
     DEFINE_PROP_BOOL("virtual-platform-mode", HexagonCPU, vp_mode, false),
     DEFINE_PROP_UINT32("start-evb", HexagonCPU, boot_evb, 0x0),
     DEFINE_PROP_UINT32("exec-start-addr", HexagonCPU, boot_addr,
@@ -1063,7 +1073,7 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_init = hexagon_cpu_class_init,
     },
     DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,  hexagon_common_cpu_init),
-    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,  hexagon_common_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,  hexagon_v67_cpu_init),
 };
 
 DEFINE_TYPES(hexagon_cpu_type_infos)

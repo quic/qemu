@@ -78,6 +78,7 @@ TESTS += \
 	gregs \
 	multiple_writes \
 	thread_scheduling \
+	rev \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -155,6 +156,7 @@ pend_wake_wait: pend_wake_wait.o
 gregs: gregs.o
 multiple_writes: multiple_writes.o
 thread_scheduling: thread_scheduling.o
+rev: rev.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -216,6 +218,14 @@ run-gregs: gregs
 	grep -E 'Warning: (guest register|ignoring write to guest register)' \
 		_$<.stderr > _$<.stderr.filtered
 	diff $(HEXAGON_SYSTEM_SRC)/expected-gregs-warnings.txt _$<.stderr.filtered
+
+run-rev: run-rev-0x67 run-rev-0x73 run-rev-0x75
+run-rev-0x67: QEMU_EXTRA_OPTS=-M V73NA_1024 -cpu v67
+run-rev-0x73: QEMU_EXTRA_OPTS=-M V73NA_1024
+run-rev-0x75: QEMU_EXTRA_OPTS=-M V75NA_1024 -cpu any
+run-rev-0x67 run-rev-0x73 run-rev-0x75: rev
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< >_$@.out ,"$< on $(TARGET_NAME) $(@:run-$<-%=%)")
+	grep -F "$(@:run-$<-%=%)" _$@.out
 
 # Run some tests with paranoid-commit-state turned on
 run-standalone_hw: standalone_hw
