@@ -59,6 +59,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define TOTAL_PER_THREAD_REGS 64
 #define NUM_GPREGS 32
 #define NUM_GLOBAL_GCYCLE 6
+#define NUM_PMU_CTRS 8
 
 #define SLOTS_MAX 4
 #define STORES_MAX 2
@@ -440,6 +441,9 @@ typedef enum {
     HEX_LOCK_OWNER          = 2
 } hex_lock_state_t;
 
+typedef struct PMUState {
+    uint16_t *g_events;
+} PMUState;
 #endif
 
 struct Einfo {
@@ -567,6 +571,7 @@ typedef struct CPUArchState {
     GList *dir_list;
     uint32_t exe_arch;
     gchar *lib_search_dir;
+    PMUState pmu;
 #endif
 } CPUHexagonState;
 #define mmvecx_t CPUHexagonState
@@ -616,6 +621,7 @@ FIELD(TB_FLAGS, MMU_INDEX, 1, 3)
 FIELD(TB_FLAGS, PCYCLE_ENABLED, 4, 1)
 FIELD(TB_FLAGS, HVX_COPROC_ENABLED, 5, 1)
 FIELD(TB_FLAGS, HVX_64B_MODE, 6, 1)
+FIELD(TB_FLAGS, PMU_ENABLED, 7, 1)
 
 static inline bool rev_implements_64b_hvx(CPUHexagonState *env)
 {
@@ -654,6 +660,11 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                             reg_field_info[SYSCFG_V2X].width);
         hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_64B_MODE, !v2x);
     }
+
+    bool pmu_enabled = extract32(syscfg,
+                                 reg_field_info[SYSCFG_PM].offset,
+                                 reg_field_info[SYSCFG_PM].width);
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, PMU_ENABLED, pmu_enabled);
 #else
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED, true);
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, MMU_INDEX, MMU_USER_IDX);

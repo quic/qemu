@@ -620,6 +620,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->g_sreg[HEX_SREG_REV] = cpu->rev_reg;
         env->g_sreg[HEX_SREG_MODECTL] = 0x1;
         env->g_pcycle_base = g_malloc0(sizeof(*env->g_pcycle_base));
+        env->pmu.g_events = g_malloc0(NUM_PMU_CTRS * sizeof(*env->pmu.g_events));
 
         /*
          * These register indices are placeholders in these arrays
@@ -648,6 +649,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->lib_search_dir = env0->lib_search_dir;
         env->processor_ptr->shared_extptr = env0->processor_ptr->shared_extptr;
         env->g_pcycle_base = env0->g_pcycle_base;
+        env->pmu.g_events = env0->pmu.g_events;
 
         dma_t *dma_ptr = env->processor_ptr->dma[env->threadId];
         udma_ctx_t *udma_ctx = (udma_ctx_t *)dma_ptr->udma_ctx;
