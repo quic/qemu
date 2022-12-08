@@ -89,6 +89,11 @@ run-hvx_misc: hvx_misc
 run-scatter_gather: scatter_gather
 run-hvx_histogram: hvx_histogram
 run-hvx_sat: hvx_sat
+run-hvx-bitmode: hvx_sat
+	$(call run-test-neg, $<, $(QEMU) -cpu v66 $<, "$< on $(TARGET_NAME) v66")
+	$(call run-test, $<, $(QEMU) -cpu v67 $<, "$< on $(TARGET_NAME) v67")
+	$(call run-test, $<, $(QEMU) -cpu any $<, "$< on $(TARGET_NAME) any")
+
 
 PARANOID_OPTS=-cpu any,paranoid-commit-state=true
 run-misc run-usr run-preg_alias run-dual_stores run-pred_stores run-multi_result run-mem_noshuf \

@@ -128,10 +128,13 @@ void gen_exception(int excp)
     gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
 }
 
-static void gen_exception_raw(int excp)
+#ifndef CONFIG_USER_ONLY
+static inline void gen_precise_exception(int excp)
 {
-    gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
+    tcg_gen_movi_tl(hex_cause_code, excp);
+    gen_exception(HEX_EVENT_PRECISE);
 }
+#endif
 
 static void gen_exec_counters(DisasContext *ctx)
 {
@@ -238,7 +241,7 @@ static void gen_end_tb(DisasContext *ctx)
 static void gen_exception_debug(DisasContext *ctx)
 {
     if (ctx->base.singlestep_enabled) {
-        gen_exception_raw(EXCP_DEBUG);
+        gen_exception(EXCP_DEBUG);
     } else {
         tcg_gen_exit_tb(NULL, 0);
     }
@@ -248,10 +251,9 @@ static void gen_exception_debug(DisasContext *ctx)
 void gen_exception_end_tb(DisasContext *ctx, int excp)
 {
 #ifdef CONFIG_USER_ONLY
-    gen_exception_raw(excp);
+    gen_exception(excp);
 #else
-    tcg_gen_movi_tl(hex_cause_code, excp);
-    gen_exception_raw(HEX_EVENT_PRECISE);
+    gen_precise_exception(excp);
 #endif
     ctx->base.is_jmp = DISAS_NORETURN;
 }
@@ -406,15 +408,15 @@ static void decode_wregs(DisasContext *ctx, Packet *pkt)
 }
 
 #if !defined(CONFIG_USER_ONLY)
-static void gen_coproc_check(int ssr_field_index, int cause_code) {
+static void gen_hmx_check(void)
+{
     TCGv xe = tcg_temp_new();
     TCGLabel *skip_exception = gen_new_label();
     tcg_gen_extract_tl(xe, hex_t_sreg[HEX_SREG_SSR],
-            reg_field_info[ssr_field_index].offset,
-            reg_field_info[ssr_field_index].width);
+            reg_field_info[SSR_XE2].offset,
+            reg_field_info[SSR_XE2].width);
     tcg_gen_brcondi_tl(TCG_COND_NE, xe, 0, skip_exception);
-    tcg_gen_movi_tl(hex_cause_code, cause_code);
-    gen_exception_raw(HEX_EVENT_PRECISE);
+    gen_precise_exception(HEX_CAUSE_NO_COPROC2_ENABLE);
     gen_set_label(skip_exception);
 
     tcg_temp_free(xe);
@@ -430,10 +432,9 @@ static void gen_check_mult_reg_write(DisasContext *ctx)
         tcg_gen_brcondi_tl(TCG_COND_EQ, hex_mult_reg_written, 0,
                            skip_exception);
 #ifdef CONFIG_USER_ONLY
-        gen_exception_raw(HEX_CAUSE_REG_WRITE_CONFLICT);
+        gen_exception(HEX_CAUSE_REG_WRITE_CONFLICT);
 #else
-        tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_REG_WRITE_CONFLICT);
-        gen_exception_raw(HEX_EVENT_PRECISE);
+        gen_precise_exception(HEX_CAUSE_REG_WRITE_CONFLICT);
 #endif
         gen_set_label(skip_exception);
     }
@@ -594,16 +595,27 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     if (hex_cpu->count_gcycle_xt) {
         gen_helper_inc_gcycle_xt(cpu_env);
     }
-    if (pkt->pkt_has_hvx && !ctx->hvx_check_emitted) {
-        gen_coproc_check(SSR_XE, HEX_CAUSE_NO_COPROC_ENABLE);
+    if (pkt->pkt_has_hvx && !ctx->hvx_coproc_enabled && !ctx->hvx_check_emitted) {
+        gen_precise_exception(HEX_CAUSE_NO_COPROC_ENABLE);
         ctx->hvx_check_emitted = true;
     }
     if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
-        gen_coproc_check(SSR_XE2, HEX_CAUSE_NO_COPROC2_ENABLE);
+        gen_hmx_check();
         ctx->hmx_check_emitted = true;
     }
-
 #endif
+    if (pkt->pkt_has_hvx && ctx->hvx_coproc_enabled && ctx->hvx_64b_mode) {
+        /*
+         * HVX's 64b mode is unsupported by QEMU, we will
+         * generate an exception if there's any attempt to use
+         * HVX while in this mode.
+         */
+#ifndef CONFIG_USER_ONLY
+        gen_precise_exception(HEX_CAUSE_UNSUPORTED_HVX_64B);
+#else
+        gen_exception(HEX_CAUSE_UNSUPORTED_HVX_64B);
+#endif
+    }
 }
 
 bool is_gather_store_insn(DisasContext *ctx)
@@ -1304,6 +1316,8 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->ones = tcg_constant_tl(0xff);
     ctx->ones64 = tcg_constant_i64(0xff);
     ctx->pcycle_enabled = false;
+    ctx->hvx_coproc_enabled = false;
+    ctx->hvx_64b_mode = false;
     ctx->paranoid_commit_state = hex_cpu->paranoid_commit_state;
 
     ctx->mem_idx = FIELD_EX32(hex_flags, TB_FLAGS, MMU_INDEX);
@@ -1319,6 +1333,8 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
 #endif
+    ctx->hvx_coproc_enabled = FIELD_EX32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED);
+    ctx->hvx_64b_mode = FIELD_EX32(hex_flags, TB_FLAGS, HVX_64B_MODE);
     ctx->branch_cond = TCG_COND_NEVER;
     ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
 }
@@ -1342,7 +1358,7 @@ static bool hexagon_tr_breakpoint_check(DisasContextBase *dcbase,
 
     tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
     ctx->base.is_jmp = DISAS_NORETURN;
-    gen_exception_raw(EXCP_DEBUG);
+    gen_exception(EXCP_DEBUG);
     /*
      * The address covered by the breakpoint must be included in
      * [tb->pc, tb->pc + tb->size) in order to for it to be

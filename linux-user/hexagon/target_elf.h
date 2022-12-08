@@ -20,7 +20,10 @@
 
 static inline const char *cpu_get_model(uint32_t eflags)
 {
-    /* For now, treat anything newer than v5 as a v67 */
+    /*
+     * For now, treat anything between v5 and v66 as a v66, and anything newer
+     * as a v67
+     */
     /* FIXME - Disable instructions that are newer than the specified arch */
     if (eflags == 0x04 ||    /* v5  */
         eflags == 0x05 ||    /* v55 */
@@ -28,8 +31,10 @@ static inline const char *cpu_get_model(uint32_t eflags)
         eflags == 0x61 ||    /* v61 */
         eflags == 0x62 ||    /* v62 */
         eflags == 0x65 ||    /* v65 */
-        eflags == 0x66 ||    /* v66 */
-        eflags == 0x67 ||    /* v67 */
+        eflags == 0x66) {    /* v66 */
+        return "v66";
+    }
+    if (eflags == 0x67 ||    /* v67 */
         eflags == 0x8067 ||  /* v67t */
         eflags == 0x68 ||    /* v68 */
         eflags == 0x69 ||    /* v69 */

@@ -31,6 +31,7 @@ typedef struct SystemState system_t;
 #include "hmx/hmx.h"
 #include "dma/dma.h"
 #include "hw/registerfields.h"
+#include "hw/hexagon/hexagon.h"
 
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
@@ -97,8 +98,11 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define CPU_RESOLVING_TYPE TYPE_HEXAGON_CPU
 
 #define TYPE_HEXAGON_CPU_ANY HEXAGON_CPU_TYPE_NAME("any")
+#define TYPE_HEXAGON_CPU_V66 HEXAGON_CPU_TYPE_NAME("v66")
 #define TYPE_HEXAGON_CPU_V67 HEXAGON_CPU_TYPE_NAME("v67")
 
+void hexagon_cpu_list(void);
+#define cpu_list hexagon_cpu_list
 
 typedef struct {
   int unused;
@@ -586,13 +590,13 @@ struct ArchCPU {
     bool cacheop_exceptions;
     gchar *usefs;
     uint64_t config_table_addr;
-    uint32_t rev_reg;
     bool vp_mode;
     uint32_t boot_addr;
     uint32_t boot_evb;
     uint32_t l2vic_base_addr;
     uint32_t qtimer_base_addr;
 #endif
+    uint32_t rev_reg;
     bool lldb_compat;
     target_ulong lldb_stack_adjust;
     bool paranoid_commit_state;
@@ -606,6 +610,14 @@ extern int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 FIELD(TB_FLAGS, IS_TIGHT_LOOP, 0, 1)
 FIELD(TB_FLAGS, MMU_INDEX, 1, 3)
 FIELD(TB_FLAGS, PCYCLE_ENABLED, 4, 1)
+FIELD(TB_FLAGS, HVX_COPROC_ENABLED, 5, 1)
+FIELD(TB_FLAGS, HVX_64B_MODE, 6, 1)
+
+static inline bool rev_implements_64b_hvx(CPUHexagonState *env)
+{
+    HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
+    return (hex_cpu->rev_reg & 255) <= (v66_rev & 255);
+}
 
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                         target_ulong *cs_base, uint32_t *flags)
@@ -616,6 +628,8 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
 #ifndef CONFIG_USER_ONLY
     target_ulong syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+
     bool pcycle_enabled = extract32(syscfg,
                                     reg_field_info[SYSCFG_PCYCLEEN].offset,
                                     reg_field_info[SYSCFG_PCYCLEEN].width);
@@ -626,8 +640,21 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
     if (pcycle_enabled) {
         hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, PCYCLE_ENABLED, 1);
     }
+
+    bool hvx_enabled = extract32(ssr, reg_field_info[SSR_XE].offset,
+                                 reg_field_info[SSR_XE].width);
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED, hvx_enabled);
+
+    if (rev_implements_64b_hvx(env)) {
+        int v2x = extract32(syscfg, reg_field_info[SYSCFG_V2X].offset,
+                            reg_field_info[SYSCFG_V2X].width);
+        hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_64B_MODE, !v2x);
+    }
 #else
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED, true);
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, MMU_INDEX, MMU_USER_IDX);
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_64B_MODE,
+                           rev_implements_64b_hvx(env));
 #endif
 
     if (*pc == env->gpr[HEX_REG_SA0]) {

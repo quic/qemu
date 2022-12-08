@@ -60,6 +60,7 @@ TESTS += \
 	neg-framelimit \
 	neg-float_excp \
 	neg-hvx_nocoproc \
+	hvx_64b \
 	neg-unaligned \
 	neg-vtcm_error \
 	pendalot \
@@ -78,6 +79,7 @@ TESTS += \
 	gregs \
 	multiple_writes \
 	thread_scheduling \
+	rev \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -136,6 +138,7 @@ pcycle: pcycle.o
 neg-framelimit: framelimit.o
 neg-float_excp: float_excp.o
 neg-hvx_nocoproc: hvx_nocoproc.o
+hvx_64b: hvx_64b.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
 pendalot: pendalot.o
@@ -155,6 +158,7 @@ pend_wake_wait: pend_wake_wait.o
 gregs: gregs.o
 multiple_writes: multiple_writes.o
 thread_scheduling: thread_scheduling.o
+rev: rev.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -169,6 +173,7 @@ standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
 
 standalone_vec.o: CFLAGS+= -mv69 -O2 -mhvx  -fvectorize
 hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
+hvx_64b.o: CFLAGS+= -O2 -mhvx
 ieee_fp.o: CFLAGS += -mhvx -mhvx-length=128B -mhvx-ieee-fp
 hmx.o: CFLAGS+= -mhmx
 hmx_conv.o: CFLAGS+= -mhmx
@@ -216,6 +221,14 @@ run-gregs: gregs
 	grep -E 'Warning: (guest register|ignoring write to guest register)' \
 		_$<.stderr > _$<.stderr.filtered
 	diff $(HEXAGON_SYSTEM_SRC)/expected-gregs-warnings.txt _$<.stderr.filtered
+
+run-rev: run-rev-0x67 run-rev-0x73 run-rev-0x75
+run-rev-0x67: QEMU_EXTRA_OPTS=-M V73NA_1024 -cpu v67
+run-rev-0x73: QEMU_EXTRA_OPTS=-M V73NA_1024
+run-rev-0x75: QEMU_EXTRA_OPTS=-M V75NA_1024 -cpu any
+run-rev-0x67 run-rev-0x73 run-rev-0x75: rev
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< >_$@.out ,"$< on $(TARGET_NAME) $(@:run-$<-%=%)")
+	grep -F "$(@:run-$<-%=%)" _$@.out
 
 # Run some tests with paranoid-commit-state turned on
 run-standalone_hw: standalone_hw
@@ -267,6 +280,10 @@ run-access: access
 
 run-hmx_conv_fp16: hmx_conv_fp16
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 hmx_input_fp16.dat hmx_output_fp16.dat","$< on $(TARGET_NAME)")
+
+run-hvx_64b: hvx_64b
+	$(call run-test, $<, $(QEMU) -M V66G_1024 -kernel $<, "$< on $(TARGET_NAME) V66")
+	$(call run-test, $<, $(QEMU) -M V68N_1024 -kernel $<, "$< on $(TARGET_NAME) V68")
 
 ifneq ($(HAVE_HEXAGON_LLDB_BIN),)
 

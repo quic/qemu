@@ -27,6 +27,7 @@
 #include "hmx/ext_hmx.h"
 #include "dma/dma.h"
 #include "trace.h"
+#include "hw/hexagon/hexagon.h"
 
 #if !defined(CONFIG_USER_ONLY)
 #include "migration/vmstate.h"
@@ -43,6 +44,42 @@
 
 static void hexagon_common_cpu_init(Object *obj)
 {
+}
+
+#ifdef CONFIG_USER_ONLY
+static void hexagon_v66_cpu_init(Object *obj)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(obj);
+    cpu->rev_reg = v66_rev;
+    hexagon_common_cpu_init(obj);
+}
+#endif
+
+static void hexagon_v67_cpu_init(Object *obj)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(obj);
+    cpu->rev_reg = v67_rev;
+    hexagon_common_cpu_init(obj);
+}
+
+static void hexagon_cpu_list_entry(gpointer data, gpointer user_data)
+{
+    ObjectClass *oc = data;
+    char *name = g_strdup(object_class_get_name(oc));
+    if (g_str_has_suffix(name, HEXAGON_CPU_TYPE_SUFFIX)) {
+        name[strlen(name) - strlen(HEXAGON_CPU_TYPE_SUFFIX)] = '\0';
+    }
+    qemu_printf("  %s\n", name);
+    g_free(name);
+}
+
+void hexagon_cpu_list(void)
+{
+    GSList *list;
+    list = object_class_get_list_sorted(TYPE_HEXAGON_CPU, false);
+    qemu_printf("Available CPUs:\n");
+    g_slist_foreach(list, hexagon_cpu_list_entry, NULL);
+    g_slist_free(list);
 }
 
 static ObjectClass *hexagon_cpu_class_by_name(const char *cpu_model)
@@ -70,7 +107,6 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_STRING("usefs", HexagonCPU, usefs),
     DEFINE_PROP_UINT64("config-table-addr", HexagonCPU, config_table_addr,
         0xffffffffULL),
-    DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, /*v73:*/0x8c73),
     DEFINE_PROP_BOOL("virtual-platform-mode", HexagonCPU, vp_mode, false),
     DEFINE_PROP_UINT32("start-evb", HexagonCPU, boot_evb, 0x0),
     DEFINE_PROP_UINT32("exec-start-addr", HexagonCPU, boot_addr,
@@ -82,6 +118,7 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_BOOL("cacheop-exceptions", HexagonCPU, cacheop_exceptions,
         false),
 #endif
+    DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, 0),
     DEFINE_PROP_BOOL("lldb-compat", HexagonCPU, lldb_compat, false),
     DEFINE_PROP_UNSIGNED("lldb-stack-adjust", HexagonCPU, lldb_stack_adjust,
                          0, qdev_prop_uint32, target_ulong),
@@ -1042,8 +1079,13 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_size = sizeof(HexagonCPUClass),
         .class_init = hexagon_cpu_class_init,
     },
+#ifdef CONFIG_USER_ONLY
+    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,  hexagon_v67_cpu_init), /* Default to v67 */
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V66,  hexagon_v66_cpu_init),
+#else
     DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,  hexagon_common_cpu_init),
-    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,  hexagon_common_cpu_init),
+#endif
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,  hexagon_v67_cpu_init),
 };
 
 DEFINE_TYPES(hexagon_cpu_type_infos)
