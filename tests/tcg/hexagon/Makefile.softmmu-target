@@ -80,6 +80,7 @@ TESTS += \
 	multiple_writes \
 	thread_scheduling \
 	rev \
+	pmu \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -159,6 +160,7 @@ gregs: gregs.o
 multiple_writes: multiple_writes.o
 thread_scheduling: thread_scheduling.o
 rev: rev.o
+pmu: pmu.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -284,6 +286,8 @@ run-hmx_conv_fp16: hmx_conv_fp16
 run-hvx_64b: hvx_64b
 	$(call run-test, $<, $(QEMU) -M V66G_1024 -kernel $<, "$< on $(TARGET_NAME) V66")
 	$(call run-test, $<, $(QEMU) -M V68N_1024 -kernel $<, "$< on $(TARGET_NAME) V68")
+
+run-pmu: QEMU_EXTRA_OPTS=-smp cpus=8
 
 ifneq ($(HAVE_HEXAGON_LLDB_BIN),)
 

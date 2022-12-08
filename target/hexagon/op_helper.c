@@ -2113,6 +2113,8 @@ uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
             return ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA1);
         }
         return ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA0);
+    } else if (IS_PMU_REG(reg)) {
+        return hexagon_get_pmu_counter(env, reg);
     }
     return ARCH_GET_SYSTEM_REG(env, reg);
 }
@@ -2221,7 +2223,7 @@ static void set_pmu_event(CPUHexagonState *env, unsigned int index,
 
     if (pmu_enabled && event != old_event) {
         log_if_unimp_pmu_event(event);
-        /* TODO: we must zero the statistics associated with this event. */
+        hexagon_reset_pmu_event_stats(event);
     }
 }
 
@@ -2259,6 +2261,9 @@ static bool handle_pmu_sreg_write(CPUHexagonState *env, uint32_t reg,
                           deposit16(env->pmu.g_events[index], 0, 8, new_bits));
         }
         ARCH_SET_SYSTEM_REG(env, reg, val);
+        return true;
+    } else if (IS_PMU_REG(reg)) {
+        hexagon_set_pmu_counter(env, reg, val);
         return true;
     }
     return false;
