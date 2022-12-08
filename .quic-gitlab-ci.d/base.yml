@@ -110,10 +110,6 @@ aarch64_check:
   needs: [aarch64_build]
   extends: .base-check
 
-# NEEDSWORK: We want to use `--inspector perf-stat` in the future (and that is
-# why we set the performance-hardware tag), but it currently fails due to
-# insufficient /proc/sys/kernel/perf_event_paranoid permissions (and docker
-# mounts procfs as read-only).
 test_hexagon_perf:
   needs: [hexagon_build]
   tags:
@@ -126,6 +122,7 @@ test_hexagon_perf:
         --bench-dir ./qemu-hexagon-benchmarks/
         --qemu-user-bin-dir ${PWD}/hexagon_build/ --qemu-bin-dir ${PWD}/hexagon_build/
         --output-file ./perf-results.json
+        --inspector perf-stat
   artifacts:
     paths: [ "perf-results.json" ]
   rules:
