@@ -114,18 +114,24 @@ test_hexagon_perf:
   needs: [hexagon_build]
   tags:
     - performance-hardware
+  # We'll execute a smaller subset of tests, fewer iters for routine
+  # commits/MRs.  In a nightly build we can run a comprehensive test.
+  before_script:
+    -   PERF_TEST_CFG="${PWD}/qemu-hexagon-perf/minimal_test_config.py" ;
+        PERF_TEST_ITERS="3" ;
+        if [[ "${CI_PIPELINE_SOURCE}" == "schedule" ]] || [[ "${CI_PIPELINE_SOURCE}" == "web" ]]; then
+            PERF_TEST_CFG="${PWD}/qemu-hexagon-perf/default_test_config.py" ;
+            PERF_TEST_ITERS="8";
+        fi
   script:
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/qemu/qemu-hexagon-perf.git
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/qemu/qemu-hexagon-benchmarks.git
-    - mkdir perf_results
     - ./qemu-hexagon-perf/customer_test_suite.py
         --bench-dir ./qemu-hexagon-benchmarks/
         --qemu-user-bin-dir ${PWD}/hexagon_build/ --qemu-bin-dir ${PWD}/hexagon_build/
         --output-file ./perf-results.json
+        --test-cfg ${PERF_TEST_CFG}
+        --iters ${PERF_TEST_ITERS}
         --inspector perf-stat
   artifacts:
     paths: [ "perf-results.json" ]
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_PIPELINE_SOURCE == "web"
-
