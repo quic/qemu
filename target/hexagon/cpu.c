@@ -166,7 +166,7 @@ const char * const hexagon_gregnames[] = {
     "rsv4",       "rsv5",       "rsv6",     "rsv7",
     "rsv8",       "rsv9",       "rsv10",    "rsv11",
     "rsv12",      "rsv13",      "rsv14",    "rsv15,",
-    "isdbmbxin",  "isdbmbxout", "rsv18",    "rsv19",
+    "gpmucnt4",   "gpmucnt5",   "gpmucnt6", "gpmucnt7",
     "rsv20",      "rsv21",      "rsv22",    "rsv23",
     "gpcyclelo",  "gpcyclehi",  "gpmucnt0", "gpmucnt1",
     "gpmucnt2",   "gpmucnt3",   "rsv30",    "rsv31"
@@ -682,6 +682,10 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     env->greg[HEX_GREG_GPMUCNT1] = INVALID_REG_VAL;
     env->greg[HEX_GREG_GPMUCNT2] = INVALID_REG_VAL;
     env->greg[HEX_GREG_GPMUCNT3] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPMUCNT4] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPMUCNT5] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPMUCNT6] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPMUCNT7] = INVALID_REG_VAL;
 #endif
 
     mcc->parent_realize(dev, errp);
@@ -1062,6 +1066,12 @@ uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg)
     case HEX_GREG_GPMUCNT3:
         off = reg - HEX_GREG_GPMUCNT0;
         return ssr_pe ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0 + off) : 0;
+    case HEX_GREG_GPMUCNT4:
+    case HEX_GREG_GPMUCNT5:
+    case HEX_GREG_GPMUCNT6:
+    case HEX_GREG_GPMUCNT7:
+        off = reg - HEX_GREG_GPMUCNT4;
+        return ssr_pe ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT4 + off) : 0;
     default:
         return 0;
     }

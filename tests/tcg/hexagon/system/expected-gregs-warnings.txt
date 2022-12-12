@@ -17,13 +17,9 @@ Warning: ignoring write to guest register G12
 Warning: ignoring write to guest register G14
 Warning: ignoring write to guest register G15
 Warning: ignoring write to guest register G16
-Warning: guest register G16 is unimplemented or reserved. Read will yield 0.
 Warning: ignoring write to guest register G17
-Warning: guest register G17 is unimplemented or reserved. Read will yield 0.
 Warning: ignoring write to guest register G18
-Warning: guest register G18 is unimplemented or reserved. Read will yield 0.
 Warning: ignoring write to guest register G19
-Warning: guest register G19 is unimplemented or reserved. Read will yield 0.
 Warning: ignoring write to guest register G20
 Warning: guest register G20 is unimplemented or reserved. Read will yield 0.
 Warning: ignoring write to guest register G21
