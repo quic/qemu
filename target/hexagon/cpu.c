@@ -678,6 +678,10 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     env->gpr[HEX_REG_UTIMERHI]  = INVALID_REG_VAL;
     env->greg[HEX_GREG_GPCYCLELO] = INVALID_REG_VAL;
     env->greg[HEX_GREG_GPCYCLEHI] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPMUCNT0] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPMUCNT1] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPMUCNT2] = INVALID_REG_VAL;
+    env->greg[HEX_GREG_GPMUCNT3] = INVALID_REG_VAL;
 #endif
 
     mcc->parent_realize(dev, errp);
