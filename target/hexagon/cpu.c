@@ -1056,8 +1056,8 @@ uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg)
     case HEX_GREG_GPMUCNT1:
     case HEX_GREG_GPMUCNT2:
     case HEX_GREG_GPMUCNT3:
-        off = HEX_GREG_GPMUCNT3 - reg;
-        return ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0 + off);
+        off = reg - HEX_GREG_GPMUCNT0;
+        return ssr_pe ? ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0 + off) : 0;
     default:
         return 0;
     }
