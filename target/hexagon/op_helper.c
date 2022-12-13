@@ -2127,8 +2127,8 @@ uint64_t HELPER(sreg_read_pair)(CPUHexagonState *env, uint32_t reg)
     } else if (reg == HEX_SREG_PCYCLELO) {
         return hexagon_get_sys_pcycle_count(env);
     }
-    return   (uint64_t)ARCH_GET_SYSTEM_REG(env, reg) |
-           (((uint64_t)ARCH_GET_SYSTEM_REG(env, reg+1)) << 32);
+    return   (uint64_t)HELPER(sreg_read)(env, reg) |
+           (((uint64_t)HELPER(sreg_read)(env, reg + 1)) << 32);
 }
 
 static void modify_syscfg(CPUHexagonState *env, uint32_t val)
@@ -2198,8 +2198,8 @@ void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
 void HELPER(sreg_write_pair)(CPUHexagonState *env, uint32_t reg, uint64_t val)
 
 {
-    ARCH_SET_SYSTEM_REG(env, reg, val & 0xFFFFFFFF);
-    ARCH_SET_SYSTEM_REG(env, reg+1, val >> 32);
+    HELPER(sreg_write)(env, reg, val & 0xFFFFFFFF);
+    HELPER(sreg_write)(env, reg + 1, val >> 32);
 }
 
 uint32_t HELPER(greg_read)(CPUHexagonState *env, uint32_t reg)
@@ -2211,8 +2211,6 @@ uint32_t HELPER(greg_read)(CPUHexagonState *env, uint32_t reg)
 uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 {
-    int off;
-
     if (reg == HEX_GREG_G0 || reg == HEX_GREG_G2) {
         return   (uint64_t)(env->greg[reg]) |
                (((uint64_t)(env->greg[reg+1])) << 32);
@@ -2224,14 +2222,9 @@ uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
             int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
             return ssr_ce ? hexagon_get_sys_pcycle_count(env) : 0;
         }
-        case HEX_GREG_GPMUCNT0:
-        case HEX_GREG_GPMUCNT2:
-            off = HEX_GREG_GPMUCNT3 - reg;
-            return (uint64_t)ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0+off) |
-                (uint64_t)(ARCH_GET_SYSTEM_REG(env, HEX_SREG_PMUCNT0+off+1))
-                           << 32;
         default:
-            return 0;
+            return (uint64_t)hexagon_greg_read(env, reg) |
+                   ((uint64_t)(hexagon_greg_read(env, reg + 1)) << 32);
     }
 }
 
