@@ -482,9 +482,7 @@ static bool pkt_ends_tb(Packet *pkt)
         return true;
     }
 #ifndef CONFIG_USER_ONLY
-    if (pkt->pkt_has_sys_visibility) {
-        return true;
-    }
+    /* System mode instructions that end TLB */
     if (check_for_opcode(pkt, Y2_swi) ||
         check_for_opcode(pkt, Y2_cswi) ||
         check_for_opcode(pkt, Y2_ciad) ||
@@ -497,9 +495,20 @@ static bool pkt_ends_tb(Packet *pkt)
         check_for_opcode(pkt, Y2_setprio) ||
         check_for_opcode(pkt, Y2_start) ||
         check_for_opcode(pkt, Y2_stop) ||
-        check_for_opcode(pkt, J2_rte)) {
+        check_for_opcode(pkt, Y2_k0lock) ||
+        check_for_opcode(pkt, Y2_k0unlock) ||
+        check_for_opcode(pkt, Y2_tlblock) ||
+        check_for_opcode(pkt, Y2_tlbunlock) ||
+        check_for_opcode(pkt, Y2_break) ||
+        check_for_opcode(pkt, Y2_isync) ||
+        check_for_opcode(pkt, Y2_syncht) ||
+        check_for_opcode(pkt, Y2_tlbp) ||
+        check_for_opcode(pkt, Y2_tlbw) ||
+        check_for_opcode(pkt, Y5_ctlbw) ||
+        check_for_opcode(pkt, Y5_tlbasidi)) {
         return true;
     }
+
     /*
      * Check for sreg writes that would end the TB
      */
@@ -530,6 +539,25 @@ static bool pkt_ends_tb(Packet *pkt)
     return false;
 }
 
+#ifndef CONFIG_USER_ONLY
+static bool pkt_may_do_io(Packet *pkt)
+{
+    return pkt->pkt_has_scalar_store_s0 ||
+           pkt->pkt_has_scalar_store_s1 ||
+           pkt->pkt_has_load_s0 ||
+           pkt->pkt_has_load_s1 ||
+           check_for_opcode(pkt, Y2_ciad) ||
+           check_for_opcode(pkt, Y2_tfrscrr) ||
+           check_for_opcode(pkt, Y2_tfrsrcr) ||
+           check_for_opcode(pkt, Y4_tfrscpp) ||
+           check_for_opcode(pkt, Y4_tfrspcp) ||
+           check_for_opcode(pkt, A2_tfrcrr) ||
+           check_for_opcode(pkt, A2_tfrrcr) ||
+           check_for_opcode(pkt, A4_tfrcpp) ||
+           check_for_opcode(pkt, A4_tfrpcp);
+}
+#endif
+
 #ifdef CONFIG_USER_ONLY
 static bool need_next_PC(DisasContext *ctx)
 {
@@ -556,19 +584,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
     int i;
 
-#if !defined(CONFIG_USER_ONLY)
-    const bool may_do_io = pkt->pkt_has_scalar_store_s0
-        || pkt->pkt_has_scalar_store_s1
-        || pkt->pkt_has_load_s0
-        || pkt->pkt_has_load_s1
-        || pkt->can_do_io
-        || check_for_opcode(pkt, Y2_ciad);
-
-    if (may_do_io && (tb_cflags(ctx->base.tb) & CF_USE_ICOUNT)) {
-        ctx->base.is_jmp = DISAS_TOO_MANY;
-        gen_io_start();
-    }
-#endif
     /* Clear out the disassembly context */
     ctx->next_PC = next_PC;
     ctx->reg_log_idx = 0;
@@ -688,9 +703,13 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         }
 #endif
     }
+    ctx->pkt_ends_tb = pkt_ends_tb(pkt);
 #ifndef CONFIG_USER_ONLY
-    if (pkt_ends_tb(pkt)) {
+    if (ctx->pkt_ends_tb) {
         tcg_gen_movi_tl(hex_next_PC, next_PC);
+    }
+    if ((tb_cflags(ctx->base.tb) & CF_USE_ICOUNT) && pkt_may_do_io(pkt)) {
+        gen_io_start();
     }
 #endif
     if (need_pred_written(pkt)) {
@@ -1356,7 +1375,7 @@ static void gen_commit_packet(DisasContext *ctx)
     check_imprecise_exception(pkt);
 #endif
 
-    if (pkt_ends_tb(pkt) || ctx->base.is_jmp == DISAS_NORETURN) {
+    if (ctx->pkt_ends_tb || ctx->base.is_jmp == DISAS_NORETURN) {
         gen_end_tb(ctx);
     }
 }

@@ -76,10 +76,6 @@ struct Packet {
     bool pkt_has_hvx_vs_3src;
     bool pkt_has_hmx;
 
-#ifndef CONFIG_USER_ONLY
-    bool pkt_has_sys_visibility;
-    bool can_do_io;
-#endif
 	/* This MUST be the last thing in this structure */
 	Insn insn[INSTRUCTIONS_MAX];
 };

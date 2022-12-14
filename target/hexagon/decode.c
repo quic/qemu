@@ -400,10 +400,6 @@ static void decode_set_insn_attr_fields(Packet *pkt)
     pkt->pkt_has_load_s1 = false;
     pkt->pkt_has_fp_op = false;
 
-#ifndef CONFIG_USER_ONLY
-    pkt->pkt_has_sys_visibility = false;
-    pkt->can_do_io = false;
-#endif
     pkt->pkt_has_cof = false;
     pkt->pkt_has_endloop = false;
 
@@ -413,50 +409,6 @@ static void decode_set_insn_attr_fields(Packet *pkt)
             continue;    /* Skip compare of cmp-jumps */
         }
 
-#ifndef CONFIG_USER_ONLY
-        uint32_t could_halt = 0;
-        uint32_t triggers_int = 0;
-        uint32_t is_solo = 0;
-        uint32_t can_do_io = 0;
-        if (opcode == Y2_tfrscrr ||
-            opcode == Y2_tfrsrcr ||
-            opcode == Y4_tfrscpp ||
-            opcode == Y4_tfrspcp ||
-            opcode == A2_tfrcrr ||
-            opcode == A2_tfrrcr ||
-            opcode == A4_tfrcpp ||
-            opcode == A4_tfrpcp) {
-            can_do_io = 1;
-        }
-        if (opcode == Y2_stop ||
-            opcode == Y2_wait ||
-            opcode == Y2_k0lock ||
-            opcode == Y2_tlblock) {
-            could_halt = 1;
-        }
-        if (opcode == J2_trap0 ||
-            opcode == J2_trap1 ||
-            opcode == Y4_nmi   ||
-            GET_ATTRIB(opcode, A_EXCEPTION_TLB) ||
-            GET_ATTRIB(opcode, A_EXCEPTION_SWI) ||
-            GET_ATTRIB(opcode, A_EXCEPTION_ACCESS)) {
-            triggers_int = 1;
-        }
-        if (GET_ATTRIB(opcode, A_RESTRICT_NOPACKET)) {
-            is_solo = 1;
-        }
-        pkt->pkt_has_sys_visibility |=
-               (is_solo && !(GET_ATTRIB(opcode, A_STORE) ||
-                             GET_ATTRIB(opcode, A_LOAD) ||
-                             GET_ATTRIB(opcode, A_CACHEOP)))
-             || could_halt
-             || triggers_int
-             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IPEND)
-             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_IPENDAD_IAD)
-             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_K0LOCK)
-             || GET_ATTRIB(opcode, A_IMPLICIT_WRITES_SYSCFG_TLBLOCK);
-        pkt->can_do_io |= can_do_io;
-#endif
         if (GET_ATTRIB(opcode, A_DCZEROA)) {
             pkt->pkt_has_dczeroa = true;
         }

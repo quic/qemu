@@ -20,87 +20,51 @@
 
 /* System mode instructions */
 #define fGEN_TCG_Y2_swi(SHORTCODE) \
-    do { \
-        gen_helper_swi(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_swi(cpu_env, RsV)
 
 #define fGEN_TCG_Y2_cswi(SHORTCODE) \
-    do { \
-        gen_helper_cswi(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_cswi(cpu_env, RsV)
 
 #define fGEN_TCG_Y2_ciad(SHORTCODE) \
-    do { \
-        gen_helper_ciad(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_ciad(cpu_env, RsV)
 
 #define fGEN_TCG_Y4_siad(SHORTCODE) \
-    do { \
-        gen_helper_siad(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_siad(cpu_env, RsV)
 
 #define fGEN_TCG_Y2_wait(SHORTCODE) \
     do { \
         RsV = RsV; \
         gen_helper_wait(cpu_env); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
     } while (0)
 
 #define fGEN_TCG_Y2_resume(SHORTCODE) \
-    do { \
-        gen_helper_resume(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_resume(cpu_env, RsV)
 
 #define fGEN_TCG_Y2_getimask(SHORTCODE) \
-    do { \
-        gen_helper_getimask(RdV, cpu_env, RsV); \
-    } while (0)
+    gen_helper_getimask(RdV, cpu_env, RsV)
 
 #define fGEN_TCG_Y2_iassignw(SHORTCODE) \
-    do { \
-        gen_helper_iassignw(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_iassignw(cpu_env, RsV)
 
 #define fGEN_TCG_Y2_iassignr(SHORTCODE) \
-    do { \
-        gen_helper_iassignr(RdV, cpu_env, RsV); \
-    } while (0)
+    gen_helper_iassignr(RdV, cpu_env, RsV)
 
 #define fGEN_TCG_Y2_setimask(SHORTCODE) \
-    do { \
-        gen_helper_setimask(cpu_env, PtV, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_setimask(cpu_env, PtV, RsV)
 
 #define fGEN_TCG_Y4_nmi(SHORTCODE) \
-    do { \
-        gen_helper_nmi(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_nmi(cpu_env, RsV)
 
 #define fGEN_TCG_Y2_setprio(SHORTCODE) \
-    do { \
-        gen_helper_setprio(cpu_env, PtV, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_setprio(cpu_env, PtV, RsV)
 
 #define fGEN_TCG_Y2_start(SHORTCODE) \
-    do { \
-        gen_helper_start(cpu_env, RsV); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
-    } while (0)
+    gen_helper_start(cpu_env, RsV)
 
 #define fGEN_TCG_Y2_stop(SHORTCODE) \
     do { \
         RsV = RsV; \
         gen_helper_stop(cpu_env); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
     } while (0)
 
 #define fGEN_TCG_Y2_tfrscrr(SHORTCODE) \
@@ -131,7 +95,6 @@
     do { \
         TCGv pkt_has_multi_cof = tcg_constant_tl(ctx->pkt->pkt_has_multi_cof); \
         gen_helper_rte(cpu_env, pkt_has_multi_cof); \
-        ctx->base.is_jmp = DISAS_NORETURN; \
     } while (0)
 
 #define fGEN_TCG_Y2_crswap0(SHORTCODE) \

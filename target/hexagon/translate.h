@@ -40,6 +40,7 @@ typedef struct DisasContext {
     int reg_log_idx;
     DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
     bool pkt_has_uncond_mult_reg_write;
+    bool pkt_ends_tb;
     /*
      * The GPRs which have *multiple* register
      * writes (predicated and not) in this packet:
