@@ -42,26 +42,29 @@ static inline void __check_val_range(uint32_t val,
 #define check_val_range(val, regnum, regtype, lo, hi) \
     __check_val_range(val, regnum, regtype, lo, hi, __LINE__)
 
-static inline uint32_t deposit32(uint32_t value, int start, int length,
-                                 uint32_t fieldval)
+static void pmu_config(uint32_t counter_id, uint32_t event)
 {
-    uint32_t mask;
-    assert(start >= 0 && length > 0 && length <= 32 - start);
-    mask = (~0U >> (32 - length)) << start;
-    return (value & ~mask) | ((fieldval << start) & mask);
-}
-
-static void pmu_config(int counter_id, uint32_t event)
-{
-    uint32_t val;
+    uint32_t off = (counter_id % 4) * 8;
     if (counter_id < 4) {
-        asm volatile("%0 = pmuevtcfg" : "=r"(val));
-        val = deposit32(val, 8 * counter_id, 8, event);
-        asm volatile("pmuevtcfg = %0\n" : : "r"(val) : );
+        asm volatile(
+            "r0 = pmuevtcfg\n"
+            "r2 = %0\n" /*off*/
+            "r3 = #8\n" /*width*/
+            "r0 = insert(%1, r3:2)\n"
+            "pmuevtcfg = r0\n"
+            :
+            : "r"(off), "r"(event)
+            : "r0", "r2", "r3" );
     } else {
-        asm volatile("%0 = pmuevtcfg1" : "=r"(val));
-        val = deposit32(val, 8 * (counter_id % 4), 8, event);
-        asm volatile("pmuevtcfg1 = %0\n" : : "r"(val) : );
+        asm volatile(
+            "r0 = pmuevtcfg1\n"
+            "r2 = %0\n" /*off*/
+            "r3 = #8\n" /*width*/
+            "r0 = insert(%1, r3:2)\n"
+            "pmuevtcfg1 = r0\n"
+            :
+            : "r"(off), "r"(event)
+            : "r0", "r2", "r3" );
     }
 }
 
@@ -183,7 +186,7 @@ static uint32_t get_gpmu_counter(int index)
         break;
     default:
         printf("ERROR at line %d: invalid counter index %d\n", __LINE__, index);
-        exit(1);
+        abort();
     }
     return counter;
 }

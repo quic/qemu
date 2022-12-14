@@ -2245,21 +2245,25 @@ static bool handle_pmu_sreg_write(CPUHexagonState *env, uint32_t reg,
         if (old_thmask != new_thmask && new_thmask) {
             qemu_log_mask(LOG_UNIMP, "Only PMUCFG thread mask 0 is implemented.");
         }
+        pmu_lock();
         for (int i = 0; i < NUM_PMU_CTRS; i++) {
             uint16_t new_bits = GET_FIELD(PMUCFG_CNT0_MSB + i, val);
             set_pmu_event(env, i,
                           deposit16(env->pmu.g_events[i], 8, 2, new_bits));
         }
+        pmu_unlock();
         ARCH_SET_SYSTEM_REG(env, reg, val);
         return true;
     } else if (reg == HEX_SREG_PMUEVTCFG || reg == HEX_SREG_PMUEVTCFG1) {
         int half_pmu_ctrs = NUM_PMU_CTRS / 2;
+        pmu_lock();
         for (int i = 0; i < half_pmu_ctrs; i++) {
             int index = i + (reg == HEX_SREG_PMUEVTCFG1 ? half_pmu_ctrs : 0);
             uint16_t new_bits = GET_FIELD(PMUEVTCFG_CNT0_LSB + i, val);
             set_pmu_event(env, index,
                           deposit16(env->pmu.g_events[index], 0, 8, new_bits));
         }
+        pmu_unlock();
         ARCH_SET_SYSTEM_REG(env, reg, val);
         return true;
     } else if (IS_PMU_REG(reg)) {

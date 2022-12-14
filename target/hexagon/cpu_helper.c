@@ -726,9 +726,14 @@ static int num_cpus(void)
 
 uint32_t hexagon_get_pmu_counter(CPUHexagonState *env, uint32_t reg)
 {
-    int index = pmu_index_from_sreg(reg);
-    int event = env->pmu.g_events[index];
+    uint32_t ctr;
+    int index;
+    int event;
     int th;
+
+    pmu_lock();
+    index = pmu_index_from_sreg(reg);
+    event = env->pmu.g_events[index];
 
     switch (event) {
     case COMMITTED_PKT_T0:
@@ -742,11 +747,15 @@ uint32_t hexagon_get_pmu_counter(CPUHexagonState *env, uint32_t reg)
         th = event < COMMITTED_PKT_T6 ?
              event - COMMITTED_PKT_T0 :
              6 + event - COMMITTED_PKT_T6;
-        return (th < num_cpus() ? get_cpu(th)->pmu.num_packets : 0) +
+        ctr = (th < num_cpus() ? get_cpu(th)->pmu.num_packets : 0) +
                env->pmu.g_ctrs_off[index];
+        break;
     default:
-        return env->pmu.g_ctrs_off[index];
+        ctr = env->pmu.g_ctrs_off[index];
+        break;
     }
+    pmu_unlock();
+    return ctr;
 }
 
 /*
@@ -777,9 +786,11 @@ void hexagon_reset_pmu_event_stats(int event)
 
 void hexagon_set_pmu_counter(CPUHexagonState *env, uint32_t reg, uint32_t val)
 {
+    pmu_lock();
     int index = pmu_index_from_sreg(reg);
     env->pmu.g_ctrs_off[index] = val;
     hexagon_reset_pmu_event_stats(env->pmu.g_events[index]);
+    pmu_unlock();
 }
 
 #endif
