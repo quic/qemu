@@ -1514,33 +1514,14 @@
 #define fGEN_TCG_L4_return_fnew_pnt(SHORTCODE) \
     gen_cond_return(ctx, RddV, RsV, PvN, TCG_COND_NE)
 
-/*
- * sub-instruction version (no RddV, so handle it manually)
- */
-#define fGEN_TCG_COND_RETURN_SUBINSN(PRED, COND) \
-    do { \
-        TCGv_i64 RddV = tcg_temp_local_new_i64(); \
-        if (!is_preloaded(ctx, HEX_REG_FP)) { \
-            tcg_gen_mov_tl(hex_new_value[HEX_REG_FP], hex_gpr[HEX_REG_FP]); \
-        } \
-        if (!is_preloaded(ctx, HEX_REG_LR)) { \
-            tcg_gen_mov_tl(hex_new_value[HEX_REG_LR], hex_gpr[HEX_REG_LR]); \
-        } \
-        tcg_gen_concat_i32_i64(RddV, hex_new_value[HEX_REG_FP], \
-                                     hex_new_value[HEX_REG_LR]); \
-        gen_cond_return(ctx, RddV, hex_gpr[HEX_REG_FP], PRED, COND); \
-        gen_log_reg_write_pair(HEX_REG_FP, RddV); \
-        tcg_temp_free_i64(RddV); \
-    } while (0)
-
 #define fGEN_TCG_SL2_return_t(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(hex_pred[0], TCG_COND_EQ)
+    gen_cond_return_subinsn(ctx, TCG_COND_EQ, hex_pred[0])
 #define fGEN_TCG_SL2_return_f(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(hex_pred[0], TCG_COND_NE)
+    gen_cond_return_subinsn(ctx, TCG_COND_NE, hex_pred[0])
 #define fGEN_TCG_SL2_return_tnew(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(hex_new_pred_value[0], TCG_COND_EQ)
+    gen_cond_return_subinsn(ctx, TCG_COND_EQ, hex_new_pred_value[0])
 #define fGEN_TCG_SL2_return_fnew(SHORTCODE) \
-    fGEN_TCG_COND_RETURN_SUBINSN(hex_new_pred_value[0], TCG_COND_NE)
+    gen_cond_return_subinsn(ctx, TCG_COND_NE, hex_new_pred_value[0])
 
 /*
  * Mathematical operations with more than one definition require
