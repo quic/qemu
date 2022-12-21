@@ -2518,30 +2518,15 @@
 #define fGEN_TCG_SL2_jumpr31(SHORTCODE) \
     gen_jumpr(ctx, hex_gpr[HEX_REG_LR])
 
-#define fGEN_TCG_COND_JUMPR31_T(COND) \
-    do { \
-        TCGv LSB = tcg_temp_new(); \
-        COND; \
-        gen_cond_jumpr(ctx, hex_gpr[HEX_REG_LR], TCG_COND_EQ, LSB); \
-        tcg_temp_free(LSB); \
-    } while (0)
-#define fGEN_TCG_COND_JUMPR31_F(COND) \
-    do { \
-        TCGv LSB = tcg_temp_new(); \
-        COND; \
-        gen_cond_jumpr(ctx, hex_gpr[HEX_REG_LR], TCG_COND_NE, LSB); \
-        tcg_temp_free(LSB); \
-    } while (0)
-
 #define fGEN_TCG_SL2_jumpr31_t(SHORTCODE) \
-    fGEN_TCG_COND_JUMPR31_T(fLSBOLD(hex_pred[0]))
+    gen_cond_jumpr31(ctx, TCG_COND_EQ, hex_pred[0])
 #define fGEN_TCG_SL2_jumpr31_f(SHORTCODE) \
-    fGEN_TCG_COND_JUMPR31_F(fLSBOLD(hex_pred[0]))
+    gen_cond_jumpr31(ctx, TCG_COND_NE, hex_pred[0])
 
 #define fGEN_TCG_SL2_jumpr31_tnew(SHORTCODE) \
-    fGEN_TCG_COND_JUMPR31_T(fLSBNEW0)
+    gen_cond_jumpr31(ctx, TCG_COND_EQ, hex_new_pred_value[0])
 #define fGEN_TCG_SL2_jumpr31_fnew(SHORTCODE) \
-    fGEN_TCG_COND_JUMPR31_F(fLSBNEW0)
+    gen_cond_jumpr31(ctx, TCG_COND_NE, hex_new_pred_value[0])
 
 #define fGEN_TCG_J2_pause(SHORTCODE) \
     do { \
