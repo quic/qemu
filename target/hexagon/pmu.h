@@ -39,7 +39,7 @@ enum {
 #undef DECL_PMU_EVENT
 
 /* PMU sregs are defined in this order: 4, 5, 6, 7, 0, 1, 2, 3. */
-#define IS_PMU_REG(REG) ((REG) >= HEX_SREG_PMUCNT4 && (reg) <= HEX_SREG_PMUCNT3)
+#define IS_PMU_REG(REG) ((REG) >= HEX_SREG_PMUCNT4 && (REG) <= HEX_SREG_PMUCNT3)
 static inline unsigned int pmu_index_from_sreg(int reg)
 {
     g_assert(IS_PMU_REG(reg));
