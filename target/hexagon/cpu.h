@@ -447,6 +447,7 @@ typedef struct PMUState {
 
     /* Internal counters */
     uint32_t num_packets;
+    uint32_t hvx_packets;
 } PMUState;
 #endif
 

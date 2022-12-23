@@ -33,11 +33,27 @@ static inline void __check_val_range(uint32_t val,
     }
 }
 
+static inline void __check_val(uint32_t val, int regnum, enum regtype type,
+                               uint32_t exp, int line)
+{
+    if (val != exp) {
+        printf("ERROR at line %d: %s counter %u has value %"PRIu32", "
+               "expected %"PRIu32"\n",
+               line, (type == GREG ? "greg" : "sys"), regnum, val, exp);
+        err = 1;
+    }
+}
+
 #define check_range(regnum, regtype, lo, hi) \
     __check_val_range(regtype == GREG ? \
                       get_gpmu_counter(regnum) : \
                       get_pmu_counter(regnum), \
                       regnum, regtype, lo, hi, __LINE__)
+#define check(regnum, regtype, exp) \
+   __check_val(regtype == GREG ? \
+               get_gpmu_counter(regnum) : \
+               get_pmu_counter(regnum), \
+               regnum, regtype, exp, __LINE__)
 
 #define check_val_range(val, regnum, regtype, lo, hi) \
     __check_val_range(val, regnum, regtype, lo, hi, __LINE__)
@@ -45,6 +61,7 @@ static inline void __check_val_range(uint32_t val,
 static void pmu_config(uint32_t counter_id, uint32_t event)
 {
     uint32_t off = (counter_id % 4) * 8;
+    /* First the 8 LSBs */
     if (counter_id < 4) {
         asm volatile(
             "r0 = pmuevtcfg\n"
@@ -66,6 +83,18 @@ static void pmu_config(uint32_t counter_id, uint32_t event)
             : "r"(off), "r"(event)
             : "r0", "r2", "r3" );
     }
+    /* Now the 2 MSBs */
+    off = counter_id * 2;
+    event >>= 8;
+    asm volatile(
+        "r0 = pmucfg\n"
+        "r2 = %0\n" /*off*/
+        "r3 = #2\n" /*width*/
+        "r0 = insert(%1, r3:2)\n"
+        "pmucfg = r0\n"
+        :
+        : "r"(off), "r"(event)
+        : "r0", "r2", "r3");
 }
 
 static void pmu_set_counters(uint32_t val)
@@ -208,6 +237,7 @@ static void pmu_reset(void)
 #define COMMITTED_PKT_T5 17
 #define COMMITTED_PKT_T6 21
 #define COMMITTED_PKT_T7 22
+#define HVX_PKT 273
 
 #define NUM_THREADS 8
 #define STACK_SIZE 0x8000
@@ -406,6 +436,22 @@ static void test_config_from_another_thread(void)
     check_range(0, SREG, 100, 1000); /* We just want to check >= 100, really */
 }
 
+static void test_hvx_packets(void)
+{
+    pmu_reset();
+    pmu_config(0, HVX_PKT);
+    pmu_start();
+    asm volatile(
+        "nop\n"
+        "nop\n"
+        "{ v0 = vrmpyb(v0, v1); v2 = vrmpyb(v3, v4) }\n"
+        "{ v0 = vrmpyb(v0, v1); nop; }\n"
+        : : : "v0", "v2");
+    check(0, SREG, 2);
+    pmu_stop();
+
+}
+
 int main()
 {
     test_config_with_pmu_enabled(0);
@@ -414,6 +460,7 @@ int main()
     test_paired_access(SREG, false);
     test_gpmucnt();
     test_config_from_another_thread();
+    test_hvx_packets();
 
     puts(err ? "FAIL" : "PASS");
     return err;

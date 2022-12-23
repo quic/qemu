@@ -183,6 +183,7 @@ hmx_conv_asm.o: ASFLAGS+= -mhmx
 hmx_conv_fp16.o: CFLAGS+= -mhmx
 hmx_range.o: CFLAGS+= -mhmx
 vtcm_error.o: CFLAGS += -mhvx
+pmu.o: CFLAGS += -mhvx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
