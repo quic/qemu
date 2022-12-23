@@ -58,6 +58,7 @@ typedef struct DisasContext {
     int sreg_log_idx;
     bool need_cpu_limit;
     bool pmu_enabled;
+    bool pmu_counters_updated;
 #endif
     int preg_log[PRED_WRITES_MAX];
     int preg_log_idx;

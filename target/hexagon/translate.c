@@ -32,6 +32,7 @@
 #include "decode.h"
 #include "translate.h"
 #include "printinsn.h"
+#include "pmu.h"
 
 TCGv hex_gpr[TOTAL_PER_THREAD_REGS];
 TCGv hex_pred[NUM_PREGS];
@@ -137,6 +138,26 @@ static inline void gen_precise_exception(int excp, target_ulong PC)
 }
 #endif
 
+#ifndef CONFIG_USER_ONLY
+static void gen_pmu_counters(DisasContext *ctx)
+{
+    if (!ctx->pmu_enabled) {
+        return;
+    }
+    /*
+     * Note: if we ever need finer resolution for the PMU counters, we can
+     * remove this "already-updated-in-this-TB" check (possibly at the cost
+     * of performance).
+     */
+    if (ctx->pmu_counters_updated) {
+        return;
+    }
+    tcg_gen_addi_i32(hex_pmu_num_packets, hex_pmu_num_packets,
+                     ctx->num_packets);
+    ctx->pmu_counters_updated = true;
+}
+#endif
+
 static void gen_exec_counters(DisasContext *ctx)
 {
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],
@@ -165,10 +186,7 @@ static void gen_exec_counters(DisasContext *ctx)
         tcg_gen_addi_i64(hex_packet_count, hex_packet_count, ctx->num_packets);
     }
 #ifndef CONFIG_USER_ONLY
-    if (ctx->pmu_enabled) {
-        tcg_gen_addi_i32(hex_pmu_num_packets, hex_pmu_num_packets,
-                         ctx->num_packets);
-    }
+    gen_pmu_counters(ctx);
 #endif
 }
 
@@ -548,6 +566,19 @@ static bool pkt_may_do_io(Packet *pkt)
 }
 #endif
 
+#ifndef CONFIG_USER_ONLY
+static bool pkt_has_pmu_read(Packet *pkt)
+{
+    for (int i = 0; i < pkt->num_insns; i++) {
+        Insn *insn = &pkt->insn[i];
+        if (insn->opcode == Y2_tfrscrr && IS_PMU_REG(insn->regno[1])) {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
 {
     Packet *pkt = ctx->pkt;
@@ -699,6 +730,9 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
         gen_hmx_check(ctx);
         ctx->hmx_check_emitted = true;
+    }
+    if (pkt_has_pmu_read(pkt)) {
+        gen_pmu_counters(ctx);
     }
 #endif
     if (pkt->pkt_has_hvx && ctx->hvx_coproc_enabled && ctx->hvx_64b_mode) {
@@ -1426,6 +1460,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
     ctx->pmu_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PMU_ENABLED);
+    ctx->pmu_counters_updated = false;
 #endif
     ctx->hvx_coproc_enabled = FIELD_EX32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED);
     ctx->hvx_64b_mode = FIELD_EX32(hex_flags, TB_FLAGS, HVX_64B_MODE);
