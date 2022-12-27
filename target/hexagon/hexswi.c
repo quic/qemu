@@ -1258,15 +1258,14 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     cs->exception_index = HEX_EVENT_NONE;
 }
 
-void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
-    int traptype, int imm)
-
+void register_trap_exception(CPUHexagonState *env, int traptype, int imm,
+                             target_ulong PC)
 {
-    HEX_DEBUG_LOG("%s:\n\ttid = %d, pc = 0x%" PRIx32 ", npc = 0x%" PRIx32
+    HEX_DEBUG_LOG("%s:\n\ttid = %d, pc = 0x%" PRIx32
                   ", traptype %d, "
                   "imm %d\n",
                   __func__, env->threadId,
-                  ARCH_GET_THREAD_REG(env, HEX_REG_PC), (target_ulong)next_pc,
+                  ARCH_GET_THREAD_REG(env, HEX_REG_PC),
                   traptype, imm);
 
     CPUState *cs = env_cpu(env);
@@ -1275,6 +1274,7 @@ void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc,
     cs->exception_index = (traptype == 0) ? HEX_EVENT_TRAP0 : HEX_EVENT_TRAP1;
 
     env->cause_code = imm;
+    env->gpr[HEX_REG_PC] = PC;
     cpu_loop_exit(cs);
 }
 #endif

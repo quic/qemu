@@ -39,9 +39,10 @@
  */
 #define COUNT_HEX_HELPERS 0
 
-void G_NORETURN do_raise_exception_err(CPUHexagonState *env,
+void G_NORETURN do_raise_exception(CPUHexagonState *env,
         uint32_t exception,
-        uintptr_t pc);
+        target_ulong PC,
+        uintptr_t retaddr);
 
 extern void hexagon_dump(CPUHexagonState *env, FILE *f, int flags);
 extern int hexagon_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);

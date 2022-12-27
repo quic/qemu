@@ -736,7 +736,8 @@ void hexagon_translate_init(void);
 void hexagon_cpu_soft_reset(CPUHexagonState *env);
 
 extern void hexagon_cpu_do_interrupt(CPUState *cpu);
-extern void register_trap_exception(CPUHexagonState *env, uintptr_t next_pc, int traptype, int imm);
+void register_trap_exception(CPUHexagonState *env, int type, int imm,
+                             target_ulong PC);
 
 #include "exec/cpu-all.h"
 

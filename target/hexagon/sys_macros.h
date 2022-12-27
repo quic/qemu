@@ -98,7 +98,7 @@
 #endif
 
 #define fTRAP(TRAPTYPE, IMM) \
-    register_trap_exception(env, fREAD_NPC(), TRAPTYPE, IMM)
+    register_trap_exception(env, TRAPTYPE, IMM, PC)
 
 /*
  * FIXME - Fix the implementation of trap1
@@ -158,9 +158,9 @@
 #define fSET_TLB_LOCK() do { \
             hex_tlb_lock(env); \
             if (env->tlb_lock_state == HEX_LOCK_OWNER) { \
-                env->gpr[HEX_REG_PC] += 4; \
+                env->gpr[HEX_REG_PC] = PC + 4; \
             } else if (env->tlb_lock_state == HEX_LOCK_WAITING) { \
-                env->next_PC = env->gpr[HEX_REG_PC]; \
+                env->next_PC = PC; \
             } else { \
                 g_assert_not_reached(); \
             } \
@@ -170,9 +170,9 @@
 #define fSET_K0_LOCK() do { \
             hex_k0_lock(env); \
             if (env->k0_lock_state == HEX_LOCK_OWNER) { \
-                env->gpr[HEX_REG_PC] += 4; \
+                env->gpr[HEX_REG_PC] = PC + 4; \
             } else if (env->k0_lock_state == HEX_LOCK_WAITING) { \
-                env->next_PC = env->gpr[HEX_REG_PC]; \
+                env->next_PC = PC; \
             } else { \
                 g_assert_not_reached(); \
             } \

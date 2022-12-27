@@ -928,12 +928,14 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
             return ret;
         } else {
             raise_perm_exception(cs, address, slot, access_type, excp);
-            do_raise_exception_err(env, cs->exception_index, retaddr);
+            do_raise_exception(env, cs->exception_index,
+                               env->gpr[HEX_REG_PC], retaddr);
         }
     }
 
     raise_tlbmiss_exception(cs, address, slot, access_type);
-    do_raise_exception_err(env, cs->exception_index, retaddr);
+    do_raise_exception(env, cs->exception_index,
+                       env->gpr[HEX_REG_PC], retaddr);
 #endif
 }
 #endif
@@ -987,7 +989,7 @@ static void G_NORETURN hexagon_cpu_do_unaligned_access(CPUState *cs, vaddr addr,
         "unaligned access %08x from %08x\n", (int)addr, (int)retaddr);
 
     set_badva_regs(env, addr, 0, access_type);
-    do_raise_exception_err(env, cs->exception_index, retaddr);
+    do_raise_exception(env, cs->exception_index, env->gpr[HEX_REG_PC], retaddr);
 }
 
 #endif

@@ -126,16 +126,17 @@ intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
     return offset;
 }
 
-void gen_exception(int excp)
+void gen_exception(int excp, target_ulong PC)
 {
-    gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp));
+    gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp),
+                               tcg_constant_tl(PC));
 }
 
 #ifndef CONFIG_USER_ONLY
-static inline void gen_precise_exception(int excp)
+static inline void gen_precise_exception(int excp, target_ulong PC)
 {
     tcg_gen_movi_tl(hex_cause_code, excp);
-    gen_exception(HEX_EVENT_PRECISE);
+    gen_exception(HEX_EVENT_PRECISE, PC);
 }
 #endif
 
@@ -182,7 +183,8 @@ static void gen_cpu_limit(DisasContext *ctx, TCGv dest)
 static void gen_cpu_limit(DisasContext *ctx, TCGv dest)
 {
     if (ctx->need_cpu_limit) {
-        gen_helper_cpu_limit(cpu_env, dest);
+        TCGv PC = tcg_constant_tl(ctx->pkt->pc);
+        gen_helper_cpu_limit(cpu_env, PC, dest);
     }
 }
 #endif
@@ -249,22 +251,12 @@ static void gen_end_tb(DisasContext *ctx)
     ctx->base.is_jmp = DISAS_NORETURN;
 }
 
-static void gen_exception_debug(DisasContext *ctx)
-{
-    if (ctx->base.singlestep_enabled) {
-        gen_exception(EXCP_DEBUG);
-    } else {
-        tcg_gen_exit_tb(NULL, 0);
-    }
-    ctx->base.is_jmp = DISAS_NORETURN;
-}
-
 void gen_exception_end_tb(DisasContext *ctx, int excp)
 {
 #ifdef CONFIG_USER_ONLY
-    gen_exception(excp);
+    gen_exception(excp, ctx->pkt->pc);
 #else
-    gen_precise_exception(excp);
+    gen_precise_exception(excp, ctx->pkt->pc);
 #endif
     ctx->base.is_jmp = DISAS_NORETURN;
 }
@@ -345,10 +337,15 @@ static bool need_pc(Packet *pkt)
     return false;
 #else
     /*
-     * FIXME
-     * QTOOL-89075: Reduce instructions where need_pc returns true
+     * When a load/store instruction raises an exception, we need a way
+     * to set the current PC in order to assign ELR.  See "set_addresses"
+     * in hexswi.c.
      */
-    return true;
+    if (check_for_attrib(pkt, A_LOAD) ||
+        check_for_attrib(pkt, A_STORE)) {
+        return true;
+    }
+    return false;
 #endif
 }
 
@@ -427,7 +424,7 @@ static void decode_wregs(DisasContext *ctx, Packet *pkt)
 }
 
 #if !defined(CONFIG_USER_ONLY)
-static void gen_hmx_check(void)
+static void gen_hmx_check(DisasContext *ctx)
 {
     TCGv xe = tcg_temp_new();
     TCGLabel *skip_exception = gen_new_label();
@@ -435,7 +432,7 @@ static void gen_hmx_check(void)
             reg_field_info[SSR_XE2].offset,
             reg_field_info[SSR_XE2].width);
     tcg_gen_brcondi_tl(TCG_COND_NE, xe, 0, skip_exception);
-    gen_precise_exception(HEX_CAUSE_NO_COPROC2_ENABLE);
+    gen_precise_exception(HEX_CAUSE_NO_COPROC2_ENABLE, ctx->pkt->pc);
     gen_set_label(skip_exception);
 
     tcg_temp_free(xe);
@@ -451,9 +448,9 @@ static void gen_check_mult_reg_write(DisasContext *ctx)
         tcg_gen_brcondi_tl(TCG_COND_EQ, hex_mult_reg_written, 0,
                            skip_exception);
 #ifdef CONFIG_USER_ONLY
-        gen_exception(HEX_CAUSE_REG_WRITE_CONFLICT);
+        gen_exception(HEX_CAUSE_REG_WRITE_CONFLICT, ctx->pkt->pc);
 #else
-        gen_precise_exception(HEX_CAUSE_REG_WRITE_CONFLICT);
+        gen_precise_exception(HEX_CAUSE_REG_WRITE_CONFLICT, ctx->pkt->pc);
 #endif
         gen_set_label(skip_exception);
     }
@@ -728,11 +725,11 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         gen_helper_inc_gcycle_xt(cpu_env);
     }
     if (pkt->pkt_has_hvx && !ctx->hvx_coproc_enabled && !ctx->hvx_check_emitted) {
-        gen_precise_exception(HEX_CAUSE_NO_COPROC_ENABLE);
+        gen_precise_exception(HEX_CAUSE_NO_COPROC_ENABLE, ctx->pkt->pc);
         ctx->hvx_check_emitted = true;
     }
     if (pkt->pkt_has_hmx && !ctx->hmx_check_emitted) {
-        gen_hmx_check();
+        gen_hmx_check(ctx);
         ctx->hmx_check_emitted = true;
     }
 #endif
@@ -743,9 +740,9 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
          * HVX while in this mode.
          */
 #ifndef CONFIG_USER_ONLY
-        gen_precise_exception(HEX_CAUSE_UNSUPORTED_HVX_64B);
+        gen_precise_exception(HEX_CAUSE_UNSUPORTED_HVX_64B, ctx->pkt->pc);
 #else
-        gen_exception(HEX_CAUSE_UNSUPORTED_HVX_64B);
+        gen_exception(HEX_CAUSE_UNSUPORTED_HVX_64B, ctx->pkt->pc);
 #endif
     }
 }
@@ -1263,9 +1260,10 @@ static void check_imprecise_exception(Packet *pkt)
     for (i = 0; i < pkt->num_insns; i++) {
         Insn *insn = &pkt->insn[i];
         if (insn->opcode == Y2_tlbp) {
+            TCGv PC = tcg_constant_tl(pkt->pc);
             TCGLabel *label = gen_new_label();
             tcg_gen_brcondi_tl(TCG_COND_EQ, hex_imprecise_exception, 0, label);
-            gen_helper_raise_exception(cpu_env, hex_imprecise_exception);
+            gen_helper_raise_exception(cpu_env, hex_imprecise_exception, PC);
             gen_set_label(label);
             return;
         }
@@ -1551,20 +1549,14 @@ static void hexagon_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
     case DISAS_TOO_MANY:
         gen_exec_counters(ctx);
         tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->base.pc_next);
-
-    /* Fall through */
+        tcg_gen_exit_tb(NULL, 0);
+        break;
     case DISAS_NEXT:
         break;
     case DISAS_NORETURN:
         break;
     default:
         g_assert_not_reached();
-    }
-
-    if (ctx->base.singlestep_enabled) {
-        gen_exception_debug(ctx);
-    } else {
-        tcg_gen_exit_tb(NULL, 0);
     }
 }
 

@@ -90,27 +90,28 @@ void print_helper_counts(void)
 
 /* Exceptions processing helpers */
 G_NORETURN
-void do_raise_exception_err(CPUHexagonState *env,
-                            uint32_t exception,
-                            uintptr_t pc)
+void do_raise_exception(CPUHexagonState *env, uint32_t exception,
+                        target_ulong PC, uintptr_t retaddr)
 {
     CPUState *cs = env_cpu(env);
 #ifdef CONFIG_USER_ONLY
     qemu_log_mask(CPU_LOG_INT, "%s: %d\n", __func__, exception);
 #else
-    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08x | %08" PRIxPTR ", tbl =%d\n",
-                  __func__, exception, env->gpr[HEX_REG_PC], pc,
+    qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08" PRIx32 ", tbl = %d\n",
+                  __func__, exception, PC,
                   env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
 #endif
 
+    env->gpr[HEX_REG_PC] = PC;
     cs->exception_index = exception;
-    cpu_loop_exit_restore(cs, pc);
+    cpu_loop_exit_restore(cs, retaddr);
 }
 
 
-G_NORETURN void HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp)
+G_NORETURN void HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp,
+                                        target_ulong PC)
 {
-    do_raise_exception_err(env, excp, 0);
+    do_raise_exception(env, excp, PC, 0);
 }
 
 static void log_reg_write(CPUHexagonState *env, int rnum,
@@ -147,7 +148,7 @@ static void log_pred_write(CPUHexagonState *env, int pnum, target_ulong val)
 
 #ifndef CONFIG_USER_ONLY
 static void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
-                         target_ulong addr)
+                         target_ulong addr, target_ulong PC)
 {
     HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
 
@@ -160,12 +161,12 @@ static void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
             HEX_DEBUG_LOG("INFO: multiple branches taken in same packet, "
                           "ignoring the second one\n");
         } else {
-            fCHECK_PCALIGN(addr);
+            fCHECK_PCALIGN(addr, PC);
             env->branch_taken = 1;
             env->next_PC = addr;
         }
     } else {
-        fCHECK_PCALIGN(addr);
+        fCHECK_PCALIGN(addr, PC);
         env->next_PC = addr;
     }
 }
@@ -550,7 +551,7 @@ int32_t HELPER(vacsh_pred)(CPUHexagonState *env,
 
 #ifndef CONFIG_USER_ONLY
 void HELPER(data_cache_op)(CPUHexagonState *env, target_ulong RsV,
-                           int slot, int mmu_idx)
+                           int slot, int mmu_idx, target_ulong PC)
 {
     if (hexagon_cpu_mmu_enabled(env)) {
         hwaddr phys;
@@ -573,7 +574,7 @@ void HELPER(data_cache_op)(CPUHexagonState *env, target_ulong RsV,
                     CPUState *cs = env_cpu(env);
                     uintptr_t retaddr = GETPC();
                     raise_perm_exception(cs, RsV, slot, MMU_DATA_LOAD, excp);
-                    do_raise_exception_err(env, cs->exception_index, retaddr);
+                    do_raise_exception(env, cs->exception_index, PC, retaddr);
                 }
             }
         } else {
@@ -581,13 +582,13 @@ void HELPER(data_cache_op)(CPUHexagonState *env, target_ulong RsV,
             CPUState *cs = env_cpu(env);
             uintptr_t retaddr = GETPC();
             raise_tlbmiss_exception(cs, RsV, slot, MMU_DATA_LOAD);
-            do_raise_exception_err(env, cs->exception_index, retaddr);
+            do_raise_exception(env, cs->exception_index, PC, retaddr);
         }
     }
 }
 
 void HELPER(insn_cache_op)(CPUHexagonState *env, target_ulong RsV,
-                           int slot, int mmu_idx)
+                           int slot, int mmu_idx, target_ulong PC)
 {
     if (hexagon_cpu_mmu_enabled(env)) {
         hwaddr phys;
@@ -604,7 +605,7 @@ void HELPER(insn_cache_op)(CPUHexagonState *env, target_ulong RsV,
             CPUState *cs = env_cpu(env);
             uintptr_t retaddr = GETPC();
             raise_tlbmiss_exception(cs, RsV, slot, MMU_INST_FETCH);
-            do_raise_exception_err(env, cs->exception_index, retaddr);
+            do_raise_exception(env, cs->exception_index, PC, retaddr);
         }
     }
 }
@@ -676,10 +677,10 @@ void HELPER(siad)(CPUHexagonState *env, uint32_t mask)
     }
 }
 
-void HELPER(wait)(CPUHexagonState *env)
+void HELPER(wait)(CPUHexagonState *env, target_ulong PC)
 {
     if (!fIN_DEBUG_MODE(fGET_TNUM())) {
-        hexagon_wait_thread(env);
+        hexagon_wait_thread(env, PC);
      }
 }
 
@@ -2412,7 +2413,8 @@ void HELPER(stop)(CPUHexagonState *env)
     hexagon_stop_thread(env);
 }
 
-void HELPER(rte)(CPUHexagonState *env, uint32_t pkt_has_multi_cof)
+void HELPER(rte)(CPUHexagonState *env, uint32_t pkt_has_multi_cof,
+                 target_ulong PC)
 {
     uint32_t slot = 4; /* dummy value */
     uint32_t new_ssr;
@@ -2424,7 +2426,7 @@ void HELPER(rte)(CPUHexagonState *env, uint32_t pkt_has_multi_cof)
     log_sreg_write(env, HEX_SREG_SSR, new_ssr, slot);
 
     /* Jump to ELR */
-    write_new_pc(env, pkt_has_multi_cof != 0, env->t_sreg[HEX_SREG_ELR]);
+    write_new_pc(env, pkt_has_multi_cof != 0, env->t_sreg[HEX_SREG_ELR], PC);
 }
 
 typedef struct {
@@ -2543,7 +2545,8 @@ void HELPER(inc_gcycle_xt)(CPUHexagonState *env)
     }
 }
 
-void HELPER(cpu_limit)(CPUHexagonState *env, target_ulong next_PC)
+void HELPER(cpu_limit)(CPUHexagonState *env, target_ulong PC,
+                       target_ulong next_PC)
 {
     uint32_t ready_count = get_ready_count(env);
 
@@ -2552,7 +2555,7 @@ void HELPER(cpu_limit)(CPUHexagonState *env, target_ulong next_PC)
     if (ready_count > 1 &&
         env->gpr[HEX_REG_QEMU_CPU_TB_CNT] >= HEXAGON_TB_EXEC_PER_CPU_MAX) {
         env->gpr[HEX_REG_PC] = next_PC;
-        HELPER(raise_exception)(env, EXCP_YIELD);
+        HELPER(raise_exception)(env, EXCP_YIELD, next_PC);
         env->gpr[HEX_REG_QEMU_CPU_TB_CNT] = 0;
     }
     env->last_cpu = env->threadId;

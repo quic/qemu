@@ -1526,9 +1526,10 @@ static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
 
 static void gen_pause(DisasContext *ctx)
 {
+#ifdef CONFIG_USER_ONLY
     tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], ctx->next_PC);
-#ifndef CONFIG_USER_ONLY
-    gen_exception(EXCP_YIELD);
+#else
+    gen_exception(EXCP_YIELD, ctx->next_PC);
 #endif
 }
 

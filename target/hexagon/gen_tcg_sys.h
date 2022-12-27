@@ -34,7 +34,7 @@
 #define fGEN_TCG_Y2_wait(SHORTCODE) \
     do { \
         RsV = RsV; \
-        gen_helper_wait(cpu_env); \
+        gen_helper_wait(cpu_env, tcg_const_tl(ctx->pkt->pc)); \
     } while (0)
 
 #define fGEN_TCG_Y2_resume(SHORTCODE) \
@@ -94,7 +94,8 @@
 #define fGEN_TCG_J2_rte(SHORTCODE) \
     do { \
         TCGv pkt_has_multi_cof = tcg_constant_tl(ctx->pkt->pkt_has_multi_cof); \
-        gen_helper_rte(cpu_env, pkt_has_multi_cof); \
+        TCGv PC = tcg_constant_tl(ctx->pkt->pc); \
+        gen_helper_rte(cpu_env, pkt_has_multi_cof, PC); \
     } while (0)
 
 #define fGEN_TCG_Y2_crswap0(SHORTCODE) \

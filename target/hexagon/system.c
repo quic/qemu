@@ -244,14 +244,15 @@ bool is_du_badva_affecting_exception(int type, int cause)
 
 static
 void
-raise_coproc_ldst_exception(thread_t *env, size4u_t de_slotmask)
+raise_coproc_ldst_exception(thread_t *env, size4u_t de_slotmask,
+                            target_ulong PC)
 
 {
     CPUState *cs = env_cpu(env);
     size4u_t slot = (de_slotmask & 0x1) ? 0 : 1;
     raise_perm_exception(cs, thread->einfo.badva1, slot, MMU_DATA_LOAD, thread->einfo.type);
     env->cause_code = thread->einfo.cause;
-    do_raise_exception_err(env, cs->exception_index, GETPC());
+    do_raise_exception(env, cs->exception_index, PC, 0);
 }
 
 static
@@ -304,7 +305,7 @@ register_exception_info(thread_t * thread, size4u_t type, size4u_t cause,
 		thread->einfo.elr = elr;
 		thread->einfo.diag = diag;
 		thread->einfo.de_slotmask |= de_slotmask;
-        raise_coproc_ldst_exception(thread, de_slotmask);
+        raise_coproc_ldst_exception(thread, de_slotmask, elr);
 	} else if ((type == thread->einfo.type)
 			   && (cause < thread->einfo.cause)) {
 		thread->einfo.cause = cause;

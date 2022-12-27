@@ -402,15 +402,15 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
  * to COF instructions that have TCG overrides.  See
  * gen_write_new_pc function in genptr.c
  */
-#define fCHECK_PCALIGN(A)                                   \
-    do {                                                    \
-        if (((A)&PCALIGN_MASK) != 0) {                      \
-            env->cause_code = HEX_CAUSE_PC_NOT_ALIGNED;     \
-            helper_raise_exception(env, HEX_EVENT_PRECISE); \
-        }                                                   \
+#define fCHECK_PCALIGN(A, PC)                                    \
+    do {                                                         \
+        if (((A) & PCALIGN_MASK) != 0) {                         \
+            env->cause_code = HEX_CAUSE_PC_NOT_ALIGNED;          \
+            HELPER(raise_exception)(env, HEX_EVENT_PRECISE, PC); \
+        }                                                        \
     } while (0)
 
-#define fWRITE_NPC(A) write_new_pc(env, pkt_has_multi_cof != 0, A)
+#define fWRITE_NPC(A) write_new_pc(env, pkt_has_multi_cof != 0, A, PC)
 
 #define MARK_LATE_PRED_WRITE(RNUM) /* Not modelled in qemu */
 
@@ -725,8 +725,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #ifdef CONFIG_USER_ONLY
 #define fTRAP(TRAPTYPE, IMM) \
     do { \
-        env->gpr[HEX_REG_PC] = PC; \
-        HELPER(raise_exception)(env, HEX_EVENT_TRAP0); \
+        HELPER(raise_exception)(env, HEX_EVENT_TRAP0, PC); \
     } while (0)
 #endif
 

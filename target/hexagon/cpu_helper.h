@@ -48,7 +48,7 @@ int hexagon_read_memory_locked(CPUHexagonState *env,
 void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
                                  uint32_t length);
 
-void hexagon_wait_thread(CPUHexagonState *env);
+void hexagon_wait_thread(CPUHexagonState *env, target_ulong PC);
 void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei);
 void hexagon_resume_threads(CPUHexagonState *env, uint32_t mask);
 void hexagon_start_threads(CPUHexagonState *env, uint32_t mask);

@@ -297,7 +297,7 @@ void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
     }
 }
 
-void hexagon_wait_thread(CPUHexagonState *env)
+void hexagon_wait_thread(CPUHexagonState *env, target_ulong PC)
 
 {
     qemu_mutex_lock_iothread();
@@ -320,7 +320,7 @@ void hexagon_wait_thread(CPUHexagonState *env)
         return;
     }
     set_wait_mode(env);
-    env->wait_next_pc = env->gpr[HEX_REG_PC] + 4;
+    env->wait_next_pc = PC + 4;
 
     qemu_mutex_unlock_iothread();
     cpu_stop_current();

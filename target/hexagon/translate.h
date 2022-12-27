@@ -214,7 +214,7 @@ extern TCGv hex_slot;
 extern TCGv hex_imprecise_exception;
 #endif
 
-void gen_exception(int excp);
+void gen_exception(int excp, target_ulong PC);
 void gen_exception_end_tb(DisasContext *ctx, int excp);
 bool is_gather_store_insn(DisasContext *ctx);
 void process_store(DisasContext *ctx, int slot_num);

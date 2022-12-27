@@ -1461,7 +1461,8 @@
         if (ctx->gen_cacheop_exceptions) { \
             HELPER(cpu_env, RsV, \
                    tcg_constant_tl(insn->slot), \
-                   tcg_constant_tl(ctx->mem_idx)); \
+                   tcg_constant_tl(ctx->mem_idx), \
+                   tcg_constant_tl(ctx->pkt->pc)); \
         } \
     } while (0)
 #define fGEN_TCG_Y2_dcinva(SHORTCODE) \
