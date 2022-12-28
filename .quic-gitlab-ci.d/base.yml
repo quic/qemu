@@ -97,6 +97,31 @@ san-hexagon_check:
   needs: [san-hexagon_build]
   extends: .base-check
 
+no-idef-parser-hexagon_build:
+  extends: .base-build
+  variables: { CONFIG_CMD: "$HEX_CONFIG_CMD --disable-hexagon-idef-parser" }
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+no-idef-parser-hexagon_install:
+  needs: [no-idef-parser-hexagon_build]
+  extends: .base-install
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+no-idef-parser-hexagon_check-tcg:
+  needs: [no-idef-parser-hexagon_build]
+  extends: .base-check-tcg
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+no-idef-parser-hexagon_check:
+  needs: [no-idef-parser-hexagon_build]
+  extends: .base-check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+
 aarch64_build:
   extends: .base-build
   variables: { CONFIG_CMD: $AARCH64_CONFIG_CMD }
