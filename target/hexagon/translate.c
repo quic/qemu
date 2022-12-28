@@ -29,6 +29,10 @@
 #include "translate.h"
 #include "printinsn.h"
 
+typedef void (*AnalyzeInsn)(struct DisasContext *ctx);
+#include "analyze_funcs_generated.c.inc"
+#include "analyze_func_table_generated.c.inc"
+
 TCGv hex_gpr[TOTAL_PER_THREAD_REGS];
 TCGv hex_pred[NUM_PREGS];
 TCGv hex_this_PC;
@@ -280,73 +284,8 @@ static bool need_next_PC(DisasContext *ctx)
     return false;
 }
 
-static void gen_start_packet(DisasContext *ctx)
-{
-    Packet *pkt = ctx->pkt;
-    target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
-    int i;
-
-    /* Clear out the disassembly context */
-    ctx->next_PC = next_PC;
-    ctx->reg_log_idx = 0;
-    bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
-    ctx->preg_log_idx = 0;
-    bitmap_zero(ctx->pregs_written, NUM_PREGS);
-    ctx->future_vregs_idx = 0;
-    ctx->tmp_vregs_idx = 0;
-    ctx->vreg_log_idx = 0;
-    bitmap_zero(ctx->vregs_updated_tmp, NUM_VREGS);
-    bitmap_zero(ctx->vregs_updated, NUM_VREGS);
-    bitmap_zero(ctx->vregs_select, NUM_VREGS);
-    ctx->qreg_log_idx = 0;
-    for (i = 0; i < STORES_MAX; i++) {
-        ctx->store_width[i] = 0;
-    }
-    ctx->s1_store_processed = false;
-    ctx->pre_commit = true;
-
-    if (HEX_DEBUG) {
-        /* Handy place to set a breakpoint before the packet executes */
-        gen_helper_debug_start_packet(cpu_env);
-        tcg_gen_movi_tl(hex_this_PC, ctx->base.pc_next);
-    }
-
-    /* Initialize the runtime state for packet semantics */
-    if (need_slot_cancelled(pkt)) {
-        tcg_gen_movi_tl(hex_slot_cancelled, 0);
-    }
-    if (pkt->pkt_has_cof) {
-        if (pkt->pkt_has_multi_cof) {
-            tcg_gen_movi_tl(hex_branch_taken, 0);
-        }
-        if (need_next_PC(ctx)) {
-            tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], next_PC);
-        }
-    }
-    if (need_pred_written(pkt)) {
-        tcg_gen_movi_tl(hex_pred_written, 0);
-    }
-}
-
-bool is_gather_store_insn(DisasContext *ctx)
-{
-    Packet *pkt = ctx->pkt;
-    Insn *insn = ctx->insn;
-    if (GET_ATTRIB(insn->opcode, A_CVI_NEW) &&
-        insn->new_value_producer_slot == 1) {
-        /* Look for gather instruction */
-        for (int i = 0; i < pkt->num_insns; i++) {
-            Insn *in = &pkt->insn[i];
-            if (GET_ATTRIB(in->opcode, A_CVI_GATHER) && in->slot == 1) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 /*
- * The LOG_*_WRITE macros mark most of the writes in a packet
+ * The opcode_analyze functions mark most of the writes in a packet
  * However, there are some implicit writes marked as attributes
  * of the applicable instructions.
  */
@@ -369,18 +308,7 @@ static void mark_implicit_reg_write(DisasContext *ctx, int attrib, int rnum)
             is_predicated = true;
         }
 
-        if (is_predicated && !is_preloaded(ctx, rnum)) {
-            tcg_gen_mov_tl(hex_new_value[rnum], hex_gpr[rnum]);
-        }
-
-        ctx_log_reg_write(ctx, rnum);
-    }
-}
-
-static void mark_implicit_pred_write(DisasContext *ctx, int attrib, int pnum)
-{
-    if (GET_ATTRIB(ctx->insn->opcode, attrib)) {
-        ctx_log_pred_write(ctx, pnum);
+        ctx_log_reg_write(ctx, rnum, is_predicated);
     }
 }
 
@@ -397,12 +325,117 @@ static void mark_implicit_reg_writes(DisasContext *ctx)
     mark_implicit_reg_write(ctx, A_FPOP, HEX_REG_USR);
 }
 
+static void mark_implicit_pred_write(DisasContext *ctx, int attrib, int pnum)
+{
+    if (GET_ATTRIB(ctx->insn->opcode, attrib)) {
+        ctx_log_pred_write(ctx, pnum);
+    }
+}
+
 static void mark_implicit_pred_writes(DisasContext *ctx)
 {
     mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P0, 0);
     mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P1, 1);
     mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P2, 2);
     mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P3, 3);
+}
+
+static void analyze_packet(DisasContext *ctx)
+{
+    Packet *pkt = ctx->pkt;
+    for (int i = 0; i < pkt->num_insns; i++) {
+        Insn *insn = &pkt->insn[i];
+        ctx->insn = insn;
+        if (opcode_analyze[insn->opcode]) {
+            opcode_analyze[insn->opcode](ctx);
+        }
+        mark_implicit_reg_writes(ctx);
+        mark_implicit_pred_writes(ctx);
+    }
+}
+
+static void gen_start_packet(DisasContext *ctx)
+{
+    Packet *pkt = ctx->pkt;
+    target_ulong next_PC = ctx->base.pc_next + pkt->encod_pkt_size_in_bytes;
+    int i;
+
+    /* Clear out the disassembly context */
+    ctx->next_PC = next_PC;
+    ctx->reg_log_idx = 0;
+    bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
+    bitmap_zero(ctx->predicated_regs, TOTAL_PER_THREAD_REGS);
+    ctx->preg_log_idx = 0;
+    bitmap_zero(ctx->pregs_written, NUM_PREGS);
+    ctx->future_vregs_idx = 0;
+    ctx->tmp_vregs_idx = 0;
+    ctx->vreg_log_idx = 0;
+    bitmap_zero(ctx->vregs_updated_tmp, NUM_VREGS);
+    bitmap_zero(ctx->vregs_updated, NUM_VREGS);
+    bitmap_zero(ctx->vregs_select, NUM_VREGS);
+    ctx->qreg_log_idx = 0;
+    for (i = 0; i < STORES_MAX; i++) {
+        ctx->store_width[i] = 0;
+    }
+    ctx->s1_store_processed = false;
+    ctx->pre_commit = true;
+
+    analyze_packet(ctx);
+
+    /*
+     * pregs_written is used both in the analyze phase as well as the code
+     * gen phase, so clear it again.
+     */
+    bitmap_zero(ctx->pregs_written, NUM_PREGS);
+
+    if (HEX_DEBUG) {
+        /* Handy place to set a breakpoint before the packet executes */
+        gen_helper_debug_start_packet(cpu_env);
+        tcg_gen_movi_tl(hex_this_PC, ctx->base.pc_next);
+    }
+
+    /* Initialize the runtime state for packet semantics */
+    if (need_slot_cancelled(pkt)) {
+        tcg_gen_movi_tl(hex_slot_cancelled, 0);
+    }
+    if (pkt->pkt_has_cof) {
+        if (pkt->pkt_has_multi_cof) {
+            tcg_gen_movi_tl(hex_branch_taken, 0);
+        }
+        if (need_next_PC(ctx)) {
+            tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], next_PC);
+        }
+    }
+    if (need_pred_written(pkt)) {
+        tcg_gen_movi_tl(hex_pred_written, 0);
+    }
+
+    /* Preload the predicated registers into hex_new_value[i] */
+    if (!bitmap_empty(ctx->predicated_regs, TOTAL_PER_THREAD_REGS)) {
+        int i = find_first_bit(ctx->predicated_regs, TOTAL_PER_THREAD_REGS);
+        while (i < TOTAL_PER_THREAD_REGS) {
+            tcg_gen_mov_tl(hex_new_value[i], hex_gpr[i]);
+            i = find_next_bit(ctx->predicated_regs, TOTAL_PER_THREAD_REGS,
+                              i + 1);
+        }
+    }
+}
+
+bool is_gather_store_insn(DisasContext *ctx)
+{
+    Packet *pkt = ctx->pkt;
+    Insn *insn = ctx->insn;
+    if (GET_ATTRIB(insn->opcode, A_CVI_NEW) &&
+        insn->new_value_producer_slot == 1) {
+        /* Look for gather instruction */
+        for (int i = 0; i < pkt->num_insns; i++) {
+            Insn *in = &pkt->insn[i];
+            if (GET_ATTRIB(in->opcode, A_CVI_GATHER) && in->slot == 1) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 static void mark_store_width(DisasContext *ctx)
@@ -432,9 +465,7 @@ static void mark_store_width(DisasContext *ctx)
 static void gen_insn(DisasContext *ctx)
 {
     if (ctx->insn->generate) {
-        mark_implicit_reg_writes(ctx);
         ctx->insn->generate(ctx);
-        mark_implicit_pred_writes(ctx);
         mark_store_width(ctx);
     } else {
         gen_exception_end_tb(ctx, HEX_EXCP_INVALID_OPCODE);

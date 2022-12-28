@@ -76,6 +76,7 @@ static void gen_log_pred_write(DisasContext *ctx, int pnum, TCGv val)
                        hex_new_pred_value[pnum], base_val);
     }
     tcg_gen_ori_tl(hex_pred_written, hex_pred_written, 1 << pnum);
+    set_bit(pnum, ctx->pregs_written);
 
     tcg_temp_free(base_val);
 }
@@ -158,7 +159,6 @@ static void gen_write_p3_0(DisasContext *ctx, TCGv control_reg)
     for (int i = 0; i < NUM_PREGS; i++) {
         tcg_gen_extract_tl(hex_p8, control_reg, i * 8, 8);
         gen_log_pred_write(ctx, i, hex_p8);
-        ctx_log_pred_write(ctx, i);
     }
     tcg_temp_free(hex_p8);
 }
@@ -176,7 +176,6 @@ static void gen_write_ctrl_reg(DisasContext *ctx, int reg_num, TCGv val)
         gen_write_p3_0(ctx, val);
     } else {
         gen_log_reg_write(reg_num, val);
-        ctx_log_reg_write(ctx, reg_num);
         if (reg_num == HEX_REG_QEMU_PKT_CNT) {
             ctx->num_packets = 0;
         }
@@ -199,10 +198,8 @@ static void gen_write_ctrl_reg_pair(DisasContext *ctx, int reg_num,
         tcg_gen_extrh_i64_i32(val32, val);
         gen_log_reg_write(reg_num + 1, val32);
         tcg_temp_free(val32);
-        ctx_log_reg_write(ctx, reg_num + 1);
     } else {
         gen_log_reg_write_pair(reg_num, val);
-        ctx_log_reg_write_pair(ctx, reg_num);
         if (reg_num == HEX_REG_QEMU_PKT_CNT) {
             ctx->num_packets = 0;
             ctx->num_insns = 0;

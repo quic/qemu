@@ -45,14 +45,6 @@ def genptr_decl_pair_writable(f, tag, regtype, regid, regno):
     else:
         f.write("    const int %s = insn->regno[%d];\n" % (regN, regno))
     if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-        f.write("    if (!is_preloaded(ctx, %s)) {\n" % regN)
-        f.write("        tcg_gen_mov_tl(hex_new_value[%s], hex_gpr[%s]);\n" % \
-                             (regN, regN))
-        f.write("    }\n")
-        f.write("    if (!is_preloaded(ctx, %s + 1)) {\n" % regN)
-        f.write("        tcg_gen_mov_tl(hex_new_value[%s + 1], hex_gpr[%s + 1]);\n" % \
-                             (regN, regN))
-        f.write("    }\n")
         f.write("    tcg_gen_concat_i32_i64(%s%sV, hex_new_value[%s], " % \
                          (regtype, regid, regN))
         f.write("hex_new_value[%s + 1]);\n" % (regN))
@@ -70,11 +62,6 @@ def genptr_decl_writable(f, tag, regtype, regid, regno):
     else:
         f.write("    TCGv %s%sV = tcg_temp_local_new();\n" % \
             (regtype, regid))
-    if ('A_CONDEXEC' in hex_common.attribdict[tag]):
-        f.write("    if (!is_preloaded(ctx, %s)) {\n" % regN)
-        f.write("        tcg_gen_mov_tl(hex_new_value[%s], hex_gpr[%s]);\n" % \
-                             (regN, regN))
-        f.write("    }\n")
 
 def genptr_decl(f, tag, regtype, regid, regno):
     regN="%s%sN" % (regtype,regid)
@@ -615,8 +602,6 @@ def gen_helper_free_imm(f,immlett):
 def genptr_dst_write_pair(f, tag, regtype, regid):
     f.write("    gen_log_reg_write_pair(%s%sN, %s%sV);\n" % \
         (regtype, regid, regtype, regid))
-    f.write("    ctx_log_reg_write_pair(ctx, %s%sN);\n" % \
-        (regtype, regid))
 
 def genptr_dst_write(f, tag, regtype, regid):
     if (regtype == "R"):
@@ -625,16 +610,12 @@ def genptr_dst_write(f, tag, regtype, regid):
         elif (regid in {"d", "e", "x", "y"}):
             f.write("    gen_log_reg_write(%s%sN, %s%sV);\n" % \
                 (regtype, regid, regtype, regid))
-            f.write("    ctx_log_reg_write(ctx, %s%sN);\n" % \
-                (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "P"):
         if (regid in {"d", "e", "x"}):
             f.write("    gen_log_pred_write(ctx, %s%sN, %s%sV);\n" % \
                 (regtype, regid, regtype, regid))
-            f.write("    ctx_log_pred_write(ctx, %s%sN);\n" % \
-                (regtype, regid))
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "C"):
@@ -733,7 +714,6 @@ def genptr_dst_write_opn(f,regtype, regid, tag):
 ##           TCGv RtV = hex_gpr[insn->regno[2]];
 ##           <GEN>
 ##           gen_log_reg_write(RdN, RdV);
-##           ctx_log_reg_write(ctx, RdN);
 ##           tcg_temp_free(RdV);
 ##       }
 ##
