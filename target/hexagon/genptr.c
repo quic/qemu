@@ -878,12 +878,6 @@ static void gen_cond_return(DisasContext *ctx, TCGv_i64 dst, TCGv src,
 static void gen_cond_return_subinsn(DisasContext *ctx, TCGCond cond, TCGv pred)
 {
     TCGv_i64 RddV = tcg_temp_local_new_i64();
-    if (!is_preloaded(ctx, HEX_REG_FP)) {
-        tcg_gen_mov_tl(hex_new_value[HEX_REG_FP], hex_gpr[HEX_REG_FP]);
-    }
-    if (!is_preloaded(ctx, HEX_REG_LR)) {
-        tcg_gen_mov_tl(hex_new_value[HEX_REG_LR], hex_gpr[HEX_REG_LR]);
-    }
     tcg_gen_concat_i32_i64(RddV, hex_new_value[HEX_REG_FP],
                                  hex_new_value[HEX_REG_LR]);
     gen_cond_return(ctx, RddV, hex_gpr[HEX_REG_FP], pred, cond);
