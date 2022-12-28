@@ -1093,6 +1093,15 @@ static void gen_cond_return(DisasContext *ctx, TCGv_i64 dst, TCGv src,
     tcg_temp_free(r29);
 }
 
+/* sub-instruction version (no RddV, so handle it manually) */
+static void gen_cond_return_subinsn(DisasContext *ctx, TCGCond cond, TCGv pred)
+{
+    TCGv_i64 RddV = tcg_temp_local_new_i64();
+    gen_cond_return(ctx, RddV, hex_gpr[HEX_REG_FP], pred, cond);
+    gen_log_predicated_reg_write_pair(ctx, HEX_REG_FP, RddV, ctx->insn->slot);
+    tcg_temp_free_i64(RddV);
+}
+
 static void gen_endloop0(DisasContext *ctx)
 {
     TCGv lpcfg = tcg_temp_local_new();
