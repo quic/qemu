@@ -53,6 +53,8 @@ typedef struct DisasContext {
     DECLARE_BITMAP(vregs_updated_tmp, NUM_VREGS);
     DECLARE_BITMAP(vregs_updated, NUM_VREGS);
     DECLARE_BITMAP(vregs_select, NUM_VREGS);
+    DECLARE_BITMAP(predicated_future_vregs, NUM_VREGS);
+    DECLARE_BITMAP(predicated_tmp_vregs, NUM_VREGS);
     int qreg_log[NUM_QREGS];
     int qreg_log_idx;
     bool pre_commit;
@@ -96,39 +98,41 @@ static inline void ctx_log_reg_write_pair(DisasContext *ctx, int rnum,
     ctx_log_reg_write(ctx, rnum + 1, is_predicated);
 }
 
-static inline bool is_vreg_preloaded(DisasContext *ctx, int num)
-{
-    return test_bit(num, ctx->vregs_updated) ||
-           test_bit(num, ctx->vregs_updated_tmp);
-}
-
 intptr_t ctx_future_vreg_off(DisasContext *ctx, int regnum,
                              int num, bool alloc_ok);
 intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
                           int num, bool alloc_ok);
 
 static inline void ctx_log_vreg_write(DisasContext *ctx,
-                                      int rnum, VRegWriteType type)
+                                      int rnum, VRegWriteType type,
+                                      bool is_predicated)
 {
     if (type != EXT_TMP) {
         ctx->vreg_log[ctx->vreg_log_idx] = rnum;
         ctx->vreg_log_idx++;
 
         set_bit(rnum, ctx->vregs_updated);
+        if (is_predicated) {
+            set_bit(rnum, ctx->predicated_future_vregs);
+        }
     }
     if (type == EXT_NEW) {
         set_bit(rnum, ctx->vregs_select);
     }
     if (type == EXT_TMP) {
         set_bit(rnum, ctx->vregs_updated_tmp);
+        if (is_predicated) {
+            set_bit(rnum, ctx->predicated_tmp_vregs);
+        }
     }
 }
 
 static inline void ctx_log_vreg_write_pair(DisasContext *ctx,
-                                           int rnum, VRegWriteType type)
+                                           int rnum, VRegWriteType type,
+                                           bool is_predicated)
 {
-    ctx_log_vreg_write(ctx, rnum ^ 0, type);
-    ctx_log_vreg_write(ctx, rnum ^ 1, type);
+    ctx_log_vreg_write(ctx, rnum ^ 0, type, is_predicated);
+    ctx_log_vreg_write(ctx, rnum ^ 1, type, is_predicated);
 }
 
 static inline void ctx_log_qreg_write(DisasContext *ctx, int rnum)
