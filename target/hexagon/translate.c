@@ -35,9 +35,6 @@
 
 TCGv hex_gpr[TOTAL_PER_THREAD_REGS];
 TCGv hex_pred[NUM_PREGS];
-#ifndef CONFIG_USER_ONLY
-TCGv hex_next_PC;
-#endif
 TCGv hex_this_PC;
 TCGv hex_slot_cancelled;
 TCGv hex_branch_taken;
@@ -237,14 +234,10 @@ static void gen_end_tb(DisasContext *ctx)
         gen_cpu_limit(ctx, tcg_constant_tl(ctx->base.tb->pc));
         gen_goto_tb(ctx, 0, ctx->base.tb->pc);
         gen_set_label(skip);
-        gen_cpu_limit(ctx,
-            tcg_constant_tl(ctx->base.pc_next + pkt->encod_pkt_size_in_bytes));
-        gen_goto_tb(ctx, 1, ctx->base.pc_next + pkt->encod_pkt_size_in_bytes);
+        gen_cpu_limit(ctx, tcg_constant_tl(ctx->next_PC));
+        gen_goto_tb(ctx, 1, ctx->next_PC);
     } else {
-#ifndef CONFIG_USER_ONLY
-        gen_cpu_limit(ctx, hex_next_PC);
-        tcg_gen_mov_tl(hex_gpr[HEX_REG_PC], hex_next_PC);
-#endif
+        gen_cpu_limit(ctx, hex_gpr[HEX_REG_PC]);
         tcg_gen_lookup_and_goto_ptr();
     }
 
@@ -555,26 +548,6 @@ static bool pkt_may_do_io(Packet *pkt)
 }
 #endif
 
-#ifdef CONFIG_USER_ONLY
-static bool need_next_PC(DisasContext *ctx)
-{
-    Packet *pkt = ctx->pkt;
-
-    /* Check for conditional control flow or HW loop end */
-    for (int i = 0; i < pkt->num_insns; i++) {
-        uint16_t opcode = pkt->insn[i].opcode;
-        if (GET_ATTRIB(opcode, A_CONDEXEC) && GET_ATTRIB(opcode, A_COF)) {
-            return true;
-        }
-        if (GET_ATTRIB(opcode, A_HWLOOP0_END) ||
-            GET_ATTRIB(opcode, A_HWLOOP1_END)) {
-            return true;
-        }
-    }
-    return false;
-}
-#endif
-
 static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
 {
     Packet *pkt = ctx->pkt;
@@ -694,17 +667,12 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         if (pkt->pkt_has_multi_cof) {
             tcg_gen_movi_tl(hex_branch_taken, 0);
         }
-#ifdef CONFIG_USER_ONLY
-        if (need_next_PC(ctx)) {
-            tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], next_PC);
-        }
-#endif
     }
     ctx->pkt_ends_tb = pkt_ends_tb(pkt);
-#ifndef CONFIG_USER_ONLY
     if (ctx->pkt_ends_tb) {
-        tcg_gen_movi_tl(hex_next_PC, next_PC);
+        tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], next_PC);
     }
+#ifndef CONFIG_USER_ONLY
     if ((tb_cflags(ctx->base.tb) & CF_USE_ICOUNT) && pkt_may_do_io(pkt)) {
         gen_io_start();
     }
@@ -1359,8 +1327,7 @@ static void gen_commit_packet(DisasContext *ctx)
                          !pkt->pkt_has_dczeroa);
 
         /* Handy place to set a breakpoint at the end of execution */
-        gen_helper_debug_commit_end(cpu_env, has_st0, has_st1,
-                                    tcg_constant_tl(ctx->next_PC));
+        gen_helper_debug_commit_end(cpu_env, has_st0, has_st1);
     }
 
     if (pkt->vhist_insn != NULL) {
@@ -1672,10 +1639,6 @@ void hexagon_translate_init(void)
     }
     hex_pred_written = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, pred_written), "pred_written");
-    #ifndef CONFIG_USER_ONLY
-    hex_next_PC = tcg_global_mem_new(cpu_env,
-        offsetof(CPUHexagonState, next_PC), "next_PC");
-    #endif
     hex_this_PC = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, this_PC), "this_PC");
     hex_slot_cancelled = tcg_global_mem_new(cpu_env,

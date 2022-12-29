@@ -160,7 +160,7 @@
             if (env->tlb_lock_state == HEX_LOCK_OWNER) { \
                 env->gpr[HEX_REG_PC] = PC + 4; \
             } else if (env->tlb_lock_state == HEX_LOCK_WAITING) { \
-                env->next_PC = PC; \
+                env->gpr[HEX_REG_PC] = PC; \
             } else { \
                 g_assert_not_reached(); \
             } \
@@ -172,7 +172,7 @@
             if (env->k0_lock_state == HEX_LOCK_OWNER) { \
                 env->gpr[HEX_REG_PC] = PC + 4; \
             } else if (env->k0_lock_state == HEX_LOCK_WAITING) { \
-                env->next_PC = PC; \
+                env->gpr[HEX_REG_PC] = PC; \
             } else { \
                 g_assert_not_reached(); \
             } \

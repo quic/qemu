@@ -175,9 +175,6 @@ static inline void ctx_log_qreg_write(DisasContext *ctx,
 
 extern TCGv hex_gpr[TOTAL_PER_THREAD_REGS];
 extern TCGv hex_pred[NUM_PREGS];
-#ifndef CONFIG_USER_ONLY
-extern TCGv hex_next_PC;
-#endif
 extern TCGv hex_this_PC;
 extern TCGv hex_slot_cancelled;
 extern TCGv hex_branch_taken;

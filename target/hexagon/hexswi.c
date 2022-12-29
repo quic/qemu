@@ -1151,7 +1151,10 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 
     case HEX_EVENT_FPTRAP:
         hexagon_ssr_set_cause(env, env->cause_code);
-        ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR, env->next_PC);
+        /*
+         * FIXME - QTOOL-89796 Properly handle FP exception traps
+         *     ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR, env->next_PC);
+         */
         ARCH_SET_THREAD_REG(env, HEX_REG_PC,
             ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB) |
             (cs->exception_index << 2));

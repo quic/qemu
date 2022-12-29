@@ -471,9 +471,6 @@ typedef struct CPUArchState {
     target_ulong gpr[TOTAL_PER_THREAD_REGS];
     target_ulong pred[NUM_PREGS];
     target_ulong branch_taken;
-#ifndef CONFIG_USER_ONLY
-    target_ulong next_PC;
-#endif
     target_ulong cause_code;
 
     /* For comparing with LLDB on target - see adjust_stack_ptrs function */
