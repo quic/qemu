@@ -31,8 +31,6 @@
 #include "hmx/hmx.h"
 #include "arch_options_calc.h"
 #include "hmx/macros_auto.h"
-#include <stdio.h>
-#include <assert.h>
 
 #define THREAD2STRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
 #define INC_TSTAT(...)

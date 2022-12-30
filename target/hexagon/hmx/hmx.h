@@ -18,7 +18,6 @@
 #ifndef _HMX_ARCH_H
 #define _HMX_ARCH_H
 
-#include <stdint.h>
 #include "../max.h"
 #include "hmx/hmx_int_ops.h"
 #include "hmx/mpy_hmx_fp_custom.h"

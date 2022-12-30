@@ -17,10 +17,6 @@
 #ifndef _MPY_INT_OPS_H_
 #define _MPY_INT_OPS_H_
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-
 #include "hex_arch_types.h"
 #include "int16_emu.h"
 #include "mpy_hmx_support.h"

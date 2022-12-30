@@ -25,10 +25,6 @@ typedef void system_t;
 typedef struct SystemState system_t;
 #endif
 
-#include <stdio.h>
-#include <stddef.h>
-
-
 /********************************************************************/
 /*                Constants used for communication                  */
 /********************************************************************/

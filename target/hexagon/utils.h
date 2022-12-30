@@ -18,10 +18,6 @@
 
 //#define ARRAY_SIZE(X) (sizeof(X)/sizeof((X)[0]))
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-
 #define info(...) err_info((const char*)__FUNCTION__,__FILE__,__LINE__,__VA_ARGS__)
 #ifdef FIXME
 #define warn(...) err_warn((const char*)__FUNCTION__,__FILE__,__LINE__,__VA_ARGS__)

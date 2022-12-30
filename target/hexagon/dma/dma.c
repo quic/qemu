@@ -44,11 +44,6 @@
 #include "dma.h"
 #include "dma_adapter.h"
 
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 #ifndef ARCH_FUNCTION
 #define ARCH_FUNCTION(func_name) func_name
 #endif

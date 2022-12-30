@@ -36,8 +36,6 @@
 #include "macros.h"
 #include "hmx/macros_auto.h"
 
-#include <stdio.h>
-#include <assert.h>
 #include <math.h>
 #include "hmx_int_ops.h"
 

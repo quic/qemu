@@ -46,13 +46,8 @@
 //#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 //#define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
-#include "qemu/osdep.h"
 #include "cpu.h"
 #include "hex_arch_types.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <math.h>
 
 #define epsilon 1.0/pow(2,23)
 #define units 1.0*pow(2,23)

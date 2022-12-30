@@ -15,12 +15,6 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
-#include <stddef.h>
-#include <string.h>
-#include <assert.h>
-#include <stdbool.h>
-
 #if 0
 #include "arch/thread.h"
 #else
@@ -63,8 +57,6 @@ static inline desc_id_t desc_tracker_getid(processor_t *proc, int dmanum)
 #define desc_tracker_free_pool(tracker, ptr) object_pool_free(&tracker->pool, ptr)
 
 #else
-
-#include <stdlib.h>
 
 #define desc_tracker_calloc(tracker, size) calloc(1, size)
 #define desc_tracker_free_pool(tracker, ptr) free(ptr)

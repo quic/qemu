@@ -23,8 +23,6 @@
 #ifndef _DMA_DESCRIPTOR_H_
 #define _DMA_DESCRIPTOR_H_
 
-#include <inttypes.h>
-
 typedef uint32_t va_t;
 #define VA_FMT PRIx32
 typedef uint64_t pa_t;

@@ -68,6 +68,7 @@ int get_hmx_block_bit(struct ProcessorState *proc);
 
 int get_hmx_act_buf(struct ProcessorState *proc);
 
+/* Number of extension register/execution contexts available */
 int get_ext_contexts(processor_t *proc);
 
 /**********   End ofArch Options Calculated Functions   **********/

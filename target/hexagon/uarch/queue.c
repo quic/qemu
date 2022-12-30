@@ -15,12 +15,8 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
-//#include "thread_t.h"
+#include "qemu/osdep.h"
 #include "queue.h"
-
 
 #ifndef UARCH_FUNCTION
 #define UARCH_FUNCTION(func_name) func_name

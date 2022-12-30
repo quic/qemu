@@ -29,7 +29,6 @@
 #ifndef _DMA_H_
 #define _DMA_H_
 
-#include <stdint.h>
 #include "dma_descriptor.h"
 /* Function pointer type to let us know if an instruction finishes its job. */
 typedef struct dma_state dma_t;	// forward declaration

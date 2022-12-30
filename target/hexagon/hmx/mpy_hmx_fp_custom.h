@@ -20,9 +20,6 @@
 
 #include "int16_emu.h"
 #include "mpy_hmx_support.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
 
 #ifndef ARCH_FUNCTION_DECL
 #define ARCH_FUNCTION_DECL(rval, fname, ...) \

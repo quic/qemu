@@ -35,11 +35,6 @@
 #include "dma_adapter.h"
 #include "system.h"
 
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 #if 1
 //#define PRINTF(DMA, ...)  printf(__VA_ARGS__)
 #define PRINTF(...)

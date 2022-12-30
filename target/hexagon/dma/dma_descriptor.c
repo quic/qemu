@@ -32,11 +32,6 @@
 #include "dma.h"
 #include "dma_adapter.h"
 
-#include <assert.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-
 // DMA Descriptor getter/setter ------------------------------------------------
 uint32_t get_dma_desc_next(void *d)
 {

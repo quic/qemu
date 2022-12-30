@@ -24,8 +24,9 @@
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 
+#include "qemu/osdep.h"
 #include "mmvec_qfloat.h"
-
+#include <math.h>
 
 //Take one's complement of the mantissa for QF32
 size4s_t negate32(size4s_t in)

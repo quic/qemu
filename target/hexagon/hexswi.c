@@ -15,7 +15,6 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <math.h>
 #include "qemu/osdep.h"
 #include "cpu.h"
 #ifdef CONFIG_USER_ONLY

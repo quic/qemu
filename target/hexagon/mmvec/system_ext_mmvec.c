@@ -15,8 +15,6 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
-#include <string.h>
 #include "qemu/osdep.h"
 #include "exec/exec-all.h"
 #include "opcodes.h"

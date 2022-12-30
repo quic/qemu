@@ -22,8 +22,6 @@
 #ifndef ARCH_DMA_ADAPTER_H_
 #define ARCH_DMA_ADAPTER_H_
 
-#include <stdint.h>
-
 #include "dma/dma.h"
 #include "dma/desc_tracker.h"
 #include "external_api.h"
