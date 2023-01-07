@@ -134,4 +134,5 @@ test_hexagon_perf:
         --iters ${PERF_TEST_ITERS}
         --inspector perf-stat
   artifacts:
+    when: always
     paths: [ "perf-results.json" ]
