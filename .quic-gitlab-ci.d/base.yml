@@ -156,18 +156,30 @@ test_hexagon_perf:
         PERF_TEST_ITERS="3" ;
         if [[ "${CI_PIPELINE_SOURCE}" == "schedule" ]] || [[ "${CI_PIPELINE_SOURCE}" == "web" ]]; then
             PERF_TEST_CFG="${PWD}/qemu-hexagon-perf/default_test_config.py" ;
-            PERF_TEST_ITERS="8";
+            PERF_TEST_ITERS="6";
         fi
   script:
+    - echo test for perf - if this fails, check qqvp-dev kernel ver and perf host sysctl ;
+      perf stat /bin/true
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/qemu/qemu-hexagon-perf.git
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/qemu/qemu-hexagon-benchmarks.git
-    - ./qemu-hexagon-perf/customer_test_suite.py
-        --bench-dir ./qemu-hexagon-benchmarks/
-        --qemu-user-bin-dir ${PWD}/hexagon_build/ --qemu-bin-dir ${PWD}/hexagon_build/
-        --output-file ./perf-results.json
-        --test-cfg ${PERF_TEST_CFG}
-        --iters ${PERF_TEST_ITERS}
-        --inspector perf-stat
+    - res=0 ;
+      for mode in default mttcg; do
+          if test $mode = mttcg; then
+              sys_args='-accel tcg,thread=multi' ;
+          fi ;
+          ./qemu-hexagon-perf/customer_test_suite.py
+              --bench-dir ./qemu-hexagon-benchmarks/
+              --qemu-user-bin-dir ${PWD}/hexagon_build/
+              --qemu-bin-dir ${PWD}/hexagon_build/
+              --output-file ./perf-results-$mode.json
+              --test-cfg ${PERF_TEST_CFG}
+              --iters ${PERF_TEST_ITERS}
+              --inspector perf-stat
+              --sys-args="$sys_args" ;
+          res=$(( ${res} + ${?})) ;
+      done ;
+      exit ${res}
   artifacts:
     when: always
-    paths: [ "perf-results.json" ]
+    paths: [ "perf-results-default.json", "perf-results-mttcg.json" ]
