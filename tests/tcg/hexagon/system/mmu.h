@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -410,21 +410,21 @@ typedef volatile int mmu_variable;
 mmu_variable data = 0xdeadbeef;
 
 #define check(N, EXPECT) \
-    if (N != EXPECT) { \
+    if ((N) != (EXPECT)) { \
         printf("ERROR at %d: 0x%08lx != 0x%08lx\n", __LINE__, \
                (uint32_t)(N), (uint32_t)(EXPECT)); \
         err++; \
     }
 
 #define check64(N, EXPECT) \
-    if (N != EXPECT) { \
+    if ((N) != (EXPECT)) { \
         printf("ERROR at %d: 0x%016llx != 0x%016llx\n", __LINE__, \
                (N), (EXPECT)); \
         err++; \
     }
 
 #define check_not(N, EXPECT) \
-    if (N == EXPECT) { \
+    if ((N) == (EXPECT)) { \
         printf("ERROR: 0x%08x == 0x%08x\n", N, EXPECT); \
         err++; \
     }

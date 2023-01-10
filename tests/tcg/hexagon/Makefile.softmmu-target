@@ -1,5 +1,5 @@
 ##
-##  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -81,6 +81,7 @@ TESTS += \
 	thread_scheduling \
 	rev \
 	pmu \
+	start \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -161,6 +162,8 @@ multiple_writes: multiple_writes.o
 thread_scheduling: thread_scheduling.o
 rev: rev.o
 pmu: pmu.o
+start.o: start.c mmu.h
+start: start.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -289,6 +292,12 @@ run-hvx_64b: hvx_64b
 	$(call run-test, $<, $(QEMU) -M V68N_1024 -kernel $<, "$< on $(TARGET_NAME) V68")
 
 run-pmu: QEMU_EXTRA_OPTS=-smp cpus=8
+
+run-start: start
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< > $<.stdout)
+	$(call quiet-command, \
+		grep -q "PASS" $<.stdout, \
+		"GREP", "PASS");
 
 ifneq ($(HAVE_HEXAGON_LLDB_BIN),)
 

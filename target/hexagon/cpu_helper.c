@@ -409,10 +409,9 @@ void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
             continue;
         }
 
-        if (current_env->threadId == env->threadId)
-            run_on_cpu(cs, do_start_thread, RUN_ON_CPU_NULL);
-        else
+        if (current_env->threadId != env->threadId) {
             async_safe_run_on_cpu(cs, do_start_thread, RUN_ON_CPU_NULL);
+        }
     }
 }
 
