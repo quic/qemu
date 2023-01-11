@@ -68,6 +68,7 @@ HEX_TESTS += usr_ctrl_assign
 #HEX_TESTS += hmx
 HEX_TESTS += signal_context
 HEX_TESTS += reg_mut
+HEX_TESTS += invalid_slots
 
 TESTS += $(HEX_TESTS)
 
@@ -107,6 +108,7 @@ run-hvx_misc run-scatter_gather run-hvx_histogram run-hvx_sat:
 # We'll grep for the proper exception number in their stderr
 run-privcheck: privcheck
 run-guestcheck: guestcheck
+run-invalid_slots: invalid_slots
 
 run-privcheck:
 	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
@@ -125,6 +127,15 @@ run-guestcheck:
 	$(call quiet-command, \
 		grep -q "exception 0x1a" $<.stderr, \
 		"GREP", "exception 0x1a");
+
+run-invalid_slots:
+	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
+	if [ $$? -ne 1 ] ; then \
+		return 1; \
+	fi
+	$(call quiet-command, \
+		grep -q "exception 0x15" $<.stderr, \
+		"GREP", "exception 0x15");
 
 HEX_TESTS += test_abs
 HEX_TESTS += test_bitcnt
