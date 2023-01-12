@@ -111,7 +111,7 @@ run-guestcheck: guestcheck
 run-privcheck:
 	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
 	if [ $$? -ne 1 ] ; then \
-		return -1; \
+		return 1; \
 	fi
 	$(call quiet-command, \
 		grep -q "exception 0x1b" $<.stderr, \
@@ -120,7 +120,7 @@ run-privcheck:
 run-guestcheck:
 	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
 	if [ $$? -ne 1 ] ; then \
-		return -1; \
+		return 1; \
 	fi
 	$(call quiet-command, \
 		grep -q "exception 0x1a" $<.stderr, \
