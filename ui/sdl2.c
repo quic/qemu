@@ -735,8 +735,7 @@ void sdl2_poll_events(struct sdl2_console *scon)
     }
 }
 
-static void sdl_mouse_warp(DisplayChangeListener *dcl,
-                           int x, int y, int on)
+void sdl_mouse_warp(DisplayChangeListener *dcl, int x, int y, int on)
 {
     struct sdl2_console *scon = container_of(dcl, struct sdl2_console, dcl);
 
@@ -761,8 +760,7 @@ static void sdl_mouse_warp(DisplayChangeListener *dcl,
     guest_x = x, guest_y = y;
 }
 
-static void sdl_mouse_define(DisplayChangeListener *dcl,
-                             QEMUCursor *c)
+void sdl_mouse_define(DisplayChangeListener *dcl, QEMUCursor *c)
 {
 
     if (guest_sprite) {
@@ -826,9 +824,8 @@ static const DisplayChangeListenerOps dcl_gl_ops = {
     .dpy_gl_update           = sdl2_gl_scanout_flush,
 };
 
-static bool
-sdl2_gl_is_compatible_dcl(DisplayGLCtx *dgc,
-                          DisplayChangeListener *dcl)
+static bool sdl2_gl_is_compatible_dcl(DisplayGLCtx *dgc,
+                                      DisplayChangeListener *dcl)
 {
     return dcl->ops == &dcl_gl_ops;
 }
