@@ -26,12 +26,12 @@ import hex_common
 ## Helpers for gen_helper_function
 ##
 def gen_decl_ea(f):
-    f.write("    uint32_t EA;\n")
+    f.write("    uint32_t EA __attribute__((unused));\n")
 
 def gen_decl_insn(tag,f,slot):
     str = 'Insn tmp_insn = { .slot = %d };\n' % (slot);
     f.write(str);
-    f.write('Insn *insn = &tmp_insn;\n');
+    f.write('Insn *insn __attribute__((unused)) = &tmp_insn;\n');
 
 def gen_helper_return_type(f,regtype,regid,regno):
     if regno > 1 : f.write(", ")

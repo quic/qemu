@@ -942,17 +942,25 @@ static void gen_sreg_writes(DisasContext *ctx)
 {
     int i;
 
+    TCGv old_reg = tcg_temp_new();
     for (i = 0; i < ctx->sreg_log_idx; i++) {
         int reg_num = ctx->sreg_log[i];
 
         if (reg_num == HEX_SREG_SSR) {
+            tcg_gen_mov_tl(old_reg, hex_t_sreg[reg_num]);
+            tcg_gen_mov_tl(hex_t_sreg[reg_num], hex_t_sreg_new_value[reg_num]);
             gen_helper_modify_ssr(cpu_env, hex_t_sreg_new_value[reg_num],
-                                  hex_t_sreg[reg_num]);
+                                  old_reg);
             /* This can change processor state, so end the TB */
             ctx->base.is_jmp = DISAS_NORETURN;
         } else if ((reg_num == HEX_SREG_STID) ||
                    (reg_num == HEX_SREG_IMASK) ||
                    (reg_num == HEX_SREG_IPENDAD)) {
+            if (reg_num < HEX_SREG_GLB_START) {
+                tcg_gen_mov_tl(old_reg, hex_t_sreg[reg_num]);
+                tcg_gen_mov_tl(hex_t_sreg[reg_num],
+                               hex_t_sreg_new_value[reg_num]);
+            }
             /* This can change the interrupt state, so end the TB */
             gen_helper_pending_interrupt(cpu_env);
             ctx->base.is_jmp = DISAS_NORETURN;
@@ -970,6 +978,7 @@ static void gen_sreg_writes(DisasContext *ctx)
             }
         }
     }
+    tcg_temp_free(old_reg);
 }
 #endif
 

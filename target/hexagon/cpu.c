@@ -498,8 +498,8 @@ static void hexagon_cpu_reset_hold(Object *obj)
 #ifndef CONFIG_USER_ONLY
     clear_wait_mode(env);
 
-    env->tlb_lock_state = HEX_LOCK_UNLOCKED;
-    env->k0_lock_state = HEX_LOCK_UNLOCKED;
+    ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_UNLOCKED);
+    ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_UNLOCKED);
 
     hexagon_cpu_soft_reset(env);
 #endif
@@ -616,11 +616,11 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
         hmx_configure_state(env);
         hex_mmu_init(env);
-        env->g_sreg[HEX_SREG_EVB] = 0x0;
-        env->g_sreg[HEX_SREG_CFGBASE] =
-            HEXAGON_CFG_ADDR_BASE(cpu->config_table_addr);
-        env->g_sreg[HEX_SREG_REV] = cpu->rev_reg;
-        env->g_sreg[HEX_SREG_MODECTL] = 0x1;
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_EVB, 0x0);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_CFGBASE,
+                            HEXAGON_CFG_ADDR_BASE(cpu->config_table_addr));
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_REV, cpu->rev_reg);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_MODECTL, 0x1);
         env->g_pcycle_base = g_malloc0(sizeof(*env->g_pcycle_base));
         env->pmu.g_ctrs_off = g_malloc0(NUM_PMU_CTRS * sizeof(*env->pmu.g_ctrs_off));
         env->pmu.g_events = g_malloc0(NUM_PMU_CTRS * sizeof(*env->pmu.g_events));
@@ -631,18 +631,18 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
          * We can initialize these with invalid values so that if we
          * mistakenly generate reads, they will look obviously wrong.
          */
-        env->g_sreg[HEX_SREG_PCYCLELO] = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PCYCLEHI] = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_TIMERLO]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_TIMERHI]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PMUCNT0]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PMUCNT1]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PMUCNT2]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PMUCNT3]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PMUCNT4]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PMUCNT5]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PMUCNT6]  = INVALID_REG_VAL;
-        env->g_sreg[HEX_SREG_PMUCNT7]  = INVALID_REG_VAL;
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PCYCLELO, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PCYCLEHI, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERLO, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERHI, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT0, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT1, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT2, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT3, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT4, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT5, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT6, INVALID_REG_VAL);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT7, INVALID_REG_VAL);
     }
     else {
         CPUState *cpu0_s = NULL;
@@ -683,7 +683,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 #endif
     cpu_reset(cs);
 #if !defined(CONFIG_USER_ONLY)
-    env->g_sreg[HEX_SREG_EVB] = cpu->boot_evb;
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_EVB, cpu->boot_evb);
     env->gpr[HEX_REG_PC] = cpu->boot_addr;
 
     env->gpr[HEX_REG_UPCYCLELO] = INVALID_REG_VAL;

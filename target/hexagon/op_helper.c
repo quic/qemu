@@ -431,7 +431,8 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
 #ifdef CONFIG_USER_ONLY
     HEX_DEBUG_LOG("Next PC = " TARGET_FMT_lx "\n", env->gpr[HEX_REG_PC]);
 #else
-    HEX_DEBUG_LOG("tid[%d], Next PC = 0x%x\n", env->threadId, env->gpr[HEX_REG_PC]);
+    HEX_DEBUG_LOG("tid[%d], Next PC = 0x%x\n", env->threadId,
+                  env->gpr[HEX_REG_PC]);
 #endif
     HEX_DEBUG_LOG("Exec counters: pkt = " TARGET_FMT_lx
                   ", insn = " TARGET_FMT_lx
@@ -662,41 +663,33 @@ static void hexagon_clear_last_irq(CPUHexagonState *env, uint32_t offset)
 
 void HELPER(ciad)(CPUHexagonState *env, uint32_t mask)
 {
-    bool need_lock = !qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     uint32_t ipendad;
     uint32_t iad;
 
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     ipendad = READ_SREG(HEX_SREG_IPENDAD);
     iad = fGET_FIELD(ipendad, IPENDAD_IAD);
     fSET_FIELD(ipendad, IPENDAD_IAD, iad & ~(mask));
-    env->g_sreg[HEX_SREG_IPENDAD] = ipendad;
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
     hexagon_clear_last_irq(env, L2VIC_VID_0);
     hex_interrupt_update(env);
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void HELPER(siad)(CPUHexagonState *env, uint32_t mask)
 {
-    bool need_lock = !qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     uint32_t ipendad;
     uint32_t iad;
 
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     ipendad = READ_SREG(HEX_SREG_IPENDAD);
     iad = fGET_FIELD(ipendad, IPENDAD_IAD);
     fSET_FIELD(ipendad, IPENDAD_IAD, iad | mask);
-    env->g_sreg[HEX_SREG_IPENDAD] = ipendad;
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_IPENDAD, ipendad);
     hex_interrupt_update(env);
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void HELPER(wait)(CPUHexagonState *env, target_ulong PC)
@@ -1592,11 +1585,11 @@ static void log_sreg_write(CPUHexagonState *env, int rnum,
         if (rnum < HEX_SREG_GLB_START) {
             env->t_sreg_new_value[rnum] = val;
         } else {
-            env->g_sreg[rnum] = val;
+            ARCH_SET_SYSTEM_REG(env, rnum, val);
         }
+    } else {
+        HEX_DEBUG_LOG("\tsreg register not set\n");
     }
-    else
-      HEX_DEBUG_LOG("\tsreg register not set\n");
 }
 
 #endif
@@ -1630,7 +1623,7 @@ static void print_thread(const char *str, CPUState *cs)
     CPUHexagonState *thread = &cpu->env;
     bool is_stopped = cpu_is_stopped(cs);
     int exe_mode = get_exe_mode(thread);
-    hex_lock_state_t lock_state = thread->k0_lock_state;
+    hex_lock_state_t lock_state = ATOMIC_LOAD(thread->k0_lock_state);
     HEX_DEBUG_LOG("%s: threadId = %d: %s, exe_mode = %s, k0_lock_state = %s\n",
            str,
            thread->threadId,
@@ -1667,25 +1660,25 @@ static void hex_k0_lock(CPUHexagonState *env)
     HEX_DEBUG_LOG("Before hex_k0_lock: %d\n", env->threadId);
     print_thread_states("\tThread");
     const bool exception_context = qemu_mutex_iothread_locked();
-    if (!exception_context) qemu_mutex_lock_iothread();
+    LOCK_IOTHREAD(exception_context);
 
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     if (GET_SYSCFG_FIELD(SYSCFG_K0LOCK, syscfg)) {
-        if (env->k0_lock_state == HEX_LOCK_OWNER) {
+        if (ATOMIC_LOAD(env->k0_lock_state) == HEX_LOCK_OWNER) {
             HEX_DEBUG_LOG("Already the owner\n");
-            if (!exception_context) qemu_mutex_unlock_iothread();
+            UNLOCK_IOTHREAD(exception_context);
             return;
         }
         HEX_DEBUG_LOG("\tWaiting\n");
-        env->k0_lock_state = HEX_LOCK_WAITING;
+        ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_WAITING);
         cpu_exit(env_cpu(env));
     } else {
         HEX_DEBUG_LOG("\tAcquired\n");
-        env->k0_lock_state = HEX_LOCK_OWNER;
+        ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_OWNER);
         SET_SYSCFG_FIELD(env, SYSCFG_K0LOCK, 1);
     }
 
-    if (!exception_context) qemu_mutex_unlock_iothread();
+    UNLOCK_IOTHREAD(exception_context);
     HEX_DEBUG_LOG("After hex_k0_lock: %d\n", env->threadId);
     print_thread_states("\tThread");
 }
@@ -1699,7 +1692,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
     /* Nothing to do if the k0 isn't locked by this thread */
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     if ((GET_SYSCFG_FIELD(SYSCFG_K0LOCK, syscfg) == 0) ||
-         (env->k0_lock_state != HEX_LOCK_OWNER)) {
+        (ATOMIC_LOAD(env->k0_lock_state) != HEX_LOCK_OWNER)) {
         qemu_log_mask(LOG_GUEST_ERROR,
             "thread %d attempted to unlock k0 without having the lock\n",
             env->threadId);
@@ -1707,7 +1700,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
         return;
     }
 
-    env->k0_lock_state = HEX_LOCK_UNLOCKED;
+    ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_UNLOCKED);
     SET_SYSCFG_FIELD(env, SYSCFG_K0LOCK, 0);
 
     /* Look for a thread to unlock */
@@ -1731,7 +1724,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
          *         thread higher than this thread is ahead of unlock_thread
          *         thread must be lower then unlock thread
          */
-        if (thread->k0_lock_state == HEX_LOCK_WAITING) {
+        if (ATOMIC_LOAD(thread->k0_lock_state) == HEX_LOCK_WAITING) {
             if (!unlock_thread) {
                 unlock_thread = thread;
             } else if (unlock_thread->threadId > this_threadId) {
@@ -1753,7 +1746,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
         cs = env_cpu(unlock_thread);
 
         print_thread("\tWaiting thread found", cs);
-        unlock_thread->k0_lock_state = HEX_LOCK_OWNER;
+        ATOMIC_STORE(unlock_thread->k0_lock_state, HEX_LOCK_OWNER);
         SET_SYSCFG_FIELD(unlock_thread, SYSCFG_K0LOCK, 1);
         cpu_resume(cs);
     }
@@ -1945,7 +1938,8 @@ void cancel_slot(CPUHexagonState *env, uint32_t slot)
 #ifdef CONFIG_USER_ONLY
     HEX_DEBUG_LOG("Slot %d cancelled\n", slot);
 #else
-    HEX_DEBUG_LOG("op_helper: slot_cancelled = %d: pc = 0x%x\n", slot, env->gpr[HEX_REG_PC]);
+    HEX_DEBUG_LOG("op_helper: slot_cancelled = %d: pc = 0x%x\n", slot,
+                  env->gpr[HEX_REG_PC]);
 #endif
     env->slot_cancelled |= (1 << slot);
 }
@@ -1953,14 +1947,12 @@ void cancel_slot(CPUHexagonState *env, uint32_t slot)
 #ifndef CONFIG_USER_ONLY
 void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 {
-    bool need_lock = !qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     uint32_t modectl;
     uint32_t thread_enabled_mask;
     CPUState *cpu;
 
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
 
@@ -1979,24 +1971,20 @@ void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
         }
     }
     hex_interrupt_update(env);
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
 
 {
-    bool need_lock = qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     uint32_t modectl;
     uint32_t thread_enabled_mask;
     uint32_t intbitpos;
     uint32_t dest_reg;
     CPUState *cpu;
 
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
     /* src fields are in same position as modectl, but mean different things */
@@ -2010,9 +1998,7 @@ uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
             dest_reg |= ((imask >> intbitpos) & 0x1) << thread_env->threadId;
         }
     }
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
     return dest_reg;
 }
 
@@ -2027,34 +2013,8 @@ static uint32_t hexagon_find_last_irq(CPUHexagonState *env, uint32_t vid)
     return irq;
 }
 
-int hexagon_find_l2vic_pending(CPUHexagonState *env);
-int hexagon_find_l2vic_pending(CPUHexagonState *env)
-{
-    int intnum = 0;
-    CPUState *cs = env_cpu(env);
-    HexagonCPU *cpu = HEXAGON_CPU(cs);
-    const hwaddr pend = cpu->l2vic_base_addr + L2VIC_INT_STATUSn;
-    uint64_t pending[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
-    cpu_physical_memory_read(pend, pending, sizeof(pending));
-
-    const hwaddr stat = cpu->l2vic_base_addr + L2VIC_INT_STATUSn;
-    uint64_t status[L2VIC_INTERRUPT_MAX / (sizeof(uint64_t) * CHAR_BIT)];
-    cpu_physical_memory_read(stat, status, sizeof(status));
-
-    intnum = find_next_bit((const unsigned long *)pending, L2VIC_INTERRUPT_MAX,
-                           intnum);
-    while (intnum < L2VIC_INTERRUPT_MAX) {
-        /* Pending is set but status isn't the interrupt is pending */
-        if (!test_bit(intnum, (const unsigned long *)status)) {
-            break;
-        }
-        intnum = find_next_bit((const unsigned long *)pending,
-                               L2VIC_INTERRUPT_MAX, intnum + 1);
-    }
-    return (intnum < L2VIC_INTERRUPT_MAX) ? intnum : L2VIC_NO_PENDING;
-}
-
-static void hexagon_read_timer(CPUHexagonState *env, uint32_t *low, uint32_t *high)
+static void hexagon_read_timer(CPUHexagonState *env, uint32_t *low,
+                               uint32_t *high)
 {
     CPUState *cs = env_cpu(env);
     HexagonCPU *cpu = HEXAGON_CPU(cs);
@@ -2118,8 +2078,11 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
 {
     if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
-        uint32_t vid = hexagon_find_last_irq(env, reg);
+        const bool exception_context = qemu_mutex_iothread_locked();
+        LOCK_IOTHREAD(exception_context);
+        const uint32_t vid = hexagon_find_last_irq(env, reg);
         ARCH_SET_SYSTEM_REG(env, reg, vid);
+        UNLOCK_IOTHREAD(exception_context);
     } else if ((reg == HEX_SREG_TIMERLO) || (reg == HEX_SREG_TIMERHI)) {
         uint32_t low = 0;
         uint32_t high = 0;
@@ -2187,9 +2150,15 @@ static void check_all_pmu_events(CPUHexagonState *env)
 
 static void modify_syscfg(CPUHexagonState *env, uint32_t val)
 {
+    /* get old value and then store new value */
+    uint32_t old;
+    ATOMIC_EXCHANGE(ARCH_GET_SYSTEM_REG_ADDR(env, HEX_SREG_SYSCFG), val, old);
+
     /* Check for change in MMU enable */
-    target_ulong old_mmu_enable =
-        GET_SYSCFG_FIELD(SYSCFG_MMUEN, env->g_sreg[HEX_SREG_SYSCFG]);
+    target_ulong old_mmu_enable = GET_SYSCFG_FIELD(SYSCFG_MMUEN, old);
+    uint8_t old_en = GET_SYSCFG_FIELD(SYSCFG_PCYCLEEN, old);
+    uint8_t old_gie = GET_SYSCFG_FIELD(SYSCFG_GIE, old);
+    uint8_t old_pm = GET_SYSCFG_FIELD(SYSCFG_PM, old);
     target_ulong new_mmu_enable =
         GET_SYSCFG_FIELD(SYSCFG_MMUEN, val);
     if (new_mmu_enable && !old_mmu_enable) {
@@ -2199,8 +2168,6 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
     }
 
     /* Changing pcycle enable from 0 to 1 resets the counters */
-    uint32_t old = env->g_sreg[HEX_SREG_SYSCFG];
-    uint8_t old_en = GET_SYSCFG_FIELD(SYSCFG_PCYCLEEN, old);
     uint8_t new_en = GET_SYSCFG_FIELD(SYSCFG_PCYCLEEN, val);
     CPUState *cs;
     if (old_en == 0 && new_en == 1) {
@@ -2212,7 +2179,6 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
     }
 
     /* See if global interrupts are turned on */
-    uint8_t old_gie = GET_SYSCFG_FIELD(SYSCFG_GIE, old);
     uint8_t new_gie = GET_SYSCFG_FIELD(SYSCFG_GIE, val);
     if (!old_gie && new_gie) {
         qemu_log_mask(CPU_LOG_INT, "%s: global interrupts enabled\n", __func__);
@@ -2226,7 +2192,6 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
         }
     }
 
-    uint8_t old_pm = GET_SYSCFG_FIELD(SYSCFG_PM, old);
     uint8_t new_pm = GET_SYSCFG_FIELD(SYSCFG_PM, val);
     if (!old_pm && new_pm) {
         check_all_pmu_events(env);
@@ -2266,7 +2231,8 @@ static bool handle_pmu_sreg_write(CPUHexagonState *env, uint32_t reg,
         int old_thmask = GET_FIELD(PMUCFG_THMASK, old);
         int new_thmask = GET_FIELD(PMUCFG_THMASK, val);
         if (old_thmask != new_thmask && new_thmask) {
-            qemu_log_mask(LOG_UNIMP, "Only PMUCFG thread mask 0 is implemented.");
+            qemu_log_mask(LOG_UNIMP,
+                          "Only PMUCFG thread mask 0 is implemented.");
         }
         pmu_lock();
         for (int i = 0; i < NUM_PMU_CTRS; i++) {
@@ -2300,12 +2266,14 @@ void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
 
 {
     if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
+        const bool exception_context = qemu_mutex_iothread_locked();
+        LOCK_IOTHREAD(exception_context);
         hexagon_set_vid(env, (reg == HEX_SREG_VID) ? L2VIC_VID_0 : L2VIC_VID_1,
-                         val);
+                        val);
         ARCH_SET_SYSTEM_REG(env, reg, val);
+        UNLOCK_IOTHREAD(exception_context);
     } else if (reg == HEX_SREG_SYSCFG) {
         modify_syscfg(env, val);
-        ARCH_SET_SYSTEM_REG(env, reg, val);
     } else if (reg == HEX_SREG_IMASK) {
         val = GET_FIELD(IMASK_MASK, val);
         ARCH_SET_SYSTEM_REG(env, reg, val);
@@ -2314,7 +2282,14 @@ void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
     } else if (reg == HEX_SREG_PCYCLEHI) {
         hexagon_set_sys_pcycle_count_high(env, val);
     } else if (!handle_pmu_sreg_write(env, reg, val)) {
-        ARCH_SET_SYSTEM_REG(env, reg, val);
+        if (reg >= HEX_SREG_GLB_START) {
+            const bool exception_context = qemu_mutex_iothread_locked();
+            LOCK_IOTHREAD(exception_context);
+            ARCH_SET_SYSTEM_REG(env, reg, val);
+            UNLOCK_IOTHREAD(exception_context);
+        } else {
+            ARCH_SET_SYSTEM_REG(env, reg, val);
+        }
     }
 }
 
@@ -2335,19 +2310,18 @@ uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 {
     if (reg == HEX_GREG_G0 || reg == HEX_GREG_G2) {
-        return   (uint64_t)(env->greg[reg]) |
-               (((uint64_t)(env->greg[reg+1])) << 32);
+        return (uint64_t)(env->greg[reg]) |
+               (((uint64_t)(env->greg[reg + 1])) << 32);
     }
     switch (reg) {
-        case HEX_GREG_GPCYCLELO:
-        {
-            target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-            int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
-            return ssr_ce ? hexagon_get_sys_pcycle_count(env) : 0;
-        }
-        default:
-            return (uint64_t)hexagon_greg_read(env, reg) |
-                   ((uint64_t)(hexagon_greg_read(env, reg + 1)) << 32);
+    case HEX_GREG_GPCYCLELO: {
+        target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+        int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
+        return ssr_ce ? hexagon_get_sys_pcycle_count(env) : 0;
+    }
+    default:
+        return (uint64_t)hexagon_greg_read(env, reg) |
+               ((uint64_t)(hexagon_greg_read(env, reg + 1)) << 32);
     }
 }
 
@@ -2371,12 +2345,10 @@ uint32_t HELPER(getimask)(CPUHexagonState *env, uint32_t tid)
 
 void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
 {
-    bool need_lock = !qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     CPUState *cs;
 
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     thread &= env->processor_ptr->thread_system_mask;
     CPU_FOREACH(cs) {
         HexagonCPU *found_cpu = HEXAGON_CPU(cs);
@@ -2386,23 +2358,20 @@ void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
             qemu_log_mask(CPU_LOG_INT, "%s: tid %d prio = 0x%x\n",
                           __func__, found_env->threadId, prio);
             HELPER(resched)(env);
-            if (need_lock) {
-                qemu_mutex_unlock_iothread();
-            }
+            UNLOCK_IOTHREAD(exception_context);
             return;
         }
     }
+    UNLOCK_IOTHREAD(exception_context); /* should never execute */
     g_assert_not_reached();
 }
 
 void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
 {
-    bool need_lock = !qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     CPUState *cs;
 
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     pred &= env->processor_ptr->thread_system_mask;
     CPU_FOREACH(cs) {
         HexagonCPU *found_cpu = HEXAGON_CPU(cs);
@@ -2413,16 +2382,12 @@ void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
             qemu_log_mask(CPU_LOG_INT, "%s: tid %d imask 0x%x\n",
                           __func__, found_env->threadId, imask);
             hex_interrupt_update(env);
-            if (need_lock) {
-                qemu_mutex_unlock_iothread();
-            }
+            UNLOCK_IOTHREAD(exception_context);
             return;
         }
     }
     hex_interrupt_update(env);
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void HELPER(start)(CPUHexagonState *env, uint32_t imask)
@@ -2459,7 +2424,7 @@ typedef struct {
 
 void HELPER(resched)(CPUHexagonState *env)
 {
-    bool need_lock = !qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     uint32_t schedcfg;
     uint32_t schedcfg_en;
     int int_number;
@@ -2468,19 +2433,14 @@ void HELPER(resched)(CPUHexagonState *env)
     uint32_t bestwait_reg;
     uint32_t best_prio;
 
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
-
+    LOCK_IOTHREAD(exception_context);
     qemu_log_mask(CPU_LOG_INT, "%s: check resched\n", __func__);
     schedcfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SCHEDCFG);
     schedcfg_en = GET_FIELD(SCHEDCFG_EN, schedcfg);
     int_number = GET_FIELD(SCHEDCFG_INTNO, schedcfg);
 
     if (!schedcfg_en) {
-        if (need_lock) {
-            qemu_mutex_unlock_iothread();
-        }
+        UNLOCK_IOTHREAD(exception_context);
         return;
     }
 
@@ -2507,13 +2467,13 @@ void HELPER(resched)(CPUHexagonState *env)
      * interrupt on the lowest priority thread.
      */
     if (lowest_th_prio > best_prio) {
-        qemu_log_mask(CPU_LOG_INT, "%s: raising resched int %d, cur PC 0x%08x\n", __func__, int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
+        qemu_log_mask(CPU_LOG_INT,
+                      "%s: raising resched int %d, cur PC 0x%08x\n", __func__,
+                      int_number, ARCH_GET_THREAD_REG(env, HEX_REG_PC));
         SET_SYSTEM_FIELD(env, HEX_SREG_BESTWAIT, BESTWAIT_PRIO, 0x1ff);
         hex_raise_interrupts(env, 1 << int_number, CPU_INTERRUPT_SWI);
     }
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
@@ -2546,9 +2506,10 @@ static uint32_t get_ready_count(CPUHexagonState *env)
     CPU_FOREACH(cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *thread_env = &cpu->env;
-        const bool running = (get_exe_mode(thread_env) == HEX_EXE_MODE_RUN)
-                          && (env->k0_lock_state != HEX_LOCK_WAITING)
-                          && (env->tlb_lock_state != HEX_LOCK_WAITING);
+        const bool running =
+            (get_exe_mode(thread_env) == HEX_EXE_MODE_RUN) &&
+            (ATOMIC_LOAD(env->k0_lock_state) != HEX_LOCK_WAITING) &&
+            (ATOMIC_LOAD(env->tlb_lock_state) != HEX_LOCK_WAITING);
         if (running) {
             ready_count += 1;
         }
@@ -2611,26 +2572,13 @@ void HELPER(commit_hmx)(CPUHexagonState *env)
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();
 #define thread env
-#define THREAD2STRUCT ((hmx_state_t*)env->processor_ptr->shared_extptr)
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-
-/* Not supported and rejected by clang-11, possibly available in newer
- * clang releases:
- */
-#if !defined(__clang_major__) || (defined(__clang_major__) && __clang_major__ < 11)
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#endif
-
+#define THREAD2STRUCT ((hmx_state_t *)env->processor_ptr->shared_extptr)
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();
-
 #define BOGUS_HELPER(tag) \
     printf("ERROR: bogus helper: " #tag "\n")
 
 #include "mmvec/kvx_ieee.h"
 #include "helper_funcs_generated.c.inc"
 
-#pragma GCC diagnostic pop
 

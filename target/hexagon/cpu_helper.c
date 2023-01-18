@@ -50,15 +50,14 @@ unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     uint8_t mmuen = GET_SYSCFG_FIELD(SYSCFG_MMUEN, syscfg);
     if (!mmuen) {
-      return MMU_KERNEL_IDX;
+        return MMU_KERNEL_IDX;
     }
 
     int cpu_mode = get_cpu_mode(env);
     if (cpu_mode == HEX_CPU_MODE_MONITOR) {
-      return MMU_KERNEL_IDX;
-    }
-    else if (cpu_mode == HEX_CPU_MODE_GUEST) {
-      return MMU_GUEST_IDX;
+        return MMU_KERNEL_IDX;
+    } else if (cpu_mode == HEX_CPU_MODE_GUEST) {
+        return MMU_GUEST_IDX;
     }
 #endif
 
@@ -76,42 +75,43 @@ static inline QEMU_ALWAYS_INLINE bool hexagon_read_memory_small(
  {
     /* handle small sizes */
     switch (byte_count) {
-        case 1:
-            *dstbuf = cpu_ldub_mmuidx_ra(env, addr, mmu_idx, GETPC());
+    case 1:
+        *dstbuf = cpu_ldub_mmuidx_ra(env, addr, mmu_idx, GETPC());
+        return true;
+
+    case 2:
+        if (QEMU_IS_ALIGNED(addr, 2)) {
+            *(unsigned short *)dstbuf =
+                cpu_lduw_mmuidx_ra(env, addr, mmu_idx, GETPC());
             return true;
+        }
+        break;
 
-        case 2:
-            if (QEMU_IS_ALIGNED(addr, 2)) {
-                *(unsigned short *)dstbuf = cpu_lduw_mmuidx_ra(env,
-                    addr, mmu_idx, GETPC());
-                return true;
-            }
-            break;
+    case 4:
+        if (QEMU_IS_ALIGNED(addr, 4)) {
+            *(uint32_t *)dstbuf =
+                cpu_ldl_mmuidx_ra(env, addr, mmu_idx, GETPC());
+            return true;
+        }
+        break;
 
-        case 4:
-            if (QEMU_IS_ALIGNED(addr, 4)) {
-                *(uint32_t *)dstbuf = cpu_ldl_mmuidx_ra(env,
-                    addr, mmu_idx, GETPC());
-                return true;
-            }
-            break;
+    case 8:
+        if (QEMU_IS_ALIGNED(addr, 8)) {
+            *(uint64_t *)dstbuf =
+                cpu_ldq_mmuidx_ra(env, addr, mmu_idx, GETPC());
+            return true;
+        }
+        break;
 
-        case 8:
-            if (QEMU_IS_ALIGNED(addr, 8)) {
-                *(uint64_t *)dstbuf = cpu_ldq_mmuidx_ra(env,
-                    addr, mmu_idx, GETPC());
-                return true;
-            }
-            break;
-
-        default:
-            /* larger request, handle elsewhere */
-            return false;
+    default:
+        /* larger request, handle elsewhere */
+        return false;
     }
 
     /* not aligned, copy bytes */
-    for (int i = 0 ; i < byte_count ; ++i)
+    for (int i = 0; i < byte_count; ++i) {
         *dstbuf++ = cpu_ldub_mmuidx_ra(env, addr++, mmu_idx, GETPC());
+    }
     return true;
 }
 
@@ -162,7 +162,7 @@ void hexagon_read_memory(CPUHexagonState *env, target_ulong vaddr,
         return;
 
     CPUState *cs = env_cpu(env);
-    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
+    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __func__, size);
 }
 
 int hexagon_read_memory_locked(CPUHexagonState *env, target_ulong vaddr,
@@ -181,7 +181,7 @@ int hexagon_read_memory_locked(CPUHexagonState *env, target_ulong vaddr,
     }
 
     CPUState *cs = env_cpu(env);
-    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
+    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __func__, size);
 
     return ret; /* cant actually execute because of abort */
 }
@@ -193,42 +193,40 @@ static inline QEMU_ALWAYS_INLINE bool hexagon_write_memory_small(
 {
     /* handle small sizes */
     switch (byte_count) {
-        case 1:
-            cpu_stb_mmuidx_ra(env, addr, *srcbuf, mmu_idx, GETPC());
+    case 1:
+        cpu_stb_mmuidx_ra(env, addr, *srcbuf, mmu_idx, GETPC());
+        return true;
+
+    case 2:
+        if (QEMU_IS_ALIGNED(addr, 2)) {
+            cpu_stw_mmuidx_ra(env, addr, *(uint16_t *)srcbuf, mmu_idx, GETPC());
             return true;
+        }
+        break;
 
-         case 2:
-            if (QEMU_IS_ALIGNED(addr, 2)) {
-                cpu_stw_mmuidx_ra(env,
-                    addr, *(uint16_t *)srcbuf, mmu_idx, GETPC());
-                return true;
-            }
-            break;
+    case 4:
+        if (QEMU_IS_ALIGNED(addr, 4)) {
+            cpu_stl_mmuidx_ra(env, addr, *(uint32_t *)srcbuf, mmu_idx, GETPC());
+            return true;
+        }
+        break;
 
-         case 4:
-            if (QEMU_IS_ALIGNED(addr, 4)) {
-                cpu_stl_mmuidx_ra(env,
-                    addr, *(uint32_t *)srcbuf, mmu_idx, GETPC());
-                return true;
-            }
-            break;
+    case 8:
+        if (QEMU_IS_ALIGNED(addr, 8)) {
+            cpu_stq_mmuidx_ra(env, addr, *(uint64_t *)srcbuf, mmu_idx, GETPC());
+            return true;
+        }
+        break;
 
-         case 8:
-            if (QEMU_IS_ALIGNED(addr, 8)) {
-                cpu_stq_mmuidx_ra(env,
-                    addr, *(uint64_t *)srcbuf, mmu_idx, GETPC());
-                return true;
-            }
-            break;
-
-         default:
-            /* larger request, handle elsewhere */
-            return false;
+    default:
+        /* larger request, handle elsewhere */
+        return false;
     }
 
     /* not aligned, copy bytes */
-    for (int i = 0 ; i < byte_count ; ++i)
-         cpu_stb_mmuidx_ra(env, addr++, *srcbuf++, mmu_idx, GETPC());
+    for (int i = 0; i < byte_count; ++i) {
+        cpu_stb_mmuidx_ra(env, addr++, *srcbuf++, mmu_idx, GETPC());
+    }
 
     return true;
 }
@@ -280,7 +278,7 @@ void hexagon_write_memory(CPUHexagonState *env, target_ulong vaddr,
         return;
 
     CPUState *cs = env_cpu(env);
-    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __FUNCTION__, size);
+    cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __func__, size);
 }
 
 void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
@@ -290,17 +288,56 @@ void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
     unsigned int warm;
 
     for (uint32_t i = 0; i < length; i += 0x1000) {
-         DEBUG_MEMORY_READ(start_addr + i, 1, &warm);
+        DEBUG_MEMORY_READ(start_addr + i, 1, &warm);
     }
+}
+
+static void set_enable_mask(CPUHexagonState *env)
+
+{
+    const bool exception_context = qemu_mutex_iothread_locked();
+    LOCK_IOTHREAD(exception_context);
+
+    const uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
+    thread_enabled_mask |= 0x1 << env->threadId;
+    SET_SYSTEM_FIELD(env, HEX_SREG_MODECTL, MODECTL_E, thread_enabled_mask);
+    UNLOCK_IOTHREAD(exception_context);
+}
+
+static uint32_t clear_enable_mask(CPUHexagonState *env)
+
+{
+    const bool exception_context = qemu_mutex_iothread_locked();
+    LOCK_IOTHREAD(exception_context);
+
+    const uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
+    thread_enabled_mask &= ~(0x1 << env->threadId);
+    SET_SYSTEM_FIELD(env, HEX_SREG_MODECTL, MODECTL_E, thread_enabled_mask);
+    UNLOCK_IOTHREAD(exception_context);
+    return thread_enabled_mask;
+}
+
+static void set_wait_mode(CPUHexagonState *env)
+
+{
+    const bool exception_context = qemu_mutex_iothread_locked();
+    LOCK_IOTHREAD(exception_context);
+
+    const uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    uint32_t thread_wait_mask = GET_FIELD(MODECTL_W, modectl);
+    thread_wait_mask |= 0x1 << env->threadId;
+    SET_SYSTEM_FIELD(env, HEX_SREG_MODECTL, MODECTL_W, thread_wait_mask);
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void hexagon_wait_thread(CPUHexagonState *env, target_ulong PC)
 
 {
-    qemu_mutex_lock_iothread();
     if (qemu_loglevel_mask(LOG_GUEST_ERROR) &&
-            (env->k0_lock_state != HEX_LOCK_UNLOCKED ||
-             env->tlb_lock_state != HEX_LOCK_UNLOCKED)) {
+        (ATOMIC_LOAD(env->k0_lock_state) != HEX_LOCK_UNLOCKED ||
+         ATOMIC_LOAD(env->tlb_lock_state) != HEX_LOCK_UNLOCKED)) {
         qemu_log("WARNING: executing wait() with acquired lock"
                  "may lead to deadlock\n");
     }
@@ -313,17 +350,15 @@ void hexagon_wait_thread(CPUHexagonState *env, target_ulong PC)
      */
     if ((cs->exception_index != HEX_EVENT_NONE) ||
         (cpu_has_work(cs))) {
-        qemu_mutex_unlock_iothread();
         return;
     }
     set_wait_mode(env);
     env->wait_next_pc = PC + 4;
 
-    qemu_mutex_unlock_iothread();
     cpu_stop_current();
 }
 
-void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
+static void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
 
 {
     CPUState *cs = env_cpu(env);
@@ -343,14 +378,12 @@ void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
 
 void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
 {
-    bool need_lock = !qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     CPUState *cs;
     CPUHexagonState *env;
     bool found;
 
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     for (int htid = 0 ; htid < THREADS_MAX ; ++htid) {
         if (!(mask & (0x1 << htid))) {
             continue;
@@ -371,14 +404,12 @@ void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
         }
 
         if (get_exe_mode(env) != HEX_EXE_MODE_WAIT) {
-            // this thread not currently in wait mode
+            /* this thread not currently in wait mode */
             continue;
         }
         hexagon_resume_thread(env, HEX_EVENT_NONE);
     }
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 static void do_start_thread(CPUState *cs, run_on_cpu_data tbd)
@@ -388,17 +419,13 @@ static void do_start_thread(CPUState *cs, run_on_cpu_data tbd)
 
     hexagon_cpu_soft_reset(env);
 
-    uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
-    thread_enabled_mask |= 0x1 << env->threadId;
-    SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_E,thread_enabled_mask);
+    set_enable_mask(env);
 
     cs->halted = 0;
     cs->exception_index = HEX_EVENT_NONE;
     cpu_resume(cs);
 }
 
-//extern dma_t *dma_adapter_init(processor_t *proc, int dmanum);
 void hexagon_start_threads(CPUHexagonState *current_env, uint32_t mask)
 {
     CPUState *cs;
@@ -437,14 +464,11 @@ void hexagon_stop_thread(CPUHexagonState *env)
 {
     HexagonCPU *cpu = env_archcpu(env);
     #if HEX_DEBUG
-    HEX_DEBUG_LOG("%s: htid %d, cpu %p\n",
-        __FUNCTION__, ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID), cpu);
-    #endif
+    HEX_DEBUG_LOG("%s: htid %d, cpu %p\n", __func__,
+                  ARCH_GET_SYSTEM_REG(env, HEX_SREG_HTID), cpu);
+#endif
 
-    uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-    uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
-    thread_enabled_mask &= ~(0x1 << env->threadId);
-    SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_E,thread_enabled_mask);
+    uint32_t thread_enabled_mask = clear_enable_mask(env);
     cpu_stop_current();
     if (!thread_enabled_mask) {
         if (!cpu->vp_mode) {
@@ -454,8 +478,7 @@ void hexagon_stop_thread(CPUHexagonState *env)
     }
 }
 
-int sys_in_monitor_mode_ssr(uint32_t ssr);
-int sys_in_monitor_mode_ssr(uint32_t ssr)
+static int sys_in_monitor_mode_ssr(uint32_t ssr)
 {
     if ((GET_SSR_FIELD(SSR_EX, ssr) != 0) ||
        ((GET_SSR_FIELD(SSR_EX, ssr) == 0) && (GET_SSR_FIELD(SSR_UM, ssr) == 0)))
@@ -469,8 +492,7 @@ int sys_in_monitor_mode(CPUHexagonState *env)
     return sys_in_monitor_mode_ssr(ssr);
 }
 
-int sys_in_guest_mode_ssr(uint32_t ssr);
-int sys_in_guest_mode_ssr(uint32_t ssr)
+static int sys_in_guest_mode_ssr(uint32_t ssr)
 {
     if ((GET_SSR_FIELD(SSR_EX, ssr) == 0) &&
         (GET_SSR_FIELD(SSR_UM, ssr) != 0) &&
@@ -485,8 +507,7 @@ int sys_in_guest_mode(CPUHexagonState *env)
     return sys_in_guest_mode_ssr(ssr);
 }
 
-int sys_in_user_mode_ssr(uint32_t ssr);
-int sys_in_user_mode_ssr(uint32_t ssr)
+static int sys_in_user_mode_ssr(uint32_t ssr)
 {
     if ((GET_SSR_FIELD(SSR_EX, ssr) == 0) &&
         (GET_SSR_FIELD(SSR_UM, ssr) != 0) &&
@@ -504,43 +525,42 @@ int sys_in_user_mode(CPUHexagonState *env)
 int get_cpu_mode(CPUHexagonState *env)
 
 {
-  // from table 4-2
-  uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
 
-  if (sys_in_monitor_mode_ssr(ssr)) {
+    if (sys_in_monitor_mode_ssr(ssr)) {
+        return HEX_CPU_MODE_MONITOR;
+    } else if (sys_in_guest_mode_ssr(ssr)) {
+        return HEX_CPU_MODE_GUEST;
+    } else if (sys_in_user_mode_ssr(ssr)) {
+        return HEX_CPU_MODE_USER;
+    }
     return HEX_CPU_MODE_MONITOR;
-  } else if (sys_in_guest_mode_ssr(ssr)) {
-    return HEX_CPU_MODE_GUEST;
-  } else if (sys_in_user_mode_ssr(ssr)) {
-    return HEX_CPU_MODE_USER;
-  }
-  return HEX_CPU_MODE_MONITOR;
 }
 
 const char *get_sys_ssr_str(uint32_t ssr)
 
 {
-  if (sys_in_monitor_mode_ssr(ssr)) {
-      return "monitor";
-  } else if (sys_in_guest_mode_ssr(ssr)) {
-      return "guest";
-  } else if (sys_in_user_mode_ssr(ssr)) {
-      return "user";
-  }
-  return "unknown";
+    if (sys_in_monitor_mode_ssr(ssr)) {
+        return "monitor";
+    } else if (sys_in_guest_mode_ssr(ssr)) {
+        return "guest";
+    } else if (sys_in_user_mode_ssr(ssr)) {
+        return "user";
+    }
+    return "unknown";
 }
 
 const char *get_sys_str(CPUHexagonState *env)
 
 {
-  if (sys_in_monitor_mode(env)) {
-      return "monitor";
-  } else if (sys_in_guest_mode(env)) {
-      return "guest";
-  } else if (sys_in_user_mode(env)) {
-      return "user";
-  }
-  return "unknown";
+    if (sys_in_monitor_mode(env)) {
+        return "monitor";
+    } else if (sys_in_guest_mode(env)) {
+        return "guest";
+    } else if (sys_in_user_mode(env)) {
+        return "user";
+    }
+    return "unknown";
 }
 
 const char *get_exe_mode_str(CPUHexagonState *env)
@@ -548,14 +568,15 @@ const char *get_exe_mode_str(CPUHexagonState *env)
 {
     int exe_mode = get_exe_mode(env);
 
-    if (exe_mode == HEX_EXE_MODE_OFF)
+    if (exe_mode == HEX_EXE_MODE_OFF) {
         return "off";
-    else if (exe_mode == HEX_EXE_MODE_RUN)
+    } else if (exe_mode == HEX_EXE_MODE_RUN) {
         return "run";
-    else if (exe_mode == HEX_EXE_MODE_WAIT)
+    } else if (exe_mode == HEX_EXE_MODE_WAIT) {
         return "wait";
-    else if (exe_mode == HEX_EXE_MODE_DEBUG)
+    } else if (exe_mode == HEX_EXE_MODE_DEBUG) {
         return "debug";
+    }
     return "unknown";
 }
 
@@ -586,22 +607,17 @@ int get_exe_mode(CPUHexagonState *env)
     g_assert_not_reached();
 }
 
-void set_wait_mode(CPUHexagonState *env)
-
-{
-    uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
-    uint32_t thread_wait_mask = GET_FIELD(MODECTL_W, modectl);
-    thread_wait_mask |= 0x1 << env->threadId;
-    SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_W,thread_wait_mask);
-}
-
 void clear_wait_mode(CPUHexagonState *env)
 
 {
-    uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
+    const bool exception_context = qemu_mutex_iothread_locked();
+    LOCK_IOTHREAD(exception_context);
+
+    const uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     uint32_t thread_wait_mask = GET_FIELD(MODECTL_W, modectl);
     thread_wait_mask &= ~(0x1 << env->threadId);
-    SET_SYSTEM_FIELD(env,HEX_SREG_MODECTL,MODECTL_W,thread_wait_mask);
+    SET_SYSTEM_FIELD(env, HEX_SREG_MODECTL, MODECTL_W, thread_wait_mask);
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause)
@@ -619,10 +635,10 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
     bool old_EX = GET_SSR_FIELD(SSR_EX, old);
     bool old_UM = GET_SSR_FIELD(SSR_UM, old);
     bool old_GM = GET_SSR_FIELD(SSR_GM, old);
+    bool old_IE = GET_SSR_FIELD(SSR_IE, old);
     bool new_EX = GET_SSR_FIELD(SSR_EX, new);
     bool new_UM = GET_SSR_FIELD(SSR_UM, new);
     bool new_GM = GET_SSR_FIELD(SSR_GM, new);
-    bool old_IE = GET_SSR_FIELD(SSR_IE, old);
     bool new_IE = GET_SSR_FIELD(SSR_IE, new);
 
     if ((old_EX != new_EX) ||

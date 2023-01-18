@@ -101,7 +101,7 @@ static inline tlb_pgsize_t hex_tlb_pgsize(uint64_t entry)
 {
     if (entry == 0) {
         qemu_log_mask(CPU_LOG_MMU, "%s: Supplied TLB entry was 0!\n", __func__);
-	    return pgsize[0];
+        return pgsize[0];
     }
     int size = __builtin_ctzll(entry);
     g_assert(size < NUM_PGSIZE_TYPES);
@@ -373,8 +373,8 @@ bool hex_tlb_find_match(CPUHexagonState *env, target_ulong VA,
     int i;
     for (i = 0; i < NUM_TLB_ENTRIES; i++) {
         uint64_t entry = env->hex_tlb->entries[i];
-        if (hex_tlb_entry_match(env, entry, asid, VA, access_type, PA, prot, size,
-                                excp, mmu_idx)) {
+        if (hex_tlb_entry_match(env, entry, asid, VA, access_type, PA, prot,
+                                size, excp, mmu_idx)) {
             return true;
         }
     }
@@ -485,7 +485,7 @@ static inline void print_thread(const char *str, CPUState *cs)
     CPUHexagonState *thread = &cpu->env;
     bool is_stopped = cpu_is_stopped(cs);
     int exe_mode = get_exe_mode(thread);
-    hex_lock_state_t lock_state = thread->tlb_lock_state;
+    hex_lock_state_t lock_state = ATOMIC_LOAD(thread->tlb_lock_state);
     qemu_log_mask(CPU_LOG_MMU,
            "%s: threadId = %d: %s, exe_mode = %s, tlb_lock_state = %s\n",
            str,
@@ -514,22 +514,22 @@ void hex_tlb_lock(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_lock: %d\n", env->threadId);
     const bool exception_context = qemu_mutex_iothread_locked();
-    if (!exception_context) qemu_mutex_lock_iothread();
+    LOCK_IOTHREAD(exception_context);
 
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     uint8_t tlb_lock = GET_SYSCFG_FIELD(SYSCFG_TLBLOCK, syscfg);
     if (tlb_lock) {
-        if (env->tlb_lock_state == HEX_LOCK_OWNER) {
+        if (ATOMIC_LOAD(env->tlb_lock_state) == HEX_LOCK_OWNER) {
             qemu_log_mask(CPU_LOG_MMU, "Already the owner\n");
-            if (!exception_context) qemu_mutex_unlock_iothread();
+            UNLOCK_IOTHREAD(exception_context);
             return;
         }
         qemu_log_mask(CPU_LOG_MMU, "\tWaiting\n");
-        env->tlb_lock_state = HEX_LOCK_WAITING;
+        ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_WAITING);
         cpu_exit(env_cpu(env));
     } else {
         qemu_log_mask(CPU_LOG_MMU, "\tAcquired\n");
-        env->tlb_lock_state = HEX_LOCK_OWNER;
+        ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_OWNER);
         SET_SYSCFG_FIELD(env, SYSCFG_TLBLOCK, 1);
     }
 
@@ -537,23 +537,26 @@ void hex_tlb_lock(CPUHexagonState *env)
         qemu_log_mask(CPU_LOG_MMU, "Threads after hex_tlb_lock:\n");
         print_thread_states("\tThread");
     }
-    if (!exception_context) qemu_mutex_unlock_iothread();
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void hex_tlb_unlock(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_unlock: %d\n", env->threadId);
+    const bool exception_context = qemu_mutex_iothread_locked();
+    LOCK_IOTHREAD(exception_context);
 
     /* Nothing to do if the TLB isn't locked by this thread */
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     uint8_t tlb_lock = GET_SYSCFG_FIELD(SYSCFG_TLBLOCK, syscfg);
     if ((tlb_lock == 0) ||
-            (env->tlb_lock_state != HEX_LOCK_OWNER)) {
+        (ATOMIC_LOAD(env->tlb_lock_state) != HEX_LOCK_OWNER)) {
         qemu_log_mask(CPU_LOG_MMU, "\tNot owner\n");
+        UNLOCK_IOTHREAD(exception_context);
         return;
     }
 
-    env->tlb_lock_state = HEX_LOCK_UNLOCKED;
+    ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_UNLOCKED);
     SET_SYSCFG_FIELD(env, SYSCFG_TLBLOCK, 0);
 
     /* Look for a thread to unlock */
@@ -577,7 +580,7 @@ void hex_tlb_unlock(CPUHexagonState *env)
          *         thread higher than this thread is ahead of unlock_thread
          *         thread must be lower then unlock thread
          */
-        if (thread->tlb_lock_state == HEX_LOCK_WAITING) {
+        if (ATOMIC_LOAD(thread->tlb_lock_state) == HEX_LOCK_WAITING) {
             if (!unlock_thread) {
                 unlock_thread = thread;
             } else if (unlock_thread->threadId > this_threadId) {
@@ -598,7 +601,7 @@ void hex_tlb_unlock(CPUHexagonState *env)
     if (unlock_thread) {
         cs = env_cpu(unlock_thread);
         print_thread("\tWaiting thread found", cs);
-        unlock_thread->tlb_lock_state = HEX_LOCK_OWNER;
+        ATOMIC_STORE(unlock_thread->tlb_lock_state, HEX_LOCK_OWNER);
         SET_SYSCFG_FIELD(unlock_thread, SYSCFG_TLBLOCK, 1);
         cpu_resume(cs);
     }
@@ -607,5 +610,6 @@ void hex_tlb_unlock(CPUHexagonState *env)
         qemu_log_mask(CPU_LOG_MMU, "Threads after hex_tlb_unlock:\n");
         print_thread_states("\tThread");
     }
+    UNLOCK_IOTHREAD(exception_context);
 }
 

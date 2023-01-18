@@ -49,12 +49,21 @@ static inline uint32_t arch_get_system_reg(CPUHexagonState *env, uint32_t reg)
     return reg < HEX_SREG_GLB_START ? env->t_sreg[reg] : env->g_sreg[reg];
 }
 
+static inline uint32_t *arch_get_system_reg_addr(CPUHexagonState *env,
+                                                 uint32_t reg)
+{
+    g_assert(reg < NUM_SREGS);
+    return reg < HEX_SREG_GLB_START ? &env->t_sreg[reg] : &env->g_sreg[reg];
+}
+
 #define ARCH_GET_THREAD_REG(ENV,REG) \
     arch_get_thread_reg(ENV, REG)
 #define ARCH_SET_THREAD_REG(ENV,REG,VAL) \
     arch_set_thread_reg(ENV, REG,VAL)
 #define ARCH_GET_SYSTEM_REG(ENV,REG) \
     arch_get_system_reg(ENV, REG)
+#define ARCH_GET_SYSTEM_REG_ADDR(ENV, REG) \
+    arch_get_system_reg_addr(ENV, REG)
 #define ARCH_SET_SYSTEM_REG(ENV,REG,VAL) \
     arch_set_system_reg(ENV, REG, VAL)
 
@@ -82,7 +91,6 @@ void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
                                  uint32_t length);
 
 void hexagon_wait_thread(CPUHexagonState *env, target_ulong PC);
-void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei);
 void hexagon_resume_threads(CPUHexagonState *env, uint32_t mask);
 void hexagon_start_threads(CPUHexagonState *env, uint32_t mask);
 void hexagon_stop_thread(CPUHexagonState *env);
@@ -115,7 +123,6 @@ int sys_in_user_mode(CPUHexagonState *env);
 int get_cpu_mode(CPUHexagonState *env);
 int get_exe_mode(CPUHexagonState *env);
 const char *get_exe_mode_str(CPUHexagonState *env);
-void set_wait_mode(CPUHexagonState *env);
 void clear_wait_mode(CPUHexagonState *env);
 uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env);
 uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env);

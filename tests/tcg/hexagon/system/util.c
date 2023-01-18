@@ -1,3 +1,19 @@
+/*
+ *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +31,10 @@ FILE_MEM desc[MAX_DESC];
 
 #define VALID_FP(fp) ((fp) >= &desc[0] && (fp) < &desc[MAX_DESC])
 #define FILE_OPEN(fP) ((fp)->is_open)
+#define read_pcycle_reg_pair(pcycle) \
+    asm volatile("syncht\n\t"        \
+                 "%0 = pcycle\n\t"   \
+                 : "=r"(pcycle))
 
 static int find_free()
 
@@ -157,3 +177,14 @@ long fsize_mem(FILE_MEM *fp)
   return fp->crnt_filesize;
 }
 
+void pcycle_pause(uint64_t pcycle_wait)
+
+{
+    uint64_t pcycle, pcycle_start;
+
+    read_pcycle_reg_pair(pcycle_start);
+    do {
+        asm volatile("pause(#1)\n\t");
+        read_pcycle_reg_pair(pcycle);
+    } while (pcycle < pcycle_start + pcycle_wait);
+}

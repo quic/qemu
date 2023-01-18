@@ -48,8 +48,9 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 
 #define TARGET_LONG_BITS 32
 
-/* Hexagon processors have a strong memory model.
-*/
+/*
+ * Hexagon processors have a strong memory model.
+ */
 #define TCG_GUEST_DEFAULT_MO      (TCG_MO_ALL)
 #include "qom/object.h"
 #include "hw/core/cpu.h"
@@ -110,9 +111,11 @@ typedef struct {
   int unused;
 } rev_features_t;
 
-typedef void (*hmx_mac_fxp_callback_t) (void * sys, processor_t * proc,
-    int pktid, int row_idx, int col_idx, int acc_idx, int in_idx, int wgt,
-    int act, int acc, int x_tap, int y_tap, int block_idx, int deep_block_idx);
+typedef void (*hmx_mac_fxp_callback_t)(void *sys, processor_t *proc, int pktid,
+                                       int row_idx, int col_idx, int acc_idx,
+                                       int in_idx, int wgt, int act, int acc,
+                                       int x_tap, int y_tap, int block_idx,
+                                       int deep_block_idx);
 typedef void (*hmx_mac_flt_callback_t) (void *, ...);
 typedef void (*hmx_cvt_fxp_state_callback_t) (system_t *sys,
                                               processor_t *proc,
@@ -142,7 +145,7 @@ typedef struct {
     uint64_t l2tcm_base;
     hmx_mac_fxp_callback_t hmx_mac_fxp_callback;
     hmx_mac_flt_callback_t hmx_mac_flt_callback;
-	hmx_cvt_fxp_state_callback_t hmx_cvt_fxp_state_callback;
+    hmx_cvt_fxp_state_callback_t hmx_cvt_fxp_state_callback;
     hmx_cvt_state_transfer_callback_t hmx_cvt_state_transfer_callback;
     hmx_cvt_state_write_callback_t hmx_cvt_state_write_callback;
     hmx_wgt_decomp_callback_t hmx_wgt_decomp_callback;
@@ -218,65 +221,65 @@ enum phmx_e {
 };
 
 enum mem_access_types {
-	access_type_INVALID = 0,
-	access_type_unknown = 1,
-	access_type_load = 2,
-	access_type_store = 3,
-	access_type_fetch = 4,
-	access_type_dczeroa = 5,
-	access_type_dccleana = 6,
-	access_type_dcinva = 7,
-	access_type_dccleaninva = 8,
-	access_type_icinva = 9,
-	access_type_ictagr = 10,
-	access_type_ictagw = 11,
-	access_type_icdatar = 12,
-	access_type_dcfetch = 13,
-	access_type_l2fetch = 14,
-	access_type_l2cleanidx = 15,
-	access_type_l2cleaninvidx = 16,
-	access_type_l2tagr = 17,
-	access_type_l2tagw = 18,
-	access_type_dccleanidx = 19,
-	access_type_dcinvidx = 20,
-	access_type_dccleaninvidx = 21,
-	access_type_dctagr = 22,
-	access_type_dctagw = 23,
-	access_type_k0unlock = 24,
-	access_type_l2locka = 25,
-	access_type_l2unlocka = 26,
-	access_type_l2kill = 27,
-	access_type_l2gclean = 28,
-	access_type_l2gcleaninv = 29,
-	access_type_l2gunlock = 30,
-	access_type_synch = 31,
-	access_type_isync = 32,
-	access_type_pause = 33,
-	access_type_load_phys = 34,
-	access_type_load_locked = 35,
-	access_type_store_conditional = 36,
-	access_type_barrier = 37,
+    access_type_INVALID = 0,
+    access_type_unknown = 1,
+    access_type_load = 2,
+    access_type_store = 3,
+    access_type_fetch = 4,
+    access_type_dczeroa = 5,
+    access_type_dccleana = 6,
+    access_type_dcinva = 7,
+    access_type_dccleaninva = 8,
+    access_type_icinva = 9,
+    access_type_ictagr = 10,
+    access_type_ictagw = 11,
+    access_type_icdatar = 12,
+    access_type_dcfetch = 13,
+    access_type_l2fetch = 14,
+    access_type_l2cleanidx = 15,
+    access_type_l2cleaninvidx = 16,
+    access_type_l2tagr = 17,
+    access_type_l2tagw = 18,
+    access_type_dccleanidx = 19,
+    access_type_dcinvidx = 20,
+    access_type_dccleaninvidx = 21,
+    access_type_dctagr = 22,
+    access_type_dctagw = 23,
+    access_type_k0unlock = 24,
+    access_type_l2locka = 25,
+    access_type_l2unlocka = 26,
+    access_type_l2kill = 27,
+    access_type_l2gclean = 28,
+    access_type_l2gcleaninv = 29,
+    access_type_l2gunlock = 30,
+    access_type_synch = 31,
+    access_type_isync = 32,
+    access_type_pause = 33,
+    access_type_load_phys = 34,
+    access_type_load_locked = 35,
+    access_type_store_conditional = 36,
+    access_type_barrier = 37,
 #ifdef CLADE
-	access_type_clade = 38,
+    access_type_clade = 38,
 #endif
-	access_type_memcpy_load = 39,
-	access_type_memcpy_store = 40,
+    access_type_memcpy_load = 39,
+    access_type_memcpy_store = 40,
 #ifdef CLADE2
-	access_type_clade2 = 41,
+    access_type_clade2 = 41,
 #endif
-  access_type_hmx_load_act = 42,
-  access_type_hmx_load_wei = 43,
-  access_type_hmx_load_bias = 44,
-  access_type_hmx_store = 45,
-  access_type_hmx_store_bias = 46,
-  access_type_hmx_swap_acc = 47,
-  access_type_hmx_acc_cvt = 48,
-  access_type_hmx_store_cvt_state = 49,
-  access_type_hmx_poly_cvt = 50,
-  access_type_udma_load = 51,
-  access_type_udma_store = 52,
-  access_type_unpause = 53,
-	NUM_CORE_ACCESS_TYPES
+    access_type_hmx_load_act = 42,
+    access_type_hmx_load_wei = 43,
+    access_type_hmx_load_bias = 44,
+    access_type_hmx_store = 45,
+    access_type_hmx_store_bias = 46,
+    access_type_hmx_swap_acc = 47,
+    access_type_hmx_acc_cvt = 48,
+    access_type_hmx_store_cvt_state = 49,
+    access_type_hmx_poly_cvt = 50,
+    access_type_udma_load = 51,
+    access_type_udma_store = 52,
+    access_type_unpause = 53,
+    NUM_CORE_ACCESS_TYPES
 };
 
 typedef struct {
@@ -308,7 +311,7 @@ struct ProcessorState {
     CPUHexagonState *thread[THREADS_MAX];
 
     /* Useful information of the DMA engine per thread. */
-    struct dma_adapter_engine_info * dma_engine_info[THREADS_MAX];
+    struct dma_adapter_engine_info *dma_engine_info[THREADS_MAX];
     struct dma_state *dma[DMA_MAX]; /* same as dma_t */
     dma_insn_checker_ptr dma_insn_checker[DMA_MAX];
     uint64_t monotonic_pcycles; /* never reset */
@@ -425,7 +428,10 @@ typedef struct {
 #define VECTOR_TEMPS_MAX            4
 
 #ifndef CONFIG_USER_ONLY
-/* TODO: Update for Hexagon: Meanings of the ARMCPU object's four inbound GPIO lines */
+/*
+ * TODO: Update for Hexagon: Meanings of the ARMCPU object's
+ * four inbound GPIO lines
+ */
 #define HEXAGON_CPU_IRQ_0 0
 #define HEXAGON_CPU_IRQ_1 1
 #define HEXAGON_CPU_IRQ_2 2
@@ -449,7 +455,29 @@ typedef struct PMUState {
     uint32_t num_packets;
     uint32_t hvx_packets;
 } PMUState;
+
+#define ATOMIC_LOAD(VAR) (__atomic_load_n(&(VAR), __ATOMIC_SEQ_CST), (VAR))
+#define ATOMIC_STORE(VAR, VAL)                              \
+    {                                                       \
+        __atomic_store_n(&(VAR), (VAL), __ATOMIC_SEQ_CST);  \
+        smp_mb(); /* multiple hw threads access this VAR */ \
+    }
+#define ATOMIC_EXCHANGE(VAR_ADDR, NEW, OLD)                             \
+    {                                                                   \
+        OLD = __atomic_exchange_n((VAR_ADDR), (NEW), __ATOMIC_SEQ_CST); \
+        smp_mb(); /* multiple hw threads access this VAR */             \
+    }
 #endif
+
+#define LOCK_IOTHREAD(VAR)          \
+    if (!(VAR)) {                   \
+        qemu_mutex_lock_iothread(); \
+    }
+#define UNLOCK_IOTHREAD(VAR)          \
+    if (!(VAR)) {                     \
+        qemu_mutex_unlock_iothread(); \
+    }
+
 
 struct Einfo {
   uint8_t valid;
@@ -566,8 +594,8 @@ typedef struct CPUArchState {
     const char *cmdline;
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;
-    hex_lock_state_t tlb_lock_state;
-    hex_lock_state_t k0_lock_state;
+    volatile hex_lock_state_t tlb_lock_state; /* different threads modify */
+    volatile hex_lock_state_t k0_lock_state; /* different threads modify */
     uint16_t nmi_threads;
     uint32_t last_cpu;
     GList *dir_list;
@@ -659,7 +687,8 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
 
     bool hvx_enabled = extract32(ssr, reg_field_info[SSR_XE].offset,
                                  reg_field_info[SSR_XE].width);
-    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED, hvx_enabled);
+    hex_flags =
+        FIELD_DP32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED, hvx_enabled);
 
     if (rev_implements_64b_hvx(env)) {
         int v2x = extract32(syscfg, reg_field_info[SYSCFG_V2X].offset,

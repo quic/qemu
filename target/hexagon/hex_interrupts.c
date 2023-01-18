@@ -174,11 +174,11 @@ static bool hex_is_qualified_for_int(CPUHexagonState *env, int int_num)
 
 static void clear_pending_locks(CPUHexagonState *env)
 {
-    if (env->k0_lock_state == HEX_LOCK_WAITING) {
-        env->k0_lock_state = HEX_LOCK_UNLOCKED;
+    if (ATOMIC_LOAD(env->k0_lock_state) == HEX_LOCK_WAITING) {
+        ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_UNLOCKED);
     }
-    if (env->tlb_lock_state == HEX_LOCK_WAITING) {
-        env->tlb_lock_state = HEX_LOCK_UNLOCKED;
+    if (ATOMIC_LOAD(env->tlb_lock_state) == HEX_LOCK_WAITING) {
+        ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_UNLOCKED);
     }
 }
 
@@ -196,11 +196,12 @@ static void restore_state(CPUHexagonState *env, bool int_accepted)
     }
 }
 
-void hex_accept_int(CPUHexagonState *env, int int_num)
+static void hex_accept_int(CPUHexagonState *env, int int_num)
 {
     CPUState *cs = env_cpu(env);
     target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
-    bool in_wait_mode = get_exe_mode(env) == HEX_EXE_MODE_WAIT;
+    const int exe_mode = get_exe_mode(env);
+    const bool in_wait_mode = exe_mode == HEX_EXE_MODE_WAIT;
 
     set_ipend_bit(env, int_num, 0);
     set_iad_bit(env, int_num, 1);
@@ -232,7 +233,7 @@ bool hex_check_interrupts(CPUHexagonState *env)
     bool int_handled = false;
     bool ssr_ex = get_ssr_ex(env);
     int max_ints;
-    bool need_lock;
+    const bool exception_context = qemu_mutex_iothread_locked();
     bool schedcfgen;
 
     /* Early exit if nothing pending */
@@ -242,15 +243,14 @@ bool hex_check_interrupts(CPUHexagonState *env)
     }
 
     max_ints = reg_field_info[IPENDAD_IPEND].width;
-    need_lock = !qemu_mutex_iothread_locked();
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     /* Only check priorities when schedcfgen is set */
     schedcfgen = get_schedcfgen(env);
     for (int i = 0; i < max_ints; i++) {
         if (!get_iad_bit(env, i) && get_ipend_bit(env, i)) {
-            qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] pc = 0x%x found int %d\n", __func__, env->threadId, env->gpr[HEX_REG_PC], i);
+            qemu_log_mask(CPU_LOG_INT,
+                          "%s: thread[%d] pc = 0x%x found int %d\n", __func__,
+                          env->threadId, env->gpr[HEX_REG_PC], i);
             if (hex_is_qualified_for_int(env, i) &&
                 (!schedcfgen || is_lowest_prio(env, i))) {
                 qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] int %d handled_\n",
@@ -264,21 +264,23 @@ bool hex_check_interrupts(CPUHexagonState *env)
             bool ssr_ie = get_ssr_ie(env);
             bool imask = get_imask_bit(env, i);
 
-            qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] int %d not handled, qualified: %d, schedcfg_en: %d, low prio %d\n", __func__, env->threadId, i,
-            hex_is_qualified_for_int(env, i),
-                schedcfgen,
-                is_lowest_prio(env, i));
+            qemu_log_mask(CPU_LOG_INT,
+                          "%s: thread[%d] int %d not handled, qualified: %d, "
+                          "schedcfg_en: %d, low prio %d\n",
+                          __func__, env->threadId, i,
+                          hex_is_qualified_for_int(env, i), schedcfgen,
+                          is_lowest_prio(env, i));
 
-            qemu_log_mask(CPU_LOG_INT, "%s: thread[%d] int %d not handled, GIE %d, iad %d, SSR:IE %d, SSR:EX: %d, imask bit %d\n", __func__, env->threadId, i,
-                syscfg_gie,
-                iad,
-                ssr_ie,
-                ssr_ex,
-                imask);
+            qemu_log_mask(CPU_LOG_INT,
+                          "%s: thread[%d] int %d not handled, GIE %d, iad %d, "
+                          "SSR:IE %d, SSR:EX: %d, imask bit %d\n",
+                          __func__, env->threadId, i, syscfg_gie, iad, ssr_ie,
+                          ssr_ex, imask);
         }
     }
 
-    /* If we didn't handle the interrupt and it wasn't
+    /*
+     * If we didn't handle the interrupt and it wasn't
      * because we were in EX state, then we won't be able
      * to execute the interrupt on this CPU unless something
      * changes in the CPU state.  Clear the interrupt_request bits
@@ -290,16 +292,14 @@ bool hex_check_interrupts(CPUHexagonState *env)
     } else if (int_handled) {
         assert(!cs->halted);
     }
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 
     return int_handled;
 }
 
 void hex_clear_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
 {
-    bool need_lock;
+    const bool exception_context = qemu_mutex_iothread_locked();
     if (mask == 0) {
         return;
     }
@@ -307,21 +307,15 @@ void hex_clear_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
     /*
      * Notify all CPUs that the interrupt has happened
      */
-    need_lock = !qemu_mutex_iothread_locked();
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     clear_ipend(env, mask);
     hex_interrupt_update(env);
-
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void hex_raise_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
 {
-    bool need_lock;
+    const bool exception_context = qemu_mutex_iothread_locked();
     if (mask == 0) {
         return;
     }
@@ -329,38 +323,29 @@ void hex_raise_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
     /*
      * Notify all CPUs that the interrupt has happened
      */
-    need_lock = !qemu_mutex_iothread_locked();
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
     set_ipend(env, mask);
     hex_interrupt_update(env);
-
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void hex_interrupt_update(CPUHexagonState *env)
 {
-    bool need_lock = !qemu_mutex_iothread_locked();
+    const bool exception_context = qemu_mutex_iothread_locked();
     CPUState *cs;
-    if (need_lock) {
-        qemu_mutex_lock_iothread();
-    }
+    LOCK_IOTHREAD(exception_context);
 
     if (get_ipend(env) != 0) {
         CPU_FOREACH(cs) {
             HexagonCPU *hex_cpu = HEXAGON_CPU(cs);
             CPUHexagonState *hex_env = &hex_cpu->env;
-            if (get_exe_mode(hex_env) != HEX_EXE_MODE_OFF) {
+            const int exe_mode = get_exe_mode(hex_env);
+            if (exe_mode != HEX_EXE_MODE_OFF) {
                 cs->interrupt_request |= CPU_INTERRUPT_SWI;
                 cpu_resume(cs);
             }
         }
     }
 
-    if (need_lock) {
-        qemu_mutex_unlock_iothread();
-    }
+    UNLOCK_IOTHREAD(exception_context);
 }
