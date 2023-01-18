@@ -30,7 +30,6 @@
 #include "qemu.h"
 #endif
 #include "cpu.h"
-#include "cpu_helper.h"
 #include "arch.h"
 #include "dma_adapter.h"
 #include "system.h"

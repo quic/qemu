@@ -35,7 +35,6 @@ typedef struct SystemState system_t;
 
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
-#include "cpu_helper.h"
 #include "reg_fields.h"
 typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define NUM_SREGS 64
@@ -613,6 +612,10 @@ struct ArchCPU {
     target_ulong lldb_stack_adjust;
     bool paranoid_commit_state;
 };
+
+#ifndef CONFIG_USER_ONLY
+#include "cpu_helper.h"
+#endif
 
 #include "cpu_bits.h"
 

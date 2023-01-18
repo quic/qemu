@@ -27,7 +27,6 @@
 #include "qemu/log.h"
 #include "qemu/qemu-print.h"
 #include "cpu.h"
-#include "cpu_helper.h"
 #include "arch.h"
 #include "dma.h"
 #include "dma_adapter.h"

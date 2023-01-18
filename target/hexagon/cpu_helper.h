@@ -19,12 +19,45 @@
 #ifndef HEXAGON_CPU_HELPER_H
 #define HEXAGON_CPU_HELPER_H
 
-#define ARCH_GET_THREAD_REG(ENV,REG)     ((ENV)->gpr[(REG)])
-#define ARCH_SET_THREAD_REG(ENV,REG,VAL) ((ENV)->gpr[(REG)] = (VAL))
-#define ARCH_GET_SYSTEM_REG(ENV,REG)     (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
-    (ENV)->t_sreg[(REG)] : (ENV)->g_sreg[(REG)])
-#define ARCH_SET_SYSTEM_REG(ENV,REG,VAL) (((int)(REG) < (int)HEX_SREG_GLB_START) ? \
-    ((ENV)->t_sreg[(REG)] = (VAL)) : ((ENV)->g_sreg[(REG)] = (VAL)))
+static inline void arch_set_thread_reg(CPUHexagonState *env, uint32_t reg,
+                                       uint32_t val)
+{
+    g_assert(reg < TOTAL_PER_THREAD_REGS);
+    env->gpr[reg] = val;
+}
+
+static inline uint32_t arch_get_thread_reg(CPUHexagonState *env, uint32_t reg)
+{
+    g_assert(reg < TOTAL_PER_THREAD_REGS);
+    return env->gpr[reg];
+}
+
+static inline void arch_set_system_reg(CPUHexagonState *env, uint32_t reg,
+                                       uint32_t val)
+{
+    g_assert(reg < NUM_SREGS);
+    if (reg < HEX_SREG_GLB_START) {
+        env->t_sreg[reg] = val;
+    } else {
+        env->g_sreg[reg] = val;
+    }
+}
+
+static inline uint32_t arch_get_system_reg(CPUHexagonState *env, uint32_t reg)
+{
+    g_assert(reg < NUM_SREGS);
+    return reg < HEX_SREG_GLB_START ? env->t_sreg[reg] : env->g_sreg[reg];
+}
+
+#define ARCH_GET_THREAD_REG(ENV,REG) \
+    arch_get_thread_reg(ENV, REG)
+#define ARCH_SET_THREAD_REG(ENV,REG,VAL) \
+    arch_set_thread_reg(ENV, REG,VAL)
+#define ARCH_GET_SYSTEM_REG(ENV,REG) \
+    arch_get_system_reg(ENV, REG)
+#define ARCH_SET_SYSTEM_REG(ENV,REG,VAL) \
+    arch_set_system_reg(ENV, REG, VAL)
+
 #define DEBUG_MEMORY_READ_ENV(ENV,ADDR,SIZE,PTR) \
     hexagon_read_memory(ENV, ADDR, SIZE, PTR)
 #define DEBUG_MEMORY_READ(ADDR,SIZE,PTR) \
