@@ -156,7 +156,7 @@ access: access.o
 getcwd: getcwd.o
 checkforpriv.o: checkforpriv.c mmu.h
 checkforpriv: checkforpriv.o
-pend_wake_wait: pend_wake_wait.o
+pend_wake_wait: pend_wake_wait.o util.o
 gregs: gregs.o
 multiple_writes: multiple_writes.o
 thread_scheduling: thread_scheduling.o

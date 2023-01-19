@@ -15,12 +15,14 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
 #include "hexagon_standalone.h"
 #include "interrupts.h"
+#include "util.h"
+#include <stdatomic.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static const int MAX_INT_NUM = 8;
 static const int ALL_INTERRUPTS_MASK = 0xff;
@@ -56,29 +58,33 @@ static void isr_work()
 #define STACK_SIZE            16384
 char stack[COMPUTE_THREADS][STACK_SIZE] __attribute__((__aligned__(8)));
 
-static volatile int threads_started = 0;
+static volatile int threads_started; /* used by different hw threads */
 static const int ROUNDS = 10;
+
+static volatile int thread_exit_flag; /* used by different hw threads */
 static void thread_func(void *arg)
 {
     int taskId = (int) arg;
     set_thread_imask(0);
-    threads_started++;
-    for (int i = 0; i < ROUNDS; i++) {
+    __atomic_fetch_add(&threads_started, 1, __ATOMIC_SEQ_CST);
+    unsigned long long i = 0;
+    while (thread_exit_flag == 0) {
         k0lock();
-        pause();
+        pcycle_pause(100);
         k0unlock();
-        printf("thread[%d] round %d\n", taskId, i);
+        printf("thread[%d] round %llu\n", taskId, ++i);
     }
+    set_thread_imask(ALL_INTERRUPTS_MASK);
     printf("thread exiting %d\n", taskId);
 }
 
-static volatile int ints_handled = 0;
+static volatile int ints_handled; /* used by different hw threads */
 static void interrupt_handler(int intno)
 {
     k0lock();
     isr_work();
     k0unlock();
-    ints_handled++;
+    __atomic_fetch_add(&ints_handled, 1, __ATOMIC_SEQ_CST);
 }
 
 static inline uint32_t get_modectl()
@@ -107,16 +113,18 @@ static bool some_threads_running()
     uint32_t W = get_wait_mask();
     uint32_t E = get_enabled_mask();
     bool some_running = false;
+    unsigned running_mask = 0x0;
     for (int i = 1; i < COMPUTE_THREADS + 1; i++) {
-        uint32_t th_bit = i << 1;
+        uint32_t th_bit = 1 << i;
         bool th_w = (W & th_bit) != 0;
         bool th_e = (E & th_bit) != 0;
         printf("thread %d, w: %d, e: %d\n", i, th_w, th_e);
         if (th_w || th_e) {
             some_running = true;
+            running_mask |= th_bit;
         }
     }
-    printf("some running: %d\n", some_running);
+    printf("some running: %d : mask 0x%x\n", some_running, running_mask);
     return some_running;
 }
 
@@ -130,37 +138,42 @@ int main(int argc, char *argv[])
 
     puts("Testing pend/wake/wait");
     for (int i = 0; i < COMPUTE_THREADS; i++) {
-        thread_create((void *)thread_func,
-            &stack[i][ARRAY_SIZE(stack[i]) - 8], i + 1, (void *)i);
+        thread_create((void *)thread_func, &stack[i][ARRAY_SIZE(stack[i]) - 8],
+                      i + 1, (void *)(i + 1));
     }
 
     while (threads_started < COMPUTE_THREADS) {
         printf("Threads started: %d\n", threads_started);
-        pause();
+        pcycle_pause(10000);
     }
     printf("\tnow threads started: %d\n", threads_started);
 
     for (int i = 0; i < ROUNDS; i++) {
         int ints_expected = ints_handled + 1;
-        printf("Round %d, doing work for each int:\n", i);
+        printf("Round %d/%d/%d, doing work for each int: expecting %d\n", i,
+               ROUNDS, MAX_INT_NUM, ints_expected);
         for (int j = 0; j < MAX_INT_NUM; j++) {
             work();
             while (ints_handled < ints_expected) {
                 swi(1 << j);
-                pause();
+                pcycle_pause(10000);
             }
+            printf("done: Round %d: %d vs %d\n", i, ints_handled,
+                   ints_expected);
         }
     }
+
+    __atomic_fetch_add(&thread_exit_flag, 1, __ATOMIC_SEQ_CST);
     puts("waiting for threads...");
     for (int i = 0; i < ROUNDS; i++) {
         for (int j = 0; j < MAX_INT_NUM; j++) {
+            pcycle_pause(10000);
             swi(1 << j);
-            pause();
         }
     }
     while (some_threads_running()) {
+        pcycle_pause(2500000);
         swi(ALL_INTERRUPTS_MASK);
-        pause();
     }
 
     puts("ints exhausted...");
