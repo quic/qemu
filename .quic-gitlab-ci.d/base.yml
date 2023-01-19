@@ -55,21 +55,25 @@ variables:
 #    Jobs
 ###################################################################
 
-# NEEDSWORK: this job assumes all MRs will be against "master". This was done
-# because working with $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME is tricky.
 checkpatch:
   variables:
     REMOTE_URL: https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/qemu/qemu.git
+    AUTH: "PRIVATE-TOKEN: $CI_API_TOKEN"
+    QEMU_PROJ_ID: 3968
+    MR_API_URL: "https://gitlab.qualcomm.com/api/v4/projects/$QEMU_PROJ_ID/merge_requests?source_branch=$CI_COMMIT_REF_NAME"
   allow_failure: true
   # Note: we try set-url first because gitlab runners will preserve the repo
   # configs in between builds, so `remote add` would fail.
   script:
-    git remote set-url mainrepo $REMOTE_URL >/dev/null 2>&1 || git remote add mainrepo $REMOTE_URL &&
-    git fetch mainrepo master &&
-    if test -n "$(git rev-list FETCH_HEAD..HEAD)";
-    then
-      ./scripts/checkpatch.pl --no-signoff --branch FETCH_HEAD..HEAD;
-    fi
+    - git remote set-url mainrepo $REMOTE_URL >/dev/null 2>&1 || git remote add mainrepo $REMOTE_URL
+    - target_branch=$(curl -LsS -H "$AUTH" "$MR_API_URL" | tr -d "[:space:]" | sed -ne 's/.*"target_branch":"\([^"]*\)".*/\1/p')
+    - if test -n "$target_branch"; then
+        echo "Found target branch '$target_branch'" &&
+        git fetch mainrepo $target_branch &&
+        if test -n "$(git rev-list FETCH_HEAD..HEAD)"; then
+          ./scripts/checkpatch.pl --no-signoff --branch FETCH_HEAD..HEAD;
+        fi
+      fi
 
 hexagon_build:
   extends: .base-build
