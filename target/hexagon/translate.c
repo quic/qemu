@@ -70,6 +70,7 @@ TCGv hex_cause_code;
 TCGv_i32 hex_last_cpu;
 TCGv_i32 hex_thread_id;
 TCGv_i32 hex_pmu_num_packets;
+TCGv ss_pending;
 TCGv_i32 hex_pmu_hvx_packets;
 #endif
 TCGv_i64 hex_packet_count;
@@ -731,6 +732,16 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     if ((tb_cflags(ctx->base.tb) & CF_USE_ICOUNT) && pkt_may_do_io(pkt)) {
         gen_io_start();
     }
+
+    if (!ctx->ss_pending) {
+        if (ctx->ss_active) {
+            tcg_gen_movi_tl(hex_cause_code, HEX_CAUSE_DEBUG_SINGLESTEP);
+            tcg_gen_movi_tl(ss_pending, 1);
+        }
+    } else {
+        gen_exception(HEX_EVENT_DEBUG, pkt->pc);
+    }
+
 #endif
     if (need_pred_written(pkt)) {
         tcg_gen_movi_tl(hex_pred_written, 0);
@@ -1500,6 +1511,13 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->hvx_64b_mode = FIELD_EX32(hex_flags, TB_FLAGS, HVX_64B_MODE);
     ctx->branch_cond = TCG_COND_NEVER;
     ctx->is_tight_loop = FIELD_EX32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP);
+    ctx->ss_active = (FIELD_EX32(hex_flags, TB_FLAGS, SS_ACTIVE) &&
+                      ctx->mem_idx == MMU_USER_IDX);
+
+    ctx->ss_pending = FIELD_EX32(hex_flags, TB_FLAGS, SS_PENDING);
+    if (ctx->ss_active) {
+        ctx->base.max_insns = 1;
+    }
 }
 
 static void hexagon_tr_tb_start(DisasContextBase *db, CPUState *cpu)
@@ -1740,6 +1758,9 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, last_cpu), "last_cpu");
     hex_thread_id = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, threadId), "threadId");
+    ss_pending = tcg_global_mem_new(cpu_env,
+        offsetof(CPUHexagonState, ss_pending), "ss_pending");
+
 #endif
     for (i = 0; i < STORES_MAX; i++) {
         snprintf(store_addr_names[i], NAME_LEN, "store_addr_%d", i);

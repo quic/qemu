@@ -82,6 +82,7 @@ TESTS += \
 	rev \
 	pmu \
 	start \
+	single_step \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -164,6 +165,7 @@ rev: rev.o
 pmu: pmu.o
 start.o: start.c mmu.h
 start: start.o
+single_step: single_step.o single_step_asm.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)

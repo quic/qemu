@@ -94,6 +94,8 @@ typedef struct DisasContext {
     TCGv_i64 ones64;
     bool gen_cacheop_exceptions;
     bool paranoid_commit_state;
+    bool ss_active;
+    bool ss_pending;
 } DisasContext;
 
 static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)

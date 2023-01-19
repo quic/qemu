@@ -500,6 +500,7 @@ static void hexagon_cpu_reset_hold(Object *obj)
 
     ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_UNLOCKED);
     ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_UNLOCKED);
+    ATOMIC_STORE(env->ss_pending, false);
 
     hexagon_cpu_soft_reset(env);
 #endif

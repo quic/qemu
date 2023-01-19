@@ -602,6 +602,7 @@ typedef struct CPUArchState {
     uint32_t exe_arch;
     gchar *lib_search_dir;
     PMUState pmu;
+    bool ss_pending;
 #endif
 } CPUHexagonState;
 #define mmvecx_t CPUHexagonState
@@ -656,6 +657,9 @@ FIELD(TB_FLAGS, PCYCLE_ENABLED, 4, 1)
 FIELD(TB_FLAGS, HVX_COPROC_ENABLED, 5, 1)
 FIELD(TB_FLAGS, HVX_64B_MODE, 6, 1)
 FIELD(TB_FLAGS, PMU_ENABLED, 7, 1)
+FIELD(TB_FLAGS, SS_ACTIVE, 8, 1)
+FIELD(TB_FLAGS, SS_PENDING, 9, 1)
+
 
 static inline bool rev_implements_64b_hvx(CPUHexagonState *env)
 {
@@ -710,6 +714,16 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
     if (*pc == env->gpr[HEX_REG_SA0]) {
         hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, IS_TIGHT_LOOP, 1);
     }
+
+#ifndef CONFIG_USER_ONLY
+    bool ss_active = extract32(ssr,
+                                 reg_field_info[SSR_SS].offset,
+                                 reg_field_info[SSR_SS].width);
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, SS_ACTIVE, ss_active);
+
+    bool ss_pending = env->ss_pending;
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, SS_PENDING, ss_pending);
+#endif
 
     *flags = hex_flags;
 }
