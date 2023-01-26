@@ -38,44 +38,7 @@
 #include "reg_fields.h"
 #include "genptr.h"
 
-TCGv gen_read_reg(TCGv result, int num)
-{
-    tcg_gen_mov_tl(result, hex_gpr[num]);
-    return result;
-}
-
-TCGv gen_read_preg(TCGv pred, uint8_t num)
-{
-    tcg_gen_mov_tl(pred, hex_pred[num]);
-    return pred;
-}
-
 #define IMMUTABLE (~0)
-
-static const target_ulong reg_immut_masks[TOTAL_PER_THREAD_REGS] = {
-    [HEX_REG_USR] = 0xc13000c0,
-    [HEX_REG_PC] = IMMUTABLE,
-    [HEX_REG_GP] = 0x3f,
-    [HEX_REG_UPCYCLELO] = IMMUTABLE,
-    [HEX_REG_UPCYCLEHI] = IMMUTABLE,
-    [HEX_REG_UTIMERLO] = IMMUTABLE,
-    [HEX_REG_UTIMERHI] = IMMUTABLE,
-};
-
-static inline void gen_masked_reg_write(TCGv new_val, TCGv cur_val,
-                                        target_ulong reg_mask)
-{
-    if (reg_mask) {
-        TCGv tmp = tcg_temp_new();
-
-        /* new_val = (new_val & ~reg_mask) | (cur_val & reg_mask) */
-        tcg_gen_andi_tl(new_val, new_val, ~reg_mask);
-        tcg_gen_andi_tl(tmp, cur_val, reg_mask);
-        tcg_gen_or_tl(new_val, new_val, tmp);
-
-        tcg_temp_free(tmp);
-    }
-}
 
 static void gen_check_reg_write(DisasContext *ctx, int rnum, TCGv cancelled)
 {
@@ -90,6 +53,18 @@ static void gen_check_reg_write(DisasContext *ctx, int rnum, TCGv cancelled)
         gen_set_label(skip);
         tcg_temp_free(mult_reg);
     }
+}
+
+TCGv gen_read_reg(TCGv result, int num)
+{
+    tcg_gen_mov_tl(result, hex_gpr[num]);
+    return result;
+}
+
+TCGv gen_read_preg(TCGv pred, uint8_t num)
+{
+    tcg_gen_mov_tl(pred, hex_pred[num]);
+    return pred;
 }
 
 static inline void gen_log_predicated_reg_write(DisasContext *ctx, int rnum,
@@ -118,15 +93,42 @@ static inline void gen_log_predicated_reg_write(DisasContext *ctx, int rnum,
     tcg_temp_free(slot_mask);
 }
 
+static inline void gen_masked_reg_write(TCGv new_val, TCGv cur_val,
+                                        target_ulong reg_mask)
+{
+    if (reg_mask) {
+        TCGv tmp = tcg_temp_new();
+
+        /* new_val = (new_val & ~reg_mask) | (cur_val & reg_mask) */
+        tcg_gen_andi_tl(new_val, new_val, ~reg_mask);
+        tcg_gen_andi_tl(tmp, cur_val, reg_mask);
+        tcg_gen_or_tl(new_val, new_val, tmp);
+
+        tcg_temp_free(tmp);
+    }
+}
+
+static const target_ulong reg_immut_masks[TOTAL_PER_THREAD_REGS] = {
+    [HEX_REG_USR] = 0xc13000c0,
+    [HEX_REG_PC] = IMMUTABLE,
+    [HEX_REG_GP] = 0x3f,
+    [HEX_REG_UPCYCLELO] = IMMUTABLE,
+    [HEX_REG_UPCYCLEHI] = IMMUTABLE,
+    [HEX_REG_UTIMERLO] = IMMUTABLE,
+    [HEX_REG_UTIMERHI] = IMMUTABLE,
+};
+
 void gen_log_reg_write(int rnum, TCGv val)
 {
     const target_ulong reg_mask = reg_immut_masks[rnum];
 
-    gen_masked_reg_write(val, hex_gpr[rnum], reg_mask);
-    tcg_gen_mov_tl(hex_new_value[rnum], val);
-    if (HEX_DEBUG) {
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movi_tl(hex_reg_written[rnum], 1);
+    if (reg_mask != IMMUTABLE) {
+        gen_masked_reg_write(val, hex_gpr[rnum], reg_mask);
+        tcg_gen_mov_tl(hex_new_value[rnum], val);
+        if (HEX_DEBUG) {
+            /* Do this so HELPER(debug_commit_end) will know */
+            tcg_gen_movi_tl(hex_reg_written[rnum], 1);
+        }
     }
 }
 
@@ -186,22 +188,26 @@ static void gen_log_reg_write_pair(int rnum, TCGv_i64 val)
     const target_ulong reg_mask_high = reg_immut_masks[rnum + 1];
     TCGv val32 = tcg_temp_new();
 
-    /* Low word */
-    tcg_gen_extrl_i64_i32(val32, val);
-    gen_masked_reg_write(val32, hex_gpr[rnum], reg_mask_low);
-    tcg_gen_mov_tl(hex_new_value[rnum], val32);
-    if (HEX_DEBUG) {
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movi_tl(hex_reg_written[rnum], 1);
+    if (reg_mask_low != IMMUTABLE) {
+        /* Low word */
+        tcg_gen_extrl_i64_i32(val32, val);
+        gen_masked_reg_write(val32, hex_gpr[rnum], reg_mask_low);
+        tcg_gen_mov_tl(hex_new_value[rnum], val32);
+        if (HEX_DEBUG) {
+            /* Do this so HELPER(debug_commit_end) will know */
+            tcg_gen_movi_tl(hex_reg_written[rnum], 1);
+        }
     }
 
-    /* High word */
-    tcg_gen_extrh_i64_i32(val32, val);
-    gen_masked_reg_write(val32, hex_gpr[rnum + 1], reg_mask_high);
-    tcg_gen_mov_tl(hex_new_value[rnum + 1], val32);
-    if (HEX_DEBUG) {
-        /* Do this so HELPER(debug_commit_end) will know */
-        tcg_gen_movi_tl(hex_reg_written[rnum + 1], 1);
+    if (reg_mask_high != IMMUTABLE) {
+        /* High word */
+        tcg_gen_extrh_i64_i32(val32, val);
+        gen_masked_reg_write(val32, hex_gpr[rnum + 1], reg_mask_high);
+        tcg_gen_mov_tl(hex_new_value[rnum + 1], val32);
+        if (HEX_DEBUG) {
+            /* Do this so HELPER(debug_commit_end) will know */
+            tcg_gen_movi_tl(hex_reg_written[rnum + 1], 1);
+        }
     }
 
     tcg_temp_free(val32);
@@ -255,31 +261,83 @@ static void gen_log_greg_write_pair(int rnum, TCGv_i64 val)
     tcg_temp_free(val32);
 }
 
+static const target_ulong sreg_immut_masks[NUM_SREGS] = {
+    [HEX_SREG_STID] = 0xff00ff00,
+    [HEX_SREG_ELR] = 0x00000003,
+    [HEX_SREG_SSR] = 0x00008000,
+    [HEX_SREG_CCR] = 0x10e0ff24,
+    [HEX_SREG_HTID] = IMMUTABLE,
+    [HEX_SREG_IMASK] = 0xffff0000,
+    [HEX_SREG_GEVB] = 0x000000ff,
+    [HEX_SREG_EVB] = 0x000000ff,
+    [HEX_SREG_MODECTL] = IMMUTABLE,
+    [HEX_SREG_SYSCFG] = 0x80001c00,
+    [HEX_SREG_IPENDAD] = IMMUTABLE,
+    [HEX_SREG_VID] = 0xfc00fc00,
+    [HEX_SREG_VID1] = 0xfc00fc00,
+    [HEX_SREG_BESTWAIT] = 0xfffffe00,
+    [HEX_SREG_SCHEDCFG] = 0xfffffef0,
+    [HEX_SREG_CFGBASE] = IMMUTABLE,
+    [HEX_SREG_REV] = IMMUTABLE,
+    [HEX_SREG_ISDBST] = IMMUTABLE,
+    [HEX_SREG_ISDBCFG0] = 0xe0000000,
+    [HEX_SREG_BRKPTPC0] = 0x00000003,
+    [HEX_SREG_BRKPTCFG0] = 0xfc007000,
+    [HEX_SREG_BRKPTPC1] = 0x00000003,
+    [HEX_SREG_BRKPTCFG1] = 0xfc007000,
+    [HEX_SREG_ISDBMBXIN] = IMMUTABLE,
+    [HEX_SREG_ISDBEN] = 0xfffffffe,
+    [HEX_SREG_TIMERLO] = IMMUTABLE,
+    [HEX_SREG_TIMERHI] = IMMUTABLE,
+};
+
 static void gen_log_sreg_write(int rnum, TCGv val)
 {
-    if (rnum < HEX_SREG_GLB_START) {
-        tcg_gen_mov_tl(hex_t_sreg_new_value[rnum], val);
-    } else {
-        gen_helper_sreg_write(cpu_env, tcg_constant_i32(rnum), val);
+    const target_ulong reg_mask = sreg_immut_masks[rnum];
+
+    if (reg_mask != IMMUTABLE) {
+        if (rnum < HEX_SREG_GLB_START) {
+            gen_masked_reg_write(val, hex_t_sreg[rnum], reg_mask);
+            tcg_gen_mov_tl(hex_t_sreg_new_value[rnum], val);
+        } else {
+            gen_masked_reg_write(val, hex_g_sreg[rnum], reg_mask);
+            gen_helper_sreg_write(cpu_env, tcg_constant_i32(rnum), val);
+        }
     }
 }
 
 static void gen_log_sreg_write_pair(int rnum, TCGv_i64 val)
 {
+    const target_ulong reg_mask_low = sreg_immut_masks[rnum];
+    const target_ulong reg_mask_high = sreg_immut_masks[rnum + 1];
+
+    TCGv val32 = tcg_temp_new();
+
     if (rnum < HEX_SREG_GLB_START) {
-        TCGv val32 = tcg_temp_new();
-
-        /* Low word */
-        tcg_gen_extrl_i64_i32(val32, val);
-        tcg_gen_mov_tl(hex_t_sreg_new_value[rnum], val32);
-        /* High word */
-        tcg_gen_extrh_i64_i32(val32, val);
-        tcg_gen_mov_tl(hex_t_sreg_new_value[rnum + 1], val32);
-
-        tcg_temp_free(val32);
+        if (reg_mask_low != IMMUTABLE) {
+            tcg_gen_extrl_i64_i32(val32, val);
+            gen_masked_reg_write(val32, hex_t_sreg[rnum], reg_mask_low);
+            tcg_gen_mov_tl(hex_t_sreg_new_value[rnum], val32);
+        }
+        if (reg_mask_high != IMMUTABLE) {
+            tcg_gen_extrh_i64_i32(val32, val);
+            gen_masked_reg_write(val32, hex_t_sreg[rnum + 1], reg_mask_high);
+            tcg_gen_mov_tl(hex_t_sreg_new_value[rnum + 1], val32);
+        }
     } else {
-        gen_helper_sreg_write_pair(cpu_env, tcg_constant_i32(rnum), val);
+        if (reg_mask_low != IMMUTABLE) {
+            tcg_gen_extrl_i64_i32(val32, val);
+            gen_masked_reg_write(val32, hex_g_sreg[rnum], reg_mask_low);
+            gen_helper_sreg_write(cpu_env, tcg_constant_i32(rnum), val32);
+        }
+        if (reg_mask_high != IMMUTABLE) {
+            tcg_gen_extrh_i64_i32(val32, val);
+            gen_masked_reg_write(val32, hex_g_sreg[rnum + 1], reg_mask_high);
+            gen_helper_sreg_write(cpu_env, tcg_constant_i32(rnum + 1), val32);
+        }
     }
+
+    tcg_temp_free(val32);
 }
 #endif
 

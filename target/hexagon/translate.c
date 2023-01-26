@@ -60,6 +60,8 @@ TCGv hex_greg[NUM_GREGS];
 TCGv hex_greg_new_value[NUM_GREGS];
 TCGv hex_t_sreg[NUM_SREGS];
 TCGv hex_t_sreg_new_value[NUM_SREGS];
+TCGv_ptr hex_g_sreg_ptr;
+TCGv hex_g_sreg[NUM_SREGS];
 #if HEX_DEBUG
 TCGv hex_greg_written[NUM_GREGS];
 TCGv hex_t_sreg_written[NUM_SREGS];
@@ -949,6 +951,7 @@ static void gen_greg_writes(DisasContext *ctx)
     }
 }
 
+
 static void gen_sreg_writes(DisasContext *ctx)
 {
     int i;
@@ -1694,6 +1697,8 @@ void hexagon_translate_init(void)
                 offsetof(CPUHexagonState, greg_written[i]), "greg_written");
 #endif
     }
+    hex_g_sreg_ptr = tcg_global_mem_new_ptr(cpu_env,
+            offsetof(CPUHexagonState, g_sreg), "hex_g_sreg_ptr");
     for (i = 0; i < NUM_SREGS; i++) {
         if (i < HEX_SREG_GLB_START) {
             hex_t_sreg[i] = tcg_global_mem_new(cpu_env,
@@ -1706,6 +1711,10 @@ void hexagon_translate_init(void)
             hex_t_sreg_written[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, t_sreg_written[i]), "sreg_written");
 #endif
+        } else {
+            hex_g_sreg[i] = tcg_global_mem_new(hex_g_sreg_ptr,
+                i * sizeof(target_ulong),
+                hexagon_sregnames[i]);
         }
     }
     hex_packet_count = tcg_global_mem_new_i64(cpu_env,

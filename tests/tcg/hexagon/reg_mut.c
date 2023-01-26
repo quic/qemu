@@ -1,4 +1,3 @@
-
 /*
  *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
@@ -16,55 +15,10 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
-static int err;
-
-#define check(N, EXPECT) \
-    do { \
-        uint64_t value = N; \
-        uint64_t expect = EXPECT; \
-        if (value != EXPECT) { \
-            printf("ERROR: \"%s\" 0x%04llx != 0x%04llx at %s:%d\n", #N, value, \
-                   expect, __FILE__, __LINE__); \
-            err++; \
-        } \
-    } while (0)
-
-#define check_ne(N, EXPECT) \
-    do { \
-        uint64_t value = N; \
-        uint64_t expect = EXPECT; \
-        if (value == EXPECT) { \
-            printf("ERROR: \"%s\" 0x%04llx == 0x%04llx at %s:%d\n", #N, value, \
-                   expect, __FILE__, __LINE__); \
-            err++; \
-        } \
-    } while (0)
-
-#define WRITE_REG_NOCLOBBER(output, reg_name, input) \
-    asm volatile(reg_name " = %1\n\t" \
-                 "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
-                 : );
-
-#define WRITE_REG_ENCODED(output, reg_name, input, encoding) \
-    asm volatile("r0 = %1\n\t" \
-                 encoding "\n\t" \
-                 "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
-                 : "r0");
-
-#define WRITE_REG_PAIR_ENCODED(output, reg_name, input, encoding) \
-    asm volatile("r1:0 = %1\n\t" \
-                 encoding "\n\t" \
-                 "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
-                 : "r1:0");
+#include "reg_mut.h"
 
 /*
  * Instruction word: { pc = r0 }
@@ -142,7 +96,7 @@ static inline void write_control_register_pairs(void)
 
 int main()
 {
-    err = 0;
+    int err = 0;
 
     write_control_registers();
     write_control_register_pairs();

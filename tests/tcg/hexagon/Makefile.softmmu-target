@@ -83,6 +83,7 @@ TESTS += \
 	pmu \
 	start \
 	single_step \
+	sys_reg_mut \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -166,6 +167,8 @@ pmu: pmu.o
 start.o: start.c mmu.h
 start: start.o
 single_step: single_step.o single_step_asm.o
+sys_reg_mut.o: sys_reg_mut.c ../reg_mut.h
+sys_reg_mut: sys_reg_mut.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)

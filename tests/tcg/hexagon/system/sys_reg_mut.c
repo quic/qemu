@@ -1,0 +1,169 @@
+/*
+ *  Copyright(c) 2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <stdint.h>
+#include <stdio.h>
+
+#include "../reg_mut.h"
+
+int err;
+
+static inline uint32_t ehw(uint64_t val)
+{
+    return (val & 0xffffffff00000000) >> 32;
+}
+
+static inline uint32_t elw(uint64_t val)
+{
+    return val & 0x00000000ffffffff;
+}
+
+static inline uint32_t mask(uint32_t new_val, uint32_t cur_val,
+                            uint32_t reg_mask)
+{
+    return (new_val & ~reg_mask) | (cur_val & reg_mask);
+}
+
+static inline uint64_t mask_pair(uint64_t new_val, uint64_t cur_val,
+                                 uint32_t reg_mask_high, uint32_t reg_mask_low)
+{
+    return ((uint64_t) mask(ehw(new_val), ehw(cur_val), reg_mask_high) << 32) |
+           mask(elw(new_val), elw(cur_val), reg_mask_low);
+}
+
+static inline void write_thread_local_system_control_registers(void)
+{
+    uint32_t result = 0;
+    uint32_t cur_val = 0;
+    uint32_t new_val = 0xffffffff;
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "stid", new_val);
+    check(result, mask(new_val, cur_val, 0xff00ff00));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "elr", new_val);
+    check(result, mask(new_val, cur_val, 0x00000003));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "ccr", new_val);
+    check(result, mask(new_val, cur_val, 0x10e0ff24));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "imask", new_val);
+    check(result, mask(new_val, cur_val, 0xffff0000));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "gevb", new_val);
+    check(result, mask(new_val, cur_val, 0x000000ff));
+}
+
+static inline void write_global_system_control_registers(void)
+{
+    uint32_t result = 0;
+    uint32_t cur_val = 0;
+    uint32_t new_val = 0xffffffff;
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "syscfg", new_val);
+    check(result, mask(new_val, cur_val, 0x80001c00));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "vid", new_val);
+    check(result, mask(new_val, cur_val, 0xfc00fc00));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "bestwait", new_val);
+    check(result, mask(new_val, cur_val, 0xfffffe00));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "schedcfg", new_val);
+    check(result, mask(new_val, cur_val, 0xfffffef0));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "isdbcfg0", new_val);
+    check(result, mask(new_val, cur_val, 0xe0000000));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "brkptpc0", new_val);
+    check(result, mask(new_val, cur_val, 0x00000003));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "brkptcfg0", new_val);
+    check(result, mask(new_val, cur_val, 0xfc007000));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "brkptpc1", new_val);
+    check(result, mask(new_val, cur_val, 0x00000003));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "brkptcfg1", new_val);
+    check(result, mask(new_val, cur_val, 0xfc007000));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "isdben", new_val);
+    check(result, mask(new_val, cur_val, 0xfffffffe));
+}
+
+static inline void write_thread_local_system_control_register_pairs(void)
+{
+    uint64_t result = 0;
+    uint64_t cur_val = 0;
+    uint64_t new_val = 0xffffffffffffffff;
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s3:2", new_val);
+    check(result, mask_pair(new_val, cur_val, 0x00000003, 0xff00ff00));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s11:10", new_val);
+    check(result, mask_pair(new_val, cur_val, 0x000000ff, 0xffff0000));
+}
+
+static inline void write_global_system_control_register_pairs(void)
+{
+    uint64_t result = 0;
+    uint64_t cur_val = 0;
+    uint64_t new_val = 0xffffffffffffffff;
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s19:18", new_val);
+    check(result, mask_pair(new_val, cur_val, 0x00000000, 0x80001c00));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s21:20", new_val);
+    check(result, mask_pair(new_val, cur_val, 0xfc00fc00, 0xffffffff));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s25:24", new_val);
+    check(result, mask_pair(new_val, cur_val, 0xfffffef0, 0x00000000));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s27:26", new_val);
+    check(result, mask_pair(new_val, cur_val, 0xffffffff, 0x00000000));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s29:28", new_val);
+    check(result, mask_pair(new_val, cur_val, 0xffffffff, 0x00000000));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s33:32", new_val);
+    check(result, mask_pair(new_val, cur_val, 0xe0000000, 0xffffffff));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s37:36", new_val);
+    check(result, mask_pair(new_val, cur_val, 0xfc007000, 0x00000003));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s39:38", new_val);
+    check(result, mask_pair(new_val, cur_val, 0xfc007000, 0x00000003));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s41:40", new_val);
+    check(result, mask_pair(new_val, cur_val, 0x00000000, 0xffffffff));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s43:42", new_val);
+    check(result, mask_pair(new_val, cur_val, 0x00000000, 0xfffffffe));
+
+    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s57:56", new_val);
+    check(result, mask_pair(new_val, cur_val, 0xffffffff, 0xffffffff));
+}
+
+int main()
+{
+    write_thread_local_system_control_registers();
+    write_global_system_control_registers();
+    write_thread_local_system_control_register_pairs();
+    write_global_system_control_register_pairs();
+
+    puts(err ? "FAIL" : "PASS");
+    return err;
+}
