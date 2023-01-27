@@ -66,7 +66,10 @@ checkpatch:
   # configs in between builds, so `remote add` would fail.
   script:
     - git remote set-url mainrepo $REMOTE_URL >/dev/null 2>&1 || git remote add mainrepo $REMOTE_URL
-    - target_branch=$(curl -LsS -H "$AUTH" "$MR_API_URL" | tr -d "[:space:]" | sed -ne 's/.*"target_branch":"\([^"]*\)".*/\1/p')
+    - sleep 4 # Wait a bit after MR creation so that GitLab-API doesn't miss it
+    - echo 'Querying "$MR_API_URL"'
+    - reply="$(curl -LsS -H "$AUTH" "$MR_API_URL")"
+    - target_branch=$(printf "%s" "$reply" | tr -d "[:space:]" | sed -ne 's/.*"target_branch":"\([^"]*\)".*/\1/p')
     - if test -n "$target_branch"; then
         echo "Found target branch '$target_branch'";
         git fetch mainrepo $target_branch || exit 1;
@@ -78,7 +81,10 @@ checkpatch:
         done;
         if test $? -ne 0 || test $error -ne 0; then
           exit 1;
-        fi
+        fi;
+      else
+        echo "DIDN'T FIND TARGET BRANCH";
+        printf "API reply is '%s'\n" "$reply";
       fi
 
 hexagon_build:
