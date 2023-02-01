@@ -1,5 +1,5 @@
 ##
-##  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -99,10 +99,12 @@ run-hvx-bitmode: hvx_sat
 
 
 PARANOID_OPTS=-cpu any,paranoid-commit-state=true
+IN_ASM_OPTS=-d in_asm
 run-misc run-usr run-preg_alias run-dual_stores run-pred_stores run-multi_result run-mem_noshuf \
 run-hvx_misc run-scatter_gather run-hvx_histogram run-hvx_sat:
 	$(call run-test, $<, $(QEMU) $<, "$< on $(TARGET_NAME)")
 	$(call run-test, $<, $(QEMU) $(PARANOID_OPTS) $<, "$< on $(TARGET_NAME) paranoid")
+	$(call run-test, $<, $(QEMU) $(IN_ASM_OPTS) -D $<.in_asm $<, "$< on $(TARGET_NAME) in_asm")
 
 # These tests raise an exception and return 1 to the shell
 # We'll grep for the proper exception number in their stderr

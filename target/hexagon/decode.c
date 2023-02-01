@@ -1081,10 +1081,10 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     decode_apply_extenders(pkt);
     if (!disas_only) {
         decode_remove_extenders(pkt);
-    }
-    if (!decode_set_slot_number(pkt)) {
-        /* Invalid packet */
-        return 0;
+        if (!decode_set_slot_number(pkt)) {
+            /* Invalid packet */
+            return 0;
+        }
     }
     decode_fill_newvalue_regno(pkt);
 
