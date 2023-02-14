@@ -251,15 +251,7 @@ struct PCIDeviceClass {
     uint16_t subsystem_vendor_id;       /* only for header type = 0 */
     uint16_t subsystem_id;              /* only for header type = 0 */
 
-    /*
-     * pci-to-pci bridge or normal device.
-     * This doesn't mean pci host switch.
-     * When card bus bridge is supported, this would be enhanced.
-     */
-    bool is_bridge;
-
-    /* rom bar */
-    const char *romfile;
+    const char *romfile;                /* rom bar */
 };
 
 typedef void (*PCIINTxRoutingNotifier)(PCIDevice *dev);
@@ -921,11 +913,8 @@ PCI_DMA_DEFINE_LDST(q_be, q_be, 64);
 static inline void *pci_dma_map(PCIDevice *dev, dma_addr_t addr,
                                 dma_addr_t *plen, DMADirection dir)
 {
-    void *buf;
-
-    buf = dma_memory_map(pci_get_address_space(dev), addr, plen, dir,
-                         MEMTXATTRS_UNSPECIFIED);
-    return buf;
+    return dma_memory_map(pci_get_address_space(dev), addr, plen, dir,
+                          MEMTXATTRS_UNSPECIFIED);
 }
 
 static inline void pci_dma_unmap(PCIDevice *dev, void *buffer, dma_addr_t len,

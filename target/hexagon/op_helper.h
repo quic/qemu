@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,4 +45,15 @@ static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
     return cpu_ldq_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
 }
 
+/* Misc functions */
+void cancel_slot(CPUHexagonState *env, uint32_t slot);
+void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
+                  target_ulong addr, target_ulong PC);
+
+void log_reg_write(CPUHexagonState *env, int rnum,
+                   target_ulong val, uint32_t slot);
+void log_store64(CPUHexagonState *env, target_ulong addr,
+                 int64_t val, int width, int slot);
+void log_store32(CPUHexagonState *env, target_ulong addr,
+                 target_ulong val, int width, int slot);
 #endif

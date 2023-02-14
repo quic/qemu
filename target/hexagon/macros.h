@@ -188,13 +188,22 @@
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, SLOT)
 #endif
 
+#ifdef QEMU_GENERATE
+static inline void gen_cancel(uint32_t slot)
+{
+    tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, 1 << slot);
+}
+
+#define CANCEL gen_cancel(slot);
+#else
 #define CANCEL cancel_slot(env, slot)
+#endif
 
 #define LOAD_CANCEL(EA) do { CANCEL; } while (0)
 
 #ifdef QEMU_GENERATE
-static inline void gen_pred_cancel(DisasContext *ctx, TCGv pred, int slot_num)
- {
+static inline void gen_pred_cancel(DisasContext *ctx, TCGv pred, uint32_t slot_num)
+{
     TCGv slot_mask = tcg_temp_new();
     TCGv tmp = tcg_temp_new();
     tcg_gen_ori_tl(slot_mask, hex_slot_cancelled, 1 << slot_num);

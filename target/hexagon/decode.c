@@ -401,6 +401,7 @@ static void decode_set_insn_attr_fields(Packet *pkt)
     pkt->pkt_has_fp_op = false;
 
     pkt->pkt_has_cof = false;
+    pkt->pkt_has_multi_cof = false;
     pkt->pkt_has_endloop = false;
 
     for (i = 0; i < numinsns; i++) {

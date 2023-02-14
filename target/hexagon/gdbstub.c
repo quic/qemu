@@ -46,7 +46,7 @@ int hexagon_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    if (n == HEX_REG_P3_0) {
+    if (n == HEX_REG_P3_0_ALIASED) {
         return gdb_get_regl(mem_buf,
                             ((env->pred[3] & 0xff) << 24 |
                              (env->pred[2] & 0xff) << 16 |
@@ -110,7 +110,7 @@ int hexagon_gdb_write_register(CPUState *cs, uint8_t *mem_buf, int n)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
 
-    if (n == HEX_REG_P3_0) {
+    if (n == HEX_REG_P3_0_ALIASED) {
         uint32_t p3_0 = ldtul_p(mem_buf);
         env->pred[3] = (p3_0 & 0xff000000) >> 24;
         env->pred[2] = (p3_0 & 0x00ff0000) >> 16;

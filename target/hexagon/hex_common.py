@@ -28,6 +28,7 @@ macros = {}           # macro -> macro information...
 attribinfo = {}       # Register information and misc
 tags = []             # list of all tags
 overrides = {}        # tags with helper overrides
+idef_parser_enabled = {} # tags enabled for idef-parser
 
 def is_sysemu_tag(tag):
     return ("A_PRIV" in attribdict[tag] or
@@ -262,7 +263,8 @@ def is_new_val(regtype, regid, tag):
     return regtype+regid+'N' in semdict[tag]
 
 def need_slot(tag):
-    if ('A_CONDEXEC' in attribdict[tag] or
+    if (('A_CONDEXEC' in attribdict[tag] and
+         'A_JUMP' not in attribdict[tag]) or
         'A_STORE' in attribdict[tag] or
         'A_LOAD' in attribdict[tag] or
         'A_CVI' in attribdict[tag] or
@@ -325,6 +327,9 @@ def is_gather(tag):
 def is_new_result(tag):
     return ('A_CVI_NEW' in attribdict[tag])
 
+def is_idef_parser_enabled(tag):
+    return tag in idef_parser_enabled
+
 def imm_name(immlett):
     return "%siV" % immlett
 
@@ -356,3 +361,9 @@ def read_overrides_file(name):
             continue
         tag = overridere.findall(line)[0]
         overrides[tag] = True
+
+def read_idef_parser_enabled_file(name):
+    global idef_parser_enabled
+    with open(name, "r") as idef_parser_enabled_file:
+        lines = idef_parser_enabled_file.read().strip().split("\n")
+        idef_parser_enabled = set(lines)

@@ -49,6 +49,7 @@
 #include "hex_interrupts.h"
 #include "pmu.h"
 #endif
+#include "mmvec/macros.h"
 
 #define SF_BIAS        127
 #define SF_MANTBITS    23
@@ -114,8 +115,8 @@ G_NORETURN void HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp,
     do_raise_exception(env, excp, PC, 0);
 }
 
-static void log_reg_write(CPUHexagonState *env, int rnum,
-                          target_ulong val, uint32_t slot)
+void log_reg_write(CPUHexagonState *env, int rnum,
+                   target_ulong val, uint32_t slot)
 {
     HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
                   rnum, val, val);
@@ -146,9 +147,31 @@ static void log_pred_write(CPUHexagonState *env, int pnum, target_ulong val)
     }
 }
 
+void log_store32(CPUHexagonState *env, target_ulong addr,
+                 target_ulong val, int width, int slot)
+{
+    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx
+                  ", %" PRId32 " [0x08%" PRIx32 "])\n",
+                  width, addr, val, val);
+    env->mem_log_stores[slot].va = addr;
+    env->mem_log_stores[slot].width = width;
+    env->mem_log_stores[slot].data32 = val;
+}
+
+void log_store64(CPUHexagonState *env, target_ulong addr,
+                 int64_t val, int width, int slot)
+{
+    HEX_DEBUG_LOG("log_store%d(0x" TARGET_FMT_lx
+                  ", %" PRId64 " [0x016%" PRIx64 "])\n",
+                   width, addr, val, val);
+    env->mem_log_stores[slot].va = addr;
+    env->mem_log_stores[slot].width = width;
+    env->mem_log_stores[slot].data64 = val;
+}
+
 #ifndef CONFIG_USER_ONLY
-static void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
-                         target_ulong addr, target_ulong PC)
+void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
+                  target_ulong addr, target_ulong PC)
 {
     HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
 
@@ -162,8 +185,8 @@ static void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
                           "ignoring the second one\n");
         } else {
             fCHECK_PCALIGN(addr, PC);
-            env->branch_taken = 1;
             env->gpr[HEX_REG_PC] = addr;
+            env->branch_taken = 1;
         }
     } else {
         fCHECK_PCALIGN(addr, PC);
@@ -1917,7 +1940,7 @@ void HELPER(vwhist128qm)(CPUHexagonState *env, int32_t uiV)
     }
 }
 
-static void cancel_slot(CPUHexagonState *env, uint32_t slot)
+void cancel_slot(CPUHexagonState *env, uint32_t slot)
 {
 #ifdef CONFIG_USER_ONLY
     HEX_DEBUG_LOG("Slot %d cancelled\n", slot);

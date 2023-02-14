@@ -135,6 +135,12 @@ static inline bool is_preloaded(DisasContext *ctx, int num)
     return test_bit(num, ctx->regs_written);
 }
 
+static inline bool is_vreg_preloaded(DisasContext *ctx, int num)
+{
+    return test_bit(num, ctx->vregs_updated) ||
+           test_bit(num, ctx->vregs_updated_tmp);
+}
+
 intptr_t ctx_future_vreg_off(DisasContext *ctx, int regnum,
                              int num, bool alloc_ok);
 intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
@@ -215,6 +221,7 @@ extern TCGv hex_imprecise_exception;
 
 void gen_exception(int excp, target_ulong PC);
 void gen_exception_end_tb(DisasContext *ctx, int excp);
+
 bool is_gather_store_insn(DisasContext *ctx);
 void process_store(DisasContext *ctx, int slot_num);
 #endif

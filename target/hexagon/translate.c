@@ -246,7 +246,7 @@ static void gen_end_tb(DisasContext *ctx)
     } else if (ctx->is_tight_loop &&
                pkt->insn[pkt->num_insns - 1].opcode == J2_endloop0) {
         /*
-         * When we're in a tight loop, we defer the endloop0 processing to here
+         * When we're in a tight loop, we defer the endloop0 processing
          * to take advantage of direct block chaining
          */
         TCGLabel *skip = gen_new_label();
@@ -582,6 +582,24 @@ static bool pkt_has_pmu_read(Packet *pkt)
 }
 #endif
 
+static bool need_next_PC(DisasContext *ctx)
+{
+    Packet *pkt = ctx->pkt;
+
+    /* Check for conditional control flow or HW loop end */
+    for (int i = 0; i < pkt->num_insns; i++) {
+        uint16_t opcode = pkt->insn[i].opcode;
+        if (GET_ATTRIB(opcode, A_CONDEXEC) && GET_ATTRIB(opcode, A_COF)) {
+            return true;
+        }
+        if (GET_ATTRIB(opcode, A_HWLOOP0_END) ||
+            GET_ATTRIB(opcode, A_HWLOOP1_END)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
 {
     Packet *pkt = ctx->pkt;
@@ -700,6 +718,9 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
 #endif
         if (pkt->pkt_has_multi_cof) {
             tcg_gen_movi_tl(hex_branch_taken, 0);
+        }
+        if (need_next_PC(ctx)) {
+            tcg_gen_movi_tl(hex_gpr[HEX_REG_PC], next_PC);
         }
     }
     ctx->pkt_ends_tb = pkt_ends_tb(pkt);
@@ -1419,7 +1440,6 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
         }
 #endif
         gen_start_packet(env, ctx);
-
         for (i = 0; i < pkt.num_insns; i++) {
             ctx->insn = &pkt.insn[i];
             gen_insn(ctx);

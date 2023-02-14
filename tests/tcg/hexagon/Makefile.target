@@ -25,12 +25,12 @@ CFLAGS += -fno-unroll-loops
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
 VPATH += $(HEX_SRC)
 
-first: $(HEX_SRC)/first.S
-	$(CC) -static -mv69 -nostdlib $^ -o $@
 invalid_immext: $(HEX_SRC)/invalid_immext.S
 	$(CC) -static -mv69 -mhvx -mhvx-ieee-fp -nostdlib $^ -o $@
 invalid_vhist: $(HEX_SRC)/invalid_vhist.S
 	$(CC) -static -mv69 -mhvx -nostdlib $^ -o $@
+%: $(HEX_SRC)/%.S $(HEX_SRC)/crt.S
+	$(CC) -static -mv69 -nostdlib $^ -o $@
 
 HEX_TESTS = first
 HEX_TESTS += invalid_immext
@@ -66,6 +66,8 @@ HEX_TESTS += hvx_histogram
 HEX_TESTS += hvx_sat
 HEX_TESTS += usr_ctrl_assign
 #HEX_TESTS += hmx
+HEX_TESTS += signal_context
+HEX_TESTS += reg_mut
 
 TESTS += $(HEX_TESTS)
 
@@ -123,6 +125,32 @@ run-guestcheck:
 	$(call quiet-command, \
 		grep -q "exception 0x1a" $<.stderr, \
 		"GREP", "exception 0x1a");
+
+HEX_TESTS += test_abs
+HEX_TESTS += test_bitcnt
+HEX_TESTS += test_bitsplit
+HEX_TESTS += test_call
+HEX_TESTS += test_clobber
+HEX_TESTS += test_cmp
+HEX_TESTS += test_dotnew
+HEX_TESTS += test_ext
+HEX_TESTS += test_fibonacci
+HEX_TESTS += test_hl
+HEX_TESTS += test_hwloops
+HEX_TESTS += test_jmp
+HEX_TESTS += test_lsr
+HEX_TESTS += test_mpyi
+HEX_TESTS += test_packet
+HEX_TESTS += test_reorder
+HEX_TESTS += test_round
+HEX_TESTS += test_vavgw
+HEX_TESTS += test_vcmpb
+HEX_TESTS += test_vcmpw
+HEX_TESTS += test_vlsrw
+HEX_TESTS += test_vmaxh
+HEX_TESTS += test_vminh
+HEX_TESTS += test_vpmpyh
+HEX_TESTS += test_vspliceb
 
 TESTS += $(HEX_TESTS)
 

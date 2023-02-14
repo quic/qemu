@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ##
-##  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -146,23 +146,47 @@ def gen_helper_prototype(f, tag, tagregs, tagimms):
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
-    for arg in sys.argv[3 : -1]:
-        hex_common.read_overrides_file(arg)
+    hex_common.read_overrides_file(sys.argv[3])
+    hex_common.read_overrides_file(sys.argv[4])
+    hex_common.read_overrides_file(sys.argv[5])
+    ## Whether or not idef-parser is enabled is
+    ## determined by the number of arguments to
+    ## this script:
+    ##
+    ##   6 args. -> not enabled,
+    ##   7 args. -> idef-parser enabled.
+    ##
+    ## The 7:th arg. then holds a list of the successfully
+    ## parsed instructions.
+    is_idef_parser_enabled = len(sys.argv) > 7
+    if is_idef_parser_enabled:
+        hex_common.read_idef_parser_enabled_file(sys.argv[6])
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    with open(sys.argv[-1], 'w') as f:
-        user_tags = [tag for tag in hex_common.get_user_tags() if not hex_common.skip_qemu_helper(tag)]
-        for tag in user_tags:
-            if not hex_common.tag_ignore(tag):
-                gen_helper_prototype(f, tag, tagregs, tagimms)
+    output_file = sys.argv[-1]
+    with open(output_file, 'w') as f:
+        for tag in hex_common.get_user_tags():
+            if hex_common.tag_ignore(tag):
+                continue
+            if ( hex_common.skip_qemu_helper(tag) ):
+                continue
+            if ( hex_common.is_idef_parser_enabled(tag) ):
+                continue
 
-        sys_tags = [tag for tag in hex_common.get_sys_tags() if not hex_common.skip_qemu_helper(tag)]
+            gen_helper_prototype(f, tag, tagregs, tagimms)
+
         f.write('#if !defined(CONFIG_USER_ONLY)\n')
-        for tag in sys_tags:
-            if not hex_common.tag_ignore(tag):
-                gen_helper_prototype(f, tag, tagregs, tagimms)
+        for tag in hex_common.get_sys_tags():
+            if hex_common.tag_ignore(tag):
+                continue
+            if ( hex_common.skip_qemu_helper(tag) ):
+                continue
+            if ( hex_common.is_idef_parser_enabled(tag) ):
+                continue
+
+            gen_helper_prototype(f, tag, tagregs, tagimms)
         f.write('#endif\n')
 
 if __name__ == "__main__":

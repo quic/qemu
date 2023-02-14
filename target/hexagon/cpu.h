@@ -54,6 +54,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define TCG_GUEST_DEFAULT_MO      (TCG_MO_ALL)
 #include "qom/object.h"
 #include "hw/core/cpu.h"
+#include "hw/registerfields.h"
 
 #define NUM_PREGS 4
 #define TOTAL_PER_THREAD_REGS 64
@@ -585,7 +586,7 @@ typedef struct HexagonCPUClass {
     CPUClass parent_class;
     /*< public >*/
     DeviceRealize parent_realize;
-    DeviceReset parent_reset;
+    ResettablePhases parent_phases;
 } HexagonCPUClass;
 
 struct ArchCPU {

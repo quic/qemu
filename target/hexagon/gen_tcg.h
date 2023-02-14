@@ -1708,7 +1708,7 @@
  *      cmpeqn1  compare equal to negative 1
  *      cmpgtn1  compare greater than negative 1
  *      cmpeq    compare equal (two registers)
- *      cmpgtu   compare greater than unsigned (two registers
+ *      cmpgtu   compare greater than unsigned (two registers)
  *      tstbit0  test bit zero
  *
  * Condition

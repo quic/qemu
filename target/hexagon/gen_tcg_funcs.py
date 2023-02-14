@@ -177,6 +177,18 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 f.write("        ctx_future_vreg_off(ctx, %s%sN," % \
                     (regtype, regid))
                 f.write(" 1, true);\n");
+            if 'A_CONDEXEC' in hex_common.attribdict[tag]:
+                f.write("    if (!is_vreg_preloaded(ctx, %s)) {\n" % (regN))
+                f.write("        intptr_t src_off =")
+                f.write(" offsetof(CPUHexagonState, VRegs[%s%sN]);\n"% \
+                                     (regtype, regid))
+                f.write("        tcg_gen_gvec_mov(MO_64, %s%sV_off,\n" % \
+                                     (regtype, regid))
+                f.write("                         src_off,\n")
+                f.write("                         sizeof(MMVector),\n")
+                f.write("                         sizeof(MMVector));\n")
+                f.write("    }\n")
+
             if (not hex_common.skip_qemu_helper(tag)):
                 f.write("    TCGv_ptr %s%sV = tcg_temp_local_new_ptr();\n" % \
                     (regtype, regid))
@@ -741,7 +753,29 @@ def gen_tcg_func(f, tag, regs, imms):
         if (hex_common.is_read(regid)):
             genptr_src_read_opn(f,regtype,regid,tag)
 
-    if ( hex_common.skip_qemu_helper(tag) ):
+    if hex_common.is_idef_parser_enabled(tag):
+        declared = []
+        ## Handle registers
+        for regtype,regid,toss,numregs in regs:
+            if (hex_common.is_pair(regid)
+                or (hex_common.is_single(regid)
+                    and hex_common.is_old_val(regtype, regid, tag))):
+                declared.append("%s%sV" % (regtype, regid))
+                if regtype == "M":
+                    declared.append("%s%sN" % (regtype, regid))
+            elif hex_common.is_new_val(regtype, regid, tag):
+                declared.append("%s%sN" % (regtype,regid))
+            else:
+                print("Bad register parse: ",regtype,regid,toss,numregs)
+
+        ## Handle immediates
+        for immlett,bits,immshift in imms:
+            declared.append(hex_common.imm_name(immlett))
+
+        arguments = ", ".join(["ctx", "ctx->insn", "ctx->pkt"] + declared)
+        f.write("    emit_%s(%s);\n" % (tag, arguments))
+
+    elif ( hex_common.skip_qemu_helper(tag) ):
         f.write("    fGEN_TCG_%s(%s);\n" % (tag, hex_common.semdict[tag]))
     else:
         ## Generate the call to the helper
@@ -819,15 +853,31 @@ def gen_def_tcg_func(f, tag, tagregs, tagimms):
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
-    for arg in sys.argv[3 : -1]:
-        hex_common.read_overrides_file(arg)
+    hex_common.read_overrides_file(sys.argv[3])
+    hex_common.read_overrides_file(sys.argv[4])
+    hex_common.read_overrides_file(sys.argv[5])
     hex_common.calculate_attribs()
+    ## Whether or not idef-parser is enabled is
+    ## determined by the number of arguments to
+    ## this script:
+    ##
+    ##   6 args. -> not enabled,
+    ##   7 args. -> idef-parser enabled.
+    ##
+    ## The 7:th arg. then holds a list of the successfully
+    ## parsed instructions.
+    is_idef_parser_enabled = len(sys.argv) > 7
+    if is_idef_parser_enabled:
+        hex_common.read_idef_parser_enabled_file(sys.argv[6])
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    with open(sys.argv[-1], 'w') as f:
+    output_file = sys.argv[-1]
+    with open(output_file, 'w') as f:
         f.write("#ifndef HEXAGON_TCG_FUNCS_H\n")
         f.write("#define HEXAGON_TCG_FUNCS_H\n\n")
+        if is_idef_parser_enabled:
+            f.write("#include \"idef-generated-emitter.h.inc\"\n\n")
 
         for tag in hex_common.tags:
             if  hex_common.tag_ignore(tag):
