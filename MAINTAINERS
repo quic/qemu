@@ -113,6 +113,8 @@ M: Philippe Mathieu-Daudé <philmd@linaro.org>
 R: Jiaxun Yang <jiaxun.yang@flygoat.com>
 S: Odd Fixes
 K: ^Subject:.*(?i)mips
+F: docs/system/target-mips.rst
+F: configs/targets/mips*
 
 Guest CPU cores (TCG)
 ---------------------
@@ -509,7 +511,6 @@ F: target/i386/hax/
 Guest CPU Cores (NVMM)
 ----------------------
 NetBSD Virtual Machine Monitor (NVMM) CPU support
-M: Kamil Rytarowski <kamil@netbsd.org>
 M: Reinoud Zandijk <reinoud@netbsd.org>
 S: Maintained
 F: include/sysemu/nvmm.h
@@ -534,7 +535,6 @@ F: util/*posix*.c
 F: include/qemu/*posix*.h
 
 NETBSD
-M: Kamil Rytarowski <kamil@netbsd.org>
 M: Reinoud Zandijk <reinoud@netbsd.org>
 M: Ryo ONODERA <ryoon@netbsd.org>
 S: Maintained
@@ -575,12 +575,14 @@ ARM Machines
 Allwinner-a10
 M: Beniamino Galvani <b.galvani@gmail.com>
 M: Peter Maydell <peter.maydell@linaro.org>
+R: Strahinja Jankovic <strahinja.p.jankovic@gmail.com>
 L: qemu-arm@nongnu.org
 S: Odd Fixes
 F: hw/*/allwinner*
 F: include/hw/*/allwinner*
 F: hw/arm/cubieboard.c
 F: docs/system/arm/cubieboard.rst
+F: hw/misc/axp209.c
 
 Allwinner-h3
 M: Niek Linnenbank <nieklinnenbank@gmail.com>
@@ -1034,6 +1036,12 @@ L: qemu-arm@nongnu.org
 S: Maintained
 F: hw/arm/netduinoplus2.c
 
+Olimex STM32 H405
+M: Felipe Balbi <balbi@kernel.org>
+L: qemu-arm@nongnu.org
+S: Maintained
+F: hw/arm/olimex-stm32-h405.c
+
 SmartFusion2
 M: Subbaraya Sundeep <sundeep.lkml@gmail.com>
 M: Peter Maydell <peter.maydell@linaro.org>
@@ -1239,7 +1247,7 @@ S: Odd Fixes
 F: hw/isa/piix4.c
 F: hw/acpi/piix4.c
 F: hw/mips/malta.c
-F: hw/mips/gt64xxx_pci.c
+F: hw/pci-host/gt64120.c
 F: include/hw/southbridge/piix.h
 F: tests/avocado/linux_ssh_mips_malta.py
 F: tests/avocado/machine_mips_malta.py
@@ -1260,6 +1268,7 @@ F: hw/isa/vt82c686.c
 F: hw/pci-host/bonito.c
 F: hw/usb/vt82c686-uhci-pci.c
 F: include/hw/isa/vt82c686.h
+F: include/hw/pci-host/bonito.h
 F: tests/avocado/machine_mips_fuloong2e.py
 
 Loongson-3 virtual platforms

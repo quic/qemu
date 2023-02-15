@@ -49,6 +49,8 @@
 # define DEV_NULL   "nul"
 #endif
 
+#define WAITPID_TIMEOUT 30
+
 typedef void (*QTestSendFn)(QTestState *s, const char *buf);
 typedef void (*ExternalSendFn)(void *s, const char *buf);
 typedef GString* (*QTestRecvFn)(QTestState *);
@@ -202,8 +204,24 @@ void qtest_wait_qemu(QTestState *s)
 {
 #ifndef _WIN32
     pid_t pid;
+    uint64_t end;
 
-    TFR(pid = waitpid(s->qemu_pid, &s->wstatus, 0));
+    /* poll for a while until sending SIGKILL */
+    end = g_get_monotonic_time() + WAITPID_TIMEOUT * G_TIME_SPAN_SECOND;
+
+    do {
+        pid = waitpid(s->qemu_pid, &s->wstatus, WNOHANG);
+        if (pid != 0) {
+            break;
+        }
+        g_usleep(100 * 1000);
+    } while (g_get_monotonic_time() < end);
+
+    if (pid == 0) {
+        kill(s->qemu_pid, SIGKILL);
+        pid = RETRY_ON_EINTR(waitpid(s->qemu_pid, &s->wstatus, 0));
+    }
+
     assert(pid == s->qemu_pid);
 #else
     DWORD ret;
@@ -689,9 +707,7 @@ int qtest_socket_server(const char *socket_path)
     addr.sun_family = AF_UNIX;
     snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", socket_path);
 
-    do {
-        ret = bind(sock, (struct sockaddr *)&addr, sizeof(addr));
-    } while (ret == -1 && errno == EINTR);
+    ret = RETRY_ON_EINTR(bind(sock, (struct sockaddr *)&addr, sizeof(addr)));
     g_assert_cmpint(ret, !=, -1);
     ret = listen(sock, 1);
     g_assert_cmpint(ret, !=, -1);

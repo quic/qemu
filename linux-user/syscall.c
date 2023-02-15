@@ -8191,7 +8191,8 @@ static void excp_dump_file(FILE *logfile, CPUArchState *env,
     }
 }
 
-void target_exception_dump(CPUArchState *env, const char *fmt, ...)
+void G_GNUC_PRINTF(2, 3)
+target_exception_dump(CPUArchState *env, const char *fmt, ...)
 {
     va_list vargs;
     va_start(vargs, fmt);
