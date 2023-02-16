@@ -44,12 +44,6 @@ static bool get_ssr_ie(CPUHexagonState *env)
     return GET_SSR_FIELD(SSR_IE, ssr);
 }
 
-static inline uint32_t get_ssr_cause(CPUHexagonState *env)
-{
-    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-    return GET_SSR_FIELD(SSR_CAUSE, ssr);
-}
-
 /* Do these together so we only have to call hexagon_modify_ssr once */
 static void set_ssr_ex_cause(CPUHexagonState *env, int ex, uint32_t cause)
 {
