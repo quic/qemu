@@ -28,6 +28,8 @@
 #include "mmvec_qfloat.h"
 #include <math.h>
 
+#define UNUSED(var) do { (void)var; } while (0)
+
 //Take one's complement of the mantissa for QF32
 size4s_t negate32(size4s_t in)
 {
@@ -184,7 +186,6 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
 {
     double scale;
     double sig_s;
-    double sig_low_s;
     double sig_f=0.0;
     double R1, R2, R3, R_low;
     int exp_ovf=0;
@@ -192,6 +193,10 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
     int exp_undf=0;
     int exp = *exp_in;
     int sign = (sig>=0.0)? 0:1;
+
+#ifndef DEBUG_MMVEC_QF
+    UNUSED(R_low);
+#endif
 
     int prod_ovf=0;
     if(fabs(sig)>=2.0L && sig != -2.0L)
@@ -243,11 +248,9 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
 
     //Scale the significand
     sig_s = sig/scale;
-    sig_low_s = sig_low/scale;
 
     //Get remainder from the scaled significand
     R1 = sig_s*_units;
-    //R_low = sig_low_s*_units;
     if(sig_low>0.0)
       R_low = 0.25;
     else if(sig_low<0.0)
@@ -259,10 +262,6 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
     //R3 = (R1+R_low) - R2;
     R2 = floor(R1/4.0)*4.0;
     R3 = R1 - R2;
-
-    double R4, R5;
-    R4 = floor((R1+R_low)/4.0)*4.0;
-    R5 = (R1+R_low) - R4;
 
     //Check for exp overflow/underflow
     if(exp>=(E_MAX+1) || (prod_ovf && exp==E_MAX))
@@ -453,9 +452,7 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
     uint64_t sig_64_org=0, sig_52=0, sig_53=0;
     double value = 0.0;
     int exp_d=0, exp_org=*exp;
-    int BIAS;
     int E_MIN;
-    BIAS = (ft==SF)?  BIAS_SF: BIAS_HF;
     E_MIN = (ft==SF)?  E_MIN_SF: E_MIN_HF;
     double _epsilon;
     _epsilon = (ft==SF)?  epsilon: epsilon_hf;
@@ -472,7 +469,6 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
     sig_53 = sig_52     | 0x10000000000000;
 
     //Check if exp is one less than the MIN
-    //exp_d + BIAS = 0; subnormal
     //shifting right the excess amount of bits from E_MIN
     int shift = E_MIN - exp_d;
 
@@ -480,7 +476,13 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
     int rem =0;
     int sticky =0;
     int sig_f =0;
-
+#ifndef DEBUG_MMVEC_QF
+    UNUSED(lsb);
+    UNUSED(rem);
+    UNUSED(sticky);
+    UNUSED(sig_f);
+    UNUSED(_epsilon);
+#endif
 
     if(exp_d <= (E_MIN-1))
     {
@@ -1137,7 +1139,6 @@ size4s_t sub_qf32(size4s_t in_a, size4s_t in_b ) {
     //Get double precision significands
     a = parse_qf32(in_a);
     b = parse_qf32(in_b);
-    int sign;
 
     if(a.exp>b.exp){
         exp_ab = a.exp+((a.sig==0.0)? (-(FRAC_SF+1)):ilogb(a.sig));
@@ -1162,8 +1163,6 @@ size4s_t sub_qf32(size4s_t in_a, size4s_t in_b ) {
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)-sig_b) : (sig_a -(sig_b+sig_ab));
 	//sig_low = (b.sign)? (-1.0*epsilon): epsilon;
 
-    sign = (sig_ab>=0)? 0:1;
-
 #ifdef DEBUG_MMVEC_QF
     printf("[ARCH_sub_qf32] a.exp:%d, b.exp:%d, exp_ab:%d, ilogb(a.sig):%d, ilogb(b.sig):%d\n", a.exp,b.exp,exp_ab, ilogb(a.sig), ilogb(b.sig));
     printf("[ARCH_sub_qf32] a.sig:%10.30f, b.sig:%10.30f, sig_a:%10.30f, sig_b:%1.128f, sig_ab:%1.128f, sig_a-sig_ab:%1.128f, sig_low:%1.128f\n", a.sig, b.sig, sig_a, sig_b, sig_ab, sig_a-sig_ab,sig_low);
@@ -1172,7 +1171,6 @@ size4s_t sub_qf32(size4s_t in_a, size4s_t in_b ) {
 
     size4s_t result;
 
-    //result = rnd_sat_qf32(sign, exp_ab, sig_ab, sig_low);
     result = rnd_sat_qf32(exp_ab, sig_ab, sig_low);
 
     return result;
@@ -1434,7 +1432,6 @@ size2s_t sub_qf16(size2s_t in_a, size2s_t in_b ) {
     //Get double precision significands
     a = parse_qf16(in_a);
     b = parse_qf16(in_b);
-    int sign;
 
     if(a.exp>b.exp){
         exp_ab = a.exp+((a.sig==0.0)? (-(FRAC_HF+1)):ilogb(a.sig));
@@ -1459,8 +1456,6 @@ size2s_t sub_qf16(size2s_t in_a, size2s_t in_b ) {
 	//sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)-sig_b) : (sig_a -(sig_b+sig_ab));
 	//sig_low = (a.exp>b.exp) ? ((sig_ab-sig_a)+sig_b) : (sig_a-(sig_b+sig_ab));
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)-sig_b) : (sig_a -(sig_b+sig_ab));
-
-    sign = (sig_ab>=0)? 0:1;
 
 #ifdef DEBUG_MMVEC_QF
     printf("[ARCH_sub_qf16] a.exp:%d, b.exp:%d, exp_ab:%d, ilogb(a.sig):%d, ilogb(b.sig):%d\n", a.exp,b.exp,exp_ab, ilogb(a.sig), ilogb(b.sig));

@@ -49,17 +49,18 @@
 
 //#ifdef DBG_TRACING
 
-
+#define UNUSED(var) do { (void)var; } while (0)
 
 #if defined (DBG_TRACING) || defined (VERIFICATION)
-
 #define DEBUG_PRINT(LVL, ...) \
 if (state_ptr->fp_hmx_debug && (state_ptr->hmx_debug_lvl >= LVL)) {\
     fprintf(state_ptr->fp_hmx_debug, __VA_ARGS__);\
     fprintf(state_ptr->fp_hmx_debug, "\n");\
     }
+#define DEBUG_ONLY_VAR(var)
 #else
 #define DEBUG_PRINT(LVL, ...)
+#define DEBUG_ONLY_VAR(var) UNUSED(var)
 #endif
 
 #if defined (DBG_TRACING) || defined (VERIFICATION)
@@ -1366,6 +1367,7 @@ void ARCH_FUNCTION(hmx_ld_wgt)(thread_t *env, hmx_state_t * state_ptr, paddr_t w
                     DEBUG_PRINT(2, "WGT DCOMPRESS: output_ch_wgt_lane_idx=%d, wgt_metadata_lane_addr=%llx, wgt_data_lane_addr=%llx, wgt_total_bytes=%d, vector_idx=%d", output_ch_wgt_lane_idx, wgt_metadata_lane_addr, wgt_data_lane_addr, wgt_local_total_bytes_lane[output_ch_wgt_lane_idx], vector_idx);
 
                     uint16_t meta_16bits = 0;
+                    DEBUG_ONLY_VAR(meta_16bits);
                     uint64_t val_8_bytes[2] = {0};
                     for(uint32_t metadata_idx = 0; metadata_idx < 2; metadata_idx++)
                     {
