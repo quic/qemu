@@ -167,7 +167,7 @@ void desc_tracker_dump_one(const processor_t *proc, const desc_tracker_entry_t *
 	if (entry == NULL) {
 		fputs("null", file);
 	} else{
-		fprintf(file, "{ id:%lld, birth:%ld", entry->id, entry->pcycle);
+		fprintf(file, "{ id:%lld, birth:%"PRIu64"", entry->id, entry->pcycle);
 		//fprintf(file, ", pc_va:%X, paddr:%llX, pktid:%lld, ma_type:%d",
 		//		desc->ma.pc_va, desc->ma.paddr, entry->uma.packet_id, desc->ma.type);
 		//fprintf(file, ", uma_type: %d", desc->uma.access_type);
