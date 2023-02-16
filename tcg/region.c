@@ -586,6 +586,10 @@ static int alloc_code_gen_buffer_splitwx_memfd(size_t size, Error **errp)
 }
 #endif /* CONFIG_POSIX */
 
+#ifdef thread_t
+#undef thread_t
+#endif
+
 #ifdef CONFIG_DARWIN
 #define processor_t do_not_define_processor_t
 #define thread_t do_not_define_thread_t
