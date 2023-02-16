@@ -780,6 +780,13 @@ void gen_set_usr_fieldi(int field, int x)
     }
 }
 
+static inline void gen_compare(TCGCond cond, TCGv res, TCGv arg1, TCGv arg2,
+                               DisasContext *ctx)
+{
+    tcg_gen_movcond_tl(cond, res, arg1, arg2, ctx->ones, ctx->zero);
+}
+
+#ifndef CONFIG_HEXAGON_IDEF_PARSER
 static inline void gen_loop0r(DisasContext *ctx, TCGv RsV, int riV)
 {
     TCGv tmp = tcg_temp_new();
@@ -793,12 +800,10 @@ static inline void gen_loop0r(DisasContext *ctx, TCGv RsV, int riV)
     tcg_temp_free(tmp);
 }
 
-#ifndef CONFIG_HEXAGON_IDEF_PARSER
 static void gen_loop0i(DisasContext *ctx, int count, int riV)
 {
     gen_loop0r(ctx, tcg_constant_tl(count), riV);
 }
-#endif
 
 static inline void gen_loop1r(DisasContext *ctx, TCGv RsV, int riV)
 {
@@ -812,17 +817,9 @@ static inline void gen_loop1r(DisasContext *ctx, TCGv RsV, int riV)
     tcg_temp_free(tmp);
 }
 
-#ifndef CONFIG_HEXAGON_IDEF_PARSER
 static void gen_loop1i(DisasContext *ctx, int count, int riV)
 {
     gen_loop1r(ctx, tcg_constant_tl(count), riV);
-}
-#endif
-
-static inline void gen_compare(TCGCond cond, TCGv res, TCGv arg1, TCGv arg2,
-                               DisasContext *ctx)
-{
-    tcg_gen_movcond_tl(cond, res, arg1, arg2, ctx->ones, ctx->zero);
 }
 
 static inline void gen_comparei(TCGCond cond, TCGv res, TCGv arg1, int arg2,
@@ -843,6 +840,7 @@ static inline void gen_compare_i64(TCGCond cond, TCGv res,
 
     tcg_temp_free_i64(temp);
 }
+#endif
 
 static void gen_cond_jumpr(DisasContext *ctx, TCGv dst_pc,
                            TCGCond cond, TCGv pred)
@@ -1274,6 +1272,7 @@ static void gen_endloop01(DisasContext *ctx)
     tcg_temp_free(lpcfg);
 }
 
+#ifndef CONFIG_HEXAGON_IDEF_PARSER
 static inline void gen_ashiftr_4_4s(TCGv dst, TCGv src, int32_t shift_amt)
 {
     tcg_gen_sari_tl(dst, src, shift_amt);
@@ -1287,6 +1286,7 @@ static inline void gen_ashiftl_4_4s(TCGv dst, TCGv src, int32_t shift_amt)
         tcg_gen_shli_tl(dst, src, shift_amt);
     }
 }
+#endif
 
 static void gen_cmp_jumpnv(DisasContext *ctx,
                            TCGCond cond, TCGv val, TCGv src, int pc_off)
@@ -1306,6 +1306,7 @@ static void gen_cmpi_jumpnv(DisasContext *ctx,
     tcg_temp_free(pred);
 }
 
+#ifndef CONFIG_HEXAGON_IDEF_PARSER
 static inline void gen_asl_r_r_or(TCGv RxV, TCGv RsV, TCGv RtV, TCGv zero)
 {
     TCGv shift_amt = tcg_temp_new();
@@ -1356,7 +1357,6 @@ static inline void gen_lshiftr_4_4u(TCGv dst, TCGv src, int32_t shift_amt)
     }
 }
 
-#ifndef CONFIG_HEXAGON_IDEF_PARSER
 static void gen_sat(TCGv dst, TCGv src, bool sign, uint32_t bits)
 {
     uint32_t min = sign ? -(1 << (bits - 1)) : 0;
