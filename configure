@@ -2378,6 +2378,10 @@ fi
 
 echo "CONFIG_COROUTINE_BACKEND=$coroutine" >> $config_host_mak
 
+if test "$have_asan" = yes; then
+    echo "CONFIG_ASAN=y" >> $config_host_mak
+fi
+
 if test "$have_asan_iface_fiber" = "yes" ; then
     echo "CONFIG_ASAN_IFACE_FIBER=y" >> $config_host_mak
 fi
