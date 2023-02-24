@@ -1172,8 +1172,9 @@ vhdx_co_get_info(BlockDriverState *bs, BlockDriverInfo *bdi)
 }
 
 
-static coroutine_fn int vhdx_co_readv(BlockDriverState *bs, int64_t sector_num,
-                                      int nb_sectors, QEMUIOVector *qiov)
+static int coroutine_fn GRAPH_RDLOCK
+vhdx_co_readv(BlockDriverState *bs, int64_t sector_num, int nb_sectors,
+              QEMUIOVector *qiov)
 {
     BDRVVHDXState *s = bs->opaque;
     int ret = 0;
@@ -1324,9 +1325,9 @@ int vhdx_user_visible_write(BlockDriverState *bs, BDRVVHDXState *s)
     return ret;
 }
 
-static coroutine_fn int vhdx_co_writev(BlockDriverState *bs, int64_t sector_num,
-                                       int nb_sectors, QEMUIOVector *qiov,
-                                       int flags)
+static int coroutine_fn GRAPH_RDLOCK
+vhdx_co_writev(BlockDriverState *bs, int64_t sector_num, int nb_sectors,
+               QEMUIOVector *qiov, int flags)
 {
     int ret = -ENOTSUP;
     BDRVVHDXState *s = bs->opaque;
@@ -1991,13 +1992,13 @@ static int coroutine_fn vhdx_co_create(BlockdevCreateOptions *opts,
     }
 
     /* Create BlockBackend to write to the image */
-    bs = bdrv_open_blockdev_ref(vhdx_opts->file, errp);
+    bs = bdrv_co_open_blockdev_ref(vhdx_opts->file, errp);
     if (bs == NULL) {
         return -EIO;
     }
 
-    blk = blk_new_with_bs(bs, BLK_PERM_WRITE | BLK_PERM_RESIZE, BLK_PERM_ALL,
-                          errp);
+    blk = blk_co_new_with_bs(bs, BLK_PERM_WRITE | BLK_PERM_RESIZE, BLK_PERM_ALL,
+                             errp);
     if (!blk) {
         ret = -EPERM;
         goto delete_and_exit;
@@ -2058,10 +2059,9 @@ delete_and_exit:
     return ret;
 }
 
-static int coroutine_fn vhdx_co_create_opts(BlockDriver *drv,
-                                            const char *filename,
-                                            QemuOpts *opts,
-                                            Error **errp)
+static int coroutine_fn GRAPH_RDLOCK
+vhdx_co_create_opts(BlockDriver *drv, const char *filename,
+                    QemuOpts *opts, Error **errp)
 {
     BlockdevCreateOptions *create_options = NULL;
     QDict *qdict;
@@ -2090,8 +2090,8 @@ static int coroutine_fn vhdx_co_create_opts(BlockDriver *drv,
         goto fail;
     }
 
-    bs = bdrv_open(filename, NULL, NULL,
-                   BDRV_O_RDWR | BDRV_O_RESIZE | BDRV_O_PROTOCOL, errp);
+    bs = bdrv_co_open(filename, NULL, NULL,
+                      BDRV_O_RDWR | BDRV_O_RESIZE | BDRV_O_PROTOCOL, errp);
     if (bs == NULL) {
         ret = -EIO;
         goto fail;

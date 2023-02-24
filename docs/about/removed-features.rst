@@ -428,6 +428,13 @@ respectively. The actual backend names should be used instead.
 Use ``-drive if=pflash`` to configure the OTP device of the sifive_u
 RISC-V machine instead.
 
+``-spice password=string`` (removed in 8.0)
+'''''''''''''''''''''''''''''''''''''''''''
+
+This option was insecure because the SPICE password remained visible in
+the process listing. This was replaced by the new ``password-secret``
+option which lets the password be securely provided on the command
+line using a ``secret`` object instance.
 
 QEMU Machine Protocol (QMP) commands
 ------------------------------------
@@ -882,3 +889,16 @@ The VXHS code did not compile since v2.12.0. It was removed in 5.1.
 The corresponding upstream server project is no longer maintained.
 Users are recommended to switch to an alternative distributed block
 device driver such as RBD.
+
+Tools
+-----
+
+virtiofsd (removed in 8.0)
+''''''''''''''''''''''''''
+
+There is a newer Rust implementation of ``virtiofsd`` at
+``https://gitlab.com/virtio-fs/virtiofsd``; this has been
+stable for some time and is now widely used.
+The command line and feature set is very close to the removed
+C implementation.
+

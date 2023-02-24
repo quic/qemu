@@ -66,14 +66,6 @@ and will cause a warning.
 The replacement for the ``nodelay`` short-form boolean option is ``nodelay=on``
 rather than ``delay=off``.
 
-``-spice password=string`` (since 6.0)
-''''''''''''''''''''''''''''''''''''''
-
-This option is insecure because the SPICE password remains visible in
-the process listing. This is replaced by the new ``password-secret``
-option which lets the password be securely provided on the command
-line using a ``secret`` object instance.
-
 ``-smp`` ("parameter=0" SMP configurations) (since 6.2)
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -301,6 +293,14 @@ The above, converted to the current supported format::
 
   json:{"file.driver":"rbd", "file.pool":"rbd", "file.image":"name"}
 
+``iscsi,password=xxx`` (since 8.0)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Specifying the iSCSI password in plain text on the command line using the
+``password`` option is insecure. The ``password-secret`` option should be
+used instead, to refer to a ``--object secret...`` instance that provides
+a password via a file, or encrypted.
+
 Backwards compatibility
 -----------------------
 
@@ -329,24 +329,6 @@ point to a version that doesn't break runnability guarantees
 versions, aliases will point to newer CPU model versions
 depending on the machine type, so management software must
 resolve CPU model aliases before starting a virtual machine.
-
-Tools
------
-
-virtiofsd
-'''''''''
-
-There is a new Rust implementation of ``virtiofsd`` at
-``https://gitlab.com/virtio-fs/virtiofsd``;
-since this is now marked stable, new development should be done on that
-rather than the existing C version in the QEMU tree.
-The C version will still accept fixes and patches that
-are already in development for the moment, but will eventually
-be deleted from this tree.
-New deployments should use the Rust version, and existing systems
-should consider moving to it.  The command line and feature set
-is very close and moving should be simple.
-
 
 QEMU guest agent
 ----------------
