@@ -101,26 +101,27 @@ def main():
             reg_pair_mask = reg_pair_list[-1] if reg_pair_list else 0
 
             f.write(
-                'REGINFO(%s,"%s",\t/*RD:*/\t"%s",\t/*WR:*/\t"%s",'
-                        '\t/*WRCNT:*/\t%d,\t/*PAIRMASK:*/\t0x%08x)\n' % \
-                (tag,regids,",".join(rregs),",".join(wregs), len(wregs), reg_pair_mask))
+                f'REGINFO({tag},"{regids}",\t/*RD:*/\t"{",".join(rregs)}",'
+                f'\t/*WR:*/\t"{",".join(wregs)}",\t/*WRCNT:*/\t{len(wregs)}'
+                f',\t/*PAIRMASK:*/\t0x{reg_pair_mask:08x})\n'
+            )
 
         for tag in hex_common.get_all_tags():
             imms = tagimms[tag]
-            f.write('IMMINFO(%s' % tag)
+            f.write(f'IMMINFO({tag}')
             if not imms:
                 f.write(''','u',0,0,'U',0,0''')
             for sign,size,shamt in imms:
                 if sign == 'r': sign = 's'
                 if not shamt:
                     shamt = "0"
-                f.write(''','%s',%s,%s''' % (sign,size,shamt))
+                f.write(f''','{sign}',{size},{shamt}''')
             if len(imms) == 1:
                 if sign.isupper():
                     myu = 'u'
                 else:
                     myu = 'U'
-                f.write(''','%s',0,0''' % myu)
+                f.write(f''','{myu}',0,0''')
             f.write(')\n')
 
 if __name__ == "__main__":
