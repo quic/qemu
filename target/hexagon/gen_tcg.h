@@ -383,7 +383,7 @@
  */
 #define fGEN_TCG_PRED_LOAD(GET_EA, PRED, SIZE, SIGN) \
     do { \
-        TCGv LSB = tcg_temp_local_new(); \
+        TCGv LSB = tcg_temp_new(); \
         TCGLabel *label = gen_new_label(); \
         tcg_gen_movi_tl(EA, 0); \
         PRED;  \
@@ -563,7 +563,7 @@
 /* Predicated loads into a register pair */
 #define fGEN_TCG_PRED_LOAD_PAIR(GET_EA, PRED) \
     do { \
-        TCGv LSB = tcg_temp_local_new(); \
+        TCGv LSB = tcg_temp_new(); \
         TCGLabel *label = gen_new_label(); \
         tcg_gen_movi_tl(EA, 0); \
         PRED;  \
@@ -867,9 +867,9 @@
 /* Predicated stores */
 #define fGEN_TCG_PRED_STORE(GET_EA, PRED, SRC, SIZE, INC) \
     do { \
-        TCGv LSB = tcg_temp_local_new(); \
-        TCGv BYTE = tcg_temp_local_new(); \
-        TCGv HALF = tcg_temp_local_new(); \
+        TCGv LSB = tcg_temp_new(); \
+        TCGv BYTE = tcg_temp_new(); \
+        TCGv HALF = tcg_temp_new(); \
         TCGLabel *label = gen_new_label(); \
         GET_EA; \
         PRED;  \
@@ -2548,7 +2548,7 @@
 
 #define fGEN_TCG_S2_valignrb(SHORTCODE) \
     do { \
-        TCGv shift = tcg_temp_local_new(); \
+        TCGv shift = tcg_temp_new(); \
         TCGv_i64 shift_i64 = tcg_temp_new_i64(); \
         TCGv_i64 tmp = tcg_temp_new_i64(); \
         TCGLabel *skip = gen_new_label(); \

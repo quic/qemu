@@ -43,7 +43,7 @@
 static void gen_check_reg_write(DisasContext *ctx, int rnum, TCGv cancelled)
 {
     if (rnum < NUM_GPREGS && test_bit(rnum, ctx->wreg_mult_gprs)) {
-        TCGv mult_reg = tcg_temp_local_new();
+        TCGv mult_reg = tcg_temp_new();
 
         TCGLabel *skip = gen_new_label();
         tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, skip);
@@ -70,7 +70,7 @@ TCGv gen_read_preg(TCGv pred, uint8_t num)
 static inline void gen_log_predicated_reg_write(DisasContext *ctx, int rnum,
                                                 TCGv val, int slot)
 {
-    TCGv slot_mask = tcg_temp_local_new();
+    TCGv slot_mask = tcg_temp_new();
 
     tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
     tcg_gen_movcond_tl(TCG_COND_EQ, hex_new_value[rnum], slot_mask, ctx->zero,
@@ -147,7 +147,7 @@ static void gen_log_predicated_reg_write_pair(DisasContext *ctx, int rnum,
                                               TCGv_i64 val, int slot)
 {
     TCGv val32 = tcg_temp_new();
-    TCGv slot_mask = tcg_temp_local_new();
+    TCGv slot_mask = tcg_temp_new();
 
     tcg_gen_andi_tl(slot_mask, hex_slot_cancelled, 1 << slot);
 
@@ -1035,7 +1035,7 @@ static void gen_cond_call(DisasContext *ctx, TCGv pred,
                           TCGCond cond, int pc_off)
 {
     TCGv next_PC;
-    TCGv lsb = tcg_temp_local_new();
+    TCGv lsb = tcg_temp_new();
     TCGLabel *skip = gen_new_label();
     tcg_gen_andi_tl(lsb, pred, 1);
     gen_write_new_pc_pcrel(ctx, pc_off, cond, lsb);
@@ -1162,7 +1162,7 @@ static void gen_cond_return(DisasContext *ctx, TCGv_i64 dst, TCGv src,
 {
     TCGv LSB = tcg_temp_new();
     TCGv mask = tcg_temp_new();
-    TCGv r29 = tcg_temp_local_new();
+    TCGv r29 = tcg_temp_new();
     TCGLabel *skip = gen_new_label();
     tcg_gen_andi_tl(LSB, pred, 1);
 
@@ -1188,7 +1188,7 @@ static void gen_cond_return(DisasContext *ctx, TCGv_i64 dst, TCGv src,
 /* sub-instruction version (no RddV, so handle it manually) */
 static void gen_cond_return_subinsn(DisasContext *ctx, TCGCond cond, TCGv pred)
 {
-    TCGv_i64 RddV = tcg_temp_local_new_i64();
+    TCGv_i64 RddV = tcg_temp_new_i64();
     gen_cond_return(ctx, RddV, hex_gpr[HEX_REG_FP], pred, cond);
     gen_log_predicated_reg_write_pair(ctx, HEX_REG_FP, RddV, ctx->insn->slot);
     tcg_temp_free_i64(RddV);
@@ -1196,7 +1196,7 @@ static void gen_cond_return_subinsn(DisasContext *ctx, TCGCond cond, TCGv pred)
 
 static void gen_endloop0(DisasContext *ctx)
 {
-    TCGv lpcfg = tcg_temp_local_new();
+    TCGv lpcfg = tcg_temp_new();
 
     GET_USR_FIELD(USR_LPCFG, lpcfg);
 
@@ -1270,7 +1270,7 @@ static inline void gen_endloop1(DisasContext *ctx)
 
 static void gen_endloop01(DisasContext *ctx)
 {
-    TCGv lpcfg = tcg_temp_local_new();
+    TCGv lpcfg = tcg_temp_new();
 
     GET_USR_FIELD(USR_LPCFG, lpcfg);
 
@@ -1502,7 +1502,7 @@ static void gen_sar(TCGv dst, TCGv src, TCGv shift_amt)
 /* Bidirectional shift right with saturation */
 static void gen_asr_r_r_sat(TCGv RdV, TCGv RsV, TCGv RtV)
 {
-    TCGv shift_amt = tcg_temp_local_new();
+    TCGv shift_amt = tcg_temp_new();
     TCGLabel *positive = gen_new_label();
     TCGLabel *done = gen_new_label();
 
@@ -1526,7 +1526,7 @@ static void gen_asr_r_r_sat(TCGv RdV, TCGv RsV, TCGv RtV)
 /* Bidirectional shift left with saturation */
 static void gen_asl_r_r_sat(TCGv RdV, TCGv RsV, TCGv RtV)
 {
-    TCGv shift_amt = tcg_temp_local_new();
+    TCGv shift_amt = tcg_temp_new();
     TCGLabel *positive = gen_new_label();
     TCGLabel *done = gen_new_label();
 
@@ -1568,7 +1568,7 @@ static void gen_log_vreg_write(DisasContext *ctx, intptr_t srcoff, int num,
     intptr_t dstoff;
 
     if (is_predicated) {
-        TCGv cancelled = tcg_temp_local_new();
+        TCGv cancelled = tcg_temp_new();
         label_end = gen_new_label();
 
         /* Don't do anything if the slot was cancelled */
@@ -1609,7 +1609,7 @@ static void gen_log_qreg_write(intptr_t srcoff, int num, int vnew,
     intptr_t dstoff;
 
     if (is_predicated) {
-        TCGv cancelled = tcg_temp_local_new();
+        TCGv cancelled = tcg_temp_new();
         label_end = gen_new_label();
 
         /* Don't do anything if the slot was cancelled */
@@ -1825,10 +1825,10 @@ void gen_satu_i64_ovfl(TCGv ovfl, TCGv_i64 dest, TCGv_i64 source, int width)
 /* Implements the fADDSAT64 macro in TCG */
 void gen_add_sat_i64(TCGv_i64 ret, TCGv_i64 a, TCGv_i64 b)
 {
-    TCGv_i64 sum = tcg_temp_local_new_i64();
+    TCGv_i64 sum = tcg_temp_new_i64();
     TCGv_i64 xor = tcg_temp_new_i64();
     TCGv_i64 cond1 = tcg_temp_new_i64();
-    TCGv_i64 cond2 = tcg_temp_local_new_i64();
+    TCGv_i64 cond2 = tcg_temp_new_i64();
     TCGv_i64 cond3 = tcg_temp_new_i64();
     TCGv_i64 mask = tcg_constant_i64(0x8000000000000000ULL);
     TCGv_i64 max_pos = tcg_constant_i64(0x7FFFFFFFFFFFFFFFLL);

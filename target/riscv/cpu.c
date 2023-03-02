@@ -34,6 +34,7 @@
 #include "fpu/softfloat-helpers.h"
 #include "sysemu/kvm.h"
 #include "kvm_riscv.h"
+#include "tcg/tcg.h"
 
 /* RISC-V CPU definitions */
 
@@ -73,7 +74,7 @@ struct isa_ext_data {
  */
 static const struct isa_ext_data isa_edata_arr[] = {
     ISA_EXT_DATA_ENTRY(h, false, PRIV_VERSION_1_12_0, ext_h),
-    ISA_EXT_DATA_ENTRY(v, false, PRIV_VERSION_1_12_0, ext_v),
+    ISA_EXT_DATA_ENTRY(v, false, PRIV_VERSION_1_10_0, ext_v),
     ISA_EXT_DATA_ENTRY(zicsr, true, PRIV_VERSION_1_10_0, ext_icsr),
     ISA_EXT_DATA_ENTRY(zifencei, true, PRIV_VERSION_1_10_0, ext_ifencei),
     ISA_EXT_DATA_ENTRY(zihintpause, true, PRIV_VERSION_1_10_0, ext_zihintpause),
@@ -533,10 +534,12 @@ static void riscv_cpu_synchronize_from_tb(CPUState *cs,
     CPURISCVState *env = &cpu->env;
     RISCVMXL xl = FIELD_EX32(tb->flags, TB_FLAGS, XL);
 
+    tcg_debug_assert(!(cs->tcg_cflags & CF_PCREL));
+
     if (xl == MXL_RV32) {
-        env->pc = (int32_t)tb_pc(tb);
+        env->pc = (int32_t) tb->pc;
     } else {
-        env->pc = tb_pc(tb);
+        env->pc = tb->pc;
     }
 }
 
