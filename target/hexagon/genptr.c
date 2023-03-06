@@ -1348,8 +1348,8 @@ static void gen_sat(TCGv dst, TCGv src, bool sign, uint32_t bits)
 {
     uint32_t min = sign ? -(1 << (bits - 1)) : 0;
     uint32_t max = sign ? (1 << (bits - 1)) - 1 : (1 << bits) - 1;
-    TCGv tcg_min = tcg_const_tl(min);
-    TCGv tcg_max = tcg_const_tl(max);
+    TCGv tcg_min = tcg_constant_tl(min);
+    TCGv tcg_max = tcg_constant_tl(max);
     TCGv satval = tcg_temp_new();
     TCGv ovf = tcg_temp_new();
 
