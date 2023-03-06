@@ -104,7 +104,6 @@
         tcg_gen_mov_tl(tmp, RxV); \
         tcg_gen_mov_tl(RxV, hex_t_sreg[HEX_SREG_SGP0]); \
         tcg_gen_mov_tl(hex_t_sreg_new_value[HEX_SREG_SGP0], tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 #define fGEN_TCG_Y4_crswap1(SHORTCODE) \
@@ -113,7 +112,6 @@
         tcg_gen_mov_tl(tmp, RxV); \
         tcg_gen_mov_tl(RxV, hex_t_sreg[HEX_SREG_SGP1]); \
         tcg_gen_mov_tl(hex_t_sreg_new_value[HEX_SREG_SGP1], tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 #define fGEN_TCG_Y4_crswap10(SHORTCODE) \
@@ -126,7 +124,6 @@
                                hex_t_sreg[HEX_SREG_SGP1]); \
         tcg_gen_extrl_i64_i32(hex_t_sreg_new_value[HEX_SREG_SGP0], tmp); \
         tcg_gen_extrh_i64_i32(hex_t_sreg_new_value[HEX_SREG_SGP1], tmp); \
-        tcg_temp_free_i64(tmp); \
     } while (0)
 
 #endif

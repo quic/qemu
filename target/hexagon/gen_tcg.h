@@ -76,7 +76,6 @@
         tcg_gen_mov_tl(EA, RxV); \
         gen_read_ireg(ireg, MuV, (SHIFT)); \
         gen_helper_fcircadd(RxV, RxV, ireg, MuV, hex_gpr[HEX_REG_CS0 + MuN]); \
-        tcg_temp_free(ireg); \
     } while (0)
 
 /* Byte load instructions */
@@ -162,7 +161,6 @@
         gen_read_ireg(ireg, MuV, SHIFT); \
         gen_helper_fcircadd(RxV, RxV, ireg, MuV, hex_gpr[HEX_REG_CS0 + MuN]); \
         LOAD; \
-        tcg_temp_free(ireg); \
     } while (0)
 
 #define fGEN_TCG_L2_loadrub_pcr(SHORTCODE) \
@@ -214,8 +212,6 @@
         for (int i = 0; i < 2; i++) { \
             gen_set_half(i, RdV, gen_get_byte(byte, i, tmp, (SIGN))); \
         } \
-        tcg_temp_free(tmp); \
-        tcg_temp_free(byte); \
     } while (0)
 
 #define fGEN_TCG_L2_loadbzw2_io(SHORTCODE) \
@@ -268,8 +264,6 @@
         for (int i = 0; i < 4; i++) { \
             gen_set_half_i64(i, RddV, gen_get_byte(byte, i, tmp, (SIGN)));  \
         }  \
-        tcg_temp_free(tmp); \
-        tcg_temp_free(byte); \
     } while (0)
 
 #define fGEN_TCG_L2_loadbzw4_io(SHORTCODE) \
@@ -319,8 +313,6 @@
         tcg_gen_extu_i32_i64(tmp_i64, tmp); \
         tcg_gen_shri_i64(RyyV, RyyV, 16); \
         tcg_gen_deposit_i64(RyyV, RyyV, tmp_i64, 48, 16); \
-        tcg_temp_free(tmp); \
-        tcg_temp_free_i64(tmp_i64); \
     } while (0)
 
 #define fGEN_TCG_L4_loadalignh_ur(SHORTCODE) \
@@ -350,8 +342,6 @@
         tcg_gen_extu_i32_i64(tmp_i64, tmp); \
         tcg_gen_shri_i64(RyyV, RyyV, 8); \
         tcg_gen_deposit_i64(RyyV, RyyV, tmp_i64, 56, 8); \
-        tcg_temp_free(tmp); \
-        tcg_temp_free_i64(tmp_i64); \
     } while (0)
 
 #define fGEN_TCG_L2_loadalignb_io(SHORTCODE) \
@@ -393,7 +383,6 @@
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
         fLOAD(1, SIZE, SIGN, EA, RdV); \
         gen_set_label(label); \
-        tcg_temp_free(LSB); \
     } while (0)
 
 #define fGEN_TCG_L2_ploadrubt_io(SHORTCODE) \
@@ -573,7 +562,6 @@
         tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
         fLOAD(1, 8, u, EA, RddV); \
         gen_set_label(label); \
-        tcg_temp_free(LSB); \
     } while (0)
 
 #define fGEN_TCG_L2_ploadrdt_io(SHORTCODE) \
@@ -624,8 +612,6 @@
         TCGv HALF = tcg_temp_new(); \
         TCGv BYTE = tcg_temp_new(); \
         SHORTCODE; \
-        tcg_temp_free(HALF); \
-        tcg_temp_free(BYTE); \
     } while (0)
 
 #define fGEN_TCG_STORE_ap(STORE) \
@@ -651,9 +637,6 @@
         gen_read_ireg(ireg, MuV, SHIFT); \
         gen_helper_fcircadd(RxV, RxV, ireg, MuV, hex_gpr[HEX_REG_CS0 + MuN]); \
         STORE; \
-        tcg_temp_free(ireg); \
-        tcg_temp_free(HALF); \
-        tcg_temp_free(BYTE); \
     } while (0)
 
 #define fGEN_TCG_S2_storerb_io(SHORTCODE) \
@@ -1586,7 +1569,6 @@
         gen_helper_sfrecipa(tmp, cpu_env, RsV, RtV);  \
         tcg_gen_extrh_i64_i32(RdV, tmp); \
         tcg_gen_extrl_i64_i32(PeV, tmp); \
-        tcg_temp_free_i64(tmp); \
     } while (0)
 
 /*
@@ -1602,7 +1584,6 @@
         gen_helper_sfinvsqrta(tmp, cpu_env, RsV); \
         tcg_gen_extrh_i64_i32(RdV, tmp); \
         tcg_gen_extrl_i64_i32(PeV, tmp); \
-        tcg_temp_free_i64(tmp); \
     } while (0)
 
 /*
@@ -1619,7 +1600,6 @@
         tcg_gen_add2_i64(RddV, carry, RddV, carry, RttV, ctx->zero64); \
         tcg_gen_extrl_i64_i32(PxV, carry); \
         gen_8bitsof(PxV, PxV, ctx); \
-        tcg_temp_free_i64(carry); \
     } while (0)
 
 /* r5:4 = sub(r1:0, r3:2, p1):carry */
@@ -1634,8 +1614,6 @@
         tcg_gen_add2_i64(RddV, carry, RddV, carry, not_RttV, ctx->zero64); \
         tcg_gen_extrl_i64_i32(PxV, carry); \
         gen_8bitsof(PxV, PxV, ctx); \
-        tcg_temp_free_i64(carry); \
-        tcg_temp_free_i64(not_RttV); \
     } while (0)
 
 /*
@@ -1660,9 +1638,6 @@
             tcg_gen_umin_tl(tmp, left, right); \
             gen_set_byte_i64(i, RddV, tmp); \
         } \
-        tcg_temp_free(left); \
-        tcg_temp_free(right); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 #define fGEN_TCG_J2_call(SHORTCODE) \
@@ -1990,14 +1965,12 @@
         TCGv LSB = tcg_temp_new(); \
         COND; \
         gen_cond_jump(ctx, TCG_COND_EQ, LSB, riV); \
-        tcg_temp_free(LSB); \
     } while (0)
 #define fGEN_TCG_cond_jumpf(COND) \
     do { \
         TCGv LSB = tcg_temp_new(); \
         COND; \
         gen_cond_jump(ctx, TCG_COND_NE, LSB, riV); \
-        tcg_temp_free(LSB); \
     } while (0)
 
 #define fGEN_TCG_J2_jumpt(SHORTCODE) \
@@ -2038,14 +2011,12 @@
         TCGv LSB = tcg_temp_new(); \
         COND; \
         gen_cond_jumpr(ctx, RsV, TCG_COND_EQ, LSB); \
-        tcg_temp_free(LSB); \
     } while (0)
 #define fGEN_TCG_cond_jumprf(COND) \
     do { \
         TCGv LSB = tcg_temp_new(); \
         COND; \
         gen_cond_jumpr(ctx, RsV, TCG_COND_NE, LSB); \
-        tcg_temp_free(LSB); \
     } while (0)
 
 #define fGEN_TCG_J2_jumprt(SHORTCODE) \
