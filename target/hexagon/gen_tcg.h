@@ -623,8 +623,6 @@
             STORE; \
             tcg_gen_movi_tl(ReV, UiV); \
         } \
-        tcg_temp_free(HALF); \
-        tcg_temp_free(BYTE); \
     } while (0)
 
 
@@ -861,9 +859,6 @@
             INC; \
             fSTORE(1, SIZE, EA, SRC); \
         gen_set_label(label); \
-        tcg_temp_free(LSB); \
-        tcg_temp_free(BYTE); \
-        tcg_temp_free(HALF); \
     } while (0)
 
 #define NOINC    do {} while (0)
@@ -1372,7 +1367,6 @@
         fLOAD(1, SIZE, s, EA, tmp); \
         OP; \
         fSTORE(1, SIZE, EA, tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 #define fGEN_TCG_L4_add_memopw_io(SHORTCODE) \
@@ -1472,7 +1466,6 @@
         tcg_gen_mov_tl(r29, hex_gpr[HEX_REG_SP]); \
         gen_allocframe(ctx, r29, uiV); \
         gen_log_reg_write(HEX_REG_SP, r29); \
-        tcg_temp_free(r29); \
     } while (0)
 
 /*
@@ -1489,7 +1482,6 @@
         TCGv_i64 r31_30 = tcg_temp_new_i64(); \
         gen_deallocframe(ctx, r31_30, hex_gpr[HEX_REG_FP]); \
         gen_log_reg_write_pair(HEX_REG_FP, r31_30); \
-        tcg_temp_free_i64(r31_30); \
     } while (0)
 
 /*
@@ -1508,7 +1500,6 @@
         TCGv_i64 RddV = tcg_temp_new_i64(); \
         gen_return(ctx, RddV, hex_gpr[HEX_REG_FP]); \
         gen_log_reg_write_pair(HEX_REG_FP, RddV); \
-        tcg_temp_free_i64(RddV); \
     } while (0)
 
 /*
@@ -1855,7 +1846,6 @@
         TCGv tmp = tcg_temp_new(); \
         gen_comparei(TCG_COND_EQ, tmp, RsV, uiV, ctx); \
         gen_log_pred_write(ctx, 0, tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 /* r0 = add(r29,#8) */
@@ -1942,7 +1932,6 @@
         TCGv byte = tcg_temp_new(); \
         tcg_gen_extract_tl(byte, RsV, 0, 8); \
         gen_comparei(TCG_COND_GTU, PdV, byte, uiV, ctx); \
-        tcg_temp_free(byte); \
     } while (0)
 
 #define fGEN_TCG_SA1_zxtb(SHORTCODE) \
@@ -2157,7 +2146,6 @@
         TCGv tmp = tcg_temp_new(); \
         fLSHIFTR(tmp, RsV, uiV, 4_4); \
         tcg_gen_add_tl(RxV, RxV, tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 /* r0 ^= lsr(r1, #5) */
@@ -2166,7 +2154,6 @@
         TCGv tmp = tcg_temp_new(); \
         fLSHIFTR(tmp, RsV, uiV, 4_4); \
         tcg_gen_xor_tl(RxV, RxV, tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 /* r0 = asr(r1, #5) */
@@ -2202,7 +2189,6 @@
         TCGv tmp = tcg_temp_new(); \
         fASHIFTL(tmp, RsV, uiV, 4_4); \
         tcg_gen_or_tl(RxV, RxV, tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 /* r0 = vsplatb(r1) */
@@ -2216,7 +2202,6 @@
             tcg_gen_shli_tl(RdV, RdV, 8); \
             tcg_gen_or_tl(RdV, RdV, tmp); \
         } \
-        tcg_temp_free(tmp); \
     } while (0)
 
 #define fGEN_TCG_SA1_seti(SHORTCODE) \
@@ -2329,7 +2314,6 @@
         tcg_gen_movcond_tl(TCG_COND_EQ, hex_slot_cancelled, \
                            hex_new_pred_value[0], ctx->zero, \
                            mask, hex_slot_cancelled); \
-        tcg_temp_free(mask); \
     } while (0)
 
 /* r0 = add(r1 , mpyi(#6, r2)) */
@@ -2350,8 +2334,6 @@
         tcg_gen_or_tl(mask, hex_slot_cancelled, mask); \
         tcg_gen_movcond_tl(TCG_COND_NE, hex_slot_cancelled, LSB, ctx->zero, \
                            hex_slot_cancelled, mask); \
-        tcg_temp_free(LSB); \
-        tcg_temp_free(mask); \
     } while (0)
 
 #define fGEN_TCG_A2_paddt(SHORTCODE) \
@@ -2384,8 +2366,6 @@
         tcg_gen_movi_tl(mask, 1 << insn->slot); \
         tcg_gen_movcond_tl(TCG_COND_EQ, mask, LSB, ctx->zero, mask, ctx->zero); \
         tcg_gen_or_tl(hex_slot_cancelled, hex_slot_cancelled, mask); \
-        tcg_temp_free(LSB); \
-        tcg_temp_free(mask); \
     } while (0)
 
 #define fGEN_TCG_C2_cmoveit(SHORTCODE) \
@@ -2402,7 +2382,6 @@
         tcg_gen_andi_tl(lsb, PuV, 1); \
         tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, ctx->zero, \
                            tcg_constant_tl(siV), tcg_constant_tl(SiV)); \
-        tcg_temp_free(lsb); \
     } while (0)
 
 /* r0 = mux(p0, r1, #5) */
@@ -2412,7 +2391,6 @@
         tcg_gen_andi_tl(lsb, PuV, 1); \
         tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, ctx->zero, RsV, \
                            tcg_constant_tl(siV)); \
-        tcg_temp_free(lsb); \
     } while (0)
 
 /* r0 = mux(p0, #3, r1) */
@@ -2422,7 +2400,6 @@
         tcg_gen_andi_tl(lsb, PuV, 1); \
         tcg_gen_movcond_tl(TCG_COND_NE, RdV, lsb, ctx->zero, \
                            tcg_constant_tl(siV), RsV); \
-        tcg_temp_free(lsb); \
     } while (0)
 
 /* p0 = tstbit(r0, #5) */
@@ -2481,8 +2458,6 @@
             tcg_gen_extract_tl(lo, RsV, 0, bits); \
             tcg_gen_extract_tl(hi, RsV, bits, 32 - bits); \
             tcg_gen_concat_i32_i64(RddV, lo, hi); \
-            tcg_temp_free(lo); \
-            tcg_temp_free(hi); \
         } \
     } while (0)
 
@@ -2533,9 +2508,6 @@
         tcg_gen_shl_i64(tmp, RttV, shift_i64); \
         tcg_gen_or_i64(RddV, RddV, tmp); \
         gen_set_label(skip); \
-        tcg_temp_free(shift); \
-        tcg_temp_free_i64(shift_i64); \
-        tcg_temp_free_i64(tmp); \
     } while (0)
 
 /* Not modelled in qemu, but need to suppress compiler warnings */
@@ -2560,8 +2532,6 @@
             tcg_gen_add_i64(left, left, right); \
             tcg_gen_deposit_i64(RddV, RddV, left, i * 32, 32); \
         } \
-        tcg_temp_free_i64(left); \
-        tcg_temp_free_i64(right); \
     } while (0)
 
 /* p2 = and(p0, !p1) */
@@ -2578,7 +2548,6 @@
         TCGv tmp = tcg_temp_new(); \
         tcg_gen_mul_tl(tmp, RsV, RtV); \
         tcg_gen_add_tl(RxV, RxV, tmp); \
-        tcg_temp_free(tmp); \
     } while (0)
 
 /* r0 += add(r1, r2) */

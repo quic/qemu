@@ -451,8 +451,6 @@ static void gen_hmx_check(DisasContext *ctx)
     tcg_gen_brcondi_tl(TCG_COND_NE, xe, 0, skip_exception);
     gen_precise_exception(HEX_CAUSE_NO_COPROC2_ENABLE, ctx->pkt->pc);
     gen_set_label(skip_exception);
-
-    tcg_temp_free(xe);
 }
 #endif
 
@@ -992,7 +990,6 @@ static void gen_sreg_writes(DisasContext *ctx)
             }
         }
     }
-    tcg_temp_free(old_reg);
 }
 #endif
 
