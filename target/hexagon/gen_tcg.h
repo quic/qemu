@@ -616,8 +616,8 @@
 
 #define fGEN_TCG_STORE_ap(STORE) \
     do { \
-        TCGv HALF = tcg_temp_new(); \
-        TCGv BYTE = tcg_temp_new(); \
+        TCGv HALF G_GNUC_UNUSED = tcg_temp_new(); \
+        TCGv BYTE G_GNUC_UNUSED = tcg_temp_new(); \
         { \
             fEA_IMM(UiV); \
             STORE; \
@@ -849,8 +849,8 @@
 #define fGEN_TCG_PRED_STORE(GET_EA, PRED, SRC, SIZE, INC) \
     do { \
         TCGv LSB = tcg_temp_new(); \
-        TCGv BYTE = tcg_temp_new(); \
-        TCGv HALF = tcg_temp_new(); \
+        TCGv BYTE G_GNUC_UNUSED = tcg_temp_new(); \
+        TCGv HALF G_GNUC_UNUSED = tcg_temp_new(); \
         TCGLabel *label = gen_new_label(); \
         GET_EA; \
         PRED;  \
