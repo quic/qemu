@@ -629,16 +629,24 @@ void clear_wait_mode(CPUHexagonState *env)
 
 void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause)
 {
+    const bool exception_context = qemu_mutex_iothread_locked();
+    LOCK_IOTHREAD(exception_context);
+
+
     const uint32_t old = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     SET_SYSTEM_FIELD(env, HEX_SREG_SSR, SSR_EX, 1);
     SET_SYSTEM_FIELD(env, HEX_SREG_SSR, SSR_CAUSE, cause);
     const uint32_t new = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
 
     hexagon_modify_ssr(env, new, old);
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
+    const bool exception_context = qemu_mutex_iothread_locked();
+    LOCK_IOTHREAD(exception_context);
+
     bool old_EX = GET_SSR_FIELD(SSR_EX, old);
     bool old_UM = GET_SSR_FIELD(SSR_UM, old);
     bool old_GM = GET_SSR_FIELD(SSR_GM, old);
@@ -666,6 +674,7 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
         (!new_EX && old_EX)) {
         hex_interrupt_update(env);
     }
+    UNLOCK_IOTHREAD(exception_context);
 }
 
 static const int PCYCLES_PER_PACKET = 3;
