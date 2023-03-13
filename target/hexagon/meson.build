@@ -1,5 +1,5 @@
 ##
-##  Copyright(c) 2020-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2020-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -211,7 +211,7 @@ if idef_parser_enabled and ('hexagon-linux-user' in target_dirs or
     )
 
     bison = generator(
-        find_program('bison'),
+        find_program('bison', version: '>=3.0'),
         output: ['@BASENAME@.tab.c', '@BASENAME@.tab.h'],
         arguments: ['@INPUT@', '--defines=@OUTPUT1@', '--output=@OUTPUT0@']
     )
@@ -303,6 +303,15 @@ tcg_funcs_generated = custom_target(
     command: [python, files('gen_tcg_funcs.py'), helper_in, '@OUTPUT@'],
 )
 hexagon_ss.add(tcg_funcs_generated)
+
+analyze_funcs_generated = custom_target(
+    'analyze_funcs_generated.c.inc',
+    output: 'analyze_funcs_generated.c.inc',
+    depends: helper_dep,
+    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h, gen_tcg_sys_h],
+    command: [python, files('gen_analyze_funcs.py'), helper_in, '@OUTPUT@'],
+)
+hexagon_ss.add(analyze_funcs_generated)
 
 target_arch += {'hexagon': hexagon_ss}
 target_softmmu_arch += {'hexagon': hexagon_softmmu_ss}

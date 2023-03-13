@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ typedef struct DisasContext {
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
     DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
+    DECLARE_BITMAP(predicated_regs, TOTAL_PER_THREAD_REGS);
     bool pkt_has_uncond_mult_reg_write;
     bool pkt_ends_tb;
     /*
@@ -71,13 +72,13 @@ typedef struct DisasContext {
     int tmp_vregs_idx;
     int tmp_vregs_num[VECTOR_TEMPS_MAX];
     int vreg_log[NUM_VREGS];
-    bool vreg_is_predicated[NUM_VREGS];
     int vreg_log_idx;
     DECLARE_BITMAP(vregs_updated_tmp, NUM_VREGS);
     DECLARE_BITMAP(vregs_updated, NUM_VREGS);
     DECLARE_BITMAP(vregs_select, NUM_VREGS);
+    DECLARE_BITMAP(predicated_future_vregs, NUM_VREGS);
+    DECLARE_BITMAP(predicated_tmp_vregs, NUM_VREGS);
     int qreg_log[NUM_QREGS];
-    bool qreg_is_predicated[NUM_QREGS];
     int qreg_log_idx;
     bool pre_commit;
     TCGCond branch_cond;
@@ -96,20 +97,8 @@ typedef struct DisasContext {
     bool paranoid_commit_state;
     bool ss_active;
     bool ss_pending;
+    bool need_pkt_has_scalar_store_s1;
 } DisasContext;
-
-static inline void ctx_log_reg_write(DisasContext *ctx, int rnum)
-{
-    ctx->reg_log[ctx->reg_log_idx] = rnum;
-    ctx->reg_log_idx++;
-    set_bit(rnum, ctx->regs_written);
-}
-
-static inline void ctx_log_reg_write_pair(DisasContext *ctx, int rnum)
-{
-    ctx_log_reg_write(ctx, rnum);
-    ctx_log_reg_write(ctx, rnum + 1);
-}
 
 #ifndef CONFIG_USER_ONLY
 static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
@@ -127,20 +116,37 @@ static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
 
 static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
 {
-    ctx->preg_log[ctx->preg_log_idx] = pnum;
-    ctx->preg_log_idx++;
-    set_bit(pnum, ctx->pregs_written);
+    if (!test_bit(pnum, ctx->pregs_written)) {
+        ctx->preg_log[ctx->preg_log_idx] = pnum;
+        ctx->preg_log_idx++;
+        set_bit(pnum, ctx->pregs_written);
+    }
 }
 
-static inline bool is_preloaded(DisasContext *ctx, int num)
+static inline void ctx_log_reg_write(DisasContext *ctx, int rnum,
+                                     bool is_predicated)
 {
-    return test_bit(num, ctx->regs_written);
+    if (rnum == HEX_REG_P3_0_ALIASED) {
+        for (int i = 0; i < NUM_PREGS; i++) {
+            ctx_log_pred_write(ctx, i);
+        }
+    } else {
+        if (!test_bit(rnum, ctx->regs_written)) {
+            ctx->reg_log[ctx->reg_log_idx] = rnum;
+            ctx->reg_log_idx++;
+            set_bit(rnum, ctx->regs_written);
+        }
+        if (is_predicated) {
+            set_bit(rnum, ctx->predicated_regs);
+        }
+    }
 }
 
-static inline bool is_vreg_preloaded(DisasContext *ctx, int num)
+static inline void ctx_log_reg_write_pair(DisasContext *ctx, int rnum,
+                                          bool is_predicated)
 {
-    return test_bit(num, ctx->vregs_updated) ||
-           test_bit(num, ctx->vregs_updated_tmp);
+    ctx_log_reg_write(ctx, rnum, is_predicated);
+    ctx_log_reg_write(ctx, rnum + 1, is_predicated);
 }
 
 intptr_t ctx_future_vreg_off(DisasContext *ctx, int regnum,
@@ -153,17 +159,25 @@ static inline void ctx_log_vreg_write(DisasContext *ctx,
                                       bool is_predicated)
 {
     if (type != EXT_TMP) {
-        ctx->vreg_log[ctx->vreg_log_idx] = rnum;
-        ctx->vreg_is_predicated[ctx->vreg_log_idx] = is_predicated;
-        ctx->vreg_log_idx++;
+        if (!test_bit(rnum, ctx->vregs_updated)) {
+            ctx->vreg_log[ctx->vreg_log_idx] = rnum;
+            ctx->vreg_log_idx++;
+            set_bit(rnum, ctx->vregs_updated);
+        }
 
         set_bit(rnum, ctx->vregs_updated);
+        if (is_predicated) {
+            set_bit(rnum, ctx->predicated_future_vregs);
+        }
     }
     if (type == EXT_NEW) {
         set_bit(rnum, ctx->vregs_select);
     }
     if (type == EXT_TMP) {
         set_bit(rnum, ctx->vregs_updated_tmp);
+        if (is_predicated) {
+            set_bit(rnum, ctx->predicated_tmp_vregs);
+        }
     }
 }
 
@@ -176,10 +190,9 @@ static inline void ctx_log_vreg_write_pair(DisasContext *ctx,
 }
 
 static inline void ctx_log_qreg_write(DisasContext *ctx,
-                                      int rnum, bool is_predicated)
+                                      int rnum)
 {
     ctx->qreg_log[ctx->qreg_log_idx] = rnum;
-    ctx->qreg_is_predicated[ctx->qreg_log_idx] = is_predicated;
     ctx->qreg_log_idx++;
 }
 
@@ -228,4 +241,14 @@ void gen_exception_end_tb(DisasContext *ctx, int excp);
 
 bool is_gather_store_insn(DisasContext *ctx);
 void process_store(DisasContext *ctx, int slot_num);
+
+FIELD(PROBE_PKT_SCALAR_STORE_S0, MMU_IDX,       0, 2)
+FIELD(PROBE_PKT_SCALAR_STORE_S0, IS_PREDICATED, 2, 1)
+
+FIELD(PROBE_PKT_SCALAR_HVX_STORES, HAS_ST0,        0, 1)
+FIELD(PROBE_PKT_SCALAR_HVX_STORES, HAS_ST1,        1, 1)
+FIELD(PROBE_PKT_SCALAR_HVX_STORES, HAS_HVX_STORES, 2, 1)
+FIELD(PROBE_PKT_SCALAR_HVX_STORES, S0_IS_PRED,     3, 1)
+FIELD(PROBE_PKT_SCALAR_HVX_STORES, S1_IS_PRED,     4, 1)
+
 #endif

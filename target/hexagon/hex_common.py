@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ##
-##  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -128,6 +128,7 @@ def calculate_attribs():
     add_qemu_macro_attrib('fLOAD_LOCKED', 'A_LLSC')
     add_qemu_macro_attrib('fSTORE_LOCKED', 'A_LLSC')
     add_qemu_macro_attrib('fCLEAR_RTE_EX', 'A_IMPLICIT_WRITES_SSR')
+    add_qemu_macro_attrib('fLOAD', 'A_SCALAR_LOAD')
     add_qemu_macro_attrib('fSTORE', 'A_SCALAR_STORE')
     add_qemu_macro_attrib('fSET_K0_LOCK', 'A_IMPLICIT_READS_PC')
     add_qemu_macro_attrib('fSET_TLB_LOCK', 'A_IMPLICIT_READS_PC')
@@ -294,6 +295,13 @@ def need_pkt_has_multi_cof(tag):
         if (tag == 'J4_hintjumpr'):
             return False
         return True
+    return False
+
+def need_condexec_reg(tag, regs):
+    if 'A_CONDEXEC' in attribdict[tag]:
+        for regtype, regid, toss, numregs in regs:
+            if is_writeonly(regid) and not is_hvx_reg(regtype):
+                return True
     return False
 
 def skip_qemu_helper(tag):

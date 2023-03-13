@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -542,6 +542,7 @@ typedef struct CPUArchState {
     target_ulong pred_written;
 
     MemLog mem_log_stores[STORES_MAX];
+    target_ulong pkt_has_scalar_store_s1;
     target_ulong dczero_addr;
 
     float_status fp_status;
@@ -555,11 +556,9 @@ typedef struct CPUArchState {
     MMVector tmp_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
 
     VRegMask VRegs_updated_tmp;
-    VRegMask VRegs_updated;
 
     MMQReg QRegs[NUM_QREGS] QEMU_ALIGNED(16);
     MMQReg future_QRegs[NUM_QREGS] QEMU_ALIGNED(16);
-    QRegMask QRegs_updated;
 
     /* Temporaries used within instructions */
     MMVectorPair VuuV QEMU_ALIGNED(16);

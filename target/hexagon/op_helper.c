@@ -50,6 +50,7 @@
 #include "pmu.h"
 #endif
 #include "mmvec/macros.h"
+#include "translate.h"
 
 #define SF_BIAS        127
 #define SF_MANTBITS    23
@@ -705,9 +706,10 @@ void HELPER(resume)(CPUHexagonState *env, uint32_t mask)
 }
 #endif
 
-static void probe_store(CPUHexagonState *env, int slot, int mmu_idx)
+static void probe_store(CPUHexagonState *env, int slot, int mmu_idx,
+                        bool is_predicated)
 {
-    if (!(env->slot_cancelled & (1 << slot))) {
+    if (!is_predicated || !(env->slot_cancelled & (1 << slot))) {
         size1u_t width = env->mem_log_stores[slot].width;
         target_ulong va = env->mem_log_stores[slot].va;
         uintptr_t ra = GETPC();
@@ -727,9 +729,12 @@ void HELPER(probe_noshuf_load)(CPUHexagonState *env, target_ulong va,
 }
 
 /* Called during packet commit when there are two scalar stores */
-void HELPER(probe_pkt_scalar_store_s0)(CPUHexagonState *env, int mmu_idx)
+void HELPER(probe_pkt_scalar_store_s0)(CPUHexagonState *env, int args)
 {
-    probe_store(env, 0, mmu_idx);
+    int mmu_idx = FIELD_EX32(args, PROBE_PKT_SCALAR_STORE_S0, MMU_IDX);
+    bool is_predicated =
+        FIELD_EX32(args, PROBE_PKT_SCALAR_STORE_S0, IS_PREDICATED);
+    probe_store(env, 0, mmu_idx, is_predicated);
 }
 
 void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
@@ -776,15 +781,18 @@ void HELPER(probe_hvx_stores)(CPUHexagonState *env, int mmu_idx)
 void HELPER(probe_pkt_scalar_hvx_stores)(CPUHexagonState *env, int mask,
                                          int mmu_idx)
 {
-    bool has_st0        = (mask >> 0) & 1;
-    bool has_st1        = (mask >> 1) & 1;
-    bool has_hvx_stores = (mask >> 2) & 1;
+    bool has_st0 = FIELD_EX32(mask, PROBE_PKT_SCALAR_HVX_STORES, HAS_ST0);
+    bool has_st1 = FIELD_EX32(mask, PROBE_PKT_SCALAR_HVX_STORES, HAS_ST1);
+    bool has_hvx_stores =
+        FIELD_EX32(mask, PROBE_PKT_SCALAR_HVX_STORES, HAS_HVX_STORES);
+    bool s0_is_pred = FIELD_EX32(mask, PROBE_PKT_SCALAR_HVX_STORES, S0_IS_PRED);
+    bool s1_is_pred = FIELD_EX32(mask, PROBE_PKT_SCALAR_HVX_STORES, S1_IS_PRED);
 
     if (has_st0) {
-        probe_store(env, 0, mmu_idx);
+        probe_store(env, 0, mmu_idx, s0_is_pred);
     }
     if (has_st1) {
-        probe_store(env, 1, mmu_idx);
+        probe_store(env, 1, mmu_idx, s1_is_pred);
     }
     if (has_hvx_stores) {
         HELPER(probe_hvx_stores)(env, mmu_idx);
@@ -1935,17 +1943,6 @@ void HELPER(vwhist128qm)(CPUHexagonState *env, int32_t uiV)
                 env->VRegs[vindex].uw[elindex] + weight;
         }
     }
-}
-
-void cancel_slot(CPUHexagonState *env, uint32_t slot)
-{
-#ifdef CONFIG_USER_ONLY
-    HEX_DEBUG_LOG("Slot %d cancelled\n", slot);
-#else
-    HEX_DEBUG_LOG("op_helper: slot_cancelled = %d: pc = 0x%x\n", slot,
-                  env->gpr[HEX_REG_PC]);
-#endif
-    env->slot_cancelled |= (1 << slot);
 }
 
 #ifndef CONFIG_USER_ONLY

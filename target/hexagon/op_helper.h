@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -46,7 +46,6 @@ static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
 }
 
 /* Misc functions */
-void cancel_slot(CPUHexagonState *env, uint32_t slot);
 void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
                   target_ulong addr, target_ulong PC);
 

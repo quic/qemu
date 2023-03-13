@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,15 @@
 #include "printinsn.h"
 #include "pmu.h"
 
+#include "analyze_funcs_generated.c.inc"
+
+typedef void (*AnalyzeInsn)(DisasContext *ctx);
+static const AnalyzeInsn opcode_analyze[XX_LAST_OPCODE] = {
+#define OPCODE(X)    [X] = analyze_##X
+#include "opcodes_def_generated.h.inc"
+#undef OPCODE
+};
+
 TCGv hex_gpr[TOTAL_PER_THREAD_REGS];
 TCGv hex_pred[NUM_PREGS];
 TCGv hex_this_PC;
@@ -49,12 +58,11 @@ TCGv hex_store_addr[STORES_MAX];
 TCGv hex_store_width[STORES_MAX];
 TCGv hex_store_val32[STORES_MAX];
 TCGv_i64 hex_store_val64[STORES_MAX];
+TCGv hex_pkt_has_scalar_store_s1;
 TCGv hex_dczero_addr;
 TCGv hex_llsc_addr;
 TCGv hex_llsc_val;
 TCGv_i64 hex_llsc_val_i64;
-TCGv hex_VRegs_updated;
-TCGv hex_QRegs_updated;
 #ifndef CONFIG_USER_ONLY
 TCGv hex_greg[NUM_GREGS];
 TCGv hex_greg_new_value[NUM_GREGS];
@@ -368,10 +376,11 @@ static bool need_pc(Packet *pkt)
 
 static bool need_slot_cancelled(Packet *pkt)
 {
+    /* We only need slot_cancelled for conditional store instructions */
     for (int i = 0; i < pkt->num_insns; i++) {
         uint16_t opcode = pkt->insn[i].opcode;
         if (GET_ATTRIB(opcode, A_CONDEXEC) &&
-            !GET_ATTRIB(opcode, A_CALL)) {
+            GET_ATTRIB(opcode, A_SCALAR_STORE)) {
             return true;
         }
     }
@@ -601,6 +610,93 @@ static bool need_next_PC(DisasContext *ctx)
     return false;
 }
 
+/*
+ * The opcode_analyze functions mark most of the writes in a packet
+ * However, there are some implicit writes marked as attributes
+ * of the applicable instructions.
+ */
+static void mark_implicit_reg_write(DisasContext *ctx, int attrib, int rnum)
+{
+    uint16_t opcode = ctx->insn->opcode;
+    if (GET_ATTRIB(opcode, attrib)) {
+        /*
+         * USR is used to set overflow and FP exceptions,
+         * so treat it as conditional
+         */
+        bool is_predicated = GET_ATTRIB(opcode, A_CONDEXEC) ||
+                             rnum == HEX_REG_USR;
+
+        /* LC0/LC1 is conditionally written by endloop instructions */
+        if ((rnum == HEX_REG_LC0 || rnum == HEX_REG_LC1) &&
+            (opcode == J2_endloop0 ||
+             opcode == J2_endloop1 ||
+             opcode == J2_endloop01)) {
+            is_predicated = true;
+        }
+
+        ctx_log_reg_write(ctx, rnum, is_predicated);
+    }
+}
+
+#ifndef CONFIG_USER_ONLY
+static void mark_implicit_sreg_write(DisasContext *ctx, int attrib, int snum)
+{
+    uint16_t opcode = ctx->insn->opcode;
+    if (GET_ATTRIB(opcode, attrib)) {
+        ctx_log_sreg_write(ctx, snum);
+    }
+}
+#endif
+
+static void mark_implicit_reg_writes(DisasContext *ctx)
+{
+    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_FP,  HEX_REG_FP);
+    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_SP,  HEX_REG_SP);
+    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_LR,  HEX_REG_LR);
+    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_LC0, HEX_REG_LC0);
+    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_SA0, HEX_REG_SA0);
+    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_LC1, HEX_REG_LC1);
+    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_SA1, HEX_REG_SA1);
+    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_USR, HEX_REG_USR);
+    mark_implicit_reg_write(ctx, A_FPOP, HEX_REG_USR);
+
+#ifndef CONFIG_USER_ONLY
+    mark_implicit_sreg_write(ctx, A_IMPLICIT_WRITES_SGP0, HEX_SREG_SGP0);
+    mark_implicit_sreg_write(ctx, A_IMPLICIT_WRITES_SGP1, HEX_SREG_SGP1);
+    mark_implicit_sreg_write(ctx, A_IMPLICIT_WRITES_SSR, HEX_SREG_SSR);
+#endif
+}
+
+static void mark_implicit_pred_write(DisasContext *ctx, int attrib, int pnum)
+{
+    if (GET_ATTRIB(ctx->insn->opcode, attrib)) {
+        ctx_log_pred_write(ctx, pnum);
+    }
+}
+
+static void mark_implicit_pred_writes(DisasContext *ctx)
+{
+    mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P0, 0);
+    mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P1, 1);
+    mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P2, 2);
+    mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P3, 3);
+}
+
+static void analyze_packet(DisasContext *ctx)
+{
+    Packet *pkt = ctx->pkt;
+    ctx->need_pkt_has_scalar_store_s1 = false;
+    for (int i = 0; i < pkt->num_insns; i++) {
+        Insn *insn = &pkt->insn[i];
+        ctx->insn = insn;
+        if (opcode_analyze[insn->opcode]) {
+            opcode_analyze[insn->opcode](ctx);
+        }
+        mark_implicit_reg_writes(ctx);
+        mark_implicit_pred_writes(ctx);
+    }
+}
+
 static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
 {
     Packet *pkt = ctx->pkt;
@@ -611,6 +707,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     ctx->next_PC = next_PC;
     ctx->reg_log_idx = 0;
     bitmap_zero(ctx->regs_written, TOTAL_PER_THREAD_REGS);
+    bitmap_zero(ctx->predicated_regs, TOTAL_PER_THREAD_REGS);
 #ifndef CONFIG_USER_ONLY
     ctx->greg_log_idx = 0;
     ctx->sreg_log_idx = 0;
@@ -623,6 +720,8 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     bitmap_zero(ctx->vregs_updated_tmp, NUM_VREGS);
     bitmap_zero(ctx->vregs_updated, NUM_VREGS);
     bitmap_zero(ctx->vregs_select, NUM_VREGS);
+    bitmap_zero(ctx->predicated_future_vregs, NUM_VREGS);
+    bitmap_zero(ctx->predicated_tmp_vregs, NUM_VREGS);
     ctx->qreg_log_idx = 0;
     ctx->pre_commit = true;
 
@@ -633,6 +732,18 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     ctx->pre_commit = true;
 
     decode_wregs(ctx, pkt);
+
+    analyze_packet(ctx);
+
+    if (ctx->need_pkt_has_scalar_store_s1) {
+        tcg_gen_movi_tl(hex_pkt_has_scalar_store_s1, pkt->pkt_has_scalar_store_s1);
+    }
+
+    /*
+     * pregs_written is used both in the analyze phase as well as the code
+     * gen phase, so clear it again.
+     */
+    bitmap_zero(ctx->pregs_written, NUM_PREGS);
 
     if (ctx->paranoid_commit_state) {
         for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
@@ -699,6 +810,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         tcg_gen_movi_tl(hex_gpreg_written, write_mask.mask);
         tcg_gen_movi_tl(hex_mult_reg_written, 0);
     }
+
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
         gen_helper_debug_start_packet(cpu_env);
@@ -747,9 +859,42 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         tcg_gen_movi_tl(hex_pred_written, 0);
     }
 
-    if (pkt->pkt_has_hvx) {
-        tcg_gen_movi_tl(hex_VRegs_updated, 0);
-        tcg_gen_movi_tl(hex_QRegs_updated, 0);
+    /* Preload the predicated registers into hex_new_value[i] */
+    if (!bitmap_empty(ctx->predicated_regs, TOTAL_PER_THREAD_REGS)) {
+        int i = find_first_bit(ctx->predicated_regs, TOTAL_PER_THREAD_REGS);
+        while (i < TOTAL_PER_THREAD_REGS) {
+            tcg_gen_mov_tl(hex_new_value[i], hex_gpr[i]);
+            i = find_next_bit(ctx->predicated_regs, TOTAL_PER_THREAD_REGS,
+                              i + 1);
+        }
+    }
+
+    /* Preload the predicated HVX registers into future_VRegs and tmp_VRegs */
+    if (!bitmap_empty(ctx->predicated_future_vregs, NUM_VREGS)) {
+        int i = find_first_bit(ctx->predicated_future_vregs, NUM_VREGS);
+        while (i < NUM_VREGS) {
+            const intptr_t VdV_off =
+                ctx_future_vreg_off(ctx, i, 1, true);
+            intptr_t src_off = offsetof(CPUHexagonState, VRegs[i]);
+            tcg_gen_gvec_mov(MO_64, VdV_off,
+                             src_off,
+                             sizeof(MMVector),
+                             sizeof(MMVector));
+            i = find_next_bit(ctx->predicated_future_vregs, NUM_VREGS, i + 1);
+        }
+    }
+    if (!bitmap_empty(ctx->predicated_tmp_vregs, NUM_VREGS)) {
+        int i = find_first_bit(ctx->predicated_tmp_vregs, NUM_VREGS);
+        while (i < NUM_VREGS) {
+            const intptr_t VdV_off =
+                ctx_tmp_vreg_off(ctx, i, 1, true);
+            intptr_t src_off = offsetof(CPUHexagonState, VRegs[i]);
+            tcg_gen_gvec_mov(MO_64, VdV_off,
+                             src_off,
+                             sizeof(MMVector),
+                             sizeof(MMVector));
+            i = find_next_bit(ctx->predicated_tmp_vregs, NUM_VREGS, i + 1);
+        }
     }
 
 #ifndef CONFIG_USER_ONLY
@@ -801,82 +946,6 @@ bool is_gather_store_insn(DisasContext *ctx)
     return false;
 }
 
-/*
- * The LOG_*_WRITE macros mark most of the writes in a packet
- * However, there are some implicit writes marked as attributes
- * of the applicable instructions.
- */
-static void mark_implicit_reg_write(DisasContext *ctx, int attrib, int rnum)
-{
-    uint16_t opcode = ctx->insn->opcode;
-    if (GET_ATTRIB(opcode, attrib)) {
-        /*
-         * USR is used to set overflow and FP exceptions,
-         * so treat it as conditional
-         */
-        bool is_predicated = GET_ATTRIB(opcode, A_CONDEXEC) ||
-                             rnum == HEX_REG_USR;
-
-        /* LC0/LC1 is conditionally written by endloop instructions */
-        if ((rnum == HEX_REG_LC0 || rnum == HEX_REG_LC1) &&
-            (opcode == J2_endloop0 ||
-             opcode == J2_endloop1 ||
-             opcode == J2_endloop01)) {
-            is_predicated = true;
-        }
-
-        if (is_predicated && !is_preloaded(ctx, rnum)) {
-            tcg_gen_mov_tl(hex_new_value[rnum], hex_gpr[rnum]);
-        }
-
-        ctx_log_reg_write(ctx, rnum);
-    }
-}
-
-#ifndef CONFIG_USER_ONLY
-static void mark_implicit_sreg_write(DisasContext *ctx, int attrib, int snum)
-{
-    uint16_t opcode = ctx->insn->opcode;
-    if (GET_ATTRIB(opcode, attrib)) {
-        ctx_log_sreg_write(ctx, snum);
-    }
-}
-#endif
-
-static void mark_implicit_pred_write(DisasContext *ctx, int attrib, int pnum)
-{
-    if (GET_ATTRIB(ctx->insn->opcode, attrib)) {
-        ctx_log_pred_write(ctx, pnum);
-    }
-}
-
-static void mark_implicit_reg_writes(DisasContext *ctx)
-{
-    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_FP,  HEX_REG_FP);
-    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_SP,  HEX_REG_SP);
-    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_LR,  HEX_REG_LR);
-    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_LC0, HEX_REG_LC0);
-    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_SA0, HEX_REG_SA0);
-    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_LC1, HEX_REG_LC1);
-    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_SA1, HEX_REG_SA1);
-    mark_implicit_reg_write(ctx, A_IMPLICIT_WRITES_USR, HEX_REG_USR);
-    mark_implicit_reg_write(ctx, A_FPOP, HEX_REG_USR);
-
-#ifndef CONFIG_USER_ONLY
-    mark_implicit_sreg_write(ctx, A_IMPLICIT_WRITES_SGP0, HEX_SREG_SGP0);
-    mark_implicit_sreg_write(ctx, A_IMPLICIT_WRITES_SGP1, HEX_SREG_SGP1);
-    mark_implicit_sreg_write(ctx, A_IMPLICIT_WRITES_SSR, HEX_SREG_SSR);
-#endif
-}
-
-static void mark_implicit_pred_writes(DisasContext *ctx)
-{
-    mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P0, 0);
-    mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P1, 1);
-    mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P2, 2);
-    mark_implicit_pred_write(ctx, A_IMPLICIT_WRITES_P3, 3);
-}
-
 static void mark_store_width(DisasContext *ctx)
 {
     uint16_t opcode = ctx->insn->opcode;
@@ -905,9 +974,7 @@ static void mark_store_width(DisasContext *ctx)
 static void gen_insn(DisasContext *ctx)
 {
     if (ctx->insn->generate) {
-        mark_implicit_reg_writes(ctx);
         ctx->insn->generate(ctx);
-        mark_implicit_pred_writes(ctx);
         mark_store_width(ctx);
     } else {
         gen_exception_end_tb(ctx, HEX_CAUSE_INVALID_PACKET);
@@ -1187,65 +1254,31 @@ static void gen_commit_hvx(DisasContext *ctx)
     /*
      *    for (i = 0; i < ctx->vreg_log_idx; i++) {
      *        int rnum = ctx->vreg_log[i];
-     *        if (ctx->vreg_is_predicated[i]) {
-     *            if (env->VRegs_updated & (1 << rnum)) {
-     *                env->VRegs[rnum] = env->future_VRegs[rnum];
-     *            }
-     *        } else {
-     *            env->VRegs[rnum] = env->future_VRegs[rnum];
-     *        }
+     *        env->VRegs[rnum] = env->future_VRegs[rnum];
      *    }
      */
     for (i = 0; i < ctx->vreg_log_idx; i++) {
         int rnum = ctx->vreg_log[i];
-        bool is_predicated = ctx->vreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, VRegs[rnum]);
         intptr_t srcoff = ctx_future_vreg_off(ctx, rnum, 1, false);
         size_t size = sizeof(MMVector);
 
-        if (is_predicated) {
-            TCGv cmp = tcg_temp_new();
-            TCGLabel *label_skip = gen_new_label();
-
-            tcg_gen_andi_tl(cmp, hex_VRegs_updated, 1 << rnum);
-            tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
-            gen_set_label(label_skip);
-        } else {
-            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
-        }
+        tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
     }
 
     /*
      *    for (i = 0; i < ctx->qreg_log_idx; i++) {
      *        int rnum = ctx->qreg_log[i];
-     *        if (ctx->qreg_is_predicated[i]) {
-     *            if (env->QRegs_updated) & (1 << rnum)) {
-     *                env->QRegs[rnum] = env->future_QRegs[rnum];
-     *            }
-     *        } else {
-     *            env->QRegs[rnum] = env->future_QRegs[rnum];
-     *        }
+     *        env->QRegs[rnum] = env->future_QRegs[rnum];
      *    }
      */
     for (i = 0; i < ctx->qreg_log_idx; i++) {
         int rnum = ctx->qreg_log[i];
-        bool is_predicated = ctx->qreg_is_predicated[i];
         intptr_t dstoff = offsetof(CPUHexagonState, QRegs[rnum]);
         intptr_t srcoff = offsetof(CPUHexagonState, future_QRegs[rnum]);
         size_t size = sizeof(MMQReg);
 
-        if (is_predicated) {
-            TCGv cmp = tcg_temp_new();
-            TCGLabel *label_skip = gen_new_label();
-
-            tcg_gen_andi_tl(cmp, hex_QRegs_updated, 1 << rnum);
-            tcg_gen_brcondi_tl(TCG_COND_EQ, cmp, 0, label_skip);
-            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
-            gen_set_label(label_skip);
-        } else {
-            tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
-        }
+        tcg_gen_gvec_mov(MO_64, dstoff, srcoff, size, size);
     }
 
     if (pkt_has_hvx_store(ctx->pkt)) {
@@ -1355,13 +1388,27 @@ static void gen_commit_packet(DisasContext *ctx)
             int mask = 0;
 
             if (has_store_s0) {
-                mask |= (1 << 0);
+                mask =
+                    FIELD_DP32(mask, PROBE_PKT_SCALAR_HVX_STORES, HAS_ST0, 1);
             }
             if (has_store_s1) {
-                mask |= (1 << 1);
+                mask =
+                    FIELD_DP32(mask, PROBE_PKT_SCALAR_HVX_STORES, HAS_ST1, 1);
             }
             if (has_hvx_store) {
-                mask |= (1 << 2);
+                mask =
+                    FIELD_DP32(mask, PROBE_PKT_SCALAR_HVX_STORES,
+                               HAS_HVX_STORES, 1);
+            }
+            if (has_store_s0 && slot_is_predicated(pkt, 0)) {
+                mask =
+                    FIELD_DP32(mask, PROBE_PKT_SCALAR_HVX_STORES,
+                               S0_IS_PRED, 1);
+            }
+            if (has_store_s1 && slot_is_predicated(pkt, 1)) {
+                mask =
+                    FIELD_DP32(mask, PROBE_PKT_SCALAR_HVX_STORES,
+                               S1_IS_PRED, 1);
             }
             gen_helper_probe_pkt_scalar_hvx_stores(cpu_env,
                 tcg_constant_tl(mask), mem_idx);
@@ -1371,8 +1418,15 @@ static void gen_commit_packet(DisasContext *ctx)
          * process_store_log will execute the slot 1 store first,
          * so we only have to probe the store in slot 0
          */
-        gen_helper_probe_pkt_scalar_store_s0(cpu_env,
-            tcg_constant_tl(ctx->mem_idx));
+        int args = 0;
+        args =
+            FIELD_DP32(args, PROBE_PKT_SCALAR_STORE_S0, MMU_IDX, ctx->mem_idx);
+        if (slot_is_predicated(pkt, 0)) {
+            args =
+                FIELD_DP32(args, PROBE_PKT_SCALAR_STORE_S0, IS_PREDICATED, 1);
+        }
+        TCGv args_tcgv = tcg_constant_tl(args);
+        gen_helper_probe_pkt_scalar_store_s0(cpu_env, args_tcgv);
     }
 
     process_store_log(ctx);
@@ -1733,6 +1787,8 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, slot_cancelled), "slot_cancelled");
     hex_branch_taken = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, branch_taken), "branch_taken");
+    hex_pkt_has_scalar_store_s1 = tcg_global_mem_new(cpu_env,
+        offsetof(CPUHexagonState, pkt_has_scalar_store_s1), "pkt_has_scalar_store_s1");
     hex_dczero_addr = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, dczero_addr), "dczero_addr");
     hex_llsc_addr = tcg_global_mem_new(cpu_env,
@@ -1741,10 +1797,6 @@ void hexagon_translate_init(void)
         offsetof(CPUHexagonState, llsc_val), "llsc_val");
     hex_llsc_val_i64 = tcg_global_mem_new_i64(cpu_env,
         offsetof(CPUHexagonState, llsc_val_i64), "llsc_val_i64");
-    hex_VRegs_updated = tcg_global_mem_new(cpu_env,
-        offsetof(CPUHexagonState, VRegs_updated), "VRegs_updated");
-    hex_QRegs_updated = tcg_global_mem_new(cpu_env,
-        offsetof(CPUHexagonState, QRegs_updated), "QRegs_updated");
 
 #ifndef CONFIG_USER_ONLY
     hex_slot = tcg_global_mem_new(cpu_env,
