@@ -1945,6 +1945,17 @@ void HELPER(vwhist128qm)(CPUHexagonState *env, int32_t uiV)
     }
 }
 
+void cancel_slot(CPUHexagonState *env, uint32_t slot)
+{
+#ifdef CONFIG_USER_ONLY
+    HEX_DEBUG_LOG("Slot %d cancelled\n", slot);
+#else
+    HEX_DEBUG_LOG("op_helper: slot_cancelled = %d: pc = 0x%x\n", slot,
+                  env->gpr[HEX_REG_PC]);
+#endif
+    env->slot_cancelled |= (1 << slot);
+}
+
 #ifndef CONFIG_USER_ONLY
 void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 {

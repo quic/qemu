@@ -77,6 +77,7 @@ TESTS += \
 	checkforpriv \
 	pend_wake_wait \
 	gregs \
+	multiple_writes \
 	thread_scheduling \
 	rev \
 	pmu \
@@ -84,9 +85,6 @@ TESTS += \
 	single_step \
 	sys_reg_mut \
 	$()
-
-# NEEDSWORK: test 'multiple_writes' is disabled due to conflicts with
-# an upstream merge. We must fix this feature and re-enable the test.
 
 CFLAGS+=-G0 -O2
 

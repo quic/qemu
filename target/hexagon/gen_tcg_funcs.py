@@ -402,6 +402,8 @@ def gen_helper_call_imm(f,immlett):
 def genptr_dst_write_pair(f, tag, regtype, regid):
     f.write(f"    gen_log_reg_write_pair({regtype}{regid}N, "
             f"{regtype}{regid}V);\n")
+    if hex_common.is_predicated(tag):
+        f.write(f"    gen_check_reg_write_pair(ctx, {regtype}{regid}N);\n")
 
 def genptr_dst_write(f, tag, regtype, regid):
     if (regtype == "R"):
@@ -410,6 +412,8 @@ def genptr_dst_write(f, tag, regtype, regid):
         elif (regid in {"d", "e", "x", "y"}):
             f.write(f"    gen_log_reg_write({regtype}{regid}N, "
                     f"{regtype}{regid}V);\n")
+            if hex_common.is_predicated(tag):
+                f.write(f"    gen_check_reg_write(ctx, {regtype}{regid}N);\n")
         else:
             print("Bad register parse: ", regtype, regid)
     elif (regtype == "P"):

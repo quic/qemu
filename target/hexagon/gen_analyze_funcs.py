@@ -25,12 +25,9 @@ import hex_common
 ##
 ## Helpers for gen_analyze_func
 ##
-def is_predicated(tag):
-    return 'A_CONDEXEC' in hex_common.attribdict[tag]
-
 def analyze_opn_old(f, tag, regtype, regid, regno):
     regN = "%s%sN" % (regtype, regid)
-    predicated = "true" if is_predicated(tag) else "false"
+    predicated = "true" if hex_common.is_predicated(tag) else "false"
     if (regtype == "R"):
         if (regid in {"ss", "tt"}):
             f.write("//    const int %s = insn->regno[%d];\n" % \

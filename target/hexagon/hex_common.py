@@ -30,6 +30,9 @@ tags = []             # list of all tags
 overrides = {}        # tags with helper overrides
 idef_parser_enabled = {} # tags enabled for idef-parser
 
+def is_predicated(tag):
+    return 'A_CONDEXEC' in attribdict[tag]
+
 def is_sysemu_tag(tag):
     return ("A_PRIV" in attribdict[tag] or
             "A_GUEST" in attribdict[tag])

@@ -40,6 +40,28 @@
 
 #define IMMUTABLE (~0)
 
+static void gen_check_reg_write(DisasContext *ctx, int rnum)
+{
+    if (rnum < NUM_GPREGS && test_bit(rnum, ctx->wreg_mult_gprs)) {
+        TCGv cancelled = tcg_temp_new();
+        TCGv mult_reg = tcg_temp_new();
+        TCGLabel *skip = gen_new_label();
+
+        tcg_gen_andi_tl(cancelled, hex_slot_cancelled, 1 << ctx->insn->slot);
+        tcg_gen_brcondi_tl(TCG_COND_NE, cancelled, 0, skip);
+        tcg_gen_andi_tl(mult_reg, hex_gpreg_written, 1 << rnum);
+        tcg_gen_or_tl(hex_mult_reg_written, hex_mult_reg_written, mult_reg);
+        tcg_gen_ori_tl(hex_gpreg_written, hex_gpreg_written, 1 << rnum);
+        gen_set_label(skip);
+    }
+}
+
+static void gen_check_reg_write_pair(DisasContext *ctx, int rnum)
+{
+    gen_check_reg_write(ctx, rnum);
+    gen_check_reg_write(ctx, rnum + 1);
+}
+
 TCGv gen_read_reg(TCGv result, int num)
 {
     tcg_gen_mov_tl(result, hex_gpr[num]);
