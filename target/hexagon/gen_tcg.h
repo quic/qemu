@@ -2300,8 +2300,9 @@
 #define fGEN_TCG_SA1_dec(SHORTCODE) \
     tcg_gen_subi_tl(RdV, RsV, 1)
 
+// TODO: disabled for now. See QTOOL-92473
 /* if (p0.new) r0 = #0 */
-#define fGEN_TCG_SA1_clrtnew(SHORTCODE) \
+#define XXXfGEN_TCG_SA1_clrtnew(SHORTCODE) \
     do { \
         TCGv mask = tcg_temp_new(); \
         tcg_gen_movi_tl(RdV, 0); \
@@ -2319,8 +2320,9 @@
         tcg_gen_add_tl(RdV, RuV, RdV); \
     } while (0)
 
+// TODO: disabled for now. See QTOOL-92473
 /* Predicated add instructions */
-#define GEN_TCG_padd(PRED, ADD) \
+#define XXXGEN_TCG_padd(PRED, ADD) \
     do { \
         TCGv LSB = tcg_temp_new(); \
         TCGv mask = tcg_temp_new(); \
@@ -2332,27 +2334,29 @@
                            hex_slot_cancelled, mask); \
     } while (0)
 
-#define fGEN_TCG_A2_paddt(SHORTCODE) \
+// TODO: disabled for now. See QTOOL-92473
+#define XXXfGEN_TCG_A2_paddt(SHORTCODE) \
     GEN_TCG_padd(fLSBOLD(PuV), tcg_gen_add_tl(RdV, RsV, RtV))
-#define fGEN_TCG_A2_paddf(SHORTCODE) \
+#define XXXfGEN_TCG_A2_paddf(SHORTCODE) \
     GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_add_tl(RdV, RsV, RtV))
-#define fGEN_TCG_A2_paddit(SHORTCODE) \
+#define XXXfGEN_TCG_A2_paddit(SHORTCODE) \
     GEN_TCG_padd(fLSBOLD(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
-#define fGEN_TCG_A2_paddif(SHORTCODE) \
+#define XXXfGEN_TCG_A2_paddif(SHORTCODE) \
     GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_addi_tl(RdV, RsV, siV))
-#define fGEN_TCG_A2_paddtnew(SHORTCODE) \
+#define XXXfGEN_TCG_A2_paddtnew(SHORTCODE) \
     GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
-#define fGEN_TCG_A2_paddfnew(SHORTCODE) \
+#define XXXfGEN_TCG_A2_paddfnew(SHORTCODE) \
     GEN_TCG_padd(fLSBNEWNOT(PuN), tcg_gen_add_tl(RdV, RsV, RtV))
-#define fGEN_TCG_A2_padditnew(SHORTCODE) \
+#define XXXfGEN_TCG_A2_padditnew(SHORTCODE) \
     GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_addi_tl(RdV, RsV, siV))
-#define fGEN_TCG_A2_psubtnew(SHORTCODE) \
+#define XXXfGEN_TCG_A2_psubtnew(SHORTCODE) \
     GEN_TCG_padd(fLSBNEW(PuN), tcg_gen_sub_tl(RdV, RtV, RsV))
-#define fGEN_TCG_A2_pxorf(SHORTCODE) \
+#define XXXfGEN_TCG_A2_pxorf(SHORTCODE) \
     GEN_TCG_padd(fLSBOLDNOT(PuV), tcg_gen_xor_tl(RdV, RsV, RtV))
 
+// TODO: disabled for now. See QTOOL-92473
 /* Conditional move instructions */
-#define fGEN_TCG_COND_MOVE(VAL, COND) \
+#define XXXfGEN_TCG_COND_MOVE(VAL, COND) \
     do { \
         TCGv LSB = tcg_temp_new(); \
         TCGv mask = tcg_temp_new(); \
@@ -2364,11 +2368,12 @@
         tcg_gen_or_tl(hex_slot_cancelled, hex_slot_cancelled, mask); \
     } while (0)
 
-#define fGEN_TCG_C2_cmoveit(SHORTCODE) \
+// TODO: disabled for now. See QTOOL-92473
+#define XXXfGEN_TCG_C2_cmoveit(SHORTCODE) \
     fGEN_TCG_COND_MOVE(fLSBOLD(PuV), TCG_COND_NE)
-#define fGEN_TCG_C2_cmovenewit(SHORTCODE) \
+#define XXXfGEN_TCG_C2_cmovenewit(SHORTCODE) \
     fGEN_TCG_COND_MOVE(fLSBNEW(PuN), TCG_COND_NE)
-#define fGEN_TCG_C2_cmovenewif(SHORTCODE) \
+#define XXXfGEN_TCG_C2_cmovenewif(SHORTCODE) \
     fGEN_TCG_COND_MOVE(fLSBNEWNOT(PuN), TCG_COND_NE)
 
 /* r0 = mux(p0, #3, #5) */
