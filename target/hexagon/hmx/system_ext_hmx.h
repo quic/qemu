@@ -17,7 +17,7 @@
 
 #ifndef SYSTEM_EXT_H
 #define SYSTEM_EXT_H
-#include "hmx.h"
-
+#include "hmx/hmx_coproc.h"
+#include "hmx/hmx.h"
 
 #endif

@@ -16,10 +16,8 @@
  */
 #ifndef HMX_NOEXT_H
 #define HMX_NOEXT_H 1
-#include "cpu.h"
-#include "insn.h"
-
-#define thread_t CPUHexagonState
+#include "hmx/hmx_coproc.h"
+#include "hmx/hmx_insn.h"
 
 void *hmx_ext_palloc(processor_t *proc, int slots);
 void *hmx_ext_talloc(processor_t *proc, int slots);

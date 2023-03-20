@@ -43,11 +43,13 @@
 
 #define CORE_SLOTMASK (thread->processor_ptr->arch_proc_options->QDSP6_TINY_CORE ? 13 : 15)
 
+int hex_get_page_size(thread_t *thread, size4u_t vaddr, int width);
 paddr_t mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 		enum mem_access_types mtype, int type_for_xlate);
 
-paddr_t mem_init_access_unaligned(thread_t * thread, int slot, size4u_t vaddr, size4u_t realvaddr, int size,
-		enum mem_access_types mtype, int type_for_xlate);
+paddr_t mem_init_access_unaligned(thread_t * thread, int slot, size4u_t vaddr,
+        size4u_t realvaddr, int size, enum mem_access_types mtype,
+        int type_for_xlate);
 
 int sys_xlate_dma(thread_t *thread, size8u_t va, int access_type,
                   int maptr_type, int slot, size4u_t align_mask,
@@ -56,6 +58,10 @@ int sys_xlate_dma(thread_t *thread, size8u_t va, int access_type,
 void register_dma_error_exception(thread_t *thread, hex_exception_info *einfo,
                                   size4u_t va);
 void iic_flush_cache(processor_t * proc);
-void mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, int slot);
-void register_coproc_ldst_exception(thread_t * thread, int slot, size4u_t badva);
+void mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width,
+    size8u_t data, int slot);
+void register_coproc_ldst_exception(thread_t * thread, int slot,
+    size4u_t badva);
+int check_coproc_page_cross(thread_t* thread, vaddr_t base,
+    int length, int page_size);
 #endif

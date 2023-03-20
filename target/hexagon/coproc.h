@@ -20,11 +20,15 @@
 
 typedef struct {
     int32_t opcode;
+    void *vtcm_haddr;
+    hwaddr vtcm_base;
+    uint32_t reg_usr;
+    int32_t slot;
+    int32_t page_size;
     int32_t arg1;
     int32_t arg2;
 } CoprocArgs;
 
-void coproc(CPUHexagonState *env, CoprocArgs args);
-void coproc_commit(CPUHexagonState *env);
+void coproc(CoprocArgs args);
 
 #endif

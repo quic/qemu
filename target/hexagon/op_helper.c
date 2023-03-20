@@ -23,6 +23,7 @@
 #include "fpu/softfloat.h"
 #include "cpu.h"
 #include "internal.h"
+#include "int16_emu.h"
 #include "macros.h"
 #include "sys_macros.h"
 #include "arch.h"
@@ -2587,9 +2588,12 @@ uint32_t HELPER(read_pcyclehi)(CPUHexagonState *env)
     return hexagon_get_sys_pcycle_count_high(env);
 }
 
-void HELPER(commit_hmx)(CPUHexagonState *env)
+void HELPER(commit_coproc)(CPUHexagonState *env)
 {
-    coproc_commit(env);
+    CoprocArgs args;
+
+    args.opcode = COPROC_COMMIT;
+    coproc(args);
 }
 
 /* These macros can be referenced in the generated helper functions */

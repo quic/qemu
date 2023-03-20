@@ -50,7 +50,7 @@ def gen_coproc_case(f, tag, tagregs, tagimms):
     if hex_common.need_ea(tag):
         f.write("    uint32_t EA __attribute__((unused));\n")
 
-    if hex_common.is_hmx_act(tag):
+    if hex_common.is_coproc_act(tag):
         slot = 1
     else:
         slot = 0
@@ -76,7 +76,8 @@ def main():
         for tag in hex_common.get_user_tags():
             if "A_HMX" not in hex_common.attribdict[tag]:
                 continue
-            gen_coproc_case(f, tag, tagregs, tagimms)
+            if not hex_common.tag_ignore(tag):
+                gen_coproc_case(f, tag, tagregs, tagimms)
 
 
 if __name__ == "__main__":

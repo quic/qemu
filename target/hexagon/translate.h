@@ -36,7 +36,7 @@ typedef struct DisasContext {
     uint32_t hvx_packets;
     uint32_t num_insns;
     uint32_t num_hvx_insns;
-    uint32_t num_hmx_insns;
+    uint32_t num_coproc_insns;
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
     DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
@@ -85,7 +85,7 @@ typedef struct DisasContext {
     target_ulong branch_dest;
     bool is_tight_loop;
     bool hvx_check_emitted;
-    bool hmx_check_emitted;
+    bool coproc_check_emitted;
     bool pcycle_enabled;
     bool hvx_coproc_enabled;
     bool hvx_64b_mode;

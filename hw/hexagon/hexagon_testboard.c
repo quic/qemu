@@ -33,7 +33,6 @@
 #include "elf.h"
 #include "cpu.h"
 #include "hex_mmu.h"
-#include "hmx/ext_hmx.h"
 #include "include/migration/cpu.h"
 #include "include/sysemu/sysemu.h"
 #include "target/hexagon/internal.h"
@@ -172,6 +171,21 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         machine->ram_size, &error_fatal);
     memory_region_add_subregion(address_space, 0x0, sram);
 
+#if 0
+see hw/vfio/pci-quirks.c
+
+*info = g_malloc0(size)
+
+    p = mmap(NULL, nv2reg->size, PROT_READ | PROT_WRITE,
+             MAP_SHARED | MAP_ANONYMOUS, vdev->vbasedev. -1, nv2reg->offset);
+    if (p == MAP_FAILED) {
+        ret = -errno;
+        goto free_exit;
+    }
+    memory_region_init_ram_ptr(&quirk->mem[0], OBJECT(vdev), "nvlink2-mr",
+                               nv2reg->size, p);
+#endif
+
     MemoryRegion *vtcm = g_new(MemoryRegion, 1);
     memory_region_init_ram(vtcm, NULL, "vtcm.ram", cfgTable->vtcm_size_kb * 1024,
         &error_fatal);
@@ -212,6 +226,8 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
                 __FUNCTION__, cpu, env);
 
+        env->vtcm_haddr = memory_region_get_ram_ptr(vtcm);
+        env->vtcm_base = cfgTable->vtcm_base;
         if (i == 0) {
             hexagon_init_bootstrap(machine, cpu);
             if (!cpu->usefs) {

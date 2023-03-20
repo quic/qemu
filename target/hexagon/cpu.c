@@ -25,7 +25,6 @@
 #include "fpu/softfloat-helpers.h"
 #include "tcg/tcg.h"
 #include "gdb_qreginfo.h"
-#include "hmx/ext_hmx.h"
 #include "dma/dma.h"
 #include "trace.h"
 #include "hw/hexagon/hexagon.h"
@@ -40,6 +39,8 @@
 #include "sysemu/cpus.h"
 #include "hex_interrupts.h"
 #endif
+#include "opcodes.h"
+#include "coproc.h"
 
 #define INVALID_REG_VAL (0xababababULL)
 
@@ -492,12 +493,15 @@ static void hexagon_cpu_reset_hold(Object *obj)
 
     set_default_nan_mode(1, &env->fp_status);
     set_float_detect_tininess(float_tininess_before_rounding, &env->fp_status);
-    hmx_reset(env->processor_ptr, env);
 
     env->t_packet_count = 0;
     *(env->g_pcycle_base) = 0;
 
 #ifndef CONFIG_USER_ONLY
+    CoprocArgs args;
+    args.opcode = COPROC_RESET;
+    coproc(args);
+
     clear_wait_mode(env);
 
     ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_UNLOCKED);
@@ -519,54 +523,19 @@ const rev_features_t rev_features_v68 = {
 
 const options_struct options_struct_v68 = {
     .l2tcm_base  = 0,  /* FIXME - Should be l2tcm_base ?? */
-    .hmx_mac_fxp_callback = (void *)0,
-    .hmx_mac_flt_callback = (void *)0,
 };
 
 const arch_proc_opt_t arch_proc_opt_v68 = {
     .vtcm_size = VTCM_SIZE,
     .vtcm_offset = VTCM_OFFSET,
     .dmadebugfile = NULL,
-    .hmxdebuglvl = 0,
-    .hmx_output_depth = 32,
-    .hmx_spatial_size = 6,
-    .hmx_channel_size = 5,
-    .hmx_block_size = 2048,
-    .hmx_mxmem_debug_acc_preload = 0,
     .pmu_enable = 0,
-    .hmxdebugfile = 0,
-    .hmx_mxmem_debug = 0,
-    .hmxaccpreloadfile = 0,
-    .hmxarray_new = 0,
-    .hmxmpytrace = 0,
-    .hmx_v1 = 0,
-    .hmx_power_config = 0,
-    .hmx_8x4_mpy_mode = 0,
-    .hmx_group_conv_mode = 1,
     .dmadebug_verbosity = 0,
     .xfp_inexact_enable = 1,
     .xfp_cvt_frac = 13,
     .xfp_cvt_int = 3,
     .QDSP6_DMA_PRESENT     = 1,
     .QDSP6_DMA_EXTENDED_VA_PRESENT = 0,
-    .QDSP6_MX_FP_PRESENT   = 1,
-    .QDSP6_MX_RATE = 16,
-    .QDSP6_MX_CHANNELS = 32,
-    .QDSP6_MX_ROWS = 64,
-    .QDSP6_MX_COLS = 32,
-    .QDSP6_MX_CVT_MPY_SZ = 10,
-    .QDSP6_MX_SUB_COLS = 2,
-    .QDSP6_MX_ACCUM_WIDTH = 32,
-    .QDSP6_MX_CVT_WIDTH = 12,
-    .QDSP6_MX_FP_RATE = 8,
-    .QDSP6_MX_FP_ACC_INT = 8,
-    .QDSP6_MX_FP_ACC_FRAC = 22,
-    .QDSP6_MX_FP_ACC_EXP = 7,
-    .QDSP6_MX_FP_ROWS = 32,
-    .QDSP6_MX_FP_COLS = 32,
-    .QDSP6_MX_FP_ACC_NORM = 3,
-    .QDSP6_MX_PARALLEL_GRPS = 4,
-    .QDSP6_MX_NUM_BIAS_GRPS = 4,
     .QDSP6_VX_PRESENT = 1,
     .QDSP6_VX_CONTEXTS = VECTOR_UNIT_MAX,
     .QDSP6_VX_MEM_ENTRIES = 2048,
@@ -579,7 +548,6 @@ struct ProcessorState ProcessorStateV68 = {
     .arch_proc_options = &arch_proc_opt_v68,
     .runnable_threads_max = THREADS_MAX,
     .thread_system_mask = 0xf,
-    .shared_extptr = 0,
     .timing_on = 0,
 };
 
@@ -611,13 +579,12 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->threadId);
     env->system_ptr = NULL;
 
-#define HEXAGON_CFG_ADDR_BASE(addr) ((addr >> 16) & 0x0fffff)
 #ifndef CONFIG_USER_ONLY
+    ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
+#define HEXAGON_CFG_ADDR_BASE(addr) ((addr >> 16) & 0x0fffff)
     if (cs->cpu_index == 0) {
         env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
         env->g_gcycle = g_malloc0(sizeof(target_ulong) * NUM_GLOBAL_GCYCLE);
-        env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
-        hmx_configure_state(env);
         hex_mmu_init(env);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_EVB, 0x0);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_CFGBASE,
@@ -646,6 +613,13 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT5, INVALID_REG_VAL);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT6, INVALID_REG_VAL);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT7, INVALID_REG_VAL);
+
+        CoprocArgs args;
+        args.opcode = COPROC_INIT;
+        args.vtcm_haddr = env->vtcm_haddr;
+        args.vtcm_base = env->vtcm_base;
+        args.reg_usr = GET_FIELD(USR_FPCOPROC, env->gpr[HEX_REG_USR]);
+        coproc(args);
     }
     else {
         CPUState *cpu0_s = NULL;
@@ -661,7 +635,6 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->hex_tlb = env0->hex_tlb;
         env->cmdline = env0->cmdline;
         env->lib_search_dir = env0->lib_search_dir;
-        env->processor_ptr->shared_extptr = env0->processor_ptr->shared_extptr;
         env->g_pcycle_base = env0->g_pcycle_base;
         env->pmu.g_ctrs_off = env0->pmu.g_ctrs_off;
         env->pmu.g_events = env0->pmu.g_events;
@@ -677,13 +650,10 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 
         clear_wait_mode(env);
     }
-
-    ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
 #else
-    env->processor_ptr->shared_extptr = hmx_ext_palloc(env->processor_ptr, 0);
-    hmx_configure_state(env);
     env->g_pcycle_base = g_malloc0(sizeof(*env->g_pcycle_base));
 #endif
+
     cpu_reset(cs);
 #if !defined(CONFIG_USER_ONLY)
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_EVB, cpu->boot_evb);

@@ -424,7 +424,7 @@ static inline void gen_read_ctrl_reg(DisasContext *ctx, const int reg_num,
                         ctx->num_hvx_insns);
     } else if (reg_num == HEX_REG_QEMU_HMX_CNT) {
         tcg_gen_addi_tl(dest, hex_gpr[HEX_REG_QEMU_HMX_CNT],
-                        ctx->num_hmx_insns);
+                        ctx->num_coproc_insns);
     } else if ((reg_num == HEX_REG_PKTCNTLO)
             || (reg_num == HEX_REG_PKTCNTHI)
             || (reg_num == HEX_REG_UTIMERLO)
@@ -455,12 +455,12 @@ static inline void gen_read_ctrl_reg_pair(DisasContext *ctx, const int reg_num,
         tcg_gen_concat_i32_i64(dest, pkt_cnt, insn_cnt);
     } else if (reg_num == HEX_REG_QEMU_HVX_CNT) {
         TCGv hvx_cnt = tcg_temp_new();
-        TCGv hmx_cnt = tcg_temp_new();
+        TCGv coproc_cnt = tcg_temp_new();
         tcg_gen_addi_tl(hvx_cnt, hex_gpr[HEX_REG_QEMU_HVX_CNT],
                         ctx->num_hvx_insns);
-        tcg_gen_addi_tl(hmx_cnt, hex_gpr[HEX_REG_QEMU_HMX_CNT],
-                        ctx->num_hmx_insns);
-        tcg_gen_concat_i32_i64(dest, hvx_cnt, hmx_cnt);
+        tcg_gen_addi_tl(coproc_cnt, hex_gpr[HEX_REG_QEMU_HMX_CNT],
+                        ctx->num_coproc_insns);
+        tcg_gen_concat_i32_i64(dest, hvx_cnt, coproc_cnt);
     } else if ((reg_num == HEX_REG_PKTCNTLO)
             || (reg_num == HEX_REG_UTIMERLO)
             || (reg_num == HEX_REG_UPCYCLELO)

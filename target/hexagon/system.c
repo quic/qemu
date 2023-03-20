@@ -34,6 +34,7 @@
 #include "macros.h"
 #include "mmvec/mmvec.h"
 #include "system.h"
+#include "arch_options_calc.h"
 //#include "external_api.h"
 //#include "iic.h"
 //#include "uarch/uarch.h"
@@ -70,6 +71,27 @@ void iic_flush_cache(processor_t * proc)
 {
 }
 
+int hex_get_page_size(thread_t *thread, size4u_t vaddr, int width)
+
+{
+    int size = 1024 * 1024;
+#ifndef CONFIG_USER_ONLY
+    hwaddr phys;
+    int prot;
+    int32_t excp;
+    /* make sure vaddr in tlb */
+    hexagon_touch_memory(thread, vaddr, width);
+    /* now get tlb size for this vaddr */
+    if (!hex_tlb_find_match(thread, vaddr, MMU_DATA_LOAD, &phys, &prot, &size,
+                            &excp, cpu_mmu_index(thread, false))) {
+        HEX_DEBUG_LOG("%s: tlb lookup failed: vaddr=0x%x\n",
+            __func__, vaddr);
+        g_assert_not_reached();
+    }
+#endif
+    return size;
+}
+
 paddr_t
 mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 				enum mem_access_types mtype, int type_for_xlate)
@@ -101,22 +123,8 @@ mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
     maptr->cancelled = 0;
     maptr->valid = 1;
 
-    int size = 1024 * 1024;
-#ifndef CONFIG_USER_ONLY
-    hwaddr phys;
-    int prot;
-    int32_t excp;
-    /* make sure vaddr in tlb */
-    hexagon_touch_memory(thread, vaddr, width);
-    /* now get tlb size for this vaddr */
-    if (!hex_tlb_find_match(thread, vaddr, MMU_DATA_LOAD, &phys, &prot, &size,
-                            &excp, cpu_mmu_index(thread, false))) {
-        HEX_DEBUG_LOG("%s: tlb lookup failed: vaddr=0x%x\n",
-            __func__, vaddr);
-        g_assert_not_reached();
-    }
-#endif
-    maptr->size = 31 - clz32(size); /* range validation not done in user mode */
+    int page_size = hex_get_page_size(thread, vaddr, width);
+    maptr->size = 31 - clz32(page_size);
 
 	/* Attributes of the packet that are needed by the uarch */
     maptr->slot = slot;

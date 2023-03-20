@@ -52,7 +52,7 @@ DEF_HELPER_1(stop, void, env)
 DEF_HELPER_3(rte, void, env, i32, i32)
 #endif
 
-DEF_HELPER_1(commit_hmx, void, env)
+DEF_HELPER_1(commit_coproc, void, env)
 
 /* Floating point */
 DEF_HELPER_2(conv_sf2df, f64, env, f32)

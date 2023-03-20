@@ -15,25 +15,15 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "qemu/osdep.h"
-#include "exec/exec-all.h"
-#include "migration/vmstate.h"
-#include "qapi/error.h"
-#include "qemu/log.h"
-#include "qemu/qemu-print.h"
-#include "cpu.h"
-#include "arch.h"
-#include "system.h"
-#include "opcodes.h"
-#include "insn.h"
+#include <string.h>
+#include "hmx/hmx_hex_arch_types.h"
+#include "hmx/hmx_coproc.h"
+#include "hmx/hmx_system.h"
 #include "hmx/system_ext_hmx.h"
-#include "arch_options_calc.h"
 #include "hmx/macros_auto.h"
 #include "hmx/hmx_int_ops.h"
 
-#define env thread
-#define thread_t         CPUHexagonState
-#define THREAD2STRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
+#define THREAD2STRUCT ((hmx_state_t*)hmx_shared_extptr)
 #define Regs gpr
 #define REG_USR HEX_REG_USR
 
@@ -47,6 +37,11 @@
 // Get Arch option through thread
 #define ARCH_OPT_TH(OPTION) (thread->processor_ptr->arch_proc_options->OPTION)
 
+#if 1
+#define hmx_in_vtcm_space(...) 0
+#define register_coproc_ldst_exception(...)
+#define check_mxmem_page_cross(...) 0
+#else
 static int check_mxmem_page_cross(thread_t* thread, vaddr_t base,
     int length, int page_size)
 {
@@ -60,13 +55,14 @@ static int check_mxmem_page_cross(thread_t* thread, vaddr_t base,
 #endif
     return 0;
 }
+#endif
 
 #define MX_EXCEPTION_CHECK(VA,LEN,LEN2,TYPE1, TYPE2)\
-	mem_init_access_unaligned(thread, slot, VA, VA, LEN, TYPE1, TYPE2);\
+	hmx_mem_init_access_unaligned(thread, slot, VA, VA, LEN, TYPE1, TYPE2, page_size);\
     if (EXCEPTION_DETECTED) return;\
 	paddr = maptr->paddr;\
-	int mxmem_exception = (maptr->xlate_info.memtype.device && !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;\
-    mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);\
+	int mxmem_exception = (maptr->xlate_info.memtype.device && !hmx_in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;\
+    mxmem_exception |= !hmx_in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);\
     CHECK_ACCESS_RANGE(mxmem_exception, paddr, LEN);\
     mxmem_exception |= check_mxmem_page_cross(thread,VA,LEN2, thread->mem_access[slot].xlate_info.size);\
     if (mxmem_exception) {\
@@ -74,9 +70,7 @@ static int check_mxmem_page_cross(thread_t* thread, vaddr_t base,
 	}\
 	if (EXCEPTION_DETECTED) return;
 
-
-
-void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, int size)
+void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, int size, int page_size)
 {
 	paddr_t paddr;
 	mem_access_info_t *maptr = &thread->mem_access[slot];
@@ -96,15 +90,16 @@ void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, i
 	else
 		warn(":unknown bias data type, neither 16bit nor 32bit ");
 
-	mem_init_access_unaligned(thread, slot, vaddr, vaddr, size, (enum mem_access_types) access_type, type);\
+	hmx_mem_init_access_unaligned(thread, slot, vaddr, vaddr, size,
+        (enum mem_access_types) access_type, type, page_size);
 
     if (EXCEPTION_DETECTED) return;
 	maptr->paddr = paddr = maptr->paddr & ~(size-1);
 
 	maptr->width = size;
 
-	int mxmem_exception = (maptr->xlate_info.memtype.device && !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;
-	mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);
+	int mxmem_exception = (maptr->xlate_info.memtype.device && !hmx_in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;
+	mxmem_exception |= !hmx_in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);
 	CHECK_ACCESS_RANGE(mxmem_exception, paddr, size-1);
     if (mxmem_exception) {
         register_coproc_ldst_exception(thread,slot,vaddr);
@@ -152,7 +147,7 @@ void hmx_debug_log_mac_info(thread_t * thread) {
 
 
 
-void hmx_act_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot)
+void hmx_act_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int page_size)
 {
     paddr_t paddr;
     mem_access_info_t *maptr = &thread->mem_access[slot];
@@ -181,7 +176,7 @@ void hmx_act_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot)
 
 
 
-void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int weight_count, int output_ch_scale)
+void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int weight_count, int output_ch_scale, int page_size)
 {
 	paddr_t paddr;
 	mem_access_info_t *maptr = &thread->mem_access[slot];
@@ -190,14 +185,15 @@ void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int 
 
 	paddr_t align_128_mask = 0x7F;
 	int length = (int)range & (~align_128_mask);
-	int start_aligned = (int)start & (~align_128_mask);
-	mem_init_access_unaligned(thread, slot, start, start, length, access_type_hmx_load_wei, TYPE_LOAD);
+	/* int start_aligned = (int)start & (~align_128_mask); */
+	hmx_mem_init_access_unaligned(thread, slot, start, start, length, access_type_hmx_load_wei, TYPE_LOAD, page_size);
 
 	if (EXCEPTION_DETECTED) return;
 
 	paddr = maptr->paddr;
-	int mxmem_exception = (maptr->xlate_info.memtype.device && !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;
-	mxmem_exception |= !in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);
+	int mxmem_exception = (maptr->xlate_info.memtype.device && !hmx_in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;
+	mxmem_exception |= !hmx_in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);
+    printf("mgl: wgt: paddr 0x%lx, length %d\n", paddr, length);
 	CHECK_ACCESS_RANGE(mxmem_exception, paddr, length);
 	mxmem_exception |= check_mxmem_page_cross(thread, start_aligned , length, thread->mem_access[slot].xlate_info.size);
 	if (mxmem_exception) {
@@ -268,11 +264,11 @@ void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int 
 
 #define ESR_FPCOPROC USR_FPCOPROC
 uint32_t hmx_get_usr_reg_coproc_field(thread_t* thread) {
-	return GET_FIELD(ESR_FPCOPROC, thread->Regs[REG_USR]);
+	return thread->reg_usr;
 }
 
 
-void hmx_mxmem_wr_xlate(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int access_type)
+void hmx_mxmem_wr_xlate(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int access_type, int page_size)
 {
     paddr_t paddr;
     paddr_t tile_mask = (1 << (thread->processor_ptr->arch_proc_options->hmx_spatial_size + fMX_GETCHANNELSIZE(thread->processor_ptr)))-1;

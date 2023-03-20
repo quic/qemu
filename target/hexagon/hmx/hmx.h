@@ -18,7 +18,7 @@
 #ifndef _HMX_ARCH_H
 #define _HMX_ARCH_H
 
-#include "../max.h"
+#include "hmx/hmx_max.h"
 #include "hmx/hmx_int_ops.h"
 #include "hmx/mpy_hmx_fp_custom.h"
 
@@ -277,8 +277,6 @@ typedef struct {
 #define WGT_CACHE_MAX_SIZE 2148
 
 typedef struct HMX_State {
-
-
 	vaddr_t start[2];
 	vaddr_t range[2];
 	paddr_t paddr[2];
@@ -434,7 +432,6 @@ typedef struct HMX_State {
 	uint32_t array_acc;
 
 	uint32_t fp8_batch_ch_start_wgt_idx;
-
 } hmx_state_t;
 
 
@@ -451,12 +448,10 @@ void hmx_legacy_convert_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t vad
 void hmx_convert_init(thread_t* thread, int slot, int type, int feedback);
 void hmx_convert_store_init(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int format, int type);
 
-void hmx_mxmem_wr_xlate(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int access_type);
-
-void hmx_act_init(thread_t* thread, vaddr_t start, vaddr_t range, int32_t slot);
-void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int32_t slot, int32_t weight_count, int32_t output_ch_scale);
-
-void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, int size);
+void hmx_mxmem_wr_xlate(thread_t* thread, int slot, vaddr_t ea, vaddr_t start, vaddr_t range, int access_type, int page_size);
+void hmx_act_init(thread_t* thread, vaddr_t start, vaddr_t range, int32_t slot, int page_size);
+void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int32_t slot, int32_t weight_count, int32_t output_ch_scale, int page_size);
+void hmx_bias_init(thread_t* thread, int slot, vaddr_t vaddr, int access_type, int size, int page_size);
 
 void hmx_debug_print_acc(thread_t* thread, int hex, int flt);
 void hmx_debug_file_log(thread_t* thread, int lvl, char * buf);
@@ -464,8 +459,8 @@ void hmx_acc_reset(processor_t * proc);
 void hmx_debug_log_mac_info(thread_t * thread);
 
 
-#define THREAD2HMXSTRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
-
+extern thread_t glb_thread_env;
+#define THREAD2HMXSTRUCT thread->processor_ptr->shared_extptr
 
 #ifdef VERIFICAITON
 #define CALL_HMX_CMD(NAME, STATE, ...) NAME##_##debug(STATE, __VA_ARGS__);

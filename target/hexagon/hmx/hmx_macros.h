@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,16 +15,10 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "qemu/osdep.h"
-#include "cpu.h"
-#define thread_t CPUHexagonState
-#include "arch_options_calc.h"
+#ifndef _HMX_MACROS_H
+#define _HMX_MACROS_H
 
-int get_ext_contexts(processor_t *proc)
-{
-    int ext_contexts = 0;
-    if (proc->arch_proc_options->QDSP6_VX_PRESENT) {
-        ext_contexts = proc->arch_proc_options->QDSP6_VX_CONTEXTS;
-    }
-    return ext_contexts;
-}
+#define fEA_REG(REG)        do { EA = (REG); } while (0)
+#define fHIDE(A) A
+
+#endif

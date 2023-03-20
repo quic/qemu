@@ -15,24 +15,14 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "qemu/osdep.h"
-#include "exec/exec-all.h"
-#include "migration/vmstate.h"
-#include "qapi/error.h"
-#include "qemu/log.h"
-#include "qemu/qemu-print.h"
-#include "cpu.h"
-#include "arch.h"
-#ifdef CONFIG_USER_ONLY
-#include "qemu.h"
-#endif
-#include "utils.h"
+#include "hmx/hmx_utils.h"
+#include "hmx/hmx_hex_arch_types.h"
 #include "hmx/ext_hmx.h"
 #include "hmx/hmx.h"
-#include "arch_options_calc.h"
+#include "hmx/hmx_arch_options_calc.h"
 #include "hmx/macros_auto.h"
 #include <math.h>
-#include "mpy_hmx_fp_custom.h"
+#include "hmx/mpy_hmx_fp_custom.h"
 
 #ifndef ARCH_FUNCTION
 #define ARCH_FUNCTION(func_name) func_name
@@ -64,7 +54,7 @@ DEBUG_PRINT_XFP("%s : stat {z:%x inf:%x neg:%x under:%x} exp=0x%04x sig raw=0x%0
 #endif
 #endif
 
-#define COUNT_LEADING_ZEROS_8(X) clz64(X)
+#define COUNT_LEADING_ZEROS_8(X)  ((X) ? __builtin_clzll(X) : 64)
 
 static inline exp_range_t get_exp_range_unbiased(int32_t exp_bits) {
 	exp_range_t out;

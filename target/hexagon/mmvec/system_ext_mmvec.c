@@ -15,6 +15,9 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef CONFIG_USER_ONLY
+#define thread_t CPUHexagonState
+#endif
 #include "qemu/osdep.h"
 #include "exec/exec-all.h"
 #include "opcodes.h"
@@ -29,7 +32,6 @@
 #include "target/hexagon/internal.h"
 
 #ifndef CONFIG_USER_ONLY
-#define thread_t CPUHexagonState
 #define FATAL_REPLAY
 #ifdef EXCEPTION_DETECTED
 #undef EXCEPTION_DETECTED

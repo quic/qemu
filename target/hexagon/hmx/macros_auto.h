@@ -15,16 +15,12 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _HMX_MACROS_H
-#define _HMX_MACROS_H
+#ifndef _HMX_MACROS_AUTO_H
+#define _HMX_MACROS_AUTO_H
 #include "q6v_defines.h"
-#include "arch_options_calc.h"
+#include "hmx/hmx_arch_options_calc.h"
 
 
-#define sim_mem_read1(X, Y, ADDR) mem_read1(env, ADDR)
-#define sim_mem_read2(X, Y, ADDR) mem_read2(env, ADDR)
-#define sim_mem_read4(X, Y, ADDR) mem_read4(env, ADDR)
-#define sim_mem_read8(X, Y, ADDR) mem_read8(env, ADDR)
 #define tmp_Insn Insn;
 
 #define fMX_NONE()
@@ -38,13 +34,14 @@
 #define fMX_SWAP_ACC_FXP() { THREAD2HMXSTRUCT->fxp_commit_state.swap_acc = 1; /* if (thread->processor_ptr->verif_en) fMX_DEBUG_LOG(2, "HMX ACC FXP SWAP : pktid=0x%08x", thread->pktid ); */ }
 #define fMX_SWAP_ACC_FLT() { THREAD2HMXSTRUCT->flt_commit_state.swap_acc = 1; /* if (thread->processor_ptr->verif_en) fMX_DEBUG_LOG(2, "HMX ACC FLT SWAP : pktid=0x%08x", thread->pktid ); */ }
 #define fMX_NOCLEAR_ACC()
-#define fMX_CVT_WR_XLATE(EA, START, RANGE, ACCESS_TYPE) { hmx_mxmem_wr_xlate(thread, insn->slot, EA, START, RANGE, ACCESS_TYPE); if (EXCEPTION_DETECTED) return; }
-#define fMX_WGT_XLATE(START, RANGE, WEIGHTS_PER_BYTE_LOG, OUTPUT_CH_SCALE) hmx_wgt_init(thread, START, RANGE, insn->slot, WEIGHTS_PER_BYTE_LOG, OUTPUT_CH_SCALE)
-#define fMX_ACT_XLATE(START, RANGE) hmx_act_init(thread, START, RANGE, insn->slot)
+#define fMX_CVT_WR_XLATE(EA, START, RANGE, ACCESS_TYPE) { hmx_mxmem_wr_xlate(thread, insn->slot, EA, START, RANGE, ACCESS_TYPE, args.page_size); if (EXCEPTION_DETECTED) return; }
+#define fMX_WGT_XLATE(START, RANGE, WEIGHTS_PER_BYTE_LOG, OUTPUT_CH_SCALE) hmx_wgt_init(thread, START, RANGE, insn->slot, WEIGHTS_PER_BYTE_LOG, OUTPUT_CH_SCALE, args.page_size)
+#define fMX_ACT_XLATE(START, RANGE) hmx_act_init(thread, START, RANGE, insn->slot, args.page_size)
+#define fMX_BIAS_INIT(THREAD, SLOT, EA, TYPE, SIZE) hmx_bias_init(THREAD, SLOT, EA, TYPE, SIZE, args.page_size)
 #define fMX_CVT(STATE, RS, TYPE, SUBCHANNEL_SELECT, CVT_TYPE) hmx_acc_convert(STATE, RS, TYPE, SUBCHANNEL_SELECT, CVT_TYPE)
 #define fMX_NOCLEAR_ACCUMULATOR()
 #define fMX_GET_HMX_STATE(STATE) hmx_state_t * STATE = THREAD2HMXSTRUCT
-#define fMX_MULTIPLY(STATE,WEIGHTS_PER_BYTE_LOG,WGT_PER_WORD,UNPACK,TYPE,MULT_TYPE,OUTPUT_CHANNEL_SCALE) { CALL_HMX_CMD(hmx_multiply,env, STATE, WEIGHTS_PER_BYTE_LOG, WGT_PER_WORD, UNPACK, TYPE, MULT_TYPE, OUTPUT_CHANNEL_SCALE); }
+#define fMX_MULTIPLY(STATE,WEIGHTS_PER_BYTE_LOG,WGT_PER_WORD,UNPACK,TYPE,MULT_TYPE,OUTPUT_CHANNEL_SCALE) { CALL_HMX_CMD(hmx_multiply, STATE, WEIGHTS_PER_BYTE_LOG, WGT_PER_WORD, UNPACK, TYPE, MULT_TYPE, OUTPUT_CHANNEL_SCALE); }
 #define fMX_ACT_PARAMETERS(STATE, RSV, RTV, TYPE, FORMAT_OFFSET, BLOCK_TYPE) { CALL_HMX_CMD(hmx_act_paramaters,STATE, RSV, RTV, insn->slot, TYPE, FORMAT_OFFSET, BLOCK_TYPE); }
 #define fMX_WGT_PARAMETERS(STATE, RSV, RTV, TYPE, BLOCK_TYPE, WEIGHTS_PER_BYTE_LOG, OUTPUT_CHANNEL_SCALE, UNPACK, USR) { CALL_HMX_CMD(hmx_wgt_paramaters,STATE, RSV, RTV, insn->slot, TYPE, BLOCK_TYPE, WEIGHTS_PER_BYTE_LOG, OUTPUT_CHANNEL_SCALE, UNPACK, USR); }
 #define fMX_CVT_TX_PARAMETERS(STATE, USR, TYPE, FB_DST) { CALL_HMX_CMD(hmx_cvt_tx_parameters,STATE, USR, TYPE, FB_DST); }
@@ -72,4 +69,9 @@
     EXC |= (page_of_start != page_of_end); \
 } while (0)
 #define fMX_HIDEHTML()
+#define fCL1_8(VAL) count_leading_ones_8(VAL)
+#define fCL1_4(VAL) count_leading_ones_4(VAL)
+#define fCL1_2(VAL) count_leading_ones_2(VAL)
+#define fCL1_1(VAL) count_leading_ones_1(VAL)
+
 #endif

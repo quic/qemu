@@ -356,9 +356,8 @@ def is_tmp_result(tag):
     return "A_CVI_TMP" in attribdict[tag] or "A_CVI_TMP_DST" in attribdict[tag]
 
 
-def is_hmx(tag):
-    return "A_HMX" in attribdict[tag]
-
+def is_coproc(tag):
+    return ('A_HMX' in attribdict[tag])
 
 def is_scatter_gather(tag):
     return (
@@ -372,13 +371,11 @@ def is_gather(tag):
     return "A_CVI_GATHER" in attribdict[tag]
 
 
-def is_hmx_act(tag):
-    return "A_HMX" in attribdict[tag] and "A_PAIR_1OF2" in attribdict[tag]
+def is_coproc_act(tag):
+    return ('A_HMX' in attribdict[tag] and 'A_PAIR_1OF2' in attribdict[tag]);
 
-
-def is_hmx(tag):
-    return "A_HMX" in attribdict[tag]
-
+def is_coproc(tag):
+    return ('A_HMX' in attribdict[tag])
 
 def is_scatter_gather(tag):
     return (

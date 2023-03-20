@@ -15,29 +15,15 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "qemu/osdep.h"
-#include "exec/exec-all.h"
-#include "migration/vmstate.h"
-#include "qapi/error.h"
-#include "qemu/log.h"
-#include "qemu/qemu-print.h"
-#include "../internal.h"
-#include "cpu.h"
-#include "arch.h"
-#ifdef CONFIG_USER_ONLY
-#include "qemu.h"
-#endif
-#include "op_helper.h"
-//#include "utils.h"
+#include "hmx/hmx_hex_arch_types.h"
 #include "hmx/ext_hmx.h"
 #include "hmx/hmx.h"
-#include "arch_options_calc.h"
-//#define env state_ptr
-#include "macros.h"
+#include "hmx/hmx_arch_options_calc.h"
+#include "hmx/hmx_system.h"
 #include "hmx/macros_auto.h"
 
 #include <math.h>
-#include "hmx_int_ops.h"
+#include "hmx/hmx_int_ops.h"
 
 #define INC_PSTAT(...)
 #define INC_PSTATN(...)
@@ -365,7 +351,7 @@ static void ARCH_FUNCTION(verif_mac_callback)(hmx_state_t * state_ptr, int32_t a
 }
 #endif
 
-static inline QEMU_ALWAYS_INLINE void ARCH_FUNCTION(hmx_mult_fxp)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size)
+static inline void ARCH_FUNCTION(hmx_mult_fxp)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size)
 {
     if (state_ptr->redundant_acc)
     {
@@ -383,7 +369,7 @@ static inline QEMU_ALWAYS_INLINE void ARCH_FUNCTION(hmx_mult_fxp)(hmx_state_t * 
 
 }
 
-static inline QEMU_ALWAYS_INLINE void ARCH_FUNCTION(hmx_mult_fxp_subbyte)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size) {
+static inline void ARCH_FUNCTION(hmx_mult_fxp_subbyte)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size) {
     int32_t acc_idx = sel + ((output2x) ? 2 : 0);
     state_ptr->future_accum_fxp[row][col].w[acc_idx] = ARCH_FUNCTION(hmx_fxp_mac)(state_ptr, state_ptr->future_accum_fxp[row][col].w[acc_idx], act, wgt, wgt, row, col, acc_idx, in_chan,  x_tap, y_tap, block, deep_block);
 }
@@ -486,7 +472,7 @@ void ARCH_FUNCTION(hmx_mac_pmu)(hmx_state_t * state_ptr, const uint32_t is_flt, 
 
 // Load upto two blocks of activations
 void
-ARCH_FUNCTION(hmx_ld_act)(thread_t *env, hmx_state_t * state_ptr, const paddr_t paddr, const uint32_t block_idx)
+ARCH_FUNCTION(hmx_ld_act)(hmx_state_t * state_ptr, const paddr_t paddr, const uint32_t block_idx)
 {
 	const paddr_t block_size = state_ptr->QDSP6_MX_COLS * state_ptr->QDSP6_MX_ROWS;
 	const paddr_t act_pa_base0 = paddr + block_idx * block_size;
@@ -1013,7 +999,7 @@ static inline int compute_indices(int start_value, int stop_value, int increment
     return counter;
 }
 
-void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_t weights_per_byte_log, uint32_t wgt_per_word, uint32_t unpack, uint32_t type, uint32_t mult_type, uint32_t output_channel_scale)
+void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_byte_log, uint32_t wgt_per_word, uint32_t unpack, uint32_t type, uint32_t mult_type, uint32_t output_channel_scale)
 {
     int32_t tile_y_mask = state_ptr->tile_y_mask;
 	int32_t tile_x_mask = state_ptr->tile_x_mask;
@@ -1061,7 +1047,7 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
 		input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
     }
 
-    ARCH_FUNCTION(hmx_ld_wgt)(env, state_ptr, wgt_addr, wgt_len,  wgt_per_word, output_channel_scale, flt_mode, unpack );
+    ARCH_FUNCTION(hmx_ld_wgt)(state_ptr, wgt_addr, wgt_len,  wgt_per_word, output_channel_scale, flt_mode, unpack );
 
 	for(int32_t block_idx = 0; block_idx < block_end; block_idx++)
     {
@@ -1071,7 +1057,7 @@ void ARCH_FUNCTION(hmx_multiply)(thread_t *env, hmx_state_t * state_ptr, uint32_
 
         DEBUG_PRINT(2, "MX MULT: Block %d Channel Range: [%d, %d] Deep Block Count=%d, fp_rate=%d flt_mode=%d", block_idx, input_ch_start >> format, input_ch_end >> format, deep_block_end, mx_fp_rate, flt_mode);
 
-		ARCH_FUNCTION(hmx_ld_act)(env, state_ptr,  state_ptr->act_addr, block_idx);
+		ARCH_FUNCTION(hmx_ld_act)(state_ptr,  state_ptr->act_addr, block_idx);
 
         for(int32_t y_tap_decoded = 0; y_tap_decoded < y_tap_count; y_tap_decoded++)
         {
@@ -1285,7 +1271,7 @@ void ARCH_FUNCTION(hmx_unpack_bytes)(hmx_state_t * state_ptr, uint32_t raw_wgt, 
     }
 }
 
-int8_t ARCH_FUNCTION(hmx_wgt_ld_meta_data)(thread_t *env, hmx_state_t * state_ptr, uint32_t * metadata, paddr_t wgt_uc_metadata_addr,  paddr_t wgt_addr, paddr_t wgt_addr_end)
+int8_t ARCH_FUNCTION(hmx_wgt_ld_meta_data)(hmx_state_t * state_ptr, uint32_t * metadata, paddr_t wgt_uc_metadata_addr,  paddr_t wgt_addr, paddr_t wgt_addr_end)
 {
     int8_t meta_addr_valid = 1;
     uint32_t wgtc_transpose_metadata[128];
@@ -1328,7 +1314,7 @@ int8_t ARCH_FUNCTION(hmx_wgt_ld_meta_data)(thread_t *env, hmx_state_t * state_pt
     return meta_addr_valid;
 }
 
-void ARCH_FUNCTION(hmx_ld_wgt)(thread_t *env, hmx_state_t * state_ptr, paddr_t wgt_addr, paddr_t wgt_addr_end, uint32_t wgt_per_word, uint32_t output_scale, uint32_t is_flt, uint32_t unpack_idx )
+void ARCH_FUNCTION(hmx_ld_wgt)(hmx_state_t * state_ptr, paddr_t wgt_addr, paddr_t wgt_addr_end, uint32_t wgt_per_word, uint32_t output_scale, uint32_t is_flt, uint32_t unpack_idx )
 {
 	processor_t * proc __attribute__((unused)) = state_ptr->proc;
 
@@ -1349,7 +1335,7 @@ void ARCH_FUNCTION(hmx_ld_wgt)(thread_t *env, hmx_state_t * state_ptr, paddr_t w
             INC_PSTATN(phmxwgtcomp_metadata_rd, 1);
             INC_PSTATN(phmxwgtdcomp_issue, 2);
 #ifdef VERIFICATION
-            int8_t meta_addr_valid = ARCH_FUNCTION(hmx_wgt_ld_meta_data)(env, state_ptr, wgtc_metadata, wgt_uc_metadata_addr,  wgt_addr, wgt_addr_end);
+            int8_t meta_addr_valid = ARCH_FUNCTION(hmx_wgt_ld_meta_data)(state_ptr, wgtc_metadata, wgt_uc_metadata_addr,  wgt_addr, wgt_addr_end);
 #endif
             const int32_t wgt_total_bytes = state_ptr->wgtc_total_bytes + 1;
             int32_t wgt_total_bytes_lane_cnt[8] = {0};

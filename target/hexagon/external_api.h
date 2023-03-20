@@ -850,7 +850,7 @@ struct coproc_callback_info_struct {
             int op_type;
             int pass;
             int acc;
-        } hmx_details;
+        } coproc;
 	} details;
 
 };
@@ -1382,14 +1382,8 @@ int arch_set_ext_accumulator_word(processor_t *proc, int arrayno, int spatial_id
 int arch_get_ext_bias_word(processor_t *proc, int arrayno, int spatial_idx, int channel_idx, size4u_t word_idx, size4u_t *result);
 int arch_set_ext_bias_word(processor_t *proc, int arrayno, int spatial_idx, int channel_idx, size4u_t word_idx, size4u_t val);
 
-void arch_hmx_acc_ptr_reset(processor_t * proc);
 
 int arch_has_hvx(processor_t *proc);
-int arch_has_hmx(processor_t *proc);
-
-/* HMX Info */
-int arch_get_hmx_spatial_size(processor_t *proc);
-int arch_get_hmx_channel_depth(processor_t *proc);
 
 
 /* Translate a VA to PA using just the TLB */

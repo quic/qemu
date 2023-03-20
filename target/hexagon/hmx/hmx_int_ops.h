@@ -17,12 +17,9 @@
 #ifndef _MPY_INT_OPS_H_
 #define _MPY_INT_OPS_H_
 
-#include "hex_arch_types.h"
-#include "int16_emu.h"
-#include "mpy_hmx_support.h"
-
-#define ThreadState CPUArchState
-#define thread_t    CPUHexagonState
+#include "hmx/hmx_int16_emu.h"
+#include "hmx/mpy_hmx_support.h"
+#include "hmx/hmx_coproc.h"
 
 struct HMX_State;
 union hmx_bias;
@@ -34,36 +31,10 @@ rval fname(__VA_ARGS__);
 #endif
 
 
-#ifdef STANDALONE
-
-typedef struct arch_proc_opt {
-    int hmx_mxmem_debug;
-	int	hmx_fp16_acc_width_int;
-    int	hmx_fp16_acc_width_frac;
-    int hmx_mxmem_debug_depth;
-    int hmx_mxmem_debug_spatial;
-    int QDSP6_MX_FP_ACC_FRAC;
-    int QDSP6_MX_FP_PRESENT;
-    int QDSP6_MX_CVT_WIDTH;
-} arch_proc_opt_t;
-
-typedef struct th {
-        int tmp;
-} struct ThreadState;
-
-typedef struct ProcessorState {
-    struct ThreadState * thread[1];
-    arch_proc_opt_t * arch_proc_options;
-} processor_t;
-
-#else
-
-#endif
-
 // Multiply Functions
 #define hmx_fxp_mac(state_ptr, acc, act, wgt, callback_wgt, spatial_idx, output_ch, acc_idx, input_ch, x_tap, y_tap, block_idx, deep_block_idx) \
 	((int32_t)acc + ((int32_t)((int16_t)wgt) * (int32_t)((uint16_t)act)))
-ARCH_FUNCTION_DECL(void, hmx_multiply,thread_t *env, struct HMX_State * state_ptr, uint32_t weights_per_byte_log, uint32_t wgt_per_word, uint32_t unpack, uint32_t type, uint32_t mult_type, uint32_t output_channel_scale);
+ARCH_FUNCTION_DECL(void, hmx_multiply, struct HMX_State * state_ptr, uint32_t weights_per_byte_log, uint32_t wgt_per_word, uint32_t unpack, uint32_t type, uint32_t mult_type, uint32_t output_channel_scale);
 ARCH_FUNCTION_DECL(void, hmx_mult_inner,struct HMX_State * state_ptr, int32_t row,uint32_t acc_select,uint32_t act,uint32_t wgt_stream_idx,uint32_t mult_type,uint32_t input_channel,uint32_t x_tap,uint32_t y_tap,uint32_t block,uint32_t deep_block,uint32_t output2x,uint32_t is_flt,uint32_t grp_idx,uint32_t grp_start,uint32_t grp_end,uint32_t grp_size, uint32_t fp8_ch_start, uint32_t fp8_ch_end);
 ARCH_FUNCTION_DECL(void, hmx_mult_xfp,struct HMX_State * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size);
 
@@ -83,9 +54,9 @@ ARCH_FUNCTION_DECL(void, hmx_acc_convert,        struct HMX_State * state_ptr, u
 
 // Memory Access Functions
 ARCH_FUNCTION_DECL(void, hmx_unpack_bytes,struct HMX_State * state_ptr, uint32_t raw_wgt, uint32_t output_ch_wgt_idx, uint32_t wgt_cache_idx, uint32_t wgt_per_word, uint32_t output_scale, uint32_t unpack_idx, paddr_t wgt_addr );
-ARCH_FUNCTION_DECL(int8_t, hmx_wgt_ld_meta_data,thread_t *env, struct HMX_State * state_ptr, uint32_t * metadata, paddr_t wgt_uc_metadata_addr,  paddr_t wgt_addr, paddr_t wgt_addr_end);
-ARCH_FUNCTION_DECL(void, hmx_ld_wgt,thread_t *env, struct HMX_State * state_ptr, paddr_t wgt_addr, paddr_t wgt_addr_end, uint32_t wgt_per_word, uint32_t output_scale, uint32_t is_flt, uint32_t unpack_idx );
-ARCH_FUNCTION_DECL(void, hmx_ld_act,thread_t *env, struct HMX_State * state_ptr, const paddr_t paddr, const uint32_t block_idx);
+ARCH_FUNCTION_DECL(int8_t, hmx_wgt_ld_meta_data, struct HMX_State * state_ptr, uint32_t * metadata, paddr_t wgt_uc_metadata_addr,  paddr_t wgt_addr, paddr_t wgt_addr_end);
+ARCH_FUNCTION_DECL(void, hmx_ld_wgt, struct HMX_State * state_ptr, paddr_t wgt_addr, paddr_t wgt_addr_end, uint32_t wgt_per_word, uint32_t output_scale, uint32_t is_flt, uint32_t unpack_idx );
+ARCH_FUNCTION_DECL(void, hmx_ld_act, struct HMX_State * state_ptr, const paddr_t paddr, const uint32_t block_idx);
 
 // Misc, PMU related, timing mode related
 ARCH_FUNCTION_DECL(void, hmx_mac_pmu,struct HMX_State * state_ptr, const uint32_t is_flt, uint32_t current_block);

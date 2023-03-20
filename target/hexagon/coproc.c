@@ -15,55 +15,21 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HMX_STANDALONE_BUILD
+#include "hmx/hmx_hex_arch_types.h"
+#else
 #include "qemu/osdep.h"
 #include "exec/cpu_ldst.h"
 #include "exec/exec-all.h"
 #include "cpu.h"
-#include "opcodes.h"
+#endif
 #include "coproc.h"
-#include "macros.h"
-#include "hmx/hmx.h"
-#include "hmx/macros_auto.h"
-#include "hmx/ext_hmx.h"
-#include "hmx/hmx_int_ops.h"
 
-static inline G_GNUC_UNUSED size1u_t
-mem_read1(CPUHexagonState *env, paddr_t paddr)
-{
-    return cpu_ldub_mmuidx_ra(env, paddr, MMU_USER_IDX, GETPC());
-}
-static inline G_GNUC_UNUSED size2u_t
-mem_read2(CPUHexagonState *env, paddr_t paddr)
-{
-    return cpu_lduw_mmuidx_ra(env, paddr, MMU_USER_IDX, GETPC());
-}
-static inline G_GNUC_UNUSED size4u_t
-mem_read4(CPUHexagonState *env, paddr_t paddr)
-{
-    return cpu_ldl_mmuidx_ra(env, paddr, MMU_USER_IDX, GETPC());
-}
-static inline G_GNUC_UNUSED size8u_t
-mem_read8(CPUHexagonState *env, paddr_t paddr)
-{
-    return cpu_ldq_mmuidx_ra(env, paddr, MMU_USER_IDX, GETPC());
-}
+/* NOTE: hmx_coproc doesnt actualy exist in qemu build it is on server */
+extern void hmx_coproc(CoprocArgs args);
 
-#define thread env
-#define THREAD2STRUCT ((hmx_state_t *)env->processor_ptr->shared_extptr)
-
-void coproc(CPUHexagonState *env, CoprocArgs args)
+void coproc(CoprocArgs args)
 {
-    switch (args.opcode) {
-#include "coproc_cases_generated.c.inc"
-    default:
-        /* Ignore unknown opcode */
-        break;
-    }
-}
-
-void coproc_commit(CPUHexagonState *env)
-{
-    hmx_ext_commit_regs(env, 0);
-    hmx_ext_commit_mem(env, 0, 0);
+    hmx_coproc(args); /* NOTE: this should be the actual rpc call to server */
 }
 

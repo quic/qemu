@@ -15,13 +15,10 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _ARCH_OPTIONS_CALC_H_
-#define _ARCH_OPTIONS_CALC_H_
+#ifndef HMX_ARCH_OPTIONS_CALC_H_
+#define HMX_ARCH_OPTIONS_CALC_H_
 
 #ifndef CONFIG_USER_ONLY
-
-#define VTCM_CFG_BASE_OFF 0x38
-#define VTCM_CFG_SIZE_OFF 0x3c
 
 #define in_vtcm_space(proc, paddr, warning) \
     in_vtcm_space_impl(thread, paddr, warning)
@@ -30,6 +27,10 @@ static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr,
     int warning)
 
 {
+#if 0
+#define VTCM_CFG_BASE_OFF 0x38
+#define VTCM_CFG_SIZE_OFF 0x3c
+
     static bool init_needed = true;
     static paddr_t vtcm_base;
     static target_ulong vtcm_size;
@@ -47,6 +48,9 @@ static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr,
     }
 
     return paddr >= vtcm_base && paddr < (vtcm_base + vtcm_size);
+#else
+    return 1;
+#endif
 }
 #else
 #define in_vtcm_space(proc, paddr, warning) 1

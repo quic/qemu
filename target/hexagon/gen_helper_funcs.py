@@ -194,6 +194,13 @@ def gen_helper_return_opn(f, regtype, regid, i):
         print("Bad register parse: ", regtype, regid, toss, numregs)
 
 
+mem_init_attrs = [
+    'A_LOAD',
+    'A_STORE',
+]
+def needs_page_size(tag):
+    return any(A in hex_common.attribdict[tag] for A in mem_init_attrs)
+
 ##
 ## Generate the TCG code to call the helper
 ##     For A2_add: Rd32=add(Rs32,Rt32), { RdV=RsV+RtV;}
@@ -320,8 +327,11 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             arg = 1
             for regtype, regid, toss, numregs in regs:
                 f.write(f"    args.arg{arg} = {regtype}{regid}V;\n")
-                arg += 1
-            f.write("    coproc(env, args);\n")
+                arg += 1;
+            if needs_page_size(tag):
+                f.write("    args.slot = slot;\n")
+                f.write("    args.page_size = hex_get_page_size(env, RsV, 1);\n")
+            f.write("    coproc(args);\n")
         else:
             if not hex_common.need_slot(tag):
                 f.write("    uint32_t slot __attribute__((unused)) = 4;\n")
@@ -332,11 +342,10 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                 if hex_common.is_gather(tag):
                     gen_decl_insn(tag, f, 1)
                 else:
-                    gen_decl_insn(tag, f, 0)
-
-            if hex_common.is_hmx(tag):
-                if hex_common.is_hmx_act(tag):
-                    gen_decl_insn(tag, f, 1)
+                    gen_decl_insn(tag,f,0)
+            if hex_common.is_coproc(tag):
+                if hex_common.is_coproc_act(tag):
+                    gen_decl_insn(tag,f,1)
                 else:
                     gen_decl_insn(tag, f, 0)
 

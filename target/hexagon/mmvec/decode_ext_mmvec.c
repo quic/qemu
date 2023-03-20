@@ -36,7 +36,6 @@ typedef enum hvx_resource {
 
 
 #include "mmvec.h"
-#define THREAD2STRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
 
 
 #if 0

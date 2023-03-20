@@ -18,8 +18,6 @@
 #ifndef HEXAGON_INSN_H
 #define HEXAGON_INSN_H
 
-#include "cpu.h"
-
 #define INSTRUCTIONS_MAX 7    /* 2 pairs + loopend */
 #define REG_OPERANDS_MAX 5
 #define IMMEDS_MAX 2
@@ -74,7 +72,7 @@ struct Packet {
     Insn *vhist_insn;
     bool pkt_has_hvx;
     bool pkt_has_hvx_vs_3src;
-    bool pkt_has_coproc;
+    bool pkt_has_hmx;
 
 	/* This MUST be the last thing in this structure */
 	Insn insn[INSTRUCTIONS_MAX];

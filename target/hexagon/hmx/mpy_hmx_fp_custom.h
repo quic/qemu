@@ -18,16 +18,14 @@
 #ifndef _MPY_HMX_FP_CUSTOM_H_
 #define _MPY_HMX_FP_CUSTOM_H_
 
-#include "int16_emu.h"
-#include "mpy_hmx_support.h"
+#include "hmx/hmx_int16_emu.h"
+#include "hmx/mpy_hmx_support.h"
 
 #ifndef ARCH_FUNCTION_DECL
 #define ARCH_FUNCTION_DECL(rval, fname, ...) \
 rval fname(__VA_ARGS__);\
 rval fname##_##debug(__VA_ARGS__);
 #endif
-
-#include "mpy_hmx_support.h"
 
 #define FULL "fully"
 #define NORM "normal"
@@ -37,43 +35,6 @@ rval fname##_##debug(__VA_ARGS__);
 #define OPPO "opposite"
 #define BF "bf16"
 #define FP "fp16"
-
-#ifdef STANDALONE
-
-// Data structures stubbed from simulator so we can compile standalone without simulator
-
-typedef struct arch_proc_opt {
-    int hmx_mxmem_debug;
-    int QDSP6_MX_FP_ACC_FRAC;
-    int QDSP6_MX_FP_ACC_INT;
-    int QDSP6_MX_FP_PRESENT;
-    int QDSP6_MX_FP_ACC_EXP;
-    int QDSP6_MX_FP_RATE;
-    int QDSP6_MX_FP_ACC_NORM;
-    int xfp_inexact_enable;
-    int xfp_cvt_frac;
-    int xfp_cvt_int;
-
-} arch_proc_opt_t;
-
-typedef struct th {
-        int tmp;
-} thread_t;
-
-typedef struct ProcessorState {
-    thread_t * thread[1];
-    arch_proc_opt_t * arch_proc_options;
-} processor_t;
-
-
-typedef struct ProcessorState {
-    thread_t * thread[1];
-    arch_proc_opt_t * arch_proc_options;
-} hmx_state_t;
-
-
-#else
-// This is included in the simulator buil
 
 
 struct ThreadState;
@@ -89,11 +50,6 @@ struct hmx_bias_flt_poly;
 rval fname(__VA_ARGS__);
 rval fname##_##debug(__VA_ARGS__);
 #endif
-
-
-#endif
-
-
 
 // Internal XFP Functions
 ARCH_FUNCTION_DECL(hmx_fp_t,       fp_to_hmx_fp,            struct HMX_State * state_ptr,                       uint32_t in,         uint32_t exp,      uint32_t frac);

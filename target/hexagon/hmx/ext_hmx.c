@@ -15,21 +15,15 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "qemu/osdep.h"
-#include "exec/exec-all.h"
-#include "migration/vmstate.h"
-#include "qapi/error.h"
-#include "qemu/log.h"
-#include "qemu/qemu-print.h"
-#include "cpu.h"
-#include "arch.h"
-#ifdef CONFIG_USER_ONLY
-#include "qemu.h"
-#endif
-#include "utils.h"
+#include <malloc.h>
+#include <string.h>
+#include <assert.h>
+#include "hmx/hmx_utils.h"
+#include "hmx/hmx_hex_arch_types.h"
+#include "hmx/hmx_coproc.h"
+#include "hmx/hmx_system.h"
 #include "hmx/ext_hmx.h"
 #include "hmx/hmx.h"
-#include "arch_options_calc.h"
 #include "hmx/macros_auto.h"
 
 #define THREAD2STRUCT ((hmx_state_t*)thread->processor_ptr->shared_extptr)
@@ -43,13 +37,6 @@
 #else
 #define CPU_MMU_INDEX(ENV) cpu_mmu_index((ENV), false)
 #endif
-
-#define sim_mem_write1(X, Y, addr, val) cpu_stb_mmuidx_ra(thread, addr, val, \
-    CPU_MMU_INDEX(thread), GETPC())
-#define sim_mem_write2(X, Y, addr, val) cpu_stw_mmuidx_ra(thread, addr, val, \
-    CPU_MMU_INDEX(thread), GETPC())
-#define sim_mem_write4(X, Y, addr, val) cpu_stl_mmuidx_ra(thread, addr, val, \
-    CPU_MMU_INDEX(thread), GETPC())
 
 #ifdef HEX_CONFIG_INT128
 static inline size4u_t int128_getword(size16s_t data, int word_select)

@@ -28,10 +28,10 @@ typedef struct SystemState system_t;
 
 #include "exec/cpu-defs.h"
 #include "mmvec/mmvec.h"
-#include "hmx/hmx.h"
 #include "dma/dma.h"
 #include "hw/registerfields.h"
 #include "hw/hexagon/hexagon.h"
+#include "max.h"
 
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
@@ -73,15 +73,6 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 
 #define TYPE_HEXAGON_CPU "hexagon-cpu"
 
-#define HMX_MAX_EGY_CYCLE      512
-#define HMX_OUTPUT_DEPTH       32
-#define HMX_BLOCK_SIZE         2048
-#define HMX_V1                 0
-#define HMX_SPATIAL_SIZE       6
-#define HMX_CHANNEL_SIZE       5
-#define HMX_ADDR_MASK          0xfffff800
-#define HMX_BLOCK_BIT          11
-#define HMXDEBUGLVL            2
 #define VTCM_SIZE              0x40000LL
 #define VTCM_OFFSET            0x200000LL
 
@@ -110,115 +101,6 @@ void hexagon_cpu_list(void);
 typedef struct {
   int unused;
 } rev_features_t;
-
-typedef void (*hmx_mac_fxp_callback_t)(void *sys, processor_t *proc, int pktid,
-                                       int row_idx, int col_idx, int acc_idx,
-                                       int in_idx, int wgt, int act, int acc,
-                                       int x_tap, int y_tap, int block_idx,
-                                       int deep_block_idx);
-typedef void (*hmx_mac_flt_callback_t) (void *, ...);
-typedef void (*hmx_cvt_fxp_state_callback_t) (system_t *sys,
-                                              processor_t *proc,
-                                              uint32_t pktid,
-                                              uint32_t row_idx,
-                                              uint32_t col_idx,
-                                              uint32_t acc_idx,
-                                              uint32_t val);
-typedef void (*hmx_cvt_state_transfer_callback_t) (void *, ...);
-typedef void (*hmx_cvt_state_write_callback_t)(system_t *sys,
-                                               processor_t *proc,
-                                               uint32_t pktid, uint32_t age,
-                                               uint32_t row_idx,
-                                               uint32_t col_idx,
-                                               uint32_t acc_idx,
-                                               uint32_t val);
-typedef void (*hmx_wgt_decomp_callback_t)(system_t *sys, processor_t *proc,
-                                          int block_idx, int pktid,
-                                          int lane_idx, int vector_idx,
-                                          uint64_t metadata_addr,
-                                          int meta_addr_valid,
-                                          uint16_t meta_16bits,
-                                          uint64_t val_hi_8_bytes,
-                                          uint64_t val_lo_8_bytes);
-
-typedef struct {
-    uint64_t l2tcm_base;
-    hmx_mac_fxp_callback_t hmx_mac_fxp_callback;
-    hmx_mac_flt_callback_t hmx_mac_flt_callback;
-    hmx_cvt_fxp_state_callback_t hmx_cvt_fxp_state_callback;
-    hmx_cvt_state_transfer_callback_t hmx_cvt_state_transfer_callback;
-    hmx_cvt_state_write_callback_t hmx_cvt_state_write_callback;
-    hmx_wgt_decomp_callback_t hmx_wgt_decomp_callback;
-} options_struct;
-
-typedef struct arch_proc_opt {
-    int hmxdebuglvl;
-    int hmx_output_depth;
-    int hmx_spatial_size;
-    int hmx_channel_size;
-    int hmx_block_size;
-    int hmx_mxmem_debug_acc_preload;
-    int hmx_mac_channels;
-    int pmu_enable;
-    FILE *hmxmpytrace;
-    FILE *hmxdebugfile;
-    FILE *dmadebugfile;
-    int hmx_mxmem_debug;
-    FILE *hmxaccpreloadfile;
-    int hmxarray_new;
-    int hmx_v1;
-    int hmx_power_config;
-    int hmx_8x4_mpy_mode;
-    int hmx_group_conv_mode;
-    int dmadebug_verbosity;
-    int xfp_inexact_enable;
-    int xfp_cvt_frac;
-    int xfp_cvt_int;
-    uint64_t vtcm_size;
-    uint64_t vtcm_offset;
-    int vtcm_original_mem_entries;
-    int QDSP6_DMA_PRESENT;
-    int QDSP6_DMA_EXTENDED_VA_PRESENT;
-    int QDSP6_MX_FP_PRESENT;
-    int QDSP6_MX_RATE;
-    int QDSP6_MX_CHANNELS;
-    int QDSP6_MX_ROWS;
-    int QDSP6_MX_COLS;
-    int QDSP6_MX_CVT_MPY_SZ;
-    int QDSP6_MX_SUB_COLS;
-    int QDSP6_MX_ACCUM_WIDTH;
-    int QDSP6_MX_CVT_WIDTH;
-    int QDSP6_MX_FP_RATE;
-    int QDSP6_MX_FP_ACC_INT;
-    int QDSP6_MX_FP_ACC_FRAC;
-    int QDSP6_MX_FP_ACC_EXP;
-    int QDSP6_MX_FP_ROWS;
-    int QDSP6_MX_FP_COLS;
-    int QDSP6_MX_FP_ACC_NORM;
-    int QDSP6_MX_PARALLEL_GRPS;
-    int QDSP6_MX_NUM_BIAS_GRPS;
-    int QDSP6_VX_PRESENT;
-    int QDSP6_VX_CONTEXTS;
-    int QDSP6_VX_MEM_ENTRIES;
-    int QDSP6_VX_VEC_SZ;
-} arch_proc_opt_t;
-
-enum phmx_e {
-  phmx_nz_act_b,
-  phmx_nz_wt_b,
-  phmx_array_fxp_mpy0,
-  phmx_array_fxp_mpy1,
-  phmx_array_fxp_mpy2,
-  phmx_array_fxp_mpy3,
-  phmx_array_fxp_acc,
-  phmx_array_flt_mpy0,
-  phmx_array_flt_mpy1,
-  phmx_array_flt_mpy2,
-  phmx_array_flt_mpy3,
-  phmx_array_flt_acc,
-  phmx_array_fxp_cvt,
-  phmx_array_flt_cvt,
-};
 
 enum mem_access_types {
     access_type_INVALID = 0,
@@ -267,15 +149,6 @@ enum mem_access_types {
 #ifdef CLADE2
     access_type_clade2 = 41,
 #endif
-    access_type_hmx_load_act = 42,
-    access_type_hmx_load_wei = 43,
-    access_type_hmx_load_bias = 44,
-    access_type_hmx_store = 45,
-    access_type_hmx_store_bias = 46,
-    access_type_hmx_swap_acc = 47,
-    access_type_hmx_acc_cvt = 48,
-    access_type_hmx_store_cvt_state = 49,
-    access_type_hmx_poly_cvt = 50,
     access_type_udma_load = 51,
     access_type_udma_store = 52,
     access_type_unpause = 53,
@@ -302,6 +175,28 @@ typedef struct {
 struct dma_state;
 typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *);
 
+typedef struct arch_proc_opt {
+    int pmu_enable;
+    FILE *dmadebugfile;
+    int dmadebug_verbosity;
+    int xfp_inexact_enable;
+    int xfp_cvt_frac;
+    int xfp_cvt_int;
+    uint64_t vtcm_size;
+    uint64_t vtcm_offset;
+    int vtcm_original_mem_entries;
+    int QDSP6_DMA_PRESENT;
+    int QDSP6_DMA_EXTENDED_VA_PRESENT;
+    int QDSP6_VX_PRESENT;
+    int QDSP6_VX_CONTEXTS;
+    int QDSP6_VX_MEM_ENTRIES;
+    int QDSP6_VX_VEC_SZ;
+} arch_proc_opt_t;
+
+typedef struct {
+    uint64_t l2tcm_base;
+} options_struct;
+
 struct ProcessorState {
     const rev_features_t *features;
     const options_struct *options;
@@ -316,56 +211,8 @@ struct ProcessorState {
     dma_insn_checker_ptr dma_insn_checker[DMA_MAX];
     uint64_t monotonic_pcycles; /* never reset */
 
-    /* one hmx unit shared among all threads */
-    hmx_state_t *shared_extptr;
     int timing_on;
 };
-
-typedef struct hmx_mem_access_info {
-    int32_t dY;
-    uint16_t blocks;
-    uint32_t fx;
-    uint32_t fy;
-    uint32_t x_offset;
-    uint32_t y_offset;
-    uint32_t tile_x_mask;
-    uint32_t tile_y_mask;
-    uint32_t tile_y_inc;
-    uint32_t y_start;
-    uint32_t y_stop;
-    uint32_t x_start;
-    uint32_t x_stop;
-    uint8_t y_tap;
-    uint8_t x_tap;
-    uint8_t ch_start;
-    uint8_t ch_stop;
-    uint8_t group_size;
-    uint8_t group_count;
-    uint8_t group_count_ratio;
-    uint8_t block_type:3;
-    uint8_t format:2;
-    uint8_t acc_select:1;
-    uint8_t acc_range:1;
-    uint8_t flt:1;
-    uint8_t x_dilate:1;
-    uint8_t y_dilate:1;
-    uint8_t deep:1;
-    uint8_t wgt_deep:1;
-    uint8_t drop:1;
-    uint8_t batch:1;
-    int8_t weight_count;
-    uint8_t bias_32bit;
-    uint8_t cvt_wr_only:1;
-    uint8_t weight_bits;
-    uint8_t enable16x16;
-    uint8_t outputselect16x16;
-    uint8_t act_reuse;
-    uint32_t wgt_size;
-    uint32_t wgtc_mode;
-    uint32_t wgtc_global_density;
-    uint16_t egy_mpy_acc[HMX_MAX_EGY_CYCLE];
-    uint8_t egy_cvt;
-} hmx_mem_access_info_t;
 
 #include "xlate_info.h"
 
@@ -387,7 +234,6 @@ typedef struct {
     uint16_t slot;
     uint8_t check_page_crosses;
     xlate_info_t xlate_info;
-    hmx_mem_access_info_t hmx_ma;
     uint8_t is_dealloc:1;
     uint8_t is_memop:1;
     uint8_t valid:1;
@@ -583,9 +429,10 @@ typedef struct CPUArchState {
     processor_t *processor_ptr;
     unsigned int threadId;
     system_t *system_ptr;
-    FILE *fp_hmx_debug;
     uint64_t t_packet_count;
     uint64_t *g_pcycle_base;
+    void *vtcm_haddr;
+    hwaddr vtcm_base;
 #ifndef CONFIG_USER_ONLY
     int slot;                    /* Needed for exception generation */
     hex_exception_info einfo;
