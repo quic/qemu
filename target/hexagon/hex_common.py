@@ -271,8 +271,7 @@ def need_slot(tag):
          'A_JUMP' not in attribdict[tag]) or
         'A_STORE' in attribdict[tag] or
         'A_LOAD' in attribdict[tag] or
-        'A_CVI' in attribdict[tag] or
-        'A_HMX' in attribdict[tag]):
+        'A_CVI' in attribdict[tag]):
         return 1
     else:
         return 0

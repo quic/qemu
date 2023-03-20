@@ -160,6 +160,7 @@ hexagon_ss.add(files(
     'int16_emu.c',
     'system.c',
     'arch_options_calc.c',
+    'coproc.c',
     'hmx/ext_hmx.c',
     'hmx/system_ext_hmx.c',
     'hmx/mpy_hmx_fp_custom.c',
@@ -312,6 +313,15 @@ analyze_funcs_generated = custom_target(
     command: [python, files('gen_analyze_funcs.py'), helper_in, '@OUTPUT@'],
 )
 hexagon_ss.add(analyze_funcs_generated)
+
+coproc_cases_generated = custom_target(
+    'coproc_cases_generated.c.inc',
+    output: 'coproc_cases_generated.c.inc',
+    depends: [semantics_generated, op_attribs_generated],
+    depend_files: [hex_common_py, attribs_def],
+    command: [python, files('gen_coproc_cases.py'), semantics_generated, op_attribs_generated, '@OUTPUT@'],
+)
+hexagon_ss.add(coproc_cases_generated)
 
 target_arch += {'hexagon': hexagon_ss}
 target_softmmu_arch += {'hexagon': hexagon_softmmu_ss}

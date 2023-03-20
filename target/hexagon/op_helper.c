@@ -33,10 +33,6 @@
 #include "mmvec/macros_auto.h"
 #include "mmvec/mmvec_qfloat.h"
 #include "arch_options_calc.h"
-#include "hmx/hmx.h"
-#include "hmx/macros_auto.h"
-#include "hmx/ext_hmx.h"
-#include "hmx/hmx_int_ops.h"
 #include "system.h"
 #include "dma_adapter.h"
 #ifndef CONFIG_USER_ONLY
@@ -51,6 +47,7 @@
 #endif
 #include "mmvec/macros.h"
 #include "translate.h"
+#include "coproc.h"
 
 #define SF_BIAS        127
 #define SF_MANTBITS    23
@@ -2580,17 +2577,13 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 void HELPER(commit_hmx)(CPUHexagonState *env)
 {
-    hmx_ext_commit_regs(env, 0);
-    hmx_ext_commit_mem(env, 0, 0);
+    coproc_commit(env);
 }
 
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();
 #define thread env
-#define THREAD2STRUCT ((hmx_state_t *)env->processor_ptr->shared_extptr)
-#define warn(...) /* Nothing */
-#define fatal(...) g_assert_not_reached();
 #define BOGUS_HELPER(tag) \
     printf("ERROR: bogus helper: " #tag "\n")
 

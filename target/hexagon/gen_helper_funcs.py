@@ -259,52 +259,63 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             if i > 0: f.write(", ")
             f.write("uint32_t part1")
         f.write(")\n{\n")
-        if (not hex_common.need_slot(tag)):
-            f.write("    uint32_t slot __attribute__((unused)) = 4;\n" )
-        if hex_common.need_ea(tag): gen_decl_ea(f)
 
-        if hex_common.is_scatter_gather(tag):
-            if hex_common.is_gather(tag):
-                gen_decl_insn(tag,f,1)
-            else:
-                gen_decl_insn(tag,f,0)
-        if hex_common.is_hmx(tag):
-            if hex_common.is_hmx_act(tag):
-                gen_decl_insn(tag,f,1)
-            else:
-                gen_decl_insn(tag,f,0)
+        if ( 'A_HMX' in hex_common.attribdict[tag]):
+            f.write("    CoprocArgs args;\n")
+            f.write(f"    args.opcode = {tag};\n")
+            arg = 1
+            for regtype, regid, toss, numregs in regs:
+                f.write(f"    args.arg{arg} = {regtype}{regid}V;\n")
+                arg += 1;
+            f.write("    coproc(env, args);\n")
+        else:
+            if (not hex_common.need_slot(tag)):
+                f.write("    uint32_t slot __attribute__((unused)) = 4;\n" )
+            if hex_common.need_ea(tag): gen_decl_ea(f)
 
-        ## Declare the return variable
-        i=0
-        if 'A_CONDEXEC' not in hex_common.attribdict[tag]:
-            for regtype,regid,toss,numregs in regs:
-                if (hex_common.is_writeonly(regid)):
-                    gen_helper_dest_decl_opn(f,regtype,regid,i)
-                i += 1
-
-        for regtype,regid,toss,numregs in regs:
-            if (hex_common.is_read(regid)):
-                if (hex_common.is_pair(regid)):
-                    if (hex_common.is_hvx_reg(regtype)):
-                        gen_helper_src_var_ext_pair(f,regtype,regid,i)
-                elif (hex_common.is_single(regid)):
-                    if (hex_common.is_hvx_reg(regtype)):
-                        gen_helper_src_var_ext(f,regtype,regid)
+            if hex_common.is_scatter_gather(tag):
+                if hex_common.is_gather(tag):
+                    gen_decl_insn(tag,f,1)
                 else:
-                    print("Bad register parse: ",regtype,regid,toss,numregs)
-        if 'A_FPOP' in hex_common.attribdict[tag]:
-            f.write('    arch_fpop_start(env);\n');
+                    gen_decl_insn(tag,f,0)
+            if hex_common.is_hmx(tag):
+                if hex_common.is_hmx_act(tag):
+                    gen_decl_insn(tag,f,1)
+                else:
+                    gen_decl_insn(tag,f,0)
 
-        f.write(f"    {hex_common.semdict[tag]}\n")
-        f.write(f"    COUNT_HELPER({tag});\n")
+            ## Declare the return variable
+            i=0
+            if 'A_CONDEXEC' not in hex_common.attribdict[tag]:
+                for regtype,regid,toss,numregs in regs:
+                    if (hex_common.is_writeonly(regid)):
+                        gen_helper_dest_decl_opn(f,regtype,regid,i)
+                    i += 1
 
-        if 'A_FPOP' in hex_common.attribdict[tag]:
-            f.write('    arch_fpop_end(env);\n');
+            for regtype,regid,toss,numregs in regs:
+                if (hex_common.is_read(regid)):
+                    if (hex_common.is_pair(regid)):
+                        if (hex_common.is_hvx_reg(regtype)):
+                            gen_helper_src_var_ext_pair(f,regtype,regid,i)
+                    elif (hex_common.is_single(regid)):
+                        if (hex_common.is_hvx_reg(regtype)):
+                            gen_helper_src_var_ext(f,regtype,regid)
+                    else:
+                        print("Bad register parse: ",regtype,regid,toss,numregs)
+            if 'A_FPOP' in hex_common.attribdict[tag]:
+                f.write('    arch_fpop_start(env);\n');
 
-        ## Save/return the return variable
-        for regtype,regid,toss,numregs in regs:
-            if (hex_common.is_written(regid)):
-                gen_helper_return_opn(f, regtype, regid, i)
+            f.write(f"    {hex_common.semdict[tag]}\n")
+            f.write(f"    COUNT_HELPER({tag});\n")
+
+            if 'A_FPOP' in hex_common.attribdict[tag]:
+                f.write('    arch_fpop_end(env);\n');
+
+            ## Save/return the return variable
+            for regtype,regid,toss,numregs in regs:
+                if (hex_common.is_written(regid)):
+                    gen_helper_return_opn(f, regtype, regid, i)
+
         f.write("}\n\n")
         ## End of the helper definition
 
