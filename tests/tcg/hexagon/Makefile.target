@@ -69,6 +69,7 @@ HEX_TESTS += usr_ctrl_assign
 HEX_TESTS += signal_context
 HEX_TESTS += reg_mut
 HEX_TESTS += invalid_slots
+HEX_TESTS += scaler
 
 TESTS += $(HEX_TESTS)
 

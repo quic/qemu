@@ -561,13 +561,13 @@ ATTRIBS(), "Extract unsigned bitfield",
 /**********************************************/
 
 Q6INSN(S2_tstbit_i,"Pd4=tstbit(Rs32,#u5)",
-ATTRIBS(), "Test a bit",
+ATTRIBS(A_XUMINOR), "Test a bit",
 {
 	PdV = f8BITSOF((RsV & (1<<uiV)) != 0);
 })
 
 Q6INSN(S4_ntstbit_i,"Pd4=!tstbit(Rs32,#u5)",
-ATTRIBS(), "Test a bit",
+ATTRIBS(A_XUMINOR), "Test a bit",
 {
 	PdV = f8BITSOF((RsV & (1<<uiV)) == 0);
 })
@@ -601,13 +601,13 @@ ATTRIBS(), "Clear a bit",
 
 /* using a register */
 Q6INSN(S2_tstbit_r,"Pd4=tstbit(Rs32,Rt32)",
-ATTRIBS(), "Test a bit",
+ATTRIBS(A_XUMINOR), "Test a bit",
 {
 	PdV = f8BITSOF((fCAST4_8u(RsV) & fBIDIR_LSHIFTL(1,fSXTN(7,32,RtV),4_8)) != 0);
 })
 
 Q6INSN(S4_ntstbit_r,"Pd4=!tstbit(Rs32,Rt32)",
-ATTRIBS(), "Test a bit",
+ATTRIBS(A_XUMINOR), "Test a bit",
 {
 	PdV = f8BITSOF((fCAST4_8u(RsV) & fBIDIR_LSHIFTL(1,fSXTN(7,32,RtV),4_8)) == 0);
 })
@@ -1426,7 +1426,7 @@ Q6INSN(S4_clbpaddi,"Rd32=add(clb(Rss32),#s6)",ATTRIBS(A_ARCHV2),
 
 
 
-Q6INSN(S2_cabacdecbin,"Rdd32=decbin(Rss32,Rtt32)",ATTRIBS(A_ARCHV3),"CABAC decode bin",
+Q6INSN(S2_cabacdecbin,"Rdd32=decbin(Rss32,Rtt32)",ATTRIBS(A_ARCHV3,A_NOTE_LATEPRED,A_RESTRICT_LATEPRED,A_CABAC),"CABAC decode bin",
 {
     fHIDE(size4u_t state;)
     fHIDE(size4u_t valMPS;)

@@ -41,6 +41,7 @@ DEF_ATTRIB(EXTENDABLE, "Immediate may be extended", "", "")
 DEF_ATTRIB(EXT_UPPER_IMMED, "Extend upper case immediate", "", "")
 DEF_ATTRIB(EXT_LOWER_IMMED, "Extend lower case immediate", "", "")
 DEF_ATTRIB(MUST_EXTEND, "Immediate must be extended", "", "")
+DEF_ATTRIB(NA_NT, "Non-Allocating Non-Temporal instruction", "", "")
 DEF_ATTRIB(INVPRED, "The predicate is inverted for true/false sense", "", "")
 
 DEF_ATTRIB(ARCHV2, "V2 architecture", "", "")
@@ -159,6 +160,7 @@ DEF_ATTRIB(HMX_FLT, "This a matrix multiply instruction with FP16.", "", "")
 DEF_ATTRIB(HVX_FLT, "This a floating point HVX instruction.", "", "")
 
 DEF_ATTRIB(VTCM_ALLBANK_ACCESS, "This instruction allocates in all VTCM schedulers due to a region access.", "", "")
+DEF_ATTRIB(XUMINOR, "XU minor SMTable instruction", "", "")
 
 DEF_ATTRIB(SYNC_MARKER, "This instruction needs a sync marker.", "", "")
 DEF_ATTRIB(HMX_BLOCK_ALIGN, "This instruction aligns the address to the HMX block size for page translation checks.", "", "")
@@ -323,6 +325,7 @@ DEF_ATTRIB(NOTE_BIDIRSHIFT, "Bidirectional shift", "", "")
 
 DEF_ATTRIB(NOTE_CVFLAGS, "Sets the Carry and Overflow flags in USR.", "", "")
 DEF_ATTRIB(NOTE_SR_OVF_WHEN_SATURATING, "Might set OVF bit", "", "")
+DEF_ATTRIB(NOTE_STNT, "Non Temporal Data. The :nt appendix is a hint to the microarchitecture indicating that the life of the cache line is short. This information is used throughout the cache hierarchy to make replacement and allocation decisions.", "", "")
 DEF_ATTRIB(NOTE_PRIV, "Monitor-level feature", "", "")
 DEF_ATTRIB(NOTE_GUEST, "Guest-level feature", "", "")
 DEF_ATTRIB(NOTE_NOPACKET, "solo instruction", "", "")
@@ -346,6 +349,7 @@ DEF_ATTRIB(NOTE_BRANCHADDER_MAX1, "One PC-plus-offset calculation", "", "")
 
 DEF_ATTRIB(NOTE_CRSLOT23, "Execute on either slot2 or slot3 (CR)", "", "")
 DEF_ATTRIB(NOTE_EXTENSION_AUDIO, "Hexagon audio extensions", "", "")
+DEF_ATTRIB(NOTE_FETCHNT, "Non Temporal Data Cache Prefetch. The :nt appendix is a hint to the microarchitecture indicating that the life of the cache line fetched is short. This information is used throughout the cache hierarchy to make replacement and allocation decisions.", "", "")
 DEF_ATTRIB(NOTE_VECX_V67, "This instruction is only available on V67", "", "")
 
 DEF_ATTRIB(NOTE_NOVP, "This instruction cannot be paired with a HVX permute instruction", "", "")
@@ -370,7 +374,7 @@ DEF_ATTRIB(NOTE_MX, "This is in-memory matrix multiply instruction.", "", "")
 DEF_ATTRIB(NOTE_VX_ACC_FWD, "The accumulator (Vxx) source of this instruction must be generate in the previous packet to avoid a stall. The accumulator cannot come from a .tmp operation.", "", "")
 DEF_ATTRIB(NOTE_TMP_NO_VX, "The tmp load instruction destination register cannot be an accumulator register.", "", "")
 
-DEF_ATTRIB(NOTE_NO_ECC,"ECC is not supported for scatter and gather instructions. Enabling ECC with unprotected access instructions result in undetermined behavior.", "","")
+DEF_ATTRIB(NOTE_NO_ECC, "ECC is not supported for scatter and gather instructions. Enabling ECC with unprotected access instructions result in undetermined behavior.", "", "")
 
 /* Restrictions to make note of */
 DEF_ATTRIB(RESTRICT_LOOP_LA, "Cannot be in the last packet of a loop", "", "")

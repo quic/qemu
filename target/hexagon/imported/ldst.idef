@@ -24,6 +24,16 @@
 
 #define FRAME_EXPLICIT 1
 
+#define A_COFSTD A_RESTRICT_LOOP_LA,A_RESTRICT_COF_MAX1
+#define A_JDIR A_JUMP,A_DIRECT,A_COFSTD,A_BRANCHADDER
+#define A_CJNEWDIR A_JUMP,A_DIRECT,A_CJUMP,A_COFSTD,A_BRANCHADDER,A_DOTNEW,A_ROPS_2
+#define A_CJOLDDIR A_JUMP,A_DIRECT,A_CJUMP,A_COFSTD,A_BRANCHADDER,A_DOTOLD
+#define A_NEWVALUEJ A_JUMP,A_DIRECT,A_CJUMP,A_COFSTD,A_BRANCHADDER,A_RESTRICT_COF_MAX1,A_DOTNEWVALUE,A_MEMLIKE_PACKET_RULES,A_RESTRICT_SINGLE_MEM_FIRST,A_ROPS_2
+#define A_JINDIR A_JUMP,A_INDIRECT,A_COFSTD
+#define A_JINDIRNEW A_JUMP,A_INDIRECT,A_COFSTD,A_CJUMP,A_DOTNEW
+#define A_JINDIROLD A_JUMP,A_INDIRECT,A_COFSTD,A_CJUMP,A_DOTOLD
+#define A_RELAX_COND A_RESTRICT_COF_MAX1,A_RELAX_COF_2ND,A_RELAX_COF_1ST
+#define A_RELAX_UNC A_RESTRICT_COF_MAX1,A_RELAX_COF_2ND
 /* The set of addressing modes standard to all Load instructions */
 #define STD_LD_AMODES(TAG,OPER,DESCR,ATTRIB,SHFT,SEMANTICS,SCALE)\
 Q6INSN(L2_##TAG##_io,  OPER"(Rs32+#s11:"SHFT")",          ATTRIB,DESCR,{fIMMEXT(siV); fEA_RI(RsV,siV); SEMANTICS; })\
@@ -45,7 +55,7 @@ STD_LD_AMODES(loadrd, "Rdd32=memd","Load Double integer",ATTRIBS(A_REGWRSIZE_8B,
 
 /* These instructions do a load an unpack */
 STD_LD_AMODES(loadbzw2, "Rd32=memubh", "Load Bytes and Vector Zero-Extend (unpack)",
-ATTRIBS(A_LOAD),"1",
+ATTRIBS(A_REGWRSIZE_4B,A_MEMSIZE_2B,A_LOAD),"1",
 {fHIDE(size2u_t tmpV; int i;)
  fLOAD(1,2,u,EA,tmpV);
  for (i=0;i<2;i++) {
@@ -54,7 +64,7 @@ ATTRIBS(A_LOAD),"1",
 },1)
 
 STD_LD_AMODES(loadbzw4, "Rdd32=memubh", "Load Bytes and Vector Zero-Extend (unpack)",
-ATTRIBS(A_LOAD),"2",
+ATTRIBS(A_REGWRSIZE_8B,A_MEMSIZE_4B,A_LOAD),"2",
 {fHIDE(size4u_t tmpV; int i;)
  fLOAD(1,4,u,EA,tmpV);
  for (i=0;i<4;i++) {
@@ -66,7 +76,7 @@ ATTRIBS(A_LOAD),"2",
 
 /* These instructions do a load an unpack */
 STD_LD_AMODES(loadbsw2, "Rd32=membh", "Load Bytes and Vector Sign-Extend (unpack)",
-ATTRIBS(A_LOAD),"1",
+ATTRIBS(A_REGWRSIZE_4B,A_MEMSIZE_2B,A_LOAD),"1",
 {fHIDE(size2u_t tmpV; int i;)
  fLOAD(1,2,u,EA,tmpV);
  for (i=0;i<2;i++) {
@@ -75,7 +85,7 @@ ATTRIBS(A_LOAD),"1",
 },1)
 
 STD_LD_AMODES(loadbsw4, "Rdd32=membh", "Load Bytes and Vector Sign-Extend (unpack)",
-ATTRIBS(A_LOAD),"2",
+ATTRIBS(A_MEMSIZE_4B,A_LOAD,A_REGWRSIZE_8B),"2",
 {fHIDE(size4u_t tmpV; int i;)
  fLOAD(1,4,u,EA,tmpV);
  for (i=0;i<4;i++) {
@@ -86,7 +96,7 @@ ATTRIBS(A_LOAD),"2",
 
 
 STD_LD_AMODES(loadalignh, "Ryy32=memh_fifo", "Load Half-word into shifted vector",
-ATTRIBS(A_LOAD),"1",
+ATTRIBS(A_REGWRSIZE_8B,A_MEMSIZE_2B,A_LOAD),"1",
 {
  fHIDE(size8u_t tmpV;)
  fLOAD(1,2,u,EA,tmpV);
@@ -95,15 +105,26 @@ ATTRIBS(A_LOAD),"1",
 
 
 STD_LD_AMODES(loadalignb, "Ryy32=memb_fifo", "Load byte into shifted vector",
-ATTRIBS(A_LOAD),"0",
+ATTRIBS(A_REGWRSIZE_8B,A_MEMSIZE_1B,A_LOAD),"0",
 {
  fHIDE(size8u_t tmpV;)
  fLOAD(1,1,u,EA,tmpV);
  RyyV = (((size8u_t)RyyV)>>8)|(tmpV<<56);
 },0)
 
+/* The set of addressing modes standard to all predicated store instructions */
+#define STD_PST_AMODES_NT(TAG,DEST,OPER,DESCR,ATTRIB,SHFT,SEMANTICS)\
+Q6INSN(S2_##TAG##_pi_nt,  OPER"(Rx32++#s4:"SHFT"):nt="DEST,     ATTRIB,DESCR,{fEA_REG(RxV); fPM_I(RxV,siV); SEMANTICS; })\
+Q6INSN(S2_p##TAG##f_pi_nt, "if (!Pv4) "OPER"(Rx32++#s4:"SHFT"):nt="DEST,     ATTRIB,DESCR,{fEA_REG(RxV); if (fLSBOLDNOT(PvV)){ fPM_I(RxV,siV); SEMANTICS;} else {STORE_CANCEL(EA);}})\
+Q6INSN(S2_p##TAG##t_pi_nt, "if (Pv4) "OPER"(Rx32++#s4:"SHFT"):nt="DEST,     ATTRIB,DESCR,{fEA_REG(RxV); if (fLSBOLD(PvV)){ fPM_I(RxV,siV); SEMANTICS;} else {STORE_CANCEL(EA);}})
 
+/* The set of 32-bit predicated store instructions */
+STD_PST_AMODES_NT(storerb,"Rt32","memb","Non Temporal Store Byte",ATTRIBS(A_ARCHV2,A_MEMSIZE_1B,A_STORE,A_NA_NT,A_NOTE_STNT),"0",fSTORE(1,1,EA,fGETBYTE(0,RtV)))
+STD_PST_AMODES_NT(storerh,"Rt32","memh","Non Temporal Store Half integer",ATTRIBS(A_REGWRSIZE_2B,A_ARCHV2,A_MEMSIZE_2B,A_STORE,A_NA_NT,A_NOTE_STNT),"1",fSTORE(1,2,EA,fGETHALF(0,RtV)))
+STD_PST_AMODES_NT(storeri,"Rt32","memw","Non Temporal Store Word",ATTRIBS(A_REGWRSIZE_4B,A_ARCHV2,A_MEMSIZE_4B,A_STORE,A_NA_NT,A_NOTE_STNT),"2",fSTORE(1,4,EA,RtV))
+STD_PST_AMODES_NT(storerd,"Rtt32","memd","Non Temporal Store Double integer",ATTRIBS(A_REGWRSIZE_8B,A_ARCHV2,A_MEMSIZE_8B,A_NA_NT,A_STORE,A_NOTE_STNT),"3",fSTORE(1,8,EA,RttV))
 
+/* End of NT Mem Instructions */
 
 /* The set of addressing modes standard to all Store instructions */
 #define STD_ST_AMODES(TAG,DEST,OPER,DESCR,ATTRIB,SHFT,SEMANTICS,SCALE)\
@@ -130,12 +151,12 @@ STD_ST_AMODES(storerhnew, "Nt8.new", "memh","Store Half integer",ATTRIBS(A_REGWR
 
 #if FRAME_EXPLICIT
 Q6INSN(S2_allocframe,"allocframe(Rx32,#u11:3):raw", ATTRIBS(A_REGWRSIZE_8B,A_MEMSIZE_8B,A_STORE,A_RESTRICT_SLOT0ONLY), "Allocate stack frame",
-{ fEA_RI(RxV,-8); fSTORE(1,8,EA,fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | fCAST4_4u(fREAD_FP()))); fWRITE_FP(EA); fFRAMECHECK(EA-uiV,EA); RxV = EA-uiV; })
+{ fIMMEXT(uiV); fEA_RI(RxV,-8); fSTORE(1,8,EA,fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | fCAST4_4u(fREAD_FP()))); fWRITE_FP(EA); fFRAMECHECK(EA-uiV,EA); RxV = EA-uiV; })
 
 DEF_MAPPING(S6_allocframe_to_raw,"allocframe(#u11:3)","allocframe(r29,#u11:3):raw")
 #else
 Q6INSN(S2_allocframe,"allocframe(#u11:3)", ATTRIBS(A_REGWRSIZE_8B,A_MEMSIZE_8B,A_STORE,A_RESTRICT_SLOT0ONLY), "Allocate stack frame",
-{ fEA_RI(fREAD_SP(),-8); fSTORE(1,8,EA,fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | fCAST4_4u(fREAD_FP()))); fWRITE_FP(EA); fFRAMECHECK(EA-uiV,EA); fWRITE_SP(EA-uiV); })
+{ fIMMEXT(uiV); fEA_RI(fREAD_SP(),-8); fSTORE(1,8,EA,fFRAME_SCRAMBLE((fCAST8_8u(fREAD_LR()) << 32) | fCAST4_4u(fREAD_FP()))); fWRITE_FP(EA); fFRAMECHECK(EA-uiV,EA); fWRITE_SP(EA-uiV); })
 #endif
 
 #define A_RETURN A_RESTRICT_COF_MAX1,A_RESTRICT_SLOT0ONLY,A_RESTRICT_NOSLOT1_STORE,A_RET_TYPE,A_DEALLOCRET

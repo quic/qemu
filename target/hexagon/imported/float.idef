@@ -182,7 +182,7 @@ Q6INSN(F2_sffixupd,"Rd32=sffixupd(Rs32,Rt32)",ATTRIBS(),
     RdV = RtV;
 })
 
-Q6INSN(F2_sfinvsqrta,"Rd32,Pe4=sfinvsqrta(Rs32)",ATTRIBS(),
+Q6INSN(F2_sfinvsqrta,"Rd32,Pe4=sfinvsqrta(Rs32)",ATTRIBS(A_NOTE_COMPAT_ACCURACY,A_NOTE_LATEPRED,A_RESTRICT_LATEPRED),
 "Reciprocal Square Root Approximation",
 {
     fHIDE(int idx;)

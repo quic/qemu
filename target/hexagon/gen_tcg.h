@@ -628,6 +628,8 @@
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storerb_pi(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
+#define fGEN_TCG_S2_storerb_pi_nt(SHORTCODE) \
+    fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerb_ap(SHORTCODE) \
     fGEN_TCG_STORE_ap(fSTORE(1, 1, EA, fGETBYTE(0, RtV)))
 #define fGEN_TCG_S2_storerb_pr(SHORTCODE) \
@@ -661,6 +663,8 @@
 #define fGEN_TCG_S2_storerh_io(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storerh_pi(SHORTCODE) \
+    fGEN_TCG_STORE(SHORTCODE)
+#define fGEN_TCG_S2_storerh_pi_nt(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerh_ap(SHORTCODE) \
     fGEN_TCG_STORE_ap(fSTORE(1, 2, EA, fGETHALF(0, RtV)))
@@ -710,6 +714,8 @@
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storeri_pi(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
+#define fGEN_TCG_S2_storeri_pi_nt(SHORTCODE) \
+    fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storeri_ap(SHORTCODE) \
     fGEN_TCG_STORE_ap(fSTORE(1, 4, EA, RtV))
 #define fGEN_TCG_S2_storeri_pr(SHORTCODE) \
@@ -746,6 +752,8 @@
 #define fGEN_TCG_S2_storerd_io(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S2_storerd_pi(SHORTCODE) \
+    fGEN_TCG_STORE(SHORTCODE)
+#define fGEN_TCG_S2_storerd_pi_nt(SHORTCODE) \
     fGEN_TCG_STORE(SHORTCODE)
 #define fGEN_TCG_S4_storerd_ap(SHORTCODE) \
     fGEN_TCG_STORE_ap(fSTORE(1, 8, EA, RttV))
@@ -1237,7 +1245,11 @@
 
 #define fGEN_TCG_S2_pstorerbt_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_byte_old(fLSBOLD(PvV))
+#define fGEN_TCG_S2_pstorerbt_pi_nt(SHORTCODE) \
+    fGEN_TCG_pstoreX_pi_byte_old(fLSBOLD(PvV))
 #define fGEN_TCG_S2_pstorerbf_pi(SHORTCODE) \
+    fGEN_TCG_pstoreX_pi_byte_old(fLSBOLDNOT(PvV))
+#define fGEN_TCG_S2_pstorerbf_pi_nt(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_byte_old(fLSBOLDNOT(PvV))
 #define fGEN_TCG_S2_pstorerbtnew_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_byte_old(fLSBNEW(PvN))
@@ -1263,7 +1275,11 @@
 
 #define fGEN_TCG_S2_pstorerht_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_half_old(fLSBOLD(PvV))
+#define fGEN_TCG_S2_pstorerht_pi_nt(SHORTCODE) \
+    fGEN_TCG_pstoreX_pi_half_old(fLSBOLD(PvV))
 #define fGEN_TCG_S2_pstorerhf_pi(SHORTCODE) \
+    fGEN_TCG_pstoreX_pi_half_old(fLSBOLDNOT(PvV))
+#define fGEN_TCG_S2_pstorerhf_pi_nt(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_half_old(fLSBOLDNOT(PvV))
 #define fGEN_TCG_S2_pstorerhtnew_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_half_old(fLSBNEW(PvN))
@@ -1302,7 +1318,11 @@
 
 #define fGEN_TCG_S2_pstorerit_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_word_old(fLSBOLD(PvV))
+#define fGEN_TCG_S2_pstorerit_pi_nt(SHORTCODE) \
+    fGEN_TCG_pstoreX_pi_word_old(fLSBOLD(PvV))
 #define fGEN_TCG_S2_pstorerif_pi(SHORTCODE) \
+    fGEN_TCG_pstoreX_pi_word_old(fLSBOLDNOT(PvV))
+#define fGEN_TCG_S2_pstorerif_pi_nt(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_word_old(fLSBOLDNOT(PvV))
 #define fGEN_TCG_S2_pstoreritnew_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_word_old(fLSBNEW(PvN))
@@ -1328,7 +1348,11 @@
 
 #define fGEN_TCG_S2_pstorerdt_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_double_old(fLSBOLD(PvV))
+#define fGEN_TCG_S2_pstorerdt_pi_nt(SHORTCODE) \
+    fGEN_TCG_pstoreX_pi_double_old(fLSBOLD(PvV))
 #define fGEN_TCG_S2_pstorerdf_pi(SHORTCODE) \
+    fGEN_TCG_pstoreX_pi_double_old(fLSBOLDNOT(PvV))
+#define fGEN_TCG_S2_pstorerdf_pi_nt(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_double_old(fLSBOLDNOT(PvV))
 #define fGEN_TCG_S2_pstorerdtnew_pi(SHORTCODE) \
     fGEN_TCG_pstoreX_pi_double_old(fLSBNEW(PvN))
@@ -1401,6 +1425,7 @@
 
 /* dczeroa clears the 32 byte cache line at the address given */
 #define fGEN_TCG_Y2_dczeroa(SHORTCODE) SHORTCODE
+#define fGEN_TCG_Y2_dczeroa_nt(SHORTCODE) SHORTCODE
 
 #ifdef CONFIG_USER_ONLY
 /* In linux-user mode, these are not modelled, suppress compiler warning */
@@ -2530,6 +2555,11 @@
 
 /* Not modelled in qemu, but need to suppress compiler warnings */
 #define fGEN_TCG_Y2_dcfetchbo(SHORTCODE) \
+    do { \
+        uiV = uiV; \
+        RsV = RsV; \
+    } while (0)
+#define fGEN_TCG_Y2_dcfetchbo_nt(SHORTCODE) \
     do { \
         uiV = uiV; \
         RsV = RsV; \
