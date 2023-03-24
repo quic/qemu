@@ -1722,7 +1722,7 @@ void gen_pred_assign(Context *c, YYLTYPE *locp, HexValue *left_pred,
 
 void gen_cancel(Context *c, YYLTYPE *locp)
 {
-    OUT(c, locp, "gen_cancel(insn->slot);\n");
+    OUT(c, locp, "gen_cancel(ctx);\n");
 }
 
 void gen_load_cancel(Context *c, YYLTYPE *locp)

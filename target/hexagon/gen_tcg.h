@@ -371,18 +371,16 @@
  *      tnew     true "new" value                  if (p0.new) r0 = memb(r2+#0)
  *      fnew     false "new" value                 if (!p0.new) r0 = memb(r2+#0)
  */
-#define fGEN_TCG_PRED_LOAD(GET_EA, PRED, SIZE, SIGN) \
-    do { \
-        TCGv LSB = tcg_temp_new(); \
-        TCGLabel *label = gen_new_label(); \
+#define fGEN_TCG_PRED_LOAD_TEST(PRED, GET_EA, SIZE) \
+    do  { \
         tcg_gen_movi_tl(EA, 0); \
-        PRED;  \
+        PRED; \
         CHECK_NOSHUF_PRED(GET_EA, SIZE, LSB); \
-        PRED_LOAD_CANCEL(LSB, EA); \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-        fLOAD(1, SIZE, SIGN, EA, RdV); \
-        gen_set_label(label); \
     } while (0)
+
+#define fGEN_TCG_PRED_LOAD(GET_EA, PRED, SIZE, SIGN) \
+    fGEN_TCG_PRED_INSN(fGEN_TCG_PRED_LOAD_TEST(PRED, GET_EA, SIZE), \
+                       TCG_COND_EQ, fLOAD(1, SIZE, SIGN, EA, RdV))
 
 #define fGEN_TCG_L2_ploadrubt_io(SHORTCODE) \
     fGEN_TCG_PRED_LOAD(fEA_RI(RsV, uiV), fLSBOLD(PtV), 1, u)
@@ -550,17 +548,8 @@
 
 /* Predicated loads into a register pair */
 #define fGEN_TCG_PRED_LOAD_PAIR(GET_EA, PRED) \
-    do { \
-        TCGv LSB = tcg_temp_new(); \
-        TCGLabel *label = gen_new_label(); \
-        tcg_gen_movi_tl(EA, 0); \
-        PRED;  \
-        CHECK_NOSHUF_PRED(GET_EA, 8, LSB); \
-        PRED_LOAD_CANCEL(LSB, EA); \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-        fLOAD(1, 8, u, EA, RddV); \
-        gen_set_label(label); \
-    } while (0)
+    fGEN_TCG_PRED_INSN(fGEN_TCG_PRED_LOAD_TEST(PRED, GET_EA, 8), TCG_COND_EQ, \
+                       fLOAD(1, 8, u, EA, RddV))
 
 #define fGEN_TCG_L2_ploadrdt_io(SHORTCODE) \
     fGEN_TCG_PRED_LOAD_PAIR(fEA_RI(RsV, uiV), fLSBOLD(PtV))
@@ -846,17 +835,11 @@
 /* Predicated stores */
 #define fGEN_TCG_PRED_STORE(GET_EA, PRED, SRC, SIZE, INC) \
     do { \
-        TCGv LSB = tcg_temp_new(); \
         TCGv BYTE G_GNUC_UNUSED = tcg_temp_new(); \
         TCGv HALF G_GNUC_UNUSED = tcg_temp_new(); \
-        TCGLabel *label = gen_new_label(); \
         GET_EA; \
-        PRED;  \
-        PRED_STORE_CANCEL(LSB, EA); \
-        tcg_gen_brcondi_tl(TCG_COND_EQ, LSB, 0, label); \
-            INC; \
-            fSTORE(1, SIZE, EA, SRC); \
-        gen_set_label(label); \
+        fGEN_TCG_PRED_INSN(PRED, TCG_COND_EQ, \
+                           { INC; fSTORE(1, SIZE, EA, SRC); }); \
     } while (0)
 
 #define NOINC    do {} while (0)
@@ -2311,7 +2294,7 @@
         tcg_gen_movi_tl(RdV, 0); \
         tcg_gen_br(done); \
         gen_set_label(skip); \
-        gen_cancel(ctx->insn->slot); \
+        gen_cancel(ctx); \
         gen_set_label(done); \
     } while (0)
 
@@ -2333,7 +2316,7 @@
         INSN; \
         tcg_gen_br(done); \
         gen_set_label(skip); \
-        gen_cancel(ctx->insn->slot); \
+        gen_cancel(ctx); \
         gen_set_label(done); \
     } while (0)
 
@@ -2397,7 +2380,7 @@
         tcg_gen_movi_tl(RdV, siV); \
         tcg_gen_br(done); \
         gen_set_label(skip); \
-        gen_cancel(ctx->insn->slot); \
+        gen_cancel(ctx); \
         gen_set_label(done); \
     } while (0)
 

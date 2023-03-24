@@ -21,6 +21,7 @@
 #include "cpu.h"
 #include "hex_regs.h"
 #include "reg_fields.h"
+#include "attribs.h"
 
 #ifdef QEMU_GENERATE
 #define READ_REG(dest, NUM)              gen_read_reg(dest, NUM)
@@ -189,9 +190,14 @@
 #endif
 
 #ifdef QEMU_GENERATE
-static inline void gen_cancel(uint32_t slot)
+static inline void gen_cancel(DisasContext *ctx)
 {
-    tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, 1 << slot);
+    Insn *insn = ctx->insn;
+    if (!bitmap_empty(ctx->wreg_mult_gprs, NUM_GPREGS) ||
+        GET_ATTRIB(insn->opcode, A_STORE)) {
+        uint32_t slot = insn->is_endloop ? 4 : insn->slot;
+        tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, 1 << slot);
+    }
 }
 
 #define CANCEL gen_cancel(slot);
@@ -200,23 +206,6 @@ static inline void gen_cancel(uint32_t slot)
 #endif
 
 #define LOAD_CANCEL(EA) do { CANCEL; } while (0)
-
-#ifdef QEMU_GENERATE
-static inline void gen_pred_cancel(DisasContext *ctx, TCGv pred, uint32_t slot_num)
-{
-    TCGv slot_mask = tcg_temp_new();
-    TCGv tmp = tcg_temp_new();
-    tcg_gen_ori_tl(slot_mask, hex_slot_cancelled, 1 << slot_num);
-    tcg_gen_andi_tl(tmp, pred, 1);
-    tcg_gen_movcond_tl(TCG_COND_EQ, hex_slot_cancelled, tmp, ctx->zero,
-                       slot_mask, hex_slot_cancelled);
-}
-#define PRED_LOAD_CANCEL(PRED, EA) \
-    gen_pred_cancel(ctx, PRED, insn->is_endloop ? 4 : insn->slot)
-
-#define PRED_STORE_CANCEL(PRED, EA) \
-    gen_pred_cancel(ctx, PRED, insn->is_endloop ? 4 : insn->slot)
-#endif
 
 #define fMAX(A, B) (((A) > (B)) ? (A) : (B))
 
