@@ -117,6 +117,24 @@ static inline void write_thread_local_system_control_register_pairs(void)
     check(result, mask_pair(new_val, cur_val, 0x000000ff, 0xffff0000));
 }
 
+/*
+ * Instruction { sX:Y = r1:0 }
+ *
+ * This instruction is barred by the assembler.
+ *
+ * 01101101000 00000 11 0000000 yyyyyyy
+ * Where y's are the Y's bits.
+ *
+ * Generated with this python function:
+ * lambda n : hex(int('0110110100000000110000000' + format(n, '#09b')[2:], 2))
+ */
+#define S21_20_EQ_R1_0 ".word 0x6d00c014"
+#define S27_26_EQ_R1_0 ".word 0x6d00c01a"
+#define S29_28_EQ_R1_0 ".word 0x6d00c01c"
+#define S33_32_EQ_R1_0 ".word 0x6d00c020"
+#define S41_40_EQ_R1_0 ".word 0x6d00c028"
+#define S57_56_EQ_R1_0 ".word 0x6d00c038"
+
 static inline void write_global_system_control_register_pairs(void)
 {
     uint64_t result = 0;
@@ -126,19 +144,19 @@ static inline void write_global_system_control_register_pairs(void)
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s19:18", new_val);
     check(result, mask_pair(new_val, cur_val, 0x00000000, 0x80001c00));
 
-    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s21:20", new_val);
+    READ_WRITE_REG_ENCODED(cur_val, result, "s21:20", new_val, S21_20_EQ_R1_0);
     check(result, mask_pair(new_val, cur_val, 0xfc00fc00, 0xffffffff));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s25:24", new_val);
     check(result, mask_pair(new_val, cur_val, 0xfffffef0, 0x00000000));
 
-    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s27:26", new_val);
+    READ_WRITE_REG_ENCODED(cur_val, result, "s27:26", new_val, S27_26_EQ_R1_0);
     check(result, mask_pair(new_val, cur_val, 0xffffffff, 0x00000000));
 
-    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s29:28", new_val);
+    READ_WRITE_REG_ENCODED(cur_val, result, "s29:28", new_val, S29_28_EQ_R1_0);
     check(result, mask_pair(new_val, cur_val, 0xffffffff, 0x00000000));
 
-    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s33:32", new_val);
+    READ_WRITE_REG_ENCODED(cur_val, result, "s33:32", new_val, S33_32_EQ_R1_0);
     check(result, mask_pair(new_val, cur_val, 0xe0000000, 0xffffffff));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s37:36", new_val);
@@ -147,13 +165,13 @@ static inline void write_global_system_control_register_pairs(void)
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s39:38", new_val);
     check(result, mask_pair(new_val, cur_val, 0xfc007000, 0x00000003));
 
-    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s41:40", new_val);
+    READ_WRITE_REG_ENCODED(cur_val, result, "s41:40", new_val, S41_40_EQ_R1_0);
     check(result, mask_pair(new_val, cur_val, 0x00000000, 0xffffffff));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s43:42", new_val);
     check(result, mask_pair(new_val, cur_val, 0x00000000, 0xfffffffe));
 
-    READ_WRITE_REG_NOCLOBBER(cur_val, result, "s57:56", new_val);
+    READ_WRITE_REG_ENCODED(cur_val, result, "s57:56", new_val, S57_56_EQ_R1_0);
     check(result, mask_pair(new_val, cur_val, 0xffffffff, 0xffffffff));
 }
 

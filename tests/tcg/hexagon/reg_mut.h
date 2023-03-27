@@ -50,6 +50,15 @@ extern int err;
                  : "r"(new_val) \
                  : )
 
+#define READ_WRITE_REG_ENCODED(cur_val, result, reg_name, new_val, encoding) \
+    asm volatile("%0 = " reg_name "\n\t" \
+                 "r1:0 = %2\n\t" \
+                 encoding "\n\t" \
+                 "%1 = " reg_name "\n\t" \
+                 : "=r"(cur_val), "=r"(result) \
+                 : "r"(new_val) \
+                 : "r0", "r1")
+
 #define WRITE_REG_NOCLOBBER(output, reg_name, input) \
     asm volatile(reg_name " = %1\n\t" \
                  "%0 = " reg_name "\n\t" \
@@ -71,6 +80,6 @@ extern int err;
                  "%0 = " reg_name "\n\t" \
                  : "=r"(output) \
                  : "r"(input) \
-                 : "r1:0")
+                 : "r0", "r1")
 
 #endif
