@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,8 +43,6 @@ extern const char * const opcode_names[];
 extern const char * const opcode_reginfo[];
 extern const char * const opcode_rregs[];
 extern const char * const opcode_wregs[];
-extern const int opcode_wreg_count[];
-extern const int opcode_reg_pairs[];
 
 typedef struct {
     const char * const encoding;

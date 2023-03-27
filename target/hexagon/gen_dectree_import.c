@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,7 +57,7 @@ const char * const opcode_syntax[XX_LAST_OPCODE] = {
 };
 
 const char * const opcode_rregs[] = {
-#define REGINFO(TAG, REGINFO, RREGS, WREGS, WREG_COUNT, WRPAIRMASK) RREGS,
+#define REGINFO(TAG, REGINFO, RREGS, WREGS) RREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
 #include "op_regs_generated.h.inc"
     NULL
@@ -66,7 +66,7 @@ const char * const opcode_rregs[] = {
 };
 
 const char * const opcode_wregs[] = {
-#define REGINFO(TAG, REGINFO, RREGS, WREGS, WREG_COUNT, WRPAIRMASK) WREGS,
+#define REGINFO(TAG, REGINFO, RREGS, WREGS) WREGS,
 #define IMMINFO(TAG, SIGN, SIZE, SHAMT, SIGN2, SIZE2, SHAMT2)  /* nothing */
 #include "op_regs_generated.h.inc"
     NULL

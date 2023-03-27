@@ -135,9 +135,14 @@ static inline void ctx_log_reg_write(DisasContext *ctx, int rnum,
             ctx->reg_log[ctx->reg_log_idx] = rnum;
             ctx->reg_log_idx++;
             set_bit(rnum, ctx->regs_written);
+        } else if (rnum < NUM_GPREGS) {
+            set_bit(rnum, ctx->wreg_mult_gprs);
         }
         if (is_predicated) {
             set_bit(rnum, ctx->predicated_regs);
+        } else if (rnum < NUM_GPREGS) {
+            bool uncond_set = test_and_set_bit(rnum, ctx->uncond_wreg_gprs);
+            ctx->pkt_has_uncond_mult_reg_write |= uncond_set;
         }
     }
 }

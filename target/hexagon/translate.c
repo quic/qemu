@@ -397,63 +397,6 @@ static bool need_pred_written(Packet *pkt)
     return (check_for_attrib(pkt, A_WRITES_PRED_REG) || check_for_opcode(pkt, A2_tfrrcr));
 }
 
-static void decode_wregs(DisasContext *ctx, Packet *pkt)
-{
-    int i;
-    ctx->pkt_has_uncond_mult_reg_write = false;
-    bitmap_zero(ctx->wreg_mult_gprs, NUM_GPREGS);
-    bitmap_zero(ctx->uncond_wreg_gprs, NUM_GPREGS);
-
-    /*
-     * The GPRs which have register writes in this packet:
-     */
-    DECLARE_BITMAP(all_wreg_gprs, NUM_GPREGS);
-    bitmap_zero(all_wreg_gprs, NUM_GPREGS);
-
-    for (i = 0; i < pkt->num_insns; i++) {
-        int reg_pair_mask = opcode_reg_pairs[pkt->insn[i].opcode];
-        int def_count = opcode_wreg_count[pkt->insn[i].opcode];
-        gchar **wregs = g_strsplit(opcode_wregs[pkt->insn[i].opcode], ",", 0);
-        int j;
-        for (j = 0; j < def_count; j++) {
-            gchar reg_class = wregs[j][0];
-            bool condexec = GET_ATTRIB(pkt->insn[i].opcode, A_CONDEXEC);
-            /*
-             * For CONDEXEC, predicate regs are the zero'th
-             * reg operand, skip those to get to the first def:
-             */
-            int def_idx = condexec ? (j + 1) : j;
-            int rnum = pkt->insn[i].regno[def_idx];
-            bool is_pair = (reg_pair_mask & (1 << def_idx)) != 0;
-
-            if (reg_class != 'R') {
-                continue;
-            }
-            bool any_set = test_and_set_bit(rnum, all_wreg_gprs);
-            if (any_set) {
-                set_bit(rnum, ctx->wreg_mult_gprs);
-            }
-            if (is_pair) {
-                any_set = test_and_set_bit(rnum + 1, all_wreg_gprs);
-                if (any_set) {
-                    set_bit(rnum + 1, ctx->wreg_mult_gprs);
-                }
-            }
-            if (!condexec) {
-                bool uncond_set = test_and_set_bit(rnum, ctx->uncond_wreg_gprs);
-                ctx->pkt_has_uncond_mult_reg_write |= uncond_set;
-                if (is_pair) {
-                    uncond_set =
-                        test_and_set_bit(rnum + 1, ctx->uncond_wreg_gprs);
-                    ctx->pkt_has_uncond_mult_reg_write |= uncond_set;
-                }
-            }
-        }
-        g_strfreev(wregs);
-    }
-
-}
-
 #if !defined(CONFIG_USER_ONLY)
 static void gen_hmx_check(DisasContext *ctx)
 {
@@ -697,6 +640,10 @@ static void analyze_packet(DisasContext *ctx)
 {
     Packet *pkt = ctx->pkt;
     ctx->need_pkt_has_scalar_store_s1 = false;
+    ctx->pkt_has_uncond_mult_reg_write = false;
+    bitmap_zero(ctx->wreg_mult_gprs, NUM_GPREGS);
+    bitmap_zero(ctx->uncond_wreg_gprs, NUM_GPREGS);
+
     for (int i = 0; i < pkt->num_insns; i++) {
         Insn *insn = &pkt->insn[i];
         ctx->insn = insn;
@@ -741,8 +688,6 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     }
     ctx->s1_store_processed = false;
     ctx->pre_commit = true;
-
-    decode_wregs(ctx, pkt);
 
     analyze_packet(ctx);
 
