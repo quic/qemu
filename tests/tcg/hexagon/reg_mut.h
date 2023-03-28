@@ -59,27 +59,27 @@ extern int err;
                  : "r"(new_val) \
                  : "r0", "r1")
 
-#define WRITE_REG_NOCLOBBER(output, reg_name, input) \
+#define WRITE_REG_NOCLOBBER(result, reg_name, new_val) \
     asm volatile(reg_name " = %1\n\t" \
                  "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
+                 : "=r"(result) \
+                 : "r"(new_val) \
                  : )
 
-#define WRITE_REG_ENCODED(output, reg_name, input, encoding) \
+#define WRITE_REG_ENCODED(result, reg_name, new_val, encoding) \
     asm volatile("r0 = %1\n\t" \
                  encoding "\n\t" \
                  "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
+                 : "=r"(result) \
+                 : "r"(new_val) \
                  : "r0")
 
-#define WRITE_REG_PAIR_ENCODED(output, reg_name, input, encoding) \
+#define WRITE_REG_PAIR_ENCODED(result, reg_name, new_val, encoding) \
     asm volatile("r1:0 = %1\n\t" \
                  encoding "\n\t" \
                  "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
+                 : "=r"(result) \
+                 : "r"(new_val) \
                  : "r0", "r1")
 
 #endif
