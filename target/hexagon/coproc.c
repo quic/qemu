@@ -27,19 +27,23 @@
 #include "hmx/ext_hmx.h"
 #include "hmx/hmx_int_ops.h"
 
-static inline size1u_t mem_read1(CPUHexagonState *env, paddr_t paddr)
+static inline G_GNUC_UNUSED size1u_t
+mem_read1(CPUHexagonState *env, paddr_t paddr)
 {
     return cpu_ldub_mmuidx_ra(env, paddr, MMU_USER_IDX, GETPC());
 }
-static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
+static inline G_GNUC_UNUSED size2u_t
+mem_read2(CPUHexagonState *env, paddr_t paddr)
 {
     return cpu_lduw_mmuidx_ra(env, paddr, MMU_USER_IDX, GETPC());
 }
-static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
+static inline G_GNUC_UNUSED size4u_t
+mem_read4(CPUHexagonState *env, paddr_t paddr)
 {
     return cpu_ldl_mmuidx_ra(env, paddr, MMU_USER_IDX, GETPC());
 }
-static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
+static inline G_GNUC_UNUSED size8u_t
+mem_read8(CPUHexagonState *env, paddr_t paddr)
 {
     return cpu_ldq_mmuidx_ra(env, paddr, MMU_USER_IDX, GETPC());
 }
