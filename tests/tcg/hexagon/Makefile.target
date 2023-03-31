@@ -70,6 +70,7 @@ HEX_TESTS += signal_context
 HEX_TESTS += reg_mut
 HEX_TESTS += invalid_slots
 HEX_TESTS += scaler
+HEX_TESTS += upcycle
 
 TESTS += $(HEX_TESTS)
 

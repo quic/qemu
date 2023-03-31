@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -62,6 +62,29 @@ unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
 #endif
 
     return MMU_USER_IDX;
+}
+
+static const int PCYCLES_PER_PACKET = 3;
+uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env)
+{
+    uint64_t packets = 0;
+    CPUState *cs;
+    CPU_FOREACH(cs) {
+        HexagonCPU *cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *env_ = &cpu->env;
+        packets += env_->t_packet_count;
+    }
+    return *(env->g_pcycle_base) + (packets * PCYCLES_PER_PACKET);
+}
+
+uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env)
+{
+    return hexagon_get_sys_pcycle_count(env) >> 32;
+}
+
+uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env)
+{
+    return extract64(hexagon_get_sys_pcycle_count(env), 0, 32);
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -675,29 +698,6 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
         hex_interrupt_update(env);
     }
     UNLOCK_IOTHREAD(exception_context);
-}
-
-static const int PCYCLES_PER_PACKET = 3;
-uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env)
-{
-    uint64_t packets = 0;
-    CPUState *cs;
-    CPU_FOREACH(cs) {
-        HexagonCPU *cpu = HEXAGON_CPU(cs);
-        CPUHexagonState *env_ = &cpu->env;
-        packets += env_->t_packet_count;
-    }
-    return *(env->g_pcycle_base) + (packets * PCYCLES_PER_PACKET);
-}
-
-uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env)
-{
-    return hexagon_get_sys_pcycle_count(env) >> 32;
-}
-
-uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env)
-{
-    return extract64(hexagon_get_sys_pcycle_count(env), 0, 32);
 }
 
 void hexagon_set_sys_pcycle_count_high(CPUHexagonState *env,

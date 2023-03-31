@@ -2047,9 +2047,9 @@ uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
         ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTHI, high);
         return high;
     case HEX_REG_UPCYCLELO:
-        return hexagon_get_sys_pcycle_count_low(env);
     case HEX_REG_UPCYCLEHI:
-        return hexagon_get_sys_pcycle_count_high(env);
+        /* These are handled directly by gen_read_ctrl_reg(). */
+        g_assert_not_reached();
     case HEX_REG_UTIMERLO:
         hexagon_read_timer(env, &low, &high);
         return low;
@@ -2566,14 +2566,30 @@ void HELPER(pending_interrupt)(CPUHexagonState *env)
 #ifdef CONFIG_USER_ONLY
 uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
 {
+    /* These are handled directly by gen_read_ctrl_reg(). */
+    g_assert(reg != HEX_REG_UPCYCLELO && reg != HEX_REG_UPCYCLEHI);
     return 0;
 }
 
 uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 {
+    if (reg == HEX_REG_UPCYCLELO) {
+        /* Pretend SSR[CE] is always set. */
+        return hexagon_get_sys_pcycle_count(env);
+    }
     return 0;
 }
 #endif
+
+uint32_t HELPER(read_pcyclelo)(CPUHexagonState *env)
+{
+    return hexagon_get_sys_pcycle_count_low(env);
+}
+
+uint32_t HELPER(read_pcyclehi)(CPUHexagonState *env)
+{
+    return hexagon_get_sys_pcycle_count_high(env);
+}
 
 void HELPER(commit_hmx)(CPUHexagonState *env)
 {

@@ -357,26 +357,29 @@ static void gen_read_greg_pair(TCGv_i64 dst, int reg_num)
 /*
  * The upcyclehi/upcyclelo (user pcycle) registers mirror
  * the pcyclehi/pcyclelo global sregs.
- * They are not modelled in user-only mode.
  * In system mode, they can only be read when SSR[CE] is set.
+ * In user mode, SSR[CE] is not modeled. We pretend it is always set
+ * to allow upcycle access.
  */
 static inline void gen_read_upcycle_reg(TCGv dest, int regnum, TCGv zero)
 {
 #ifdef CONFIG_USER_ONLY
-    tcg_gen_movi_tl(dest, 0);
+    TCGv counter = dest;
 #else
     TCGv ssr_ce = tcg_temp_new();
     TCGv counter = tcg_temp_new();
-
-    GET_SSR_FIELD(ssr_ce, SSR_CE);
+#endif
 
     if (regnum == HEX_REG_UPCYCLEHI) {
-        gen_read_sreg(counter, HEX_SREG_PCYCLEHI);
+        gen_helper_read_pcyclehi(counter, cpu_env);
     } else if (regnum == HEX_REG_UPCYCLELO) {
-        gen_read_sreg(counter, HEX_SREG_PCYCLELO);
+        gen_helper_read_pcyclelo(counter, cpu_env);
     } else {
         g_assert_not_reached();
     }
+
+#ifndef CONFIG_USER_ONLY
+    GET_SSR_FIELD(ssr_ce, SSR_CE);
     /* dest = (ssr_ce != 0 ? counter : 0) */
     tcg_gen_movcond_tl(TCG_COND_NE, dest, ssr_ce, zero, counter, zero);
 #endif

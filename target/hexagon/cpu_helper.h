@@ -1,6 +1,6 @@
 
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -124,9 +124,6 @@ int get_cpu_mode(CPUHexagonState *env);
 int get_exe_mode(CPUHexagonState *env);
 const char *get_exe_mode_str(CPUHexagonState *env);
 void clear_wait_mode(CPUHexagonState *env);
-uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env);
-uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env);
-uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env);
 void hexagon_set_sys_pcycle_count(CPUHexagonState *env, uint64_t);
 void hexagon_set_sys_pcycle_count_low(CPUHexagonState *env, uint32_t);
 void hexagon_set_sys_pcycle_count_high(CPUHexagonState *env, uint32_t);

@@ -645,6 +645,10 @@ struct ArchCPU {
 #include "cpu_helper.h"
 #endif
 
+uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env);
+uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env);
+uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env);
+
 #include "cpu_bits.h"
 
 #define cpu_signal_handler cpu_hexagon_signal_handler
@@ -704,6 +708,7 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, target_ulong *pc,
                                  reg_field_info[SYSCFG_PM].width);
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, PMU_ENABLED, pmu_enabled);
 #else
+    hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, PCYCLE_ENABLED, true);
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED, true);
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, MMU_INDEX, MMU_USER_IDX);
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, HVX_64B_MODE,

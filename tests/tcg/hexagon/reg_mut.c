@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,10 +45,10 @@ static inline void write_control_registers(void)
     check(result, 0xffffffc0);
 
     WRITE_REG_NOCLOBBER(result, "upcyclelo", 0xffffffff);
-    check(result, 0x00000000);
+    check_ne(result, 0xffffffff);
 
     WRITE_REG_NOCLOBBER(result, "upcyclehi", 0xffffffff);
-    check(result, 0x00000000);
+    check_ne(result, 0xffffffff);
 
     WRITE_REG_NOCLOBBER(result, "utimerlo", 0xffffffff);
     check(result, 0x00000000);
@@ -78,7 +78,7 @@ static inline void write_control_register_pairs(void)
     check(result, 0xffffffc0ffffffff);
 
     WRITE_REG_NOCLOBBER(result, "c15:14", 0xffffffffffffffff);
-    check(result, 0x0000000000000000);
+    check_ne(result, 0xffffffffffffffff);
 
     WRITE_REG_NOCLOBBER(result, "c31:30", 0xffffffffffffffff);
     check(result, 0x0000000000000000);

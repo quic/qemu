@@ -1496,11 +1496,11 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     }
     ctx->hvx_check_emitted = false;
     ctx->hmx_check_emitted = false;
-    ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
     ctx->pmu_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PMU_ENABLED);
     ctx->pmu_counters_updated = false;
 #endif
+    ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->hvx_coproc_enabled = FIELD_EX32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED);
     ctx->hvx_64b_mode = FIELD_EX32(hex_flags, TB_FLAGS, HVX_64B_MODE);
     ctx->branch_cond = TCG_COND_NEVER;
@@ -1708,13 +1708,13 @@ void hexagon_translate_init(void)
                 hexagon_sregnames[i]);
         }
     }
-    hex_packet_count = tcg_global_mem_new_i64(cpu_env,
-            offsetof(CPUHexagonState, t_packet_count), "t_packet_count");
     hex_pmu_num_packets = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, pmu.num_packets), "pmu.num_packets");
     hex_pmu_hvx_packets = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, pmu.hvx_packets), "pmu.hvx_packets");
 #endif
+    hex_packet_count = tcg_global_mem_new_i64(cpu_env,
+            offsetof(CPUHexagonState, t_packet_count), "t_packet_count");
     for (i = 0; i < NUM_PREGS; i++) {
         hex_pred[i] = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, pred[i]),

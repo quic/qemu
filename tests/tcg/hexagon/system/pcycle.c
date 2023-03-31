@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -264,11 +264,9 @@ int main()
 {
     puts("Check the pcyclehi/pcyclelo counters in qemu");
 
-#if !defined(__linux__)
     test_gcycle_xt();
     test_pcycle();
     test_gpcycle();
-#endif
     test_upcycle();
 
     puts(err ? "FAIL" : "PASS");
