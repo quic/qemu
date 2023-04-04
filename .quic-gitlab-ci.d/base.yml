@@ -206,6 +206,19 @@ coproc_build:
       mv ${BUILDDIR}/qemu-system-hexagon ${BUILDDIR}/Tools/QEMUHexagon/bin
       ln -s $(realpath ${BUILDDIR}/Tools/QEMUHexagon/bin/qemu-system-hexagon) ${BUILDDIR}/
 
+.base-trigger:
+  trigger:
+    strategy: depend
+  allow_failure: true
+  inherit:
+    variables: false
+  variables:
+    OVERRIDE_PKG: libqemu
+    OVERRIDE_REF: $CI_COMMIT_REF_NAME
+    # Workaround for CI_REPOSITORY_URL not being exported:
+    # https://gitlab.com/gitlab-org/gitlab/-/issues/231663
+    OVERRIDE_URL: "${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+
 ##################################################################
 #    Jobs
 ###################################################################
@@ -488,3 +501,13 @@ test_hexagon_perf_ml:
 #     when: always
     - when: manual
       allow_failure: true
+
+qqvp_trigger:
+  extends: .base-trigger
+  trigger:
+    project: qqvp/qqvp
+
+qbox_trigger:
+  extends: .base-trigger
+  trigger:
+    project: qqvp/qbox
