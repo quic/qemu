@@ -1,4 +1,6 @@
-image: $CI_REGISTRY/qqvp/containers/qqvp-dev:latest
+include:
+  - project: 'qqvp/cmake-boilerplate'
+    file: 'base.yml'
 
 # TODO
 # - Cache builds to avoid re-building same commit
@@ -67,11 +69,10 @@ variables:
 ###################################################################
 
 checkpatch:
+  extends: .mr-job
+  stage: test
+  script: .quic-gitlab-ci.d/checkpatch.sh $TARGET_REF $SOURCE_REF
   allow_failure: true
-  script:
-    - sleep 4 # Wait a bit after MR creation so that GitLab-API doesn't miss it
-    - .quic-gitlab-ci.d/checkpatch-job.sh "$(eval "$GITLAB_URL")" "$CI_API_V4_URL"
-        "$CI_PROJECT_ID" "$GITLAB_API_TOKEN" "$CI_JOB_TOKEN" "$CI_COMMIT_REF_NAME"
 
 hexagon_build:
   extends: .base-build
