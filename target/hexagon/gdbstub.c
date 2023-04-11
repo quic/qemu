@@ -47,7 +47,7 @@ int hexagon_gdb_read_register(CPUState *cs, GByteArray *mem_buf, int n)
     CPUHexagonState *env = &cpu->env;
 
     if (n == HEX_REG_P3_0_ALIASED) {
-        uint32_t p3_0;
+        uint32_t p3_0 = 0;
         for (int i = 0; i < NUM_PREGS; i++) {
             p3_0 = deposit32(p3_0, i * 8, 8, env->pred[i]);
         }
