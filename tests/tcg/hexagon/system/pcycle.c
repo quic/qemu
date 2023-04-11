@@ -40,12 +40,24 @@ static inline void __check_range(uint32_t val, uint32_t min, uint32_t max, int l
 static inline void __check(uint32_t val, uint32_t expect, int line)
 {
     if (val != expect) {
-        printf("ERROR at line %d: %" PRIu32 " != %" PRIu32 " \n", line, val, expect);
+        printf("ERROR at line %d: %" PRIu32 " != %" PRIu32 "\n", line, val,
+               expect);
         err++;
     }
 }
 
 #define check(V, E) __check(V, E, __LINE__)
+
+static inline void __check_ne(uint32_t val, uint32_t expect, int line)
+{
+   if (val == expect) {
+        printf("ERROR at line %d: %" PRIu32 " == %" PRIu32 "\n", line, val,
+               expect);
+        err++;
+    }
+}
+
+#define check_ne(V, E) __check_ne(V, E, __LINE__)
 
 static void test_pcycle(void)
 {
@@ -80,6 +92,37 @@ static void test_pcycle(void)
     check(pcyclehi, 0);
     check_range(pcycle, 6, 6 * MAX_HW_THREADS);
     check_range(pcyclelo, 6, 6 * MAX_HW_THREADS);
+}
+
+static void test_pcycle_read(void)
+{
+    uint64_t val0 = 0;
+    uint64_t val1 = 0;
+
+    asm volatile (
+        "%0 = PCYCLE\n\t"
+        "isync\n\t"
+        "%1 = PCYCLE\n\t"
+        : "=r"(val0), "=r"(val1)
+    );
+
+    check_ne(val0, val1);
+
+    val0 = 0;
+    val1 = 0;
+
+    asm volatile (
+        "r0 = #0x52\n\t"
+        "trap0(#0)\n\t"
+        "%0 = r1:0\n\t"
+        "r0 = #0x52\n\t"
+        "trap0(#0)\n\t"
+        "%1 = r1:0\n\t"
+        : "=r"(val0), "=r"(val1)
+        :: "r0", "r1"
+    );
+
+    check_ne(val0, val1);
 }
 
 #define read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi) \
@@ -266,6 +309,7 @@ int main()
 
     test_gcycle_xt();
     test_pcycle();
+    test_pcycle_read();
     test_gpcycle();
     test_upcycle();
 

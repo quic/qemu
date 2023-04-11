@@ -89,6 +89,18 @@ uint32_t hexagon_get_sys_pcycle_count_low(CPUHexagonState *env)
 
 #ifndef CONFIG_USER_ONLY
 
+uint32_t arch_get_system_reg(CPUHexagonState *env, uint32_t reg)
+{
+    if (reg == HEX_SREG_PCYCLELO) {
+        return hexagon_get_sys_pcycle_count_low(env);
+    } else if (reg == HEX_SREG_PCYCLEHI) {
+        return hexagon_get_sys_pcycle_count_high(env);
+    }
+
+    g_assert(reg < NUM_SREGS);
+    return reg < HEX_SREG_GLB_START ? env->t_sreg[reg] : env->g_sreg[reg];
+}
+
 #define BYTES_LEFT_IN_PAGE(A) (TARGET_PAGE_SIZE - ((A) % TARGET_PAGE_SIZE))
 
 static inline QEMU_ALWAYS_INLINE bool hexagon_read_memory_small(

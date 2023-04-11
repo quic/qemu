@@ -2098,10 +2098,6 @@ uint32_t HELPER(sreg_read)(CPUHexagonState *env, uint32_t reg)
         hexagon_read_timer(env, &low, &high);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERLO, low);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_TIMERHI, high);
-    } else if (reg == HEX_SREG_PCYCLELO) {
-        return hexagon_get_sys_pcycle_count_low(env);
-    } else if (reg == HEX_SREG_PCYCLEHI) {
-        return hexagon_get_sys_pcycle_count_high(env);
     } else if (reg == HEX_SREG_BADVA) {
         target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
         if (GET_SSR_FIELD(SSR_BVS, ssr)) {

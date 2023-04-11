@@ -43,18 +43,14 @@ static inline void arch_set_system_reg(CPUHexagonState *env, uint32_t reg,
     }
 }
 
-static inline uint32_t arch_get_system_reg(CPUHexagonState *env, uint32_t reg)
-{
-    g_assert(reg < NUM_SREGS);
-    return reg < HEX_SREG_GLB_START ? env->t_sreg[reg] : env->g_sreg[reg];
-}
-
 static inline uint32_t *arch_get_system_reg_addr(CPUHexagonState *env,
                                                  uint32_t reg)
 {
     g_assert(reg < NUM_SREGS);
     return reg < HEX_SREG_GLB_START ? &env->t_sreg[reg] : &env->g_sreg[reg];
 }
+
+uint32_t arch_get_system_reg(CPUHexagonState *env, uint32_t reg);
 
 #define ARCH_GET_THREAD_REG(ENV,REG) \
     arch_get_thread_reg(ENV, REG)
