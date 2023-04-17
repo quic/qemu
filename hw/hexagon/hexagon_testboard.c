@@ -93,7 +93,7 @@ static void hex_symbol_callback(const char *st_name, int st_info, uint64_t st_va
 }
 
 
-static gchar *hexagon_load_kernel(HexagonCPU *cpu)
+static void hexagon_load_kernel(HexagonCPU *cpu)
 {
     uint64_t pentry;
     long kernel_size;
@@ -109,26 +109,13 @@ static gchar *hexagon_load_kernel(HexagonCPU *cpu)
         exit(1);
     }
 
-
-    /* $exe_dir/../target/hexagon/lib/v$exe_elf_machine_flags/G0/pic/ */
-    GString *lib_search_dir = g_string_new("");
-    GString *exe_dir_str = g_string_new("");
-    exe_dir_str = get_exe_dir(exe_dir_str);
-    gchar *exe_dir = g_string_free(exe_dir_str, false);
-    g_string_printf(lib_search_dir,
-            "%s/../target/hexagon/lib/v%x/G0/pic", exe_dir,
-            (hexagon_binfo.kernel_elf_flags & ELF_FLAG_ARCH_MASK));
-    g_free(exe_dir);
-    qdev_prop_set_uint32(DEVICE(cpu),
-            "exec-start-addr", pentry);
-
-    return g_string_free(lib_search_dir, false);
+    qdev_prop_set_uint32(DEVICE(cpu), "exec-start-addr", pentry);
 }
 
-static gchar *hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
+static void hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
 {
     if (machine->kernel_filename) {
-        gchar *usefs = hexagon_load_kernel(cpu);
+        hexagon_load_kernel(cpu);
         if (isdb_secure_flag || isdb_trusted_flag) {
             /* By convention these flags are at offsets 0x30 and 0x34 */
             uint32_t  mem;
@@ -143,9 +130,21 @@ static gchar *hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
                 cpu_physical_memory_write(isdb_trusted_flag, &mem, sizeof(mem));
             }
         }
-        return usefs;
     }
-    return NULL;
+}
+
+static gchar *hexagon_get_usefs_path(void)
+{
+    /* $exe_dir/../target/hexagon/lib/v$exe_elf_machine_flags/G0/pic/ */
+    GString *lib_search_dir = g_string_new("");
+    GString *exe_dir_str = g_string_new("");
+    exe_dir_str = get_exe_dir(exe_dir_str);
+    gchar *exe_dir = g_string_free(exe_dir_str, false);
+    g_string_printf(lib_search_dir,
+            "%s/../target/hexagon/lib/v%x/G0/pic", exe_dir,
+            (hexagon_binfo.kernel_elf_flags & ELF_FLAG_ARCH_MASK));
+    g_free(exe_dir);
+    return g_string_free(lib_search_dir, false);
 }
 
 static void hexagon_common_init(MachineState *machine, Rev_t rev)
@@ -214,9 +213,9 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
                 __FUNCTION__, cpu, env);
 
         if (i == 0) {
-            gchar *usefs = hexagon_init_bootstrap(machine, cpu);
+            hexagon_init_bootstrap(machine, cpu);
             if (!cpu->usefs) {
-                cpu->usefs = usefs;
+                cpu->usefs = hexagon_get_usefs_path();
             }
             cpu_0 = cpu;
 
