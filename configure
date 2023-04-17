@@ -2276,8 +2276,12 @@ if test "$fortify_source" = "yes" ; then
 fi
 
 if test "$have_asan" = "yes"; then
-  QEMU_CFLAGS="-fsanitize=address $QEMU_CFLAGS"
-  QEMU_LDFLAGS="-fsanitize=address $QEMU_LDFLAGS"
+  # QUIC-specific
+  # -fno-omit-frame-pointer helps vizualizing the complete call stack for
+  # malloc leaks. See https://github.com/google/sanitizers/wiki/AddressSanitizer#faq
+  QEMU_CFLAGS="-fsanitize=address -fno-omit-frame-pointer $QEMU_CFLAGS"
+  QEMU_LDFLAGS="-fsanitize=address -fno-omit-frame-pointer $QEMU_LDFLAGS"
+  # end QUIC-specific
   if test "$have_asan_iface_h" = "no" ; then
       echo "ASAN build enabled, but ASAN header missing." \
            "Without code annotation, the report may be inferior."
