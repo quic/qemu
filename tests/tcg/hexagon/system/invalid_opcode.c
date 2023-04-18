@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,55 +15,5 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include "hexagon_standalone.h"
-#define NO_DEFAULT_EVENT_HANDLES
-#include "mmu.h"
-
-#define HEX_CAUSE_INVALID_OPCODE 0x015
-
-void invalid_opcode(void)
-{
-    /* nops pads are a workaround for QTOOL-54399 */
-    asm volatile ("nop");
-    asm volatile (".word 0x6fffdffc\n\t");
-    asm volatile ("nop");
-}
-
-void my_err_handler_helper(uint32_t ssr)
-{
-    uint32_t cause = GET_FIELD(ssr, SSR_CAUSE);
-
-    if (cause < 64) {
-        *my_exceptions |= 1LL << cause;
-    } else {
-        *my_exceptions = cause;
-    }
-
-    switch (cause) {
-    case HEX_CAUSE_INVALID_OPCODE:
-        /* We don't want to replay this instruction, just note the exception */
-        inc_elr(4);
-        break;
-    default:
-        do_coredump();
-        break;
-    }
-}
-
-MAKE_ERR_HANDLER(my_err_handler, my_err_handler_helper)
-
-int main()
-{
-    puts("Hexagon invalid opcode test");
-
-    INSTALL_ERR_HANDLER(my_err_handler);
-    invalid_opcode();
-    check(*my_exceptions, 1 << HEX_CAUSE_INVALID_OPCODE);
-
-    puts(err ? "FAIL" : "PASS");
-    return err;
-}
+#include "invalid_opcode.h"
+INVALID_OPCODE_MAIN("Hexagon invalid opcode test", invalid_opcode)
