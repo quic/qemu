@@ -149,6 +149,6 @@ int main(int argc, const char *argv[])
 	free(tmp1);
 	free(tmp2);
 
-	return 0;
+    return (cmp == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 
 }
