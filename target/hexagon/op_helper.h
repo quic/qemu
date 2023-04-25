@@ -51,7 +51,7 @@ void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
                   target_ulong addr, target_ulong PC);
 
 void log_reg_write(CPUHexagonState *env, int rnum,
-                   target_ulong val, uint32_t slot);
+                   target_ulong val);
 void log_store64(CPUHexagonState *env, target_ulong addr,
                  int64_t val, int width, int slot);
 void log_store32(CPUHexagonState *env, target_ulong addr,

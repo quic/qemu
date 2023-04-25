@@ -1490,6 +1490,9 @@
         gen_log_reg_write_pair(HEX_REG_FP, r31_30); \
     } while (0)
 
+/* dczeroa clears the 32 byte cache line at the address given */
+#define fGEN_TCG_Y2_dczeroa(SHORTCODE) SHORTCODE
+
 /*
  * dealloc_return
  * Assembler mapped to
@@ -2179,11 +2182,11 @@
 
 /* r0 = asr(r1, r2):sat */
 #define fGEN_TCG_S2_asr_r_r_sat(SHORTCODE) \
-    gen_asr_r_r_sat(RdV, RsV, RtV)
+    gen_asr_r_r_sat(ctx, RdV, RsV, RtV)
 
 /* r0 = asl(r1, r2):sat */
 #define fGEN_TCG_S2_asl_r_r_sat(SHORTCODE) \
-    gen_asl_r_r_sat(RdV, RsV, RtV)
+    gen_asl_r_r_sat(ctx, RdV, RsV, RtV)
 
 /* r0 = asl(r1, #5) */
 #define fGEN_TCG_S2_asl_i_r(SHORTCODE) \
@@ -2553,18 +2556,6 @@
         gen_set_label(skip); \
     } while (0)
 
-/* Not modelled in qemu, but need to suppress compiler warnings */
-#define fGEN_TCG_Y2_dcfetchbo(SHORTCODE) \
-    do { \
-        uiV = uiV; \
-        RsV = RsV; \
-    } while (0)
-#define fGEN_TCG_Y2_dcfetchbo_nt(SHORTCODE) \
-    do { \
-        uiV = uiV; \
-        RsV = RsV; \
-    } while (0)
-
 /*
  * Add vector of words
  * r5:4 = vaddw(r1:0, r3:2, p0)
@@ -2617,6 +2608,30 @@
     gen_sat(RdV, RsV, true, 8)
 #define fGEN_TCG_A2_satub(SHORTCODE) \
     gen_sat(RdV, RsV, false, 8)
+
+/* Count trailing zeros/ones */
+#define fGEN_TCG_S2_ct0(SHORTCODE) \
+    do { \
+        tcg_gen_ctzi_tl(RdV, RsV, 32); \
+    } while (0)
+#define fGEN_TCG_S2_ct1(SHORTCODE) \
+    do { \
+        tcg_gen_not_tl(RdV, RsV); \
+        tcg_gen_ctzi_tl(RdV, RdV, 32); \
+    } while (0)
+#define fGEN_TCG_S2_ct0p(SHORTCODE) \
+    do { \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        tcg_gen_ctzi_i64(tmp, RssV, 64); \
+        tcg_gen_extrl_i64_i32(RdV, tmp); \
+    } while (0)
+#define fGEN_TCG_S2_ct1p(SHORTCODE) \
+    do { \
+        TCGv_i64 tmp = tcg_temp_new_i64(); \
+        tcg_gen_not_i64(tmp, RssV); \
+        tcg_gen_ctzi_i64(tmp, tmp, 64); \
+        tcg_gen_extrl_i64_i32(RdV, tmp); \
+    } while (0)
 
 /* Floating point */
 #define fGEN_TCG_F2_conv_sf2df(SHORTCODE) \
@@ -2743,6 +2758,22 @@
     } while (0)
 #define fGEN_TCG_Y5_l2fetch(SHORTCODE) \
     do { \
+        RsV = RsV; \
+    } while (0)
+#define fGEN_TCG_Y2_isync(SHORTCODE) \
+    do { } while (0)
+#define fGEN_TCG_Y2_barrier(SHORTCODE) \
+    do { } while (0)
+#define fGEN_TCG_Y2_syncht(SHORTCODE) \
+    do { } while (0)
+#define fGEN_TCG_Y2_dcfetchbo(SHORTCODE) \
+    do { \
+        RsV = RsV; \
+        uiV = uiV; \
+    } while (0)
+#define fGEN_TCG_Y2_dcfetchbo_nt(SHORTCODE) \
+    do { \
+        uiV = uiV; \
         RsV = RsV; \
     } while (0)
 

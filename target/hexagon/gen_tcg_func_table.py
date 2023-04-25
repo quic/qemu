@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 ##
-##  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+##  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
 ##
 ##  This program is free software; you can redistribute it and/or modify
 ##  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import re
 import string
 import hex_common
 
+
 def main():
     hex_common.read_semantics_file(sys.argv[1])
     hex_common.read_attribs_file(sys.argv[2])
@@ -29,20 +30,21 @@ def main():
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
-    with open(sys.argv[3], 'w') as f:
+    with open(sys.argv[3], "w") as f:
         f.write("#ifndef HEXAGON_FUNC_TABLE_H\n")
         f.write("#define HEXAGON_FUNC_TABLE_H\n\n")
 
         f.write("const SemanticInsn opcode_genptr[XX_LAST_OPCODE] = {\n")
 
         for tag in hex_common.tags:
-            if ( hex_common.tag_ignore(tag) ):
+            if hex_common.tag_ignore(tag):
                 continue
 
             f.write(f"    [{tag}] = generate_{tag},\n")
         f.write("};\n\n")
 
         f.write("#endif    /* HEXAGON_FUNC_TABLE_H */\n")
+
 
 if __name__ == "__main__":
     main()

@@ -22,3 +22,5 @@ GTAGS
 build
 *.patch
 *.gcov
+
+/subprojects/slirp
