@@ -238,6 +238,8 @@ static const target_ulong sreg_immut_masks[NUM_SREGS] = {
     [HEX_SREG_ISDBEN] = 0xfffffffe,
     [HEX_SREG_TIMERLO] = IMMUTABLE,
     [HEX_SREG_TIMERHI] = IMMUTABLE,
+    [HEX_SREG_ISDBVER] = IMMUTABLE,
+    [HEX_SREG_BRKPTINFO] = IMMUTABLE,
 };
 
 static void gen_log_sreg_write(int rnum, TCGv val)
