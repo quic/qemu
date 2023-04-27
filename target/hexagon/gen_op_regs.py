@@ -60,6 +60,7 @@ def calculate_regid_letters(tag):
     retstr, mapdict = calculate_regid_reg(tag)
     return retstr
 
+
 def strip_reg_prefix(x):
     y = x.replace("UREG.", "")
     y = y.replace("MREG.", "")
@@ -97,7 +98,6 @@ def main():
                 f'REGINFO({tag},"{regids}",\t/*RD:*/\t"{",".join(rregs)}",'
                 f'\t/*WR:*/\t"{",".join(wregs)}")\n'
             )
-
 
         for tag in hex_common.get_all_tags():
             imms = tagimms[tag]

@@ -42,10 +42,10 @@ def main():
         for tag in hex_common.get_user_tags():
             gen_shortcode(f, tag)
 
-        f.write('#if !defined(CONFIG_USER_ONLY)\n')
+        f.write("#if !defined(CONFIG_USER_ONLY)\n")
         for tag in hex_common.get_sys_tags():
             gen_shortcode(f, tag)
-        f.write('#endif\n')
+        f.write("#endif\n")
 
         f.write("#undef DEF_SHORTCODE\n")
 

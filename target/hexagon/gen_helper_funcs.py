@@ -29,10 +29,11 @@ import hex_common
 def gen_decl_ea(f):
     f.write("    uint32_t EA __attribute__((unused));\n")
 
-def gen_decl_insn(tag,f,slot):
-    str = f'Insn tmp_insn = {{ .slot = {slot} }};\n';
-    f.write(str);
-    f.write('Insn *insn __attribute__((unused)) = &tmp_insn;\n');
+
+def gen_decl_insn(tag, f, slot):
+    str = f"Insn tmp_insn = {{ .slot = {slot} }};\n"
+    f.write(str)
+    f.write("Insn *insn __attribute__((unused)) = &tmp_insn;\n")
 
 
 def gen_helper_return_type(f, regtype, regid, regno):
@@ -45,6 +46,7 @@ def gen_helper_return_type_pair(f, regtype, regid, regno):
     if regno > 1:
         f.write(", ")
     f.write("int64_t")
+
 
 def gen_helper_arg(f, regtype, regid, regno):
     if regno > 0:
@@ -312,13 +314,13 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             f.write("uint32_t part1")
         f.write(")\n{\n")
 
-        if 'A_HMX' in hex_common.attribdict[tag]:
+        if "A_HMX" in hex_common.attribdict[tag]:
             f.write("    CoprocArgs args;\n")
             f.write(f"    args.opcode = {tag};\n")
             arg = 1
             for regtype, regid, toss, numregs in regs:
                 f.write(f"    args.arg{arg} = {regtype}{regid}V;\n")
-                arg += 1;
+                arg += 1
             f.write("    coproc(env, args);\n")
         else:
             if not hex_common.need_slot(tag):
@@ -360,10 +362,8 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             if "A_FPOP" in hex_common.attribdict[tag]:
                 f.write("    arch_fpop_start(env);\n")
 
-
             f.write(f"    {hex_common.semdict[tag]}\n")
             f.write(f"    COUNT_HELPER({tag});\n")
-
 
             if "A_FPOP" in hex_common.attribdict[tag]:
                 f.write("    arch_fpop_end(env);\n")
@@ -409,14 +409,15 @@ def main():
                 continue
             gen_helper_function(f, tag, tagregs, tagimms)
 
-        f.write('#if !defined(CONFIG_USER_ONLY)\n')
+        f.write("#if !defined(CONFIG_USER_ONLY)\n")
         for tag in hex_common.get_sys_tags():
             if hex_common.skip_qemu_helper(tag):
                 continue
             if hex_common.is_idef_parser_enabled(tag):
                 continue
             gen_helper_function(f, tag, tagregs, tagimms)
-        f.write('#endif\n')
+        f.write("#endif\n")
+
 
 if __name__ == "__main__":
     main()

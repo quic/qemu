@@ -22,9 +22,11 @@ import re
 import string
 import hex_common
 
+
 def _line():
     f = sys._getframe().f_back
     return "[{f.f_code.co_filename}:{f.f_lineno}]"
+
 
 ##
 ## Helpers for gen_tcg_func
@@ -182,36 +184,32 @@ def genptr_decl(f, tag, regtype, regid, regno):
             )
             if not hex_common.skip_qemu_helper(tag):
                 f.write(f"    TCGv_ptr {regtype}{regid}V = " "tcg_temp_new_ptr();\n")
-    elif (regtype == "G"):
-        if (regid in {"dd"}):
-            f.write(f"    TCGv_i64 {regtype}{regid}V = "
-                    "tcg_temp_new_i64();\n")
+    elif regtype == "G":
+        if regid in {"dd"}:
+            f.write(f"    TCGv_i64 {regtype}{regid}V = " "tcg_temp_new_i64();\n")
             f.write(f"    const int {regN} = insn->regno[{regno}];\n")
-        elif (regid in {"d"}):
+        elif regid in {"d"}:
             f.write(f"    TCGv {regtype}{regid}V = tcg_temp_new();\n")
             f.write(f"    const int {regN} = insn->regno[{regno}];\n")
-        elif (regid in {"ss"}):
-            f.write(f"    TCGv_i64 {regtype}{regid}V = "
-                    "tcg_temp_new_i64();\n")
+        elif regid in {"ss"}:
+            f.write(f"    TCGv_i64 {regtype}{regid}V = " "tcg_temp_new_i64();\n")
             f.write(f"    const int {regN} = insn->regno[{regno}];\n")
-        elif (regid in {"s"}):
+        elif regid in {"s"}:
             f.write(f"    TCGv {regtype}{regid}V = tcg_temp_new();\n")
             f.write(f"    const int {regN} = insn->regno[{regno}];\n")
         else:
             print("Bad register parse: ", regtype, regid)
-    elif (regtype == "S"):
-        if (regid in {"dd"}):
-            f.write(f"    TCGv_i64 {regtype}{regid}V = "
-                    "tcg_temp_new_i64();\n")
+    elif regtype == "S":
+        if regid in {"dd"}:
+            f.write(f"    TCGv_i64 {regtype}{regid}V = " "tcg_temp_new_i64();\n")
             f.write(f"    const int {regN} = insn->regno[{regno}];\n")
-        elif (regid in {"d"}):
+        elif regid in {"d"}:
             f.write(f"    TCGv {regtype}{regid}V = tcg_temp_new();\n")
             f.write(f"    const int {regN} = insn->regno[{regno}];\n")
-        elif (regid in {"ss"}):
-            f.write(f"    TCGv_i64 {regtype}{regid}V = "
-                    "tcg_temp_new_i64();\n")
+        elif regid in {"ss"}:
+            f.write(f"    TCGv_i64 {regtype}{regid}V = " "tcg_temp_new_i64();\n")
             f.write(f"    const int {regN} = insn->regno[{regno}];\n")
-        elif (regid in {"s"}):
+        elif regid in {"s"}:
             f.write(f"    TCGv {regtype}{regid}V = tcg_temp_new();\n")
             f.write(f"    const int {regN} = insn->regno[{regno}];\n")
         else:
@@ -265,7 +263,7 @@ def genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i):
         if hex_common.is_old_val(regtype, regid, tag):
             genptr_decl(f, tag, regtype, regid, i)
         elif hex_common.is_new_val(regtype, regid, tag):
-            genptr_decl_new(f,tag,regtype,regid,i)
+            genptr_decl_new(f, tag, regtype, regid, i)
         else:
             print("Bad register parse: ", regtype, regid, toss, numregs)
     else:
@@ -362,19 +360,19 @@ def genptr_src_read(f, tag, regtype, regid):
             f.write("        sizeof(MMQReg), sizeof(MMQReg));\n")
         else:
             print("Bad register parse: ", regtype, regid)
-    elif (regtype == "G"):
-        regN=f"{regtype}{regid}N"
-        if (regid in {"ss"}):
+    elif regtype == "G":
+        regN = f"{regtype}{regid}N"
+        if regid in {"ss"}:
             f.write(f"    gen_read_greg_pair({regtype}{regid}V, {regN});\n")
-        elif (regid in {"s"}):
+        elif regid in {"s"}:
             f.write(f"    gen_read_greg({regtype}{regid}V, {regN});\n")
         else:
             print("Bad register parse: ", regtype, regid)
-    elif (regtype == "S"):
-        regN=f"{regtype}{regid}N"
-        if (regid in {"ss"}):
+    elif regtype == "S":
+        regN = f"{regtype}{regid}N"
+        if regid in {"ss"}:
             f.write(f"    gen_read_sreg_pair({regtype}{regid}V, {regN});\n")
-        elif (regid in {"s"}):
+        elif regid in {"s"}:
             f.write(f"    gen_read_sreg({regtype}{regid}V, {regN});\n")
         else:
             print("Bad register parse: ", regtype, regid)
@@ -401,13 +399,13 @@ def genptr_src_read_opn(f, regtype, regid, tag):
         genptr_src_read(f, tag, regtype, regid)
     elif hex_common.is_single(regid):
         if hex_common.is_old_val(regtype, regid, tag):
-            genptr_src_read(f,tag,regtype,regid)
+            genptr_src_read(f, tag, regtype, regid)
         elif hex_common.is_new_val(regtype, regid, tag):
             genptr_src_read_new(f, regtype, regid)
         else:
             raise Exception(print(_line(), "Bad register parse: ", tag, regtype, regid))
     else:
-        raise Exception(print(_line(), "Bad register parse: ",tag, regtype, regid))
+        raise Exception(print(_line(), "Bad register parse: ", tag, regtype, regid))
 
 
 def gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i):
@@ -474,26 +472,24 @@ def genptr_dst_write(f, tag, regtype, regid):
                 f"    gen_write_ctrl_reg(ctx, {regtype}{regid}N, "
                 f"{regtype}{regid}V);\n"
             )
-    elif (regtype == "G"):
-        regN=f"{regtype}{regid}N"
-        if (regid == "dd"):
-            f.write(f"    gen_log_greg_write_pair({regN}, "
-                    f"{regtype}{regid}V);\n")
+    elif regtype == "G":
+        regN = f"{regtype}{regid}N"
+        if regid == "dd":
+            f.write(f"    gen_log_greg_write_pair({regN}, " f"{regtype}{regid}V);\n")
             f.write(f"    ctx_log_greg_write(ctx, {regN});\n")
             f.write(f"    ctx_log_greg_write(ctx, {regN} + 1);\n")
-        elif (regid == "d"):
+        elif regid == "d":
             f.write(f"    gen_log_greg_write({regN}, {regtype}{regid}V);\n")
             f.write(f"    ctx_log_greg_write(ctx, {regN});\n")
         else:
             print("Bad register parse: ", regtype, regid)
-    elif (regtype == "S"):
-        regN=f"{regtype}{regid}N"
-        if (regid == "dd"):
-            f.write(f"    gen_log_sreg_write_pair({regN}, "
-                    f"{regtype}{regid}V);\n")
+    elif regtype == "S":
+        regN = f"{regtype}{regid}N"
+        if regid == "dd":
+            f.write(f"    gen_log_sreg_write_pair({regN}, " f"{regtype}{regid}V);\n")
             f.write(f"    ctx_log_sreg_write(ctx, {regN});\n")
             f.write(f"    ctx_log_sreg_write(ctx, {regN} + 1);\n")
-        elif (regid == "d"):
+        elif regid == "d":
             f.write(f"    gen_log_sreg_write({regN}, {regtype}{regid}V);\n")
             f.write(f"    ctx_log_sreg_write(ctx, {regN});\n")
         else:
@@ -573,12 +569,11 @@ def gen_tcg_func(f, tag, regs, imms):
 
     f.write("    Insn *insn __attribute__((unused)) = ctx->insn;\n")
 
-    if 'A_PRIV' in hex_common.attribdict[tag]:
+    if "A_PRIV" in hex_common.attribdict[tag]:
         f.write("#ifdef CONFIG_USER_ONLY\n")
-        f.write("    gen_exception_end_tb(ctx, "
-                "HEX_CAUSE_PRIV_USER_NO_SINSN);\n")
+        f.write("    gen_exception_end_tb(ctx, " "HEX_CAUSE_PRIV_USER_NO_SINSN);\n")
         f.write("#else\n")
-    if 'A_GUEST' in hex_common.attribdict[tag]:
+    if "A_GUEST" in hex_common.attribdict[tag]:
         f.write("#ifdef CONFIG_USER_ONLY\n")
         f.write("    gen_exception_end_tb(ctx, HEX_CAUSE_PRIV_USER_NO_GINSN);\n")
         f.write("#else\n")
@@ -586,16 +581,20 @@ def gen_tcg_func(f, tag, regs, imms):
         gen_decl_ea_tcg(f, tag)
     i = 0
     ## Check for ignored/unimplemented operations on guest registers
-    for regtype,regid,*_ in regs:
+    for regtype, regid, *_ in regs:
         if hex_common.is_greg(regtype):
             if hex_common.is_written(regid):
-                f.write(f"    if (!greg_writable(insn->regno[{i}], "
-                        f"{str(hex_common.is_pair(regid)).lower()})) {{\n")
+                f.write(
+                    f"    if (!greg_writable(insn->regno[{i}], "
+                    f"{str(hex_common.is_pair(regid)).lower()})) {{\n"
+                )
                 f.write("        return;\n")
                 f.write("    }\n")
             else:
-                f.write(f"    check_greg_impl(insn->regno[{i}], "
-                        f"{str(hex_common.is_pair(regid)).lower()});\n")
+                f.write(
+                    f"    check_greg_impl(insn->regno[{i}], "
+                    f"{str(hex_common.is_pair(regid)).lower()});\n"
+                )
         i += 1
     i = 0
 
@@ -704,8 +703,10 @@ def gen_tcg_func(f, tag, regs, imms):
         if hex_common.is_written(regid):
             genptr_dst_write_opn(f, regtype, regid, tag)
 
-    if 'A_PRIV' in hex_common.attribdict[tag] or \
-       'A_GUEST' in hex_common.attribdict[tag]:
+    if (
+        "A_PRIV" in hex_common.attribdict[tag]
+        or "A_GUEST" in hex_common.attribdict[tag]
+    ):
         f.write("#endif   /* CONFIG_USER_ONLY */\n")
     f.write("}\n\n")
 
@@ -747,7 +748,7 @@ def main():
             f.write('#include "idef-generated-emitter.h.inc"\n\n')
 
         for tag in hex_common.tags:
-            if  hex_common.tag_ignore(tag):
+            if hex_common.tag_ignore(tag):
                 continue
 
             gen_def_tcg_func(f, tag, tagregs, tagimms)

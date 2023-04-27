@@ -22,6 +22,7 @@ import re
 import string
 import hex_common
 
+
 ##
 ## Generate the case statement body for this instruction
 ##     For M8_mxmem
@@ -54,12 +55,13 @@ def gen_coproc_case(f, tag, tagregs, tagimms):
     else:
         slot = 0
     f.write(f"    Insn tmp_insn = {{ .slot = {slot} }};\n")
-    f.write("    Insn *insn __attribute__((unused)) = &tmp_insn;\n");
+    f.write("    Insn *insn __attribute__((unused)) = &tmp_insn;\n")
 
     f.write(f"    {hex_common.semdict[tag]}\n")
 
     f.write("}\nbreak;\n\n")
     ## End of the helper definition
+
 
 def main():
     hex_common.read_semantics_file(sys.argv[1])
@@ -70,11 +72,12 @@ def main():
     tagimms = hex_common.get_tagimms()
 
     output_file = sys.argv[-1]
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
         for tag in hex_common.get_user_tags():
-            if ( 'A_HMX' not in hex_common.attribdict[tag] ):
+            if "A_HMX" not in hex_common.attribdict[tag]:
                 continue
             gen_coproc_case(f, tag, tagregs, tagimms)
+
 
 if __name__ == "__main__":
     main()

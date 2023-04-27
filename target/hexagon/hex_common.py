@@ -32,43 +32,52 @@ idef_parser_enabled = {}  # tags enabled for idef-parser
 
 
 def is_predicated(tag):
-    return 'A_CONDEXEC' in attribdict[tag]
+    return "A_CONDEXEC" in attribdict[tag]
+
 
 def is_sysemu_tag(tag):
-    return ("A_PRIV" in attribdict[tag] or
-            "A_GUEST" in attribdict[tag])
+    return "A_PRIV" in attribdict[tag] or "A_GUEST" in attribdict[tag]
+
 
 def tag_ignore(tag):
     tag_skips = (
-        'Y6_diag',
-        'Y6_diag0',
-        'Y6_diag1',
-#        'V6_v6mpyhubs10_vxx',
-#        'V6_v6mpyvubs10_vxx',
+        "Y6_diag",
+        "Y6_diag0",
+        "Y6_diag1",
+        #        'V6_v6mpyhubs10_vxx',
+        #        'V6_v6mpyvubs10_vxx',
     )
     attr_skips = (
-        'A_FAKEINSN',
-        'A_MAPPING',
+        "A_FAKEINSN",
+        "A_MAPPING",
     )
     return tag in tag_skips or any(attr in attribdict[tag] for attr in attr_skips)
+
 
 def tag_skip(tag):
-    tag_skips = (
-    )
+    tag_skips = ()
     attr_skips = (
-#        'A_FAKEINSN',
-#        'A_MAPPING',
+        #        'A_FAKEINSN',
+        #        'A_MAPPING',
     )
     return tag in tag_skips or any(attr in attribdict[tag] for attr in attr_skips)
 
+
 def get_sys_tags():
-    return sorted(tag for tag in frozenset(tags) if is_sysemu_tag(tag) and not tag_skip(tag))
+    return sorted(
+        tag for tag in frozenset(tags) if is_sysemu_tag(tag) and not tag_skip(tag)
+    )
+
 
 def get_user_tags():
-    return sorted(tag for tag in frozenset(tags) if not is_sysemu_tag(tag) and not tag_skip(tag))
+    return sorted(
+        tag for tag in frozenset(tags) if not is_sysemu_tag(tag) and not tag_skip(tag)
+    )
+
 
 def get_all_tags():
     return get_user_tags() + get_sys_tags()
+
 
 # We should do this as a hash for performance,
 # but to keep order let's keep it as a list.
@@ -270,11 +279,14 @@ def is_readwrite(regid):
 def is_scalar_reg(regtype):
     return regtype in "RPCGS"
 
+
 def is_sreg(regtype):
     return regtype == "S"
 
+
 def is_greg(regtype):
     return regtype == "G"
+
 
 def is_hvx_reg(regtype):
     return regtype in "VQ"
@@ -297,7 +309,7 @@ def need_slot(tag):
         ("A_CONDEXEC" in attribdict[tag] and "A_JUMP" not in attribdict[tag])
         or "A_STORE" in attribdict[tag]
         or "A_LOAD" in attribdict[tag]
-        or 'A_CVI' in attribdict[tag]
+        or "A_CVI" in attribdict[tag]
     ):
         return 1
     else:
@@ -317,16 +329,12 @@ def need_PC(tag):
 
 
 def helper_needs_next_PC(tag):
-    return ("A_CALL" in attribdict[tag] or
-            tag == "J2_trap0" or
-            tag == "J2_trap1")
+    return "A_CALL" in attribdict[tag] or tag == "J2_trap0" or tag == "J2_trap1"
 
 
 def need_pkt_has_multi_cof(tag):
-    if ("A_JUMP" in attribdict[tag] or
-        "A_CALL" in attribdict[tag] or
-        tag == "J2_rte"):
-        if (tag == "J4_hintjumpr"):
+    if "A_JUMP" in attribdict[tag] or "A_CALL" in attribdict[tag] or tag == "J2_rte":
+        if tag == "J4_hintjumpr":
             return False
         return True
     return False
@@ -349,25 +357,40 @@ def is_tmp_result(tag):
 
 
 def is_hmx(tag):
-    return ('A_HMX' in attribdict[tag])
+    return "A_HMX" in attribdict[tag]
+
 
 def is_scatter_gather(tag):
-    return ('A_CVI_SCATTER' in attribdict[tag] or 'A_CVI_SCATTER_RELEASE' in attribdict[tag] or 'A_CVI_GATHER' in attrbdict[tag]);
+    return (
+        "A_CVI_SCATTER" in attribdict[tag]
+        or "A_CVI_SCATTER_RELEASE" in attribdict[tag]
+        or "A_CVI_GATHER" in attrbdict[tag]
+    )
+
 
 def is_gather(tag):
-    return ('A_CVI_GATHER' in attribdict[tag]);
+    return "A_CVI_GATHER" in attribdict[tag]
+
 
 def is_hmx_act(tag):
-    return ('A_HMX' in attribdict[tag] and 'A_PAIR_1OF2' in attribdict[tag]);
+    return "A_HMX" in attribdict[tag] and "A_PAIR_1OF2" in attribdict[tag]
+
 
 def is_hmx(tag):
-    return ('A_HMX' in attribdict[tag])
+    return "A_HMX" in attribdict[tag]
+
 
 def is_scatter_gather(tag):
-    return ('A_CVI_SCATTER' in attribdict[tag] or 'A_CVI_SCATTER_RELEASE' in attribdict[tag] or 'A_CVI_GATHER' in attribdict[tag]);
+    return (
+        "A_CVI_SCATTER" in attribdict[tag]
+        or "A_CVI_SCATTER_RELEASE" in attribdict[tag]
+        or "A_CVI_GATHER" in attribdict[tag]
+    )
+
 
 def is_gather(tag):
-    return ('A_CVI_GATHER' in attribdict[tag]);
+    return "A_CVI_GATHER" in attribdict[tag]
+
 
 def is_new_result(tag):
     return "A_CVI_NEW" in attribdict[tag]
@@ -394,8 +417,10 @@ def read_semantics_file(name):
 
 
 def read_attribs_file(name):
-    attribre = re.compile(r'DEF_ATTRIB\(([A-Za-z0-9_]+),\s*([^,]*),\s*' +
-            r'"([A-Za-z0-9_\.]*)",\s*"([A-Za-z0-9_\.]*)"\)')
+    attribre = re.compile(
+        r"DEF_ATTRIB\(([A-Za-z0-9_]+),\s*([^,]*),\s*"
+        + r'"([A-Za-z0-9_\.]*)",\s*"([A-Za-z0-9_\.]*)"\)'
+    )
     for line in open(name, "rt").readlines():
         if not attribre.match(line):
             continue

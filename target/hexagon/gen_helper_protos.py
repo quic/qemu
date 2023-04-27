@@ -209,7 +209,7 @@ def main():
 
             gen_helper_prototype(f, tag, tagregs, tagimms)
 
-        f.write('#if !defined(CONFIG_USER_ONLY)\n')
+        f.write("#if !defined(CONFIG_USER_ONLY)\n")
         for tag in hex_common.get_sys_tags():
             if hex_common.tag_ignore(tag):
                 continue
@@ -219,7 +219,8 @@ def main():
                 continue
 
             gen_helper_prototype(f, tag, tagregs, tagimms)
-        f.write('#endif\n')
+        f.write("#endif\n")
+
 
 if __name__ == "__main__":
     main()
