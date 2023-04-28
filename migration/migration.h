@@ -405,6 +405,17 @@ struct MigrationState {
     bool preempt_pre_7_2;
 
     /*
+     * flush every channel after each section sent.
+     *
+     * This assures that we can't mix pages from one iteration through
+     * ram pages with pages for the following iteration.  We really
+     * only need to do this flush after we have go through all the
+     * dirty pages.  For historical reasons, we do that after each
+     * section.  This is suboptimal (we flush too many times).
+     * Default value is false. (since 8.1)
+     */
+    bool multifd_flush_after_each_section;
+    /*
      * This decides the size of guest memory chunk that will be used
      * to track dirty bitmap clearing.  The size of memory chunk will
      * be GUEST_PAGE_SIZE << N.  Say, N=0 means we will clear dirty
@@ -446,8 +457,6 @@ bool migration_is_blocked(Error **errp);
 /* True if outgoing migration has entered postcopy phase */
 bool migration_in_postcopy(void);
 MigrationState *migrate_get_current(void);
-
-int migrate_use_tls(void);
 
 uint64_t ram_get_total_transferred_pages(void);
 
