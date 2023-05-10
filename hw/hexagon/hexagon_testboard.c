@@ -415,6 +415,27 @@ static void v73na_1024_config_init(MachineState *machine)
     hexagon_common_init(machine, v73_rev);
 }
 
+static void SA8540P_cdsp0_config_init(MachineState *machine)
+{
+    cfgTable = &SA8540P_cdsp0_cfgtable;
+    cfgExtensions = &SA8540P_cdsp0_extensions;
+    hexagon_common_init(machine, v68_rev);
+}
+
+static void SA8540P_cdsp0_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "SA8540P CDSP0";
+    mc->init = SA8540P_cdsp0_config_init;
+    mc->is_default = false;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    mc->default_cpus = 6;
+    mc->max_cpus = 6;
+    mc->default_ram_size = 4 * GiB;
+}
+
 static void v73na_1024_linux_config_init(MachineState *machine)
 {
     syscfg_is_linux = true;
@@ -543,6 +564,10 @@ static const TypeInfo hexagon_machine_types[] = {
         .name = MACHINE_TYPE_NAME("V68_H2"),
         .parent = TYPE_MACHINE,
         .class_init = v68g_h2_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("SA8540P_CDSP0"),
+        .parent = TYPE_MACHINE,
+        .class_init = SA8540P_cdsp0_init,
     }, {
         .name = MACHINE_TYPE_NAME("virt"),
         .parent = TYPE_MACHINE,
