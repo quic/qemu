@@ -431,8 +431,6 @@ typedef struct CPUArchState {
     system_t *system_ptr;
     uint64_t t_packet_count;
     uint64_t *g_pcycle_base;
-    void *vtcm_haddr;
-    hwaddr vtcm_base;
 #ifndef CONFIG_USER_ONLY
     int slot;                    /* Needed for exception generation */
     hex_exception_info einfo;
@@ -481,6 +479,7 @@ struct ArchCPU {
     uint32_t boot_evb;
     uint32_t l2vic_base_addr;
     uint32_t qtimer_base_addr;
+    MemoryRegion *vtcm;
 #endif
     uint32_t rev_reg;
     bool lldb_compat;

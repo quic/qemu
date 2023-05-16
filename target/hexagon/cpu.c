@@ -20,6 +20,7 @@
 #include "cpu.h"
 #include "internal.h"
 #include "exec/exec-all.h"
+#include "exec/memory.h"
 #include "qapi/error.h"
 #include "hw/qdev-properties.h"
 #include "fpu/softfloat-helpers.h"
@@ -121,6 +122,8 @@ static Property hexagon_cpu_properties[] = {
         false),
     DEFINE_PROP_UINT32("thread-count", HexagonCPU, cluster_thread_count,
         THREADS_MAX),
+    DEFINE_PROP_LINK("vtcm", HexagonCPU, vtcm, TYPE_MEMORY_REGION,
+                     MemoryRegion *),
 #endif
     DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, 0),
     DEFINE_PROP_BOOL("lldb-compat", HexagonCPU, lldb_compat, false),
@@ -630,9 +633,14 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT7, INVALID_REG_VAL);
 
         CoprocArgs args;
+        memset(&args, 0, sizeof(args));
         args.opcode = COPROC_INIT;
-        args.vtcm_haddr = env->vtcm_haddr;
-        args.vtcm_base = env->vtcm_base;
+#if !defined(CONFIG_USER_ONLY)
+        if (cpu->vtcm) {
+            args.vtcm_haddr = memory_region_get_ram_ptr(cpu->vtcm);
+            args.vtcm_base = cpu->vtcm->addr;
+        }
+#endif
         args.reg_usr = GET_FIELD(USR_FPCOPROC, env->gpr[HEX_REG_USR]);
         coproc(args);
     }

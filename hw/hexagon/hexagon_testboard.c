@@ -216,6 +216,8 @@ see hw/vfio/pci-quirks.c
         }
         qdev_prop_set_uint32(DEVICE(cpu), "l2vic-base-addr", cfgExtensions->l2vic_base);
         qdev_prop_set_uint32(DEVICE(cpu), "qtimer-base-addr", cfgExtensions->qtmr_rg0);
+        object_property_set_link(OBJECT(cpu), "vtcm", OBJECT(vtcm),
+                &error_fatal);
 
         /* CPU #0 is the only CPU running at boot, others must be
          * explicitly enabled via start instruction.
@@ -225,8 +227,6 @@ see hw/vfio/pci-quirks.c
         HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
                 __FUNCTION__, cpu, env);
 
-        env->vtcm_haddr = memory_region_get_ram_ptr(vtcm);
-        env->vtcm_base = cfgTable->vtcm_base;
         if (i == 0) {
             hexagon_init_bootstrap(machine, cpu);
             if (!cpu->usefs) {
