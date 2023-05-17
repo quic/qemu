@@ -392,6 +392,18 @@ void migration_incoming_disable_colo(void)
 
 int migration_incoming_enable_colo(void)
 {
+#ifndef CONFIG_REPLICATION
+    error_report("ENABLE_COLO command come in migration stream, but COLO "
+                 "module is not built in");
+    return -ENOTSUP;
+#endif
+
+    if (!migrate_colo()) {
+        error_report("ENABLE_COLO command come in migration stream, but c-colo "
+                     "capability is not set");
+        return -EINVAL;
+    }
+
     if (ram_block_discard_disable(true)) {
         error_report("COLO: cannot disable RAM discard");
         return -EBUSY;
@@ -536,8 +548,15 @@ process_incoming_migration_co(void *opaque)
         /* Else if something went wrong then just fall out of the normal exit */
     }
 
+    if (ret < 0) {
+        error_report("load of migration failed: %s", strerror(-ret));
+        goto fail;
+    }
+
     /* we get COLO info, and know if we are in COLO mode */
-    if (!ret && migration_incoming_colo_enabled()) {
+    if (migration_incoming_colo_enabled()) {
+        QemuThread colo_incoming_thread;
+
         /* Make sure all file formats throw away their mutable metadata */
         bdrv_activate_all(&local_err);
         if (local_err) {
@@ -545,23 +564,18 @@ process_incoming_migration_co(void *opaque)
             goto fail;
         }
 
-        qemu_thread_create(&mis->colo_incoming_thread, "COLO incoming",
+        qemu_thread_create(&colo_incoming_thread, "COLO incoming",
              colo_process_incoming_thread, mis, QEMU_THREAD_JOINABLE);
-        mis->have_colo_incoming_thread = true;
         qemu_coroutine_yield();
 
         qemu_mutex_unlock_iothread();
         /* Wait checkpoint incoming thread exit before free resource */
-        qemu_thread_join(&mis->colo_incoming_thread);
+        qemu_thread_join(&colo_incoming_thread);
         qemu_mutex_lock_iothread();
         /* We hold the global iothread lock, so it is safe here */
         colo_release_ram_cache();
     }
 
-    if (ret < 0) {
-        error_report("load of migration failed: %s", strerror(-ret));
-        goto fail;
-    }
     mis->bh = qemu_bh_new(process_incoming_migration_bh, mis);
     qemu_bh_schedule(mis->bh);
     mis->migration_incoming_co = NULL;
@@ -2126,12 +2140,7 @@ static int postcopy_start(MigrationState *ms)
      * will notice we're in POSTCOPY_ACTIVE and not actually
      * wrap their state up here
      */
-    /* 0 max-postcopy-bandwidth means unlimited */
-    if (!bandwidth) {
-        qemu_file_set_rate_limit(ms->to_dst_file, INT64_MAX);
-    } else {
-        qemu_file_set_rate_limit(ms->to_dst_file, bandwidth / XFER_LIMIT_RATIO);
-    }
+    qemu_file_set_rate_limit(ms->to_dst_file, bandwidth);
     if (migrate_postcopy_ram()) {
         /* Ping just for debugging, helps line traces up */
         qemu_savevm_send_ping(ms->to_dst_file, 2);
@@ -2309,6 +2318,11 @@ static void migration_completion(MigrationState *s)
                                             MIGRATION_STATUS_DEVICE);
             }
             if (ret >= 0) {
+                /*
+                 * Inactivate disks except in COLO, and track that we
+                 * have done so in order to remember to reactivate
+                 * them if migration fails or is cancelled.
+                 */
                 s->block_inactive = !migrate_colo();
                 qemu_file_set_rate_limit(s->to_dst_file, INT64_MAX);
                 ret = qemu_savevm_state_complete_precopy(s->to_dst_file, false,
@@ -2353,13 +2367,13 @@ static void migration_completion(MigrationState *s)
         rp_error = await_return_path_close_on_source(s);
         trace_migration_return_path_end_after(rp_error);
         if (rp_error) {
-            goto fail_invalidate;
+            goto fail;
         }
     }
 
     if (qemu_file_get_error(s->to_dst_file)) {
         trace_migration_completion_file_err();
-        goto fail_invalidate;
+        goto fail;
     }
 
     if (migrate_colo() && s->state == MIGRATION_STATUS_ACTIVE) {
@@ -2373,26 +2387,25 @@ static void migration_completion(MigrationState *s)
 
     return;
 
-fail_invalidate:
-    /* If not doing postcopy, vm_start() will be called: let's regain
-     * control on images.
-     */
-    if (s->state == MIGRATION_STATUS_ACTIVE ||
-        s->state == MIGRATION_STATUS_DEVICE) {
+fail:
+    if (s->block_inactive && (s->state == MIGRATION_STATUS_ACTIVE ||
+                              s->state == MIGRATION_STATUS_DEVICE)) {
+        /*
+         * If not doing postcopy, vm_start() will be called: let's
+         * regain control on images.
+         */
         Error *local_err = NULL;
 
         qemu_mutex_lock_iothread();
         bdrv_activate_all(&local_err);
         if (local_err) {
             error_report_err(local_err);
-            s->block_inactive = true;
         } else {
             s->block_inactive = false;
         }
         qemu_mutex_unlock_iothread();
     }
 
-fail:
     migrate_set_state(&s->state, current_active_state,
                       MIGRATION_STATUS_FAILED);
 }
@@ -2635,7 +2648,7 @@ static MigThrError migration_detect_error(MigrationState *s)
 /* How many bytes have we transferred since the beginning of the migration */
 static uint64_t migration_total_bytes(MigrationState *s)
 {
-    return qemu_file_total_transferred(s->to_dst_file) +
+    return qemu_file_transferred(s->to_dst_file) +
         stat64_get(&mig_stats.multifd_bytes);
 }
 
@@ -2773,10 +2786,7 @@ static void migration_iteration_finish(MigrationState *s)
         runstate_set(RUN_STATE_POSTMIGRATE);
         break;
     case MIGRATION_STATUS_COLO:
-        if (!migrate_colo()) {
-            error_report("%s: critical error: calling COLO code without "
-                         "COLO enabled", __func__);
-        }
+        assert(migrate_colo());
         migrate_start_colo_process(s);
         s->vm_was_running = true;
         /* Fallthrough */
@@ -3221,11 +3231,10 @@ void migrate_fd_connect(MigrationState *s, Error *error_in)
 
     if (resume) {
         /* This is a resumed migration */
-        rate_limit = migrate_max_postcopy_bandwidth() /
-            XFER_LIMIT_RATIO;
+        rate_limit = migrate_max_postcopy_bandwidth();
     } else {
         /* This is a fresh new migration */
-        rate_limit = migrate_max_bandwidth() / XFER_LIMIT_RATIO;
+        rate_limit = migrate_max_bandwidth();
 
         /* Notify before starting migration thread */
         notifier_list_notify(&migration_state_notifiers, s);

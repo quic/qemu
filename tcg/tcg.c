@@ -63,6 +63,9 @@
 #include "tcg/tcg-temp-internal.h"
 #include "tcg-internal.h"
 #include "accel/tcg/perf.h"
+#ifdef CONFIG_USER_ONLY
+#include "exec/user/guest-base.h"
+#endif
 
 /* Forward declarations for functions declared in tcg-target.c.inc and
    used here. */
@@ -180,6 +183,54 @@ static bool tcg_target_const_match(int64_t val, TCGType type, int ct);
 #ifdef TCG_TARGET_NEED_LDST_LABELS
 static int tcg_out_ldst_finalize(TCGContext *s);
 #endif
+
+typedef struct TCGLdstHelperParam {
+    TCGReg (*ra_gen)(TCGContext *s, const TCGLabelQemuLdst *l, int arg_reg);
+    unsigned ntmp;
+    int tmp[3];
+} TCGLdstHelperParam;
+
+static void tcg_out_ld_helper_args(TCGContext *s, const TCGLabelQemuLdst *l,
+                                   const TCGLdstHelperParam *p)
+    __attribute__((unused));
+static void tcg_out_ld_helper_ret(TCGContext *s, const TCGLabelQemuLdst *l,
+                                  bool load_sign, const TCGLdstHelperParam *p)
+    __attribute__((unused));
+static void tcg_out_st_helper_args(TCGContext *s, const TCGLabelQemuLdst *l,
+                                   const TCGLdstHelperParam *p)
+    __attribute__((unused));
+
+static void * const qemu_ld_helpers[MO_SSIZE + 1] __attribute__((unused)) = {
+    [MO_UB] = helper_ldub_mmu,
+    [MO_SB] = helper_ldsb_mmu,
+    [MO_UW] = helper_lduw_mmu,
+    [MO_SW] = helper_ldsw_mmu,
+    [MO_UL] = helper_ldul_mmu,
+    [MO_UQ] = helper_ldq_mmu,
+#if TCG_TARGET_REG_BITS == 64
+    [MO_SL] = helper_ldsl_mmu,
+    [MO_128] = helper_ld16_mmu,
+#endif
+};
+
+static void * const qemu_st_helpers[MO_SIZE + 1] __attribute__((unused)) = {
+    [MO_8]  = helper_stb_mmu,
+    [MO_16] = helper_stw_mmu,
+    [MO_32] = helper_stl_mmu,
+    [MO_64] = helper_stq_mmu,
+#if TCG_TARGET_REG_BITS == 64
+    [MO_128] = helper_st16_mmu,
+#endif
+};
+
+typedef struct {
+    MemOp atom;   /* lg2 bits of atomicity required */
+    MemOp align;  /* lg2 bits of alignment to use */
+} TCGAtomAlign;
+
+static TCGAtomAlign atom_and_align_for_opc(TCGContext *s, MemOp opc,
+                                           MemOp host_atom, bool allow_two_ops)
+    __attribute__((unused));
 
 TCGContext tcg_init_ctx;
 __thread TCGContext *tcg_ctx;
@@ -366,8 +417,17 @@ void tcg_raise_tb_overflow(TCGContext *s)
     siglongjmp(s->jmp_trans, -2);
 }
 
+/*
+ * Used by tcg_out_movext{1,2} to hold the arguments for tcg_out_movext.
+ * By the time we arrive at tcg_out_movext1, @dst is always a TCGReg.
+ *
+ * However, tcg_out_helper_load_slots reuses this field to hold an
+ * argument slot number (which may designate a argument register or an
+ * argument stack slot), converting to TCGReg once all arguments that
+ * are destined for the stack are processed.
+ */
 typedef struct TCGMovExtend {
-    TCGReg dst;
+    unsigned dst;
     TCGReg src;
     TCGType dst_type;
     TCGType src_type;
@@ -459,9 +519,8 @@ static void tcg_out_movext1(TCGContext *s, const TCGMovExtend *i)
  * between the sources and destinations.
  */
 
-static void __attribute__((unused))
-tcg_out_movext2(TCGContext *s, const TCGMovExtend *i1,
-                const TCGMovExtend *i2, int scratch)
+static void tcg_out_movext2(TCGContext *s, const TCGMovExtend *i1,
+                            const TCGMovExtend *i2, int scratch)
 {
     TCGReg src1 = i1->src;
     TCGReg src2 = i2->src;
@@ -487,6 +546,82 @@ tcg_out_movext2(TCGContext *s, const TCGMovExtend *i1,
     }
     tcg_out_movext1_new_src(s, i2, src2);
     tcg_out_movext1_new_src(s, i1, src1);
+}
+
+/**
+ * tcg_out_movext3 -- move and extend three pair
+ * @s: tcg context
+ * @i1: first move description
+ * @i2: second move description
+ * @i3: third move description
+ * @scratch: temporary register, or -1 for none
+ *
+ * As tcg_out_movext, for all of @i1, @i2 and @i3, caring for overlap
+ * between the sources and destinations.
+ */
+
+static void tcg_out_movext3(TCGContext *s, const TCGMovExtend *i1,
+                            const TCGMovExtend *i2, const TCGMovExtend *i3,
+                            int scratch)
+{
+    TCGReg src1 = i1->src;
+    TCGReg src2 = i2->src;
+    TCGReg src3 = i3->src;
+
+    if (i1->dst != src2 && i1->dst != src3) {
+        tcg_out_movext1(s, i1);
+        tcg_out_movext2(s, i2, i3, scratch);
+        return;
+    }
+    if (i2->dst != src1 && i2->dst != src3) {
+        tcg_out_movext1(s, i2);
+        tcg_out_movext2(s, i1, i3, scratch);
+        return;
+    }
+    if (i3->dst != src1 && i3->dst != src2) {
+        tcg_out_movext1(s, i3);
+        tcg_out_movext2(s, i1, i2, scratch);
+        return;
+    }
+
+    /*
+     * There is a cycle.  Since there are only 3 nodes, the cycle is
+     * either "clockwise" or "anti-clockwise", and can be solved with
+     * a single scratch or two xchg.
+     */
+    if (i1->dst == src2 && i2->dst == src3 && i3->dst == src1) {
+        /* "Clockwise" */
+        if (tcg_out_xchg(s, MAX(i1->src_type, i2->src_type), src1, src2)) {
+            tcg_out_xchg(s, MAX(i2->src_type, i3->src_type), src2, src3);
+            /* The data is now in the correct registers, now extend. */
+            tcg_out_movext1_new_src(s, i1, i1->dst);
+            tcg_out_movext1_new_src(s, i2, i2->dst);
+            tcg_out_movext1_new_src(s, i3, i3->dst);
+        } else {
+            tcg_debug_assert(scratch >= 0);
+            tcg_out_mov(s, i1->src_type, scratch, src1);
+            tcg_out_movext1(s, i3);
+            tcg_out_movext1(s, i2);
+            tcg_out_movext1_new_src(s, i1, scratch);
+        }
+    } else if (i1->dst == src3 && i2->dst == src1 && i3->dst == src2) {
+        /* "Anti-clockwise" */
+        if (tcg_out_xchg(s, MAX(i2->src_type, i3->src_type), src2, src3)) {
+            tcg_out_xchg(s, MAX(i1->src_type, i2->src_type), src1, src2);
+            /* The data is now in the correct registers, now extend. */
+            tcg_out_movext1_new_src(s, i1, i1->dst);
+            tcg_out_movext1_new_src(s, i2, i2->dst);
+            tcg_out_movext1_new_src(s, i3, i3->dst);
+        } else {
+            tcg_debug_assert(scratch >= 0);
+            tcg_out_mov(s, i1->src_type, scratch, src1);
+            tcg_out_movext1(s, i2);
+            tcg_out_movext1(s, i3);
+            tcg_out_movext1_new_src(s, i1, scratch);
+        }
+    } else {
+        g_assert_not_reached();
+    }
 }
 
 #define C_PFX1(P, A)                    P##A
@@ -714,6 +849,77 @@ static TCGHelperInfo all_helpers[] = {
 #include "exec/helper-tcg.h"
 };
 static GHashTable *helper_table;
+
+/*
+ * Create TCGHelperInfo structures for "tcg/tcg-ldst.h" functions,
+ * akin to what "exec/helper-tcg.h" does with DEF_HELPER_FLAGS_N.
+ * We only use these for layout in tcg_out_ld_helper_ret and
+ * tcg_out_st_helper_args, and share them between several of
+ * the helpers, with the end result that it's easier to build manually.
+ */
+
+#if TCG_TARGET_REG_BITS == 32
+# define dh_typecode_ttl  dh_typecode_i32
+#else
+# define dh_typecode_ttl  dh_typecode_i64
+#endif
+
+static TCGHelperInfo info_helper_ld32_mmu = {
+    .flags = TCG_CALL_NO_WG,
+    .typemask = dh_typemask(ttl, 0)  /* return tcg_target_ulong */
+              | dh_typemask(env, 1)
+              | dh_typemask(i64, 2)  /* uint64_t addr */
+              | dh_typemask(i32, 3)  /* unsigned oi */
+              | dh_typemask(ptr, 4)  /* uintptr_t ra */
+};
+
+static TCGHelperInfo info_helper_ld64_mmu = {
+    .flags = TCG_CALL_NO_WG,
+    .typemask = dh_typemask(i64, 0)  /* return uint64_t */
+              | dh_typemask(env, 1)
+              | dh_typemask(i64, 2)  /* uint64_t addr */
+              | dh_typemask(i32, 3)  /* unsigned oi */
+              | dh_typemask(ptr, 4)  /* uintptr_t ra */
+};
+
+static TCGHelperInfo info_helper_ld128_mmu = {
+    .flags = TCG_CALL_NO_WG,
+    .typemask = dh_typemask(i128, 0) /* return Int128 */
+              | dh_typemask(env, 1)
+              | dh_typemask(i64, 2)  /* uint64_t addr */
+              | dh_typemask(i32, 3)  /* unsigned oi */
+              | dh_typemask(ptr, 4)  /* uintptr_t ra */
+};
+
+static TCGHelperInfo info_helper_st32_mmu = {
+    .flags = TCG_CALL_NO_WG,
+    .typemask = dh_typemask(void, 0)
+              | dh_typemask(env, 1)
+              | dh_typemask(i64, 2)  /* uint64_t addr */
+              | dh_typemask(i32, 3)  /* uint32_t data */
+              | dh_typemask(i32, 4)  /* unsigned oi */
+              | dh_typemask(ptr, 5)  /* uintptr_t ra */
+};
+
+static TCGHelperInfo info_helper_st64_mmu = {
+    .flags = TCG_CALL_NO_WG,
+    .typemask = dh_typemask(void, 0)
+              | dh_typemask(env, 1)
+              | dh_typemask(i64, 2)  /* uint64_t addr */
+              | dh_typemask(i64, 3)  /* uint64_t data */
+              | dh_typemask(i32, 4)  /* unsigned oi */
+              | dh_typemask(ptr, 5)  /* uintptr_t ra */
+};
+
+static TCGHelperInfo info_helper_st128_mmu = {
+    .flags = TCG_CALL_NO_WG,
+    .typemask = dh_typemask(void, 0)
+              | dh_typemask(env, 1)
+              | dh_typemask(i64, 2)  /* uint64_t addr */
+              | dh_typemask(i128, 3) /* Int128 data */
+              | dh_typemask(i32, 4)  /* unsigned oi */
+              | dh_typemask(ptr, 5)  /* uintptr_t ra */
+};
 
 #ifdef CONFIG_TCG_INTERPRETER
 static ffi_type *typecode_to_ffi(int argmask)
@@ -1126,6 +1332,13 @@ static void tcg_context_init(unsigned max_cpus)
                             (gpointer)&all_helpers[i]);
     }
 
+    init_call_layout(&info_helper_ld32_mmu);
+    init_call_layout(&info_helper_ld64_mmu);
+    init_call_layout(&info_helper_ld128_mmu);
+    init_call_layout(&info_helper_st32_mmu);
+    init_call_layout(&info_helper_st64_mmu);
+    init_call_layout(&info_helper_st128_mmu);
+
 #ifdef CONFIG_TCG_INTERPRETER
     init_ffi_layouts();
 #endif
@@ -1310,6 +1523,9 @@ void tcg_func_start(TCGContext *s)
     QTAILQ_INIT(&s->ops);
     QTAILQ_INIT(&s->free_ops);
     QSIMPLEQ_INIT(&s->labels);
+
+    tcg_debug_assert(s->addr_type == TCG_TYPE_I32 ||
+                     s->addr_type == TCG_TYPE_I64);
 }
 
 static TCGTemp *tcg_temp_alloc(TCGContext *s)
@@ -1626,14 +1842,25 @@ bool tcg_op_supported(TCGOpcode op)
     case INDEX_op_exit_tb:
     case INDEX_op_goto_tb:
     case INDEX_op_goto_ptr:
-    case INDEX_op_qemu_ld_i32:
-    case INDEX_op_qemu_st_i32:
-    case INDEX_op_qemu_ld_i64:
-    case INDEX_op_qemu_st_i64:
+    case INDEX_op_qemu_ld_a32_i32:
+    case INDEX_op_qemu_ld_a64_i32:
+    case INDEX_op_qemu_st_a32_i32:
+    case INDEX_op_qemu_st_a64_i32:
+    case INDEX_op_qemu_ld_a32_i64:
+    case INDEX_op_qemu_ld_a64_i64:
+    case INDEX_op_qemu_st_a32_i64:
+    case INDEX_op_qemu_st_a64_i64:
         return true;
 
-    case INDEX_op_qemu_st8_i32:
+    case INDEX_op_qemu_st8_a32_i32:
+    case INDEX_op_qemu_st8_a64_i32:
         return TCG_TARGET_HAS_qemu_st8_i32;
+
+    case INDEX_op_qemu_ld_a32_i128:
+    case INDEX_op_qemu_ld_a64_i128:
+    case INDEX_op_qemu_st_a32_i128:
+    case INDEX_op_qemu_st_a64_i128:
+        return TCG_TARGET_HAS_qemu_ldst_i128;
 
     case INDEX_op_mov_i32:
     case INDEX_op_setcond_i32:
@@ -2087,7 +2314,7 @@ static const char * const cond_name[] =
     [TCG_COND_GTU] = "gtu"
 };
 
-static const char * const ldst_name[] =
+static const char * const ldst_name[(MO_BSWAP | MO_SSIZE) + 1] =
 {
     [MO_UB]   = "ub",
     [MO_SB]   = "sb",
@@ -2101,22 +2328,28 @@ static const char * const ldst_name[] =
     [MO_BEUL] = "beul",
     [MO_BESL] = "besl",
     [MO_BEUQ] = "beq",
+    [MO_128 + MO_BE] = "beo",
+    [MO_128 + MO_LE] = "leo",
 };
 
 static const char * const alignment_name[(MO_AMASK >> MO_ASHIFT) + 1] = {
-#ifdef TARGET_ALIGNED_ONLY
     [MO_UNALN >> MO_ASHIFT]    = "un+",
-    [MO_ALIGN >> MO_ASHIFT]    = "",
-#else
-    [MO_UNALN >> MO_ASHIFT]    = "",
     [MO_ALIGN >> MO_ASHIFT]    = "al+",
-#endif
     [MO_ALIGN_2 >> MO_ASHIFT]  = "al2+",
     [MO_ALIGN_4 >> MO_ASHIFT]  = "al4+",
     [MO_ALIGN_8 >> MO_ASHIFT]  = "al8+",
     [MO_ALIGN_16 >> MO_ASHIFT] = "al16+",
     [MO_ALIGN_32 >> MO_ASHIFT] = "al32+",
     [MO_ALIGN_64 >> MO_ASHIFT] = "al64+",
+};
+
+static const char * const atom_name[(MO_ATOM_MASK >> MO_ATOM_SHIFT) + 1] = {
+    [MO_ATOM_IFALIGN >> MO_ATOM_SHIFT] = "",
+    [MO_ATOM_IFALIGN_PAIR >> MO_ATOM_SHIFT] = "pair+",
+    [MO_ATOM_WITHIN16 >> MO_ATOM_SHIFT] = "w16+",
+    [MO_ATOM_WITHIN16_PAIR >> MO_ATOM_SHIFT] = "w16p+",
+    [MO_ATOM_SUBALIGN >> MO_ATOM_SHIFT] = "sub+",
+    [MO_ATOM_NONE >> MO_ATOM_SHIFT] = "noat+",
 };
 
 static const char bswap_flag_name[][6] = {
@@ -2164,13 +2397,8 @@ static void tcg_dump_ops(TCGContext *s, FILE *f, bool have_prefs)
             col += ne_fprintf(f, "\n ----");
 
             for (i = 0; i < TARGET_INSN_START_WORDS; ++i) {
-                target_ulong a;
-#if TARGET_LONG_BITS > TCG_TARGET_REG_BITS
-                a = deposit64(op->args[i * 2], 32, 32, op->args[i * 2 + 1]);
-#else
-                a = op->args[i];
-#endif
-                col += ne_fprintf(f, " " TARGET_FMT_lx, a);
+                col += ne_fprintf(f, " %016" PRIx64,
+                                  tcg_get_insn_start_param(op, i));
             }
         } else if (c == INDEX_op_call) {
             const TCGHelperInfo *info = tcg_call_info(op);
@@ -2248,23 +2476,38 @@ static void tcg_dump_ops(TCGContext *s, FILE *f, bool have_prefs)
                 }
                 i = 1;
                 break;
-            case INDEX_op_qemu_ld_i32:
-            case INDEX_op_qemu_st_i32:
-            case INDEX_op_qemu_st8_i32:
-            case INDEX_op_qemu_ld_i64:
-            case INDEX_op_qemu_st_i64:
+            case INDEX_op_qemu_ld_a32_i32:
+            case INDEX_op_qemu_ld_a64_i32:
+            case INDEX_op_qemu_st_a32_i32:
+            case INDEX_op_qemu_st_a64_i32:
+            case INDEX_op_qemu_st8_a32_i32:
+            case INDEX_op_qemu_st8_a64_i32:
+            case INDEX_op_qemu_ld_a32_i64:
+            case INDEX_op_qemu_ld_a64_i64:
+            case INDEX_op_qemu_st_a32_i64:
+            case INDEX_op_qemu_st_a64_i64:
+            case INDEX_op_qemu_ld_a32_i128:
+            case INDEX_op_qemu_ld_a64_i128:
+            case INDEX_op_qemu_st_a32_i128:
+            case INDEX_op_qemu_st_a64_i128:
                 {
+                    const char *s_al, *s_op, *s_at;
                     MemOpIdx oi = op->args[k++];
                     MemOp op = get_memop(oi);
                     unsigned ix = get_mmuidx(oi);
 
-                    if (op & ~(MO_AMASK | MO_BSWAP | MO_SSIZE)) {
-                        col += ne_fprintf(f, ",$0x%x,%u", op, ix);
+                    s_al = alignment_name[(op & MO_AMASK) >> MO_ASHIFT];
+                    s_op = ldst_name[op & (MO_BSWAP | MO_SSIZE)];
+                    s_at = atom_name[(op & MO_ATOM_MASK) >> MO_ATOM_SHIFT];
+                    op &= ~(MO_AMASK | MO_BSWAP | MO_SSIZE | MO_ATOM_MASK);
+
+                    /* If all fields are accounted for, print symbolically. */
+                    if (!op && s_al && s_op && s_at) {
+                        col += ne_fprintf(f, ",%s%s%s,%u",
+                                          s_at, s_al, s_op, ix);
                     } else {
-                        const char *s_al, *s_op;
-                        s_al = alignment_name[(op & MO_AMASK) >> MO_ASHIFT];
-                        s_op = ldst_name[op & (MO_BSWAP | MO_SSIZE)];
-                        col += ne_fprintf(f, ",%s%s,%u", s_al, s_op, ix);
+                        op = get_memop(oi);
+                        col += ne_fprintf(f, ",$0x%x,%u", op, ix);
                     }
                     i = 1;
                 }
@@ -5011,6 +5254,613 @@ static void tcg_reg_alloc_call(TCGContext *s, TCGOp *op)
     }
 }
 
+/**
+ * atom_and_align_for_opc:
+ * @s: tcg context
+ * @opc: memory operation code
+ * @host_atom: MO_ATOM_{IFALIGN,WITHIN16,SUBALIGN} for host operations
+ * @allow_two_ops: true if we are prepared to issue two operations
+ *
+ * Return the alignment and atomicity to use for the inline fast path
+ * for the given memory operation.  The alignment may be larger than
+ * that specified in @opc, and the correct alignment will be diagnosed
+ * by the slow path helper.
+ *
+ * If @allow_two_ops, the host is prepared to test for 2x alignment,
+ * and issue two loads or stores for subalignment.
+ */
+static TCGAtomAlign atom_and_align_for_opc(TCGContext *s, MemOp opc,
+                                           MemOp host_atom, bool allow_two_ops)
+{
+    MemOp align = get_alignment_bits(opc);
+    MemOp size = opc & MO_SIZE;
+    MemOp half = size ? size - 1 : 0;
+    MemOp atmax;
+    MemOp atom;
+
+    /* When serialized, no further atomicity required.  */
+    if (s->gen_tb->cflags & CF_PARALLEL) {
+        atom = opc & MO_ATOM_MASK;
+    } else {
+        atom = MO_ATOM_NONE;
+    }
+
+    switch (atom) {
+    case MO_ATOM_NONE:
+        /* The operation requires no specific atomicity. */
+        atmax = MO_8;
+        break;
+
+    case MO_ATOM_IFALIGN:
+        atmax = size;
+        break;
+
+    case MO_ATOM_IFALIGN_PAIR:
+        atmax = half;
+        break;
+
+    case MO_ATOM_WITHIN16:
+        atmax = size;
+        if (size == MO_128) {
+            /* Misalignment implies !within16, and therefore no atomicity. */
+        } else if (host_atom != MO_ATOM_WITHIN16) {
+            /* The host does not implement within16, so require alignment. */
+            align = MAX(align, size);
+        }
+        break;
+
+    case MO_ATOM_WITHIN16_PAIR:
+        atmax = size;
+        /*
+         * Misalignment implies !within16, and therefore half atomicity.
+         * Any host prepared for two operations can implement this with
+         * half alignment.
+         */
+        if (host_atom != MO_ATOM_WITHIN16 && allow_two_ops) {
+            align = MAX(align, half);
+        }
+        break;
+
+    case MO_ATOM_SUBALIGN:
+        atmax = size;
+        if (host_atom != MO_ATOM_SUBALIGN) {
+            /* If unaligned but not odd, there are subobjects up to half. */
+            if (allow_two_ops) {
+                align = MAX(align, half);
+            } else {
+                align = MAX(align, size);
+            }
+        }
+        break;
+
+    default:
+        g_assert_not_reached();
+    }
+
+    return (TCGAtomAlign){ .atom = atmax, .align = align };
+}
+
+/*
+ * Similarly for qemu_ld/st slow path helpers.
+ * We must re-implement tcg_gen_callN and tcg_reg_alloc_call simultaneously,
+ * using only the provided backend tcg_out_* functions.
+ */
+
+static int tcg_out_helper_stk_ofs(TCGType type, unsigned slot)
+{
+    int ofs = arg_slot_stk_ofs(slot);
+
+    /*
+     * Each stack slot is TCG_TARGET_LONG_BITS.  If the host does not
+     * require extension to uint64_t, adjust the address for uint32_t.
+     */
+    if (HOST_BIG_ENDIAN &&
+        TCG_TARGET_REG_BITS == 64 &&
+        type == TCG_TYPE_I32) {
+        ofs += 4;
+    }
+    return ofs;
+}
+
+static void tcg_out_helper_load_slots(TCGContext *s,
+                                      unsigned nmov, TCGMovExtend *mov,
+                                      const TCGLdstHelperParam *parm)
+{
+    unsigned i;
+    TCGReg dst3;
+
+    /*
+     * Start from the end, storing to the stack first.
+     * This frees those registers, so we need not consider overlap.
+     */
+    for (i = nmov; i-- > 0; ) {
+        unsigned slot = mov[i].dst;
+
+        if (arg_slot_reg_p(slot)) {
+            goto found_reg;
+        }
+
+        TCGReg src = mov[i].src;
+        TCGType dst_type = mov[i].dst_type;
+        MemOp dst_mo = dst_type == TCG_TYPE_I32 ? MO_32 : MO_64;
+
+        /* The argument is going onto the stack; extend into scratch. */
+        if ((mov[i].src_ext & MO_SIZE) != dst_mo) {
+            tcg_debug_assert(parm->ntmp != 0);
+            mov[i].dst = src = parm->tmp[0];
+            tcg_out_movext1(s, &mov[i]);
+        }
+
+        tcg_out_st(s, dst_type, src, TCG_REG_CALL_STACK,
+                   tcg_out_helper_stk_ofs(dst_type, slot));
+    }
+    return;
+
+ found_reg:
+    /*
+     * The remaining arguments are in registers.
+     * Convert slot numbers to argument registers.
+     */
+    nmov = i + 1;
+    for (i = 0; i < nmov; ++i) {
+        mov[i].dst = tcg_target_call_iarg_regs[mov[i].dst];
+    }
+
+    switch (nmov) {
+    case 4:
+        /* The backend must have provided enough temps for the worst case. */
+        tcg_debug_assert(parm->ntmp >= 2);
+
+        dst3 = mov[3].dst;
+        for (unsigned j = 0; j < 3; ++j) {
+            if (dst3 == mov[j].src) {
+                /*
+                 * Conflict. Copy the source to a temporary, perform the
+                 * remaining moves, then the extension from our scratch
+                 * on the way out.
+                 */
+                TCGReg scratch = parm->tmp[1];
+
+                tcg_out_mov(s, mov[3].src_type, scratch, mov[3].src);
+                tcg_out_movext3(s, mov, mov + 1, mov + 2, parm->tmp[0]);
+                tcg_out_movext1_new_src(s, &mov[3], scratch);
+                break;
+            }
+        }
+
+        /* No conflicts: perform this move and continue. */
+        tcg_out_movext1(s, &mov[3]);
+        /* fall through */
+
+    case 3:
+        tcg_out_movext3(s, mov, mov + 1, mov + 2,
+                        parm->ntmp ? parm->tmp[0] : -1);
+        break;
+    case 2:
+        tcg_out_movext2(s, mov, mov + 1,
+                        parm->ntmp ? parm->tmp[0] : -1);
+        break;
+    case 1:
+        tcg_out_movext1(s, mov);
+        break;
+    default:
+        g_assert_not_reached();
+    }
+}
+
+static void tcg_out_helper_load_imm(TCGContext *s, unsigned slot,
+                                    TCGType type, tcg_target_long imm,
+                                    const TCGLdstHelperParam *parm)
+{
+    if (arg_slot_reg_p(slot)) {
+        tcg_out_movi(s, type, tcg_target_call_iarg_regs[slot], imm);
+    } else {
+        int ofs = tcg_out_helper_stk_ofs(type, slot);
+        if (!tcg_out_sti(s, type, imm, TCG_REG_CALL_STACK, ofs)) {
+            tcg_debug_assert(parm->ntmp != 0);
+            tcg_out_movi(s, type, parm->tmp[0], imm);
+            tcg_out_st(s, type, parm->tmp[0], TCG_REG_CALL_STACK, ofs);
+        }
+    }
+}
+
+static void tcg_out_helper_load_common_args(TCGContext *s,
+                                            const TCGLabelQemuLdst *ldst,
+                                            const TCGLdstHelperParam *parm,
+                                            const TCGHelperInfo *info,
+                                            unsigned next_arg)
+{
+    TCGMovExtend ptr_mov = {
+        .dst_type = TCG_TYPE_PTR,
+        .src_type = TCG_TYPE_PTR,
+        .src_ext = sizeof(void *) == 4 ? MO_32 : MO_64
+    };
+    const TCGCallArgumentLoc *loc = &info->in[0];
+    TCGType type;
+    unsigned slot;
+    tcg_target_ulong imm;
+
+    /*
+     * Handle env, which is always first.
+     */
+    ptr_mov.dst = loc->arg_slot;
+    ptr_mov.src = TCG_AREG0;
+    tcg_out_helper_load_slots(s, 1, &ptr_mov, parm);
+
+    /*
+     * Handle oi.
+     */
+    imm = ldst->oi;
+    loc = &info->in[next_arg];
+    type = TCG_TYPE_I32;
+    switch (loc->kind) {
+    case TCG_CALL_ARG_NORMAL:
+        break;
+    case TCG_CALL_ARG_EXTEND_U:
+    case TCG_CALL_ARG_EXTEND_S:
+        /* No extension required for MemOpIdx. */
+        tcg_debug_assert(imm <= INT32_MAX);
+        type = TCG_TYPE_REG;
+        break;
+    default:
+        g_assert_not_reached();
+    }
+    tcg_out_helper_load_imm(s, loc->arg_slot, type, imm, parm);
+    next_arg++;
+
+    /*
+     * Handle ra.
+     */
+    loc = &info->in[next_arg];
+    slot = loc->arg_slot;
+    if (parm->ra_gen) {
+        int arg_reg = -1;
+        TCGReg ra_reg;
+
+        if (arg_slot_reg_p(slot)) {
+            arg_reg = tcg_target_call_iarg_regs[slot];
+        }
+        ra_reg = parm->ra_gen(s, ldst, arg_reg);
+
+        ptr_mov.dst = slot;
+        ptr_mov.src = ra_reg;
+        tcg_out_helper_load_slots(s, 1, &ptr_mov, parm);
+    } else {
+        imm = (uintptr_t)ldst->raddr;
+        tcg_out_helper_load_imm(s, slot, TCG_TYPE_PTR, imm, parm);
+    }
+}
+
+static unsigned tcg_out_helper_add_mov(TCGMovExtend *mov,
+                                       const TCGCallArgumentLoc *loc,
+                                       TCGType dst_type, TCGType src_type,
+                                       TCGReg lo, TCGReg hi)
+{
+    MemOp reg_mo;
+
+    if (dst_type <= TCG_TYPE_REG) {
+        MemOp src_ext;
+
+        switch (loc->kind) {
+        case TCG_CALL_ARG_NORMAL:
+            src_ext = src_type == TCG_TYPE_I32 ? MO_32 : MO_64;
+            break;
+        case TCG_CALL_ARG_EXTEND_U:
+            dst_type = TCG_TYPE_REG;
+            src_ext = MO_UL;
+            break;
+        case TCG_CALL_ARG_EXTEND_S:
+            dst_type = TCG_TYPE_REG;
+            src_ext = MO_SL;
+            break;
+        default:
+            g_assert_not_reached();
+        }
+
+        mov[0].dst = loc->arg_slot;
+        mov[0].dst_type = dst_type;
+        mov[0].src = lo;
+        mov[0].src_type = src_type;
+        mov[0].src_ext = src_ext;
+        return 1;
+    }
+
+    if (TCG_TARGET_REG_BITS == 32) {
+        assert(dst_type == TCG_TYPE_I64);
+        reg_mo = MO_32;
+    } else {
+        assert(dst_type == TCG_TYPE_I128);
+        reg_mo = MO_64;
+    }
+
+    mov[0].dst = loc[HOST_BIG_ENDIAN].arg_slot;
+    mov[0].src = lo;
+    mov[0].dst_type = TCG_TYPE_REG;
+    mov[0].src_type = TCG_TYPE_REG;
+    mov[0].src_ext = reg_mo;
+
+    mov[1].dst = loc[!HOST_BIG_ENDIAN].arg_slot;
+    mov[1].src = hi;
+    mov[1].dst_type = TCG_TYPE_REG;
+    mov[1].src_type = TCG_TYPE_REG;
+    mov[1].src_ext = reg_mo;
+
+    return 2;
+}
+
+static void tcg_out_ld_helper_args(TCGContext *s, const TCGLabelQemuLdst *ldst,
+                                   const TCGLdstHelperParam *parm)
+{
+    const TCGHelperInfo *info;
+    const TCGCallArgumentLoc *loc;
+    TCGMovExtend mov[2];
+    unsigned next_arg, nmov;
+    MemOp mop = get_memop(ldst->oi);
+
+    switch (mop & MO_SIZE) {
+    case MO_8:
+    case MO_16:
+    case MO_32:
+        info = &info_helper_ld32_mmu;
+        break;
+    case MO_64:
+        info = &info_helper_ld64_mmu;
+        break;
+    case MO_128:
+        info = &info_helper_ld128_mmu;
+        break;
+    default:
+        g_assert_not_reached();
+    }
+
+    /* Defer env argument. */
+    next_arg = 1;
+
+    loc = &info->in[next_arg];
+    if (TCG_TARGET_REG_BITS == 32 && s->addr_type == TCG_TYPE_I32) {
+        /*
+         * 32-bit host with 32-bit guest: zero-extend the guest address
+         * to 64-bits for the helper by storing the low part, then
+         * load a zero for the high part.
+         */
+        tcg_out_helper_add_mov(mov, loc + HOST_BIG_ENDIAN,
+                               TCG_TYPE_I32, TCG_TYPE_I32,
+                               ldst->addrlo_reg, -1);
+        tcg_out_helper_load_slots(s, 1, mov, parm);
+
+        tcg_out_helper_load_imm(s, loc[!HOST_BIG_ENDIAN].arg_slot,
+                                TCG_TYPE_I32, 0, parm);
+        next_arg += 2;
+    } else {
+        nmov = tcg_out_helper_add_mov(mov, loc, TCG_TYPE_I64, s->addr_type,
+                                      ldst->addrlo_reg, ldst->addrhi_reg);
+        tcg_out_helper_load_slots(s, nmov, mov, parm);
+        next_arg += nmov;
+    }
+
+    switch (info->out_kind) {
+    case TCG_CALL_RET_NORMAL:
+    case TCG_CALL_RET_BY_VEC:
+        break;
+    case TCG_CALL_RET_BY_REF:
+        /*
+         * The return reference is in the first argument slot.
+         * We need memory in which to return: re-use the top of stack.
+         */
+        {
+            int ofs_slot0 = TCG_TARGET_CALL_STACK_OFFSET;
+
+            if (arg_slot_reg_p(0)) {
+                tcg_out_addi_ptr(s, tcg_target_call_iarg_regs[0],
+                                 TCG_REG_CALL_STACK, ofs_slot0);
+            } else {
+                tcg_debug_assert(parm->ntmp != 0);
+                tcg_out_addi_ptr(s, parm->tmp[0],
+                                 TCG_REG_CALL_STACK, ofs_slot0);
+                tcg_out_st(s, TCG_TYPE_PTR, parm->tmp[0],
+                           TCG_REG_CALL_STACK, ofs_slot0);
+            }
+        }
+        break;
+    default:
+        g_assert_not_reached();
+    }
+
+    tcg_out_helper_load_common_args(s, ldst, parm, info, next_arg);
+}
+
+static void tcg_out_ld_helper_ret(TCGContext *s, const TCGLabelQemuLdst *ldst,
+                                  bool load_sign,
+                                  const TCGLdstHelperParam *parm)
+{
+    MemOp mop = get_memop(ldst->oi);
+    TCGMovExtend mov[2];
+    int ofs_slot0;
+
+    switch (ldst->type) {
+    case TCG_TYPE_I64:
+        if (TCG_TARGET_REG_BITS == 32) {
+            break;
+        }
+        /* fall through */
+
+    case TCG_TYPE_I32:
+        mov[0].dst = ldst->datalo_reg;
+        mov[0].src = tcg_target_call_oarg_reg(TCG_CALL_RET_NORMAL, 0);
+        mov[0].dst_type = ldst->type;
+        mov[0].src_type = TCG_TYPE_REG;
+
+        /*
+         * If load_sign, then we allowed the helper to perform the
+         * appropriate sign extension to tcg_target_ulong, and all
+         * we need now is a plain move.
+         *
+         * If they do not, then we expect the relevant extension
+         * instruction to be no more expensive than a move, and
+         * we thus save the icache etc by only using one of two
+         * helper functions.
+         */
+        if (load_sign || !(mop & MO_SIGN)) {
+            if (TCG_TARGET_REG_BITS == 32 || ldst->type == TCG_TYPE_I32) {
+                mov[0].src_ext = MO_32;
+            } else {
+                mov[0].src_ext = MO_64;
+            }
+        } else {
+            mov[0].src_ext = mop & MO_SSIZE;
+        }
+        tcg_out_movext1(s, mov);
+        return;
+
+    case TCG_TYPE_I128:
+        tcg_debug_assert(TCG_TARGET_REG_BITS == 64);
+        ofs_slot0 = TCG_TARGET_CALL_STACK_OFFSET;
+        switch (TCG_TARGET_CALL_RET_I128) {
+        case TCG_CALL_RET_NORMAL:
+            break;
+        case TCG_CALL_RET_BY_VEC:
+            tcg_out_st(s, TCG_TYPE_V128,
+                       tcg_target_call_oarg_reg(TCG_CALL_RET_BY_VEC, 0),
+                       TCG_REG_CALL_STACK, ofs_slot0);
+            /* fall through */
+        case TCG_CALL_RET_BY_REF:
+            tcg_out_ld(s, TCG_TYPE_I64, ldst->datalo_reg,
+                       TCG_REG_CALL_STACK, ofs_slot0 + 8 * HOST_BIG_ENDIAN);
+            tcg_out_ld(s, TCG_TYPE_I64, ldst->datahi_reg,
+                       TCG_REG_CALL_STACK, ofs_slot0 + 8 * !HOST_BIG_ENDIAN);
+            return;
+        default:
+            g_assert_not_reached();
+        }
+        break;
+
+    default:
+        g_assert_not_reached();
+    }
+
+    mov[0].dst = ldst->datalo_reg;
+    mov[0].src =
+        tcg_target_call_oarg_reg(TCG_CALL_RET_NORMAL, HOST_BIG_ENDIAN);
+    mov[0].dst_type = TCG_TYPE_I32;
+    mov[0].src_type = TCG_TYPE_I32;
+    mov[0].src_ext = TCG_TARGET_REG_BITS == 32 ? MO_32 : MO_64;
+
+    mov[1].dst = ldst->datahi_reg;
+    mov[1].src =
+        tcg_target_call_oarg_reg(TCG_CALL_RET_NORMAL, !HOST_BIG_ENDIAN);
+    mov[1].dst_type = TCG_TYPE_REG;
+    mov[1].src_type = TCG_TYPE_REG;
+    mov[1].src_ext = TCG_TARGET_REG_BITS == 32 ? MO_32 : MO_64;
+
+    tcg_out_movext2(s, mov, mov + 1, parm->ntmp ? parm->tmp[0] : -1);
+}
+
+static void tcg_out_st_helper_args(TCGContext *s, const TCGLabelQemuLdst *ldst,
+                                   const TCGLdstHelperParam *parm)
+{
+    const TCGHelperInfo *info;
+    const TCGCallArgumentLoc *loc;
+    TCGMovExtend mov[4];
+    TCGType data_type;
+    unsigned next_arg, nmov, n;
+    MemOp mop = get_memop(ldst->oi);
+
+    switch (mop & MO_SIZE) {
+    case MO_8:
+    case MO_16:
+    case MO_32:
+        info = &info_helper_st32_mmu;
+        data_type = TCG_TYPE_I32;
+        break;
+    case MO_64:
+        info = &info_helper_st64_mmu;
+        data_type = TCG_TYPE_I64;
+        break;
+    case MO_128:
+        info = &info_helper_st128_mmu;
+        data_type = TCG_TYPE_I128;
+        break;
+    default:
+        g_assert_not_reached();
+    }
+
+    /* Defer env argument. */
+    next_arg = 1;
+    nmov = 0;
+
+    /* Handle addr argument. */
+    loc = &info->in[next_arg];
+    if (TCG_TARGET_REG_BITS == 32 && s->addr_type == TCG_TYPE_I32) {
+        /*
+         * 32-bit host with 32-bit guest: zero-extend the guest address
+         * to 64-bits for the helper by storing the low part.  Later,
+         * after we have processed the register inputs, we will load a
+         * zero for the high part.
+         */
+        tcg_out_helper_add_mov(mov, loc + HOST_BIG_ENDIAN,
+                               TCG_TYPE_I32, TCG_TYPE_I32,
+                               ldst->addrlo_reg, -1);
+        next_arg += 2;
+        nmov += 1;
+    } else {
+        n = tcg_out_helper_add_mov(mov, loc, TCG_TYPE_I64, s->addr_type,
+                                   ldst->addrlo_reg, ldst->addrhi_reg);
+        next_arg += n;
+        nmov += n;
+    }
+
+    /* Handle data argument. */
+    loc = &info->in[next_arg];
+    switch (loc->kind) {
+    case TCG_CALL_ARG_NORMAL:
+    case TCG_CALL_ARG_EXTEND_U:
+    case TCG_CALL_ARG_EXTEND_S:
+        n = tcg_out_helper_add_mov(mov + nmov, loc, data_type, ldst->type,
+                                   ldst->datalo_reg, ldst->datahi_reg);
+        next_arg += n;
+        nmov += n;
+        tcg_out_helper_load_slots(s, nmov, mov, parm);
+        break;
+
+    case TCG_CALL_ARG_BY_REF:
+        tcg_debug_assert(TCG_TARGET_REG_BITS == 64);
+        tcg_debug_assert(data_type == TCG_TYPE_I128);
+        tcg_out_st(s, TCG_TYPE_I64,
+                   HOST_BIG_ENDIAN ? ldst->datahi_reg : ldst->datalo_reg,
+                   TCG_REG_CALL_STACK, arg_slot_stk_ofs(loc[0].ref_slot));
+        tcg_out_st(s, TCG_TYPE_I64,
+                   HOST_BIG_ENDIAN ? ldst->datalo_reg : ldst->datahi_reg,
+                   TCG_REG_CALL_STACK, arg_slot_stk_ofs(loc[1].ref_slot));
+
+        tcg_out_helper_load_slots(s, nmov, mov, parm);
+
+        if (arg_slot_reg_p(loc->arg_slot)) {
+            tcg_out_addi_ptr(s, tcg_target_call_iarg_regs[loc->arg_slot],
+                             TCG_REG_CALL_STACK,
+                             arg_slot_stk_ofs(loc->ref_slot));
+        } else {
+            tcg_debug_assert(parm->ntmp != 0);
+            tcg_out_addi_ptr(s, parm->tmp[0], TCG_REG_CALL_STACK,
+                             arg_slot_stk_ofs(loc->ref_slot));
+            tcg_out_st(s, TCG_TYPE_PTR, parm->tmp[0],
+                       TCG_REG_CALL_STACK, arg_slot_stk_ofs(loc->arg_slot));
+        }
+        next_arg += 2;
+        break;
+
+    default:
+        g_assert_not_reached();
+    }
+
+    if (TCG_TARGET_REG_BITS == 32 && s->addr_type == TCG_TYPE_I32) {
+        /* Zero extend the address by loading a zero for the high part. */
+        loc = &info->in[1 + !HOST_BIG_ENDIAN];
+        tcg_out_helper_load_imm(s, loc->arg_slot, TCG_TYPE_I32, 0, parm);
+    }
+
+    tcg_out_helper_load_common_args(s, ldst, parm, info, next_arg);
+}
+
 #ifdef CONFIG_PROFILER
 
 /* avoid copy/paste errors */
@@ -5120,7 +5970,7 @@ int64_t tcg_cpu_exec_time(void)
 #endif
 
 
-int tcg_gen_code(TCGContext *s, TranslationBlock *tb, target_ulong pc_start)
+int tcg_gen_code(TCGContext *s, TranslationBlock *tb, uint64_t pc_start)
 {
 #ifdef CONFIG_PROFILER
     TCGProfile *prof = &s->prof;
@@ -5281,13 +6131,8 @@ int tcg_gen_code(TCGContext *s, TranslationBlock *tb, target_ulong pc_start)
             }
             num_insns++;
             for (i = 0; i < TARGET_INSN_START_WORDS; ++i) {
-                target_ulong a;
-#if TARGET_LONG_BITS > TCG_TARGET_REG_BITS
-                a = deposit64(op->args[i * 2], 32, 32, op->args[i * 2 + 1]);
-#else
-                a = op->args[i];
-#endif
-                s->gen_insn_data[num_insns][i] = a;
+                s->gen_insn_data[num_insns][i] =
+                    tcg_get_insn_start_param(op, i);
             }
             break;
         case INDEX_op_discard:

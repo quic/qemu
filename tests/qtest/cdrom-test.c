@@ -17,7 +17,7 @@
 
 static char isoimage[] = "cdrom-boot-iso-XXXXXX";
 
-static int exec_genisoimg(const char **args)
+static int exec_xorrisofs(const char **args)
 {
     gchar *out_err = NULL;
     gint exit_status = -1;
@@ -43,7 +43,7 @@ static int prepare_image(const char *arch, char *isoimage)
     char *codefile = NULL;
     int ifh, ret = -1;
     const char *args[] = {
-        "genisoimage", "-quiet", "-l", "-no-emul-boot",
+        "xorrisofs", "-quiet", "-l", "-no-emul-boot",
         "-b", NULL, "-o", isoimage, srcdir, NULL
     };
 
@@ -75,9 +75,9 @@ static int prepare_image(const char *arch, char *isoimage)
     }
 
     args[5] = strchr(codefile, '/') + 1;
-    ret = exec_genisoimg(args);
+    ret = exec_xorrisofs(args);
     if (ret) {
-        fprintf(stderr, "genisoimage failed: %i\n", ret);
+        fprintf(stderr, "xorrisofs failed: %i\n", ret);
     }
 
     unlink(codefile);
@@ -130,6 +130,11 @@ static void test_cdboot(gconstpointer data)
 
 static void add_x86_tests(void)
 {
+    if (!qtest_has_accel("tcg") && !qtest_has_accel("kvm")) {
+        g_test_skip("No KVM or TCG accelerator available, skipping boot tests");
+        return;
+    }
+
     qtest_add_data_func("cdrom/boot/default", "-cdrom ", test_cdboot);
     qtest_add_data_func("cdrom/boot/virtio-scsi",
                         "-device virtio-scsi -device scsi-cd,drive=cdr "
@@ -176,6 +181,11 @@ static void add_x86_tests(void)
 
 static void add_s390x_tests(void)
 {
+    if (!qtest_has_accel("tcg") && !qtest_has_accel("kvm")) {
+        g_test_skip("No KVM or TCG accelerator available, skipping boot tests");
+        return;
+    }
+
     qtest_add_data_func("cdrom/boot/default", "-cdrom ", test_cdboot);
     qtest_add_data_func("cdrom/boot/virtio-scsi",
                         "-device virtio-scsi -device scsi-cd,drive=cdr "
@@ -201,12 +211,12 @@ int main(int argc, char **argv)
 {
     int ret;
     const char *arch = qtest_get_arch();
-    const char *genisocheck[] = { "genisoimage", "-version", NULL };
+    const char *xorrisocheck[] = { "xorrisofs", "-version", NULL };
 
     g_test_init(&argc, &argv, NULL);
 
-    if (exec_genisoimg(genisocheck)) {
-        /* genisoimage not available - so can't run tests */
+    if (exec_xorrisofs(xorrisocheck)) {
+        /* xorrisofs not available - so can't run tests */
         return g_test_run();
     }
 

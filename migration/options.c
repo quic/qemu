@@ -598,7 +598,7 @@ void qmp_migrate_set_capabilities(MigrationCapabilityStatusList *params,
     MigrationCapabilityStatusList *cap;
     bool new_caps[MIGRATION_CAPABILITY__MAX];
 
-    if (migration_is_running(s->state)) {
+    if (migration_is_running(s->state) || migration_in_colo_state()) {
         error_setg(errp, QERR_MIGRATION_ACTIVE);
         return;
     }
@@ -1243,7 +1243,7 @@ static void migrate_params_apply(MigrateSetParameters *params, Error **errp)
         s->parameters.max_bandwidth = params->max_bandwidth;
         if (s->to_dst_file && !migration_in_postcopy()) {
             qemu_file_set_rate_limit(s->to_dst_file,
-                                s->parameters.max_bandwidth / XFER_LIMIT_RATIO);
+                                s->parameters.max_bandwidth);
         }
     }
 
@@ -1253,9 +1253,7 @@ static void migrate_params_apply(MigrateSetParameters *params, Error **errp)
 
     if (params->has_x_checkpoint_delay) {
         s->parameters.x_checkpoint_delay = params->x_checkpoint_delay;
-        if (migration_in_colo_state()) {
-            colo_checkpoint_notify(s);
-        }
+        colo_checkpoint_delay_set();
     }
 
     if (params->has_block_incremental) {
@@ -1275,7 +1273,7 @@ static void migrate_params_apply(MigrateSetParameters *params, Error **errp)
         s->parameters.max_postcopy_bandwidth = params->max_postcopy_bandwidth;
         if (s->to_dst_file && migration_in_postcopy()) {
             qemu_file_set_rate_limit(s->to_dst_file,
-                    s->parameters.max_postcopy_bandwidth / XFER_LIMIT_RATIO);
+                    s->parameters.max_postcopy_bandwidth);
         }
     }
     if (params->has_max_cpu_throttle) {

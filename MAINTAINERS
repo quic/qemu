@@ -245,6 +245,7 @@ M: Xiaojuan Yang <yangxiaojuan@loongson.cn>
 S: Maintained
 F: target/loongarch/
 F: tests/tcg/loongarch64/
+F: tests/avocado/machine_loongarch.py
 
 M68K TCG CPUs
 M: Laurent Vivier <laurent@vivier.eu>
@@ -2562,7 +2563,7 @@ Core Audio framework backend
 M: Gerd Hoffmann <kraxel@redhat.com>
 M: Philippe Mathieu-Daudé <philmd@linaro.org>
 R: Christian Schoenebeck <qemu_oss@crudebyte.com>
-R: Akihiko Odaki <akihiko.odaki@gmail.com>
+R: Akihiko Odaki <akihiko.odaki@daynix.com>
 S: Odd Fixes
 F: audio/coreaudio.c
 
@@ -2846,7 +2847,7 @@ F: docs/devel/ui.rst
 Cocoa graphics
 M: Peter Maydell <peter.maydell@linaro.org>
 M: Philippe Mathieu-Daudé <philmd@linaro.org>
-R: Akihiko Odaki <akihiko.odaki@gmail.com>
+R: Akihiko Odaki <akihiko.odaki@daynix.com>
 S: Odd Fixes
 F: ui/cocoa.m
 
