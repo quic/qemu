@@ -24,7 +24,6 @@
 #include "hw/qdev-properties.h"
 #include "hw/hexagon/hexagon.h"
 #include "hw/timer/qct-qtimer.h"
-#include "hw/hexagon/machine_configs.h"
 #include "hw/intc/l2vic.h"
 #include "hw/loader.h"
 #include "qapi/error.h"
@@ -37,6 +36,8 @@
 #include "include/sysemu/sysemu.h"
 #include "target/hexagon/internal.h"
 #include "libgen.h"
+
+#include "machine_configs.h.inc"
 
 static hexagon_config_table *cfgTable;
 static hexagon_config_extensions *cfgExtensions;
@@ -305,7 +306,7 @@ see hw/vfio/pci-quirks.c
 
 /* ----------------------------------------------------------------- */
 /* Core-specific configuration settings are defined below this line. */
-/* Config table values defined in include/hw/hexagon/machine_configs */
+/* Config table values defined in machine_configs.h.inc              */
 /* ----------------------------------------------------------------- */
 
 static void v66g_1024_config_init(MachineState *machine)

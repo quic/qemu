@@ -17,10 +17,17 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HEXAGON_MACHINE_CONFIGS_H
-#define HEXAGON_MACHINE_CONFIGS_H
 
-hexagon_config_table v66g_1024_cfgtable = {
+/*
+ * Notice: the config table data structures below contain a mixture of
+ * the original values present on the real hardware AND values that
+ * are shifted.  The `_base` members are the ones which have been
+ * shifted.  During initialization, the hexagon_testboard will transform
+ * these entries back into the ones expected when accessing the config
+ * table.
+ */
+
+static hexagon_config_table v66g_1024_cfgtable = {
  /* The following values were derived from hexagon-sim, QuRT config files */
  /* and the hexagon scoreboard for v66g_1024 found here: http://go/q6area */
     .l2tcm_base =           0xd8000000,
@@ -75,7 +82,7 @@ hexagon_config_table v66g_1024_cfgtable = {
     .axi3_lowaddr =         0x00000000,
 };
 
-hexagon_config_extensions v66g_1024_extensions = {
+static hexagon_config_extensions v66g_1024_extensions = {
     .cfgbase =        0xd8180000,
     .cfgtable_size =  0x00000400,
     .l2tcm_size =     0x00000000,
@@ -86,7 +93,7 @@ hexagon_config_extensions v66g_1024_extensions = {
     .qtmr_rg1 =       0xfc922000,
 };
 
-hexagon_config_table v68n_1024_cfgtable = {
+static hexagon_config_table v68n_1024_cfgtable = {
  /* The following values were derived from hexagon-sim, QuRT config files, */
  /* and the hexagon scoreboard for v68n_1024 found here: http://go/q6area  */
     .l2tcm_base =           0xd8000000,
@@ -141,7 +148,7 @@ hexagon_config_table v68n_1024_cfgtable = {
     .axi3_lowaddr =         0x1f1f1f1f,
 };
 
-hexagon_config_extensions v68n_1024_extensions = {
+static hexagon_config_extensions v68n_1024_extensions = {
     .cfgbase =           0xde000000,
     .cfgtable_size =     0x00000400,
     .l2tcm_size =        0x00000000,
@@ -152,7 +159,7 @@ hexagon_config_extensions v68n_1024_extensions = {
     .qtmr_rg1 =          0xfc922000,
 };
 
-hexagon_config_table v69na_1024_cfgtable = {
+static hexagon_config_table v69na_1024_cfgtable = {
  /* The following values were derived from hexagon-sim, QuRT config files, */
  /* and the hexagon scoreboard for v69na_1024 found here: http://go/q6area */
     .l2tcm_base =           0xd8000000,
@@ -207,7 +214,7 @@ hexagon_config_table v69na_1024_cfgtable = {
     .axi3_lowaddr =         0x1f1f1f1f,
 };
 
-hexagon_config_extensions v69na_1024_extensions = {
+static hexagon_config_extensions v69na_1024_extensions = {
     .cfgbase =             0xde000000,
     .cfgtable_size =       0x00000400,
     .l2tcm_size =          0x00000000,
@@ -219,7 +226,7 @@ hexagon_config_extensions v69na_1024_extensions = {
 };
 
 
-hexagon_config_table v73na_1024_cfgtable = {
+static hexagon_config_table v73na_1024_cfgtable = {
     .l2tcm_base =           0xd8000000,
     .reserved =             0x00000000,
     .subsystem_base =       0x00002000,
@@ -272,7 +279,7 @@ hexagon_config_table v73na_1024_cfgtable = {
     .axi3_lowaddr =         0x00000000,
 };
 
-hexagon_config_extensions v73na_1024_extensions = {
+static hexagon_config_extensions v73na_1024_extensions = {
     .cfgbase =             0xd8180000,
     .cfgtable_size =       0x00000400,
     .l2tcm_size =          0x00000000,
@@ -283,7 +290,7 @@ hexagon_config_extensions v73na_1024_extensions = {
     .qtmr_rg1 =            0xfc922000,
 };
 
-hexagon_config_table v75na_1024_cfgtable = {
+static hexagon_config_table v75na_1024_cfgtable = {
     .l2tcm_base =            0xd8000000,
     .reserved =              0x00000000,
     .subsystem_base =        0x00002000,
@@ -336,7 +343,7 @@ hexagon_config_table v75na_1024_cfgtable = {
     .axi3_lowaddr =          0x000000e0,
 };
 
-hexagon_config_extensions v75na_1024_extensions = {
+static hexagon_config_extensions v75na_1024_extensions = {
     .cfgbase =             0xd8180000,
     .cfgtable_size =       0x00000400,
     .l2tcm_size =          0x00000000,
@@ -348,7 +355,7 @@ hexagon_config_extensions v75na_1024_extensions = {
 };
 
 
-hexagon_config_table SA8540P_cdsp0_cfgtable = {
+static hexagon_config_table SA8540P_cdsp0_cfgtable = {
     .l2tcm_base = 0x1a000000,
     .reserved = 0x00000000,
     .subsystem_base = 0x1b380000,
@@ -401,7 +408,7 @@ hexagon_config_table SA8540P_cdsp0_cfgtable = {
     .axi3_lowaddr = 0x00000000,
 };
 
-hexagon_config_extensions SA8540P_cdsp0_extensions = {
+static hexagon_config_extensions SA8540P_cdsp0_extensions = {
     .cfgbase =         0x1a000000 + 0x180000,
     .cfgtable_size =   0x00000400,
     .l2tcm_size =      0x00000000,
@@ -411,4 +418,3 @@ hexagon_config_extensions SA8540P_cdsp0_extensions = {
     .qtmr_rg0 =        0x1B300000 + 0xA0000,
     .qtmr_rg1 =        0x1B300000 + 0xA1000,
 };
-#endif
