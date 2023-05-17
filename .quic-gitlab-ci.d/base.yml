@@ -138,7 +138,8 @@ aarch64_check:
   needs: [aarch64_build]
   extends: .base-check
 
-test_hexagon_perf:
+# TODO: disabled while hardware is unavailable
+.DISABLED_test_hexagon_perf:
   needs: [hexagon_build]
   tags:
     - performance-hardware
