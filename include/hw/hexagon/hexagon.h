@@ -143,7 +143,13 @@ typedef  union {
     uint32_t reserved4;
     uint32_t reserved5;
     uint32_t hmx_cvt_mpy_size; /* FIXME: undocumented Size of the fractional multiplier in the HMX Covert */
-    uint32_t axi3_lowaddr; /* FIXME: undocumented */
+    uint32_t consistency_domain;
+    uint32_t capacity_domain;
+    uint32_t axi3_lowaddr;
+    uint32_t hmx_int8_subcolumns;
+    uint32_t corecfg_present;
+    uint32_t hmx_fp16_acc_exp;
+    uint32_t AXIM2_secondary_base;
   };
   uint32_t raw[HEXAGON_CFGSPACE_ENTRIES];
 } hexagon_config_table;

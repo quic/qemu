@@ -250,6 +250,7 @@ run-standalone_hw run-standalone_vec:
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<, "$< on $(TARGET_NAME)")
 	$(call run-test, $<, $(QEMU) $(PARANOID_OPTS) -kernel $<, "$< on $(TARGET_NAME) paranoid")
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< -M SA8540P_CDSP0,"$< on $(TARGET_NAME) cdsp0")
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< -M SA8775P_CDSP0,"$< on $(TARGET_NAME) cdsp0")
 
 ICOUNT_OPTS=-icount auto
 run-tlblock run-k0lock run-swi_wait run-timer_reg run-qtimer_test run-vid-group:
