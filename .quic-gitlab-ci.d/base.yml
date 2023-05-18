@@ -48,11 +48,11 @@ variables:
 
 .base-install:
   extends: .after-build
-  script: make -C $builddir install
+  script: make -C $builddir -j install
 
 .base-check-tcg:
   extends: .after-build
-  script: make -C $builddir check-tcg V=1
+  script: make -C $builddir -j check-tcg V=1
   artifacts:
     when: on_failure
     paths: [ "*_build" ]
@@ -60,7 +60,7 @@ variables:
 
 .base-check:
   extends: .after-build
-  script: make -C $builddir check
+  script: make -C $builddir -j check
   artifacts:
     when: on_failure
     paths: [ "*_build" ]
