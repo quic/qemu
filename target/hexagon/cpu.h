@@ -480,6 +480,10 @@ struct ArchCPU {
     uint32_t l2vic_base_addr;
     uint32_t qtimer_base_addr;
     MemoryRegion *vtcm;
+    bool isdben_etm_enable;
+    bool isdben_dfd_enable;
+    bool isdben_trusted;
+    bool isdben_secure;
 #endif
     uint32_t rev_reg;
     bool lldb_compat;
