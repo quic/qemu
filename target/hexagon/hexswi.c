@@ -232,9 +232,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int malloc_count = (count) ? count : 1;
         buf = g_malloc(malloc_count);
         if (buf == NULL) {
-            printf("%s:%d: "
-                "ERROR: Couldn't allocate temporary buffer (%d bytes)",
-                __func__, __LINE__, count);
+            CPUState *cs = env_cpu(env);
+            cpu_abort(cs,
+                "Error: %s couldn't allocate "
+                "temporybuffer (%d bytes)",
+                __func__, count);
         }
 
         rcu_read_lock();
