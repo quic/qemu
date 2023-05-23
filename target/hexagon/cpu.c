@@ -129,6 +129,7 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_BOOL("isdben-dfd-enable", HexagonCPU, isdben_dfd_enable, false),
     DEFINE_PROP_BOOL("isdben-trusted", HexagonCPU, isdben_trusted, false),
     DEFINE_PROP_BOOL("isdben-secure", HexagonCPU, isdben_secure, false),
+    DEFINE_PROP_STRING("dump-json-reg-file", HexagonCPU, dump_json_file),
 #endif
     DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, 0),
     DEFINE_PROP_BOOL("lldb-compat", HexagonCPU, lldb_compat, false),
@@ -233,7 +234,7 @@ static target_ulong read_p3_0(CPUHexagonState *env)
     return control_reg;
 }
 
-static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
+static void print_reg_(FILE *f, CPUHexagonState *env, int regnum, bool json)
 {
     target_ulong value;
 
@@ -244,9 +245,23 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
                             : env->gpr[regnum];
     }
 
-    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
-                 hexagon_regnames[regnum], value);
+    const char *fmt = json
+              ? "    \"%s\": 0x" TARGET_FMT_lx ",\n"
+              : "  %s = 0x" TARGET_FMT_lx "%c\n";
+    qemu_fprintf(f, fmt, hexagon_regnames[regnum],
+                 value);
 }
+
+static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
+{
+    print_reg_(f, env, regnum, false);
+}
+
+static void print_reg_json(FILE *f, CPUHexagonState *env, int regnum)
+{
+    print_reg_(f, env, regnum, true);
+}
+
 
 #ifndef CONFIG_USER_ONLY
 static target_ulong get_badva(CPUHexagonState *env)
@@ -441,6 +456,71 @@ void hexagon_dump(CPUHexagonState *env, FILE *f, int flags)
         }
         qemu_fprintf(f, "}\n");
     }
+}
+
+void hexagon_dump_json(CPUHexagonState *env_)
+{
+
+    HexagonCPU *cpu = env_archcpu(env_);
+    if (!cpu->dump_json_file) {
+        return;
+    }
+
+    FILE *f = fopen(cpu->dump_json_file, "w");
+
+    qemu_fprintf(f, "{\n");
+    qemu_fprintf(f, "  \"time_sec_utc\": %f,\n",
+        difftime(time(NULL), (time_t) 0));
+    qemu_fprintf(f, "  \"threads\": {\n");
+
+    CPUState *cs = NULL;
+    CPU_FOREACH(cs) {
+        cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *env = &cpu->env;
+
+        qemu_fprintf(f, "    \"%d\": {\n", cs->cpu_index);
+        for (int i = 0; i < 32; i++) {
+            print_reg_json(f, env, i);
+        }
+        print_reg_json(f, env, HEX_REG_SA0);
+        print_reg_json(f, env, HEX_REG_LC0);
+        print_reg_json(f, env, HEX_REG_SA1);
+        print_reg_json(f, env, HEX_REG_LC1);
+
+#ifdef CONFIG_USER_ONLY
+        print_reg_json(f, env, HEX_REG_M0);
+        print_reg_json(f, env, HEX_REG_M1);
+        print_reg_json(f, env, HEX_REG_USR);
+        print_reg_json(f, env, HEX_REG_P3_0_ALIASED);
+        print_reg_json(f, env, HEX_REG_GP);
+        print_reg_json(f, env, HEX_REG_UGP);
+        print_reg_json(f, env, HEX_REG_PC);
+#else
+        print_reg_json(f, env, HEX_REG_P3_0_ALIASED);
+        print_reg_json(f, env, HEX_REG_M0);
+        print_reg_json(f, env, HEX_REG_M1);
+        print_reg_json(f, env, HEX_REG_USR);
+        print_reg_json(f, env, HEX_REG_PC);
+        print_reg_json(f, env, HEX_REG_UGP);
+        print_reg_json(f, env, HEX_REG_GP);
+
+        print_reg_json(f, env, HEX_REG_CS0);
+        print_reg_json(f, env, HEX_REG_CS1);
+
+        print_reg_json(f, env, HEX_REG_UPCYCLELO);
+        print_reg_json(f, env, HEX_REG_UPCYCLEHI);
+        print_reg_json(f, env, HEX_REG_FRAMELIMIT);
+        print_reg_json(f, env, HEX_REG_FRAMEKEY);
+        print_reg_json(f, env, HEX_REG_PKTCNTLO);
+        print_reg_json(f, env, HEX_REG_PKTCNTHI);
+        print_reg_json(f, env, HEX_REG_UTIMERLO);
+        print_reg_json(f, env, HEX_REG_UTIMERHI);
+#endif
+        qemu_fprintf(f, "     },\n");
+    }
+    qemu_fprintf(f, "  },\n");
+    qemu_fprintf(f, "}\n");
+    fclose(f);
 }
 
 static void hexagon_dump_state(CPUState *cs, FILE *f, int flags)

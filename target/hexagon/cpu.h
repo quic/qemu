@@ -490,6 +490,7 @@ struct ArchCPU {
     target_ulong lldb_stack_adjust;
     bool paranoid_commit_state;
     uint32_t cluster_thread_count;
+    gchar *dump_json_file;
 };
 
 #ifndef CONFIG_USER_ONLY
@@ -634,6 +635,7 @@ typedef HexagonCPU ArchCPU;
 
 void hexagon_translate_init(void);
 void hexagon_cpu_soft_reset(CPUHexagonState *env);
+void hexagon_dump_json(CPUHexagonState *env);
 
 extern void hexagon_cpu_do_interrupt(CPUState *cpu);
 void register_trap_exception(CPUHexagonState *env, int type, int imm,

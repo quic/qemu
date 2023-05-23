@@ -170,6 +170,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 
         HexagonCPU *cpu = env_archcpu(env);
         if (!cpu->vp_mode) {
+            hexagon_dump_json(env);
             exit(ret);
         } else {
             CPUState *cs = CPU(cpu);

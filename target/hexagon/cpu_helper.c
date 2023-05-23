@@ -502,6 +502,7 @@ static target_ulong get_thread0_r2(void)
 void hexagon_stop_thread(CPUHexagonState *env)
 
 {
+            fprintf(stderr, "can do %s\n", __func__);
     HexagonCPU *cpu = env_archcpu(env);
     #if HEX_DEBUG
     HEX_DEBUG_LOG("%s: htid %d, cpu %p\n", __func__,
@@ -513,6 +514,9 @@ void hexagon_stop_thread(CPUHexagonState *env)
     if (!thread_enabled_mask) {
         if (!cpu->vp_mode) {
             /* All threads are stopped, exit */
+            if (cpu->dump_json_file) {
+                hexagon_dump_json(env);
+            }
             exit(get_thread0_r2());
         }
     }
