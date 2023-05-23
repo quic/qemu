@@ -256,7 +256,7 @@ def genptr_decl_new(f, tag, regtype, regid, regno):
         hex_common.bad_register(regtype, regid)
 
 
-def genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i):
+def genptr_decl_opn(f, tag, regtype, regid, i):
     if hex_common.is_pair(regid):
         genptr_decl(f, tag, regtype, regid, i)
     elif hex_common.is_single(regid):
@@ -265,9 +265,9 @@ def genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i):
         elif hex_common.is_new_val(regtype, regid, tag):
             genptr_decl_new(f, tag, regtype, regid, i)
         else:
-            hex_common.bad_register(regtype, regid, toss, numregs)
+            hex_common.bad_register(regtype, regid)
     else:
-        hex_common.bad_register(regtype, regid, toss, numregs)
+        hex_common.bad_register(regtype, regid)
 
 
 def genptr_decl_imm(f, immlett):
@@ -403,12 +403,12 @@ def genptr_src_read_opn(f, regtype, regid, tag):
         elif hex_common.is_new_val(regtype, regid, tag):
             genptr_src_read_new(f, regtype, regid)
         else:
-            hex_common.bad_register(tag, regtype, regid)
+            hex_common.bad_register(regtype, regid)
     else:
-        hex_common.bad_register(tag, regtype, regid)
+        hex_common.bad_register(regtype, regid)
 
 
-def gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i):
+def gen_helper_call_opn(f, tag, regtype, regid, i):
     if i > 0:
         f.write(", ")
     if hex_common.is_pair(regid):
@@ -419,9 +419,9 @@ def gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i):
         elif hex_common.is_new_val(regtype, regid, tag):
             f.write(f"{regtype}{regid}N")
         else:
-            hex_common.bad_register(regtype, regid, toss, numregs)
+            hex_common.bad_register(regtype, regid)
     else:
-        hex_common.bad_register(regtype, regid, toss, numregs)
+        hex_common.bad_register(regtype, regid)
 
 
 def gen_helper_decl_imm(f, immlett):
@@ -541,7 +541,7 @@ def genptr_dst_write_opn(f, regtype, regid, tag):
         else:
             genptr_dst_write(f, tag, regtype, regid)
     else:
-        hex_common.bad_register(regtype, regid, toss, numregs)
+        hex_common.bad_register(regtype, regid)
 
 
 ##
@@ -601,21 +601,21 @@ def gen_tcg_func(f, tag, regs, imms):
     i = 0
 
     ## Declare all the operands (regs and immediates)
-    for regtype, regid, toss, numregs in regs:
-        genptr_decl_opn(f, tag, regtype, regid, toss, numregs, i)
+    for regtype, regid in regs:
+        genptr_decl_opn(f, tag, regtype, regid, i)
         i += 1
     for immlett, bits, immshift in imms:
         genptr_decl_imm(f, immlett)
 
     ## Read all the inputs
-    for regtype, regid, toss, numregs in regs:
+    for regtype, regid in regs:
         if hex_common.is_read(regid):
             genptr_src_read_opn(f, regtype, regid, tag)
 
     if hex_common.is_idef_parser_enabled(tag):
         declared = []
         ## Handle registers
-        for regtype, regid, toss, numregs in regs:
+        for regtype, regid in regs:
             if hex_common.is_pair(regid) or (
                 hex_common.is_single(regid)
                 and hex_common.is_old_val(regtype, regid, tag)
@@ -626,7 +626,7 @@ def gen_tcg_func(f, tag, regs, imms):
             elif hex_common.is_new_val(regtype, regid, tag):
                 declared.append(f"{regtype}{regid}N")
             else:
-                hex_common.bad_register(regtype, regid, toss, numregs)
+                hex_common.bad_register(regtype, regid)
 
         ## Handle immediates
         for immlett, bits, immshift in imms:
@@ -658,11 +658,11 @@ def gen_tcg_func(f, tag, regs, imms):
         f.write(f"    gen_helper_{tag}(")
         i = 0
         ## If there is a scalar result, it is the return type
-        for regtype, regid, toss, numregs in regs:
+        for regtype, regid in regs:
             if hex_common.is_written(regid):
                 if hex_common.is_hvx_reg(regtype):
                     continue
-                gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i)
+                gen_helper_call_opn(f, tag, regtype, regid, i)
                 i += 1
         if i > 0:
             f.write(", ")
@@ -670,23 +670,23 @@ def gen_tcg_func(f, tag, regs, imms):
         i = 1
         ## For conditional instructions, we pass in the destination register
         if "A_CONDEXEC" in hex_common.attribdict[tag]:
-            for regtype, regid, toss, numregs in regs:
+            for regtype, regid in regs:
                 if hex_common.is_writeonly(regid) and not hex_common.is_hvx_reg(
                     regtype
                 ):
-                    gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i)
+                    gen_helper_call_opn(f, tag, regtype, regid, i)
                     i += 1
-        for regtype, regid, toss, numregs in regs:
+        for regtype, regid in regs:
             if hex_common.is_written(regid):
                 if not hex_common.is_hvx_reg(regtype):
                     continue
-                gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i)
+                gen_helper_call_opn(f, tag, regtype, regid, i)
                 i += 1
-        for regtype, regid, toss, numregs in regs:
+        for regtype, regid in regs:
             if hex_common.is_read(regid):
                 if hex_common.is_hvx_reg(regtype) and hex_common.is_readwrite(regid):
                     continue
-                gen_helper_call_opn(f, tag, regtype, regid, toss, numregs, i)
+                gen_helper_call_opn(f, tag, regtype, regid, i)
                 i += 1
         for immlett, bits, immshift in imms:
             gen_helper_call_imm(f, immlett)
@@ -706,7 +706,7 @@ def gen_tcg_func(f, tag, regs, imms):
         f.write(");\n")
 
     ## Write all the outputs
-    for regtype, regid, toss, numregs in regs:
+    for regtype, regid in regs:
         if hex_common.is_written(regid):
             genptr_dst_write_opn(f, regtype, regid, tag)
 

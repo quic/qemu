@@ -93,10 +93,9 @@ def gen_helper_arg_opn(f, regtype, regid, i, tag):
         elif hex_common.is_new_val(regtype, regid, tag):
             gen_helper_arg_new(f, regtype, regid, i)
         else:
-            hex_common.bad_register(regtype, regid, i, tag)
+            hex_common.bad_register(regtype, regid)
     else:
-        hex_common.bad_register(regtype, regid, i, tag)
-
+        hex_common.bad_register(regtype, regid)
 
 def gen_helper_arg_imm(f, immlett):
     f.write(f", int32_t {hex_common.imm_name(immlett)}")
@@ -141,7 +140,7 @@ def gen_helper_dest_decl_opn(f, regtype, regid, i):
         else:
             gen_helper_dest_decl(f, regtype, regid, i)
     else:
-        hex_common.bad_register(regtype, regid, toss, numregs)
+        hex_common.bad_register(regtype, regid)
 
 
 def gen_helper_src_var_ext(f, regtype, regid):
@@ -191,7 +190,7 @@ def gen_helper_return_opn(f, regtype, regid, i):
         else:
             gen_helper_return(f, regtype, regid, i)
     else:
-        hex_common.bad_register(regtype, regid, toss, numregs)
+        hex_common.bad_register(regtype, regid)
 
 
 mem_init_attrs = [
@@ -221,7 +220,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
     numresults = 0
     numscalarresults = 0
     numscalarreadwrite = 0
-    for regtype, regid, toss, numregs in regs:
+    for regtype, regid in regs:
         if hex_common.is_written(regid):
             numresults += 1
             if hex_common.is_scalar_reg(regtype):
@@ -239,7 +238,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
         ## The return type of the function is the type of the destination
         ## register (if scalar)
         i = 0
-        for regtype, regid, toss, numregs in regs:
+        for regtype, regid in regs:
             if hex_common.is_written(regid):
                 if hex_common.is_pair(regid):
                     if hex_common.is_hvx_reg(regtype):
@@ -252,7 +251,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     else:
                         gen_helper_return_type(f, regtype, regid, i)
                 else:
-                    hex_common.bad_register(regtype, regid, toss, numregs)
+                    hex_common.bad_register(regtype, regid)
             i += 1
 
         if numscalarresults == 0:
@@ -261,7 +260,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
 
         ## Arguments include the vector destination operands
         i = 1
-        for regtype, regid, toss, numregs in regs:
+        for regtype, regid in regs:
             if hex_common.is_written(regid):
                 if hex_common.is_pair(regid):
                     if hex_common.is_hvx_reg(regtype):
@@ -274,12 +273,12 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     else:
                         continue
                 else:
-                    hex_common.bad_register(regtype, regid, toss, numregs)
+                    hex_common.bad_register(regtype, regid)
                 i += 1
 
         ## For conditional instructions, we pass in the destination register
         if "A_CONDEXEC" in hex_common.attribdict[tag]:
-            for regtype, regid, toss, numregs in regs:
+            for regtype, regid in regs:
                 if hex_common.is_writeonly(regid) and not hex_common.is_hvx_reg(
                     regtype
                 ):
@@ -287,7 +286,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     i += 1
 
         ## Arguments to the helper function are the source regs and immediates
-        for regtype, regid, toss, numregs in regs:
+        for regtype, regid in regs:
             if hex_common.is_read(regid):
                 if hex_common.is_hvx_reg(regtype) and hex_common.is_readwrite(regid):
                     continue
@@ -330,7 +329,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             f.write("    CoprocArgs args;\n")
             f.write(f"    args.opcode = {tag};\n")
             arg = 1
-            for regtype, regid, toss, numregs in regs:
+            for regtype, regid in regs:
                 f.write(f"    args.arg{arg} = {regtype}{regid}V;\n")
                 arg += 1;
             if needs_page_size(tag):
@@ -357,12 +356,12 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             ## Declare the return variable
             i = 0
             if "A_CONDEXEC" not in hex_common.attribdict[tag]:
-                for regtype, regid, toss, numregs in regs:
+                for regtype, regid in regs:
                     if hex_common.is_writeonly(regid):
                         gen_helper_dest_decl_opn(f, regtype, regid, i)
                     i += 1
 
-            for regtype, regid, toss, numregs in regs:
+            for regtype, regid in regs:
                 if hex_common.is_read(regid):
                     if hex_common.is_pair(regid):
                         if hex_common.is_hvx_reg(regtype):
@@ -371,7 +370,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                         if hex_common.is_hvx_reg(regtype):
                             gen_helper_src_var_ext(f, regtype, regid)
                     else:
-                        hex_common.bad_register(regtype, regid, toss, numregs)
+                        hex_common.bad_register(regtype, regid)
 
             if "A_FPOP" in hex_common.attribdict[tag]:
                 f.write("    arch_fpop_start(env);\n")
@@ -383,7 +382,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                 f.write("    arch_fpop_end(env);\n")
 
             ## Save/return the return variable
-            for regtype, regid, toss, numregs in regs:
+            for regtype, regid in regs:
                 if hex_common.is_written(regid):
                     gen_helper_return_opn(f, regtype, regid, i)
         f.write("}\n\n")

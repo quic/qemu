@@ -43,7 +43,7 @@ def gen_coproc_case(f, tag, tagregs, tagimms):
     f.write("{\n")
 
     i = 1
-    for regtype, regid, toss, numregs in regs:
+    for regtype, regid in regs:
         f.write(f"    int32_t {regtype}{regid}V = args.arg{i};\n")
         i += 1
 
