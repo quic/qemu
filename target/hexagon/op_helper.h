@@ -47,11 +47,17 @@ static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
 
 /* Misc functions */
 void cancel_slot(CPUHexagonState *env, uint32_t slot);
-void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
-                  target_ulong addr, target_ulong PC);
 
-void log_reg_write(CPUHexagonState *env, int rnum,
-                   target_ulong val);
+/* Misc functions */
+uint8_t mem_load1(CPUHexagonState *env, bool pkt_has_store_s1,
+                  uint32_t slot, target_ulong vaddr);
+uint16_t mem_load2(CPUHexagonState *env, bool pkt_has_store_s1,
+                   uint32_t slot, target_ulong vaddr);
+uint32_t mem_load4(CPUHexagonState *env, bool pkt_has_store_s1,
+                   uint32_t slot, target_ulong vaddr);
+uint64_t mem_load8(CPUHexagonState *env, bool pkt_has_store_s1,
+                   uint32_t slot, target_ulong vaddr);
+
 void log_store64(CPUHexagonState *env, target_ulong addr,
                  int64_t val, int width, int slot);
 void log_store32(CPUHexagonState *env, target_ulong addr,

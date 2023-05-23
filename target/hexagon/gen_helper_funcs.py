@@ -93,9 +93,9 @@ def gen_helper_arg_opn(f, regtype, regid, i, tag):
         elif hex_common.is_new_val(regtype, regid, tag):
             gen_helper_arg_new(f, regtype, regid, i)
         else:
-            print("Bad register parse: ", regtype, regid, i, tag)
+            hex_common.bad_register(regtype, regid, i, tag)
     else:
-        print("Bad register parse: ", regtype, regid, i, tag)
+        hex_common.bad_register(regtype, regid, i, tag)
 
 
 def gen_helper_arg_imm(f, immlett):
@@ -141,7 +141,7 @@ def gen_helper_dest_decl_opn(f, regtype, regid, i):
         else:
             gen_helper_dest_decl(f, regtype, regid, i)
     else:
-        print("Bad register parse: ", regtype, regid, toss, numregs)
+        hex_common.bad_register(regtype, regid, toss, numregs)
 
 
 def gen_helper_src_var_ext(f, regtype, regid):
@@ -191,7 +191,7 @@ def gen_helper_return_opn(f, regtype, regid, i):
         else:
             gen_helper_return(f, regtype, regid, i)
     else:
-        print("Bad register parse: ", regtype, regid, toss, numregs)
+        hex_common.bad_register(regtype, regid, toss, numregs)
 
 
 mem_init_attrs = [
@@ -252,7 +252,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     else:
                         gen_helper_return_type(f, regtype, regid, i)
                 else:
-                    print("Bad register parse: ", regtype, regid, toss, numregs)
+                    hex_common.bad_register(regtype, regid, toss, numregs)
             i += 1
 
         if numscalarresults == 0:
@@ -274,7 +274,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     else:
                         continue
                 else:
-                    print("Bad register parse: ", regtype, regid, toss, numregs)
+                    hex_common.bad_register(regtype, regid, toss, numregs)
                 i += 1
 
         ## For conditional instructions, we pass in the destination register
@@ -299,6 +299,8 @@ def gen_helper_function(f, tag, tagregs, tagimms):
 
         if hex_common.need_pkt_has_multi_cof(tag):
             f.write(", uint32_t pkt_has_multi_cof")
+        if (hex_common.need_pkt_need_commit(tag)):
+            f.write(", uint32_t pkt_need_commit")
 
         if hex_common.need_PC(tag):
             if i > 0:
@@ -313,13 +315,16 @@ def gen_helper_function(f, tag, tagregs, tagimms):
         if hex_common.need_slot(tag):
             if i > 0:
                 f.write(", ")
-            f.write("uint32_t slot")
+            f.write("uint32_t slotval")
             i += 1
         if hex_common.need_part1(tag):
             if i > 0:
                 f.write(", ")
             f.write("uint32_t part1")
         f.write(")\n{\n")
+
+        if hex_common.need_slot(tag):
+            f.write("    uint32_t slot = slotval >> 1;\n")
 
         if "A_HMX" in hex_common.attribdict[tag]:
             f.write("    CoprocArgs args;\n")
@@ -366,7 +371,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                         if hex_common.is_hvx_reg(regtype):
                             gen_helper_src_var_ext(f, regtype, regid)
                     else:
-                        print("Bad register parse: ", regtype, regid, toss, numregs)
+                        hex_common.bad_register(regtype, regid, toss, numregs)
 
             if "A_FPOP" in hex_common.attribdict[tag]:
                 f.write("    arch_fpop_start(env);\n")

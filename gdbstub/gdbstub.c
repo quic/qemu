@@ -777,6 +777,10 @@ typedef void (*GdbCmdHandler)(GArray *params, void *user_ctx);
 /*
  * cmd_startswith -> cmd is compared using startswith
  *
+ * allow_stop_reply -> true iff the gdbstub can respond to this command with a
+ *   "stop reply" packet. The list of commands that accept such response is
+ *   defined at the GDB Remote Serial Protocol documentation. see:
+ *   https://sourceware.org/gdb/onlinedocs/gdb/Stop-Reply-Packets.html#Stop-Reply-Packets.
  *
  * schema definitions:
  * Each schema parameter entry consists of 2 chars,
@@ -802,6 +806,7 @@ typedef struct GdbCmdParseEntry {
     const char *cmd;
     bool cmd_startswith;
     const char *schema;
+    bool allow_stop_reply;
 } GdbCmdParseEntry;
 
 static int process_string_cmd(void *user_ctx, const char *data,
@@ -830,6 +835,7 @@ static int process_string_cmd(void *user_ctx, const char *data,
             }
         }
 
+        gdbserver_state.allow_stop_reply = cmd->allow_stop_reply;
         cmd->handler(params, user_ctx);
         return 0;
     }
@@ -1278,11 +1284,14 @@ static void handle_v_attach(GArray *params, void *user_ctx)
     gdbserver_state.g_cpu = cpu;
     gdbserver_state.c_cpu = cpu;
 
-    g_string_printf(gdbserver_state.str_buf, "T%02xthread:", GDB_SIGNAL_TRAP);
-    gdb_append_thread_id(cpu, gdbserver_state.str_buf);
-    g_string_append_c(gdbserver_state.str_buf, ';');
+    if (gdbserver_state.allow_stop_reply) {
+        g_string_printf(gdbserver_state.str_buf, "T%02xthread:", GDB_SIGNAL_TRAP);
+        gdb_append_thread_id(cpu, gdbserver_state.str_buf);
+        g_string_append_c(gdbserver_state.str_buf, ';');
+        gdbserver_state.allow_stop_reply = false;
 cleanup:
-    gdb_put_strbuf();
+        gdb_put_strbuf();
+    }
 }
 
 static void handle_v_kill(GArray *params, void *user_ctx)
@@ -1305,12 +1314,14 @@ static const GdbCmdParseEntry gdb_v_commands_table[] = {
         .handler = handle_v_cont,
         .cmd = "Cont",
         .cmd_startswith = 1,
+        .allow_stop_reply = true,
         .schema = "s0"
     },
     {
         .handler = handle_v_attach,
         .cmd = "Attach;",
         .cmd_startswith = 1,
+        .allow_stop_reply = true,
         .schema = "l0"
     },
     {
@@ -1720,10 +1731,13 @@ static void handle_gen_set(GArray *params, void *user_ctx)
 
 static void handle_target_halt(GArray *params, void *user_ctx)
 {
-    g_string_printf(gdbserver_state.str_buf, "T%02xthread:", GDB_SIGNAL_TRAP);
-    gdb_append_thread_id(gdbserver_state.c_cpu, gdbserver_state.str_buf);
-    g_string_append_c(gdbserver_state.str_buf, ';');
-    gdb_put_strbuf();
+    if (gdbserver_state.allow_stop_reply) {
+        g_string_printf(gdbserver_state.str_buf, "T%02xthread:", GDB_SIGNAL_TRAP);
+        gdb_append_thread_id(gdbserver_state.c_cpu, gdbserver_state.str_buf);
+        g_string_append_c(gdbserver_state.str_buf, ';');
+        gdb_put_strbuf();
+        gdbserver_state.allow_stop_reply = false;
+    }
     /*
      * Remove all the breakpoints when this query is issued,
      * because gdb is doing an initial connect and the state
@@ -1732,7 +1746,7 @@ static void handle_target_halt(GArray *params, void *user_ctx)
     gdb_breakpoint_remove_all(gdbserver_state.c_cpu);
 }
 
-static void gdb_handle_packet(const char *line_buf)
+static int gdb_handle_packet(const char *line_buf)
 {
     const GdbCmdParseEntry *cmd_parser = NULL;
 
@@ -1747,7 +1761,8 @@ static void gdb_handle_packet(const char *line_buf)
             static const GdbCmdParseEntry target_halted_cmd_desc = {
                 .handler = handle_target_halt,
                 .cmd = "?",
-                .cmd_startswith = 1
+                .cmd_startswith = 1,
+                .allow_stop_reply = true,
             };
             cmd_parser = &target_halted_cmd_desc;
         }
@@ -1758,6 +1773,7 @@ static void gdb_handle_packet(const char *line_buf)
                 .handler = handle_continue,
                 .cmd = "c",
                 .cmd_startswith = 1,
+                .allow_stop_reply = true,
                 .schema = "L0"
             };
             cmd_parser = &continue_cmd_desc;
@@ -1769,6 +1785,7 @@ static void gdb_handle_packet(const char *line_buf)
                 .handler = handle_cont_with_sig,
                 .cmd = "C",
                 .cmd_startswith = 1,
+                .allow_stop_reply = true,
                 .schema = "l0"
             };
             cmd_parser = &cont_with_sig_cmd_desc;
@@ -1807,6 +1824,7 @@ static void gdb_handle_packet(const char *line_buf)
                 .handler = handle_step,
                 .cmd = "s",
                 .cmd_startswith = 1,
+                .allow_stop_reply = true,
                 .schema = "L0"
             };
             cmd_parser = &step_cmd_desc;
@@ -1974,6 +1992,8 @@ static void gdb_handle_packet(const char *line_buf)
     if (cmd_parser) {
         run_cmd_parser(line_buf, cmd_parser);
     }
+
+    return RS_IDLE;
 }
 
 void gdb_set_stop_cpu(CPUState *cpu)
@@ -1996,6 +2016,7 @@ void gdb_read_byte(uint8_t ch)
 {
     uint8_t reply;
 
+    gdbserver_state.allow_stop_reply = false;
 #ifndef CONFIG_USER_ONLY
     if (gdbserver_state.last_packet->len) {
         /* Waiting for a response to the last packet.  If we see the start
@@ -2126,14 +2147,11 @@ void gdb_read_byte(uint8_t ch)
                 reply = '-';
                 gdb_put_buffer(&reply, 1);
                 gdbserver_state.state = RS_IDLE;
-                gdbserver_state.last_cmd[0] = '\0';
             } else {
                 /* send ACK reply */
                 reply = '+';
                 gdb_put_buffer(&reply, 1);
-                strcpy(gdbserver_state.last_cmd, gdbserver_state.line_buf);
-                gdbserver_state.state = RS_IDLE;
-                gdb_handle_packet(gdbserver_state.line_buf);
+                gdbserver_state.state = gdb_handle_packet(gdbserver_state.line_buf);  
             }
             break;
         default:

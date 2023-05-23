@@ -1,5 +1,5 @@
 # Default configuration for hexagon-softmmu
 
 TARGET_ARCH=hexagon
-TARGET_ALIGNED_ONLY=y
 TARGET_SUPPORTS_MTTCG=y
+TARGET_XML_FILES=gdb-xml/hexagon-core.xml gdb-xml/hexagon-hvx.xml gdb-xml/hexagon-sys.xml

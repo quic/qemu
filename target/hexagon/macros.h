@@ -51,8 +51,17 @@
                    reg_field_info[FIELD].offset)
 
 #define SET_USR_FIELD(FIELD, VAL) \
-    fINSERT_BITS(env->new_value[HEX_REG_USR], reg_field_info[FIELD].width, \
-                 reg_field_info[FIELD].offset, (VAL))
+    do { \
+        if (pkt_need_commit) { \
+            fINSERT_BITS(env->new_value_usr, \
+                        reg_field_info[FIELD].width, \
+                        reg_field_info[FIELD].offset, (VAL)); \
+        } else { \
+            fINSERT_BITS(env->gpr[HEX_REG_USR], \
+                        reg_field_info[FIELD].width, \
+                        reg_field_info[FIELD].offset, (VAL)); \
+        } \
+    } while (0)
 #endif
 
 #ifdef QEMU_GENERATE
@@ -169,6 +178,20 @@
             gen_store8, (void)0))
 #define MEM_STORE8(VA, DATA, SLOT) \
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, SLOT)
+#else
+#define MEM_LOAD1s(VA) ((int8_t)mem_load1(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD1u(VA) ((uint8_t)mem_load1(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD2s(VA) ((int16_t)mem_load2(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD2u(VA) ((uint16_t)mem_load2(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD4s(VA) ((int32_t)mem_load4(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD4u(VA) ((uint32_t)mem_load4(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD8s(VA) ((int64_t)mem_load8(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD8u(VA) ((uint64_t)mem_load8(env, pkt_has_scalar_store_s1, slot, VA))
+
+#define MEM_STORE1(VA, DATA, SLOT) log_store32(env, VA, DATA, 1, SLOT)
+#define MEM_STORE2(VA, DATA, SLOT) log_store32(env, VA, DATA, 2, SLOT)
+#define MEM_STORE4(VA, DATA, SLOT) log_store32(env, VA, DATA, 4, SLOT)
+#define MEM_STORE8(VA, DATA, SLOT) log_store64(env, VA, DATA, 8, SLOT)
 #endif
 
 #ifdef QEMU_GENERATE
@@ -222,12 +245,8 @@ static inline void gen_cancel(DisasContext *ctx)
 
 #ifdef QEMU_GENERATE
 #define fLSBNEW(PVAL)   tcg_gen_andi_tl(LSB, (PVAL), 1)
-#define fLSBNEW0        tcg_gen_andi_tl(LSB, hex_new_pred_value[0], 1)
-#define fLSBNEW1        tcg_gen_andi_tl(LSB, hex_new_pred_value[1], 1)
 #else
 #define fLSBNEW(PVAL)   ((PVAL) & 1)
-#define fLSBNEW0        (env->new_pred_value[0] & 1)
-#define fLSBNEW1        (env->new_pred_value[1] & 1)
 #endif
 
 #ifdef QEMU_GENERATE
@@ -343,10 +362,7 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 
 #define fREAD_LR() (env->gpr[HEX_REG_LR])
 
-#define fWRITE_LR(A) log_reg_write(env, HEX_REG_LR, A)
-
 #ifdef QEMU_GENERATE
-#define fREAD_FP() (READ_REG(tmp, HEX_REG_FP))
 #else
 #define fREAD_FP() (env->gpr[HEX_REG_FP])
 #endif
@@ -382,25 +398,10 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fBRANCH(LOC, TYPE)          fWRITE_NPC(LOC)
 #define fJUMPR(REGNO, TARGET, TYPE) fBRANCH(TARGET, COF_TYPE_JUMPR)
 #define fHINTJR(TARGET) { /* Not modelled in qemu */}
-#define fWRITE_LOOP_REGS0(START, COUNT) \
-    do { \
-        log_reg_write(env, HEX_REG_LC0, COUNT);  \
-        log_reg_write(env, HEX_REG_SA0, START); \
-    } while (0)
-#define fWRITE_LOOP_REGS1(START, COUNT) \
-    do { \
-        log_reg_write(env, HEX_REG_LC1, COUNT);  \
-        log_reg_write(env, HEX_REG_SA1, START);\
-    } while (0)
 
 #define fSET_OVERFLOW() SET_USR_FIELD(USR_OVF, 1)
 #define fSET_LPCFG(VAL) SET_USR_FIELD(USR_LPCFG, (VAL))
 #define fGET_LPCFG (GET_USR_FIELD(USR_LPCFG))
-#define fWRITE_P0(VAL) log_pred_write(env, 0, VAL)
-#define fWRITE_P1(VAL) log_pred_write(env, 1, VAL)
-#define fWRITE_P2(VAL) log_pred_write(env, 2, VAL)
-#define fWRITE_P3(VAL) log_pred_write(env, 3, VAL)
-#define fWRITE_P3_LATE(VAL) log_pred_write(env, 3, VAL)
 #define fPART1(WORK) if (part1) { WORK; return; }
 #define fCAST4u(A) ((uint32_t)(A))
 #define fCAST4s(A) ((int32_t)(A))
@@ -706,7 +707,11 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
                  (NEWVAL))
 
 #ifdef QEMU_GENERATE
-#define fDCZEROA(REG) tcg_gen_mov_tl(hex_dczero_addr, (REG))
+#define fDCZEROA(REG) \
+    do { \
+        ctx->dczero_addr = tcg_temp_new(); \
+        tcg_gen_mov_tl(ctx->dczero_addr, (REG)); \
+    } while (0)
 #endif
 
 #define fBRANCH_SPECULATE_STALL(DOTNEWVAL, JUMP_COND, SPEC_DIR, HINTBITNUM, \

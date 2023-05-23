@@ -114,38 +114,6 @@ G_NORETURN void HELPER(raise_exception)(CPUHexagonState *env, uint32_t excp,
     do_raise_exception(env, excp, PC, 0);
 }
 
-void log_reg_write(CPUHexagonState *env, int rnum,
-                   target_ulong val)
-{
-    HEX_DEBUG_LOG("log_reg_write[%d] = " TARGET_FMT_ld " (0x" TARGET_FMT_lx ")",
-                  rnum, val, val);
-    if (val == env->gpr[rnum]) {
-        HEX_DEBUG_LOG(" NO CHANGE");
-    }
-    HEX_DEBUG_LOG("\n");
-
-    env->new_value[rnum] = val;
-    if (HEX_DEBUG) {
-        /* Do this so HELPER(debug_commit_end) will know */
-        env->reg_written[rnum] = 1;
-    }
-}
-
-static void log_pred_write(CPUHexagonState *env, int pnum, target_ulong val)
-{
-    HEX_DEBUG_LOG("log_pred_write[%d] = " TARGET_FMT_ld
-                  " (0x" TARGET_FMT_lx ")\n",
-                  pnum, val, val);
-
-    /* Multiple writes to the same preg are and'ed together */
-    if (env->pred_written & (1 << pnum)) {
-        env->new_pred_value[pnum] &= val & 0xff;
-    } else {
-        env->new_pred_value[pnum] = val & 0xff;
-        env->pred_written |= 1 << pnum;
-    }
-}
-
 void log_store32(CPUHexagonState *env, target_ulong addr,
                  target_ulong val, int width, int slot)
 {
@@ -167,32 +135,6 @@ void log_store64(CPUHexagonState *env, target_ulong addr,
     env->mem_log_stores[slot].width = width;
     env->mem_log_stores[slot].data64 = val;
 }
-
-#ifndef CONFIG_USER_ONLY
-void write_new_pc(CPUHexagonState *env, bool pkt_has_multi_cof,
-                  target_ulong addr, target_ulong PC)
-{
-    HEX_DEBUG_LOG("write_new_pc(0x" TARGET_FMT_lx ")\n", addr);
-
-    if (pkt_has_multi_cof) {
-        /*
-         * If more than one branch is taken in a packet, only the first one
-         * is actually done.
-         */
-        if (env->branch_taken) {
-            HEX_DEBUG_LOG("INFO: multiple branches taken in same packet, "
-                          "ignoring the second one\n");
-        } else {
-            fCHECK_PCALIGN(addr, PC);
-            env->gpr[HEX_REG_PC] = addr;
-            env->branch_taken = 1;
-        }
-    } else {
-        fCHECK_PCALIGN(addr, PC);
-        env->gpr[HEX_REG_PC] = addr;
-    }
-}
-#endif
 
 /* Handy place to set a breakpoint */
 void HELPER(debug_start_packet)(CPUHexagonState *env)
@@ -348,18 +290,18 @@ static void print_store(CPUHexagonState *env, int slot)
 }
 
 /* This function is a handy place to set a breakpoint */
-void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
+void HELPER(debug_commit_end)(CPUHexagonState *env, uint32_t this_PC,
+                              int pred_written, int has_st0, int has_st1)
 {
     bool reg_printed = false;
     bool pred_printed = false;
     int i;
 
 #ifdef CONFIG_USER_ONLY
-    HEX_DEBUG_LOG("Packet committed: pc = 0x" TARGET_FMT_lx "\n",
-                  env->this_PC);
+    HEX_DEBUG_LOG("Packet committed: pc = 0x" TARGET_FMT_lx "\n", this_PC);
 #else
     HEX_DEBUG_LOG("Packet committed: tid = %d, pc = 0x" TARGET_FMT_lx "\n",
-                  env->threadId, env->this_PC);
+                  env->threadId, this_PC);
 #endif
     HEX_DEBUG_LOG("slot_cancelled = %d\n", env->slot_cancelled);
 
@@ -370,7 +312,7 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
                 reg_printed = true;
             }
             HEX_DEBUG_LOG("\tr%d = " TARGET_FMT_ld " (0x" TARGET_FMT_lx " )\n",
-                          i, env->new_value[i], env->new_value[i]);
+                          i, env->gpr[i], env->gpr[i]);
         }
     }
 
@@ -407,13 +349,13 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, int has_st0, int has_st1)
 #endif
 
     for (i = 0; i < NUM_PREGS; i++) {
-        if (env->pred_written & (1 << i)) {
+        if (pred_written & (1 << i)) {
             if (!pred_printed) {
                 HEX_DEBUG_LOG("Predicates written\n");
                 pred_printed = true;
             }
             HEX_DEBUG_LOG("\tp%d = 0x" TARGET_FMT_lx "\n",
-                          i, env->new_pred_value[i]);
+                          i, env->pred[i]);
         }
     }
 
@@ -539,7 +481,8 @@ uint64_t HELPER(sfinvsqrta)(CPUHexagonState *env, float32 RsV)
 }
 
 int64_t HELPER(vacsh_val)(CPUHexagonState *env,
-                           int64_t RxxV, int64_t RssV, int64_t RttV)
+                           int64_t RxxV, int64_t RssV, int64_t RttV,
+                           uint32_t pkt_need_commit)
 {
     for (int i = 0; i < 4; i++) {
         int xv = sextract64(RxxV, i * 16, 16);
@@ -704,6 +647,87 @@ void HELPER(resume)(CPUHexagonState *env, uint32_t mask)
 }
 #endif
 
+int64_t HELPER(cabacdecbin_val)(int64_t RssV, int64_t RttV)
+{
+    int64_t RddV = 0;
+    size4u_t state;
+    size4u_t valMPS;
+    size4u_t bitpos;
+    size4u_t range;
+    size4u_t offset;
+    size4u_t rLPS;
+    size4u_t rMPS;
+
+    state =  fEXTRACTU_RANGE(fGETWORD(1, RttV), 5, 0);
+    valMPS = fEXTRACTU_RANGE(fGETWORD(1, RttV), 8, 8);
+    bitpos = fEXTRACTU_RANGE(fGETWORD(0, RttV), 4, 0);
+    range =  fGETWORD(0, RssV);
+    offset = fGETWORD(1, RssV);
+
+    /* calculate rLPS */
+    range <<= bitpos;
+    offset <<= bitpos;
+    rLPS = rLPS_table_64x4[state][(range >> 29) & 3];
+    rLPS  = rLPS << 23;   /* left aligned */
+
+    /* calculate rMPS */
+    rMPS = (range & 0xff800000) - rLPS;
+
+    /* most probable region */
+    if (offset < rMPS) {
+        RddV = AC_next_state_MPS_64[state];
+        fINSERT_RANGE(RddV, 8, 8, valMPS);
+        fINSERT_RANGE(RddV, 31, 23, (rMPS >> 23));
+        fSETWORD(1, RddV, offset);
+    }
+    /* least probable region */
+    else {
+        RddV = AC_next_state_LPS_64[state];
+        fINSERT_RANGE(RddV, 8, 8, ((!state) ? (1 - valMPS) : (valMPS)));
+        fINSERT_RANGE(RddV, 31, 23, (rLPS >> 23));
+        fSETWORD(1, RddV, (offset - rMPS));
+    }
+    return RddV;
+}
+
+int32_t HELPER(cabacdecbin_pred)(int64_t RssV, int64_t RttV)
+{
+    int32_t p0 = 0;
+    size4u_t state;
+    size4u_t valMPS;
+    size4u_t bitpos;
+    size4u_t range;
+    size4u_t offset;
+    size4u_t rLPS;
+    size4u_t rMPS;
+
+    state =  fEXTRACTU_RANGE(fGETWORD(1, RttV), 5, 0);
+    valMPS = fEXTRACTU_RANGE(fGETWORD(1, RttV), 8, 8);
+    bitpos = fEXTRACTU_RANGE(fGETWORD(0, RttV), 4, 0);
+    range =  fGETWORD(0, RssV);
+    offset = fGETWORD(1, RssV);
+
+    /* calculate rLPS */
+    range <<= bitpos;
+    offset <<= bitpos;
+    rLPS = rLPS_table_64x4[state][(range >> 29) & 3];
+    rLPS  = rLPS << 23;   /* left aligned */
+
+    /* calculate rMPS */
+    rMPS = (range & 0xff800000) - rLPS;
+
+    /* most probable region */
+    if (offset < rMPS) {
+        p0 = valMPS;
+
+    }
+    /* least probable region */
+    else {
+        p0 = valMPS ^ 1;
+    }
+    return p0;
+}
+
 static void probe_store(CPUHexagonState *env, int slot, int mmu_idx,
                         bool is_predicated)
 {
@@ -803,6 +827,55 @@ void HELPER(assert_store_valid)(CPUHexagonState *env, int slot)
         CPUState *cs = env_cpu(env);
         cpu_abort(cs, "Invalid store found at PC 0x%x\n", env->gpr[HEX_REG_PC]);
     }
+}
+
+/*
+ * mem_noshuf
+ * Section 5.5 of the Hexagon V67 Programmer's Reference Manual
+ *
+ * If the load is in slot 0 and there is a store in slot1 (that
+ * wasn't cancelled), we have to do the store first.
+ */
+static void check_noshuf(CPUHexagonState *env, bool pkt_has_store_s1,
+                         uint32_t slot, target_ulong vaddr, int size)
+{
+    if (slot == 0 && pkt_has_store_s1 &&
+        ((env->slot_cancelled & (1 << 1)) == 0)) {
+        HELPER(probe_noshuf_load)(env, vaddr, size, MMU_USER_IDX);
+        HELPER(commit_store)(env, 1);
+    }
+}
+
+uint8_t mem_load1(CPUHexagonState *env, bool pkt_has_store_s1,
+                  uint32_t slot, target_ulong vaddr)
+{
+    uintptr_t ra = GETPC();
+    check_noshuf(env, pkt_has_store_s1, slot, vaddr, 1);
+    return cpu_ldub_data_ra(env, vaddr, ra);
+}
+
+uint16_t mem_load2(CPUHexagonState *env, bool pkt_has_store_s1,
+                   uint32_t slot, target_ulong vaddr)
+{
+    uintptr_t ra = GETPC();
+    check_noshuf(env, pkt_has_store_s1, slot, vaddr, 2);
+    return cpu_lduw_data_ra(env, vaddr, ra);
+}
+
+uint32_t mem_load4(CPUHexagonState *env, bool pkt_has_store_s1,
+                   uint32_t slot, target_ulong vaddr)
+{
+    uintptr_t ra = GETPC();
+    check_noshuf(env, pkt_has_store_s1, slot, vaddr, 4);
+    return cpu_ldl_data_ra(env, vaddr, ra);
+}
+
+uint64_t mem_load8(CPUHexagonState *env, bool pkt_has_store_s1,
+                   uint32_t slot, target_ulong vaddr)
+{
+    uintptr_t ra = GETPC();
+    check_noshuf(env, pkt_has_store_s1, slot, vaddr, 8);
+    return cpu_ldq_data_ra(env, vaddr, ra);
 }
 
 /* Floating point */
@@ -2410,8 +2483,7 @@ void HELPER(stop)(CPUHexagonState *env)
     hexagon_stop_thread(env);
 }
 
-void HELPER(rte)(CPUHexagonState *env, uint32_t pkt_has_multi_cof,
-                 target_ulong PC)
+void HELPER(rte)(CPUHexagonState *env)
 {
     uint32_t slot = 4; /* dummy value */
     uint32_t new_ssr;
@@ -2421,9 +2493,6 @@ void HELPER(rte)(CPUHexagonState *env, uint32_t pkt_has_multi_cof,
                         reg_field_info[SSR_EX].offset,
                         reg_field_info[SSR_EX].width, 0);
     log_sreg_write(env, HEX_SREG_SSR, new_ssr, slot);
-
-    /* Jump to ELR */
-    write_new_pc(env, pkt_has_multi_cof != 0, env->t_sreg[HEX_SREG_ELR], PC);
 }
 
 typedef struct {

@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "hw/qdev-properties.h"
 #include "fpu/softfloat-helpers.h"
 #include "tcg/tcg.h"
-#include "gdb_qreginfo.h"
+#include "exec/gdbstub.h"
 #include "dma/dma.h"
 #include "trace.h"
 #include "hw/hexagon/hexagon.h"
@@ -49,21 +49,22 @@ static void hexagon_common_cpu_init(Object *obj)
 {
 }
 
-#ifdef CONFIG_USER_ONLY
-static void hexagon_v66_cpu_init(Object *obj)
-{
-    HexagonCPU *cpu = HEXAGON_CPU(obj);
-    cpu->rev_reg = v66_rev;
-    hexagon_common_cpu_init(obj);
-}
-#endif
+#define DEFINE_STD_CPU_INIT_FUNC(REV) \
+    static void hexagon_##REV##_cpu_init(Object *obj) \
+    { \
+        HexagonCPU *cpu = HEXAGON_CPU(obj); \
+        cpu->rev_reg = REV##_rev; \
+        hexagon_common_cpu_init(obj); \
+    }
 
-static void hexagon_v67_cpu_init(Object *obj)
-{
-    HexagonCPU *cpu = HEXAGON_CPU(obj);
-    cpu->rev_reg = v67_rev;
-    hexagon_common_cpu_init(obj);
-}
+#ifdef CONFIG_USER_ONLY
+DEFINE_STD_CPU_INIT_FUNC(v66)
+DEFINE_STD_CPU_INIT_FUNC(v68)
+DEFINE_STD_CPU_INIT_FUNC(v69)
+DEFINE_STD_CPU_INIT_FUNC(v71)
+DEFINE_STD_CPU_INIT_FUNC(v73)
+#endif
+DEFINE_STD_CPU_INIT_FUNC(v67)
 
 static void hexagon_cpu_list_entry(gpointer data, gpointer user_data)
 {
@@ -140,6 +141,8 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_END_OF_LIST()
 };
 
+static Property hexagon_short_circuit_property =
+    DEFINE_PROP_BOOL("short-circuit", HexagonCPU, short_circuit, true);
 
 const char * const hexagon_regnames[] = {
 #ifdef CONFIG_USER_ONLY
@@ -667,6 +670,18 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         return;
     }
 
+#ifndef CONFIG_USER_ONLY
+    gdb_register_coprocessor(cs, hexagon_sys_gdb_read_register,
+                             hexagon_sys_gdb_write_register,
+                             NUM_SREGS + NUM_GREGS,
+                             "hexagon-sys.xml", 0);
+#endif
+
+    gdb_register_coprocessor(cs, hexagon_hvx_gdb_read_register,
+                             hexagon_hvx_gdb_write_register,
+                             NUM_VREGS + NUM_QREGS,
+                             "hexagon-hvx.xml", 0);
+
     qemu_init_vcpu(cs);
 
     HexagonCPU *cpu = HEXAGON_CPU(cs);
@@ -840,6 +855,7 @@ static void hexagon_cpu_init(Object *obj)
 #if !defined(CONFIG_USER_ONLY)
     qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
 #endif
+    qdev_property_add_static(DEVICE(obj), &hexagon_short_circuit_property);
 }
 
 
@@ -1122,14 +1138,9 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
     cc->get_pc = hexagon_cpu_get_pc;
     cc->gdb_read_register = hexagon_gdb_read_register;
     cc->gdb_write_register = hexagon_gdb_write_register;
-    cc->gdb_qreg_info_lines = (const char **)hexagon_qreg_descs;
-    cc->gdb_qreg_info_line_count = ARRAY_SIZE(hexagon_qreg_descs);
-#if defined(CONFIG_USER_ONLY)
-    cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS + NUM_VREGS + NUM_QREGS;
-#else
-    cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS + NUM_VREGS + NUM_QREGS + NUM_SREGS + NUM_GREGS;
-#endif
+    cc->gdb_num_core_regs = TOTAL_PER_THREAD_REGS;
     cc->gdb_stop_before_watchpoint = true;
+    cc->gdb_core_xml_file = "hexagon-core.xml";
     cc->disas_set_info = hexagon_cpu_disas_set_info;
 #ifndef CONFIG_USER_ONLY
     cc->sysemu_ops = &hexagon_sysemu_ops;
@@ -1202,12 +1213,16 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_init = hexagon_cpu_class_init,
     },
 #ifdef CONFIG_USER_ONLY
-    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,  hexagon_v67_cpu_init), /* Default to v67 */
-    DEFINE_CPU(TYPE_HEXAGON_CPU_V66,  hexagon_v66_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,              hexagon_v67_cpu_init), /* Default to v67 */
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V66,              hexagon_v66_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V68,              hexagon_v68_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V69,              hexagon_v69_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V71,              hexagon_v71_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V73,              hexagon_v73_cpu_init),
 #else
-    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,  hexagon_common_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,              hexagon_common_cpu_init),
 #endif
-    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,  hexagon_v67_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,              hexagon_v67_cpu_init),
 };
 
 DEFINE_TYPES(hexagon_cpu_type_infos)

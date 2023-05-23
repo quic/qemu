@@ -1080,7 +1080,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 
         hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 4, cs->exception_index);
-        env->branch_taken = 1;
         break;
 
     case HEX_EVENT_TRAP1:
@@ -1100,7 +1099,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 
         hexagon_ssr_set_cause(env, env->cause_code);
         set_addresses(env, 4, cs->exception_index);
-        env->branch_taken = 1;
         break;
 
     case HEX_EVENT_TLB_MISS_X:

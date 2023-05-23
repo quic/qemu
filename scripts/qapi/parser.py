@@ -563,11 +563,11 @@ class QAPIDoc:
         self._switch_section(QAPIDoc.NullSection(self._parser))
 
     @staticmethod
-    def _match_at_name_colon(string: str) -> re.Match:
+    def _match_at_name_colon(string: str):
         return re.match(r'@([^:]*): *', string)
 
     @staticmethod
-    def _match_section_tag(string: str) -> re.Match:
+    def _match_section_tag(string: str):
         return re.match(r'(Returns|Since|Notes?|Examples?|TODO): *', string)
 
     def _append_body_line(self, line: str) -> None:
@@ -675,8 +675,8 @@ class QAPIDoc:
         match = self._match_at_name_colon(line)
         if match:
             raise QAPIParseError(self._parser,
-                                 "'@%s:' can't follow '%s' section"
-                                 % (match.group(1), self.sections[0].name))
+                                 "description of '@%s:' follows a section"
+                                 % match.group(1))
         match = self._match_section_tag(line)
         if match:
             line = line[match.end():]

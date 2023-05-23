@@ -31,6 +31,14 @@
         } \
     } while (0)
 
+int hexagon_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);
+int hexagon_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
+#ifndef CONFIG_USER_ONLY
+int hexagon_sys_gdb_read_register(CPUHexagonState *env, GByteArray *mem_buf, int n);
+int hexagon_sys_gdb_write_register(CPUHexagonState *env, uint8_t *mem_buf, int n);
+#endif
+int hexagon_hvx_gdb_read_register(CPUHexagonState *env, GByteArray *mem_buf, int n);
+int hexagon_hvx_gdb_write_register(CPUHexagonState *env, uint8_t *mem_buf, int n);
 
 /*
  * Change COUNT_HEX_HELPERS to 1 to count how many times each helper
@@ -45,8 +53,6 @@ void G_NORETURN do_raise_exception(CPUHexagonState *env,
         uintptr_t retaddr);
 
 extern void hexagon_dump(CPUHexagonState *env, FILE *f, int flags);
-extern int hexagon_gdb_read_register(CPUState *cpu, GByteArray *buf, int reg);
-extern int hexagon_gdb_write_register(CPUState *cpu, uint8_t *buf, int reg);
 
 extern void hexagon_debug_vreg(CPUHexagonState *env, int regnum);
 extern void hexagon_debug_qreg(CPUHexagonState *env, int regnum);

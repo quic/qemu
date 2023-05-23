@@ -2,4 +2,4 @@
 
 TARGET_BASE_ARCH=hexagon
 TARGET_ARCH=hexagon
-TARGET_ALIGNED_ONLY=y
+TARGET_XML_FILES=gdb-xml/hexagon-core.xml gdb-xml/hexagon-hvx.xml

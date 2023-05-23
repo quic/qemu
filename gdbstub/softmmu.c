@@ -43,7 +43,7 @@ static void reset_gdbserver_state(void)
     g_free(gdbserver_state.processes);
     gdbserver_state.processes = NULL;
     gdbserver_state.process_num = 0;
-    gdbserver_state.last_cmd[0] = '\0';
+    gdbserver_state.allow_stop_reply = false;
 }
 
 /*
@@ -118,14 +118,8 @@ void gdb_syscall_handling(const char *syscall_packet)
     qemu_cpu_kick(gdbserver_state.c_cpu);
 }
 
-static inline bool char_in(char c, const char *str)
-{
-    return strchr(str, c) != NULL;
-}
-
 static void gdb_vm_state_change(void *opaque, bool running, RunState state)
 {
-    const char *cmd = gdbserver_state.last_cmd;
     CPUState *cpu = gdbserver_state.c_cpu;
     g_autoptr(GString) buf = g_string_new(NULL);
     g_autoptr(GString) tid = g_string_new(NULL);
@@ -146,17 +140,9 @@ static void gdb_vm_state_change(void *opaque, bool running, RunState state)
         return;
     }
 
-    /*
-     * We don't implement notification packets, so we should only send a
-     * stop-reply in response to a previous GDB command. Commands that accept
-     * stop-reply packages are: C, c, S, s, ?, vCont, vAttach, vRun, and
-     * vStopped. We don't implement vRun, and vStopped. For vAttach and ?, the
-     * stop-reply is already sent from their respective cmd handler functions.
-     */
-    if (gdbserver_state.state != RS_IDLE || /* still parsing the cmd */
-        !(startswith(cmd, "vCont;") || (strlen(cmd) == 1 && char_in(cmd[0], "cCsS")))) {
+   if (!gdbserver_state.allow_stop_reply) {
         return;
-    }
+   }
 
     gdb_append_thread_id(cpu, tid);
 
@@ -224,6 +210,7 @@ static void gdb_vm_state_change(void *opaque, bool running, RunState state)
 
 send_packet:
     gdb_put_packet(buf->str);
+    gdbserver_state.allow_stop_reply = false;
 
     /* disable single step if it was enabled */
     cpu_single_step(cpu, 0);
@@ -441,8 +428,11 @@ void gdb_exit(int code)
 
     trace_gdbstub_op_exiting((uint8_t)code);
 
-    snprintf(buf, sizeof(buf), "W%02x", (uint8_t)code);
-    gdb_put_packet(buf);
+    if (gdbserver_state.allow_stop_reply) {
+        snprintf(buf, sizeof(buf), "W%02x", (uint8_t)code);
+        gdb_put_packet(buf);
+        gdbserver_state.allow_stop_reply = false;
+    }
 
     qemu_chr_fe_deinit(&gdbserver_system_state.chr, true);
 }

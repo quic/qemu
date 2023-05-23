@@ -65,6 +65,7 @@ typedef enum {
     v67_rev = 0x2667,
     v68_rev = 0x8d68,
     v69_rev = 0x8c69,
+    v71_rev = 0x8c71,
     v73_rev = 0x8c73,
     v75_rev = 0x8c75,
 } Rev_t;

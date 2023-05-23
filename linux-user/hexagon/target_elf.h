@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,8 +22,11 @@ static inline const char *cpu_get_model(uint32_t eflags)
 {
     /*
      * For now, treat anything between v5 and v66 as a v66, and anything newer
-     * as a v67
+     * as a v73
      */
+    static char buf[32];
+    int err;
+
     /* FIXME - Disable instructions that are newer than the specified arch */
     if (eflags == 0x04 ||    /* v5  */
         eflags == 0x05 ||    /* v55 */
@@ -44,9 +47,11 @@ static inline const char *cpu_get_model(uint32_t eflags)
         eflags == 0x75 ||    /* v75 */
         eflags == 0x77 ||    /* v77 */
         eflags == 0x79) {    /* v79 */
-        return "v67";
+        return "v73";
     }
-    return "unknown";
+
+    err = snprintf(buf, sizeof(buf), "unknown (0x%x)", eflags);
+    return err >= 0 && err < sizeof(buf) ? buf : "unknown";
 }
 
 #endif

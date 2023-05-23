@@ -56,7 +56,6 @@ typedef struct GDBState {
     int line_buf_index;
     int line_sum; /* running checksum */
     int line_csum; /* checksum at the end of the packet */
-    char last_cmd[MAX_PACKET_LENGTH];
     GByteArray *last_packet;
     int signal;
     bool multiprocess;
@@ -66,6 +65,11 @@ typedef struct GDBState {
     GByteArray *mem_buf;
     int sstep_flags;
     int supported_sstep_flags;
+    /*
+     * Whether we are allowed to send a stop reply packet at this moment.
+     * Must be set off after sending the stop reply itself.
+     */
+    bool allow_stop_reply;
 } GDBState;
 
 /* lives in main gdbstub.c */

@@ -55,6 +55,7 @@ HEX_TESTS += overflow
 HEX_TESTS += hvx_misc
 HEX_TESTS += gp_rel
 HEX_TESTS += pthread_cancel
+HEX_TESTS += read_write_overlap
 HEX_TESTS += vector_add_int
 HEX_TESTS += scatter_gather
 HEX_TESTS += atomics
@@ -68,7 +69,6 @@ HEX_TESTS += usr_ctrl_assign
 #HEX_TESTS += hmx
 HEX_TESTS += signal_context
 HEX_TESTS += reg_mut
-HEX_TESTS += invalid_slots
 HEX_TESTS += scaler
 HEX_TESTS += upcycle
 
@@ -109,7 +109,6 @@ run-hvx_misc run-scatter_gather run-hvx_histogram run-hvx_sat:
 # We'll grep for the proper exception number in their stderr
 run-privcheck: privcheck
 run-guestcheck: guestcheck
-run-invalid_slots: invalid_slots
 
 run-privcheck:
 	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
@@ -129,14 +128,13 @@ run-guestcheck:
 		grep -q "exception 0x1a" $<.stderr, \
 		"GREP", "exception 0x1a");
 
-run-invalid_slots:
-	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
-	if [ $$? -ne 1 ] ; then \
-		return 1; \
-	fi
-	$(call quiet-command, \
-		grep -q "exception 0x15" $<.stderr, \
-		"GREP", "exception 0x15");
+HEX_TESTS += invalid-slots
+
+run-and-check-exception = $(call run-test,$2,$3 2>$2.stderr; \
+	test $$? -eq 1 && grep -q "exception $(strip $1)" $2.stderr)
+
+run-invalid-slots: invalid-slots
+	$(call run-and-check-exception, 0x15, $@, $(QEMU) $(QEMU_OPTS) $<)
 
 HEX_TESTS += test_abs
 HEX_TESTS += test_bitcnt
@@ -164,17 +162,30 @@ HEX_TESTS += test_vminh
 HEX_TESTS += test_vpmpyh
 HEX_TESTS += test_vspliceb
 
+HEX_TESTS += v68_scalar
+HEX_TESTS += v68_hvx
+HEX_TESTS += v69_hvx
+HEX_TESTS += v73_scalar
+
 TESTS += $(HEX_TESTS)
 
 # This test has to be compiled for the -mv67t target
 usr: usr.c
 	$(CC) $(CFLAGS) -mv67t -O2 -Wno-inline-asm -Wno-expansion-to-defined $< -o $@ $(LDFLAGS)
 
+# Build this test with -mv71 to exercise the CABAC instruction
+misc: misc.c
+	$(CC) $(CFLAGS) -mv71 -O2 $< -o $@ $(LDFLAGS)
 scatter_gather: CFLAGS += -mhvx
 vector_add_int: CFLAGS += -mhvx -fvectorize
 hvx_misc: hvx_misc.c hvx_misc.h
 hvx_misc: CFLAGS += -mhvx
 hvx_histogram: CFLAGS += -mhvx -Wno-gnu-folding-constant
+v68_hvx: v68_hvx.c hvx_misc.h v6mpy_ref.c.inc
+v68_hvx: CFLAGS += -mhvx -Wno-unused-function
+v69_hvx: v69_hvx.c hvx_misc.h
+v69_hvx: CFLAGS += -mhvx -Wno-unused-function
+v73_scalar: CFLAGS += -Wno-unused-function
 
 hvx_histogram: hvx_histogram.c hvx_histogram_row.S
 	$(CC) $(CFLAGS) $(CROSS_CC_GUEST_CFLAGS) $^ -o $@ $(LDFLAGS)

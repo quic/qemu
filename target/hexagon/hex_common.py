@@ -30,6 +30,9 @@ tags = []  # list of all tags
 overrides = {}  # tags with helper overrides
 idef_parser_enabled = {}  # tags enabled for idef-parser
 
+def bad_register(*args):
+    args_str = ", ".join(map(str, args))
+    raise Exception(f"Bad register parse: {args_str}")
 
 def is_predicated(tag):
     return "A_CONDEXEC" in attribdict[tag]
@@ -150,6 +153,12 @@ def calculate_attribs():
     add_qemu_macro_attrib("fSTORE", "A_SCALAR_STORE")
     add_qemu_macro_attrib("fSET_K0_LOCK", "A_IMPLICIT_READS_PC")
     add_qemu_macro_attrib("fSET_TLB_LOCK", "A_IMPLICIT_READS_PC")
+    add_qemu_macro_attrib('fLSBNEW0', 'A_IMPLICIT_READS_P0')
+    add_qemu_macro_attrib('fLSBNEW0NOT', 'A_IMPLICIT_READS_P0')
+    add_qemu_macro_attrib('fREAD_P0', 'A_IMPLICIT_READS_P0')
+    add_qemu_macro_attrib('fLSBNEW1', 'A_IMPLICIT_READS_P1')
+    add_qemu_macro_attrib('fLSBNEW1NOT', 'A_IMPLICIT_READS_P1')
+    add_qemu_macro_attrib('fREAD_P3', 'A_IMPLICIT_READS_P3')
 
     # Recurse down macros, find attributes from sub-macros
     macroValues = list(macros.values())
@@ -306,10 +315,11 @@ def is_new_val(regtype, regid, tag):
 
 def need_slot(tag):
     if (
-        ("A_CONDEXEC" in attribdict[tag] and "A_JUMP" not in attribdict[tag])
-        or "A_STORE" in attribdict[tag]
-        or "A_LOAD" in attribdict[tag]
-        or "A_CVI" in attribdict[tag]
+        "A_CVI_SCATTER" not in attribdict[tag]
+        and "A_CVI_GATHER" not in attribdict[tag]
+        and ("A_STORE" in attribdict[tag]
+             or "A_LOAD" in attribdict[tag])
+        and tag != "L4_loadw_phys"
     ):
         return 1
     else:
@@ -339,6 +349,9 @@ def need_pkt_has_multi_cof(tag):
         return True
     return False
 
+
+def need_pkt_need_commit(tag):
+    return 'A_IMPLICIT_WRITES_USR' in attribdict[tag]
 
 def need_condexec_reg(tag, regs):
     if "A_CONDEXEC" in attribdict[tag]:

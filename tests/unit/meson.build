@@ -117,7 +117,10 @@ if have_block
     tests += {'test-crypto-xts': [crypto, io]}
   endif
   if 'CONFIG_POSIX' in config_host
-    tests += {'test-image-locking': [testblock]}
+    tests += {
+      'test-image-locking': [testblock],
+      'test-nested-aio-poll': [testblock],
+    }
   endif
   if config_host_data.get('CONFIG_REPLICATION')
     tests += {'test-replication': [testblock]}
@@ -150,7 +153,7 @@ if have_system
   # Some tests: test-char, test-qdev-global-props, and test-qga,
   # are not runnable under TSan due to a known issue.
   # https://github.com/google/sanitizers/issues/1116
-  if 'CONFIG_TSAN' not in config_host
+  if not get_option('tsan')
     if 'CONFIG_POSIX' in config_host
         tests += {
           'test-char': ['socket-helpers.c', qom, io, chardev]

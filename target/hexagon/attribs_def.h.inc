@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -176,7 +176,7 @@ DEF_ATTRIB(CALL, "Function call instruction", "", "")
 DEF_ATTRIB(RET, "Function return instruction", "", "")
 DEF_ATTRIB(PERM, "Permute instruction", "", "")
 DEF_ATTRIB(COF, "Change-of-flow instruction", "", "")
-DEF_ATTRIB(HINTED_COF,"This instruction is a hinted change-of-flow", "", "")
+DEF_ATTRIB(HINTED_COF, "This instruction is a hinted change-of-flow", "", "")
 DEF_ATTRIB(CONDEXEC, "May be cancelled by a predicate", "", "")
 DEF_ATTRIB(DOTOLD, "Uses a predicate generated in a previous packet", "", "")
 DEF_ATTRIB(DOTNEW, "Uses a predicate generated in the same packet", "", "")

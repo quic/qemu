@@ -93,9 +93,8 @@
 
 #define fGEN_TCG_J2_rte(SHORTCODE) \
     do { \
-        TCGv pkt_has_multi_cof = tcg_constant_tl(ctx->pkt->pkt_has_multi_cof); \
-        TCGv PC = tcg_constant_tl(ctx->pkt->pc); \
-        gen_helper_rte(cpu_env, pkt_has_multi_cof, PC); \
+        gen_helper_rte(cpu_env); \
+        gen_jumpr(ctx, hex_t_sreg[HEX_SREG_ELR]); \
     } while (0)
 
 #define fGEN_TCG_Y2_crswap0(SHORTCODE) \
