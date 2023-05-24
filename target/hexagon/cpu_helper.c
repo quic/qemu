@@ -502,7 +502,6 @@ static target_ulong get_thread0_r2(void)
 void hexagon_stop_thread(CPUHexagonState *env)
 
 {
-            fprintf(stderr, "can do %s\n", __func__);
     HexagonCPU *cpu = env_archcpu(env);
     #if HEX_DEBUG
     HEX_DEBUG_LOG("%s: htid %d, cpu %p\n", __func__,
