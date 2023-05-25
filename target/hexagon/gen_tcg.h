@@ -2225,8 +2225,9 @@
 /* r0 = addasl(r1, r2, #3) */
 #define fGEN_TCG_S2_addasl_rrri(SHORTCODE) \
     do { \
-        fASHIFTL(RdV, RsV, uiV, 4_4); \
-        tcg_gen_add_tl(RdV, RtV, RdV); \
+        TCGv tmp = tcg_temp_new(); \
+        fASHIFTL(tmp, RsV, uiV, 4_4); \
+        tcg_gen_add_tl(RdV, RtV, tmp); \
     } while (0)
 
 /* r0 |= asl(r1, r2) */
@@ -2257,13 +2258,11 @@
 #define fGEN_TCG_S2_vsplatrb(SHORTCODE) \
     do { \
         TCGv tmp = tcg_temp_new(); \
-        int i; \
-        tcg_gen_movi_tl(RdV, 0); \
-        tcg_gen_andi_tl(tmp, RsV, 0xff); \
-        for (i = 0; i < 4; i++) { \
-            tcg_gen_shli_tl(RdV, RdV, 8); \
-            tcg_gen_or_tl(RdV, RdV, tmp); \
+        tcg_gen_movi_tl(tmp, 0); \
+        for (int i = 0; i < 4; i++) { \
+            tcg_gen_deposit_tl(tmp, tmp, RsV, i * 8, 8); \
         } \
+        tcg_gen_mov_tl(RdV, tmp); \
     } while (0)
 
 #define fGEN_TCG_SA1_seti(SHORTCODE) \
@@ -2306,13 +2305,15 @@
     } while (0)
 #define fGEN_TCG_A2_combine_ll(SHORTCODE) \
     do { \
-        tcg_gen_mov_tl(RdV, RsV); \
-        tcg_gen_deposit_tl(RdV, RdV, RtV, 16, 16); \
+        TCGv tmp = tcg_temp_new(); \
+        tcg_gen_mov_tl(tmp, RsV); \
+        tcg_gen_deposit_tl(RdV, tmp, RtV, 16, 16); \
     } while (0)
 #define fGEN_TCG_A2_combine_lh(SHORTCODE) \
     do { \
-        gen_get_half(RdV, 1, RsV, false); \
-        tcg_gen_deposit_tl(RdV, RdV, RtV, 16, 16); \
+        TCGv tmp = tcg_temp_new(); \
+        gen_get_half(tmp, 1, RsV, false); \
+        tcg_gen_deposit_tl(RdV, tmp, RtV, 16, 16); \
     } while (0)
 #define fGEN_TCG_A4_combineri(SHORTCODE) \
     do { \
@@ -2375,8 +2376,9 @@
 /* r0 = add(r1 , mpyi(#6, r2)) */
 #define fGEN_TCG_M4_mpyri_addr_u2(SHORTCODE) \
     do { \
-        tcg_gen_muli_tl(RdV, RsV, uiV); \
-        tcg_gen_add_tl(RdV, RuV, RdV); \
+        TCGv tmp = tcg_temp_new(); \
+        tcg_gen_muli_tl(tmp, RsV, uiV); \
+        tcg_gen_add_tl(RdV, RuV, tmp); \
     } while (0)
 
 /* Predicated instruction template */
@@ -2520,8 +2522,9 @@
 /* r0 += add(r1, #8) */
 #define fGEN_TCG_M2_accii(SHORTCODE) \
     do { \
-        tcg_gen_add_tl(RxV, RxV, RsV); \
-        tcg_gen_addi_tl(RxV, RxV, siV); \
+        TCGv tmp = tcg_temp_new(); \
+        tcg_gen_addi_tl(tmp, RsV, siV); \
+        tcg_gen_add_tl(RxV, RxV, tmp); \
     } while (0)
 
 /* p0 = bitsclr(r1, #6) */
@@ -2638,8 +2641,9 @@
 /* r0 += add(r1, r2) */
 #define fGEN_TCG_M2_acci(SHORTCODE) \
     do { \
-        tcg_gen_add_tl(RxV, RxV, RsV); \
-        tcg_gen_add_tl(RxV, RxV, RtV); \
+        TCGv tmp = tcg_temp_new(); \
+        tcg_gen_add_tl(tmp, RsV, RtV); \
+        tcg_gen_add_tl(RxV, RxV, tmp); \
     } while (0)
 
 /* r0 = add(pc, #128) */
@@ -2647,13 +2651,13 @@
     tcg_gen_movi_tl(RdV, ctx->base.pc_next + uiV)
 
 #define fGEN_TCG_A2_sath(SHORTCODE) \
-    gen_sat(RdV, RsV, true, 16)
+    gen_sat(ctx, RdV, RsV, true, 16)
 #define fGEN_TCG_A2_satuh(SHORTCODE) \
-    gen_sat(RdV, RsV, false, 16)
+    gen_sat(ctx, RdV, RsV, false, 16)
 #define fGEN_TCG_A2_satb(SHORTCODE) \
-    gen_sat(RdV, RsV, true, 8)
+    gen_sat(ctx, RdV, RsV, true, 8)
 #define fGEN_TCG_A2_satub(SHORTCODE) \
-    gen_sat(RdV, RsV, false, 8)
+    gen_sat(ctx, RdV, RsV, false, 8)
 
 /* Count trailing zeros/ones */
 #define fGEN_TCG_S2_ct0(SHORTCODE) \

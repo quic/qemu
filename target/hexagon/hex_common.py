@@ -320,7 +320,10 @@ def need_slot(tag):
         and ("A_STORE" in attribdict[tag]
              or "A_LOAD" in attribdict[tag])
         and tag != "L4_loadw_phys"
+        and tag != "L6_memcpy"
     ):
+        return 1
+    elif "A_CONDEXEC" in attribdict[tag]:
         return 1
     else:
         return 0

@@ -338,8 +338,6 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                 f.write("    args.page_size = hex_get_page_size(env, RsV, 1);\n")
             f.write("    coproc(args);\n")
         else:
-            if not hex_common.need_slot(tag):
-                f.write("    uint32_t slot __attribute__((unused)) = 4;\n")
             if hex_common.need_ea(tag):
                 gen_decl_ea(f)
 

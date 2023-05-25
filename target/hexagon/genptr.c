@@ -1035,7 +1035,7 @@ static void gen_framecheck(TCGv EA, int framesize)
     /* Not modelled in linux-user mode */
     /* Placeholder for system mode */
 #ifndef CONFIG_USER_ONLY
-    g_assert_not_reached();
+    /* FIXME - Implement framecheck */
 #endif
 }
 
@@ -1309,8 +1309,10 @@ static inline void gen_lshiftr_4_4u(TCGv dst, TCGv src, int32_t shift_amt)
     }
 }
 
-static void gen_sat(TCGv dst, TCGv src, bool sign, uint32_t bits)
+static void gen_sat(DisasContext *ctx, TCGv dst, TCGv src, bool sign,
+                    uint32_t bits)
 {
+    TCGv tmp = tcg_temp_new();    /* In case dst == src */
     uint32_t min = sign ? -(1 << (bits - 1)) : 0;
     uint32_t max = sign ? (1 << (bits - 1)) - 1 : (1 << bits) - 1;
     TCGv tcg_min = tcg_constant_tl(min);
@@ -1320,16 +1322,17 @@ static void gen_sat(TCGv dst, TCGv src, bool sign, uint32_t bits)
     TCGv usr = get_result_gpr(ctx, HEX_REG_USR);
 
     if (sign) {
-        tcg_gen_sextract_tl(dst, src, 0, bits);
+        tcg_gen_sextract_tl(tmp, src, 0, bits);
     } else {
-        tcg_gen_extract_tl(dst, src, 0, bits);
+        tcg_gen_extract_tl(tmp, src, 0, bits);
     }
     tcg_gen_movcond_tl(TCG_COND_LT, satval, src, tcg_min, tcg_min, tcg_max);
-    tcg_gen_movcond_tl(TCG_COND_EQ, dst, dst, src, dst, satval);
+    tcg_gen_movcond_tl(TCG_COND_EQ, tmp, tmp, src, tmp, satval);
 
-    tcg_gen_setcond_tl(TCG_COND_NE, ovf, dst, src);
+    tcg_gen_setcond_tl(TCG_COND_NE, ovf, tmp, src);
     tcg_gen_shli_tl(ovf, ovf, reg_field_info[USR_OVF].offset);
     tcg_gen_or_tl(usr, usr, ovf);
+    tcg_gen_mov_tl(dst, tmp);
 }
 #endif
 

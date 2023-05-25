@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 int err;
 
@@ -115,12 +116,150 @@ static void test_swiz(void)
     check32(swiz(0x11223344), 0x44332211);
 }
 
+static inline uint32_t satuh(uint32_t x, bool *ovf)
+{
+    uint32_t res;
+    uint32_t usr;
+    asm("r3 = usr\n\t"
+        "r3 = and(r3, #0xfffffffe)\n\t"
+        "usr = r3\n\t"
+        "r3 = %2\n\t"
+        "r3 = satuh(r3)\n\t"
+        "%0 = r3\n\t"
+        "%1 = usr\n\t"
+        : "=r"(res), "=r"(usr) : "r"(x) : "r3");
+    *ovf = usr & 1;
+    return res;
+}
+
+static void test_satuh(void)
+{
+    bool ovf;
+    check(satuh(0x10000, &ovf), 0xffff);
+    check(ovf, 1);
+    check(satuh(0, &ovf), 0);
+    check(ovf, 0);
+    check(satuh(0xf0000000, &ovf), 0x0);
+    check(ovf, 1);
+}
+
+static inline uint32_t addasl_rrri(uint32_t x, uint32_t y)
+{
+    uint32_t res;
+    asm("r3 = %1\n\t"
+        "r3 = addasl(r3, %2, #4)\n\t"
+        "%0 = r3\n\t"
+        : "=r"(res) : "r"(x), "r"(y) : "r3");
+    return res;
+}
+
+static void test_addasl_rrri(void)
+{
+    check(addasl_rrri(0x11111111, 0x11223344), 0x23344551);
+}
+
+static inline uint32_t vsplatb(uint32_t x)
+{
+    uint32_t res;
+    asm("r3 = %1\n\t"
+        "r3 = vsplatb(r3)\n\t"
+        "%0 = r3\n\t"
+        : "=r"(res) : "r"(x) : "r3");
+    return res;
+}
+
+static void test_vsplatb(void)
+{
+    check(vsplatb(0x12), 0x12121212);
+}
+
+static inline uint32_t combine_ll(uint32_t x, uint32_t y)
+{
+    uint32_t res;
+    asm("r3 = %1\n\t"
+        "r3 = combine(r3.L, %2.L)\n\t"
+        "%0 = r3\n\t"
+        : "=r"(res) : "r"(x), "r"(y) : "r3");
+    return res;
+}
+
+static void test_combine_ll(void)
+{
+    check(combine_ll(0x1111, 0x2222), 0x11112222);
+}
+
+static inline uint32_t combine_lh(uint32_t x, uint32_t y)
+{
+    uint32_t res;
+    asm("r3 = %1\n\t"
+        "r3 = combine(r3.L, %2.H)\n\t"
+        "%0 = r3\n\t"
+        : "=r"(res) : "r"(x), "r"(y) : "r3");
+    return res;
+}
+
+static void test_combine_lh(void)
+{
+    check(combine_lh(0x1111, 0x22220000), 0x11112222);
+}
+
+static inline uint32_t mpyri_addr_u2(uint32_t x, uint32_t y)
+{
+    uint32_t res;
+    asm("r3 = %2\n\t"
+        "r3 = add(r3, mpyi(#16, %1))\n\t"
+        "%0 = r3\n\t"
+        : "=r"(res) : "r"(x), "r"(y) : "r3");
+    return res;
+}
+
+static void test_mpyi_addr_u2(void)
+{
+    check(mpyri_addr_u2(0x11223344, 0xf), 0x1223344f);
+}
+
+static inline uint32_t accii(uint32_t x, uint32_t y)
+{
+    asm("%0 += add(%1, #8)\n\t"
+        : "+r"(x) : "r"(y));
+    return x;
+}
+
+static void test_accii(void)
+{
+    check(accii(0x12345600, 0xf0), 0x123456f8);
+}
+
+static inline uint32_t acci(uint32_t x, uint32_t y)
+{
+    uint32_t res;
+    asm("r3 = %2\n\t"
+        "r3 += add(%1, r3)\n\t"
+        "%0 = r3\n\t"
+        : "=r"(res) : "r"(x), "r"(y));
+    return res;
+}
+
+static void test_acci(void)
+{
+    check(acci(0x12345600, 0xf0), 0x123457e0);
+}
+
 int main()
 {
     test_insert();
     test_insert_rp();
     test_asr_r_svw_trun();
     test_swiz();
+
+    test_satuh();
+    test_addasl_rrri();
+    test_vsplatb();
+    test_combine_ll();
+    test_combine_lh();
+    test_mpyi_addr_u2();
+    test_accii();
+    test_acci();
 
     puts(err ? "FAIL" : "PASS");
     return err ? EXIT_FAILURE : EXIT_SUCCESS;
