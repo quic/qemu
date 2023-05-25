@@ -193,7 +193,6 @@ void hmx_wgt_init(thread_t* thread, vaddr_t start, vaddr_t range, int slot, int 
 	paddr = maptr->paddr;
 	int mxmem_exception = (maptr->xlate_info.memtype.device && !hmx_in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING)) ? 1 : 0;
 	mxmem_exception |= !hmx_in_vtcm_space(thread->processor_ptr, paddr, SHOW_WARNING);
-    printf("mgl: wgt: paddr 0x%lx, length %d\n", paddr, length);
 	CHECK_ACCESS_RANGE(mxmem_exception, paddr, length);
 	mxmem_exception |= check_mxmem_page_cross(thread, start_aligned , length, thread->mem_access[slot].xlate_info.size);
 	if (mxmem_exception) {
