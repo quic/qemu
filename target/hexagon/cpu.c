@@ -250,7 +250,7 @@ static void print_reg_(FILE *f, CPUHexagonState *env, int regnum, bool json)
 
     const char *fmt = json
               ? "    \"%s\": 0x" TARGET_FMT_lx ",\n"
-              : "  %s = 0x" TARGET_FMT_lx "%c\n";
+              : "  %s = 0x" TARGET_FMT_lx "\n";
     qemu_fprintf(f, fmt, hexagon_regnames[regnum],
                  value);
 }
