@@ -113,9 +113,11 @@ def analyze_opn_old(f, tag, regtype, regid, regno):
             hex_common.bad_register(regtype, regid)
     elif regtype == "G":
         if regid in {"dd"}:
-            f.write(f"//    const int {regN} = insn->regno[{regno}];\n")
+            f.write(f"    const int {regN} = insn->regno[{regno}];\n")
+            f.write(f"    ctx_log_greg_write_pair(ctx, {regN});\n")
         elif regid in {"d"}:
-            f.write(f"//    const int {regN} = insn->regno[{regno}];\n")
+            f.write(f"    const int {regN} = insn->regno[{regno}];\n")
+            f.write(f"    ctx_log_greg_write(ctx, {regN});\n")
         elif regid in {"ss"}:
             f.write(f"//    const int {regN} = insn->regno[{regno}];\n")
         elif regid in {"s"}:
@@ -124,9 +126,11 @@ def analyze_opn_old(f, tag, regtype, regid, regno):
             hex_common.bad_register(regtype, regid)
     elif regtype == "S":
         if regid in {"dd"}:
-            f.write(f"//    const int {regN} = insn->regno[{regno}];\n")
+            f.write(f"    const int {regN} = insn->regno[{regno}];\n")
+            f.write(f"    ctx_log_sreg_write_pair(ctx, {regN});\n")
         elif regid in {"d"}:
-            f.write(f"//    const int {regN} = insn->regno[{regno}];\n")
+            f.write(f"    const int {regN} = insn->regno[{regno}];\n")
+            f.write(f"    ctx_log_sreg_write(ctx, {regN});\n")
         elif regid in {"ss"}:
             f.write(f"//    const int {regN} = insn->regno[{regno}];\n")
         elif regid in {"s"}:
@@ -194,11 +198,15 @@ def gen_analyze_func(f, tag, regs, imms):
     f.write(f"static void analyze_{tag}(DisasContext *ctx)\n")
     f.write("{\n")
 
-    f.write("    Insn *insn G_GNUC_UNUSED = ctx->insn;\n")
-
     if hex_common.tag_ignore(tag):
         f.write("}\n\n")
         return
+
+    if ("A_PRIV" in hex_common.attribdict[tag] or
+        "A_GUEST" in hex_common.attribdict[tag]):
+        f.write("#ifndef CONFIG_USER_ONLY\n")
+
+    f.write("    Insn *insn G_GNUC_UNUSED = ctx->insn;\n")
 
     i = 0
     ## Analyze all the registers
@@ -214,6 +222,10 @@ def gen_analyze_func(f, tag, regs, imms):
     if (has_generated_helper and
         "A_CVI" in hex_common.attribdict[tag]):
         f.write("    ctx->has_hvx_helper = true;\n")
+
+    if ("A_PRIV" in hex_common.attribdict[tag] or
+        "A_GUEST" in hex_common.attribdict[tag]):
+        f.write("#endif /* !CONFIG_USER_ONLY */\n")
 
     f.write("}\n\n")
 

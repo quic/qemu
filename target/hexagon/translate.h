@@ -118,10 +118,22 @@ static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
     ctx->greg_log_idx++;
 }
 
+static inline void ctx_log_greg_write_pair(DisasContext *ctx, int rnum)
+{
+    ctx_log_greg_write(ctx, rnum);
+    ctx_log_greg_write(ctx, rnum + 1);
+}
+
 static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
 {
     ctx->sreg_log[ctx->sreg_log_idx] = rnum;
     ctx->sreg_log_idx++;
+}
+
+static inline void ctx_log_sreg_write_pair(DisasContext *ctx, int rnum)
+{
+    ctx_log_sreg_write(ctx, rnum);
+    ctx_log_sreg_write(ctx, rnum + 1);
 }
 #endif
 
