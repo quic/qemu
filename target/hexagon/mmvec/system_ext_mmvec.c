@@ -209,7 +209,6 @@ void mem_vector_scatter_finish(thread_t* thread, Insn * insn, int op)
         }
     }
 #endif
-    thread->store_pending[slot] = 0;
     mmvecx->vstore_pending[slot] = 0;
     /*mmvecx->vtcm_log.size = fVECSIZE();*/
 

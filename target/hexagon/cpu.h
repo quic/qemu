@@ -413,7 +413,6 @@ typedef struct CPUArchState {
     MMQReg       qtmp QEMU_ALIGNED(16);
 
     VStoreLog vstore[VSTORES_MAX];
-    uint8_t store_pending[VSTORES_MAX];          /* FIXME - Is this needed? */
     target_ulong vstore_pending[VSTORES_MAX];
     bool vtcm_pending;
     VTCMStoreLog vtcm_log;

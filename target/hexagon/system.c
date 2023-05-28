@@ -220,7 +220,6 @@ mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, i
 #endif
 
 	thread->mem_access[slot].stdata = data;
-	thread->store_pending[slot] = 1;
 
 	LOG_MEM_STORE(vaddr,maptr->paddr, width, data, slot);
 
