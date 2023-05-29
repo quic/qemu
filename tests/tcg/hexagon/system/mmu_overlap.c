@@ -37,32 +37,32 @@ void test_overlap(void)
     uint64_t entry;
 
     add_trans(1, new_page, page, PGSIZE_1M, data_perm, 0, 1, 1);
-    check(tlbp(0, new_addr), 1);
+    check32(tlbp(0, new_addr), 1);
 
     /* Check an entry that overlaps with the one we just created */
     entry =
         create_mmu_entry(1, 0, 0, 0, new_page, 1, 1, 1, 0, 7, page, PGSIZE_4K);
-    check(tlboc(entry), 1);
+    check32(tlboc(entry), 1);
     /* Check that conditional TLB write (ctlbw) does NOT write the new entry */
-    check(ctlbw(entry, 2), 0x1);
+    check32(ctlbw(entry, 2), 0x1);
 
     /* Create an entry that does not overlap with the one we just created */
     entry = create_mmu_entry(1, 0, 0, 0, new_page + ONE_MB, 1, 1, 1, 0, 7, page,
                              PGSIZE_4K);
-    check(tlboc(entry), TLB_NOT_FOUND);
+    check32(tlboc(entry), TLB_NOT_FOUND);
     /* Check that conditional TLB write (ctlbw) does write the new entry */
-    check(ctlbw(entry, 2), TLB_NOT_FOUND);
+    check32(ctlbw(entry, 2), TLB_NOT_FOUND);
 
     /* Create an entry that overalps both of these entries */
     entry =
         create_mmu_entry(1, 0, 0, 0, new_page, 1, 1, 1, 0, 7, page, PGSIZE_4M);
-    check(tlboc(entry), 0xffffffff);
+    check32(tlboc(entry), 0xffffffff);
 
     /* Clear the TLB entries */
     remove_trans(1);
-    check(tlbp(0, new_addr), TLB_NOT_FOUND);
+    check32(tlbp(0, new_addr), TLB_NOT_FOUND);
     remove_trans(2);
-    check(tlbp(0, (new_addr + ONE_MB)), TLB_NOT_FOUND);
+    check32(tlbp(0, (new_addr + ONE_MB)), TLB_NOT_FOUND);
 }
 
 int main()

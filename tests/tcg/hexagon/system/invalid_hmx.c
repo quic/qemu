@@ -62,7 +62,7 @@ int main()
 
     INSTALL_ERR_HANDLER(my_err_handler);
     invalid_hmx();
-    check(*my_exceptions, 1 << HEX_CAUSE_NO_COPROC2_ENABLE);
+    check32(*my_exceptions, 1 << HEX_CAUSE_NO_COPROC2_ENABLE);
 
     puts(err ? "FAIL" : "PASS");
     return err;

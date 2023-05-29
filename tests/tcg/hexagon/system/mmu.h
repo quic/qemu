@@ -272,7 +272,7 @@ static inline uint32_t ctlbw(uint64_t entry, uint32_t idx)
     return ret;
 }
 
-static inline int32_t tlbp(uint32_t asid, uint32_t VA)
+static inline uint32_t tlbp(uint32_t asid, uint32_t VA)
 {
     uint32_t x = ((asid & 0x7f) << 20) | ((VA >> 12) & 0xfffff);
     uint32_t ret;
@@ -362,6 +362,8 @@ static inline void set_asid(uint32_t asid)
 }
 
 int err;
+#include "../hex_test.h"
+
 static void *old_evb;
 
 typedef uint64_t exception_vector[2];
@@ -390,14 +392,13 @@ static inline void set_exception_vector_bit(exception_vector excp, uint32_t bit)
 
 static inline void print_exception_vector(exception_vector excp)
 {
-    int i;
     printf("exceptions (0x%016llx 0x%016llx):", excp[1], excp[0]);
-    for (i = 0; i < 64; i++) {
+    for (int i = 0; i < 64; i++) {
         if (excp[0] & (1LL << i)) {
             printf(" 0x%x", i);
         }
     }
-    for (i = 0; i < 64; i++) {
+    for (int i = 0; i < 64; i++) {
         if (excp[1] & (1LL << i)) {
             printf(" 0x%x", i + 64);
         }
@@ -408,26 +409,6 @@ static inline void print_exception_vector(exception_vector excp)
 /* volatile because it is written through different MMU mappings */
 typedef volatile int mmu_variable;
 mmu_variable data = 0xdeadbeef;
-
-#define check(N, EXPECT) \
-    if ((N) != (EXPECT)) { \
-        printf("ERROR at %d: 0x%08lx != 0x%08lx\n", __LINE__, \
-               (uint32_t)(N), (uint32_t)(EXPECT)); \
-        err++; \
-    }
-
-#define check64(N, EXPECT) \
-    if ((N) != (EXPECT)) { \
-        printf("ERROR at %d: 0x%016llx != 0x%016llx\n", __LINE__, \
-               (N), (EXPECT)); \
-        err++; \
-    }
-
-#define check_not(N, EXPECT) \
-    if ((N) == (EXPECT)) { \
-        printf("ERROR: 0x%08x == 0x%08x\n", N, EXPECT); \
-        err++; \
-    }
 
 typedef int (*func_t)(void);
 /* volatile because it will be invoked via different MMU mappings */

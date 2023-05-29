@@ -78,9 +78,7 @@ void update_l2vic(uint32_t irq)
 
 void init_l2vic()
 {
-    int i;
-
-    for (i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; i++) {
         uint32_t irq = IRQ[i];
         uint32_t irq_bit = (1 << (irq % 32));
 
@@ -92,7 +90,7 @@ void init_l2vic()
 
 void intr_handler(int irq)
 {
-    uint32_t pcyclo, htid, i, j, vid;
+    uint32_t pcyclo, htid, j, vid;
     static uint32_t count[4] = { 0, 0, 0, 0 };
 
     __asm__ __volatile__("%0 = pcyclelo\n"
@@ -113,7 +111,7 @@ void intr_handler(int irq)
     }
     count[vid - FIRST_IRQ]++;
     j = 0;
-    for (i = 0; i <= 3; i++) {
+    for (int i = 0; i <= 3; i++) {
         if (count[i] >= 4) {
             j++;
         }
@@ -128,9 +126,9 @@ void intr_handler(int irq)
 /* assign l2irq to specific L1INT */
 void assign_l2irq_to_l1int(int *irq_array, int how_many)
 {
-    int i, irq, word_id, set_id;
+    int irq, word_id, set_id;
 
-    for (i = 0; i < how_many; i++) {
+    for (int i = 0; i < how_many; i++) {
         irq = irq_array[i];
         word_id = irq / 32;
         set_id = irq % 32;
@@ -230,7 +228,6 @@ void thread3()
 
 int main()
 {
-    int i, j;
     unsigned int base;
     unsigned int va;
     unsigned long long int pa;
@@ -250,12 +247,12 @@ int main()
     init_l2vic();
     waste_some_time(5);
 
-    for (i = 0; i < 6; i++) { /* disable(1)-enable(4)-disable(1) */
+    for (int i = 0; i < 6; i++) { /* disable(1)-enable(4)-disable(1) */
         printf(" iteration S0 %d @ 0x%llx\n", i, my_read_pcycles());
         fflush(stdout);
 
         /* clear off all pending interrupts */
-        for (j = 0; j < 4; j++) {
+        for (int j = 0; j < 4; j++) {
             unsigned int bit = 1 << (IRQ[j] % 32);
             *L2VIC_INT_CLEAR(IRQ[j]) = bit;
         }
@@ -265,12 +262,12 @@ int main()
         printf(" iteration S1 %d @ 0x%llx\n", i, my_read_pcycles());
         fflush(stdout);
         if ((i == 0) || (i == 5)) {
-            for (j = 0; j < 4; j++) {
+            for (int j = 0; j < 4; j++) {
                 *FAST_INTF_VA = (1 << 16) + IRQ[j]; /* disable them */
             }
         }
         if (i == 1) {
-            for (j = 0; j < 4; j++) {
+            for (int j = 0; j < 4; j++) {
                 *FAST_INTF_VA = (0 << 16) + IRQ[j]; /* enable them */
             }
         }
@@ -280,7 +277,7 @@ int main()
         printf(" iteration S2 %d @ 0x%llx\n", i, my_read_pcycles());
         fflush(stdout);
 
-        for (j = 0; j < 4; j++) {
+        for (int j = 0; j < 4; j++) {
             *FAST_INTF_VA = (2 << 16) + IRQ[j];
         }
         waste_some_time(50);
@@ -288,7 +285,7 @@ int main()
     waste_some_time(50);
 
     /* Each of the selected HW threads should get at least one interrupt */
-    for (i = 1; i < 3; i++) {
+    for (int i = 1; i < 3; i++) {
         if (HWTID[i] < 1) {
             printf("FAIL: HWTID[%d] = %ld\n", i, HWTID[i]);
             return 1;

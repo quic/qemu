@@ -63,18 +63,18 @@ void test_page_size(tlb_pgsize_t pgsize, uint32_t page_size_bits)
     printf("tlbp(0x%08lx) = 0x%lx\n", addr, tlbp(0, addr));
     printf("tlbp(0x%08lx) = 0x%lx\n", new_addr, tlbp(0, new_addr));
 #endif
-    check(tlbp(0, new_addr), 1);
+    check32(tlbp(0, new_addr), 1);
 
     /* Load through the new VA */
-    check(*(mmu_variable *)new_addr, 0xdeadbeef);
+    check32(*(mmu_variable *)new_addr, 0xdeadbeef);
 
     /* Store through the new VA */
     *(mmu_variable *)new_addr = 0xcafebabe;
-    check(data, 0xcafebabe);
+    check32(data, 0xcafebabe);
 
     /* Clear out this entry */
     remove_trans(1);
-    check(tlbp(0, new_addr), TLB_NOT_FOUND);
+    check32(tlbp(0, new_addr), TLB_NOT_FOUND);
 
     /* Set up a mapping for function execution */
     addr = (uint32_t)f;
@@ -92,18 +92,18 @@ void test_page_size(tlb_pgsize_t pgsize, uint32_t page_size_bits)
     hex_dump_mmu_entry(entry);
     printf("tlbp(0x%08lx) = 0x%lx\n", new_addr, tlbp(0, new_addr));
 #endif
-    check(tlbp(0, new_addr), 2);
+    check32(tlbp(0, new_addr), 2);
 
     /*
      * Call the function at the new address
      * It will return it's PC, which should be the new address
      */
     new_f = (mmu_func_t)new_addr;
-    check((new_f()), (int)new_addr);
+    check32((new_f()), (int)new_addr);
 
     /* Clear out this entry */
     remove_trans(2);
-    check(tlbp(0, new_addr), TLB_NOT_FOUND);
+    check32(tlbp(0, new_addr), TLB_NOT_FOUND);
 }
 
 int main()

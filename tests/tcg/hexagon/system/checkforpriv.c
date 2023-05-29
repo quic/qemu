@@ -96,10 +96,10 @@ int main()
     enter_user_mode();
 
     asm volatile("rte\n\t");
-    check(priv_exception_found, true);
+    check32(priv_exception_found, true);
 
     asm volatile("gelr = r0\n\t");
-    check(guest_exception_found, true);
+    check32(guest_exception_found, true);
 
     puts(err ? "FAIL" : "PASS");
     return err;

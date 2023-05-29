@@ -148,8 +148,7 @@ int thread_body(int id) {
     int ignored32 = EXPECTED_IGNORED;
     long long ignored64 = EXPECTED_IGNORED;
     unsigned long long tick64_iters = 0;
-    int i;
-    for (i = 0; i < LOOP_CNT; i++) {
+    for (int i = 0; i < LOOP_CNT; i++) {
         int scale = id * (i % 5);
         tick32_iters = sat_add(tick32_iters, atomic_inc32(&tick32, 1 * scale));
         tick64_iters = sat_add(tick64_iters, atomic_inc64(&tick64, 1 * scale));

@@ -110,7 +110,7 @@ void multiple_writes(void)
                  :
                  : "r"(&var), "r"(0x00fefe00)
                  : "r3", "r2", "p1", "p2", "memory");
-    check(var, init_val);
+    check32(var, init_val);
 }
 
 void my_err_handler_helper(uint32_t ssr)
@@ -158,15 +158,15 @@ int main()
     INSTALL_ERR_HANDLER(my_err_handler);
 
     multiple_writes_static();
-    check(*my_exceptions, 1 << HEX_CAUSE_REG_WRITE_CONFLICT);
+    check32(*my_exceptions, 1 << HEX_CAUSE_REG_WRITE_CONFLICT);
     *my_exceptions &= ~(1 << HEX_CAUSE_REG_WRITE_CONFLICT);
 
     multiple_writes_mixed();
-    check(*my_exceptions, 1 << HEX_CAUSE_REG_WRITE_CONFLICT);
+    check32(*my_exceptions, 1 << HEX_CAUSE_REG_WRITE_CONFLICT);
     *my_exceptions &= ~(1 << HEX_CAUSE_REG_WRITE_CONFLICT);
 
     multiple_writes();
-    check(*my_exceptions, 1 << HEX_CAUSE_REG_WRITE_CONFLICT);
+    check32(*my_exceptions, 1 << HEX_CAUSE_REG_WRITE_CONFLICT);
     *my_exceptions &= ~(1 << HEX_CAUSE_REG_WRITE_CONFLICT);
 
     puts(err ? "FAIL" : "PASS");

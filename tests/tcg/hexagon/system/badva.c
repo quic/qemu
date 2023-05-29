@@ -21,6 +21,9 @@
 
 #define DEBUG 0
 
+int err;
+#include "../hex_test.h"
+
 /* volatile because it is written through different MMU mappings */
 typedef volatile int mmu_variable;
 mmu_variable data0 = 0xdeadbeef;
@@ -226,18 +229,7 @@ uint32_t add_trans_pgsize(uint32_t page_size_bits)
     }
 }
 
-int err;
 int mb_counter = 1;
-
-static inline void __check(uint32_t n, uint32_t expect, int line)
-{
-    if (n != expect) {
-        printf("ERROR at line %d: 0x%08lx != 0x%08lx\n", line, n, expect);
-        err++;
-    }
-}
-
-#define check(N, E) __check(N, E, __LINE__)
 
 static mmu_variable *map_data_address(mmu_variable *p, uint32_t data_offset)
 {
@@ -268,23 +260,23 @@ static void test_dual_store(void)
 
     dual_store(new_data0, new_data1, 0x1, 0x2);
     if (read_badva() == (uint32_t)new_data0) {
-        check(read_badva0(), (uint32_t) new_data0);
-        check(read_badva1(), INVALID_BADVA);
-        check(read_ssr_v0(), 1);
-        check(read_ssr_v1(), 0);
-        check(read_ssr_bvs(), 0);
+        check32(read_badva0(), (uint32_t) new_data0);
+        check32(read_badva1(), INVALID_BADVA);
+        check32(read_ssr_v0(), 1);
+        check32(read_ssr_v1(), 0);
+        check32(read_ssr_bvs(), 0);
     } else if (read_badva() == (uint32_t)new_data1) {
-        check(read_badva0(), INVALID_BADVA);
-        check(read_badva1(), (uint32_t) new_data1);
-        check(read_ssr_v0(), 0);
-        check(read_ssr_v1(), 1);
-        check(read_ssr_bvs(), 1);
+        check32(read_badva0(), INVALID_BADVA);
+        check32(read_badva1(), (uint32_t) new_data1);
+        check32(read_ssr_v0(), 0);
+        check32(read_ssr_v1(), 1);
+        check32(read_ssr_bvs(), 1);
     } else {
         /* Something went wrong! */
-        check(0, 1);
+        check32(0, 1);
     }
-    check(data0, 0x1);
-    check(data1, 0x2);
+    check32(data0, 0x1);
+    check32(data1, 0x2);
 }
 
 static void test_dual_load(void)
@@ -301,23 +293,23 @@ static void test_dual_load(void)
 
     dual_load(new_data0, new_data1, &val0, &val1);
     if (read_badva() == (uint32_t)new_data0) {
-        check(read_badva0(), (uint32_t) new_data0);
-        check(read_badva1(), INVALID_BADVA);
-        check(read_ssr_v0(), 1);
-        check(read_ssr_v1(), 0);
-        check(read_ssr_bvs(), 0);
+        check32(read_badva0(), (uint32_t) new_data0);
+        check32(read_badva1(), INVALID_BADVA);
+        check32(read_ssr_v0(), 1);
+        check32(read_ssr_v1(), 0);
+        check32(read_ssr_bvs(), 0);
     } else if (read_badva() == (uint32_t)new_data1) {
-        check(read_badva0(), INVALID_BADVA);
-        check(read_badva1(), (uint32_t) new_data1);
-        check(read_ssr_v0(), 0);
-        check(read_ssr_v1(), 1);
-        check(read_ssr_bvs(), 1);
+        check32(read_badva0(), INVALID_BADVA);
+        check32(read_badva1(), (uint32_t) new_data1);
+        check32(read_ssr_v0(), 0);
+        check32(read_ssr_v1(), 1);
+        check32(read_ssr_bvs(), 1);
     } else {
         /* Something went wrong! */
-        check(0, 1);
+        check32(0, 1);
     }
-    check(val0, 0xaabbccdd);
-    check(val1, 0xeeff0011);
+    check32(val0, 0xaabbccdd);
+    check32(val1, 0xeeff0011);
 }
 
 static void test_load_store(void)
@@ -334,29 +326,29 @@ static void test_load_store(void)
 
     load_store(new_data0, new_data1, &val, 0x123);
     if (read_badva() == (uint32_t) new_data1) {
-        check(read_badva0(), (uint32_t) new_data1);
-        check(read_badva1(), INVALID_BADVA);
-        check(read_ssr_v0(), 1);
-        check(read_ssr_v1(), 0);
-        check(read_ssr_bvs(), 0);
+        check32(read_badva0(), (uint32_t) new_data1);
+        check32(read_badva1(), INVALID_BADVA);
+        check32(read_ssr_v0(), 1);
+        check32(read_ssr_v1(), 0);
+        check32(read_ssr_bvs(), 0);
     } else if (read_badva() == (uint32_t) new_data0) {
-        check(read_badva0(), INVALID_BADVA);
-        check(read_badva1(), (uint32_t) new_data0);
-        check(read_ssr_v0(), 0);
-        check(read_ssr_v1(), 1);
-        check(read_ssr_bvs(), 1);
+        check32(read_badva0(), INVALID_BADVA);
+        check32(read_badva1(), (uint32_t) new_data0);
+        check32(read_ssr_v0(), 0);
+        check32(read_ssr_v1(), 1);
+        check32(read_ssr_bvs(), 1);
     } else {
         /* Something went wrong! */
-        check(0, 1);
+        check32(0, 1);
     }
-    check(val, 0x11223344);
-    check(data1, 0x123);
+    check32(val, 0x11223344);
+    check32(data1, 0x123);
 }
 static void test_badva_write(void)
 {
     uint32_t va = 0x11223344;
     write_badva0(va);
-    check(read_badva(), va);
+    check32(read_badva(), va);
 }
 
 int main()

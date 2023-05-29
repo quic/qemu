@@ -61,11 +61,11 @@ void test_multi_tlb(void)
     set_asid(1);
     tlbinvasid(1);
     tlbw(entry, 1);
-    check(tlboc(entry), 1);
-    check(tlbp(1, new_addr), 1);
+    check32(tlboc(entry), 1);
+    check32(tlbp(1, new_addr), 1);
     tlbw(entry, 2);
-    check(tlboc(entry), 0xffffffff);
-    check(tlbp(1, new_addr), 1);
+    check32(tlboc(entry), 0xffffffff);
+    check32(tlbp(1, new_addr), 1);
     check_exception_vector(my_exceptions, expected_exceptions);
 
     /* Clear the TLB entries */

@@ -129,15 +129,15 @@ static void test_start(uint32_t mask)
     set_ssr_cause(0x15);
     asm volatile("start(%0)\n\t" :: "r"(mask));
     get_ssr(ssr);
-    check(ssr & 0xff, 0x15);
+    check32(ssr & 0xff, 0x15);
     pcycle_pause(100);
-    check(reset_mask, (mask & expect));
+    check32(reset_mask, (mask & expect));
     for (int i = 0; i < NUM_THREADS; i++) {
         if (i != htid) {
             if (mask & (1 << i)) {
-                check(ssr_cause_log[i], 0);
+                check32(ssr_cause_log[i], 0);
             } else {
-                check(ssr_cause_log[i], DUMMY_CAUSE);
+                check32(ssr_cause_log[i], DUMMY_CAUSE);
             }
         }
     }

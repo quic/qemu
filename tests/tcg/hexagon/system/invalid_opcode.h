@@ -59,7 +59,7 @@ MAKE_ERR_HANDLER(my_err_handler, my_err_handler_helper)
         puts(test_name); \
         INSTALL_ERR_HANDLER(my_err_handler); \
         test_func(); \
-        check(*my_exceptions, 1 << HEX_CAUSE_INVALID_OPCODE); \
+        check32(*my_exceptions, 1 << HEX_CAUSE_INVALID_OPCODE); \
         puts(err ? "FAIL" : "PASS"); \
         return err; \
     }

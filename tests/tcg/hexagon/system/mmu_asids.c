@@ -43,9 +43,9 @@ void test_asids(void)
      * Check that it is not found
      */
     tlbw(entry, 1);
-    check(tlboc(entry), 1);
+    check32(tlboc(entry), 1);
     tlbinvasid(entry >> 32);
-    check(tlboc(entry), TLB_NOT_FOUND);
+    check32(tlboc(entry), TLB_NOT_FOUND);
 
     /*
      * Re-install the entry
@@ -55,9 +55,9 @@ void test_asids(void)
     data = 0xdeadbeef;
     tlbw(entry, 1);
     set_asid(1);
-    check(*(mmu_variable *)new_addr, 0xdeadbeef);
+    check32(*(mmu_variable *)new_addr, 0xdeadbeef);
     *(mmu_variable *)new_addr = 0xcafebabe;
-    check(data, 0xcafebabe);
+    check32(data, 0xcafebabe);
 
     /*
      * Make sure a load from ASID 2 gets a different value.
@@ -67,7 +67,7 @@ void test_asids(void)
      */
     set_asid(2);
     data = 0xdeadbeef;
-    check_not(*(mmu_variable *)new_addr, 0xdeadbeef);
+    check32_ne(*(mmu_variable *)new_addr, 0xdeadbeef);
 
     /*
      * Invalidate the ASID and make sure a loads from ASID 1
@@ -76,7 +76,7 @@ void test_asids(void)
     tlbinvasid(entry >> 32);
     set_asid(1);
     data = 0xcafebabe;
-    check_not(*(mmu_variable *)new_addr, 0xcafebabe);
+    check32_ne(*(mmu_variable *)new_addr, 0xcafebabe);
 }
 
 int main()

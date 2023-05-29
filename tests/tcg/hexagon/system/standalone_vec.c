@@ -113,15 +113,15 @@ void prefill_vtcm_scratch(void)
 void print_vtcm_scratch_16(void)
 {
     unsigned short *vtmp = (unsigned short *)VTCM_BASE_ADDRESS;
-    int i, j;
 
     printf("\n\nPrinting the vtcm scratch in half words");
 
-    for (i = 0; i < SCRATCH_SIZE; i++) {
+    for (int i = 0; i < SCRATCH_SIZE; i++) {
         if ((i % MATRIX_SIZE) == 0)
             printf("\n");
-        for (j = 0; j < 2; j++)
+        for (int j = 0; j < 2; j++) {
             printf("%c", (char)((vtmp[i] >> j * 8) & 0xff));
+        }
 
         printf(" ");
     }
@@ -131,15 +131,15 @@ void print_vtcm_scratch_16(void)
 void print_vtcm_scratch_32(void)
 {
     unsigned int *vtmp = (unsigned int *)VTCM_BASE_ADDRESS;
-    int i, j;
 
     printf("\n\nPrinting the vtcm scratch in words");
 
-    for (i = 0; i < SCRATCH_SIZE; i++) {
+    for (int i = 0; i < SCRATCH_SIZE; i++) {
         if ((i % MATRIX_SIZE) == 0)
             printf("\n");
-        for (j = 0; j < 4; j++)
+        for (int j = 0; j < 4; j++) {
             printf("%c", (char)((vtmp[i] >> j * 8) & 0xff));
+        }
 
         printf(" ");
     }
@@ -151,16 +151,15 @@ void create_offsets_and_values_16(void)
 {
     unsigned short half_element = 0;
     unsigned short half_q_element = 0;
-    int i, j;
     char letter = 'A';
     char q_letter = '@';
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         half_offsets[i] = i * (2 * MATRIX_SIZE + 2);
 
         half_element = 0;
         half_q_element = 0;
-        for (j = 0; j < 2; j++) {
+        for (int j = 0; j < 2; j++) {
             half_element |= letter << j * 8;
             half_q_element |= q_letter << j * 8;
         }
@@ -179,9 +178,7 @@ void create_offsets_and_values_16(void)
 /* create a predicate mask for the half word scatter */
 void create_preds_16()
 {
-    int i;
-
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         half_predicates[i] = (i % 3 == 0 || i % 5 == 0) ? ~0 : 0;
     }
 }
@@ -192,16 +189,15 @@ void create_offsets_and_values_32(void)
 {
     unsigned int word_element = 0;
     unsigned int word_q_element = 0;
-    int i, j;
     char letter = 'A';
     char q_letter = '&';
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         word_offsets[i] = i * (4 * MATRIX_SIZE + 4);
 
         word_element = 0;
         word_q_element = 0;
-        for (j = 0; j < 4; j++) {
+        for (int j = 0; j < 4; j++) {
             word_element |= letter << j * 8;
             word_q_element |= q_letter << j * 8;
         }
@@ -220,9 +216,7 @@ void create_offsets_and_values_32(void)
 /* create a predicate mask for the word scatter */
 void create_preds_32()
 {
-    int i;
-
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         word_predicates[i] = (i % 4 == 0 || i % 7 == 0) ? ~0 : 0;
     }
 }
@@ -233,10 +227,9 @@ void dump_buf(char *str, void *addr, int element_size, int byte_len)
 {
     unsigned short *sptr = addr;
     unsigned int *ptr = addr;
-    int i;
 
     printf("\n\nBuffer: %s\n", str);
-    for (i = 0; i < byte_len / element_size; ++ptr, ++sptr, ++i) {
+    for (int i = 0; i < byte_len / element_size; ++ptr, ++sptr, ++i) {
         if (i != 0 && (i % 16) == 0)
             printf("\n");
         if (element_size == 2)
@@ -254,16 +247,15 @@ void create_offsets_and_values_16_32(void)
 {
     unsigned int half_element = 0;
     unsigned short half_q_element = 0;
-    int i, j;
     char letter = 'D';
     char q_letter = '$';
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         word_offsets[i] = i * (2 * MATRIX_SIZE + 2);
 
         half_element = 0;
         half_q_element = 0;
-        for (j = 0; j < 2; j++) {
+        for (int j = 0; j < 2; j++) {
             half_element |= letter << j * 8;
             half_q_element |= q_letter << j * 8;
         }
@@ -287,9 +279,7 @@ void create_offsets_and_values_16_32(void)
 
 void create_preds_16_32()
 {
-    int i;
-
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         half_predicates[i] = (i % 2 == 0 || i % 13 == 0) ? ~0 : 0;
     }
 }
@@ -479,11 +469,10 @@ void vector_scatter_q_32(void)
 void print_vector(char *str, HVX_Vector *v)
 
 {
-    int i;
     unsigned char *ptr = (unsigned char *)v;
 
     printf("\n\nVector: %s\n", str);
-    for (i = 0; i < sizeof(HVX_Vector) * 4; ++ptr, ++i) {
+    for (int i = 0; i < sizeof(HVX_Vector) * 4; ++ptr, ++i) {
         if (i != 0 && (i % 16) == 0)
             printf("\n");
         printf("%c ", *ptr);
@@ -494,11 +483,10 @@ void print_vector(char *str, HVX_Vector *v)
 void print_vectorpair(char *str, HVX_VectorPair *v)
 
 {
-    int i;
     unsigned char *ptr = (unsigned char *)v;
 
     printf("\n\nVectorPair: %s\n", str);
-    for (i = 0; i < sizeof(HVX_VectorPair); ++ptr, ++i) {
+    for (int i = 0; i < sizeof(HVX_VectorPair); ++ptr, ++i) {
         if (i != 0 && (i % 16) == 0)
             printf("\n");
         printf("%c ", *ptr);
@@ -784,9 +772,8 @@ static void check_buffer(const char *name, void *c, void *r, size_t size)
 {
     char *check = (char *)c;
     char *ref = (char *)r;
-    int i;
     /*  printf("check buffer %s 0x%x, 0x%x, %d\n", name, check, ref, size); */
-    for (i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         if (check[i] != ref[i]) {
             printf("Error %s [%d]: 0x%x (%c) != 0x%x (%c)\n", name, i, check[i],
                    check[i], ref[i], ref[i]);
@@ -805,9 +792,8 @@ static void check_buffer(const char *name, void *c, void *r, size_t size)
 void scalar_scatter_16(unsigned short *vscatter16)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vscatter16[half_offsets[i] / 2] = half_values[i];
     }
 
@@ -827,9 +813,8 @@ void check_scatter_16()
 void scalar_scatter_acc_16(unsigned short *vscatter16)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vscatter16[half_offsets[i] / 2] += half_acc_values[i];
     }
 
@@ -840,9 +825,8 @@ void scalar_scatter_acc_16(unsigned short *vscatter16)
 void scalar_scatter_q_16(unsigned short *vscatter16)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         if (half_predicates[i])
             vscatter16[half_offsets[i] / 2] = half_q_values[i];
     }
@@ -876,9 +860,8 @@ void check_scatter_q_16()
 void scalar_scatter_32(unsigned int *vscatter32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vscatter32[word_offsets[i] / 4] = word_values[i];
     }
 
@@ -889,9 +872,8 @@ void scalar_scatter_32(unsigned int *vscatter32)
 void scalar_scatter_acc_32(unsigned int *vscatter32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vscatter32[word_offsets[i] / 4] += word_acc_values[i];
     }
 
@@ -902,9 +884,8 @@ void scalar_scatter_acc_32(unsigned int *vscatter32)
 void scalar_scatter_q_32(unsigned int *vscatter32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         if (word_predicates[i])
             vscatter32[word_offsets[i] / 4] = word_q_values[i];
     }
@@ -946,9 +927,8 @@ void check_scatter_q_32()
 void scalar_scatter_16_32(unsigned short *vscatter16_32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vscatter16_32[word_offsets[i] / 2] = half_values[i];
     }
 
@@ -959,9 +939,8 @@ void scalar_scatter_16_32(unsigned short *vscatter16_32)
 void scalar_scatteracc_16_32(unsigned short *vscatter16_32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vscatter16_32[word_offsets[i] / 2] += half_acc_values[i];
     }
 
@@ -971,9 +950,8 @@ void scalar_scatteracc_16_32(unsigned short *vscatter16_32)
 void scalar_scatter_q_16_32(unsigned short *vscatter16_32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
+    for (int i = 0; i < MATRIX_SIZE; i++) {
         if (half_predicates[i])
             vscatter16_32[word_offsets[i] / 2] = half_q_values[i];
     }
@@ -1015,9 +993,8 @@ void check_scatter_q_16_32()
 void scalar_gather_16(unsigned short *vgather16)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vgather16[i] = vscatter16[half_offsets[i] / 2];
     }
 
@@ -1027,9 +1004,8 @@ void scalar_gather_16(unsigned short *vgather16)
 void scalar_gather_q_16(unsigned short *vgather16)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         if (half_predicates[i])
             vgather16[i] = vscatter16[half_offsets[i] / 2];
     }
@@ -1058,9 +1034,8 @@ void check_gather_q_16()
 void scalar_gather_32(unsigned int *vgather32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vgather32[i] = vscatter32[word_offsets[i] / 4];
     }
 
@@ -1070,9 +1045,8 @@ void scalar_gather_32(unsigned int *vgather32)
 void scalar_gather_q_32(unsigned int *vgather32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         if (word_predicates[i])
             vgather32[i] = vscatter32[word_offsets[i] / 4];
     }
@@ -1102,9 +1076,8 @@ void check_gather_q_32(void)
 void scalar_gather_16_32(unsigned short *vgather16_32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         vgather16_32[i] = vscatter16_32[word_offsets[i] / 2];
     }
 
@@ -1114,9 +1087,8 @@ void scalar_gather_16_32(unsigned short *vgather16_32)
 void scalar_gather_q_16_32(unsigned short *vgather16_32)
 {
     START_CYCLES;
-    int i;
 
-    for (i = 0; i < MATRIX_SIZE; ++i) {
+    for (int i = 0; i < MATRIX_SIZE; ++i) {
         if (half_predicates[i])
             vgather16_32[i] = vscatter16_32[word_offsets[i] / 2];
     }
@@ -1151,14 +1123,14 @@ void print_scatter16_buffer(void)
      * VTCM_SCATTER16_ADDRESS);
      */
     printf("\n\nPrinting the 16 bit scatter buffer");
-    int i, j;
 
-    for (i = 0; i < SCATTER_BUFFER_SIZE; i++) {
+    for (int i = 0; i < SCATTER_BUFFER_SIZE; i++) {
         if ((i % MATRIX_SIZE) == 0)
             printf("\n");
 
-        for (j = 0; j < 2; j++)
+        for (int j = 0; j < 2; j++) {
             printf("%c", (char)((vscatter16[i] >> j * 8) & 0xff));
+        }
 
         printf(" ");
     }
@@ -1173,11 +1145,11 @@ void print_gather_result_16(void)
      * VTCM_GATHER16_ADDRESS);
      */
     printf("\n\nPrinting the 16 bit gather result\n");
-    int i, j;
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
-        for (j = 0; j < 2; j++)
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < 2; j++) {
             printf("%c", (char)((vgather16[i] >> j * 8) & 0xff));
+        }
 
         printf(" ");
     }
@@ -1192,14 +1164,14 @@ void print_scatter32_buffer(void)
      * VTCM_SCATTER32_ADDRESS);
      */
     printf("\n\nPrinting the 32 bit scatter buffer");
-    int i, j;
 
-    for (i = 0; i < SCATTER_BUFFER_SIZE; i++) {
+    for (int i = 0; i < SCATTER_BUFFER_SIZE; i++) {
         if ((i % MATRIX_SIZE) == 0)
             printf("\n");
 
-        for (j = 0; j < 4; j++)
+        for (int j = 0; j < 4; j++) {
             printf("%c", (char)((vscatter32[i] >> j * 8) & 0xff));
+        }
 
         printf(" ");
     }
@@ -1215,11 +1187,11 @@ void print_gather_result_32(void)
      * VTCM_GATHER32_ADDRESS);
      */
     printf("\n\nPrinting the 32 bit gather result\n");
-    int i, j;
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
-        for (j = 0; j < 4; j++)
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < 4; j++) {
             printf("%c", (char)((vgather32[i] >> j * 8) & 0xff));
+        }
 
         printf(" ");
     }
@@ -1234,14 +1206,14 @@ void print_scatter16_32_buffer(void)
      * VTCM_SCATTER16_32_ADDRESS);
      */
     printf("\n\nPrinting the 16_32 bit scatter buffer");
-    int i, j;
 
-    for (i = 0; i < SCATTER_BUFFER_SIZE; i++) {
+    for (int i = 0; i < SCATTER_BUFFER_SIZE; i++) {
         if ((i % MATRIX_SIZE) == 0)
             printf("\n");
 
-        for (j = 0; j < 2; j++)
+        for (int j = 0; j < 2; j++) {
             printf("%c", (unsigned char)((vscatter16_32[i] >> j * 8) & 0xff));
+        }
 
         printf(" ");
     }
@@ -1256,11 +1228,11 @@ void print_gather_result_16_32(void)
      * VTCM_GATHER16_32_ADDRESS);
      */
     printf("\n\nPrinting the 16_32 bit gather result\n");
-    int i, j;
 
-    for (i = 0; i < MATRIX_SIZE; i++) {
-        for (j = 0; j < 2; j++)
+    for (int i = 0; i < MATRIX_SIZE; i++) {
+        for (int j = 0; j < 2; j++) {
             printf("%c", (unsigned char)((vgather16_32[i] >> j * 8) & 0xff));
+        }
 
         printf(" ");
     }

@@ -25,6 +25,7 @@
 #define MAX_HW_THREADS                  6
 
 int err;
+#include "../hex_test.h"
 
 static inline void __check_range(uint32_t val, uint32_t min, uint32_t max, int line)
 {
@@ -36,28 +37,6 @@ static inline void __check_range(uint32_t val, uint32_t min, uint32_t max, int l
 }
 
 #define check_range(V, MIN, MAX) __check_range(V, MIN, MAX, __LINE__)
-
-static inline void __check(uint32_t val, uint32_t expect, int line)
-{
-    if (val != expect) {
-        printf("ERROR at line %d: %" PRIu32 " != %" PRIu32 "\n", line, val,
-               expect);
-        err++;
-    }
-}
-
-#define check(V, E) __check(V, E, __LINE__)
-
-static inline void __check_ne(uint32_t val, uint32_t expect, int line)
-{
-   if (val == expect) {
-        printf("ERROR at line %d: %" PRIu32 " == %" PRIu32 "\n", line, val,
-               expect);
-        err++;
-    }
-}
-
-#define check_ne(V, E) __check_ne(V, E, __LINE__)
 
 static void test_pcycle(void)
 {
@@ -89,7 +68,7 @@ static void test_pcycle(void)
      * QEMU executes threads one at a time, but hexagon-sim interleaves them.
      * So, we check a range of pcycles to make the same test pass on both.
      */
-    check(pcyclehi, 0);
+    check32(pcyclehi, 0);
     check_range(pcycle, 6, 6 * MAX_HW_THREADS);
     check_range(pcyclelo, 6, 6 * MAX_HW_THREADS);
 }
@@ -106,7 +85,7 @@ static void test_pcycle_read(void)
         : "=r"(val0), "=r"(val1)
     );
 
-    check_ne(val0, val1);
+    check32_ne(val0, val1);
 
     val0 = 0;
     val1 = 0;
@@ -122,7 +101,7 @@ static void test_pcycle_read(void)
         :: "r0", "r1"
     );
 
-    check_ne(val0, val1);
+    check32_ne(val0, val1);
 }
 
 #define read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi) \
@@ -183,11 +162,11 @@ static void test_upcycle(void)
      */
     clr_ssr_ce();
     read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
-    check(upcyclelo, 0);
-    check(upcyclehi, 0);
+    check32(upcyclelo, 0);
+    check32(upcyclehi, 0);
 
     read_upcycle_reg_pair(pcycle, upcycle);
-    check(upcycle, 0);
+    check32(upcycle, 0);
 
     /*
      * After SSR[CE] is set, upcycle registers should match pcycle
@@ -195,7 +174,7 @@ static void test_upcycle(void)
     set_ssr_ce();
     read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi);
     check_range(upcyclelo, pcyclelo, pcyclelo * MAX_HW_THREADS);
-    check(upcyclehi, pcyclehi);
+    check32(upcyclehi, pcyclehi);
 
     read_upcycle_reg_pair(pcycle, upcycle);
     check_range(upcycle, pcycle, pcycle * MAX_HW_THREADS);
@@ -212,11 +191,11 @@ static void test_gpcycle(void)
      */
     clr_ssr_ce();
     read_gpcycle_regs(pcyclelo, pcyclehi, gpcyclelo, gpcyclehi);
-    check(gpcyclelo, 0);
-    check(gpcyclehi, 0);
+    check32(gpcyclelo, 0);
+    check32(gpcyclehi, 0);
 
     read_gpcycle_reg_pair(pcycle, gpcycle);
-    check(gpcycle, 0);
+    check32(gpcycle, 0);
 
     /*
      * After SSR[CE] is set, gpcycle registers should match pcycle
@@ -224,7 +203,7 @@ static void test_gpcycle(void)
     set_ssr_ce();
     read_gpcycle_regs(pcyclelo, pcyclehi, gpcyclelo, gpcyclehi);
     check_range(gpcyclelo, pcyclelo, pcyclelo * MAX_HW_THREADS);
-    check(gpcyclehi, pcyclehi);
+    check32(gpcyclehi, pcyclehi);
 
     read_gpcycle_reg_pair(pcycle, gpcycle);
     check_range(gpcycle, pcycle, pcycle * MAX_HW_THREADS);
@@ -277,12 +256,12 @@ static void test_gcycle_xt(void)
     clr_ssr_pe();
     read_gcycle_xt_regs(gcycle_1t, gcycle_2t, gcycle_3t,
                         gcycle_4t, gcycle_5t, gcycle_6t);
-    check(gcycle_1t, 0);
-    check(gcycle_2t, 0);
-    check(gcycle_3t, 0);
-    check(gcycle_4t, 0);
-    check(gcycle_5t, 0);
-    check(gcycle_6t, 0);
+    check32(gcycle_1t, 0);
+    check32(gcycle_2t, 0);
+    check32(gcycle_3t, 0);
+    check32(gcycle_4t, 0);
+    check32(gcycle_5t, 0);
+    check32(gcycle_6t, 0);
 
     /*
      * After SSR[PE] is set, gcycleXt registers have real values
@@ -296,11 +275,11 @@ static void test_gcycle_xt(void)
      * gives some ability for the underlying runtime code to change.
      */
     check_range(gcycle_1t, 1850, 7500);
-    check(gcycle_2t, 0);
-    check(gcycle_3t, 0);
-    check(gcycle_4t, 0);
-    check(gcycle_5t, 0);
-    check(gcycle_6t, 0);
+    check32(gcycle_2t, 0);
+    check32(gcycle_3t, 0);
+    check32(gcycle_4t, 0);
+    check32(gcycle_5t, 0);
+    check32(gcycle_6t, 0);
 }
 
 int main()

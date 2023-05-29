@@ -72,7 +72,7 @@ static void check_hvx(void (setup_fn)(void), int excp)
 {
     setup_fn();
     hvx_insn();
-    check(*my_exceptions, excp);
+    check32(*my_exceptions, excp);
     clear_exception_vector(my_exceptions);
 }
 

@@ -100,6 +100,9 @@ LDFLAGS+= -static
 %.o: %.cpp
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
 
+mmu.h: ../hex_test.h
+invalid_opcode.h: mmu.h
+
 standalone_hw: standalone_hw.o monitor_insts.o
 standalone_vec: standalone_vec.o
 mmu_multi_tlb.o: mmu_multi_tlb.c mmu.h
@@ -114,10 +117,13 @@ mmu_asids.o: mmu_asids.c mmu.h
 mmu_asids: mmu_asids.o dummy_mutex.o
 mmu_cacheops.o: mmu_cacheops.c mmu.h
 mmu_cacheops: mmu_cacheops.o dummy_mutex.o
+badva.o: badva.c ../hex_test.h
 badva: badva.o
 tlblock: tlblock.o
 k0lock: k0lock.o
+invalid_opcode.o: invalid_opcode.c invalid_opcode.h
 invalid_opcode: invalid_opcode.o
+invalid_hmx.o: invalid_hmx.c mmu.h
 invalid_hmx: invalid_hmx.o
 sys_atomics: sys_atomics.o
 timer_reg: timer_reg.o
@@ -138,10 +144,12 @@ hmx_conv: hmx_conv.o hmx_conv_asm.o util.o
 hmx_conv_fp16: hmx_conv_fp16.o
 hmx_range: hmx_range.o
 wait: wait.o
+pcycle.o: pcycle.c ../hex_test.h
 pcycle: pcycle.o
 neg-framelimit: framelimit.o
 neg-float_excp: float_excp.o
 neg-hvx_nocoproc: hvx_nocoproc.o
+hvx_64b.o: hvx_64b.c mmu.h
 hvx_64b: hvx_64b.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
@@ -160,6 +168,7 @@ checkforpriv.o: checkforpriv.c mmu.h
 checkforpriv: checkforpriv.o
 pend_wake_wait: pend_wake_wait.o util.o
 gregs: gregs.o
+multiple_writes.o: multiple_writes.c mmu.h
 multiple_writes: multiple_writes.o
 thread_scheduling: thread_scheduling.o
 rev: rev.o

@@ -63,7 +63,7 @@ void test_permissions(void)
 
     add_trans(1, new_data_page, data_page,
               PGSIZE_4K, data_perm, 0, 1, 1);
-    check(tlbp(0, read_data_addr), 1);
+    check32(tlbp(0, read_data_addr), 1);
 
     data_offset = TWO_MB;
     new_data_page = data_page + data_offset;
@@ -71,7 +71,7 @@ void test_permissions(void)
     data_perm = TLB_X | TLB_W | TLB_R;
     add_trans(2, new_data_page, data_page,
               PGSIZE_4K, data_perm, 0, 1, 1);
-    check(tlbp(0, read_user_data_addr), 2);
+    check32(tlbp(0, read_user_data_addr), 2);
 
     data_offset = THREE_MB;
     new_data_page = data_page + data_offset;
@@ -79,7 +79,7 @@ void test_permissions(void)
     data_perm = TLB_X | TLB_R | TLB_U;
     add_trans(3, new_data_page, data_page,
               PGSIZE_4K, data_perm, 0, 1, 1);
-    check(tlbp(0, write_data_addr), 3);
+    check32(tlbp(0, write_data_addr), 3);
 
     data_offset = FOUR_MB;
     new_data_page = data_page + data_offset;
@@ -87,32 +87,32 @@ void test_permissions(void)
     data_perm = TLB_X | TLB_R | TLB_W;
     add_trans(4, new_data_page, data_page,
               PGSIZE_4K, data_perm, 0, 1, 1);
-    check(tlbp(0, write_user_data_addr), 4);
+    check32(tlbp(0, write_user_data_addr), 4);
 
     add_trans(5, new_func_page, func_page,
               PGSIZE_4K, func_perm, 0, 1, 1);
-    check(tlbp(0, exec_addr), 5);
+    check32(tlbp(0, exec_addr), 5);
 
     install_my_event_vectors();
     enter_user_mode();
 
     /* Load through the new VA */
-    check(*(mmu_variable *)read_data_addr, 0xdeadbeef);
-    check(*(mmu_variable *)read_user_data_addr, 0xdeadbeef);
+    check32(*(mmu_variable *)read_data_addr, 0xdeadbeef);
+    check32(*(mmu_variable *)read_user_data_addr, 0xdeadbeef);
 
     /* Store through the new VA */
     /* Make sure the replay happens before anything else */
     mmu_variable *p = (mmu_variable *)write_data_addr;
     asm volatile("memw(%0++#4) = %1\n\t"
                  : "+r"(p) : "r"(0xc0ffee) : "memory");
-    check(data, 0xc0ffee);
-    check((uint32_t)p, (uint32_t)write_data_addr + 4);
+    check32(data, 0xc0ffee);
+    check32((uint32_t)p, (uint32_t)write_data_addr + 4);
 
     *(mmu_variable *)write_user_data_addr = 0xc0ffee;
-    check(data, 0xc0ffee);
+    check32(data, 0xc0ffee);
 
     mmu_func_t new_f = (mmu_func_t)exec_addr;
-    check((new_f()), (int)exec_addr);
+    check32((new_f()), (int)exec_addr);
 
     clear_exception_vector(expected_exceptions);
     set_exception_vector_bit(expected_exceptions, HEX_CAUSE_FETCH_NO_XPAGE);

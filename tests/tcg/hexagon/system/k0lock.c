@@ -47,13 +47,11 @@ static void thread_func(void *arg)
 int main(int argc, char *argv[])
 {
     const int work = COMPUTE_THREADS * 3;
-    int i, j;
 
     puts("Testing k0lock/k0unlock");
-    j = 0;
-    while (j < work) {
+    for (int j = 0; j < work; ) {
         k0lock();
-        for (i = 0; i < COMPUTE_THREADS && j < work; i++, j++) {
+        for (int i = 0; i < COMPUTE_THREADS && j < work; i++, j++) {
             thread_create((void *)thread_func, &stack[i][STACK_SIZE], i + 1, 0);
         }
         k0unlock();

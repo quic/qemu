@@ -25,13 +25,12 @@ int main(int argc, char *argv[])
     size_t rc;
     char fileName[100];
     static char contents[6];
-    int i;
     FILE *fp;
     if (argc < 2) {
         printf("Usage: fopen <filename(s)>\n");
         return 1;
     }
-    for (i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
         sprintf(fileName, "%s", argv[i]);
         fp = fopen(fileName, "r+");
         if (!fp) {
