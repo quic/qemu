@@ -18,9 +18,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "../reg_mut.h"
-
 int err;
+#include "../reg_mut.h"
+#include "../hex_test.h"
 
 static inline uint32_t ehw(uint64_t val)
 {
@@ -52,19 +52,19 @@ static inline void write_thread_local_system_control_registers(void)
     uint32_t new_val = 0xffffffff;
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "stid", new_val);
-    check(result, mask(new_val, cur_val, 0xff00ff00));
+    check32(result, mask(new_val, cur_val, 0xff00ff00));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "elr", new_val);
-    check(result, mask(new_val, cur_val, 0x00000003));
+    check32(result, mask(new_val, cur_val, 0x00000003));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "ccr", new_val);
-    check(result, mask(new_val, cur_val, 0x10e0ff24));
+    check32(result, mask(new_val, cur_val, 0x10e0ff24));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "imask", new_val);
-    check(result, mask(new_val, cur_val, 0xffff0000));
+    check32(result, mask(new_val, cur_val, 0xffff0000));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "gevb", new_val);
-    check(result, mask(new_val, cur_val, 0x000000ff));
+    check32(result, mask(new_val, cur_val, 0x000000ff));
 }
 
 static inline void write_global_system_control_registers(void)
@@ -74,34 +74,34 @@ static inline void write_global_system_control_registers(void)
     uint32_t new_val = 0xffffffff;
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "syscfg", new_val);
-    check(result, mask(new_val, cur_val, 0x80001c00));
+    check32(result, mask(new_val, cur_val, 0x80001c00));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "vid", new_val);
-    check(result, mask(new_val, cur_val, 0xfc00fc00));
+    check32(result, mask(new_val, cur_val, 0xfc00fc00));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "bestwait", new_val);
-    check(result, mask(new_val, cur_val, 0xfffffe00));
+    check32(result, mask(new_val, cur_val, 0xfffffe00));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "schedcfg", new_val);
-    check(result, mask(new_val, cur_val, 0xfffffef0));
+    check32(result, mask(new_val, cur_val, 0xfffffef0));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "isdbcfg0", new_val);
-    check(result, mask(new_val, cur_val, 0xe0000000));
+    check32(result, mask(new_val, cur_val, 0xe0000000));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "brkptpc0", new_val);
-    check(result, mask(new_val, cur_val, 0x00000003));
+    check32(result, mask(new_val, cur_val, 0x00000003));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "brkptcfg0", new_val);
-    check(result, mask(new_val, cur_val, 0xfc007000));
+    check32(result, mask(new_val, cur_val, 0xfc007000));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "brkptpc1", new_val);
-    check(result, mask(new_val, cur_val, 0x00000003));
+    check32(result, mask(new_val, cur_val, 0x00000003));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "brkptcfg1", new_val);
-    check(result, mask(new_val, cur_val, 0xfc007000));
+    check32(result, mask(new_val, cur_val, 0xfc007000));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "isdben", new_val);
-    check(result, mask(new_val, cur_val, 0xfffffffe));
+    check32(result, mask(new_val, cur_val, 0xfffffffe));
 }
 
 static inline void write_thread_local_system_control_register_pairs(void)
@@ -111,10 +111,10 @@ static inline void write_thread_local_system_control_register_pairs(void)
     uint64_t new_val = 0xffffffffffffffff;
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s3:2", new_val);
-    check(result, mask_pair(new_val, cur_val, 0x00000003, 0xff00ff00));
+    check64(result, mask_pair(new_val, cur_val, 0x00000003, 0xff00ff00));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s11:10", new_val);
-    check(result, mask_pair(new_val, cur_val, 0x000000ff, 0xffff0000));
+    check64(result, mask_pair(new_val, cur_val, 0x000000ff, 0xffff0000));
 }
 
 /*
@@ -142,37 +142,37 @@ static inline void write_global_system_control_register_pairs(void)
     uint64_t new_val = 0xffffffffffffffff;
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s19:18", new_val);
-    check(result, mask_pair(new_val, cur_val, 0x00000000, 0x80001c00));
+    check64(result, mask_pair(new_val, cur_val, 0x00000000, 0x80001c00));
 
     READ_WRITE_REG_ENCODED(cur_val, result, "s21:20", new_val, S21_20_EQ_R1_0);
-    check(result, mask_pair(new_val, cur_val, 0xfc00fc00, 0xffffffff));
+    check64(result, mask_pair(new_val, cur_val, 0xfc00fc00, 0xffffffff));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s25:24", new_val);
-    check(result, mask_pair(new_val, cur_val, 0xfffffef0, 0x00000000));
+    check64(result, mask_pair(new_val, cur_val, 0xfffffef0, 0x00000000));
 
     READ_WRITE_REG_ENCODED(cur_val, result, "s27:26", new_val, S27_26_EQ_R1_0);
-    check(result, mask_pair(new_val, cur_val, 0xffffffff, 0x00000000));
+    check64(result, mask_pair(new_val, cur_val, 0xffffffff, 0x00000000));
 
     READ_WRITE_REG_ENCODED(cur_val, result, "s29:28", new_val, S29_28_EQ_R1_0);
-    check(result, mask_pair(new_val, cur_val, 0xffffffff, 0x00000000));
+    check64(result, mask_pair(new_val, cur_val, 0xffffffff, 0x00000000));
 
     READ_WRITE_REG_ENCODED(cur_val, result, "s33:32", new_val, S33_32_EQ_R1_0);
-    check(result, mask_pair(new_val, cur_val, 0xe0000000, 0xffffffff));
+    check64(result, mask_pair(new_val, cur_val, 0xe0000000, 0xffffffff));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s37:36", new_val);
-    check(result, mask_pair(new_val, cur_val, 0xfc007000, 0x00000003));
+    check64(result, mask_pair(new_val, cur_val, 0xfc007000, 0x00000003));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s39:38", new_val);
-    check(result, mask_pair(new_val, cur_val, 0xfc007000, 0x00000003));
+    check64(result, mask_pair(new_val, cur_val, 0xfc007000, 0x00000003));
 
     READ_WRITE_REG_ENCODED(cur_val, result, "s41:40", new_val, S41_40_EQ_R1_0);
-    check(result, mask_pair(new_val, cur_val, 0x00000000, 0xffffffff));
+    check64(result, mask_pair(new_val, cur_val, 0x00000000, 0xffffffff));
 
     READ_WRITE_REG_NOCLOBBER(cur_val, result, "s43:42", new_val);
-    check(result, mask_pair(new_val, cur_val, 0x00000000, 0xfffffffe));
+    check64(result, mask_pair(new_val, cur_val, 0x00000000, 0xfffffffe));
 
     READ_WRITE_REG_ENCODED(cur_val, result, "s57:56", new_val, S57_56_EQ_R1_0);
-    check(result, mask_pair(new_val, cur_val, 0xffffffff, 0xffffffff));
+    check64(result, mask_pair(new_val, cur_val, 0xffffffff, 0xffffffff));
 }
 
 int main()

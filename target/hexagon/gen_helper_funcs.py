@@ -97,6 +97,7 @@ def gen_helper_arg_opn(f, regtype, regid, i, tag):
     else:
         hex_common.bad_register(regtype, regid)
 
+
 def gen_helper_arg_imm(f, immlett):
     f.write(f", int32_t {hex_common.imm_name(immlett)}")
 

@@ -18,30 +18,6 @@
 #ifndef REG_MUT_H
 #define REG_MUT_H
 
-extern int err;
-
-#define check(N, EXPECT) \
-    do { \
-        uint64_t value = N; \
-        uint64_t expect = EXPECT; \
-        if (value != EXPECT) { \
-            printf("ERROR: \"%s\" 0x%04llx != 0x%04llx at %s:%d\n", #N, value, \
-                   expect, __FILE__, __LINE__); \
-            err++; \
-        } \
-    } while (0)
-
-#define check_ne(N, EXPECT) \
-    do { \
-        uint64_t value = N; \
-        uint64_t expect = EXPECT; \
-        if (value == EXPECT) { \
-            printf("ERROR: \"%s\" 0x%04llx == 0x%04llx at %s:%d\n", #N, value, \
-                   expect, __FILE__, __LINE__); \
-            err++; \
-        } \
-    } while (0)
-
 #define READ_WRITE_REG_NOCLOBBER(cur_val, result, reg_name, new_val) \
     asm volatile("%0 = " reg_name "\n\t" \
                  reg_name " = %2\n\t" \
