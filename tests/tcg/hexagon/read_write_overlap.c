@@ -135,12 +135,12 @@ static inline uint32_t satuh(uint32_t x, bool *ovf)
 static void test_satuh(void)
 {
     bool ovf;
-    check(satuh(0x10000, &ovf), 0xffff);
-    check(ovf, 1);
-    check(satuh(0, &ovf), 0);
-    check(ovf, 0);
-    check(satuh(0xf0000000, &ovf), 0x0);
-    check(ovf, 1);
+    check32(satuh(0x10000, &ovf), 0xffff);
+    check32(ovf, 1);
+    check32(satuh(0, &ovf), 0);
+    check32(ovf, 0);
+    check32(satuh(0xf0000000, &ovf), 0x0);
+    check32(ovf, 1);
 }
 
 static inline uint32_t addasl_rrri(uint32_t x, uint32_t y)
@@ -155,7 +155,7 @@ static inline uint32_t addasl_rrri(uint32_t x, uint32_t y)
 
 static void test_addasl_rrri(void)
 {
-    check(addasl_rrri(0x11111111, 0x11223344), 0x23344551);
+    check32(addasl_rrri(0x11111111, 0x11223344), 0x23344551);
 }
 
 static inline uint32_t vsplatb(uint32_t x)
@@ -170,7 +170,7 @@ static inline uint32_t vsplatb(uint32_t x)
 
 static void test_vsplatb(void)
 {
-    check(vsplatb(0x12), 0x12121212);
+    check32(vsplatb(0x12), 0x12121212);
 }
 
 static inline uint32_t combine_ll(uint32_t x, uint32_t y)
@@ -185,7 +185,7 @@ static inline uint32_t combine_ll(uint32_t x, uint32_t y)
 
 static void test_combine_ll(void)
 {
-    check(combine_ll(0x1111, 0x2222), 0x11112222);
+    check32(combine_ll(0x1111, 0x2222), 0x11112222);
 }
 
 static inline uint32_t combine_lh(uint32_t x, uint32_t y)
@@ -200,7 +200,7 @@ static inline uint32_t combine_lh(uint32_t x, uint32_t y)
 
 static void test_combine_lh(void)
 {
-    check(combine_lh(0x1111, 0x22220000), 0x11112222);
+    check32(combine_lh(0x1111, 0x22220000), 0x11112222);
 }
 
 static inline uint32_t mpyri_addr_u2(uint32_t x, uint32_t y)
@@ -215,7 +215,7 @@ static inline uint32_t mpyri_addr_u2(uint32_t x, uint32_t y)
 
 static void test_mpyi_addr_u2(void)
 {
-    check(mpyri_addr_u2(0x11223344, 0xf), 0x1223344f);
+    check32(mpyri_addr_u2(0x11223344, 0xf), 0x1223344f);
 }
 
 static inline uint32_t accii(uint32_t x, uint32_t y)
@@ -227,7 +227,7 @@ static inline uint32_t accii(uint32_t x, uint32_t y)
 
 static void test_accii(void)
 {
-    check(accii(0x12345600, 0xf0), 0x123456f8);
+    check32(accii(0x12345600, 0xf0), 0x123456f8);
 }
 
 static inline uint32_t acci(uint32_t x, uint32_t y)
@@ -242,7 +242,7 @@ static inline uint32_t acci(uint32_t x, uint32_t y)
 
 static void test_acci(void)
 {
-    check(acci(0x12345600, 0xf0), 0x123457e0);
+    check32(acci(0x12345600, 0xf0), 0x123457e0);
 }
 
 int main()
