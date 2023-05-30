@@ -62,6 +62,8 @@ typedef struct DisasContext {
     bool need_cpu_limit;
     bool pmu_enabled;
     bool pmu_counters_updated;
+    TCGv t_sreg_new_value[NUM_SREGS];
+    TCGv greg_new_value[NUM_GREGS];
 #endif
     int preg_log[PRED_WRITES_MAX];
     int preg_log_idx;
@@ -109,13 +111,21 @@ typedef struct DisasContext {
     TCGv pred_written;
     TCGv branch_taken;
     TCGv dczero_addr;
+    TCGv gpreg_written;
+    /*
+     * This value will be a TCGv treated as a mask of the registers
+     * written multiple times in this packet.
+     */
+    TCGv mult_reg_written;
 } DisasContext;
 
 #ifndef CONFIG_USER_ONLY
 static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
 {
-    ctx->greg_log[ctx->greg_log_idx] = rnum;
-    ctx->greg_log_idx++;
+    if (rnum <= HEX_GREG_G3) {
+        ctx->greg_log[ctx->greg_log_idx] = rnum;
+        ctx->greg_log_idx++;
+    }
 }
 
 static inline void ctx_log_greg_write_pair(DisasContext *ctx, int rnum)
@@ -261,8 +271,6 @@ extern TCGv hex_pred[NUM_PREGS];
 extern TCGv hex_slot_cancelled;
 extern TCGv hex_new_value_usr;
 extern TCGv hex_reg_written[TOTAL_PER_THREAD_REGS];
-extern TCGv hex_gpreg_written;
-extern TCGv hex_mult_reg_written;
 extern TCGv hex_store_addr[STORES_MAX];
 extern TCGv hex_store_width[STORES_MAX];
 extern TCGv hex_store_val32[STORES_MAX];
@@ -274,10 +282,8 @@ extern TCGv hex_VRegs_updated;
 extern TCGv hex_QRegs_updated;
 #ifndef CONFIG_USER_ONLY
 extern TCGv hex_greg[NUM_GREGS];
-extern TCGv hex_greg_new_value[NUM_GREGS];
 extern TCGv hex_greg_written[NUM_GREGS];
 extern TCGv hex_t_sreg[NUM_SREGS];
-extern TCGv hex_t_sreg_new_value[NUM_SREGS];
 extern TCGv hex_t_sreg_written[NUM_SREGS];
 extern TCGv_ptr hex_g_sreg_ptr;
 extern TCGv hex_g_sreg[NUM_SREGS];

@@ -51,7 +51,6 @@ DEF_HELPER_2(nmi, void, env, i32)
 DEF_HELPER_3(setprio, void, env, i32, i32)
 DEF_HELPER_2(start, void, env, i32)
 DEF_HELPER_1(stop, void, env)
-DEF_HELPER_1(rte, void, env)
 #endif
 
 DEF_HELPER_1(commit_coproc, void, env)

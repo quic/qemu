@@ -477,17 +477,21 @@ def genptr_dst_write(f, tag, regtype, regid):
     elif regtype == "G":
         regN = f"{regtype}{regid}N"
         if regid == "dd":
-            f.write(f"    gen_log_greg_write_pair({regN}, " f"{regtype}{regid}V);\n")
+            f.write(f"    gen_log_greg_write_pair(ctx, {regN}, "
+                    f"{regtype}{regid}V);\n")
         elif regid == "d":
-            f.write(f"    gen_log_greg_write({regN}, {regtype}{regid}V);\n")
+            f.write(f"    gen_log_greg_write(ctx, {regN}, "
+                    f"{regtype}{regid}V);\n")
         else:
             hex_common.bad_register(regtype, regid)
     elif regtype == "S":
         regN = f"{regtype}{regid}N"
         if regid == "dd":
-            f.write(f"    gen_log_sreg_write_pair({regN}, " f"{regtype}{regid}V);\n")
+            f.write(f"    gen_log_sreg_write_pair(ctx, {regN}, "
+                    f"{regtype}{regid}V);\n")
         elif regid == "d":
-            f.write(f"    gen_log_sreg_write({regN}, {regtype}{regid}V);\n")
+            f.write(f"    gen_log_sreg_write(ctx, {regN}, "
+                    f"{regtype}{regid}V);\n")
         else:
             hex_common.bad_register(regtype, regid)
     else:

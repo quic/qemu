@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2022-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -91,9 +91,19 @@
 #define fGEN_TCG_G4_tfrgpcp(SHORTCODE) \
     tcg_gen_mov_i64(GddV, RssV)
 
+/*
+ * rte (return from exception)
+ *     Clear the EX bit in SSR
+ *     Jump to ELR
+ */
 #define fGEN_TCG_J2_rte(SHORTCODE) \
     do { \
-        gen_helper_rte(cpu_env); \
+        TCGv new_ssr = tcg_temp_new(); \
+        tcg_gen_deposit_tl(new_ssr, hex_t_sreg[HEX_SREG_SSR], \
+                           tcg_constant_tl(0), \
+                           reg_field_info[SSR_EX].offset, \
+                           reg_field_info[SSR_EX].width); \
+        gen_log_sreg_write(ctx, HEX_SREG_SSR, new_ssr); \
         gen_jumpr(ctx, hex_t_sreg[HEX_SREG_ELR]); \
     } while (0)
 
@@ -102,7 +112,7 @@
         TCGv tmp = tcg_temp_new(); \
         tcg_gen_mov_tl(tmp, RxV); \
         tcg_gen_mov_tl(RxV, hex_t_sreg[HEX_SREG_SGP0]); \
-        tcg_gen_mov_tl(hex_t_sreg_new_value[HEX_SREG_SGP0], tmp); \
+        tcg_gen_mov_tl(ctx->t_sreg_new_value[HEX_SREG_SGP0], tmp); \
     } while (0)
 
 #define fGEN_TCG_Y4_crswap1(SHORTCODE) \
@@ -110,7 +120,7 @@
         TCGv tmp = tcg_temp_new(); \
         tcg_gen_mov_tl(tmp, RxV); \
         tcg_gen_mov_tl(RxV, hex_t_sreg[HEX_SREG_SGP1]); \
-        tcg_gen_mov_tl(hex_t_sreg_new_value[HEX_SREG_SGP1], tmp); \
+        tcg_gen_mov_tl(ctx->t_sreg_new_value[HEX_SREG_SGP1], tmp); \
     } while (0)
 
 #define fGEN_TCG_Y4_crswap10(SHORTCODE) \
@@ -121,8 +131,8 @@
         tcg_gen_concat_i32_i64(RxxV, \
                                hex_t_sreg[HEX_SREG_SGP0], \
                                hex_t_sreg[HEX_SREG_SGP1]); \
-        tcg_gen_extrl_i64_i32(hex_t_sreg_new_value[HEX_SREG_SGP0], tmp); \
-        tcg_gen_extrh_i64_i32(hex_t_sreg_new_value[HEX_SREG_SGP1], tmp); \
+        tcg_gen_extrl_i64_i32(ctx->t_sreg_new_value[HEX_SREG_SGP0], tmp); \
+        tcg_gen_extrh_i64_i32(ctx->t_sreg_new_value[HEX_SREG_SGP1], tmp); \
     } while (0)
 
 #endif

@@ -49,8 +49,6 @@ TCGv hex_pred[NUM_PREGS];
 TCGv hex_slot_cancelled;
 TCGv hex_new_value_usr;
 TCGv hex_reg_written[TOTAL_PER_THREAD_REGS];
-TCGv hex_gpreg_written;
-TCGv hex_mult_reg_written;
 TCGv hex_store_addr[STORES_MAX];
 TCGv hex_store_width[STORES_MAX];
 TCGv hex_store_val32[STORES_MAX];
@@ -60,9 +58,7 @@ TCGv hex_llsc_val;
 TCGv_i64 hex_llsc_val_i64;
 #ifndef CONFIG_USER_ONLY
 TCGv hex_greg[NUM_GREGS];
-TCGv hex_greg_new_value[NUM_GREGS];
 TCGv hex_t_sreg[NUM_SREGS];
-TCGv hex_t_sreg_new_value[NUM_SREGS];
 TCGv_ptr hex_g_sreg_ptr;
 TCGv hex_g_sreg[NUM_SREGS];
 #if HEX_DEBUG
@@ -414,7 +410,7 @@ static void gen_check_mult_reg_write(DisasContext *ctx)
         gen_exception_end_tb(ctx, HEX_CAUSE_REG_WRITE_CONFLICT);
     } else if (!bitmap_empty(ctx->wreg_mult_gprs, NUM_GPREGS)) {
         TCGLabel *skip_exception = gen_new_label();
-        tcg_gen_brcondi_tl(TCG_COND_EQ, hex_mult_reg_written, 0,
+        tcg_gen_brcondi_tl(TCG_COND_EQ, ctx->mult_reg_written, 0,
                            skip_exception);
 #ifdef CONFIG_USER_ONLY
         gen_exception(HEX_CAUSE_REG_WRITE_CONFLICT, ctx->pkt->pc);
@@ -837,6 +833,25 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
      */
     bitmap_zero(ctx->pregs_written, NUM_PREGS);
 
+#ifndef CONFIG_USER_ONLY
+    for (i = 0; i < NUM_SREGS; i++) {
+        ctx->t_sreg_new_value[i] = NULL;
+    }
+    for (i = 0; i < ctx->sreg_log_idx; i++) {
+        int reg_num = ctx->sreg_log[i];
+        if (reg_num < HEX_SREG_GLB_START) {
+            ctx->t_sreg_new_value[reg_num] = tcg_temp_new();
+            tcg_gen_mov_tl(ctx->t_sreg_new_value[reg_num], hex_t_sreg[reg_num]);
+        }
+    }
+    for (i = 0; i < NUM_GREGS; i++) {
+        ctx->greg_new_value[i] = NULL;
+    }
+    for (i = 0; i < ctx->greg_log_idx; i++) {
+        int reg_num = ctx->greg_log[i];
+        ctx->greg_new_value[reg_num] = tcg_temp_new();
+    }
+#endif
     if (ctx->paranoid_commit_state) {
         for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
             ctx->new_value[i] = tcg_temp_new();
@@ -844,10 +859,14 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         }
     #ifndef CONFIG_USER_ONLY
         for (i = 0; i < HEX_SREG_GLB_START; i++) {
-            tcg_gen_movi_tl(hex_t_sreg_new_value[i], PARANOID_VALUE);
+            if (ctx->t_sreg_new_value[i]) {
+                tcg_gen_movi_tl(ctx->t_sreg_new_value[i], PARANOID_VALUE);
+            }
         }
         for (i = 0; i < NUM_GREGS; i++) {
-            tcg_gen_movi_tl(hex_greg_new_value[i], PARANOID_VALUE);
+            if (ctx->greg_new_value[i]) {
+                tcg_gen_movi_tl(ctx->greg_new_value[i], PARANOID_VALUE);
+            }
         }
     #endif
         for (i = 0; i < NUM_PREGS; i++) {
@@ -900,8 +919,10 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         bitmap_copy(&write_mask.mask_l, ctx->uncond_wreg_gprs, NUM_GPREGS);
         g_assert(NUM_GPREGS <= sizeof(write_mask) * BITS_PER_BYTE);
 
-        tcg_gen_movi_tl(hex_gpreg_written, write_mask.mask);
-        tcg_gen_movi_tl(hex_mult_reg_written, 0);
+        ctx->gpreg_written = tcg_temp_new();
+        tcg_gen_movi_tl(ctx->gpreg_written, write_mask.mask);
+        ctx->mult_reg_written = tcg_temp_new();
+        tcg_gen_movi_tl(ctx->mult_reg_written, 0);
     }
 
     if (HEX_DEBUG) {
@@ -1121,7 +1142,7 @@ static void gen_greg_writes(DisasContext *ctx)
     for (i = 0; i < ctx->greg_log_idx; i++) {
         int reg_num = ctx->greg_log[i];
 
-        tcg_gen_mov_tl(hex_greg[reg_num], hex_greg_new_value[reg_num]);
+        tcg_gen_mov_tl(hex_greg[reg_num], ctx->greg_new_value[reg_num]);
     }
 }
 
@@ -1136,8 +1157,8 @@ static void gen_sreg_writes(DisasContext *ctx)
 
         if (reg_num == HEX_SREG_SSR) {
             tcg_gen_mov_tl(old_reg, hex_t_sreg[reg_num]);
-            tcg_gen_mov_tl(hex_t_sreg[reg_num], hex_t_sreg_new_value[reg_num]);
-            gen_helper_modify_ssr(cpu_env, hex_t_sreg_new_value[reg_num],
+            tcg_gen_mov_tl(hex_t_sreg[reg_num], ctx->t_sreg_new_value[reg_num]);
+            gen_helper_modify_ssr(cpu_env, ctx->t_sreg_new_value[reg_num],
                                   old_reg);
             /* This can change processor state, so end the TB */
             ctx->base.is_jmp = DISAS_NORETURN;
@@ -1147,7 +1168,7 @@ static void gen_sreg_writes(DisasContext *ctx)
             if (reg_num < HEX_SREG_GLB_START) {
                 tcg_gen_mov_tl(old_reg, hex_t_sreg[reg_num]);
                 tcg_gen_mov_tl(hex_t_sreg[reg_num],
-                               hex_t_sreg_new_value[reg_num]);
+                               ctx->t_sreg_new_value[reg_num]);
             }
             /* This can change the interrupt state, so end the TB */
             gen_helper_pending_interrupt(cpu_env);
@@ -1159,7 +1180,7 @@ static void gen_sreg_writes(DisasContext *ctx)
             ctx->base.is_jmp = DISAS_NORETURN;
         }
         if (reg_num < HEX_SREG_GLB_START) {
-            tcg_gen_mov_tl(hex_t_sreg[reg_num], hex_t_sreg_new_value[reg_num]);
+            tcg_gen_mov_tl(hex_t_sreg[reg_num], ctx->t_sreg_new_value[reg_num]);
             if (HEX_DEBUG) {
                 /* Do this so HELPER(debug_commit_end) will know */
                 tcg_gen_movi_tl(hex_t_sreg_written[reg_num], 1);
@@ -1809,19 +1830,11 @@ void hexagon_translate_init(void)
                 reg_written_names[i]);
         }
     }
-    hex_gpreg_written = tcg_global_mem_new(cpu_env,
-                offsetof(CPUHexagonState, gpreg_written), "gpreg_written");
-    hex_mult_reg_written =
-        tcg_global_mem_new(cpu_env, offsetof(CPUHexagonState, mult_reg_written),
-                           "mult_reg_written");
 #ifndef CONFIG_USER_ONLY
     for (i = 0; i < NUM_GREGS; i++) {
             hex_greg[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, greg[i]),
                 hexagon_gregnames[i]);
-            hex_greg_new_value[i] = tcg_global_mem_new(cpu_env,
-                offsetof(CPUHexagonState, greg_new_value[i]),
-                "new_greg_value");
 #if HEX_DEBUG
             hex_greg_written[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, greg_written[i]), "greg_written");
@@ -1834,9 +1847,6 @@ void hexagon_translate_init(void)
             hex_t_sreg[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, t_sreg[i]),
                 hexagon_sregnames[i]);
-            hex_t_sreg_new_value[i] = tcg_global_mem_new(cpu_env,
-                offsetof(CPUHexagonState, t_sreg_new_value[i]),
-                "new_sreg_value");
 #if HEX_DEBUG
             hex_t_sreg_written[i] = tcg_global_mem_new(cpu_env,
                 offsetof(CPUHexagonState, t_sreg_written[i]), "sreg_written");

@@ -326,8 +326,7 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, uint32_t this_PC,
             }
             HEX_DEBUG_LOG("\tset g%d (%s) = " TARGET_FMT_ld
                 " (0x" TARGET_FMT_lx " )\n",
-                i, hexagon_gregnames[i], env->greg_new_value[i],
-                env->greg_new_value[i]);
+                i, hexagon_gregnames[i], env->greg[i], env->greg[i]);
         }
     }
 
@@ -341,8 +340,8 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, uint32_t this_PC,
                 }
                 HEX_DEBUG_LOG("\tset s%d (%s) = " TARGET_FMT_ld
                     " (0x" TARGET_FMT_lx " )\n",
-                    i, hexagon_sregnames[i], env->t_sreg_new_value[i],
-                    env->t_sreg_new_value[i]);
+                    i, hexagon_sregnames[i], env->t_sreg[i],
+                    env->t_sreg[i]);
             }
         }
     }
@@ -1644,35 +1643,6 @@ void HELPER(raise_stack_overflow)(CPUHexagonState *env, uint32_t slot,
 }
 #endif
 
-#ifndef CONFIG_USER_ONLY
-static void log_sreg_write(CPUHexagonState *env, int rnum,
-                                 target_ulong val, uint32_t slot)
-{
-    HEX_DEBUG_LOG("log_sreg_write[%s/%d] = " TARGET_FMT_ld
-        " (0x" TARGET_FMT_lx ")", hexagon_sregnames[rnum], rnum, val, val);
-    if (env->slot_cancelled & (1 << slot)) {
-        HEX_DEBUG_LOG(" CANCELLED");
-    }
-
-    target_ulong crnt_val = ARCH_GET_SYSTEM_REG(env, rnum);
-    if (val == crnt_val) {
-        HEX_DEBUG_LOG(" NO CHANGE");
-    }
-    HEX_DEBUG_LOG("\n");
-    if (!(env->slot_cancelled & (1 << slot))) {
-        HEX_DEBUG_LOG("\tsreg register set to 0x%x\n", val);
-        if (rnum < HEX_SREG_GLB_START) {
-            env->t_sreg_new_value[rnum] = val;
-        } else {
-            ARCH_SET_SYSTEM_REG(env, rnum, val);
-        }
-    } else {
-        HEX_DEBUG_LOG("\tsreg register not set\n");
-    }
-}
-
-#endif
-
 void HELPER(debug_print_vec)(CPUHexagonState *env, int rnum, void *vecptr)
 
 {
@@ -2481,18 +2451,6 @@ void HELPER(start)(CPUHexagonState *env, uint32_t imask)
 void HELPER(stop)(CPUHexagonState *env)
 {
     hexagon_stop_thread(env);
-}
-
-void HELPER(rte)(CPUHexagonState *env)
-{
-    uint32_t slot = 4; /* dummy value */
-    uint32_t new_ssr;
-
-    /* Clear the EX bit in SSR */
-    new_ssr = deposit32(env->t_sreg[HEX_SREG_SSR],
-                        reg_field_info[SSR_EX].offset,
-                        reg_field_info[SSR_EX].width, 0);
-    log_sreg_write(env, HEX_SREG_SSR, new_ssr, slot);
 }
 
 typedef struct {

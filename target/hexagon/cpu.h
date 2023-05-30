@@ -356,26 +356,18 @@ typedef struct CPUArchState {
     target_ulong stack_start;
 
     uint8_t slot_cancelled;
-    target_ulong new_value[TOTAL_PER_THREAD_REGS];
-    target_ulong gpreg_written;
-    /*
-     * This value will be a TCGv treated as a mask of the registers
-     * written multiple times in this packet.
-     */
-    target_ulong mult_reg_written;
+
     QEMU_BUILD_BUG_MSG(NUM_GPREGS > CHAR_BIT * sizeof(target_ulong),
                        "Hexagon's CPUArchState.gpreg_written type is too small");
 
 #ifndef CONFIG_USER_ONLY
     /* some system registers are per thread and some are global */
     target_ulong t_sreg[NUM_SREGS];
-    target_ulong t_sreg_new_value[NUM_SREGS];
     target_ulong t_sreg_written[NUM_SREGS];
     target_ulong *g_sreg;
     target_ulong *g_gcycle;
 
     target_ulong greg[NUM_GREGS];
-    target_ulong greg_new_value[NUM_GREGS];
     target_ulong greg_written[NUM_GREGS];
     target_ulong wait_next_pc;
 #endif
@@ -388,7 +380,6 @@ typedef struct CPUArchState {
     target_ulong reg_written[TOTAL_PER_THREAD_REGS];
 
     MemLog mem_log_stores[STORES_MAX];
-    target_ulong pkt_has_scalar_store_s1;
 
     float_status fp_status;
 
