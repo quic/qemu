@@ -140,14 +140,11 @@ aarch64_check:
   needs: [aarch64_build]
   extends: .base-check
 
-# TODO: when hardware is available, add `--inspector perf-stat`
-# back and uncomment the TODOs bellow.
 test_hexagon_perf:
   extends: .after-build
   needs: [hexagon_build]
-  # TODO: uncomment
-  #tags:
-  #  - performance-hardware        
+  tags:
+     - performance-hardware
   # We'll execute a smaller subset of tests, fewer iters for routine
   # commits/MRs.  In a nightly build we can run a comprehensive test.
   before_script:
@@ -159,9 +156,8 @@ test_hexagon_perf:
             PERF_TEST_ITERS="6";
         fi
   script:
-    # TODO: uncomment
-    #- echo test for perf - if this fails, check qqvp-dev kernel ver and perf host sysctl ;
-    #  perf stat /bin/true
+    - echo test for perf - if this fails, check qqvp-dev kernel ver and perf host sysctl ;
+      perf stat /bin/true
     - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-perf.git
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-benchmarks.git
@@ -179,6 +175,7 @@ test_hexagon_perf:
               --output-file ./perf-results-$mode.json
               --test-cfg ${cfg}
               --iters ${PERF_TEST_ITERS}
+              --inspector perf-stat
               --sys-args="$sys_args" ;
           res=$(( ${res} + ${?})) ;
       done ;
