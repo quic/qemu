@@ -4,3 +4,9 @@
 include ../arm-softmmu/default.mak
 
 CONFIG_DRAGON=y
+
+# These are selected by default when TCG is enabled, uncomment them to
+# keep out of the build.
+# CONFIG_XLNX_ZYNQMP_ARM=n
+# CONFIG_XLNX_VERSAL=n
+# CONFIG_SBSA_REF=n
