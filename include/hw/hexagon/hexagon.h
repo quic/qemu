@@ -125,15 +125,15 @@ typedef  union {
     uint32_t hvx_vec_log_length; /* Native HVX vector length in log of bytes */
     uint32_t core_id; /* Core ID of the multi-core */
     uint32_t core_count; /* Number of multi-core cores */
-    uint32_t hmx_int8_spatial; /* FIXME: undocumented */
-    uint32_t hmx_int8_depth; /* FIXME: undocumented */
+    uint32_t coproc2_reg0;
+    uint32_t coproc2_reg1;
     uint32_t v2x_mode; /* Supported HVX vector length, see HexagonVecLenSupported */
-    uint32_t hmx_int8_rate; /* FIXME: undocumented */
-    uint32_t hmx_fp16_spatial; /* FIXME: undocumented */
-    uint32_t hmx_fp16_depth; /* FIXME: undocumented */
-    uint32_t hmx_fp16_rate; /* FIXME: undocumented */
-    uint32_t hmx_fp16_acc_frac; /* FIXME: undocumented */
-    uint32_t hmx_fp16_acc_int; /* FIXME: undocumented */
+    uint32_t coproc2_reg2;
+    uint32_t coproc2_reg3;
+    uint32_t coproc2_reg4;
+    uint32_t coproc2_reg5;
+    uint32_t coproc2_reg6;
+    uint32_t coproc2_reg7;
     uint32_t acd_preset; /* Voltage droop mitigation technique parameter */
     uint32_t mnd_preset; /* Voltage droop mitigation technique parameter */
     uint32_t l1d_size_kb; /* L1 data cache size (in KB) */
@@ -143,13 +143,13 @@ typedef  union {
     uint32_t reserved3;
     uint32_t reserved4;
     uint32_t reserved5;
-    uint32_t hmx_cvt_mpy_size; /* FIXME: undocumented Size of the fractional multiplier in the HMX Covert */
+    uint32_t coproc2_cvt_mpy_size;
     uint32_t consistency_domain;
     uint32_t capacity_domain;
     uint32_t axi3_lowaddr;
-    uint32_t hmx_int8_subcolumns;
+    uint32_t coproc2_int8_subcolumns;
     uint32_t corecfg_present;
-    uint32_t hmx_fp16_acc_exp;
+    uint32_t coproc2_fp16_acc_exp;
     uint32_t AXIM2_secondary_base;
   };
   uint32_t raw[HEXAGON_CFGSPACE_ENTRIES];
