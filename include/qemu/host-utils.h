@@ -254,6 +254,29 @@ static inline int cto64(uint64_t val)
 }
 
 /**
+ * clo16 - count leading ones in a 16-bit value.
+ * @val: The value to search
+ *
+ * Returns 16 if the value is -1.
+ */
+static inline int clo16(uint16_t val)
+{
+    return clz16(~val);
+}
+
+/**
+ * clo8 - count leading ones in a 8-bit value.
+ * @val: The value to search
+ *
+ * Returns 8 if the value is -1.
+ */
+static inline int clo8(uint8_t val)
+{
+    return clz8(~val);
+}
+
+
+/**
  * clrsb32 - count leading redundant sign bits in a 32-bit value.
  * @val: The value to search
  *

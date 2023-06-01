@@ -18,9 +18,13 @@ NAMES += hotblocks
 NAMES += hotpages
 NAMES += howvec
 NAMES += lockstep
-NAMES += hwprofile
 NAMES += cache
 NAMES += drcov
+
+# quic-specific:
+NAMES += hwprofile
+NAMES += actprofile
+NAMES += coverage
 
 SONAMES := $(addsuffix .so,$(addprefix lib,$(NAMES)))
 

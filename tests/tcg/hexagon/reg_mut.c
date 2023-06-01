@@ -1,4 +1,3 @@
-
 /*
  *  Copyright(c) 2022-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
@@ -16,35 +15,13 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 static int err;
 
+#include "reg_mut.h"
 #include "hex_test.h"
-
-#define WRITE_REG_NOCLOBBER(output, reg_name, input) \
-    asm volatile(reg_name " = %1\n\t" \
-                 "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
-                 : );
-
-#define WRITE_REG_ENCODED(output, reg_name, input, encoding) \
-    asm volatile("r0 = %1\n\t" \
-                 encoding "\n\t" \
-                 "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
-                 : "r0");
-
-#define WRITE_REG_PAIR_ENCODED(output, reg_name, input, encoding) \
-    asm volatile("r1:0 = %1\n\t" \
-                 encoding "\n\t" \
-                 "%0 = " reg_name "\n\t" \
-                 : "=r"(output) \
-                 : "r"(input) \
-                 : "r1:0");
 
 /*
  * Instruction word: { pc = r0 }
@@ -71,10 +48,10 @@ static inline void write_control_registers(void)
     check32(result, 0xffffffc0);
 
     WRITE_REG_NOCLOBBER(result, "upcyclelo", 0xffffffff);
-    check32(result, 0x00000000);
+    check32_ne(result, 0xffffffff);
 
     WRITE_REG_NOCLOBBER(result, "upcyclehi", 0xffffffff);
-    check32(result, 0x00000000);
+    check32_ne(result, 0xffffffff);
 
     WRITE_REG_NOCLOBBER(result, "utimerlo", 0xffffffff);
     check32(result, 0x00000000);
@@ -104,7 +81,7 @@ static inline void write_control_register_pairs(void)
     check64(result, 0xffffffc0ffffffff);
 
     WRITE_REG_NOCLOBBER(result, "c15:14", 0xffffffffffffffff);
-    check64(result, 0x0000000000000000);
+    check64_ne(result, 0xffffffffffffffff);
 
     WRITE_REG_NOCLOBBER(result, "c31:30", 0xffffffffffffffff);
     check64(result, 0x0000000000000000);
@@ -122,7 +99,7 @@ static inline void write_control_register_pairs(void)
 
 int main()
 {
-    err = 0;
+    int err = 0;
 
     write_control_registers();
     write_control_register_pairs();

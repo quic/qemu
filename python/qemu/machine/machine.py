@@ -337,18 +337,18 @@ class QEMUMachine:
             self._remove_files.append(self._console_address)
 
         if self._qmp_set:
+            monitor_address = None
+            sock = None
             if self._monitor_address is None:
                 self._sock_pair = socket.socketpair()
                 sock = self._sock_pair[1]
             if isinstance(self._monitor_address, str):
                 self._remove_files.append(self._monitor_address)
-
-            sock_or_addr = self._monitor_address or sock
-            assert sock_or_addr is not None
-
+                monitor_address = self._monitor_address
             self._qmp_connection = QEMUMonitorProtocol(
-                sock_or_addr,
-                server=bool(self._monitor_address),
+                address=monitor_address,
+                sock=sock,
+                server=True,
                 nickname=self._name
             )
 
@@ -370,10 +370,7 @@ class QEMUMachine:
         if self._sock_pair:
             self._sock_pair[0].close()
         if self._qmp_connection:
-            if self._sock_pair:
-                self._qmp.connect()
-            else:
-                self._qmp.accept(self._qmp_timer)
+            self._qmp.accept(self._qmp_timer)
 
     def _close_qemu_log_file(self) -> None:
         if self._qemu_log_file is not None:

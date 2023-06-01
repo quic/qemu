@@ -21,13 +21,20 @@
 #include "cpu.h"
 #include "hex_regs.h"
 #include "reg_fields.h"
+#include "attribs.h"
 
 #define PCALIGN 4
 #define PCALIGN_MASK (PCALIGN - 1)
 
+#ifdef QEMU_GENERATE
+#define GET_FIELD(RES, FIELD, REGIN) \
+    tcg_gen_extract_tl(RES, REGIN, reg_field_info[FIELD].offset, \
+                                   reg_field_info[FIELD].width)
+#else
 #define GET_FIELD(FIELD, REGIN) \
     fEXTRACTU_BITS(REGIN, reg_field_info[FIELD].width, \
                    reg_field_info[FIELD].offset)
+#endif
 
 #ifdef QEMU_GENERATE
 #define GET_USR_FIELD(FIELD, DST) \
@@ -81,11 +88,10 @@
  * in the same packet.  When we see this, we call a helper that probes the
  * load to make sure it doesn't fault.  Then, we process the store ahead of
  * the actual load.
-
  */
 #define CHECK_NOSHUF(VA, SIZE) \
     do { \
-        if (insn->slot == 0 && ctx->pkt->pkt_has_store_s1) { \
+        if (insn->slot == 0 && ctx->pkt->pkt_has_scalar_store_s1) { \
             probe_noshuf_load(VA, SIZE, ctx->mem_idx); \
             process_store(ctx, 1); \
         } \
@@ -96,11 +102,11 @@
         TCGLabel *label = gen_new_label(); \
         tcg_gen_brcondi_tl(TCG_COND_EQ, PRED, 0, label); \
         GET_EA; \
-        if (insn->slot == 0 && ctx->pkt->pkt_has_store_s1) { \
+        if (insn->slot == 0 && ctx->pkt->pkt_has_scalar_store_s1) { \
             probe_noshuf_load(EA, SIZE, ctx->mem_idx); \
         } \
         gen_set_label(label); \
-        if (insn->slot == 0 && ctx->pkt->pkt_has_store_s1) { \
+        if (insn->slot == 0 && ctx->pkt->pkt_has_scalar_store_s1) { \
             process_store(ctx, 1); \
         } \
     } while (0)
@@ -108,37 +114,37 @@
 #define MEM_LOAD1s(DST, VA) \
     do { \
         CHECK_NOSHUF(VA, 1); \
-        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_SB); \
+        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_SB | MO_ALIGN); \
     } while (0)
 #define MEM_LOAD1u(DST, VA) \
     do { \
         CHECK_NOSHUF(VA, 1); \
-        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_UB); \
+        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_UB | MO_ALIGN); \
     } while (0)
 #define MEM_LOAD2s(DST, VA) \
     do { \
         CHECK_NOSHUF(VA, 2); \
-        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_TESW); \
+        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_TESW | MO_ALIGN); \
     } while (0)
 #define MEM_LOAD2u(DST, VA) \
     do { \
         CHECK_NOSHUF(VA, 2); \
-        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_TEUW); \
+        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_TEUW | MO_ALIGN); \
     } while (0)
 #define MEM_LOAD4s(DST, VA) \
     do { \
         CHECK_NOSHUF(VA, 4); \
-        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_TESL); \
+        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_TESL | MO_ALIGN); \
     } while (0)
 #define MEM_LOAD4u(DST, VA) \
     do { \
         CHECK_NOSHUF(VA, 4); \
-        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_TEUL); \
+        tcg_gen_qemu_ld_tl(DST, VA, ctx->mem_idx, MO_TEUL | MO_ALIGN); \
     } while (0)
 #define MEM_LOAD8u(DST, VA) \
     do { \
         CHECK_NOSHUF(VA, 8); \
-        tcg_gen_qemu_ld_i64(DST, VA, ctx->mem_idx, MO_TEUQ); \
+        tcg_gen_qemu_ld_i64(DST, VA, ctx->mem_idx, MO_TEUQ | MO_ALIGN); \
     } while (0)
 
 #define MEM_STORE1_FUNC(X) \
@@ -173,14 +179,14 @@
 #define MEM_STORE8(VA, DATA, SLOT) \
     MEM_STORE8_FUNC(DATA)(cpu_env, VA, DATA, SLOT)
 #else
-#define MEM_LOAD1s(VA) ((int8_t)mem_load1(env, pkt_has_store_s1, slot, VA))
-#define MEM_LOAD1u(VA) ((uint8_t)mem_load1(env, pkt_has_store_s1, slot, VA))
-#define MEM_LOAD2s(VA) ((int16_t)mem_load2(env, pkt_has_store_s1, slot, VA))
-#define MEM_LOAD2u(VA) ((uint16_t)mem_load2(env, pkt_has_store_s1, slot, VA))
-#define MEM_LOAD4s(VA) ((int32_t)mem_load4(env, pkt_has_store_s1, slot, VA))
-#define MEM_LOAD4u(VA) ((uint32_t)mem_load4(env, pkt_has_store_s1, slot, VA))
-#define MEM_LOAD8s(VA) ((int64_t)mem_load8(env, pkt_has_store_s1, slot, VA))
-#define MEM_LOAD8u(VA) ((uint64_t)mem_load8(env, pkt_has_store_s1, slot, VA))
+#define MEM_LOAD1s(VA) ((int8_t)mem_load1(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD1u(VA) ((uint8_t)mem_load1(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD2s(VA) ((int16_t)mem_load2(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD2u(VA) ((uint16_t)mem_load2(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD4s(VA) ((int32_t)mem_load4(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD4u(VA) ((uint32_t)mem_load4(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD8s(VA) ((int64_t)mem_load8(env, pkt_has_scalar_store_s1, slot, VA))
+#define MEM_LOAD8u(VA) ((uint64_t)mem_load8(env, pkt_has_scalar_store_s1, slot, VA))
 
 #define MEM_STORE1(VA, DATA, SLOT) log_store32(env, VA, DATA, 1, SLOT)
 #define MEM_STORE2(VA, DATA, SLOT) log_store32(env, VA, DATA, 2, SLOT)
@@ -189,19 +195,22 @@
 #endif
 
 #ifdef QEMU_GENERATE
-static inline void gen_cancel(uint32_t slot)
+static inline void gen_cancel(DisasContext *ctx)
 {
-    tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, 1 << slot);
+    Insn *insn = ctx->insn;
+    if (!bitmap_empty(ctx->wreg_mult_gprs, NUM_GPREGS) ||
+        GET_ATTRIB(insn->opcode, A_STORE)) {
+        uint32_t slot = insn->is_endloop ? 4 : insn->slot;
+        tcg_gen_ori_tl(hex_slot_cancelled, hex_slot_cancelled, 1 << slot);
+    }
 }
 
 #define CANCEL gen_cancel(slot);
 #else
-#define CANCEL do { } while (0)
+#define CANCEL cancel_slot(env, slot)
 #endif
 
 #define LOAD_CANCEL(EA) do { CANCEL; } while (0)
-
-#define STORE_CANCEL(EA) { env->slot_cancelled |= (1 << slot); }
 
 #define fMAX(A, B) (((A) > (B)) ? (A) : (B))
 
@@ -282,6 +291,7 @@ static inline void gen_cancel(uint32_t slot)
     })
 #define fZXTN(N, M, VAL) (((N) != 0) ? extract64((VAL), 0, (N)) : 0LL)
 #define fSXTN(N, M, VAL) (((N) != 0) ? sextract64((VAL), 0, (N)) : 0LL)
+
 #define fSATN(N, VAL) \
     ((fSXTN(N, 64, VAL) == (VAL)) ? (VAL) : fSATVALN(N, VAL))
 #define fVSATN(N, VAL) \
@@ -352,26 +362,38 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 
 #define fREAD_LR() (env->gpr[HEX_REG_LR])
 
-#define fREAD_SP() (env->gpr[HEX_REG_SP])
-#define fREAD_LC0 (env->gpr[HEX_REG_LC0])
-#define fREAD_LC1 (env->gpr[HEX_REG_LC1])
-#define fREAD_SA0 (env->gpr[HEX_REG_SA0])
-#define fREAD_SA1 (env->gpr[HEX_REG_SA1])
-#define fREAD_FP() (env->gpr[HEX_REG_FP])
-#ifdef FIXME
-/* Figure out how to get insn->extension_valid to helper */
-#define fREAD_GP() \
-    (insn->extension_valid ? 0 : env->gpr[HEX_REG_GP])
+#ifdef QEMU_GENERATE
 #else
-#define fREAD_GP() (env->gpr[HEX_REG_GP])
+#define fREAD_FP() (env->gpr[HEX_REG_FP])
 #endif
 #define fREAD_PC() (PC)
 
+#ifdef QEMU_GENERATE
+#define fREAD_P0() gen_read_preg(tmp, 0)
+#else
 #define fREAD_P0() (env->pred[0])
+#endif
 
-#define fCHECK_PCALIGN(A)
+/*
+ * FIXME
+ * This is a nop in upstream
+ * Should it be defined only in system mode?  (probably not)
+ * It's only reference is is in op_helper.c, so the check
+ * is not performed for every COF.  We should add the check
+ * to COF instructions that have TCG overrides.  See
+ * gen_write_new_pc function in genptr.c
+ */
+#define fCHECK_PCALIGN(A, PC)                                    \
+    do {                                                         \
+        if (((A) & PCALIGN_MASK) != 0) {                         \
+            env->cause_code = HEX_CAUSE_PC_NOT_ALIGNED;          \
+            HELPER(raise_exception)(env, HEX_EVENT_PRECISE, PC); \
+        }                                                        \
+    } while (0)
 
-#define fWRITE_NPC(A) write_new_pc(env, pkt_has_multi_cof != 0, A)
+#define fWRITE_NPC(A) write_new_pc(env, pkt_has_multi_cof != 0, A, PC)
+
+#define MARK_LATE_PRED_WRITE(RNUM) /* Not modelled in qemu */
 
 #define fBRANCH(LOC, TYPE)          fWRITE_NPC(LOC)
 #define fJUMPR(REGNO, TARGET, TYPE) fBRANCH(TARGET, COF_TYPE_JUMPR)
@@ -426,13 +448,13 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fCRND(A) ((((A) & 0x3) == 0x3) ? ((A) + 1) : ((A)))
 #define fRNDN(A, N) ((((N) == 0) ? (A) : (((fSE32_64(A)) + (1 << ((N) - 1))))))
 #define fCRNDN(A, N) (conv_round(A, N))
-#define fADD128(A, B) (int128_add(A, B))
-#define fSUB128(A, B) (int128_sub(A, B))
-#define fSHIFTR128(A, B) (int128_rshift(A, B))
-#define fSHIFTL128(A, B) (int128_lshift(A, B))
-#define fAND128(A, B) (int128_and(A, B))
-#define fCAST8S_16S(A) (int128_exts64(A))
-#define fCAST16S_8S(A) (int128_getlo(A))
+#define fADD128(A, B) (add128(A, B))
+#define fSUB128(A, B) (sub128(A, B))
+#define fSHIFTR128(A, B) (shiftr128(A, B))
+#define fSHIFTL128(A, B) (shiftl128(A, B))
+#define fAND128(A, B) (and128(A, B))
+#define fCAST8S_16S(A) (cast8s_to_16s(A))
+#define fCAST16S_8S(A) (cast16s_to_8s(A))
 
 #ifdef QEMU_GENERATE
 #define fEA_RI(REG, IMM) tcg_gen_addi_tl(EA, REG, IMM)
@@ -466,12 +488,20 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fEA_IMM(IMM) tcg_gen_movi_tl(EA, IMM)
 #define fEA_REG(REG) tcg_gen_mov_tl(EA, REG)
 #define fEA_BREVR(REG)      gen_helper_fbrev(EA, REG)
+#define fEA_GPI(IMM) \
+    do { \
+        if (insn->extension_valid) { \
+            tcg_gen_movi_tl(EA, IMM); \
+        } else { \
+            tcg_gen_addi_tl(EA, hex_gpr[HEX_REG_GP], IMM); \
+        } \
+    } while (0)
 #define fPM_I(REG, IMM)     tcg_gen_addi_tl(REG, REG, IMM)
 #define fPM_M(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
+#define fPM_M_BREV(REG, MVAL)    tcg_gen_add_tl(REG, REG, MVAL)
 #define fPM_CIRI(REG, IMM, MVAL) \
     do { \
-        TCGv tcgv_siV = tcg_constant_tl(siV); \
-        gen_helper_fcircadd(REG, REG, tcgv_siV, MuV, \
+        gen_helper_fcircadd(REG, REG, tcg_constant_tl(siV), MuV, \
                             hex_gpr[HEX_REG_CS0 + MuN]); \
     } while (0)
 #else
@@ -513,9 +543,16 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
     (((SHAMT) < 0) ? fSAT_ORIG_SHL((fCAST##REGSTYPE##s(SRC) \
                         << ((-(SHAMT)) - 1)) << 1, (SRC)) \
                    : (fCAST##REGSTYPE##s(SRC) >> (SHAMT)))
+#ifdef QEMU_GENERATE
+#define fASHIFTR(DST, SRC, SHAMT, REGSTYPE) \
+    gen_ashiftr_##REGSTYPE##s(DST, SRC, SHAMT)
+#define fLSHIFTR(DST, SRC, SHAMT, REGSTYPE) \
+    gen_lshiftr_##REGSTYPE##u(DST, SRC, SHAMT)
+#else
 #define fASHIFTR(SRC, SHAMT, REGSTYPE) (fCAST##REGSTYPE##s(SRC) >> (SHAMT))
 #define fLSHIFTR(SRC, SHAMT, REGSTYPE) \
     (((SHAMT) >= (sizeof(SRC) * 8)) ? 0 : (fCAST##REGSTYPE##u(SRC) >> (SHAMT)))
+#endif
 #define fROTL(SRC, SHAMT, REGSTYPE) \
     (((SHAMT) == 0) ? (SRC) : ((fCAST##REGSTYPE##u(SRC) << (SHAMT)) | \
                               ((fCAST##REGSTYPE##u(SRC) >> \
@@ -524,8 +561,13 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
     (((SHAMT) == 0) ? (SRC) : ((fCAST##REGSTYPE##u(SRC) >> (SHAMT)) | \
                               ((fCAST##REGSTYPE##u(SRC) << \
                                  ((sizeof(SRC) * 8) - (SHAMT))))))
+#ifdef QEMU_GENERATE
+#define fASHIFTL(DST, SRC, SHAMT, REGSTYPE) \
+    gen_ashiftl_##REGSTYPE##s(DST, SRC, SHAMT)
+#else
 #define fASHIFTL(SRC, SHAMT, REGSTYPE) \
     (((SHAMT) >= (sizeof(SRC) * 8)) ? 0 : (fCAST##REGSTYPE##s(SRC) << (SHAMT)))
+#endif
 
 #ifdef QEMU_GENERATE
 #define fLOAD(NUM, SIZE, SIGN, EA, DST) MEM_LOAD##SIZE##SIGN(DST, EA)
@@ -536,15 +578,8 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 
 #define fMEMOP(NUM, SIZE, SIGN, EA, FNTYPE, VALUE)
 
-#define fGET_FRAMEKEY() (env->gpr[HEX_REG_FRAMEKEY])
-#define fFRAME_SCRAMBLE(VAL) ((VAL) ^ (fCAST8u(fGET_FRAMEKEY()) << 32))
-#define fFRAME_UNSCRAMBLE(VAL) fFRAME_SCRAMBLE(VAL)
-
 #ifdef CONFIG_USER_ONLY
 #define fFRAMECHECK(ADDR, EA) do { } while (0) /* Not modelled in linux-user */
-#else
-/* System mode not implemented yet */
-#define fFRAMECHECK(ADDR, EA)  g_assert_not_reached();
 #endif
 
 #ifdef QEMU_GENERATE
@@ -608,6 +643,10 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
               (((VAL) & 0x0ffffffffLL) << ((N) * 32)); \
     } while (0)
 
+#define fVTCM_MEMCPY(DST, SRC, SIZE)
+#define fACC()
+#define fEXTENSION_AUDIO(A) A
+
 #define fSETBIT(N, DST, VAL) \
     do { \
         DST = (DST & ~(1ULL << (N))) | (((uint64_t)(VAL)) << (N)); \
@@ -628,15 +667,25 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fBREV_4(VAL) revbit32(VAL)
 #define fCL1_8(VAL) clo64(VAL)
 #define fCL1_4(VAL) clo32(VAL)
-#define fCL1_2(VAL) (clz32(~(uint16_t)(VAL) & 0xffff) - 16)
+#define fCL1_2(VAL) clo16(VAL)
+#define fCL1_1(VAL) clo8(VAL)
 #define fINTERLEAVE(ODD, EVEN) interleave(ODD, EVEN)
 #define fDEINTERLEAVE(MIXED) deinterleave(MIXED)
 #define fHIDE(A) A
 #define fCONSTLL(A) A##LL
 #define fECHO(A) (A)
 
-#define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EXCP_TRAP0)
-#define fPAUSE(IMM)
+#ifdef CONFIG_USER_ONLY
+#define fTRAP(TRAPTYPE, IMM) \
+    do { \
+        HELPER(raise_exception)(env, HEX_EVENT_TRAP0, PC); \
+    } while (0)
+#endif
+
+#define fDO_TRACE(SREG)
+#define fBREAK()
+
+#define fUNPAUSE()
 
 #define fALIGN_REG_FIELD_VALUE(FIELD, VAL) \
     ((VAL) << reg_field_info[FIELD].offset)
@@ -646,6 +695,16 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
     fEXTRACTU_BITS(env->gpr[HEX_REG_##REG], \
                    reg_field_info[FIELD].width, \
                    reg_field_info[FIELD].offset)
+
+#define fGET_FIELD(VAL, FIELD) \
+    fEXTRACTU_BITS(VAL, \
+                   reg_field_info[FIELD].width, \
+                   reg_field_info[FIELD].offset)
+#define fSET_FIELD(VAL, FIELD, NEWVAL) \
+    fINSERT_BITS(VAL, \
+                 reg_field_info[FIELD].width, \
+                 reg_field_info[FIELD].offset, \
+                 (NEWVAL))
 
 #ifdef QEMU_GENERATE
 #define fDCZEROA(REG) \
@@ -658,5 +717,45 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fBRANCH_SPECULATE_STALL(DOTNEWVAL, JUMP_COND, SPEC_DIR, HINTBITNUM, \
                                 STRBITNUM) /* Nothing */
 
+#ifdef CONFIG_USER_ONLY
+/*
+ * This macro can only be true in guest mode.
+ * In user mode, the 4 VIRTINSN's can't be reached
+ */
+#define fTRAP1_VIRTINSN(IMM)       (false)
+#define fVIRTINSN_SPSWAP(IMM, REG) g_assert_not_reached()
+#define fVIRTINSN_GETIE(IMM, REG)  g_assert_not_reached()
+#define fVIRTINSN_SETIE(IMM, REG)  g_assert_not_reached()
+#define fVIRTINSN_RTE(IMM, REG)    g_assert_not_reached()
+#endif
+
+#define fPREDUSE_TIMING()
+
+#define fSTORE_DMA(NUM,SIZE,EA,SRC) { mem_dmalink_store(thread, EA, SIZE, SRC, 0); }
+#define fDMSTART(NEWPTR) \
+    do { \
+        dma_adapter_cmd(thread, DMA_CMD_START, NEWPTR, 0); \
+        arch_dma_tick_until_stop(thread->processor_ptr, thread->threadId); \
+    } while (0)
+#define fDMLINK(CURPTR, NEWPTR) \
+    do { \
+        dma_adapter_cmd(thread, DMA_CMD_LINK, CURPTR, NEWPTR); \
+        arch_dma_tick_until_stop(thread->processor_ptr, thread->threadId); \
+    } while (0)
+#define fDMPOLL(DST) DST=dma_adapter_cmd(thread,DMA_CMD_POLL,0,0)
+#define fDMWAIT(DST) DST=dma_adapter_cmd(thread,DMA_CMD_WAIT,0,0)
+#define fDMSYNCHT(DST) DST=dma_adapter_cmd(thread,DMA_CMD_SYNCHT,0,0)
+#define fDMTLBSYNCH(DST) DST=dma_adapter_cmd(thread,DMA_CMD_TLBSYNCH,0,0)
+#define fDMPAUSE(DST) DST=dma_adapter_cmd(thread,DMA_CMD_PAUSE,0,0)
+#define fDMRESUME(PTR) dma_adapter_cmd(thread,DMA_CMD_RESUME,PTR,0)
+#define fDMWAITDESCRIPTOR(SRC,DST) DST=dma_adapter_cmd(thread,DMA_CMD_WAITDESCRIPTOR,SRC,0)
+#define fDMCFGRD(DMANUM,DST) DST=dma_adapter_cmd(thread,DMA_CMD_CFGRD,DMANUM,0)
+#define fDMCFGWR(DMANUM,DATA) dma_adapter_cmd(thread,DMA_CMD_CFGWR,DMANUM,DATA)
+#define GET_DMA_LDST_ERROR_BADVA(EXTENDED_VA, VA) \
+    ((EXTENDED_VA) ? (size4u_t)(((uint64_t)VA >> 32) | (VA & ~0xFFF)) \
+                   : (size4u_t)VA)
+
+#define fIN_DEBUG_MODE(TNUM) \
+    0    /* FIXME */
 
 #endif

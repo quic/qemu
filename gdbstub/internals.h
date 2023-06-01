@@ -11,7 +11,7 @@
 
 #include "exec/cpu-common.h"
 
-#define MAX_PACKET_LENGTH 4096
+#define MAX_PACKET_LENGTH (8192*2)
 
 /*
  * Shared structures and definitions
@@ -99,6 +99,11 @@ static inline int tohex(int v)
     } else {
         return v - 10 + 'a';
     }
+}
+
+static inline int startswith(const char *string, const char *pattern)
+{
+  return !strncmp(string, pattern, strlen(pattern));
 }
 
 /*

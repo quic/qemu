@@ -115,6 +115,7 @@ QEMU_EXTERN_C int daemon(int, int);
  * because it is redefined there. */
 #include <setjmp.h>
 #include <signal.h>
+#include <libgen.h>
 
 #ifdef CONFIG_IOVEC
 #include <sys/uio.h>

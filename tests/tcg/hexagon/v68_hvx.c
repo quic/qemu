@@ -40,10 +40,6 @@ static void init_v6mpy_buffers(void)
     }
 }
 
-int v6mpy_ref[BUFSIZE][MAX_VEC_SIZE_BYTES / 4] = {
-#include "v6mpy_ref.c.inc"
-};
-
 static void test_v6mpy(void)
 {
     void *p00 = buffer0;

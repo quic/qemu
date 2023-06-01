@@ -140,9 +140,9 @@ static void gdb_vm_state_change(void *opaque, bool running, RunState state)
         return;
     }
 
-    if (!gdbserver_state.allow_stop_reply) {
+   if (!gdbserver_state.allow_stop_reply) {
         return;
-    }
+   }
 
     gdb_append_thread_id(cpu, tid);
 
