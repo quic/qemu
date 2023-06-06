@@ -22,9 +22,11 @@
 #include "cpu.h"
 #include "tcg/tcg-op.h"
 #include "tcg/tcg-op-gvec.h"
+#include "exec/helper-gen.h"
+#include "exec/helper-proto.h"
+#include "exec/translation-block.h"
 #include "exec/cpu_ldst.h"
 #include "exec/exec-all.h"
-#include "exec/gen-icount.h"
 #include "exec/log.h"
 #include "internal.h"
 #include "attribs.h"
@@ -34,6 +36,10 @@
 #include "genptr.h"
 #include "printinsn.h"
 #include "pmu.h"
+
+#define HELPER_H "helper.h"
+#include "exec/helper-info.c.inc"
+#undef  HELPER_H
 
 #include "analyze_funcs_generated.c.inc"
 
@@ -954,8 +960,8 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     }
 
 #ifndef CONFIG_USER_ONLY
-    if ((tb_cflags(ctx->base.tb) & CF_USE_ICOUNT) && pkt_may_do_io(pkt)) {
-        gen_io_start();
+    if (pkt_may_do_io(pkt)) {
+        translator_io_start(&ctx->base);
     }
 
     if (!ctx->ss_pending) {
