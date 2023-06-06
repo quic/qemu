@@ -20,7 +20,9 @@
 #include "hmx/hmx_int16_emu.h"
 #include "hmx/mpy_hmx_support.h"
 #include "hmx/hmx_coproc.h"
-
+#include <x86intrin.h>
+#include <stdint.h>
+#include <immintrin.h>
 struct HMX_State;
 union hmx_bias;
 union hmx_cvt_rs_reg;
@@ -30,10 +32,15 @@ union hmx_cvt_rs_reg;
 rval fname(__VA_ARGS__);
 #endif
 
-
 // Multiply Functions
-#define hmx_fxp_mac(state_ptr, acc, act, wgt, callback_wgt, spatial_idx, output_ch, acc_idx, input_ch, x_tap, y_tap, block_idx, deep_block_idx) \
+#if defined (__SSE4_2__) 
+#define hmx_fxp_mac(state_ptr, acc, act, wgt, callback_wgt, spatial_idx, output_ch, acc_idx, input_ch, x_tap, y_tap, block_idx, deep_block_idx)\
+	(_mm_extract_epi32(_mm_add_epi32(_mm_set1_epi32(acc),_mm_mul_epi32(_mm_cvtepi16_epi32(_mm_cvtsi32_si128(wgt)),_mm_cvtepu16_epi32(_mm_cvtsi32_si128(act)))),0))
+#else
+#define hmx_fxp_mac(state_ptr, acc, act, wgt, callback_wgt, spatial_idx, output_ch, acc_idx, input_ch, x_tap, y_tap, block_idx, deep_block_idx)\
 	((int32_t)acc + ((int32_t)((int16_t)wgt) * (int32_t)((uint16_t)act)))
+#endif
+
 ARCH_FUNCTION_DECL(void, hmx_multiply, struct HMX_State * state_ptr, uint32_t weights_per_byte_log, uint32_t wgt_per_word, uint32_t unpack, uint32_t type, uint32_t mult_type, uint32_t output_channel_scale);
 ARCH_FUNCTION_DECL(void, hmx_mult_inner,struct HMX_State * state_ptr, int32_t row,uint32_t acc_select,uint32_t act,uint32_t wgt_stream_idx,uint32_t mult_type,uint32_t input_channel,uint32_t x_tap,uint32_t y_tap,uint32_t block,uint32_t deep_block,uint32_t output2x,uint32_t is_flt,uint32_t grp_idx,uint32_t grp_start,uint32_t grp_end,uint32_t grp_size, uint32_t fp8_ch_start, uint32_t fp8_ch_end);
 ARCH_FUNCTION_DECL(void, hmx_mult_xfp,struct HMX_State * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size);

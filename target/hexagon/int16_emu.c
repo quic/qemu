@@ -5,8 +5,14 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "int16_emu.h"
-
-
+#include <immintrin.h>
+#include <stdint.h>
+#include <x86intrin.h>
+#include <nmmintrin.h>
+#include <smmintrin.h>
+#include <emmintrin.h>
+#include <xmmintrin.h>
+#include <pmmintrin.h>
 #ifndef HEX_CONFIG_INT128
 size16s_t cast8s_to_16s(size8s_t a)
 {
@@ -113,23 +119,39 @@ size8s_t conv_round64(size8s_t a, size4u_t n)
 
 size16s_t mult64_to_128(size8s_t X, size8s_t Y)
 {
+#if defined(__x86_64__)
     size16s_t result = {.hi = 0, .lo = 0};
-
-    /* Split input into 32-bit words */
+    asm (
+    "movq %1 , %%rax;\n\t"
+    "imulq %2;\n\t"
+    "movq %%rax , %0;\n\t"
+    : "=rm"(result.lo)
+    : "rm" ((int64_t) X) , "rm" ((int64_t) Y)
+    : "%rax", "%rdx");
+    asm (
+    "movq %1, %%rax;\n\t"
+    "imulq %2;\n\t"
+    "movq %%rdx, %0;\n\t"
+    : "=rm"(result.hi)
+    : "rm" ((int64_t) X), "rm" ((int64_t) Y)
+    : "%rax", "%rdx");
+    return result;
+#else
+    size16s_t res = {.hi = 0, .lo = 0};
     size8u_t X_lo32 = X & 0xFFFFFFFF;
     size8s_t X_hi32 = X >> 32;
     size8u_t Y_lo32 = Y & 0xFFFFFFFF;
     size8s_t Y_hi32 = Y >> 32;
 
-    /* 4 Products */
     size16s_t XY_lo = {.hi = 0, .lo = X_lo32 *Y_lo32};
     size16s_t XY_mid0 = cast8s_to_16s(X_lo32 *Y_hi32);
     size16s_t XY_mid1 = cast8s_to_16s(X_hi32 *Y_lo32);
     size16s_t XY_hi = cast8s_to_16s(X_hi32 *Y_hi32);
 
-    result = add128(XY_lo, shiftl128(XY_mid0, 32));
-    result = add128(result, shiftl128(XY_mid1, 32));
-    result = add128(result, shiftl128(XY_hi, 64));
-    return result;
+    res = add128(XY_lo, shiftl128(XY_mid0, 32));
+    res = add128(res, shiftl128(XY_mid1, 32));
+    res = add128(res, shiftl128(XY_hi, 64));
+    return res;
+#endif
 }
 #endif

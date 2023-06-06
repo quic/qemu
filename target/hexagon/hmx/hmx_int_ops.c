@@ -21,10 +21,12 @@
 #include "hmx/hmx_arch_options_calc.h"
 #include "hmx/hmx_system.h"
 #include "hmx/macros_auto.h"
-
+#include "hmx/hmx_int16_emu.h"
 #include <math.h>
+#include <immintrin.h>
+#include <x86intrin.h>
 #include "hmx/hmx_int_ops.h"
-
+#include "hmx/hmx_int_ops.h"
 #define INC_PSTAT(...)
 #define INC_PSTATN(...)
 #define INC_PSTATNPC(...)
@@ -32,8 +34,6 @@
 #ifndef ARCH_FUNCTION
 #define ARCH_FUNCTION(func_name) func_name
 #endif
-
-//#ifdef DBG_TRACING
 
 #define UNUSED(var) do { (void)var; } while (0)
 
@@ -180,16 +180,17 @@ static inline int64_t ARCH_FUNCTION(acc_rectify)(hmx_state_t * state_ptr, int64_
 
 static inline size16s_t ARCH_FUNCTION(acc_scale)(hmx_state_t * state_ptr, int64_t acc_rectified, int64_t scale_cvt) {
     size16s_t acc_scaled = mult64_to_128(scale_cvt, acc_rectified);
+
     DEBUG_PRINT(2, "scale:        %08x.%08x (Q32.10)", (int32_t)(scale_cvt   >> 32), (uint32_t)scale_cvt);
     DEBUG_PRINT(2, "acc_scaled:   %016llx.%016llx (Q64.64)", (long long int)(acc_scaled.hi), (long long int)acc_scaled.lo);
+    //unsigned long long t2 = __rdtscp(&dummy);
     return acc_scaled;
 }
 
 static inline int64_t ARCH_FUNCTION(acc_bias)(hmx_state_t * state_ptr, size16s_t acc_scaled, int32_t element_size, uint32_t rnd_bit, int32_t frac_bits){
-    int64_t ulp_bit = 64 - 8 * element_size - 3 - 1;
+    int64_t ulp_bit = 64 - 8 * element_size - 3 - 1; //64 - 8*1 -4 =64-12 = 52
     size16s_t ulp;
     size16s_t acc_rnd;
-
     ulp = cast8s_to_16s( (int64_t)rnd_bit << ulp_bit);
 #ifdef HEX_CONFIG_INT128
     size8u_t lo = int128_getlo(ulp);
@@ -216,7 +217,6 @@ static inline int64_t ARCH_FUNCTION(acc_rnd)(hmx_state_t * state_ptr, size16s_t 
     int64_t ulp_bit = 64 - 8 * element_size - 1;
     size16s_t ulp;
     size16s_t acc_rnd;
-
     ulp = cast8s_to_16s( (int64_t)rnd_bit << ulp_bit);
     acc_scaled = add128(acc_scaled, acc_scaled);
     acc_rnd = add128(acc_scaled, ulp); // + ULP
@@ -234,7 +234,6 @@ uint32_t ARCH_FUNCTION(hmx_u8_cvt)(hmx_state_t * state_ptr, int64_t acc, int32_t
     const int32_t frac_bits = 12;
     int64_t bias32_add = (int64_t)bias32;
     int64_t acc_biased  = (acc + bias32_add);
-
     DEBUG_PRINT(2, "bias32:       %08x.%08x (Q32.32)", (int32_t)(bias32_add   >> 32), (uint32_t)bias32_add);
     DEBUG_PRINT(2, "acc_cvt:      %08x.%08x (Q32.32)", (uint32_t)(acc      >> 32), (uint32_t)acc);
     DEBUG_PRINT(2, "acc_biased:   %08x.%08x (Q32.31)", (uint32_t)(acc_biased   >> 32), (uint32_t)acc_biased);
@@ -277,7 +276,6 @@ uint32_t ARCH_FUNCTION(hmx_u16_cvt)(hmx_state_t * state_ptr, int64_t acc_hl, int
 uint32_t ARCH_FUNCTION(hmx_u16x16_cvt)(hmx_state_t * state_ptr, int64_t acc_hh, int64_t acc_hl,  int64_t acc_lh, int64_t acc_ll, int64_t bias48, int16_t exp, int16_t zeroing, int32_t sig, uint32_t out_bias, int32_t sat, int16_t legacy) {
     const int32_t element_size = 2;
     const int32_t frac_bits = 24;
-
     bias48 = (bias48 << 16) >> 16;          // sign extend from Q15.31 -> Q31.32
 
     int64_t acc_combined = acc_ll + ((acc_lh + acc_hl + (acc_hh << 8) ) << 8);
@@ -353,20 +351,39 @@ static void ARCH_FUNCTION(verif_mac_callback)(hmx_state_t * state_ptr, int32_t a
 
 static inline void ARCH_FUNCTION(hmx_mult_fxp)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x_unused, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size)
 {
+/*
+ * //unsigned int dummy;
+ * //unsigned long long t1 = __rdtscp(&dummy);
+ */
     if (state_ptr->redundant_acc)
     {
-        // This could potentially be done on the weight load
-        int8_t wgt_in = (int8_t)wgt;
-        int32_t wgt_lo_msb = (wgt_in & 0x08);
-        int32_t wgt_lo = (wgt_in & 0x07) -wgt_lo_msb;
-        int32_t wgt_hi = (wgt_in - wgt_lo) >> 4;
-        state_ptr->future_accum_fxp[row][col].w[sel+0] = ARCH_FUNCTION(hmx_fxp_mac)(state_ptr, state_ptr->future_accum_fxp[row][col].w[sel+0], act, wgt_lo,      (wgt & 0xF), row, col, sel+0, in_chan,  x_tap, y_tap, block, deep_block);
-        state_ptr->future_accum_fxp[row][col].w[sel+2] = ARCH_FUNCTION(hmx_fxp_mac)(state_ptr, state_ptr->future_accum_fxp[row][col].w[sel+2], act, wgt_hi, ((wgt>>4) & 0xF), row, col, sel+2, in_chan,  x_tap, y_tap, block, deep_block);
-    } else {
+    int8_t wgt_in = (int8_t)wgt;
+#if defined (__SSE__)
+    __m128i vec_wgt_in = _mm_cvtsi32_si128((int32_t)wgt_in);
+    __m128i vec_wgt_lo_msb = _mm_and_si128(vec_wgt_in ,_mm_set1_epi32(0x08));
+    __m128i vec_wgt_lo = _mm_and_si128(vec_wgt_in,_mm_set1_epi32(0x07));
+    vec_wgt_lo=_mm_sub_epi32(vec_wgt_lo,vec_wgt_lo_msb);
+    __m128i vec_wgt_hi = _mm_sub_epi32(vec_wgt_in, vec_wgt_lo);
+    vec_wgt_hi = _mm_srli_epi32(vec_wgt_hi,4);
+    int32_t wgt_lo = _mm_cvtsi128_si32(vec_wgt_lo);
+    int32_t wgt_hi = _mm_cvtsi128_si32(vec_wgt_hi);
+	    
+#else
+    int32_t wgt_lo_msb = (wgt_in & 0x08);
+    int32_t wgt_lo = (wgt_in & 0x07) -wgt_lo_msb;
+    int32_t wgt_hi = (wgt_in - wgt_lo) >> 4;
+#endif
+    state_ptr->future_accum_fxp[row][col].w[sel+0] = ARCH_FUNCTION(hmx_fxp_mac)(state_ptr, state_ptr->future_accum_fxp[row][col].w[sel+0], act, wgt_lo, (wgt & 0xF), row, col, sel+0, in_chan,  x_tap, y_tap, block, deep_block);
+    state_ptr->future_accum_fxp[row][col].w[sel+2] = ARCH_FUNCTION(hmx_fxp_mac)(state_ptr, state_ptr->future_accum_fxp[row][col].w[sel+2], act, wgt_hi, ((wgt>>4) & 0xF), row, col, sel+2, in_chan,  x_tap, y_tap, block, deep_block);
+    } 
+    else {
         state_ptr->future_accum_fxp[row][col].w[sel] = ARCH_FUNCTION(hmx_fxp_mac)(state_ptr, state_ptr->future_accum_fxp[row][col].w[sel], act, wgt, wgt, row, col, sel, in_chan,  x_tap, y_tap, block, deep_block);
     }
     DEBUG_PRINT(2, "HMX FXP OUTPUT MULT       : pktid=0x%08x  FINAL ACC[%02d][%02d][%02d] = %llx", state_ptr->pktid,row, col, sel, (long long int)hmx_combine_redundant_acc(state_ptr, state_ptr->future_accum_fxp[row][col].w[sel+2], state_ptr->future_accum_fxp[row][col].w[sel+0], 0));
-
+/*
+ * //unsigned long long t2 = __rdtscp(&dummy);
+ */
+  //  DEBUG_PRINT(2, "HMX FXP OUTPUT MULT       : pktid=0x%08x  FINAL ACC[%02d][%02d][%02d] = %llx", state_ptr->pktid,row, col, sel, (long long int)hmx_combine_redundant_acc(state_ptr, state_ptr->future_accum_fxp[row][col].w[sel+2], state_ptr->future_accum_fxp[row][col].w[sel+0], 0));
 }
 
 static inline void ARCH_FUNCTION(hmx_mult_fxp_subbyte)(hmx_state_t * state_ptr, uint32_t row, uint32_t col, uint32_t sel, uint32_t act, uint32_t wgt, uint32_t in_chan, uint32_t x_tap, uint32_t y_tap, uint32_t block, uint32_t output2x, uint32_t deep_block, uint32_t grp_idx, uint32_t grp_size) {
@@ -465,7 +482,6 @@ void ARCH_FUNCTION(hmx_mac_pmu)(hmx_state_t * state_ptr, const uint32_t is_flt, 
                 cycle_idx = 511;
             }
             state_ptr->thread->mem_access[1].cdata[cycle_idx] = pmu_valids;
-            //printf("block: %d pmu[%d] = %x\n", current_block, cycle_idx, pmu_valids);
         }
     }
 }
@@ -924,7 +940,17 @@ void ARCH_FUNCTION(hmx_act_ld_verif_callback)(hmx_state_t * state_ptr, uint16_t 
 int32_t
 ARCH_FUNCTION(hmx_inc_with_spatial_mask)(int32_t in, int32_t inc, int32_t mask)
 {
+#if defined (__SSE__)
+	__m128i i = _mm_cvtsi32_si128(in);
+	__m128i m = _mm_cvtsi32_si128(mask);
+	__m128i not_m = _mm_xor_si128(m, _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128()));	
+    __m128i ic = _mm_cvtsi32_si128(inc);
+	__m128i result = _mm_or_si128(_mm_and_si128(_mm_add_epi32(_mm_or_si128(i, not_m), _mm_and_si128(ic, m)), m),_mm_and_si128(i,not_m));
+	return _mm_cvtsi128_si32(result);
+
+#else
     return (((in | ~mask) + (inc & mask)) & mask) | (in & ~mask);
+#endif
 }
 
 int32_t
@@ -993,8 +1019,8 @@ static inline int compute_indices(int start_value, int stop_value, int increment
     while(inner_value >= 0){
 		array_pointer[counter] = inner_value;
 		inner_value = ARCH_FUNCTION(hmx_inc_tap_with_spatial_mask_dilate)(inner_value, increment, msb, dilation);
-        if(inner_value > stop_value) inner_value = -1;
-        counter++;
+		counter++;
+        if(inner_value > stop_value) break;//to prevent checking loop condition again.
 	}
     return counter;
 }
@@ -1041,9 +1067,9 @@ void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_b
 	paddr_t wgt_len = state_ptr->max_weight_pa;
     int32_t mx_fp_rate = state_ptr->QDSP6_MX_FP_RATE;
     int32_t input_ch_fp_rate_stride = 4 * input_ch_stride;
-    if((mx_fp_rate == 2) && (group_size <= parallel_group_size/2) && flt_mode) {
+    if(__builtin_expect(((mx_fp_rate == 2) && (group_size <= parallel_group_size/2) && flt_mode),0)) {
         input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
-    } else if ( (mx_fp_rate == 8) && flt_mode) {
+    } else if (__builtin_expect(((mx_fp_rate == 8) && flt_mode), 0)) {
 		input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
     }
 
@@ -1053,7 +1079,7 @@ void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_b
     {
 		int32_t input_ch_end = (((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_channels;
 		int32_t input_ch_start = (block_idx == 0) ? input_ch_start_first_block : 0;
-		if ((mx_fp_rate == 8) && flt_mode) { input_ch_start &= (0xfff8 << format); input_ch_end = ((input_ch_end & 0x1f) > 0) ? ((input_ch_end + 32) & (0xfff8 << format)) : (input_ch_end & (0xfff8 << format));}
+		if (__builtin_expect(((mx_fp_rate == 8) && flt_mode),0)) { input_ch_start &= (0xfff8 << format); input_ch_end = ((input_ch_end & 0x1f) > 0) ? ((input_ch_end + 32) & (0xfff8 << format)) : (input_ch_end & (0xfff8 << format));}
 
         DEBUG_PRINT(2, "MX MULT: Block %d Channel Range: [%d, %d] Deep Block Count=%d, fp_rate=%d flt_mode=%d", block_idx, input_ch_start >> format, input_ch_end >> format, deep_block_end, mx_fp_rate, flt_mode);
 
@@ -1076,18 +1102,22 @@ void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_b
 							DEBUG_PRINT(2, "MX GROUP MULT: saved wgt_stream_group_idx=%d, wgt_stream_idx=%d", wgt_stream_group_idx, wgt_stream_idx);
 							wgt_stream_idx = wgt_stream_group_idx; /* restore wgt stream pointer, reset per group */
 							int32_t input_ch_start_group =  input_ch_idx + (group_idx << format) *group_size; /* starting channel of group */
-							int32_t input_ch_stop_group =  input_ch_start_group + 4*input_ch_stride; /* stop at next group */
-							if ((mx_fp_rate == 2) && (group_size <= parallel_group_size/2) && flt_mode) {
-                                input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
-                            } else if ((mx_fp_rate == 8) && (group_size > 4) && flt_mode) {
+							int32_t input_ch_stop_group =  input_ch_start_group + 4*input_ch_stride; /* stop at next group ltin*/
+							if(__builtin_expect(flt_mode,0)){
+								if ((mx_fp_rate == 2) && (group_size <= parallel_group_size/2)) {
+                                				input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
+                            					} 
+								else if ((mx_fp_rate == 8) && (group_size > 4)) {
 								input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
-							} else if ((mx_fp_rate == 8) && (group_size <= 4) && flt_mode) {
+								} 
+								else if ((mx_fp_rate == 8) && (group_size <= 4)) {
 								input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end);
 								//wgt_stream_idx = wgt_stream_group_idx + group_idx % ( 8 / group_size);
-                            }
-                            if(group_size < 4) {
-                                input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end) ;
-                            }
+                            					}
+							}
+                            				if(group_size < 4) {
+                                			input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end) ;
+                            				}		
 							for(int32_t input_ch_idx2 = input_ch_start_group; input_ch_idx2 < input_ch_stop_group; input_ch_idx2 += input_ch_stride)
                             {
 								int32_t input_ch_idx_raw = (input_ch_idx2 >> format);
@@ -1136,7 +1166,7 @@ void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_b
 
 									}
 								}
-								if(flt_mode && (mx_fp_rate == 8) && (input_ch_idx_raw - group_idx * group_size >= fp8_ch_stop) && (group_size > 4)){
+								if(__builtin_expect(flt_mode && (mx_fp_rate == 8) && (input_ch_idx_raw - group_idx * group_size >= fp8_ch_stop) && (group_size > 4),0)){
 									DEBUG_PRINT(2, "MX MULT not increase wgt_stream_idx: input_ch_idx_raw=%d, group_idx=%d, fp8_ch_stop=%d", input_ch_idx_raw, group_idx, fp8_ch_stop);
 								}
 								else
@@ -1159,7 +1189,6 @@ void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_b
                             }
                         }
                     }
-					ARCH_FUNCTION(hmx_mac_pmu)(state_ptr,flt_mode,state_ptr->blocks);
 				}
 				current_acc = (deep_mode) ? current_acc ^ 0x1 : current_acc;
 			}
@@ -1168,7 +1197,7 @@ void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_b
 		block_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, block_idx, block_end);
 	}
 	fDEBUG_VERIF_ACC_PRINT(flt_mode);
-    if (flt_mode) {
+    if (__builtin_expect(flt_mode,0)) {
 		state_ptr->flt_commit_state.acc_update = 1;
 	} else {
 		state_ptr->fxp_commit_state.acc_update = 1;
@@ -1197,12 +1226,12 @@ void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t
                 uint16_t wgt = state_ptr->wgt_cache[wgt_stream_idx][output_ch_idx + (output_2x_channels*32)].wgt;
 
                 DEBUG_PRINT(2,"WGT_SEL CACHE[%02d][%02d]=%02x", wgt_stream_idx, output_ch_idx, wgt);
-				if(fp_rate_8_positive_0_insert | fp_rate_8_insert_0_small_grp_size)
+				if(__builtin_expect(fp_rate_8_positive_0_insert | fp_rate_8_insert_0_small_grp_size,0))
 				{
 					wgt = 0;
 					DEBUG_PRINT(2,"FOR FP RATE=8 pos 0 wgt input channel=%d, grp_idx=%d, grp_size=%d, fp8_ch_start=%d, fp8_ch_stop=%d wgt=%02x", input_channel, grp_idx, grp_size, fp8_ch_start, fp8_ch_stop, wgt);
 				}
-				if( !valid && valid_fp8_batch)
+				if(__builtin_expect(!valid && valid_fp8_batch,0))
 				{
 					wgt = 0;
 					DEBUG_PRINT(2,"FOR FP RATE=8 wgt, not enough but batch beginning is good, input channel=%d, grp_idx=%d, grp_size=%d, fp8_ch_start=%d, fp8_ch_stop=%d wgt=%02x", input_channel, grp_idx, grp_size, fp8_ch_start, fp8_ch_stop, wgt);
@@ -1213,14 +1242,6 @@ void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t
                     hmx_mult_fxp_subbyte(state_ptr, row, output_ch_idx, acc_select, act, wgt, input_channel, x_tap, y_tap, block, output_2x_channels, deep_block, grp_idx, grp_size);
                 else
                     mult_fptr(state_ptr, row, output_ch_idx, acc_select, act, wgt, input_channel, x_tap, y_tap, block, output_2x_channels, deep_block, grp_idx, grp_size);
-
-                if (state_ptr->proc->arch_proc_options->pmu_enable)
-                {
-                    state_ptr->mpy_matrix[row][output_ch_idx][input_channel] = !( (act == 0x0000) || (wgt == 0x0000) ); // Both not-zero
-                    if (is_flt) {
-                        state_ptr->mpy_matrix[row][output_ch_idx][input_channel] &=  !( (act == 0x8000) || (wgt == 0x8000) ); // Negative 0 in flt
-                    }
-                }
             }
         }
     }
@@ -1276,6 +1297,7 @@ int8_t ARCH_FUNCTION(hmx_wgt_ld_meta_data)(hmx_state_t * state_ptr, uint32_t * m
     int8_t meta_addr_valid = 1;
     uint32_t wgtc_transpose_metadata[128];
     const int32_t output_ch_wgt_lane_end = 4 * state_ptr->QDSP6_MX_COLS;
+	printf("Hello %d\n",output_ch_wgt_lane_end);
     for(int32_t output_ch_wgt_lane_idx = 0; output_ch_wgt_lane_idx < output_ch_wgt_lane_end; output_ch_wgt_lane_idx += 16)
     {
         for(int32_t output_ch_idx = 0; output_ch_idx < 16; output_ch_idx += 4)
@@ -1316,18 +1338,16 @@ int8_t ARCH_FUNCTION(hmx_wgt_ld_meta_data)(hmx_state_t * state_ptr, uint32_t * m
 
 void ARCH_FUNCTION(hmx_ld_wgt)(hmx_state_t * state_ptr, paddr_t wgt_addr, paddr_t wgt_addr_end, uint32_t wgt_per_word, uint32_t output_scale, uint32_t is_flt, uint32_t unpack_idx )
 {
-	processor_t * proc __attribute__((unused)) = state_ptr->proc;
 
     DEBUG_PRINT(2, "Loading WGTs from pa range[%llx %llx]  WGTs per word=%d, output channel scale=%d wgtc_mode=%d", wgt_addr, wgt_addr_end, wgt_per_word, output_scale, state_ptr->wgtc_mode);
-
+//	printf("Loading WGTs from pa range[%lx %lx]  WGTs per word=%d, output channel scale=%d wgtc_mode=%d", wgt_addr, wgt_addr_end, wgt_per_word, output_scale, state_ptr->wgtc_mode);
     const uint32_t output_ch_wgt_end = state_ptr->QDSP6_MX_COLS;
-	//const uint32_t mx_fp_rate = state_ptr->QDSP6_MX_FP_RATE;
-
+	printf("%d\n",output_ch_wgt_end);
     int32_t wgt_cache_idx = 0;
     uint32_t block_idx = 0;
     while(wgt_addr <= wgt_addr_end)
     {
-        if(state_ptr->wgtc_mode) //weight compression mode
+        if(__builtin_expect(state_ptr->wgtc_mode,0)) //weight compression mode
         {
             // First Load metadata
             uint32_t wgtc_metadata[128] = {0};

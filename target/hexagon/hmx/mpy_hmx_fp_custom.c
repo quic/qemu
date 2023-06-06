@@ -23,6 +23,9 @@
 #include "hmx/macros_auto.h"
 #include <math.h>
 #include "hmx/mpy_hmx_fp_custom.h"
+#include <immintrin.h>
+#include <x86intrin.h>
+#include <stdint.h>
 
 #ifndef ARCH_FUNCTION
 #define ARCH_FUNCTION(func_name) func_name
@@ -74,24 +77,86 @@ hmx_xfp_t ARCH_FUNCTION(hmx_fp_xfp)(hmx_state_t * state_ptr,
 		uint32_t exp_out,
 		uint32_t normalize)
 {
-	hmx_xfp_t out_xfp = {.INT = (uint8_t)(int_out), .EXP = (uint8_t)(exp_out), .FRAC = (uint8_t)(frac_out)};
+	//unsigned int dummy;
+        //unsigned long long t1 = __rdtscp(&dummy);
+    hmx_xfp_t out_xfp = {.INT = (uint8_t)(int_out), .EXP = (uint8_t)(exp_out), .FRAC = (uint8_t)(frac_out)};
+#if defined(__SSE_4_2__)
+	__m128i exp_in_sse = _mm_set1_epi32(exp_in);
+	//__m128i exp_out_sse = _mm_set1_epi32(exp_out);
+	//__m128i exp_in_sse_sub1 = _mm_set1_epi32(exp_in -1);
+	//__m128i exp_out_sse_sub1 = _mm_set1_epi32(exp_out -1);
 
+	__m128i in_exp_min =  _mm_set1_epi32(1);
+	__m128i in_exp_max = _mm_sub_epi32(_mm_slli_epi32(_mm_set1_epi32(1),exp_in),_mm_set1_epi32(1));
+	__m128i input_expo_bias = _mm_slli_epi32(_mm_set1_epi32(1),(exp_in-1));
+
+	__m128i out_exp_range_min_sse = _mm_slli_epi32(_mm_set1_epi32(-1),(exp_out-1));
+	//__m128i out_exp_range_max_sse = - _mm_sub_epi32(out_exp_range_min_sse,_mm_set1_epi32(1));
+
+        __m128i e_mask_sse = _mm_slli_epi32(_mm_sub_epi32(_mm_slli_epi32(_mm_set1_epi32(1), exp_in), _mm_set1_epi32(1)), frac_in);
+        __m128i in_fp_exp_sse = _mm_sra_epi32(_mm_and_si128(_mm_cvtsi32_si128(in), e_mask_sse),_mm_cvtsi32_si128(frac_in));
+        __m128i s_mask_sse = _mm_slli_epi32(_mm_set1_epi32(1), exp_in);
+        __m128i in_fp_sign_sse = _mm_sra_epi32(_mm_and_si128(_mm_cvtsi32_si128(in), s_mask_sse), exp_in_sse);
+        __m128i f_mask_sse = _mm_sub_epi32(_mm_slli_epi32(_mm_set1_epi32(1), frac_in), _mm_set1_epi32(1));
+	__m128i in_fp_frac_sse = _mm_and_si128(_mm_cvtsi32_si128(in), f_mask_sse);
+	
+	__m128i in_denorm_sse = _mm_cmplt_epi32(in_fp_exp_sse, in_exp_min);
+        
+       __m128i exp_unbiased_sse = _mm_sub_epi32(in_fp_exp_sse,input_expo_bias);
+	exp_unbiased_sse = _mm_add_epi32(exp_unbiased_sse,_mm_and_si128(_mm_cmpeq_epi32(in_fp_exp_sse,_mm_setzero_si128()),_mm_set1_epi32(1)));
+        __m128i int_b_sse = _mm_cmpeq_epi32(in_denorm_sse, _mm_set1_epi32(0));
+	__m128i mag_out_sse = _mm_or_si128(_mm_slli_epi64(_mm_cvtepi32_epi64(int_b_sse), frac_in), _mm_cvtepi32_epi64(in_fp_frac_sse));
+	__m128i out_xfp_exp = _mm_set1_epi32(out_xfp.exp);
+
+	if (normalize)
+	{
+		__m128i tmp_sse = _mm_slli_epi64(mag_out_sse, 64 - (frac_in + 1));
+		__m128i normalizing_shift_sse = _mm_cvtsi64_si128(_mm_cvtsi128_si64(tmp_sse) ? __builtin_clzll(_mm_cvtsi128_si64(tmp_sse)) : 64);
+		mag_out_sse = _mm_slli_epi64(mag_out_sse, _mm_cvtsi128_si32(normalizing_shift_sse));
+		__m128i out_xfp_exp = _mm_set1_epi32(out_xfp.exp);
+		out_xfp_exp = _mm_sub_epi32(out_xfp_exp, normalizing_shift_sse);
+	}
+	__m128i sig_out_sse = _mm_sub_epi64(_mm_setzero_si128(), _mm_or_si128(_mm_cvtepi32_epi64(in_fp_sign_sse), mag_out_sse));
+	__m128i shift_sse = _mm_set1_epi32(int_out + frac_out - 2 - frac_in);
+	shift_sse = _mm_max_epi32(shift_sse, _mm_setzero_si128());
+	sig_out_sse = _mm_slli_epi64(sig_out_sse, _mm_cvtsi128_si32(shift_sse));
+	//out_xfp_sign = s_out_sse;
+
+	__m128i inf_sse = _mm_and_si128(_mm_cmpeq_epi32(in_fp_exp_sse, in_exp_max), _mm_cmpeq_epi32(in_fp_frac_sse, _mm_setzero_si128()));
+	inf_sse = _mm_and_si128(inf_sse, _mm_or_si128(_mm_set1_epi32(_mm_cvtsi128_si32(in_fp_sign_sse) ? 2 : 1), _mm_setzero_si128()));
+	__m128i nan_sse = _mm_and_si128(_mm_cmpeq_epi32(in_fp_exp_sse, in_exp_max),_mm_xor_si128( _mm_cmpeq_epi32(in_fp_frac_sse, _mm_setzero_si128()),_mm_set1_epi32(-1)));
+	nan_sse = _mm_and_si128(nan_sse, _mm_set1_epi32(3));
+	
+	out_xfp.sig = _mm_extract_epi64(sig_out_sse,0);
+       //	__m128i out_xfp_exp = _mm_set1_epi32(out_xfp.exp); 
+	__m128i out_xfp_status_zero_sse = _mm_and_si128(_mm_cmpeq_epi32(in_fp_exp_sse, _mm_setzero_si128()), _mm_cmpeq_epi32(in_fp_frac_sse, _mm_setzero_si128()));
+	__m128i usr_inf_nan_sse = _mm_set1_epi32(usr.inf_nan_enable);
+	__m128i out_xfp_status_inf_sse = _mm_and_si128(usr_inf_nan_sse, _mm_or_si128(inf_sse,nan_sse));
+	__m128i out_xfp_status_negative_sse = _mm_andnot_si128(out_xfp_status_zero_sse, _mm_set1_epi32(0xFFFFFFFF));
+	out_xfp_exp = _mm_blendv_epi8(out_exp_range_min_sse, out_xfp_exp, out_xfp_status_zero_sse);
+	
+
+	out_xfp.status.zero = _mm_movemask_epi8(out_xfp_status_zero_sse);
+	out_xfp.status.inf = _mm_movemask_epi8(out_xfp_status_inf_sse);
+	out_xfp.status.negative = _mm_movemask_epi8(out_xfp_status_negative_sse);
+	out_xfp.exp = _mm_cvtsi128_si32(out_xfp_exp);
+#else
 	const int32_t in_exp_min = 1;
-	const int32_t in_exp_max = (1 << exp_in) - 1;
-	const int32_t input_expo_bias = (1 << (exp_in-1));
+        const int32_t in_exp_max = (1 << exp_in) - 1;
+        const int32_t input_expo_bias = (1 << (exp_in-1));
+	
+        exp_range_t out_exp_range = get_exp_range_unbiased(exp_out);
 
-	exp_range_t out_exp_range = get_exp_range_unbiased(exp_out);
-
-	hmx_fp_t in_fp = fp_to_hmx_fp(state_ptr, in, exp_in, frac_in);
-	const int32_t in_denorm =  (in_fp.exp < in_exp_min);
+        hmx_fp_t in_fp = fp_to_hmx_fp(state_ptr, in, exp_in, frac_in);
+        const int32_t in_denorm =  (in_fp.exp < in_exp_min);
 
 	DEBUG_PRINT_XFP("hmx_fp_xfp in                  : %05x { sign=%u exp=%04x frac=%04x} in_denorm=%d normalize=%d", (uint32_t)in, in_fp.sign, (uint16_t)in_fp.exp, (uint16_t)in_fp.frac, in_denorm, normalize);
 
-	int32_t exp_unbiased = in_fp.exp - (int32_t)input_expo_bias;	// Unbias exponent
-	out_xfp.exp = exp_unbiased += (in_fp.exp == 0) ? 1 : 0; 		// denorm exponent is incremented by 1
+        int32_t exp_unbiased = in_fp.exp - (int32_t)input_expo_bias;    // Unbias exponent
+        out_xfp.exp = exp_unbiased += (in_fp.exp == 0) ? 1 : 0;                 // denorm exponent is incremented by 1
 
-	uint64_t int_bit = (in_denorm) ? 0 : 1; 						// denorm has no implied 1
-	uint64_t mag_out = (int_bit << frac_in) | in_fp.frac; 			// insert implied one
+        uint64_t int_bit = (in_denorm) ? 0 : 1;                                                 // denorm has no implied 1
+        uint64_t mag_out = (int_bit << frac_in) | in_fp.frac;                   // insert implied one
 
 	if (normalize && in_denorm)
 	{ // Input normaliztion only for types that do input normalization
@@ -112,14 +177,15 @@ hmx_xfp_t ARCH_FUNCTION(hmx_fp_xfp)(hmx_state_t * state_ptr,
 
 	uint8_t inf = ((in_fp.exp==in_exp_max) & (in_fp.frac==0)) * (in_fp.sign ? 2 : 1); //0,1,2
 	uint8_t nan = ((in_fp.exp==in_exp_max) & (in_fp.frac!=0)) ? 3 : 0; // 0, 3
-
+        
 	out_xfp.status.zero = ((in_fp.exp==0) & (in_fp.frac==0)); // 0, 1
 	out_xfp.status.inf = usr.inf_nan_enable ? (inf | nan) : 0; 	// If INF/NAN is enabled by USR set the flag, otherwise it's zero
 	out_xfp.status.negative = (out_xfp.status.zero) ? 0 : in_fp.sign;
 	out_xfp.exp = 	(out_xfp.status.zero) ? out_exp_range.min : out_xfp.exp;	// True zero set the exponent to min
 
 	DEBUG_PRINT_XFP_VAL("hmx_fp_xfp out                ", out_xfp);
-
+	//unsigned long long t2 = __rdtscp(&dummy);
+#endif
 	return out_xfp;
 }
 
@@ -223,7 +289,6 @@ uint32_t ARCH_FUNCTION(hmx_xfp_fp)(hmx_state_t * state_ptr,
 	uint64_t rnd = (ulp) ? ( grd ) : ( sticky & grd);
 	uint16_t fp_mantissa = (uint16_t)((mag_in + (rnd << grd_bit)) >> ulp_bit);	// Add Rounding bit and truncate to 11/8-bit mantissa
 
-	//printf("%d %d %d\n", ulp_bit, grd_bit, sticky_bit);
 	DEBUG_PRINT_XFP("hmx_xfp_fp round to even       : mag_in=%016llx rounded mag=%016llx ulp=%d guard=%d sticky=%d rnd=%d mantissa=0x%04x sticky_mask=%016llx all_sticky_bits=%016llx", (long long int)mag_in,  (long long int)(mag_in + (rnd << grd_bit)), (int32_t)ulp, (int32_t)grd, (int32_t)sticky, (int32_t)rnd, fp_mantissa, (long long int)sticky_mask, (long long int)(sticky_mask & mag_in) );
 
 	int32_t exp_bias = (1 << (fp_exp-1));
@@ -486,6 +551,9 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_add)(
 	}
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_add out               ", out);
 
+
+
+
 	return out;
 }
 
@@ -615,50 +683,143 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_mult)(
 		hmx_xfp_t in_b,
 		uint32_t exp_out)
 {
+	/*
+	 * //unsigned int dummy;
+	 * //unsigned long long t1 = __rdtscp(&dummy);
+	 */
+#if defined(__SSE4_2__)
+	__m128i zero = _mm_setzero_si128();
+	__m128i allones = _mm_cmpeq_epi32(zero,zero);
+	__m128i one = _mm_srli_epi32(allones,31);
+	hmx_xfp_t out = {.EXP = (uint8_t) (exp_out)};
+	__m128i frac = _mm_cvtsi32_si128(in_a.FRAC);
+	__m128i frac_2 = _mm_slli_epi32(frac,1);
+	out.FRAC = _mm_extract_epi8(_mm_packus_epi32(frac_2,frac_2),0);
+	__m128i INT = _mm_cvtsi32_si128(in_a.INT);
+        __m128i int_2 =_mm_sub_epi32( _mm_slli_epi32(INT,1),_mm_set1_epi32(1));
+	out.INT = _mm_extract_epi8(_mm_packus_epi32(int_2,int_2),0);
+	
+	//__m128i out_sig = _mm_mul_epi64(_mm_set1_epi64x(in_a.sig),_mm_set1_epi64x(in_b.sig));
+	__m128i x= _mm_set_epi64x(0,in_a.sig);
+        __m128i y= _mm_set_epi64x(0,in_b.sig);
+        __m128i prod_lo = _mm_mul_epu32(x,y);
+        __m128i x_lo = _mm_srli_epi64(x,32);
+        __m128i xl_y = _mm_mul_epu32(x_lo, y);
+        __m128i y_lo = _mm_srli_epi64(y,32);
+        __m128i x_yl= _mm_mul_epu32(x, y_lo);
+        __m128i high = _mm_add_epi64(xl_y,x_yl);
+        high = _mm_slli_epi64(high,32);
+        __m128i out_sig = _mm_add_epi64(high, prod_lo);
+	__m128i out_exp = _mm_add_epi32(_mm_set1_epi32(in_a.exp),_mm_set1_epi32(in_b.exp));
+	__m128i out_status_zero = _mm_or_si128(_mm_set1_epi32(in_a.status.zero),_mm_set1_epi32(in_b.status.zero));
+	//__m128i out_status_zero = _mm_or_si128(_mm_cmpeq_epi32(_mm_set1_epi32(in_a.status.zero),zero),_mm_cmpeq_epi32(_mm_set1_epi32(in_b.status.zero),zero));
+	__m128i out_status_neg = _mm_or_si128(_mm_and_si128(_mm_set1_epi32(in_a.status.negative),_mm_xor_si128(_mm_set1_epi32(in_b.status.negative),allones)),_mm_and_si128(_mm_xor_si128(_mm_set1_epi32(in_a.status.negative),allones),_mm_set1_epi32(in_b.status.negative)));
+	__m128i out_status_under = _mm_or_si128(_mm_cvtsi32_si128(in_a.status.under),_mm_cvtsi32_si128(in_b.status.under));
 
-	hmx_xfp_t out = {.EXP = (uint8_t)(exp_out), .FRAC = (uint8_t)(2*in_a.FRAC), .INT = (uint8_t)(2*in_a.INT-1) };
+	__m128i inf_aa = _mm_and_si128((_mm_or_si128(_mm_cmpeq_epi32(_mm_cvtsi32_si128(in_a.status.inf),one),_mm_cmpeq_epi32(_mm_cvtsi32_si128(in_a.status.inf),_mm_set1_epi32(2)))),_mm_set1_epi8(0xFF));
+	__m128i inf_bb = _mm_and_si128((_mm_or_si128(_mm_cmpeq_epi32(_mm_cvtsi32_si128(in_b.status.inf),one),_mm_cmpeq_epi32(_mm_cvtsi32_si128(in_b.status.inf),_mm_set1_epi32(2)))),_mm_set1_epi8(0xFF));
 
-	DEBUG_PRINT_XFP_VAL("hmx_xfp_mult in0              ", in_a);
-	DEBUG_PRINT_XFP_VAL("hmx_xfp_mult in1              ", in_b);
+	__m128i z_aa = _mm_and_si128(_mm_cmpeq_epi64(_mm_set1_epi64x(in_a.sig),zero),_mm_set1_epi8(0xFF));
+	__m128i z_bb = _mm_and_si128(_mm_cmpeq_epi64(_mm_set1_epi64x(in_b.sig),zero),_mm_set1_epi8(0xFF));
+//	uint8_t inf_a = _mm_extract_epi8(inf_aa,0);
+//	uint8_t inf_b = _mm_extract_epi8(inf_bb,0);
+//	uint8_t z_a = _mm_extract_epi8(z_aa,0);
+//	uint8_t z_b = _mm_extract_epi8(z_bb,0);
 
-	out.sig = (int64_t)in_a.sig * (int64_t)in_b.sig; //
-	out.exp =  in_a.exp + in_b.exp;
-	out.status.zero = in_a.status.zero || in_b.status.zero;	// propagate true zero
-	out.status.negative = (in_a.status.negative && !in_b.status.negative) || (!in_a.status.negative && in_b.status.negative);
-	out.status.under = in_a.status.under | in_b.status.under;
+	__m128i out_status_in0_zero  = _mm_or_si128(z_aa,_mm_set1_epi32(in_a.status.zero));
+	__m128i out_status_in1_zero  = _mm_or_si128(z_bb,_mm_set1_epi32(in_b.status.zero));
 
-	uint8_t inf_a = ((in_a.status.inf == 1) || (in_a.status.inf == 2));
-	uint8_t inf_b = ((in_b.status.inf == 1) || (in_b.status.inf == 2));
+	//for if-else conditions:
+	__m128i asi_equals_3 = _mm_cmpeq_epi32(_mm_cvtsi32_si128(in_a.status.inf),_mm_set1_epi32(3));
+	__m128i bsi_equals_3 = _mm_cmpeq_epi32(_mm_cvtsi32_si128(in_b.status.inf),_mm_set1_epi32(3));
+	__m128i inf_a_or_inf_b = _mm_or_si128(inf_aa,inf_bb);
+	__m128i inf_a_and_inf_b = _mm_and_si128(inf_aa,inf_bb);
+	__m128i inf_a_and_z_b = _mm_and_si128(inf_aa,z_bb);
+	__m128i inf_b_and_z_a = _mm_and_si128(inf_bb,z_aa);
+	__m128i unp = _mm_set1_epi32(usr.nan_propagate);
 
-	uint8_t z_a = in_a.sig == 0;
-	uint8_t z_b = in_b.sig == 0;
-
-	out.status.in0_zero = z_a || in_a.status.zero;
-	out.status.in1_zero = z_b || in_b.status.zero;
-
-	if ((in_a.status.inf == 3) || (in_b.status.inf == 3)) {	// NaN in, Nan out
-		out.status.inf = usr.nan_propagate ? 3: 0;
-	} else if (out.status.under && (inf_a || inf_b) ) {
-		out.status.inf = usr.nan_propagate ? 3 : 0;	// Inf * 0
-	} else if (inf_a && inf_b) { // Inf * Inf case
-		out.status.inf = (out.status.negative) ? 2 : 1;
-	} else if ( (inf_a && z_b ) || (inf_b && z_a) ) {
-		out.status.inf  = usr.nan_propagate ? 3 : 0;	// Inf * 0
-		out.status.zero = usr.nan_propagate ? 0 : 1;
-	} else if (inf_a || inf_b) {
-		out.status.inf = (out.status.negative) ? 2 : 1; // Inf * x, 0 < x < Inf = Inf
+	__m128i out_status_inf = _mm_setzero_si128();
+	if (_mm_movemask_epi8(_mm_or_si128(asi_equals_3, bsi_equals_3))) {
+	    out_status_inf = _mm_or_si128(_mm_and_si128(unp, _mm_set1_epi32(3)), _mm_andnot_si128(unp, zero));
 	}
-
-	if (out.status.zero) {	// True Zero Output
-		out.exp = -(1 << (out.EXP-1));
-		out.sig = 0;
-	} else if (z_a || z_b) { // Cancelleation Zero
-		out.exp = -(1 << (out.EXP-1));
-		out.sig = 0;
-		out.status.negative = 0;
+	else if (_mm_movemask_epi8(_mm_and_si128(out_status_under, inf_a_or_inf_b))) {
+    	    out_status_inf = _mm_or_si128(_mm_and_si128(unp, _mm_set1_epi32(3)), _mm_andnot_si128(unp, zero));
 	}
+	else if (_mm_movemask_epi8(inf_a_and_inf_b)) {
+    	    out_status_inf = _mm_or_si128(_mm_and_si128(out_status_neg, _mm_set1_epi32(2)), _mm_andnot_si128(out_status_neg, _mm_set1_epi32(1)));
+	}
+	else if (_mm_movemask_epi8(_mm_or_si128(inf_a_and_z_b, inf_b_and_z_a))) {
+   	    out_status_inf = _mm_or_si128(_mm_and_si128(unp, _mm_set1_epi32(3)), _mm_andnot_si128(unp, zero));
+	    out_status_zero = _mm_or_si128(_mm_andnot_si128(unp, one), _mm_and_si128(unp, zero));
+	}
+	else if (_mm_movemask_epi8(_mm_or_si128(inf_aa, inf_bb))) {
+   	    out_status_inf = _mm_or_si128(_mm_and_si128(out_status_neg, _mm_set1_epi32(2)), _mm_andnot_si128(out_status_neg, one));
+	}
+	__m128i neg_out_ex_shifted = _mm_sub_epi32(zero, _mm_slli_epi32(_mm_set1_epi32(1), (out.EXP-1)));
+	if (_mm_movemask_epi8(out_status_zero)) {
+ 	   out_exp = neg_out_ex_shifted;
+  	   out_sig = zero;
+	}
+       	else if(_mm_movemask_epi8(_mm_or_si128(z_aa, z_bb))) {
+          out_exp = neg_out_ex_shifted;
+  	  out_sig = zero;
+  	  out_status_neg = _mm_setzero_si128();  
+	}
+	out.exp = _mm_cvtsi128_si32(out_exp);
+	out.sig = _mm_cvtsi128_si32(out_sig);
+	out.status.negative = _mm_cvtsi128_si32(out_status_neg);
+        out.status.under = _mm_cvtsi128_si32(out_status_under);
+	out.status.inf = _mm_cvtsi128_si32(out_status_inf);
+	out.status.zero = _mm_cvtsi128_si32(out_status_zero);
+	out.status.in0_zero = _mm_cvtsi128_si32(out_status_in0_zero);
+	out.status.in0_zero = _mm_cvtsi128_si32(out_status_in1_zero);
+	//unsigned long long t2 = __rdtscp(&dummy);
+#else
+       hmx_xfp_t out = {.EXP = (uint8_t)(exp_out), .FRAC = (uint8_t)(2*in_a.FRAC), .INT = (uint8_t)(2*in_a.INT-1) };
 
-	DEBUG_PRINT_XFP_VAL("hmx_xfp_mult out              ", out);
+        DEBUG_PRINT_XFP_VAL("hmx_xfp_mult in0              ", in_a);
+        DEBUG_PRINT_XFP_VAL("hmx_xfp_mult in1              ", in_b);
+
+        out.sig = (int64_t)in_a.sig * (int64_t)in_b.sig; //
+        out.exp =  in_a.exp + in_b.exp;
+        out.status.zero = in_a.status.zero || in_b.status.zero; // propagate true zero
+        out.status.negative = (in_a.status.negative && !in_b.status.negative) || (!in_a.status.negative && in_b.status.negative);
+        out.status.under = in_a.status.under | in_b.status.under;
+
+        uint8_t inf_a = ((in_a.status.inf == 1) || (in_a.status.inf == 2));
+        uint8_t inf_b = ((in_b.status.inf == 1) || (in_b.status.inf == 2));
+
+        uint8_t z_a = in_a.sig == 0;
+        uint8_t z_b = in_b.sig == 0;
+
+        out.status.in0_zero = z_a || in_a.status.zero;
+        out.status.in1_zero = z_b || in_b.status.zero;
+
+      if ((in_a.status.inf == 3) || (in_b.status.inf == 3)) { // NaN in, Nan out
+                out.status.inf = usr.nan_propagate ? 3: 0;
+        } else  if (out.status.under && (inf_a || inf_b) ) {
+                out.status.inf = usr.nan_propagate ? 3 : 0;     // Inf * 0
+        } else if (inf_a && inf_b) { // Inf * Inf case
+                out.status.inf = (out.status.negative) ? 2 : 1;
+        } else if ( (inf_a && z_b ) || (inf_b && z_a) ) {
+                out.status.inf  = usr.nan_propagate ? 3 : 0;    // Inf * 0
+                out.status.zero = usr.nan_propagate ? 0 : 1;
+        } else if (inf_a || inf_b) {
+                out.status.inf = (out.status.negative) ? 2 : 1; // Inf * x, 0 < x < Inf = Inf
+        }
+
+        if (out.status.zero) {  // True Zero Output
+                out.exp = -(1 << (out.EXP-1));
+                out.sig = 0;
+        } else if (z_a || z_b) { // Cancelleation Zero
+                out.exp = -(1 << (out.EXP-1));
+                out.sig = 0;
+                out.status.negative = 0;
+        }
+
+        DEBUG_PRINT_XFP_VAL("hmx_xfp_mult out              ", out);
+
+#endif
 	return out;
 }
 
@@ -879,7 +1040,6 @@ hmx_xfp_t ARCH_FUNCTION(hmx_fp_xfp_mult)(hmx_state_t * state_ptr, usr_fp_reg_t u
 hmx_xfp_t ARCH_FUNCTION(hmx_xfp_mac_reduce)(hmx_state_t * state_ptr, usr_fp_reg_t usr, hmx_xfp_t * A, hmx_xfp_t acc, uint32_t rate) {
 	DEBUG_PRINT_XFP("-----------Accumulation-------");
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_mac_reduce accumulator", acc);
-
 	const uint32_t extra_adder_bit = 1; //TODO: Parameter
 
 	hmx_xfp_t acc_final = {0};
@@ -897,7 +1057,8 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_mac_reduce)(hmx_state_t * state_ptr, usr_fp_reg_
 		if (all_zero0 || all_zero1) {
 			acc_final = acc;
 			DEBUG_PRINT_XFP("hmx_xfp_mac_reduce             : all zeros on rows: %d cols: %d, skipping MAC operation", all_zero0, all_zero1);
-		} else {
+		} else 
+		{
 			acc_final = ARCH_FUNCTION(hmx_xfp_add_Nway_2stage)(state_ptr, usr, A, acc, rate, extra_adder_bit);
 		}
 	}
