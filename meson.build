@@ -1098,9 +1098,8 @@ endif
 
 mpathlibs = [libudev]
 mpathpersist = not_found
-mpathpersist_new_api = false
 if targetos == 'linux' and have_tools and get_option('mpath').allowed()
-  mpath_test_source_new = '''
+  mpath_test_source = '''
     #include <libudev.h>
     #include <mpath_persist.h>
     unsigned mpath_mx_alloc_len = 1024;
@@ -1117,16 +1116,6 @@ if targetos == 'linux' and have_tools and get_option('mpath').allowed()
         multipath_conf = mpath_lib_init();
         return 0;
     }'''
-  mpath_test_source_old = '''
-      #include <libudev.h>
-      #include <mpath_persist.h>
-      unsigned mpath_mx_alloc_len = 1024;
-      int logsink;
-      int main(void) {
-          struct udev *udev = udev_new();
-          mpath_lib_init(udev);
-          return 0;
-      }'''
   libmpathpersist = cc.find_library('mpathpersist',
                                     required: get_option('mpath'))
   if libmpathpersist.found()
@@ -1145,10 +1134,7 @@ if targetos == 'linux' and have_tools and get_option('mpath').allowed()
     endforeach
     if mpathlibs.length() == 0
       msg = 'Dependencies missing for libmpathpersist'
-    elif cc.links(mpath_test_source_new, dependencies: mpathlibs)
-      mpathpersist = declare_dependency(dependencies: mpathlibs)
-      mpathpersist_new_api = true
-    elif cc.links(mpath_test_source_old, dependencies: mpathlibs)
+    elif cc.links(mpath_test_source, dependencies: mpathlibs)
       mpathpersist = declare_dependency(dependencies: mpathlibs)
     else
       msg = 'Cannot detect libmpathpersist API'
@@ -1279,10 +1265,16 @@ if not get_option('sdl').auto() or have_system
   sdl_image = not_found
 endif
 if sdl.found()
-  # work around 2.0.8 bug
-  sdl = declare_dependency(compile_args: '-Wno-undef',
-                           dependencies: sdl,
-                           version: sdl.version())
+  # Some versions of SDL have problems with -Wundef
+  if not cc.compiles('''
+                     #include <SDL.h>
+                     #include <SDL_syswm.h>
+                     int main(int argc, char *argv[]) { return 0; }
+                     ''', dependencies: sdl, args: '-Werror=undef')
+    sdl = declare_dependency(compile_args: '-Wno-undef',
+                             dependencies: sdl,
+                             version: sdl.version())
+  endif
   sdl_image = dependency('SDL2_image', required: get_option('sdl_image'),
                          method: 'pkg-config')
 else
@@ -1787,8 +1779,10 @@ if gnutls.found()
   tasn1 = dependency('libtasn1',
                      method: 'pkg-config')
 endif
-keyutils = dependency('libkeyutils', required: false,
-                      method: 'pkg-config')
+keyutils = not_found
+if get_option('keyring').enabled()
+  keyutils = dependency('libkeyutils', required: false, method: 'pkg-config')
+endif
 
 has_gettid = cc.has_function('gettid')
 
@@ -1803,8 +1797,7 @@ malloc = []
 if get_option('malloc') == 'system'
   has_malloc_trim = \
     get_option('malloc_trim').allowed() and \
-    cc.links('''#include <malloc.h>
-                int main(void) { malloc_trim(0); return 0; }''')
+    cc.has_function('malloc_trim', prefix: '#include <malloc.h>')
 else
   has_malloc_trim = false
   malloc = cc.find_library(get_option('malloc'), required: true)
@@ -1817,34 +1810,19 @@ if not has_malloc_trim and get_option('malloc_trim').enabled()
   endif
 endif
 
-# Check whether the glibc provides statx()
-
 gnu_source_prefix = '''
   #ifndef _GNU_SOURCE
   #define _GNU_SOURCE
   #endif
 '''
-statx_test = gnu_source_prefix + '''
-  #include <sys/stat.h>
-  int main(void) {
-    struct statx statxbuf;
-    statx(0, "", 0, STATX_BASIC_STATS, &statxbuf);
-    return 0;
-  }'''
 
-has_statx = cc.links(statx_test)
+# Check whether the glibc provides STATX_BASIC_STATS
+
+has_statx = cc.has_header_symbol('sys/stat.h', 'STATX_BASIC_STATS', prefix: gnu_source_prefix)
 
 # Check whether statx() provides mount ID information
 
-statx_mnt_id_test = gnu_source_prefix + '''
-  #include <sys/stat.h>
-  int main(void) {
-    struct statx statxbuf;
-    statx(0, "", 0, STATX_BASIC_STATS | STATX_MNT_ID, &statxbuf);
-    return statxbuf.stx_mnt_id;
-  }'''
-
-has_statx_mnt_id = cc.links(statx_mnt_id_test)
+has_statx_mnt_id = cc.has_header_symbol('sys/stat.h', 'STATX_MNT_ID', prefix: gnu_source_prefix)
 
 have_vhost_user_blk_server = get_option('vhost_user_blk_server') \
   .require(targetos == 'linux',
@@ -2110,7 +2088,6 @@ config_host_data.set('CONFIG_GCOV', get_option('b_coverage'))
 config_host_data.set('CONFIG_LIBUDEV', libudev.found())
 config_host_data.set('CONFIG_LZO', lzo.found())
 config_host_data.set('CONFIG_MPATH', mpathpersist.found())
-config_host_data.set('CONFIG_MPATH_NEW_API', mpathpersist_new_api)
 config_host_data.set('CONFIG_BLKIO', blkio.found())
 if blkio.found()
   config_host_data.set('CONFIG_BLKIO_VHOST_VDPA_FD',
@@ -3062,14 +3039,7 @@ endif
 
 libvfio_user_dep = not_found
 if have_system and vfio_user_server_allowed
-  have_internal = fs.exists(meson.current_source_dir() / 'subprojects/libvfio-user/meson.build')
-
-  if not have_internal
-    error('libvfio-user source not found - please pull git submodule')
-  endif
-
-  libvfio_user_proj = subproject('libvfio-user')
-
+  libvfio_user_proj = subproject('libvfio-user', required: true)
   libvfio_user_dep = libvfio_user_proj.get_variable('libvfio_user_dep')
 endif
 
@@ -3097,12 +3067,6 @@ if fdt_required.length() > 0 or fdt_opt == 'enabled'
   endif
   if not fdt.found()
     assert(fdt_opt == 'internal')
-    have_internal = fs.exists(meson.current_source_dir() / 'subprojects/dtc/meson.build')
-
-    if not have_internal
-      error('libfdt source not found - please pull git submodule')
-    endif
-
     libfdt_proj = subproject('dtc', required: true,
                              default_options: ['tools=false',  'yaml=disabled',
                                                'python=disabled', 'default_library=static'])
@@ -4017,8 +3981,14 @@ endif
 # Configuration summary #
 #########################
 
-# Directories
+# Build environment
 summary_info = {}
+summary_info += {'Build directory':   meson.current_build_dir()}
+summary_info += {'Source path':       meson.current_source_dir()}
+summary_info += {'Download dependencies': get_option('wrap_mode') != 'nodownload'}
+summary(summary_info, bool_yn: true, section: 'Build environment')
+
+# Directories
 summary_info += {'Install prefix':    get_option('prefix')}
 summary_info += {'BIOS directory':    qemu_datadir}
 pathsep = targetos == 'windows' ? ';' : ':'
@@ -4036,14 +4006,10 @@ else
   summary_info += {'local state directory': 'queried at runtime'}
 endif
 summary_info += {'Doc directory':     get_option('prefix') / get_option('docdir')}
-summary_info += {'Build directory':   meson.current_build_dir()}
-summary_info += {'Source path':       meson.current_source_dir()}
-summary_info += {'GIT submodules':    config_host['GIT_SUBMODULES']}
 summary(summary_info, bool_yn: true, section: 'Directories')
 
 # Host binaries
 summary_info = {}
-summary_info += {'git':               config_host['GIT']}
 summary_info += {'python':            '@0@ (version: @1@)'.format(python.full_path(), python.language_version())}
 summary_info += {'sphinx-build':      sphinx_build}
 if config_host.has_key('HAVE_GDB_BIN')
@@ -4250,32 +4216,32 @@ summary_info += {'rng-none':          get_option('rng_none')}
 summary_info += {'Linux keyring':     have_keyring}
 summary(summary_info, bool_yn: true, section: 'Crypto')
 
-# Libraries
+# UI
 summary_info = {}
 if targetos == 'darwin'
   summary_info += {'Cocoa support':           cocoa}
-  summary_info += {'vmnet.framework support': vmnet}
 endif
 summary_info += {'SDL support':       sdl}
 summary_info += {'SDL image support': sdl_image}
 summary_info += {'GTK support':       gtk}
 summary_info += {'pixman':            pixman}
 summary_info += {'VTE support':       vte}
-summary_info += {'slirp support':     slirp}
-summary_info += {'libtasn1':          tasn1}
-summary_info += {'PAM':               pam}
-summary_info += {'iconv support':     iconv}
-summary_info += {'curses support':    curses}
-summary_info += {'virgl support':     virgl}
-summary_info += {'blkio support':     blkio}
-summary_info += {'curl support':      curl}
-summary_info += {'Multipath support': mpathpersist}
 summary_info += {'PNG support':       png}
 summary_info += {'VNC support':       vnc}
 if vnc.found()
   summary_info += {'VNC SASL support':  sasl}
   summary_info += {'VNC JPEG support':  jpeg}
 endif
+summary_info += {'spice protocol support': spice_protocol}
+if spice_protocol.found()
+  summary_info += {'  spice server support': spice}
+endif
+summary_info += {'curses support':    curses}
+summary_info += {'brlapi support':    brlapi}
+summary(summary_info, bool_yn: true, section: 'User interface')
+
+# Audio backends
+summary_info = {}
 if targetos not in ['darwin', 'haiku', 'windows']
   summary_info += {'OSS support':     oss}
   summary_info += {'sndio support':   sndio}
@@ -4288,12 +4254,30 @@ if targetos == 'linux'
   summary_info += {'ALSA support':    alsa}
   summary_info += {'PulseAudio support': pulse}
 endif
-summary_info += {'Pipewire support':   pipewire}
+summary_info += {'Pipewire support':  pipewire}
 summary_info += {'JACK support':      jack}
-summary_info += {'brlapi support':    brlapi}
+summary(summary_info, bool_yn: true, section: 'Audio backends')
+
+# Network backends
+summary_info = {}
+if targetos == 'darwin'
+  summary_info += {'vmnet.framework support': vmnet}
+endif
+summary_info += {'slirp support':     slirp}
 summary_info += {'vde support':       vde}
 summary_info += {'netmap support':    have_netmap}
 summary_info += {'l2tpv3 support':    have_l2tpv3}
+summary(summary_info, bool_yn: true, section: 'Network backends')
+
+# Libraries
+summary_info = {}
+summary_info += {'libtasn1':          tasn1}
+summary_info += {'PAM':               pam}
+summary_info += {'iconv support':     iconv}
+summary_info += {'virgl support':     virgl}
+summary_info += {'blkio support':     blkio}
+summary_info += {'curl support':      curl}
+summary_info += {'Multipath support': mpathpersist}
 summary_info += {'Linux AIO support': libaio}
 summary_info += {'Linux io_uring support': linux_io_uring}
 summary_info += {'ATTR/XATTR support': libattr}
@@ -4302,10 +4286,6 @@ summary_info += {'PVRDMA support':    have_pvrdma}
 summary_info += {'fdt support':       fdt_opt == 'disabled' ? false : fdt_opt}
 summary_info += {'libcap-ng support': libcap_ng}
 summary_info += {'bpf support':       libbpf}
-summary_info += {'spice protocol support': spice_protocol}
-if spice_protocol.found()
-  summary_info += {'  spice server support': spice}
-endif
 summary_info += {'rbd support':       rbd}
 summary_info += {'smartcard support': cacard}
 summary_info += {'U2F support':       u2f}
