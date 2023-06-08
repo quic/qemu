@@ -26,13 +26,9 @@ import hex_common
 ##
 ## Helpers for gen_analyze_func
 ##
-def is_predicated(tag):
-    return "A_CONDEXEC" in hex_common.attribdict[tag]
-
-
 def analyze_opn_old(f, tag, regtype, regid, regno):
     regN = f"{regtype}{regid}N"
-    predicated = "true" if is_predicated(tag) else "false"
+    predicated = "true" if hex_common.is_predicated(tag) else "false"
     if regtype == "R":
         if regid in {"ss", "tt"}:
             f.write(f"//    const int {regN} = insn->regno[{regno}];\n")
@@ -184,6 +180,10 @@ def gen_analyze_func(f, tag, regs, imms):
 
     f.write("    Insn *insn G_GNUC_UNUSED = ctx->insn;\n")
 
+    if hex_common.tag_ignore(tag):
+        f.write("}\n\n")
+        return
+
     i = 0
     ## Analyze all the registers
     for regtype, regid, toss, numregs in regs:
@@ -194,7 +194,7 @@ def gen_analyze_func(f, tag, regs, imms):
         tag
     ) and not hex_common.is_idef_parser_enabled(tag)
     if has_generated_helper and "A_SCALAR_LOAD" in hex_common.attribdict[tag]:
-        f.write("    ctx->need_pkt_has_store_s1 = true;\n")
+        f.write("    ctx->need_pkt_has_scalar_store_s1 = true;\n")
 
     f.write("}\n\n")
 
@@ -204,18 +204,19 @@ def main():
     hex_common.read_attribs_file(sys.argv[2])
     hex_common.read_overrides_file(sys.argv[3])
     hex_common.read_overrides_file(sys.argv[4])
+    hex_common.read_overrides_file(sys.argv[5])
     ## Whether or not idef-parser is enabled is
     ## determined by the number of arguments to
     ## this script:
     ##
-    ##   5 args. -> not enabled,
-    ##   6 args. -> idef-parser enabled.
+    ##   6 args. -> not enabled,
+    ##   7 args. -> idef-parser enabled.
     ##
-    ## The 6:th arg. then holds a list of the successfully
+    ## The 7:th arg. then holds a list of the successfully
     ## parsed instructions.
-    is_idef_parser_enabled = len(sys.argv) > 6
+    is_idef_parser_enabled = len(sys.argv) > 7
     if is_idef_parser_enabled:
-        hex_common.read_idef_parser_enabled_file(sys.argv[5])
+        hex_common.read_idef_parser_enabled_file(sys.argv[6])
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()

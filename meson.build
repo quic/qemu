@@ -19,6 +19,10 @@ sh = find_program('sh')
 config_host = keyval.load(meson.current_build_dir() / 'config-host.mak')
 enable_modules = 'CONFIG_MODULES' in config_host
 enable_static = 'CONFIG_STATIC' in config_host
+enable_libqemu = get_option('libqemu')
+if enable_libqemu and not get_option('b_staticpic')
+  error('b_staticpic required for libqemu support')
+endif
 
 # Allow both shared and static libraries unless --enable-static
 static_kwargs = enable_static ? {'static': true} : {}
@@ -61,7 +65,7 @@ qapi_trace_events = []
 bsd_oses = ['gnu/kfreebsd', 'freebsd', 'netbsd', 'openbsd', 'dragonfly', 'darwin']
 supported_oses = ['windows', 'freebsd', 'netbsd', 'openbsd', 'darwin', 'sunos', 'linux']
 supported_cpus = ['ppc', 'ppc64', 's390x', 'riscv', 'x86', 'x86_64',
-  'arm', 'aarch64', 'loongarch64', 'mips', 'mips64', 'sparc64']
+  'arm', 'aarch64', 'loongarch64', 'mips', 'mips64', 'sparc64', 'hexagon']
 
 cpu = host_machine.cpu_family()
 
@@ -674,26 +678,6 @@ if get_option('xkbcommon').auto() and not have_system and not have_tools
 else
   xkbcommon = dependency('xkbcommon', required: get_option('xkbcommon'),
                          method: 'pkg-config', kwargs: static_kwargs)
-endif
-
-slirp = not_found
-if not get_option('slirp').auto() or have_system
-  slirp = dependency('slirp', required: get_option('slirp'),
-                     method: 'pkg-config', kwargs: static_kwargs)
-  # slirp < 4.7 is incompatible with CFI support in QEMU.  This is because
-  # it passes function pointers within libslirp as callbacks for timers.
-  # When using a system-wide shared libslirp, the type information for the
-  # callback is missing and the timer call produces a false positive with CFI.
-  # Do not use the "version" keyword argument to produce a better error.
-  # with control-flow integrity.
-  if get_option('cfi') and slirp.found() and slirp.version().version_compare('<4.7')
-    if get_option('slirp').enabled()
-      error('Control-Flow Integrity requires libslirp 4.7.')
-    else
-      warning('Cannot use libslirp since Control-Flow Integrity requires libslirp >= 4.7.')
-      slirp = not_found
-    endif
-  endif
 endif
 
 vde = not_found
@@ -1845,6 +1829,7 @@ config_host_data.set('CONFIG_BRLAPI', brlapi.found())
 config_host_data.set('CONFIG_COCOA', cocoa.found())
 config_host_data.set('CONFIG_FUZZ', get_option('fuzzing'))
 config_host_data.set('CONFIG_GCOV', get_option('b_coverage'))
+config_host_data.set('CONFIG_LIBQEMU', get_option('libqemu'))
 config_host_data.set('CONFIG_LIBUDEV', libudev.found())
 config_host_data.set('CONFIG_LZO', lzo.found())
 config_host_data.set('CONFIG_MPATH', mpathpersist.found())
@@ -1866,6 +1851,7 @@ endif
 config_host_data.set('CONFIG_GTK', gtk.found())
 config_host_data.set('CONFIG_VTE', vte.found())
 config_host_data.set('CONFIG_GTK_CLIPBOARD', have_gtk_clipboard)
+config_host_data.set('CONFIG_HEXAGON_IDEF_PARSER', get_option('hexagon_idef_parser'))
 config_host_data.set('CONFIG_LIBATTR', have_old_libattr)
 config_host_data.set('CONFIG_LIBCAP_NG', libcap_ng.found())
 config_host_data.set('CONFIG_EBPF', libbpf.found())
@@ -1905,8 +1891,8 @@ config_host_data.set('CONFIG_VHOST_CRYPTO', have_vhost_user_crypto)
 config_host_data.set('CONFIG_VHOST_VDPA', have_vhost_vdpa)
 config_host_data.set('CONFIG_VMNET', vmnet.found())
 config_host_data.set('CONFIG_VHOST_USER_BLK_SERVER', have_vhost_user_blk_server)
+#config_host_data.set('CONFIG_PNG', png.found())
 config_host_data.set('CONFIG_VDUSE_BLK_EXPORT', have_vduse_blk_export)
-config_host_data.set('CONFIG_PNG', png.found())
 config_host_data.set('CONFIG_VNC', vnc.found())
 config_host_data.set('CONFIG_VNC_JPEG', jpeg.found())
 config_host_data.set('CONFIG_VNC_SASL', sasl.found())
@@ -2387,6 +2373,14 @@ config_host_data.set('CONFIG_AVX512BW_OPT', get_option('avx512bw') \
     int main(int argc, char *argv[]) { return bar(argv[0]); }
   '''), error_message: 'AVX512BW not available').allowed())
 
+# QUIC
+# NEEDSWORK: this config is currently causing an error in CI with
+# --enable-sanitizers due to an out-of-bounds write at uleb128_encode_small
+# (util/cutils.c:831). It's likely an upstream bug. Disable the code for now
+# until we fix it.
+config_host_data.set('CONFIG_AVX512BW_OPT', false)
+# QUIC-end
+
 have_pvrdma = get_option('pvrdma') \
   .require(rdma.found(), error_message: 'PVRDMA requires OpenFabrics libraries') \
   .require(cc.compiles(gnu_source_prefix + '''
@@ -2750,6 +2744,103 @@ if not get_option('capstone').auto() or have_system or have_user
   endif
 endif
 
+slirp = not_found
+slirp_opt = 'disabled'
+if have_system
+  slirp_opt = get_option('slirp')
+  if slirp_opt in ['enabled', 'auto', 'system']
+    have_internal = fs.exists(meson.current_source_dir() / 'slirp/meson.build')
+    slirp_dep_required = (slirp_opt == 'system' or
+                          slirp_opt == 'enabled' and not have_internal)
+    slirp = dependency('slirp', kwargs: static_kwargs,
+                       method: 'pkg-config', version: '>=4.1.0',
+                       required: slirp_dep_required)
+    # slirp <4.7 is incompatible with CFI support in QEMU.  This is because
+    # it passes function pointers within libslirp as callbacks for timers.
+    # When using a system-wide shared libslirp, the type information for the
+    # callback is missing and the timer call produces a false positive with CFI.
+    # Do not use the "version" keyword argument to produce a better error.
+    # with control-flow integrity.
+    if get_option('cfi') and slirp.found() and slirp.version().version_compare('<4.7')
+      if slirp_dep_required
+        error('Control-Flow Integrity requires libslirp 4.7.')
+      else
+        warning('Control-Flow Integrity requires libslirp 4.7, not using system-wide libslirp.')
+        slirp = not_found
+      endif
+    endif
+    if slirp.found()
+      slirp_opt = 'system'
+    elif have_internal
+      slirp_opt = 'internal'
+    else
+      slirp_opt = 'disabled'
+    endif
+  endif
+  if slirp_opt == 'internal'
+    slirp_deps = []
+    if targetos == 'windows'
+      slirp_deps = cc.find_library('iphlpapi')
+    elif targetos == 'darwin'
+      slirp_deps = cc.find_library('resolv')
+    endif
+    slirp_conf = configuration_data()
+    slirp_conf.set('SLIRP_MAJOR_VERSION', meson.project_version().split('.')[0])
+    slirp_conf.set('SLIRP_MINOR_VERSION', meson.project_version().split('.')[1])
+    slirp_conf.set('SLIRP_MICRO_VERSION', meson.project_version().split('.')[2])
+    slirp_conf.set_quoted('SLIRP_VERSION_STRING', meson.project_version())
+    slirp_cargs = ['-DG_LOG_DOMAIN="Slirp"']
+    slirp_files = [
+      'slirp/src/arp_table.c',
+      'slirp/src/bootp.c',
+      'slirp/src/cksum.c',
+      'slirp/src/dhcpv6.c',
+      'slirp/src/dnssearch.c',
+      'slirp/src/if.c',
+      'slirp/src/ip6_icmp.c',
+      'slirp/src/ip6_input.c',
+      'slirp/src/ip6_output.c',
+      'slirp/src/ip_icmp.c',
+      'slirp/src/ip_input.c',
+      'slirp/src/ip_output.c',
+      'slirp/src/mbuf.c',
+      'slirp/src/misc.c',
+      'slirp/src/ncsi.c',
+      'slirp/src/ndp_table.c',
+      'slirp/src/sbuf.c',
+      'slirp/src/slirp.c',
+      'slirp/src/socket.c',
+      'slirp/src/state.c',
+      'slirp/src/stream.c',
+      'slirp/src/tcp_input.c',
+      'slirp/src/tcp_output.c',
+      'slirp/src/tcp_subr.c',
+      'slirp/src/tcp_timer.c',
+      'slirp/src/tftp.c',
+      'slirp/src/udp.c',
+      'slirp/src/udp6.c',
+      'slirp/src/util.c',
+      'slirp/src/version.c',
+      'slirp/src/vmstate.c',
+    ]
+
+    configure_file(
+      input : 'slirp/src/libslirp-version.h.in',
+      output : 'libslirp-version.h',
+      configuration: slirp_conf)
+
+    slirp_inc = include_directories('slirp', 'slirp/src')
+    libslirp = static_library('slirp',
+                              build_by_default: false,
+                              sources: slirp_files,
+                              c_args: slirp_cargs,
+                              include_directories: slirp_inc)
+    slirp = declare_dependency(link_with: libslirp,
+                               dependencies: slirp_deps,
+                               include_directories: slirp_inc)
+  endif
+endif
+
 libvfio_user_dep = not_found
 if have_system and vfio_user_server_allowed
   have_internal = fs.exists(meson.current_source_dir() / 'subprojects/libvfio-user/meson.build')
@@ -2916,6 +3007,8 @@ common_ss = ss.source_set()
 crypto_ss = ss.source_set()
 hwcore_ss = ss.source_set()
 io_ss = ss.source_set()
+libqemu_ss = ss.source_set()
+linux_user_ss = ss.source_set()
 qmp_ss = ss.source_set()
 qom_ss = ss.source_set()
 softmmu_ss = ss.source_set()
@@ -3037,6 +3130,7 @@ if have_system or have_user
     'hw/core',
     'target/arm',
     'target/arm/hvf',
+    'target/hexagon',
     'target/hppa',
     'target/i386',
     'target/i386/kvm',
@@ -3190,6 +3284,9 @@ subdir('plugins')
 subdir('ebpf')
 
 common_user_inc = []
+#libqemu (maybe we can directly put files in specific_ss ?)
+subdir('libqemu')
+specific_ss.add_all(libqemu_ss)
 
 subdir('common-user')
 subdir('bsd-user')
@@ -3217,6 +3314,10 @@ modinfo_files = []
 block_mods = []
 softmmu_mods = []
 foreach d, list : modules
+  if not (d == 'block' ? have_block : have_system)
+    continue
+  endif
+
   foreach m, module_ss : list
     if enable_modules and targetos != 'windows'
       module_ss = module_ss.apply(config_all, strict: false)
@@ -3558,21 +3659,34 @@ foreach target : target_dirs
   endif
   foreach exe: execs
     exe_name = exe['name']
-    if targetos == 'darwin'
+    if targetos == 'darwin' and not enable_libqemu
       exe_name += '-unsigned'
     endif
 
-    emulator = executable(exe_name, exe['sources'],
-               install: true,
-               c_args: c_args,
-               dependencies: arch_deps + deps + exe['dependencies'],
-               objects: lib.extract_all_objects(recursive: true),
-               link_language: link_language,
-               link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
-               link_args: link_args,
-               win_subsystem: exe['win_subsystem'])
+    if enable_libqemu
+      emulator = shared_library(exe_name, exe['sources'],
+                 install: true,
+                 c_args: c_args,
+                 dependencies: arch_deps + deps + exe['dependencies'],
+                 objects: lib.extract_all_objects(recursive: true),
+                 link_language: link_language,
+                 link_depends: [block_syms, qemu_syms, 'libqemu/libqemu.version']
+                               + exe.get('link_depends', []),
+                 link_args: link_args,
+		 install_dir: 'lib')
+    else
+      emulator = executable(exe_name, exe['sources'],
+                 install: true,
+                 c_args: c_args,
+                 dependencies: arch_deps + deps + exe['dependencies'],
+                 objects: lib.extract_all_objects(recursive: true),
+                 link_language: link_language,
+                 link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
+                 link_args: link_args,
+                 win_subsystem: exe['win_subsystem'])
+    endif
 
-    if targetos == 'darwin'
+    if targetos == 'darwin' and not enable_libqemu
       icon = 'pc-bios/qemu.rsrc'
       build_input = [emulator, files(icon)]
       install_input = [
@@ -3759,7 +3873,7 @@ summary_info += {'genisoimage':       config_host['GENISOIMAGE']}
 if targetos == 'windows' and have_ga
   summary_info += {'wixl':            wixl}
 endif
-if slirp.found() and have_system
+if slirp_opt != 'disabled' and have_system
   summary_info += {'smbd':            have_slirp_smbd ? smbd_path : false}
 endif
 summary(summary_info, bool_yn: true, section: 'Host binaries')
@@ -3858,6 +3972,7 @@ endif
 summary_info += {'strip binaries':    get_option('strip')}
 summary_info += {'sparse':            sparse}
 summary_info += {'mingw32 support':   targetos == 'windows'}
+summary_info += {'libqemu support':   get_option('libqemu')}
 summary(summary_info, bool_yn: true, section: 'Compilation')
 
 # snarf the cross-compilation information for tests
@@ -3961,7 +4076,7 @@ summary_info += {'SDL image support': sdl_image}
 summary_info += {'GTK support':       gtk}
 summary_info += {'pixman':            pixman}
 summary_info += {'VTE support':       vte}
-summary_info += {'slirp support':     slirp}
+summary_info += {'slirp support':     slirp_opt == 'internal' ? slirp_opt : slirp}
 summary_info += {'libtasn1':          tasn1}
 summary_info += {'PAM':               pam}
 summary_info += {'iconv support':     iconv}

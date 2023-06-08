@@ -22,13 +22,15 @@
 #include "qemu.h"
 #include "user-internals.h"
 #include "cpu_loop-common.h"
+#include "target/hexagon/internal.h"
 #include "signal-common.h"
 #include "internal.h"
 
 void cpu_loop(CPUHexagonState *env)
 {
     CPUState *cs = env_cpu(env);
-    int trapnr;
+    int trapnr, signum, sigcode;
+    target_ulong sigaddr;
     target_ulong syscallnum;
     target_ulong ret;
 
@@ -37,14 +39,22 @@ void cpu_loop(CPUHexagonState *env)
         trapnr = cpu_exec(cs);
         cpu_exec_end(cs);
         process_queued_cpu_work(cs);
+        signum = 0;
+        sigcode = 0;
+        sigaddr = 0;
 
         switch (trapnr) {
         case EXCP_INTERRUPT:
             /* just indicate that signals should be handled asap */
             break;
-        case HEX_EXCP_TRAP0:
+        case HEX_EVENT_TRAP0:
             syscallnum = env->gpr[6];
             env->gpr[HEX_REG_PC] += 4;
+#if COUNT_HEX_HELPERS
+            if (syscallnum == TARGET_NR_exit_group) {
+                print_helper_counts();
+            }
+#endif
             ret = do_syscall(env,
                              syscallnum,
                              env->gpr[0],
@@ -60,13 +70,50 @@ void cpu_loop(CPUHexagonState *env)
                 env->gpr[0] = ret;
             }
             break;
+        case HEX_EVENT_TRAP1:
+            EXCP_DUMP(env, "\nqemu: trap1 exception %#x - aborting\n",
+                     trapnr);
+            exit(EXIT_FAILURE);
+            break;
+        case HEX_EVENT_PRECISE:
+            switch(env->cause_code) {
+            case HEX_CAUSE_FETCH_NO_UPAGE:
+            case HEX_CAUSE_PRIV_NO_UREAD:
+            case HEX_CAUSE_PRIV_NO_UWRITE:
+            signum = TARGET_SIGSEGV;
+            sigcode = TARGET_SEGV_MAPERR;
+            break;
+            default:
+                EXCP_DUMP(env, "\nqemu: unhandled CPU precise exception "
+                    "%#x/%#x - aborting\n",
+                    trapnr, env->cause_code);
+                exit(EXIT_FAILURE);
+            }
+            break;
         case EXCP_ATOMIC:
             cpu_exec_step_atomic(cs);
             break;
+        case EXCP_DEBUG:
+            signum = TARGET_SIGTRAP;
+            sigcode = TARGET_TRAP_BRKPT;
+            break;
+        case EXCP_YIELD:
+            /* nothing to do here for user-mode, just resume guest code */
+            break;
         default:
-            EXCP_DUMP(env, "\nqemu: unhandled CPU exception %#x - aborting\n",
-                     trapnr);
+            EXCP_DUMP(env, "\nqemu: unhandled CPU exception "
+                "%#x/%#x - aborting\n",
+                trapnr, env->cause_code);
             exit(EXIT_FAILURE);
+        }
+        if (signum) {
+            target_siginfo_t info = {
+                .si_signo = signum,
+                .si_errno = 0,
+                .si_code = sigcode,
+                ._sifields._sigfault._addr = sigaddr
+            };
+            queue_signal(env, info.si_signo, QEMU_SI_KILL, &info);
         }
         process_pending_signals(env);
     }

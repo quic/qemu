@@ -1,4 +1,3 @@
-{
   qemu_plugin_bool_parse;
   qemu_plugin_end_code;
   qemu_plugin_entry_code;
@@ -42,4 +41,3 @@
   qemu_plugin_tb_vaddr;
   qemu_plugin_uninstall;
   qemu_plugin_vcpu_for_each;
-};

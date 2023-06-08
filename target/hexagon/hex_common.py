@@ -31,6 +31,54 @@ overrides = {}  # tags with helper overrides
 idef_parser_enabled = {}  # tags enabled for idef-parser
 
 
+def is_predicated(tag):
+    return "A_CONDEXEC" in attribdict[tag]
+
+
+def is_sysemu_tag(tag):
+    return "A_PRIV" in attribdict[tag] or "A_GUEST" in attribdict[tag]
+
+
+def tag_ignore(tag):
+    tag_skips = (
+        "Y6_diag",
+        "Y6_diag0",
+        "Y6_diag1",
+        #        'V6_v6mpyhubs10_vxx',
+        #        'V6_v6mpyvubs10_vxx',
+    )
+    attr_skips = (
+        "A_FAKEINSN",
+        "A_MAPPING",
+    )
+    return tag in tag_skips or any(attr in attribdict[tag] for attr in attr_skips)
+
+
+def tag_skip(tag):
+    tag_skips = ()
+    attr_skips = (
+        #        'A_FAKEINSN',
+        #        'A_MAPPING',
+    )
+    return tag in tag_skips or any(attr in attribdict[tag] for attr in attr_skips)
+
+
+def get_sys_tags():
+    return sorted(
+        tag for tag in frozenset(tags) if is_sysemu_tag(tag) and not tag_skip(tag)
+    )
+
+
+def get_user_tags():
+    return sorted(
+        tag for tag in frozenset(tags) if not is_sysemu_tag(tag) and not tag_skip(tag)
+    )
+
+
+def get_all_tags():
+    return get_user_tags() + get_sys_tags()
+
+
 # We should do this as a hash for performance,
 # but to keep order let's keep it as a list.
 def uniquify(seq):
@@ -95,8 +143,13 @@ def calculate_attribs():
     add_qemu_macro_attrib("fWRITE_P3", "A_WRITES_PRED_REG")
     add_qemu_macro_attrib("fSET_OVERFLOW", "A_IMPLICIT_WRITES_USR")
     add_qemu_macro_attrib("fSET_LPCFG", "A_IMPLICIT_WRITES_USR")
+    add_qemu_macro_attrib("fLOAD_LOCKED", "A_LLSC")
+    add_qemu_macro_attrib("fSTORE_LOCKED", "A_LLSC")
+    add_qemu_macro_attrib("fCLEAR_RTE_EX", "A_IMPLICIT_WRITES_SSR")
     add_qemu_macro_attrib("fLOAD", "A_SCALAR_LOAD")
     add_qemu_macro_attrib("fSTORE", "A_SCALAR_STORE")
+    add_qemu_macro_attrib("fSET_K0_LOCK", "A_IMPLICIT_READS_PC")
+    add_qemu_macro_attrib("fSET_TLB_LOCK", "A_IMPLICIT_READS_PC")
 
     # Recurse down macros, find attributes from sub-macros
     macroValues = list(macros.values())
@@ -224,7 +277,19 @@ def is_readwrite(regid):
 
 
 def is_scalar_reg(regtype):
-    return regtype in "RPC"
+    return regtype in "RPCGS"
+
+
+def is_sreg(regtype):
+    return regtype == "S"
+
+
+def is_greg(regtype):
+    return regtype == "G"
+
+
+def is_hvx_reg(regtype):
+    return regtype in "VQ"
 
 
 def is_hvx_reg(regtype):
@@ -244,6 +309,7 @@ def need_slot(tag):
         ("A_CONDEXEC" in attribdict[tag] and "A_JUMP" not in attribdict[tag])
         or "A_STORE" in attribdict[tag]
         or "A_LOAD" in attribdict[tag]
+        or "A_CVI" in attribdict[tag]
     ):
         return 1
     else:
@@ -263,11 +329,15 @@ def need_PC(tag):
 
 
 def helper_needs_next_PC(tag):
-    return "A_CALL" in attribdict[tag]
+    return "A_CALL" in attribdict[tag] or tag == "J2_trap0" or tag == "J2_trap1"
 
 
 def need_pkt_has_multi_cof(tag):
-    return "A_COF" in attribdict[tag]
+    if "A_JUMP" in attribdict[tag] or "A_CALL" in attribdict[tag] or tag == "J2_rte":
+        if tag == "J4_hintjumpr":
+            return False
+        return True
+    return False
 
 
 def need_condexec_reg(tag, regs):
@@ -284,6 +354,30 @@ def skip_qemu_helper(tag):
 
 def is_tmp_result(tag):
     return "A_CVI_TMP" in attribdict[tag] or "A_CVI_TMP_DST" in attribdict[tag]
+
+
+def is_scatter_gather(tag):
+    return (
+        "A_CVI_SCATTER" in attribdict[tag]
+        or "A_CVI_SCATTER_RELEASE" in attribdict[tag]
+        or "A_CVI_GATHER" in attrbdict[tag]
+    )
+
+
+def is_gather(tag):
+    return "A_CVI_GATHER" in attribdict[tag]
+
+
+def is_scatter_gather(tag):
+    return (
+        "A_CVI_SCATTER" in attribdict[tag]
+        or "A_CVI_SCATTER_RELEASE" in attribdict[tag]
+        or "A_CVI_GATHER" in attribdict[tag]
+    )
+
+
+def is_gather(tag):
+    return "A_CVI_GATHER" in attribdict[tag]
 
 
 def is_new_result(tag):
@@ -312,8 +406,8 @@ def read_semantics_file(name):
 
 def read_attribs_file(name):
     attribre = re.compile(
-        r"DEF_ATTRIB\(([A-Za-z0-9_]+), ([^,]*), "
-        + r'"([A-Za-z0-9_\.]*)", "([A-Za-z0-9_\.]*)"\)'
+        r"DEF_ATTRIB\(([A-Za-z0-9_]+),\s*([^,]*),\s*"
+        + r'"([A-Za-z0-9_\.]*)",\s*"([A-Za-z0-9_\.]*)"\)'
     )
     for line in open(name, "rt").readlines():
         if not attribre.match(line):

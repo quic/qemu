@@ -1,0 +1,205 @@
+include:
+  - project: 'qqvp/cmake-boilerplate'
+    file: 'base.yml'
+
+# TODO
+# - Cache builds to avoid re-building same commit
+
+###################################################################
+#    Configs
+###################################################################
+
+variables:
+  COMMON_CONFIG_OPTS: --enable-lto --disable-capstone --disable-guest-agent --enable-plugins --assert-target-compiler
+  HEX_CONFIG_OPTS: --disable-fdt --disable-tools --disable-slirp --disable-sdl --disable-vnc --disable-gtk --disable-install-blobs
+  AARCH64_CONFIG_OPTS: --enable-fdt --enable-slirp --disable-debug-info --disable-debug-tcg --enable-virtfs --enable-avx2 --enable-avx512f --disable-png --disable-sanitizers
+
+  GENERIC_CONFIG_CMD: installdir="$(realpath "$(mktemp -d -p .)")" && ../configure --prefix="$$installdir" $COMMON_CONFIG_OPTS
+  HEX_CONFIG_CMD: $GENERIC_CONFIG_CMD $HEX_CONFIG_OPTS --target-list=hexagon-softmmu,hexagon-linux-user
+  AARCH64_CONFIG_CMD: $GENERIC_CONFIG_CMD $AARCH64_CONFIG_OPTS --target-list=aarch64-softmmu,aarch64-linux-user
+
+  GITLAB_URL: echo "$CI_SERVER_URL" | sed -e 's/^.*:\/\///g' -e 's/:[0-9]*$//g'
+
+###################################################################
+#    Base templates
+###################################################################
+
+.base-build:
+  variables: {BUILDDIR: $CI_JOB_NAME}
+  script:
+    mkdir $BUILDDIR &&
+    cd $BUILDDIR &&
+    echo "Configuring with '$CONFIG_CMD'" &&
+    eval $CONFIG_CMD &&
+    make -j
+  artifacts:
+    paths: [ $BUILDDIR ]
+
+.base-install:
+  script:
+    builddir="$(echo $CI_JOB_NAME | cut -d_ -f1)_build" &&
+    cd $builddir &&
+    sleep 1 && touch -c config-host.mak meson.stamp build.ninja.stamp &&
+    make install
+
+.base-check-tcg:
+  script:
+    builddir="$(echo $CI_JOB_NAME | cut -d_ -f1)_build" &&
+    cd $builddir &&
+    sleep 1 && touch -c config-host.mak meson.stamp build.ninja.stamp &&
+    make check-tcg V=1
+  artifacts:
+    when: on_failure
+    paths: [ "*_build" ]
+    expire_in: 4 days
+
+.base-check:
+  script:
+    builddir="$(echo $CI_JOB_NAME | cut -d_ -f1)_build" &&
+    cd $builddir &&
+    sleep 1 && touch -c config-host.mak meson.stamp build.ninja.stamp &&
+    make check
+  artifacts:
+    when: on_failure
+    paths: [ "*_build" ]
+    expire_in: 4 days
+
+.base-trigger:
+  trigger:
+    strategy: depend
+  allow_failure: true
+  inherit:
+    variables: false
+  variables:
+    OVERRIDE_PKG: libqemu
+    OVERRIDE_REF: $CI_COMMIT_REF_NAME
+    # Workaround for CI_REPOSITORY_URL not being exported:
+    # https://gitlab.com/gitlab-org/gitlab/-/issues/231663
+    OVERRIDE_URL: "${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+
+##################################################################
+#    Jobs
+###################################################################
+
+checkpatch:
+  extends: .mr-job
+  stage: test
+  script: .quic-gitlab-ci.d/checkpatch.sh $TARGET_REF $SOURCE_REF
+  allow_failure: true
+
+hexagon_build:
+  extends: .base-build
+  variables: { CONFIG_CMD: $HEX_CONFIG_CMD }
+hexagon_install:
+  needs: [hexagon_build]
+  extends: .base-install
+hexagon_check-tcg:
+  needs: [hexagon_build]
+  extends: .base-check-tcg
+hexagon_check:
+  needs: [hexagon_build]
+  extends: .base-check
+
+san-hexagon_build:
+  extends: .base-build
+  variables: { CONFIG_CMD: "$HEX_CONFIG_CMD --enable-sanitizers" }
+san-hexagon_install:
+  needs: [san-hexagon_build]
+  extends: .base-install
+san-hexagon_check-tcg:
+  needs: [san-hexagon_build]
+  extends: .base-check-tcg
+san-hexagon_check:
+  needs: [san-hexagon_build]
+  extends: .base-check
+
+no-idef-parser-hexagon_build:
+  extends: .base-build
+  variables: { CONFIG_CMD: "$HEX_CONFIG_CMD --disable-hexagon-idef-parser" }
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+no-idef-parser-hexagon_install:
+  needs: [no-idef-parser-hexagon_build]
+  extends: .base-install
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+no-idef-parser-hexagon_check-tcg:
+  needs: [no-idef-parser-hexagon_build]
+  extends: .base-check-tcg
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+no-idef-parser-hexagon_check:
+  needs: [no-idef-parser-hexagon_build]
+  extends: .base-check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+aarch64_build:
+  extends: .base-build
+  variables: { CONFIG_CMD: $AARCH64_CONFIG_CMD }
+aarch64_install:
+  needs: [aarch64_build]
+  extends: .base-install
+aarch64_check-tcg:
+  needs: [aarch64_build]
+  extends: .base-check-tcg
+aarch64_check:
+  needs: [aarch64_build]
+  extends: .base-check
+
+test_hexagon_perf:
+  needs: [hexagon_build]
+  tags:
+    - performance-hardware
+  # We'll execute a smaller subset of tests, fewer iters for routine
+  # commits/MRs.  In a nightly build we can run a comprehensive test.
+  before_script:
+    -   PERF_TEST_CFG="${PWD}/qemu-hexagon-perf/minimal_test_config.py" ;
+        PERF_TEST_CFG_MTTCG="${PWD}/.quic-gitlab-ci.d/mttcg_test_config.py" ;
+        PERF_TEST_ITERS="3" ;
+        if [[ "${CI_PIPELINE_SOURCE}" == "schedule" ]] || [[ "${CI_PIPELINE_SOURCE}" == "web" ]]; then
+            PERF_TEST_CFG="${PWD}/qemu-hexagon-perf/default_test_config.py" ;
+            PERF_TEST_ITERS="6";
+        fi
+  script:
+    - echo test for perf - if this fails, check qqvp-dev kernel ver and perf host sysctl ;
+      perf stat /bin/true
+    - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-perf.git
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-benchmarks.git
+    - res=0 ;
+      for mode in default mttcg; do
+          cfg=${PERF_TEST_CFG} ;
+          if test $mode = mttcg; then
+              sys_args='-accel tcg,thread=multi' ;
+              cfg=${PERF_TEST_CFG_MTTCG} ;
+          fi ;
+          ./qemu-hexagon-perf/customer_test_suite.py
+              --bench-dir ./qemu-hexagon-benchmarks/
+              --qemu-user-bin-dir ${PWD}/hexagon_build/
+              --qemu-bin-dir ${PWD}/hexagon_build/
+              --output-file ./perf-results-$mode.json
+              --test-cfg ${cfg}
+              --iters ${PERF_TEST_ITERS}
+              --inspector perf-stat
+              --sys-args="$sys_args" ;
+          res=$(( ${res} + ${?})) ;
+      done ;
+      exit ${res}
+  artifacts:
+    when: always
+    paths: [ "perf-results-default.json", "perf-results-mttcg.json" ]
+
+qqvp_trigger:
+  extends: .base-trigger
+  trigger:
+    project: qqvp/qqvp
+
+qbox_trigger:
+  extends: .base-trigger
+  trigger:
+    project: qqvp/qbox

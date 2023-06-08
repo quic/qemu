@@ -18,21 +18,31 @@
 # Hexagon doesn't support gdb, so skip the EXTRA_RUNS
 EXTRA_RUNS =
 
+CFLAGS = -mv69 -O2 -mhvx -fvectorize
 CFLAGS += -Wno-incompatible-pointer-types -Wno-undefined-internal
 CFLAGS += -fno-unroll-loops
 
 HEX_SRC=$(SRC_PATH)/tests/tcg/hexagon
 VPATH += $(HEX_SRC)
 
+invalid_immext: $(HEX_SRC)/invalid_immext.S
+	$(CC) -static -mv69 -mhvx -mhvx-ieee-fp -nostdlib $^ -o $@
+invalid_vhist: $(HEX_SRC)/invalid_vhist.S
+	$(CC) -static -mv69 -mhvx -nostdlib $^ -o $@
 %: $(HEX_SRC)/%.S $(HEX_SRC)/crt.S
-	$(CC) -static -mv67 -nostdlib $^ -o $@
+	$(CC) -static -mv69 -nostdlib $^ -o $@
 
 HEX_TESTS = first
+HEX_TESTS += invalid_immext
+HEX_TESTS += invalid_vhist
+HEX_TESTS += exec_counters
 HEX_TESTS += hex_sigsegv
 HEX_TESTS += misc
 HEX_TESTS += usr
 HEX_TESTS += preg_alias
 HEX_TESTS += dual_stores
+HEX_TESTS += clrtnew
+HEX_TESTS += pred_stores
 HEX_TESTS += multi_result
 HEX_TESTS += mem_noshuf
 HEX_TESTS += mem_noshuf_exception
@@ -40,15 +50,92 @@ HEX_TESTS += circ
 HEX_TESTS += brev
 HEX_TESTS += load_unpack
 HEX_TESTS += load_align
-HEX_TESTS += atomics
 HEX_TESTS += fpstuff
 HEX_TESTS += overflow
-HEX_TESTS += signal_context
-HEX_TESTS += reg_mut
+HEX_TESTS += hvx_misc
+HEX_TESTS += gp_rel
+HEX_TESTS += pthread_cancel
 HEX_TESTS += vector_add_int
 HEX_TESTS += scatter_gather
-HEX_TESTS += hvx_misc
+HEX_TESTS += atomics
+HEX_TESTS += sfminmax
+HEX_TESTS += lsbnew
+HEX_TESTS += privcheck
+HEX_TESTS += guestcheck
 HEX_TESTS += hvx_histogram
+HEX_TESTS += hvx_sat
+HEX_TESTS += usr_ctrl_assign
+HEX_TESTS += signal_context
+HEX_TESTS += reg_mut
+HEX_TESTS += invalid_slots
+HEX_TESTS += scaler
+HEX_TESTS += upcycle
+
+TESTS += $(HEX_TESTS)
+
+usr_ctrl_assign: usr_ctrl_assign.c usr_ctrl_assign_pass.S
+	$(CC) $(CFLAGS) $(CROSS_CC_GUEST_CFLAGS) $^ -o $@
+
+reg_mut: reg_mut.h
+
+# Run some tests with paranoid-commit-state turned on
+run-misc: misc
+run-usr: usr
+run-preg_alias: preg_alias
+run-dual_stores: dual_stores
+run-pred_stores: pred_stores
+run-multi_result: multi_result
+run-mem_noshuf: mem_noshuf
+run-hvx_misc: hvx_misc
+run-scatter_gather: scatter_gather
+run-hvx_histogram: hvx_histogram
+run-hvx_sat: hvx_sat
+run-hvx-bitmode: hvx_sat
+	$(call run-test-neg, $<, $(QEMU) -cpu v66 $<, "$< on $(TARGET_NAME) v66")
+	$(call run-test, $<, $(QEMU) -cpu v67 $<, "$< on $(TARGET_NAME) v67")
+	$(call run-test, $<, $(QEMU) -cpu any $<, "$< on $(TARGET_NAME) any")
+
+
+PARANOID_OPTS=-cpu any,paranoid-commit-state=true
+IN_ASM_OPTS=-d in_asm
+run-misc run-usr run-preg_alias run-dual_stores run-pred_stores run-multi_result run-mem_noshuf \
+run-hvx_misc run-scatter_gather run-hvx_histogram run-hvx_sat:
+	$(call run-test, $<, $(QEMU) $<, "$< on $(TARGET_NAME)")
+	$(call run-test, $<, $(QEMU) $(PARANOID_OPTS) $<, "$< on $(TARGET_NAME) paranoid")
+	$(call run-test, $<, $(QEMU) $(IN_ASM_OPTS) -D $<.in_asm $<, "$< on $(TARGET_NAME) in_asm")
+
+# These tests raise an exception and return 1 to the shell
+# We'll grep for the proper exception number in their stderr
+run-privcheck: privcheck
+run-guestcheck: guestcheck
+run-invalid_slots: invalid_slots
+
+run-privcheck:
+	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
+	if [ $$? -ne 1 ] ; then \
+		return 1; \
+	fi
+	$(call quiet-command, \
+		grep -q "exception 0x1b" $<.stderr, \
+		"GREP", "exception 0x1b");
+
+run-guestcheck:
+	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
+	if [ $$? -ne 1 ] ; then \
+		return 1; \
+	fi
+	$(call quiet-command, \
+		grep -q "exception 0x1a" $<.stderr, \
+		"GREP", "exception 0x1a");
+
+run-invalid_slots:
+	$(call run-test, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
+	if [ $$? -ne 1 ] ; then \
+		return 1; \
+	fi
+	$(call quiet-command, \
+		grep -q "exception 0x15" $<.stderr, \
+		"GREP", "exception 0x15");
 
 HEX_TESTS += test_abs
 HEX_TESTS += test_bitcnt

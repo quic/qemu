@@ -15,7 +15,6 @@ meson_options_help() {
   printf "%s\n" '                           use idef-parser to automatically generate TCG'
   printf "%s\n" '                           code for the Hexagon frontend'
   printf "%s\n" '  --disable-install-blobs  install provided firmware blobs'
-  printf "%s\n" '  --disable-qom-cast-debug cast debugging support'
   printf "%s\n" '  --docdir=VALUE           Base directory for documentation installation'
   printf "%s\n" '                           (can be empty) [share/doc]'
   printf "%s\n" '  --enable-block-drv-whitelist-in-tools'
@@ -32,13 +31,17 @@ meson_options_help() {
   printf "%s\n" '  --enable-gcov            Enable coverage tracking.'
   printf "%s\n" '  --enable-gprof           QEMU profiling with gprof'
   printf "%s\n" '  --enable-lto             Use link time optimization'
+  printf "%s\n" '  --enable-libqemu         Build shared libraries instead of executables'
   printf "%s\n" '  --enable-malloc=CHOICE   choose memory allocator to use [system] (choices:'
   printf "%s\n" '                           jemalloc/system/tcmalloc)'
   printf "%s\n" '  --enable-module-upgrades try to load modules from alternate paths for'
   printf "%s\n" '                           upgrades'
   printf "%s\n" '  --enable-profiler        profiler support'
+  printf "%s\n" '  --enable-qom-cast-debug  cast debugging support'
   printf "%s\n" '  --enable-rng-none        dummy RNG, avoid using /dev/(u)random and'
   printf "%s\n" '                           getrandom()'
+  printf "%s\n" '  --enable-slirp[=CHOICE]  Whether and how to find the slirp library'
+  printf "%s\n" '                           (choices: auto/disabled/enabled/internal/system)'
   printf "%s\n" '  --enable-strip           Strip targets on install'
   printf "%s\n" '  --enable-tcg-interpreter TCG with bytecode interpreter (slow)'
   printf "%s\n" '  --enable-trace-backends=CHOICES'
@@ -150,7 +153,6 @@ meson_options_help() {
   printf "%s\n" '  sdl-image       SDL Image support for icons'
   printf "%s\n" '  seccomp         seccomp support'
   printf "%s\n" '  selinux         SELinux support in qemu-nbd'
-  printf "%s\n" '  slirp           libslirp user mode network backend support'
   printf "%s\n" '  slirp-smbd      use smbd (at path --smbd=*) in slirp networking'
   printf "%s\n" '  smartcard       CA smartcard emulation support'
   printf "%s\n" '  snappy          snappy compression support'
@@ -326,6 +328,8 @@ _meson_option_parse() {
     --disable-libpmem) printf "%s" -Dlibpmem=disabled ;;
     --enable-libssh) printf "%s" -Dlibssh=enabled ;;
     --disable-libssh) printf "%s" -Dlibssh=disabled ;;
+    --enable-libqemu) printf "%s" -Dlibqemu=true ;;
+    --disable-libqemu) printf "%s" -Dlibqemu=false ;;
     --enable-libudev) printf "%s" -Dlibudev=enabled ;;
     --disable-libudev) printf "%s" -Dlibudev=disabled ;;
     --enable-libusb) printf "%s" -Dlibusb=enabled ;;
@@ -408,6 +412,7 @@ _meson_option_parse() {
     --disable-selinux) printf "%s" -Dselinux=disabled ;;
     --enable-slirp) printf "%s" -Dslirp=enabled ;;
     --disable-slirp) printf "%s" -Dslirp=disabled ;;
+    --enable-slirp=*) quote_sh "-Dslirp=$2" ;;
     --enable-slirp-smbd) printf "%s" -Dslirp_smbd=enabled ;;
     --disable-slirp-smbd) printf "%s" -Dslirp_smbd=disabled ;;
     --enable-smartcard) printf "%s" -Dsmartcard=enabled ;;

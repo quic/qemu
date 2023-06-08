@@ -27,7 +27,13 @@ import hex_common
 ## Helpers for gen_helper_function
 ##
 def gen_decl_ea(f):
-    f.write("    uint32_t EA;\n")
+    f.write("    uint32_t EA __attribute__((unused));\n")
+
+
+def gen_decl_insn(tag, f, slot):
+    str = f"Insn tmp_insn = {{ .slot = {slot} }};\n"
+    f.write(str)
+    f.write("Insn *insn __attribute__((unused)) = &tmp_insn;\n")
 
 
 def gen_helper_return_type(f, regtype, regid, regno):
@@ -87,9 +93,9 @@ def gen_helper_arg_opn(f, regtype, regid, i, tag):
         elif hex_common.is_new_val(regtype, regid, tag):
             gen_helper_arg_new(f, regtype, regid, i)
         else:
-            print("Bad register parse: ", regtype, regid, toss, numregs)
+            print("Bad register parse: ", regtype, regid, i, tag)
     else:
-        print("Bad register parse: ", regtype, regid, toss, numregs)
+        print("Bad register parse: ", regtype, regid, i, tag)
 
 
 def gen_helper_arg_imm(f, immlett):
@@ -188,6 +194,13 @@ def gen_helper_return_opn(f, regtype, regid, i):
         print("Bad register parse: ", regtype, regid, toss, numregs)
 
 
+mem_init_attrs = [
+    'A_LOAD',
+    'A_STORE',
+]
+def needs_page_size(tag):
+    return any(A in hex_common.attribdict[tag] for A in mem_init_attrs)
+
 ##
 ## Generate the TCG code to call the helper
 ##     For A2_add: Rd32=add(Rs32,Rt32), { RdV=RsV+RtV;}
@@ -259,7 +272,6 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                     if hex_common.is_hvx_reg(regtype):
                         gen_helper_arg_ext(f, regtype, regid, i)
                     else:
-                        # This is the return value of the function
                         continue
                 else:
                     print("Bad register parse: ", regtype, regid, toss, numregs)
@@ -308,8 +320,18 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                 f.write(", ")
             f.write("uint32_t part1")
         f.write(")\n{\n")
+
+        if not hex_common.need_slot(tag):
+            f.write("    uint32_t slot __attribute__((unused)) = 4;\n")
         if hex_common.need_ea(tag):
             gen_decl_ea(f)
+
+        if hex_common.is_scatter_gather(tag):
+            if hex_common.is_gather(tag):
+                gen_decl_insn(tag, f, 1)
+            else:
+                gen_decl_insn(tag,f,0)
+
         ## Declare the return variable
         i = 0
         if "A_CONDEXEC" not in hex_common.attribdict[tag]:
@@ -333,6 +355,7 @@ def gen_helper_function(f, tag, tagregs, tagimms):
             f.write("    arch_fpop_start(env);\n")
 
         f.write(f"    {hex_common.semdict[tag]}\n")
+        f.write(f"    COUNT_HELPER({tag});\n")
 
         if "A_FPOP" in hex_common.attribdict[tag]:
             f.write("    arch_fpop_end(env);\n")
@@ -350,44 +373,42 @@ def main():
     hex_common.read_attribs_file(sys.argv[2])
     hex_common.read_overrides_file(sys.argv[3])
     hex_common.read_overrides_file(sys.argv[4])
+    hex_common.read_overrides_file(sys.argv[5])
     ## Whether or not idef-parser is enabled is
     ## determined by the number of arguments to
     ## this script:
     ##
-    ##   5 args. -> not enabled,
-    ##   6 args. -> idef-parser enabled.
+    ##   6 args. -> not enabled,
+    ##   7 args. -> idef-parser enabled.
     ##
-    ## The 6:th arg. then holds a list of the successfully
+    ## The 7:th arg. then holds a list of the successfully
     ## parsed instructions.
-    is_idef_parser_enabled = len(sys.argv) > 6
+    is_idef_parser_enabled = len(sys.argv) > 7
     if is_idef_parser_enabled:
-        hex_common.read_idef_parser_enabled_file(sys.argv[5])
+        hex_common.read_idef_parser_enabled_file(sys.argv[6])
     hex_common.calculate_attribs()
     tagregs = hex_common.get_tagregs()
     tagimms = hex_common.get_tagimms()
 
     output_file = sys.argv[-1]
     with open(output_file, "w") as f:
-        for tag in hex_common.tags:
-            ## Skip the priv instructions
-            if "A_PRIV" in hex_common.attribdict[tag]:
-                continue
-            ## Skip the guest instructions
-            if "A_GUEST" in hex_common.attribdict[tag]:
-                continue
-            ## Skip the diag instructions
-            if tag == "Y6_diag":
-                continue
-            if tag == "Y6_diag0":
-                continue
-            if tag == "Y6_diag1":
+        for tag in hex_common.get_user_tags():
+            if hex_common.tag_ignore(tag):
                 continue
             if hex_common.skip_qemu_helper(tag):
                 continue
             if hex_common.is_idef_parser_enabled(tag):
                 continue
-
             gen_helper_function(f, tag, tagregs, tagimms)
+
+        f.write("#if !defined(CONFIG_USER_ONLY)\n")
+        for tag in hex_common.get_sys_tags():
+            if hex_common.skip_qemu_helper(tag):
+                continue
+            if hex_common.is_idef_parser_enabled(tag):
+                continue
+            gen_helper_function(f, tag, tagregs, tagimms)
+        f.write("#endif\n")
 
 
 if __name__ == "__main__":

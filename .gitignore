@@ -3,6 +3,7 @@
 /.cache/
 /.vscode/
 *.pyc
+.DS_Store
 .sdk
 .stgit-*
 .git-submodule-status
@@ -18,6 +19,8 @@ GTAGS
 *.ast_raw
 *.depend_raw
 *.swp
+.vscode
+build
 *.patch
 *.gcov
 

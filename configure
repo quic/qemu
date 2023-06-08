@@ -233,6 +233,9 @@ gdb_bin=$(command -v "gdb-multiarch" || command -v "gdb")
 gdb_arches=""
 glib_has_gslice="no"
 
+hexagon_lldb_bin=$(command -v "hexagon-lldb")
+assert_target_compiler=no
+
 if test -e "$source_path/.git"
 then
     git_submodules_action="update"
@@ -294,11 +297,17 @@ ninja=""
 bindir="bin"
 skip_meson=no
 vfio_user_server="disabled"
+libqemu="false"
 
 # The following Meson options are handled manually (still they
 # are included in the automatically generated help message)
 
 # 1. Track which submodules are needed
+if test "$default_feature" = no ; then
+  slirp="disabled"
+else
+  slirp="auto"
+fi
 fdt="auto"
 
 # 2. Automatically enable/disable other options
@@ -346,6 +355,14 @@ for opt do
   ;;
   esac
 done
+
+# QUIC-specific
+# We currently get 401 when trying to pull the container image for aarch64
+# cross compiler from docker.io. We should probably use our internal registry
+# instance instea but, for now, let's just skip the container and use a cross
+# compiler from the mounted dirs.
+cross_prefix_aarch64="/pkg/qct/software/llvm/build_tools/gcc-arm-8.3-2019.03-x86_64-aarch64-linux-gnu/bin/aarch64-linux-gnu-"
+# QUIC-end
 
 # Preferred compiler:
 #  ${CC} (if set)
@@ -560,6 +577,8 @@ elif check_define __arm__ ; then
   cpu="arm"
 elif check_define __aarch64__ ; then
   cpu="aarch64"
+elif check_define __hexagon__ ; then
+  cpu="hexagon"
 elif check_define __loongarch64 ; then
   cpu="loongarch64"
 else
@@ -828,6 +847,14 @@ for opt do
   ;;
   --disable-tsan) tsan="no"
   ;;
+  --disable-slirp) slirp="disabled"
+  ;;
+  --enable-slirp) slirp="enabled"
+  ;;
+  --enable-slirp=git) slirp="internal"
+  ;;
+  --enable-slirp=*) slirp="$optarg"
+  ;;
   --disable-tcg) tcg="disabled"
                  plugins="no"
   ;;
@@ -901,9 +928,18 @@ for opt do
   ;;
   --gdb=*) gdb_bin="$optarg"
   ;;
+  --hexagon-lldb=*) hexagon_lldb_bin="$optarg"
+  ;;
+  --assert-target-compiler) assert_target_compiler="yes"
+  ;;
   --enable-vfio-user-server) vfio_user_server="enabled"
   ;;
   --disable-vfio-user-server) vfio_user_server="disabled"
+  ;;
+  # libqemu corresponds to a meson option but we need some handling here
+  --enable-libqemu) libqemu="true"
+  ;;
+  --disable-libqemu) libqemu="false"
   ;;
   # everything else has the same name in configure and meson
   --*) meson_option_parse "$opt" "$optarg"
@@ -1045,6 +1081,8 @@ Advanced options (experts only):
                            enable plugins via shared library loading
   --disable-containers     don't use containers for cross-building
   --gdb=GDB-path           gdb to use for gdbstub tests [$gdb_bin]
+  --hexagon-lldb=LLDB-path lldb to use for hexagon tests [$hexagon_lldb_bin]
+  --assert-target-compiler abort if no target CC or container image is found [$assert_target_compiler]
 EOF
   meson_options_help
 cat << EOF
@@ -1351,6 +1389,14 @@ cat > $TMPC << EOF
 static THREAD int tls_var;
 int main(void) { return tls_var; }
 EOF
+
+if test "$libqemu" = "true"; then
+  if compile_prog "-fPIC -DPIC" ""; then
+    CONFIGURE_CFLAGS="-fPIC -DPIC $CONFIGURE_CFLAGS"
+  else
+    error_exit "PIC compilation required to build libqemu but not available"
+  fi
+fi
 
 # Meson currently only handles pie as a boolean for now so if we have
 # explicitly disabled PIE we need to extend our cflags because it wont.
@@ -1809,6 +1855,16 @@ EOF
 fi
 
 ##########################################
+# check for slirp
+
+case "$slirp" in
+  auto | enabled | internal)
+    # Simpler to always update submodule, even if not needed.
+    git_submodules="${git_submodules} slirp"
+    ;;
+esac
+
+##########################################
 # functions to probe cross compilers
 
 container="no"
@@ -1857,7 +1913,7 @@ fi
 : ${cross_cc_armeb="$cross_cc_arm"}
 : ${cross_cc_cflags_armeb="-mbig-endian"}
 : ${cross_cc_hexagon="hexagon-unknown-linux-musl-clang"}
-: ${cross_cc_cflags_hexagon="-mv67 -O2 -static"}
+: ${cross_cc_cflags_hexagon="-mv69 -O2 -static"}
 : ${cross_cc_cflags_i386="-m32"}
 : ${cross_cc_cflags_ppc="-m32 -mbig-endian"}
 : ${cross_cc_cflags_ppc64="-m64 -mbig-endian"}
@@ -1911,6 +1967,7 @@ probe_target_compiler() {
   container_cross_objcopy=
   container_cross_ranlib=
   container_cross_strip=
+  target=$1
 
   # We shall skip configuring the target compiler if the user didn't
   # bother enabling an appropriate guest. This avoids building
@@ -2069,6 +2126,13 @@ probe_target_compiler() {
     : ${container_cross_ranlib:=${container_cross_prefix}ranlib}
     : ${container_cross_strip:=${container_cross_prefix}strip}
   done
+
+  case $target in
+    hexagon-linux-user)
+      cross_cc_hexagon=hexagon-linux-clang ;;
+    hexagon-softmmu)
+      cross_cc_hexagon=hexagon-clang ;;
+  esac
 
   try=cross
   case "$target_arch:$cpu" in
@@ -2244,8 +2308,12 @@ if test "$fortify_source" = "yes" ; then
 fi
 
 if test "$have_asan" = "yes"; then
-  QEMU_CFLAGS="-fsanitize=address $QEMU_CFLAGS"
-  QEMU_LDFLAGS="-fsanitize=address $QEMU_LDFLAGS"
+  # QUIC-specific
+  # -fno-omit-frame-pointer helps vizualizing the complete call stack for
+  # malloc leaks. See https://github.com/google/sanitizers/wiki/AddressSanitizer#faq
+  QEMU_CFLAGS="-fsanitize=address -fno-omit-frame-pointer $QEMU_CFLAGS"
+  QEMU_LDFLAGS="-fsanitize=address -fno-omit-frame-pointer $QEMU_LDFLAGS"
+  # end QUIC-specific
   if test "$have_asan_iface_h" = "no" ; then
       echo "ASAN build enabled, but ASAN header missing." \
            "Without code annotation, the report may be inferior."
@@ -2505,6 +2573,9 @@ mkdir -p tests/tcg
 echo "# Automatically generated by configure - do not modify" > $config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
 echo "HOST_CC=$host_cc" >> $config_host_mak
+if test -n "$hexagon_lldb_bin"; then
+    echo "HAVE_HEXAGON_LLDB_BIN=$hexagon_lldb_bin" >> $config_host_mak
+fi
 
 # versioned checked in the main config_host.mak above
 if test -n "$gdb_bin"; then
@@ -2551,13 +2622,15 @@ for target in $target_list; do
 
       echo "run-tcg-tests-$target: $qemu\$(EXESUF)" >> Makefile.prereqs
       tcg_tests_targets="$tcg_tests_targets $target"
+  elif test "$assert_target_compiler" = yes; then
+      error_exit "didn't find cross-compiler or container image for '$target'"
   fi
 done
 
 if test "$tcg" = "enabled"; then
     echo "TCG_TESTS_TARGETS=$tcg_tests_targets" >> config-host.mak
 fi
-)
+) || { test "$assert_target_compiler" = yes && error_exit 'tests/tcg config failed'; }
 
 if test "$skip_meson" = no; then
   cross="config-meson.cross.new"
@@ -2631,11 +2704,15 @@ if test "$skip_meson" = no; then
   test "$pie" = no && meson_option_add -Db_pie=false
   test "$werror" = yes && meson_option_add -Dwerror=true
 
+  test "$libqemu" = true && meson_option_add -Db_staticpic=true
+  test "$libqemu" = true && meson_option_add -Dlibqemu=true
+
   # QEMU options
   test "$cfi" != false && meson_option_add "-Dcfi=$cfi"
   test "$fdt" != auto && meson_option_add "-Dfdt=$fdt"
   test -n "${LIB_FUZZING_ENGINE+xxx}" && meson_option_add "-Dfuzzing_engine=$LIB_FUZZING_ENGINE"
   test "$qemu_suffix" != qemu && meson_option_add "-Dqemu_suffix=$qemu_suffix"
+  test "$slirp" != auto && meson_option_add "-Dslirp=$slirp"
   test "$smbd" != '' && meson_option_add "-Dsmbd=$smbd"
   test "$tcg" != enabled && meson_option_add "-Dtcg=$tcg"
   test "$vfio_user_server" != auto && meson_option_add "-Dvfio_user_server=$vfio_user_server"

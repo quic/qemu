@@ -1353,7 +1353,7 @@ static inline void cpu_transaction_failed(CPUState *cpu, hwaddr physaddr,
 
 static uint64_t io_readx(CPUArchState *env, CPUTLBEntryFull *full,
                          int mmu_idx, target_ulong addr, uintptr_t retaddr,
-                         MMUAccessType access_type, MemOp op)
+                         MMUAccessType access_type, MemOp op, bool exclusive)
 {
     CPUState *cpu = env_cpu(env);
     hwaddr mr_offset;
@@ -1372,9 +1372,22 @@ static uint64_t io_readx(CPUArchState *env, CPUTLBEntryFull *full,
 
     {
         QEMU_IOTHREAD_LOCK_GUARD();
-        r = memory_region_dispatch_read(mr, mr_offset, &val, op, full->attrs);
+        MemTxAttrs attrs = full->attrs;
+        attrs.exclusive = exclusive;
+        /* Xilinx: Make sure we first check if the MemoryRegion is an IOMMU region.
+         * This is required to make sure the XMPU works as expected.
+         */
+        if (memory_region_get_iommu(mr)) {
+            r = address_space_rw(cpu->as, mr_offset, attrs,
+                                 (void *) &val, memop_size(op), false);
+        } else {
+            r = memory_region_dispatch_read(mr, mr_offset, &val, op, attrs);
+        }
     }
-
+    if (r == MEMTX_OK_EXIT_TB) {
+        cpu_interrupt(cpu, CPU_INTERRUPT_EXITTB);
+        r = MEMTX_OK;
+    }
     if (r != MEMTX_OK) {
         hwaddr physaddr = mr_offset +
             section->offset_within_address_space -
@@ -1403,7 +1416,7 @@ static void save_iotlb_data(CPUState *cs, MemoryRegionSection *section,
 
 static void io_writex(CPUArchState *env, CPUTLBEntryFull *full,
                       int mmu_idx, uint64_t val, target_ulong addr,
-                      uintptr_t retaddr, MemOp op)
+                      uintptr_t retaddr, MemOp op, bool exclusive)
 {
     CPUState *cpu = env_cpu(env);
     hwaddr mr_offset;
@@ -1427,9 +1440,33 @@ static void io_writex(CPUArchState *env, CPUTLBEntryFull *full,
 
     {
         QEMU_IOTHREAD_LOCK_GUARD();
-        r = memory_region_dispatch_write(mr, mr_offset, val, op, full->attrs);
+        /*
+         * Sometimes, a dmi region is installed between the moment qemu determines
+         * the access is an IO, and the moment it gets the corresponding MR.
+         * In such a case, we end up here with a ram mr that does not support IO,
+         * which causes a transaction fail (and a DATA_ABORT on the cpu).
+         * Prevent this by copying parent (cpu) ops to dmi region ops.
+         */
+        if (mr->ram && !mr->opaque && !strcmp(mr->name, "dmi")) {
+            mr->ops = mr->container->ops;
+            mr->opaque = mr->container->opaque;
+        }
+        MemTxAttrs attrs = full->attrs;
+        attrs.exclusive = exclusive;
+        /* Xilinx: Make sure we first check if iommu_ops is avaliable. This is
+         * required to make sure the XMPU works as expected.
+         */
+        if (memory_region_get_iommu(mr)) {
+            r = address_space_rw(cpu->as, mr_offset, attrs,
+                                 (void *) &val, memop_size(op), true);
+        } else {
+            r = memory_region_dispatch_write(mr, mr_offset, val, op, attrs);
+        }
     }
-
+    if (r == MEMTX_OK_EXIT_TB) {
+        cpu_interrupt(cpu, CPU_INTERRUPT_EXITTB);
+        r = MEMTX_OK;
+    }
     if (r != MEMTX_OK) {
         hwaddr physaddr = mr_offset +
             section->offset_within_address_space -
@@ -1993,8 +2030,9 @@ load_helper(CPUArchState *env, target_ulong addr, MemOpIdx oi,
 
         /* Handle I/O access.  */
         if (likely(tlb_addr & TLB_MMIO)) {
+            bool exclusive = get_memop(oi) & MO_EX;
             return io_readx(env, full, mmu_idx, addr, retaddr,
-                            access_type, op ^ (need_swap * MO_BSWAP));
+                            access_type, op ^ (need_swap * MO_BSWAP), exclusive);
         }
 
         haddr = (void *)((uintptr_t)addr + entry->addend);
@@ -2456,8 +2494,9 @@ store_helper(CPUArchState *env, target_ulong addr, uint64_t val,
 
         /* Handle I/O access.  */
         if (tlb_addr & TLB_MMIO) {
+            bool exclusive = get_memop(oi) & MO_EX;
             io_writex(env, full, mmu_idx, val, addr, retaddr,
-                      op ^ (need_swap * MO_BSWAP));
+                      op ^ (need_swap * MO_BSWAP), exclusive);
             return;
         }
 

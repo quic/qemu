@@ -134,6 +134,31 @@ static InsnClassExecCount sparc64_insn_classes[] = {
     { "Unclassified",        "unclas", 0x00000000, 0x00000000, COUNT_INDIVIDUAL},
 };
 
+static InsnClassExecCount hexagon_insn_classes[] = {
+    { "COPROC_VX", "hvx", 0xf8000000, 0x18000000, COUNT_CLASS },
+    { "COPROC_VMEM", "hvx_vmem", 0xf8000000, 0x28000000, COUNT_CLASS },
+    { "CR", "ctrl", 0xf8000000, 0x60000000, COUNT_CLASS },
+    { "V4LDST", "ld/st", 0xf8000000, 0x30000000, COUNT_CLASS },
+    { "ALU32_ADDI", "ALU", 0xf8000000, 0xb0000000, COUNT_CLASS },
+    { "M", "mpy", 0xf8000000, 0xe0000000, COUNT_CLASS },
+    { "ST", "store", 0xf8000000, 0xa0000000, COUNT_CLASS },
+    { "EXTENDER", "immext", 0xf8000000, 0x0, COUNT_CLASS },
+    { "ALU64", "ALU", 0xf8000000, 0xd0000000, COUNT_CLASS },
+    { "ALU32_3op", "ALU", 0xf8000000, 0xf0000000, COUNT_CLASS },
+    { "LD", "load", 0xf8000000, 0x90000000, COUNT_CLASS },
+    { "S_3op", "shift", 0xf8000000, 0xc0000000, COUNT_CLASS },
+    { "NCJ", "compare-jump", 0xf8000000, 0x20000000, COUNT_CLASS },
+    { "J", "jump", 0xf8000000, 0x50000000, COUNT_CLASS },
+    { "CJ", "compare-jump", 0xf8000000, 0x10000000, COUNT_CLASS },
+    { "S_2op", "shift", 0xf8000000, 0x80000000, COUNT_CLASS },
+    { "V2LDST", "ld/st", 0xf8000000, 0x40000000, COUNT_CLASS },
+    { "ALU32_2op", "ALU", 0xf8000000, 0x70000000, COUNT_CLASS },
+
+    /* Unclassified */
+    { "Unclassified",  "unclas", 0x00000000, 0x00000000, COUNT_INDIVIDUAL},
+};
+
+
 /* Default matcher for currently unclassified architectures */
 static InsnClassExecCount default_insn_classes[] = {
     { "Unclassified",        "unclas", 0x00000000, 0x00000000, COUNT_INDIVIDUAL},
@@ -149,6 +174,7 @@ static ClassSelector class_tables[] = {
     { "aarch64", aarch64_insn_classes, ARRAY_SIZE(aarch64_insn_classes) },
     { "sparc",   sparc32_insn_classes, ARRAY_SIZE(sparc32_insn_classes) },
     { "sparc64", sparc64_insn_classes, ARRAY_SIZE(sparc64_insn_classes) },
+    { "hexagon", hexagon_insn_classes, ARRAY_SIZE(hexagon_insn_classes) },
     { NULL, default_insn_classes, ARRAY_SIZE(default_insn_classes) },
 };
 

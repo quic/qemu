@@ -1102,7 +1102,17 @@ static void machine_initfn(Object *obj)
 
     /* default to mc->default_cpus */
     ms->smp.cpus = mc->default_cpus;
+#ifndef CONFIG_LIBQEMU
     ms->smp.max_cpus = mc->default_cpus;
+#else
+    /*
+     * Since we are not operating in standalone mode, there is no CLI to pass
+     * `-smp cpus=n` or `-smp max_cpus=n`. So maximize the limit in this case,
+     * allowing the linked binary to create as many CPUs as it needs (within
+     * the MachineClass limit).
+     */
+    ms->smp.max_cpus = mc->max_cpus;
+#endif
     ms->smp.sockets = 1;
     ms->smp.dies = 1;
     ms->smp.clusters = 1;

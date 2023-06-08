@@ -104,8 +104,7 @@ static const uint64_t vdpa_svq_device_features =
     /* VHOST_F_LOG_ALL is exposed by SVQ */
     BIT_ULL(VHOST_F_LOG_ALL) |
     BIT_ULL(VIRTIO_NET_F_RSC_EXT) |
-    BIT_ULL(VIRTIO_NET_F_STANDBY) |
-    BIT_ULL(VIRTIO_NET_F_SPEED_DUPLEX);
+    BIT_ULL(VIRTIO_NET_F_STANDBY);
 
 #define VHOST_VDPA_NET_CVQ_ASID 1
 

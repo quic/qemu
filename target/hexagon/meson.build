@@ -21,6 +21,7 @@ hex_common_py = 'hex_common.py'
 attribs_def = meson.current_source_dir() / 'attribs_def.h.inc'
 gen_tcg_h = meson.current_source_dir() / 'gen_tcg.h'
 gen_tcg_hvx_h = meson.current_source_dir() / 'gen_tcg_hvx.h'
+gen_tcg_sys_h = meson.current_source_dir() / 'gen_tcg_sys.h'
 idef_parser_dir = meson.current_source_dir() / 'idef-parser'
 
 #
@@ -38,6 +39,7 @@ semantics_generated = custom_target(
     command: [gen_semantics, '@OUTPUT@'],
 )
 hexagon_ss.add(semantics_generated)
+
 
 #
 # Step 2
@@ -111,6 +113,7 @@ hexagon_ss.add(opcodes_def_generated)
 gen_dectree_import = executable(
     'gen_dectree_import',
     'gen_dectree_import.c', opcodes_def_generated, op_regs_generated,
+    c_args: ['-Wno-initializer-overrides'],
     native: true, build_by_default: false)
 
 iset_py = custom_target(
@@ -133,8 +136,12 @@ dectree_generated = custom_target(
 )
 hexagon_ss.add(dectree_generated)
 
+hexagon_softmmu_ss = ss.source_set()
+
 hexagon_ss.add(files(
     'cpu.c',
+    'cpu_helper.c',
+    'hexswi.c',
     'translate.c',
     'op_helper.c',
     'gdbstub.c',
@@ -148,6 +155,22 @@ hexagon_ss.add(files(
     'fma_emu.c',
     'mmvec/decode_ext_mmvec.c',
     'mmvec/system_ext_mmvec.c',
+    'mmvec/mmvec_qfloat.c',
+    'mmvec/kvx_ieee.c',
+    'int16_emu.c',
+    'system.c',
+    'arch_options_calc.c',
+    'dma_adapter.c',
+    'dma/dma.c',
+    'dma/dma_descriptor.c',
+    'dma/desc_tracker.c',
+    'uarch/queue.c',
+))
+
+hexagon_softmmu_ss.add(files(
+    'hex_mmu.c',
+    'hex_interrupts.c',
+    'monitor.c',
 ))
 
 #
@@ -159,7 +182,8 @@ hexagon_ss.add(files(
 #     idef-generated-enabled-instructions
 #
 idef_parser_enabled = get_option('hexagon_idef_parser')
-if idef_parser_enabled and 'hexagon-linux-user' in target_dirs
+if idef_parser_enabled and ('hexagon-linux-user' in target_dirs or
+                            'hexagon-softmmu' in target_dirs)
     idef_parser_input_generated = custom_target(
         'idef_parser_input.h.inc',
         output: 'idef_parser_input.h.inc',
@@ -182,8 +206,10 @@ if idef_parser_enabled and 'hexagon-linux-user' in target_dirs
         arguments: ['-o', '@OUTPUT0@', '--header-file=@OUTPUT1@', '@INPUT@']
     )
 
+    # Apple's bison is too old, so look for the brew version first
+    # in order to work "out-of-the-box" on macOS.
     bison = generator(
-        find_program('bison', version: '>=3.0'),
+        find_program('/opt/homebrew/opt/bison/bin/bison', 'bison', version: '>=3.0'),
         output: ['@BASENAME@.tab.c', '@BASENAME@.tab.h'],
         arguments: ['@INPUT@', '--defines=@OUTPUT1@', '--output=@OUTPUT0@']
     )
@@ -211,7 +237,7 @@ if idef_parser_enabled and 'hexagon-linux-user' in target_dirs
     )
 
     indent = find_program('indent', required: false)
-    if indent.found()
+    if indent.found() and build_machine.system() != 'darwin'
         idef_generated_tcg_c = custom_target(
             'indent',
             input: idef_generated_tcg[0],
@@ -234,12 +260,12 @@ if idef_parser_enabled and 'hexagon-linux-user' in target_dirs
     # Setup input and dependencies for the next step, this depends on whether or
     # not idef-parser is enabled
     helper_dep = [semantics_generated, idef_generated_tcg_c, idef_generated_tcg]
-    helper_in = [semantics_generated, attribs_def, gen_tcg_h, gen_tcg_hvx_h, idef_generated_list]
+    helper_in = [semantics_generated, attribs_def, gen_tcg_h, gen_tcg_hvx_h, gen_tcg_sys_h, idef_generated_list]
 else
     # Setup input and dependencies for the next step, this depends on whether or
     # not idef-parser is enabled
     helper_dep = [semantics_generated]
-    helper_in = [semantics_generated, attribs_def, gen_tcg_h, gen_tcg_hvx_h]
+    helper_in = [semantics_generated, attribs_def, gen_tcg_h, gen_tcg_hvx_h, gen_tcg_sys_h]
 endif
 
 #
@@ -253,7 +279,7 @@ helper_protos_generated = custom_target(
     'helper_protos_generated.h.inc',
     output: 'helper_protos_generated.h.inc',
     depends: helper_dep,
-    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h],
+    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h, gen_tcg_sys_h],
     command: [python, files('gen_helper_protos.py'), helper_in, '@OUTPUT@'],
 )
 hexagon_ss.add(helper_protos_generated)
@@ -262,7 +288,7 @@ helper_funcs_generated = custom_target(
     'helper_funcs_generated.c.inc',
     output: 'helper_funcs_generated.c.inc',
     depends: helper_dep,
-    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h],
+    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h, gen_tcg_sys_h],
     command: [python, files('gen_helper_funcs.py'), helper_in, '@OUTPUT@'],
 )
 hexagon_ss.add(helper_funcs_generated)
@@ -271,7 +297,7 @@ tcg_funcs_generated = custom_target(
     'tcg_funcs_generated.c.inc',
     output: 'tcg_funcs_generated.c.inc',
     depends: helper_dep,
-    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h],
+    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h, gen_tcg_sys_h],
     command: [python, files('gen_tcg_funcs.py'), helper_in, '@OUTPUT@'],
 )
 hexagon_ss.add(tcg_funcs_generated)
@@ -280,9 +306,10 @@ analyze_funcs_generated = custom_target(
     'analyze_funcs_generated.c.inc',
     output: 'analyze_funcs_generated.c.inc',
     depends: helper_dep,
-    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h],
+    depend_files: [hex_common_py, attribs_def, gen_tcg_h, gen_tcg_hvx_h, gen_tcg_sys_h],
     command: [python, files('gen_analyze_funcs.py'), helper_in, '@OUTPUT@'],
 )
 hexagon_ss.add(analyze_funcs_generated)
 
 target_arch += {'hexagon': hexagon_ss}
+target_softmmu_arch += {'hexagon': hexagon_softmmu_ss}

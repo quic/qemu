@@ -11,7 +11,7 @@
 
 #include "exec/cpu-common.h"
 
-#define MAX_PACKET_LENGTH 4096
+#define MAX_PACKET_LENGTH (8192*2)
 
 /*
  * Shared structures and definitions
@@ -56,6 +56,7 @@ typedef struct GDBState {
     int line_buf_index;
     int line_sum; /* running checksum */
     int line_csum; /* checksum at the end of the packet */
+    char last_cmd[MAX_PACKET_LENGTH];
     GByteArray *last_packet;
     int signal;
     bool multiprocess;
@@ -94,6 +95,11 @@ static inline int tohex(int v)
     } else {
         return v - 10 + 'a';
     }
+}
+
+static inline int startswith(const char *string, const char *pattern)
+{
+  return !strncmp(string, pattern, strlen(pattern));
 }
 
 /*

@@ -222,6 +222,11 @@ void qemu_chr_be_update_read_handlers(Chardev *s,
 
     assert(qemu_chr_has_feature(s, QEMU_CHAR_FEATURE_GCONTEXT)
            || !context);
+
+    if (context == NULL) {
+        context = g_main_context_get_thread_default();
+    }
+
     s->gcontext = context;
     if (cc->chr_update_read_handler) {
         cc->chr_update_read_handler(s);
@@ -417,6 +422,7 @@ QemuOpts *qemu_chr_parse_compat(const char *label, const char *filename,
         return opts;
     }
     if (strstart(filename, "tcp:", &p) ||
+        strstart(filename, "revcon:", &p) ||
         strstart(filename, "telnet:", &p) ||
         strstart(filename, "tn3270:", &p) ||
         strstart(filename, "websocket:", &p)) {
@@ -436,6 +442,9 @@ QemuOpts *qemu_chr_parse_compat(const char *label, const char *filename,
         }
         if (strstart(filename, "telnet:", &p)) {
             qemu_opt_set(opts, "telnet", "on", &error_abort);
+        } else if (strstart(filename, "revcon:", &p)) {
+            qemu_opt_set(opts, "revcon", "on", &error_abort);
+            qemu_opt_set(opts, "host", "localhost", &error_abort);
         } else if (strstart(filename, "tn3270:", &p)) {
             qemu_opt_set(opts, "tn3270", "on", &error_abort);
         } else if (strstart(filename, "websocket:", &p)) {
@@ -848,6 +857,9 @@ QemuOptsList qemu_chardev_opts = {
             .name = "reconnect",
             .type = QEMU_OPT_NUMBER,
         },{
+            .name = "revcon",
+            .type = QEMU_OPT_BOOL,
+        },{
             .name = "telnet",
             .type = QEMU_OPT_BOOL,
         },{
@@ -951,6 +963,11 @@ static Chardev *chardev_new(const char *id, const char *typename,
     chr = CHARDEV(obj);
     chr->handover_yank_instance = handover_yank_instance;
     chr->label = g_strdup(id);
+
+    if (gcontext == NULL) {
+        gcontext = g_main_context_get_thread_default();
+    }
+
     chr->gcontext = gcontext;
 
     qemu_char_open(chr, backend, &be_opened, &local_err);

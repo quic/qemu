@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 #include "qemu/osdep.h"
 #include "iclass.h"
+#include "opcodes.h"
 #include "attribs.h"
 #include "genptr.h"
 #include "decode.h"
@@ -75,6 +76,7 @@ typedef struct DectreeTable {
 
 #define DECODE_NEW_TABLE(TAG, SIZE, WHATNOT) \
     static const DectreeTable dectree_table_##TAG;
+
 #define TABLE_LINK(TABLE)                     /* NOTHING */
 #define TERMINAL(TAG, ENC)                    /* NOTHING */
 #define SUBINSNS(TAG, CLASSA, CLASSB, ENC)    /* NOTHING */
@@ -363,6 +365,8 @@ static bool decode_opcode_can_jump(int opcode)
     if ((GET_ATTRIB(opcode, A_JUMP)) ||
         (GET_ATTRIB(opcode, A_CALL)) ||
         (opcode == J2_trap0) ||
+        (opcode == J2_trap1) ||
+        (opcode == J2_rte) ||
         (opcode == J2_pause)) {
         /* Exception to A_JUMP attribute */
         if (opcode == J4_hintjumpr) {
@@ -386,11 +390,19 @@ static void decode_set_insn_attr_fields(Packet *pkt)
     int i;
     int numinsns = pkt->num_insns;
     uint16_t opcode;
+    pkt->pkt_has_dczeroa = false;
+    pkt->pkt_has_cof = false;
+    pkt->pkt_has_multi_cof = false;
+    pkt->pkt_has_endloop = false;
+    pkt->pkt_has_scalar_store_s0 = false;
+    pkt->pkt_has_scalar_store_s1 = false;
+    pkt->pkt_has_load_s0 = false;
+    pkt->pkt_has_load_s1 = false;
+    pkt->pkt_has_fp_op = false;
 
     pkt->pkt_has_cof = false;
     pkt->pkt_has_multi_cof = false;
     pkt->pkt_has_endloop = false;
-    pkt->pkt_has_dczeroa = false;
 
     for (i = 0; i < numinsns; i++) {
         opcode = pkt->insn[i].opcode;
@@ -406,10 +418,17 @@ static void decode_set_insn_attr_fields(Packet *pkt)
             if (GET_ATTRIB(opcode, A_SCALAR_STORE) &&
                 !GET_ATTRIB(opcode, A_MEMSIZE_0B)) {
                 if (pkt->insn[i].slot == 0) {
-                    pkt->pkt_has_store_s0 = true;
+                    pkt->pkt_has_scalar_store_s0 = 1;
                 } else {
-                    pkt->pkt_has_store_s1 = true;
+                    pkt->pkt_has_scalar_store_s1 = 1;
                 }
+            }
+        }
+        if (GET_ATTRIB(opcode, A_LOAD)) {
+            if (pkt->insn[i].slot == 0) {
+                pkt->pkt_has_load_s0 = 1;
+            } else {
+                pkt->pkt_has_load_s1 = 1;
             }
         }
 
@@ -518,6 +537,7 @@ static void decode_shuffle_for_execution(Packet *packet)
                 }
             } else if (GET_ATTRIB(opcode, A_IMPLICIT_WRITES_P0) &&
                        !GET_ATTRIB(opcode, A_NEWCMPJUMP)) {
+                /* CABAC instruction */
                 if (flag) {
                     decode_send_insn_to(packet, i, 0);
                     changed = true;
@@ -542,6 +562,29 @@ static void decode_shuffle_for_execution(Packet *packet)
             break;
         }
     }
+
+    /*
+     * And at the very very very end, move any RTE's, since they update
+     * user/supervisor mode.
+     */
+#if !defined(CONFIG_USER_ONLY)
+    for (i = 0; i < last_insn; i++) {
+        if (packet->insn[i].opcode == J2_rte) {
+            decode_send_insn_to(packet, i, last_insn);
+            break;
+        }
+    }
+#endif
+}
+
+static void decode_assembler_count_fpops(Packet *pkt)
+{
+    int i;
+    for (i = 0; i < pkt->num_insns; i++) {
+        if (GET_ATTRIB(pkt->insn[i].opcode, A_FPOP)) {
+            pkt->pkt_has_fp_op = true;
+        }
+    }
 }
 
 static void
@@ -551,8 +594,11 @@ apply_extender(Packet *pkt, int i, uint32_t extender)
     uint32_t base_immed;
 
     immed_num = opcode_which_immediate_is_extended(pkt->insn[i].opcode);
-    base_immed = pkt->insn[i].immed[immed_num];
+    if (immed_num < 0) {
+        return;
+    }
 
+    base_immed = pkt->insn[i].immed[immed_num];
     pkt->insn[i].immed[immed_num] = extender | fZXTN(6, 32, base_immed);
 }
 
@@ -592,6 +638,50 @@ static SlotMask get_valid_slots(const Packet *pkt, unsigned int slot)
                                  pkt->insn[slot].iclass);
     }
 }
+
+
+#if 0
+static const char *
+get_valid_slot_str(const Packet *pkt, unsigned int slot)
+
+{
+    const char *str = NULL;
+
+    switch (get_valid_slots(pkt, slot)) {
+        case SLOTS_0:
+            str = "0";
+            break;
+
+        case SLOTS_1:
+            str = "1";
+            break;
+
+        case SLOTS_01:
+            str = "01";
+            break;
+
+        case SLOTS_2:
+            str = "2";
+            break;
+
+        case SLOTS_3:
+            str = "3";
+            break;
+
+        case SLOTS_23:
+            str = "23";
+            break;
+
+        case SLOTS_0123:
+            str = "0123";
+            break;
+
+	default:
+            g_assert_not_reached();
+    }
+    return str;
+}
+#endif
 
 #define DECODE_NEW_TABLE(TAG, SIZE, WHATNOT)     /* NOTHING */
 #define TABLE_LINK(TABLE)                        /* NOTHING */
@@ -651,7 +741,10 @@ decode_op(Insn *insn, Opcode tag, uint32_t encoding)
     insn->immed[1] = 0;
     insn->opcode = tag;
     if (insn->extension_valid) {
-        insn->which_extended = opcode_which_immediate_is_extended(tag);
+        int immed_num = opcode_which_immediate_is_extended(tag);
+        if (immed_num >= 0) {
+            insn->which_extended = immed_num;
+        }
     }
 
     switch (tag) {
@@ -746,16 +839,18 @@ decode_insns_tablewalk(Insn *insn, const DectreeTable *table,
         if ((encoding & decode_itable[opc].mask) != decode_itable[opc].match) {
             if ((encoding & decode_legacy_itable[opc].mask) !=
                 decode_legacy_itable[opc].match) {
-                return 0;
+                return 1;
             }
         }
         decode_op(insn, opc, encoding);
         return 1;
     } else if (table->table[i].type == DECTREE_EXTSPACE) {
+        size4u_t active_ext;
         /*
          * For now, HVX will be the only coproc
          */
-        return decode_insns_tablewalk(insn, ext_trees[EXT_IDX_mmvec], encoding);
+        active_ext = EXT_IDX_mmvec;
+        return decode_insns_tablewalk(insn, ext_trees[active_ext], encoding);
     } else {
         return 0;
     }
@@ -797,7 +892,26 @@ static bool decode_parsebits_is_loopend(uint32_t encoding32)
     return bits == 0x2;
 }
 
-static void
+static bool has_valid_slot_assignment(Packet *pkt)
+{
+    int used_slots = 0;
+    for (int i = 0; i < pkt->num_insns; i++) {
+        int slot_mask;
+        Insn *insn = &pkt->insn[i];
+        if (decode_opcode_ends_loop(insn->opcode)) {
+            /* We overload slot 0 for endloop. */
+            continue;
+        }
+        slot_mask = 1 << insn->slot;
+        if (used_slots & slot_mask) {
+            return false;
+        }
+        used_slots |= slot_mask;
+    }
+    return true;
+}
+
+static bool
 decode_set_slot_number(Packet *pkt)
 {
     int slot;
@@ -886,6 +1000,8 @@ decode_set_slot_number(Packet *pkt)
         /* Then push it to slot0 */
         pkt->insn[slot1_iidx].slot = 0;
     }
+
+    return has_valid_slot_assignment(pkt);
 }
 
 /*
@@ -912,7 +1028,6 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         encoding32 = words[words_read];
         end_of_packet = is_packet_end(encoding32);
         new_insns = decode_insns(&pkt->insn[num_insns], encoding32);
-        g_assert(new_insns > 0);
         /*
          * If we saw an extender, mark next word extended so immediate
          * decode works
@@ -935,6 +1050,8 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         pkt->pkt_has_hvx |=
             GET_ATTRIB(pkt->insn[i].opcode, A_CVI);
     }
+
+    decode_assembler_count_fpops(pkt);
 
     /*
      * Check for :endloop in the parse bits
@@ -961,8 +1078,11 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     decode_apply_extenders(pkt);
     if (!disas_only) {
         decode_remove_extenders(pkt);
+        if (!decode_set_slot_number(pkt)) {
+            /* Invalid packet */
+            return 0;
+        }
     }
-    decode_set_slot_number(pkt);
     decode_fill_newvalue_regno(pkt);
 
     if (pkt->pkt_has_hvx) {

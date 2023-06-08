@@ -32,6 +32,7 @@
 #include "qemu/thread.h"
 #include "qemu/plugin-event.h"
 #include "qom/object.h"
+#include "qemu/coroutine.h"
 
 typedef int (*WriteCoreDumpFunction)(const void *buf, size_t size,
                                      void *opaque);
@@ -124,6 +125,8 @@ struct SysemuCPUOps;
  *       its Harvard architecture split code and data.
  * @gdb_num_core_regs: Number of core registers accessible to GDB.
  * @gdb_core_xml_file: File name for core registers GDB XML description.
+ * @gdb_qreg_info_lines: Array of lines of registers qRegisterInfo description.
+ * @gdb_qreg_info_line_count: Count of lines for @gdb_qreg_info_lines.
  * @gdb_stop_before_watchpoint: Indicates whether GDB expects the CPU to stop
  *           before the insn which triggers a watchpoint rather than after it.
  * @gdb_arch_name: Optional callback that returns the architecture name known
@@ -159,6 +162,8 @@ struct CPUClass {
     vaddr (*gdb_adjust_breakpoint)(CPUState *cpu, vaddr addr);
 
     const char *gdb_core_xml_file;
+    const char **gdb_qreg_info_lines;
+    int gdb_qreg_info_line_count;
     gchar * (*gdb_arch_name)(CPUState *cpu);
     const char * (*gdb_get_dynamic_xml)(CPUState *cpu, const char *xmlname);
 
@@ -261,6 +266,28 @@ typedef void (*run_on_cpu_func)(CPUState *cpu, run_on_cpu_data data);
 
 struct qemu_work_item;
 
+typedef enum CPUCoroutineYieldReason {
+    YIELD_LOOP_END,
+    YIELD_IO
+} CPUCoroutineYieldReason;
+
+typedef struct CPUCoroutineIOInfo {
+    bool is_read;
+    hwaddr addr;
+    uint64_t *data;
+    unsigned int size;
+    MemTxAttrs *attrs;
+    void *opaque;
+    bool done;
+
+    MemTxResult result;
+} CPUCoroutineIOInfo;
+
+typedef struct CPUCoroutineYieldInfo {
+    CPUCoroutineYieldReason reason;
+    CPUCoroutineIOInfo io_info;
+} CPUCoroutineYieldInfo;
+
 #define CPU_UNSET_NUMA_NODE_ID -1
 #define CPU_TRACE_DSTATE_MAX_EVENTS 32
 
@@ -333,6 +360,8 @@ struct CPUState {
     int nr_threads;
 
     struct QemuThread *thread;
+    Coroutine *coroutine;
+    CPUCoroutineYieldInfo coroutine_yield_info;
 #ifdef _WIN32
     HANDLE hThread;
     QemuSemaphore sem;
@@ -344,6 +373,7 @@ struct CPUState {
     bool created;
     bool stop;
     bool stopped;
+    bool soft_stopped;
 
     /* Should CPU start in powered-off state? */
     bool start_powered_off;
@@ -469,6 +499,8 @@ extern __thread CPUState *current_cpu;
  */
 extern bool mttcg_enabled;
 #define qemu_tcg_mttcg_enabled() (mttcg_enabled)
+
+extern bool coroutine_tcg;
 
 /**
  * cpu_paging_enabled:

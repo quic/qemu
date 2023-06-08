@@ -804,11 +804,6 @@ typedef struct GdbCmdParseEntry {
     const char *schema;
 } GdbCmdParseEntry;
 
-static inline int startswith(const char *string, const char *pattern)
-{
-  return !strncmp(string, pattern, strlen(pattern));
-}
-
 static int process_string_cmd(void *user_ctx, const char *data,
                               const GdbCmdParseEntry *cmds, int num_cmds)
 {
@@ -1240,7 +1235,8 @@ static void handle_backward(GArray *params, void *user_ctx)
 
 static void handle_v_cont_query(GArray *params, void *user_ctx)
 {
-    gdb_put_packet("vCont;c;C;s;S");
+    /* Disabled to workaround QTOOL-82084 */
+    gdb_put_packet("");
 }
 
 static void handle_v_cont(GArray *params, void *user_ctx)
@@ -1396,6 +1392,27 @@ static void handle_query_curr_tid(GArray *params, void *user_ctx)
     g_string_assign(gdbserver_state.str_buf, "QC");
     gdb_append_thread_id(cpu, gdbserver_state.str_buf);
     gdb_put_strbuf();
+}
+
+static void handle_query_regs(GArray *params, void *user_ctx)
+{
+    if (!params->len) {
+        return;
+    }
+
+    CPUClass *cc = CPU_GET_CLASS(gdbserver_state.g_cpu);
+    if (!cc->gdb_qreg_info_lines) {
+        gdb_put_packet("");
+        return;
+    }
+
+    int reg_num = get_param(params, 0)->val_ul;
+    if (reg_num >= cc->gdb_qreg_info_line_count) {
+        gdb_put_packet("");
+        return;
+    }
+
+    gdb_put_packet(cc->gdb_qreg_info_lines[reg_num]);
 }
 
 static void handle_query_threads(GArray *params, void *user_ctx)
@@ -1568,6 +1585,12 @@ static const GdbCmdParseEntry gdb_gen_query_table[] = {
         .cmd = "C",
     },
     {
+        .handler = handle_query_regs,
+        .cmd = "RegisterInfo",
+        .cmd_startswith = 1,
+        .schema = "l0"
+    },
+    {
         .handler = handle_query_threads,
         .cmd = "sThreadInfo",
     },
@@ -1710,7 +1733,7 @@ static void handle_target_halt(GArray *params, void *user_ctx)
     gdb_breakpoint_remove_all(gdbserver_state.c_cpu);
 }
 
-static int gdb_handle_packet(const char *line_buf)
+static void gdb_handle_packet(const char *line_buf)
 {
     const GdbCmdParseEntry *cmd_parser = NULL;
 
@@ -1952,8 +1975,6 @@ static int gdb_handle_packet(const char *line_buf)
     if (cmd_parser) {
         run_cmd_parser(line_buf, cmd_parser);
     }
-
-    return RS_IDLE;
 }
 
 void gdb_set_stop_cpu(CPUState *cpu)
@@ -2106,11 +2127,14 @@ void gdb_read_byte(uint8_t ch)
                 reply = '-';
                 gdb_put_buffer(&reply, 1);
                 gdbserver_state.state = RS_IDLE;
+                gdbserver_state.last_cmd[0] = '\0';
             } else {
                 /* send ACK reply */
                 reply = '+';
                 gdb_put_buffer(&reply, 1);
-                gdbserver_state.state = gdb_handle_packet(gdbserver_state.line_buf);
+                strcpy(gdbserver_state.last_cmd, gdbserver_state.line_buf);
+                gdbserver_state.state = RS_IDLE;
+                gdb_handle_packet(gdbserver_state.line_buf);
             }
             break;
         default:
@@ -2143,4 +2167,3 @@ void gdb_create_default_process(GDBState *s)
     process->attached = false;
     process->target_xml[0] = '\0';
 }
-

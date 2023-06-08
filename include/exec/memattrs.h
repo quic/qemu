@@ -57,6 +57,11 @@ typedef struct MemTxAttrs {
     unsigned int target_tlb_bit0 : 1;
     unsigned int target_tlb_bit1 : 1;
     unsigned int target_tlb_bit2 : 1;
+
+    /* Memory access is exclusive (LL/SC) */
+    unsigned int exclusive:1;
+    /* Memory access is debug */
+    unsigned int debug:1;
 } MemTxAttrs;
 
 /* Bus masters which don't specify any attributes will get this,
@@ -75,6 +80,7 @@ typedef struct MemTxAttrs {
 #define MEMTX_ERROR             (1U << 0) /* device returned an error */
 #define MEMTX_DECODE_ERROR      (1U << 1) /* nothing at that address */
 #define MEMTX_ACCESS_ERROR      (1U << 2) /* access denied */
+#define MEMTX_OK_EXIT_TB        (1U << 3)
 typedef uint32_t MemTxResult;
 
 #endif

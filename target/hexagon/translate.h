@@ -33,12 +33,34 @@ typedef struct DisasContext {
     uint32_t next_PC;
     uint32_t mem_idx;
     uint32_t num_packets;
+    uint32_t hvx_packets;
     uint32_t num_insns;
     uint32_t num_hvx_insns;
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
     DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
     DECLARE_BITMAP(predicated_regs, TOTAL_PER_THREAD_REGS);
+    bool pkt_has_uncond_mult_reg_write;
+    bool pkt_ends_tb;
+    /*
+     * The GPRs which have *multiple* register
+     * writes (predicated and not) in this packet:
+     */
+    DECLARE_BITMAP(wreg_mult_gprs, NUM_GPREGS);
+    /*
+     * The GPRs which have unconditional register
+     * writes in this packet:
+     */
+    DECLARE_BITMAP(uncond_wreg_gprs, NUM_GPREGS);
+#ifndef CONFIG_USER_ONLY
+    int greg_log[GREG_WRITES_MAX];
+    int greg_log_idx;
+    int sreg_log[SREG_WRITES_MAX];
+    int sreg_log_idx;
+    bool need_cpu_limit;
+    bool pmu_enabled;
+    bool pmu_counters_updated;
+#endif
     int preg_log[PRED_WRITES_MAX];
     int preg_log_idx;
     DECLARE_BITMAP(pregs_written, NUM_PREGS);
@@ -61,8 +83,35 @@ typedef struct DisasContext {
     TCGCond branch_cond;
     target_ulong branch_dest;
     bool is_tight_loop;
-    bool need_pkt_has_store_s1;
+    bool hvx_check_emitted;
+    bool coproc_check_emitted;
+    bool pcycle_enabled;
+    bool hvx_coproc_enabled;
+    bool hvx_64b_mode;
+    TCGv zero;
+    TCGv_i64 zero64;
+    TCGv ones;
+    TCGv_i64 ones64;
+    bool gen_cacheop_exceptions;
+    bool paranoid_commit_state;
+    bool ss_active;
+    bool ss_pending;
+    bool need_pkt_has_scalar_store_s1;
 } DisasContext;
+
+#ifndef CONFIG_USER_ONLY
+static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
+{
+    ctx->greg_log[ctx->greg_log_idx] = rnum;
+    ctx->greg_log_idx++;
+}
+
+static inline void ctx_log_sreg_write(DisasContext *ctx, int rnum)
+{
+    ctx->sreg_log[ctx->sreg_log_idx] = rnum;
+    ctx->sreg_log_idx++;
+}
+#endif
 
 static inline void ctx_log_pred_write(DisasContext *ctx, int pnum)
 {
@@ -85,9 +134,14 @@ static inline void ctx_log_reg_write(DisasContext *ctx, int rnum,
             ctx->reg_log[ctx->reg_log_idx] = rnum;
             ctx->reg_log_idx++;
             set_bit(rnum, ctx->regs_written);
+        } else if (rnum < NUM_GPREGS) {
+            set_bit(rnum, ctx->wreg_mult_gprs);
         }
         if (is_predicated) {
             set_bit(rnum, ctx->predicated_regs);
+        } else if (rnum < NUM_GPREGS) {
+            bool uncond_set = test_and_set_bit(rnum, ctx->uncond_wreg_gprs);
+            ctx->pkt_has_uncond_mult_reg_write |= uncond_set;
         }
     }
 }
@@ -153,6 +207,8 @@ extern TCGv hex_slot_cancelled;
 extern TCGv hex_branch_taken;
 extern TCGv hex_new_value[TOTAL_PER_THREAD_REGS];
 extern TCGv hex_reg_written[TOTAL_PER_THREAD_REGS];
+extern TCGv hex_gpreg_written;
+extern TCGv hex_mult_reg_written;
 extern TCGv hex_new_pred_value[NUM_PREGS];
 extern TCGv hex_pred_written;
 extern TCGv hex_store_addr[STORES_MAX];
@@ -163,9 +219,29 @@ extern TCGv hex_dczero_addr;
 extern TCGv hex_llsc_addr;
 extern TCGv hex_llsc_val;
 extern TCGv_i64 hex_llsc_val_i64;
+extern TCGv hex_VRegs_updated;
+extern TCGv hex_QRegs_updated;
+#ifndef CONFIG_USER_ONLY
+extern TCGv hex_greg[NUM_GREGS];
+extern TCGv hex_greg_new_value[NUM_GREGS];
+extern TCGv hex_greg_written[NUM_GREGS];
+extern TCGv hex_t_sreg[NUM_SREGS];
+extern TCGv hex_t_sreg_new_value[NUM_SREGS];
+extern TCGv hex_t_sreg_written[NUM_SREGS];
+extern TCGv_ptr hex_g_sreg_ptr;
+extern TCGv hex_g_sreg[NUM_SREGS];
+#endif
+extern TCGv_i64 hex_packet_count;
 extern TCGv hex_vstore_addr[VSTORES_MAX];
 extern TCGv hex_vstore_size[VSTORES_MAX];
 extern TCGv hex_vstore_pending[VSTORES_MAX];
+#ifndef CONFIG_USER_ONLY
+extern TCGv hex_slot;
+extern TCGv hex_imprecise_exception;
+#endif
+
+void gen_exception(int excp, target_ulong PC);
+void gen_exception_end_tb(DisasContext *ctx, int excp);
 
 bool is_gather_store_insn(DisasContext *ctx);
 void process_store(DisasContext *ctx, int slot_num);

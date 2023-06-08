@@ -261,6 +261,8 @@
 #        sockets (default: false).
 #        Silently ignored with server: false.  This use is deprecated.
 # @nodelay: set TCP_NODELAY socket option (default: false)
+# @revcon: enable reverse connect for lldb
+#          sockets (default: false)
 # @telnet: enable telnet protocol on server
 #          sockets (default: false)
 # @tn3270: enable tn3270 protocol on server
@@ -281,6 +283,7 @@
             '*server': 'bool',
             '*wait': 'bool',
             '*nodelay': 'bool',
+            '*revcon': 'bool',
             '*telnet': 'bool',
             '*tn3270': 'bool',
             '*websocket': 'bool',

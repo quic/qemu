@@ -47,6 +47,10 @@
 #include "hw/hw.h"
 #include "trace.h"
 
+#ifdef CONFIG_LIBQEMU
+#include "libqemu/callbacks.h"
+#endif
+
 #ifdef CONFIG_LINUX
 
 #include <sys/prctl.h>
@@ -74,7 +78,7 @@ static const AccelOpsClass *cpus_accel;
 
 bool cpu_is_stopped(CPUState *cpu)
 {
-    return cpu->stopped || !runstate_is_running();
+    return cpu->stopped || !runstate_is_running() || cpu->soft_stopped;
 }
 
 bool cpu_work_list_empty(CPUState *cpu)
@@ -289,6 +293,9 @@ bool cpu_can_run(CPUState *cpu)
     if (cpu_is_stopped(cpu)) {
         return false;
     }
+    if (cpu->soft_stopped) {
+        return false;
+    }
     return true;
 }
 
@@ -457,6 +464,11 @@ void cpus_kick_thread(CPUState *cpu)
 void qemu_cpu_kick(CPUState *cpu)
 {
     qemu_cond_broadcast(cpu->halt_cond);
+
+#ifdef CONFIG_LIBQEMU
+    libqemu_cpu_kick_cb(cpu);
+#endif
+
     if (cpus_accel->kick_vcpu_thread) {
         cpus_accel->kick_vcpu_thread(cpu);
     } else { /* default */
@@ -542,7 +554,7 @@ static bool all_vcpus_paused(void)
     CPUState *cpu;
 
     CPU_FOREACH(cpu) {
-        if (!cpu->stopped) {
+        if (!cpu->stopped && !cpu->soft_stopped) {
             return false;
         }
     }

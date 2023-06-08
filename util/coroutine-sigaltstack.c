@@ -77,7 +77,7 @@ static void qemu_coroutine_thread_cleanup(void *opaque)
     g_free(s);
 }
 
-static void __attribute__((constructor)) coroutine_init(void)
+static void QEMU_CONSTRUCTOR(coroutine_init)(void)
 {
     int ret;
 
@@ -298,6 +298,13 @@ bool qemu_in_coroutine(void)
 {
     CoroutineThreadState *s = pthread_getspecific(thread_state_key);
 
-    return s && s->current->caller;
+    return s && s->current->caller && !s->current->cpu;
+}
+
+bool qemu_in_coroutine_cpu(void)
+{
+    CoroutineThreadState *s = pthread_getspecific(thread_state_key);
+
+    return s && s->current->caller && s->current->cpu;
 }
 

@@ -432,8 +432,12 @@ static MemoryRegionSection address_space_translate_iommu(IOMMUMemoryRegion *iomm
             iommu_idx = imrc->attrs_to_index(iommu_mr, attrs);
         }
 
-        iotlb = imrc->translate(iommu_mr, addr, is_write ?
-                                IOMMU_WO : IOMMU_RO, iommu_idx);
+        if (imrc->translate_attr) {
+            iotlb = imrc->translate_attr(iommu_mr, addr, is_write, &attrs);
+        } else {
+            iotlb = imrc->translate(iommu_mr, addr, is_write ?
+                                    IOMMU_WO : IOMMU_RO, iommu_idx);
+        }
 
         if (!(iotlb.perm & (1 << is_write))) {
             goto unassigned;
@@ -698,7 +702,11 @@ address_space_translate_for_iotlb(CPUState *cpu, int asidx, hwaddr orig_addr,
         /* We need all the permissions, so pass IOMMU_NONE so the IOMMU
          * doesn't short-cut its translation table walk.
          */
-        iotlb = imrc->translate(iommu_mr, addr, IOMMU_NONE, iommu_idx);
+        if (imrc->translate_attr) {
+            iotlb = imrc->translate_attr(iommu_mr, addr, IOMMU_NONE, &attrs);
+        } else {
+            iotlb = imrc->translate(iommu_mr, addr, IOMMU_NONE, iommu_idx);
+        }
         addr = ((iotlb.translated_addr & ~iotlb.addr_mask)
                 | (addr & iotlb.addr_mask));
         /* Update the caller's prot bits to remove permissions the IOMMU
@@ -2818,6 +2826,14 @@ void cpu_physical_memory_rw(hwaddr addr, void *buf,
                      buf, len, is_write);
 }
 
+void cpu_physical_memory_rw_debug(hwaddr addr, uint8_t *buf,
+                            hwaddr len, bool is_write)
+{
+    MemTxAttrs attrs = MEMTXATTRS_UNSPECIFIED;
+    attrs.debug = 1;
+    address_space_rw(&address_space_memory, addr, attrs, buf, len, is_write);
+}
+
 enum write_rom_type {
     WRITE_DATA,
     FLUSH_CACHE,
@@ -2844,6 +2860,13 @@ static inline MemTxResult address_space_write_rom_internal(AddressSpace *as,
         if (!(memory_region_is_ram(mr) ||
               memory_region_is_romd(mr))) {
             l = memory_access_size(mr, l, addr1);
+            /*
+             * Debug accesses on virtual addresses on I/O region
+             * end up there so do them.
+             */
+            if (buf) {
+                address_space_write(as, addr, attrs, buf, l);
+            }
         } else {
             /* ROM/RAM case */
             ram_ptr = qemu_map_ram_ptr(mr->ram_block, addr1);
@@ -2858,7 +2881,9 @@ static inline MemTxResult address_space_write_rom_internal(AddressSpace *as,
             }
         }
         len -= l;
-        buf += l;
+        if (buf) {
+            buf += l;
+        }
         addr += l;
     }
     return MEMTX_OK;
@@ -3038,6 +3063,38 @@ flatview_extend_translation(FlatView *fv, hwaddr addr,
     }
 }
 
+enum ListenerDirection { Forward, Reverse };
+
+/*
+ * This will require a change to the memory listener callbacks:
+ * while it currently uses "self" as first argument for the callbacks, this new
+ * approach is going to use an "opaque" member, effectively following the model
+ * used for MemoryRegion and MemoryRegionOps.
+ */
+#define MEMORY_LISTENER_CALL(_as, _callback, _direction, _args...) \
+    do {                                                                \
+        MemoryListener *_listener;                                      \
+                                                                        \
+        switch (_direction) {                                           \
+        case Forward:                                                   \
+            QTAILQ_FOREACH(_listener, &(_as)->listeners, link_as) {     \
+                if (_listener->_callback) {                             \
+                    _listener->_callback(_listener->opaque, ##_args);   \
+                }                                                       \
+            }                                                           \
+            break;                                                      \
+        case Reverse:                                                   \
+            QTAILQ_FOREACH_REVERSE(_listener, &(_as)->listeners, link_as) { \
+                if (_listener->_callback) {                             \
+                    _listener->_callback(_listener->opaque, ##_args);   \
+                }                                                       \
+            }                                                           \
+            break;                                                      \
+        default:                                                        \
+            abort();                                                    \
+        }                                                               \
+    } while (0)
+
 /* Map a physical memory region into a host virtual address.
  * May map a subset of the requested range, given by and returned in *plen.
  * May return NULL if resources needed to perform the mapping are exhausted.
@@ -3059,6 +3116,8 @@ void *address_space_map(AddressSpace *as,
     if (len == 0) {
         return NULL;
     }
+
+    MEMORY_LISTENER_CALL(as, map, Reverse, addr, len);
 
     l = len;
     RCU_READ_LOCK_GUARD();
@@ -3321,6 +3380,7 @@ int cpu_memory_rw_debug(CPUState *cpu, vaddr addr,
         if (l > len)
             l = len;
         phys_addr += (addr & ~TARGET_PAGE_MASK);
+        attrs.debug = 1;
         if (is_write) {
             res = address_space_write_rom(cpu->cpu_ases[asidx].as, phys_addr,
                                           attrs, buf, l);

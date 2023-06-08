@@ -53,6 +53,10 @@ def main():
         f.write('#include "macros.inc"\n\n')
 
         for tag in hex_common.tags:
+            if hex_common.tag_ignore(tag):
+                continue
+            if "A_MEMSIZE_0B" in hex_common.attribdict[tag]:
+                continue
             ## Skip the priv instructions
             if "A_PRIV" in hex_common.attribdict[tag]:
                 continue

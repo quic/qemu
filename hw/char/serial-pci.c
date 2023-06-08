@@ -23,7 +23,7 @@
  * THE SOFTWARE.
  */
 
-/* see docs/specs/pci-serial.rst */
+/* see docs/specs/pci-serial.txt */
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"

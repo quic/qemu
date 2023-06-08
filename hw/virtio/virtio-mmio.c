@@ -354,7 +354,6 @@ static void virtio_mmio_write(void *opaque, hwaddr offset, uint64_t value,
         if (proxy->legacy) {
             virtio_queue_update_rings(vdev, vdev->queue_sel);
         } else {
-            virtio_init_region_cache(vdev, vdev->queue_sel);
             proxy->vqs[vdev->queue_sel].num = value;
         }
         break;
@@ -759,6 +758,8 @@ static void virtio_mmio_realizefn(DeviceState *d, Error **errp)
     SysBusDevice *sbd = SYS_BUS_DEVICE(d);
 
     qbus_init(&proxy->bus, sizeof(proxy->bus), TYPE_VIRTIO_MMIO_BUS, d, NULL);
+    object_property_add_const_link(OBJECT(d), "virtio-mmio-bus", OBJECT(&proxy->bus));
+
     sysbus_init_irq(sbd, &proxy->irq);
 
     if (!kvm_eventfds_enabled()) {

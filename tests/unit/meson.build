@@ -70,12 +70,10 @@ if have_block
     'test-throttle': [testblock],
     'test-thread-pool': [testblock],
     'test-hbitmap': [testblock],
-    'test-bdrv-drain': [testblock],
     'test-bdrv-graph-mod': [testblock],
     'test-blockjob': [testblock],
     'test-blockjob-txn': [testblock],
     'test-block-backend': [testblock],
-    'test-block-iothread': [testblock],
     'test-write-threshold': [testblock],
     'test-crypto-hash': [crypto],
     'test-crypto-hmac': [crypto],
@@ -96,6 +94,11 @@ if have_block
     'test-crypto-afsplit': [io],
     'test-crypto-block': [io],
   }
+# QuIC disabled tests from above:
+#   QTOOL-81661
+#   'test-bdrv-drain': [testblock],
+#   'test-block-iothread': [testblock],
+
   if gnutls.found() and \
      tasn1.found() and \
      'CONFIG_POSIX' in config_host

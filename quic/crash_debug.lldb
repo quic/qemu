@@ -1,0 +1,20 @@
+
+command script import ./HexQEMU.py
+
+thread backtrace all
+sysstat
+
+thread select 1
+#disassemble --start-address $pc-24 --end-address $pc+24
+register read --all
+thread select 2
+#disassemble  --start-address $pc-24 --end-address $pc+24
+register read --all
+thread select 3
+#disassemble  --start-address $pc-24 --end-address $pc+24
+register read --all
+thread select 4
+#disassemble  --start-address $pc-24 --end-address $pc+24
+register read --all
+
+process detach

@@ -39,6 +39,14 @@ else
   native_qemu_keymap = qemu_keymap
 endif
 
+# QUIC-specific
+#
+# Building qemu-keymap with santizers lead to odd errors in buildbot.
+# Disable it for now
+#
+native_qemu_keymap = dependency('', required: false)
+# QUIC-end
+
 if native_qemu_keymap.found()
   t = []
   foreach km, args: keymaps

@@ -16,6 +16,11 @@ MULTIARCH_SRCS += $(notdir $(wildcard $(MULTIARCH_SRC)/linux/*.c))
 endif
 MULTIARCH_TESTS = $(MULTIARCH_SRCS:.c=)
 
+# QUIC-specific
+# QTOOL-67204
+MULTIARCH_TESTS  =$(filter-out float_helpers, $(MULTIARCH_SRCS:.c=))
+# QUIC-end
+
 #
 # The following are any additional rules needed to build things
 #
@@ -33,8 +38,21 @@ run-float_%: float_%
 testthread: LDFLAGS+=-lpthread
 
 threadcount: LDFLAGS+=-lpthread
+# QUIC-specific
+run-threadcount: threadcount
+	$(call run-test, threadcount, $(QEMU) $< 3)
+# QUIC-end
+
 
 signals: LDFLAGS+=-lrt -lpthread
+
+# This triggers failures on s390x hosts about 4% of the time
+# This triggers failures for hppa-linux about 1% of the time
+run-signals: signals
+	$(call skip-test, $<, "BROKEN awaiting sigframe clean-ups and vdso support")
+
+run-plugin-signals-with-%:
+	$(call skip-test, $<, "BROKEN awaiting sigframe clean-ups and vdso support")
 
 munmap-pthread: CFLAGS+=-pthread
 munmap-pthread: LDFLAGS+=-pthread

@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <limits.h>
+#include <assert.h>
 
 int err;
 
@@ -277,6 +278,269 @@ TEST_PRED_OP2(pred_and, and, &, "")
 TEST_PRED_OP2(pred_and_n, and, &, "!")
 TEST_PRED_OP2(pred_xor, xor, ^, "")
 
+#define TOFLOAT32(X)         (*(float *)(&(X)))
+#define HF2SF(X)             (__extendhfsf2(X))
+
+#ifndef TOOLCHAIN_WORKAROUND
+#define TOOLCHAIN_WORKAROUND          1
+#endif
+
+static void test_vgtsf(void)
+{
+    void *p0 = sf_buffer0;
+    void *p1 = sf_buffer1;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(expect));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v4 = vmem(%0 + #0)\n\t"
+            "v5 = vmem(%1 + #0)\n\t"
+#if TOOLCHAIN_WORKAROUND
+            ".word 0x1c85e470\n\t" /* q0 = vcmp.gt(v4.sf, v5.sf) */
+#else
+            "q0 = vcmp.gt(v4.sf, v5.sf)\n\t"
+#endif
+            "r4 = #0\n\t"
+            "v5 = vsplat(r4)\n\t"
+            "if (q0) vmem(%2) = v5\n\t"
+            : : "r"(p0), "r"(p1), "r"(pout)
+            : "r4", "v4", "v5", "q0", "memory");
+        p0 += sizeof(MMVector);
+        p1 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            if (TOFLOAT32(sf_buffer0[i].sf[j]) >
+                TOFLOAT32(sf_buffer1[i].sf[j])) {
+                expect[i].w[j] = 0;
+            }
+        }
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
+static void test_vgthf(void)
+{
+    void *p0 = hf_buffer0;
+    void *p1 = hf_buffer1;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(expect));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v4 = vmem(%0 + #0)\n\t"
+            "v5 = vmem(%1 + #0)\n\t"
+#if TOOLCHAIN_WORKAROUND
+            ".word 0x1c85e474\n\t"  /* q0 = vcmp.gt(v4.hf, v5.hf) */
+#else
+            "q0 = vcmp.gt(v4.hf, v5.hf)\n\t"
+#endif
+            "r4 = #0\n\t"
+            "v5 = vsplat(r4)\n\t"
+            "if (q0) vmem(%2) = v5\n\t"
+            : : "r"(p0), "r"(p1), "r"(pout)
+            : "r4", "v4", "v5", "q0", "memory");
+        p0 += sizeof(MMVector);
+        p1 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 2; j++) {
+            if (HF2SF(hf_buffer0[i].hf[j]) >
+                HF2SF(hf_buffer1[i].hf[j])) {
+                expect[i].h[j] = 0;
+            }
+        }
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
+static void test_vmax_sf(void)
+{
+    void *p0 = sf_buffer0;
+    void *p1 = sf_buffer1;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(expect));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v4 = vmem(%0 + #0)\n\t"
+            "v5 = vmem(%1 + #0)\n\t"
+#if TOOLCHAIN_WORKAROUND
+            ".word 0x1fc5e425\n\t"   /* v5.sf = vmax(v4.sf, v5.sf) */
+#else
+            "v5.sf = vmax(v4.sf, v5.sf)\n\t"
+#endif
+            "vmem(%2 + #0) = v5\n\t"
+            : : "r"(p0), "r"(p1), "r"(pout)
+            : "v4", "v5", "memory");
+        p0 += sizeof(MMVector);
+        p1 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            if (TOFLOAT32(sf_buffer0[i].sf[j]) >
+                TOFLOAT32(sf_buffer1[i].sf[j])) {
+                expect[i].sf[j] = sf_buffer0[i].sf[j];
+            } else {
+                expect[i].sf[j] = sf_buffer1[i].sf[j];
+            }
+        }
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
+static void test_vmin_sf(void)
+{
+    void *p0 = sf_buffer0;
+    void *p1 = sf_buffer1;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(expect));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v4 = vmem(%0 + #0)\n\t"
+            "v5 = vmem(%1 + #0)\n\t"
+#if TOOLCHAIN_WORKAROUND
+            ".word 0x1fc5e445\n\t"  /* v5.sf = vmin(v4.sf, v5.sf) */
+#else
+            "v5.sf = vmin(v4.sf, v5.sf)\n\t"
+#endif
+            "vmem(%2 + #0) = v5\n\t"
+            : : "r"(p0), "r"(p1), "r"(pout)
+            : "v4", "v5", "memory");
+        p0 += sizeof(MMVector);
+        p1 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            if (TOFLOAT32(sf_buffer0[i].sf[j]) >
+                TOFLOAT32(sf_buffer1[i].sf[j])) {
+                expect[i].sf[j] = sf_buffer1[i].sf[j];
+            } else {
+                expect[i].sf[j] = sf_buffer0[i].sf[j];
+            }
+        }
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
+static void test_vmax_hf(void)
+{
+    void *p0 = hf_buffer0;
+    void *p1 = hf_buffer1;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(expect));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v4 = vmem(%0 + #0)\n\t"
+            "v5 = vmem(%1 + #0)\n\t"
+#if TOOLCHAIN_WORKAROUND
+            ".word 0x1fc5e465\n\t"   /* v5.hf = vmax(v4.hf, v5.hf) */
+#else
+            "v5.hf = vmax(v4.hf, v5.hf)\n\t"
+#endif
+            "vmem(%2 + #0) = v5\n\t"
+            : : "r"(p0), "r"(p1), "r"(pout)
+            : "v4", "v5", "memory");
+        p0 += sizeof(MMVector);
+        p1 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 2; j++) {
+            if (HF2SF(hf_buffer0[i].hf[j]) >
+                HF2SF(hf_buffer1[i].hf[j])) {
+                expect[i].hf[j] = hf_buffer0[i].hf[j];
+            } else {
+                expect[i].hf[j] = hf_buffer1[i].hf[j];
+            }
+        }
+    }
+
+    check_output_h(__LINE__, BUFSIZE);
+}
+
+static void test_vmin_hf(void)
+{
+    void *p0 = hf_buffer0;
+    void *p1 = hf_buffer1;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(expect));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v4 = vmem(%0 + #0)\n\t"
+            "v5 = vmem(%1 + #0)\n\t"
+#if TOOLCHAIN_WORKAROUND
+            ".word 0x1fc5e485\n\t"   /* v5.hf = vmin(v4.hf, v5.hf) */
+#else
+            "v5.hf = vmin(v4.hf, v5.hf)\n\t"
+#endif
+            "vmem(%2 + #0) = v5\n\t"
+            : : "r"(p0), "r"(p1), "r"(pout)
+            : "v4", "v5", "memory");
+        p0 += sizeof(MMVector);
+        p1 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 2; j++) {
+            if (HF2SF(hf_buffer0[i].hf[j]) >
+                HF2SF(hf_buffer1[i].hf[j])) {
+                expect[i].hf[j] = hf_buffer1[i].hf[j];
+            } else {
+                expect[i].hf[j] = hf_buffer0[i].hf[j];
+            }
+        }
+    }
+
+    check_output_h(__LINE__, BUFSIZE);
+}
+
+static void test_v6mpy(void)
+{
+    void *p00 = buffer0;
+    void *p01 = sf_buffer0;
+    void *p10 = buffer1;
+    void *p11 = sf_buffer1;
+    void *pout = output;
+
+    memset(expect, 0xff, sizeof(expect));
+    memset(output, 0xff, sizeof(expect));
+
+    for (int i = 0; i < BUFSIZE; i++) {
+        asm("v2 = vmem(%0 + #0)\n\t"
+            "v3 = vmem(%1 + #0)\n\t"
+            "v4 = vmem(%2 + #0)\n\t"
+            "v5 = vmem(%3 + #0)\n\t"
+            "v5:4.w = v6mpy(v5:4.ub, v3:2.b, #1):v\n\t"
+            "vmem(%4 + #0) = v4\n\t"
+            : : "r"(p00), "r"(p01), "r"(p10), "r"(p11), "r"(pout)
+            : "v2", "v3", "v4", "v5", "memory");
+        p00 += sizeof(MMVector);
+        p01 += sizeof(MMVector);
+        p10 += sizeof(MMVector);
+        p11 += sizeof(MMVector);
+        pout += sizeof(MMVector);
+
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            expect[i].w[j] = v6mpy_ref[i][j];
+        }
+    }
+
+    check_output_w(__LINE__, BUFSIZE);
+}
+
 static void test_vadduwsat(void)
 {
     /*
@@ -342,47 +606,34 @@ static void test_vsubuwsat_dv(void)
     check_output_w(__LINE__, 2);
 }
 
-static void test_vshuff(void)
+#define TEST_V6_VCOMBINE_TMP(reg1, reg2) \
+{ \
+    assert(reg1 > 3 && reg2 > 3); \
+    memset(output, 0, sizeof(MMVector) * 2); \
+    expect[0] = buffer0[0]; \
+    expect[1] = buffer0[1]; \
+    asm volatile("v0 = vmem(%0)\n\t" \
+                 "v1 = vmem(%1)\n\t" \
+                 "{\n\t" \
+                 "    v" #reg1 ":" #reg2 ".tmp=vcombine(v0,v1)\n\t" \
+                 "    v3:2 = v" #reg1 ":" #reg2 "\n\t" \
+                 "}\n\t" \
+                 "vmemu(%2) = v3\n\t" \
+                 "vmemu(%3) = v2\n\t" \
+                 : /* no outputs */ \
+                 : "r"(&buffer0[0]), "r"(&buffer0[1]), "r"(&output[0]), "r"(&output[1]) \
+                 : "v0", "v1", "v2", "v3", "memory"); \
+    check_output_b(__LINE__, 2); \
+} while (0) \
+
+static void test_v6_vcombine_tmp_alig(void)
 {
-    /* Test that vshuff works when the two operands are the same register */
-    const uint32_t splat = 0x089be55c;
-    const uint32_t shuff = 0x454fa926;
-    MMVector v0, v1;
+    TEST_V6_VCOMBINE_TMP(9, 8);
+}
 
-    memset(expect, 0x12, sizeof(MMVector));
-    memset(output, 0x34, sizeof(MMVector));
-
-    asm volatile("v25 = vsplat(%0)\n\t"
-                 "vshuff(v25, v25, %1)\n\t"
-                 "vmem(%2 + #0) = v25\n\t"
-                 : /* no outputs */
-                 : "r"(splat), "r"(shuff), "r"(output)
-                 : "v25", "memory");
-
-    /*
-     * The semantics of Hexagon are the operands are pass-by-value, so create
-     * two copies of the vsplat result.
-     */
-    for (int i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
-        v0.uw[i] = splat;
-        v1.uw[i] = splat;
-    }
-    /* Do the vshuff operation */
-    for (int offset = 1; offset < MAX_VEC_SIZE_BYTES; offset <<= 1) {
-        if (shuff & offset) {
-            for (int k = 0; k < MAX_VEC_SIZE_BYTES; k++) {
-                if (!(k & offset)) {
-                    uint8_t tmp = v0.ub[k];
-                    v0.ub[k] = v1.ub[k + offset];
-                    v1.ub[k + offset] = tmp;
-                }
-            }
-        }
-    }
-    /* Put the result in the expect buffer for verification */
-    expect[0] = v1;
-
-    check_output_b(__LINE__, 1);
+static void test_v6_vcombine_tmp_unalig(void)
+{
+    TEST_V6_VCOMBINE_TMP(8, 9);
 }
 
 static void test_load_tmp_predicated(void)
@@ -486,10 +737,20 @@ int main()
     test_pred_and_n(true);
     test_pred_xor(false);
 
+    test_vgtsf();
+    test_vgthf();
+    test_vmax_sf();
+    test_vmin_sf();
+    test_vmax_hf();
+    test_vmin_hf();
+
+    test_v6mpy();
+
     test_vadduwsat();
     test_vsubuwsat_dv();
 
-    test_vshuff();
+    test_v6_vcombine_tmp_alig();
+    test_v6_vcombine_tmp_unalig();
 
     test_load_tmp_predicated();
     test_load_cur_predicated();

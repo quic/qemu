@@ -43,6 +43,7 @@ static void reset_gdbserver_state(void)
     g_free(gdbserver_state.processes);
     gdbserver_state.processes = NULL;
     gdbserver_state.process_num = 0;
+    gdbserver_state.last_cmd[0] = '\0';
 }
 
 /*
@@ -117,8 +118,14 @@ void gdb_syscall_handling(const char *syscall_packet)
     qemu_cpu_kick(gdbserver_state.c_cpu);
 }
 
+static inline bool char_in(char c, const char *str)
+{
+    return strchr(str, c) != NULL;
+}
+
 static void gdb_vm_state_change(void *opaque, bool running, RunState state)
 {
+    const char *cmd = gdbserver_state.last_cmd;
     CPUState *cpu = gdbserver_state.c_cpu;
     g_autoptr(GString) buf = g_string_new(NULL);
     g_autoptr(GString) tid = g_string_new(NULL);
@@ -136,6 +143,18 @@ static void gdb_vm_state_change(void *opaque, bool running, RunState state)
 
     if (cpu == NULL) {
         /* No process attached */
+        return;
+    }
+
+    /*
+     * We don't implement notification packets, so we should only send a
+     * stop-reply in response to a previous GDB command. Commands that accept
+     * stop-reply packages are: C, c, S, s, ?, vCont, vAttach, vRun, and
+     * vStopped. We don't implement vRun, and vStopped. For vAttach and ?, the
+     * stop-reply is already sent from their respective cmd handler functions.
+     */
+    if (gdbserver_state.state != RS_IDLE || /* still parsing the cmd */
+        !(startswith(cmd, "vCont;") || (strlen(cmd) == 1 && char_in(cmd[0], "cCsS")))) {
         return;
     }
 
@@ -439,11 +458,7 @@ int gdb_target_memory_rw_debug(CPUState *cpu, hwaddr addr,
     CPUClass *cc;
 
     if (phy_memory_mode) {
-        if (is_write) {
-            cpu_physical_memory_write(addr, buf, len);
-        } else {
-            cpu_physical_memory_read(addr, buf, len);
-        }
+        cpu_physical_memory_rw_debug(addr, buf, len, is_write);
         return 0;
     }
 
@@ -451,7 +466,6 @@ int gdb_target_memory_rw_debug(CPUState *cpu, hwaddr addr,
     if (cc->memory_rw_debug) {
         return cc->memory_rw_debug(cpu, addr, buf, len, is_write);
     }
-
     return cpu_memory_rw_debug(cpu, addr, buf, len, is_write);
 }
 

@@ -205,8 +205,6 @@ option('l2tpv3', type : 'feature', value : 'auto',
        description: 'l2tpv3 network backend support')
 option('netmap', type : 'feature', value : 'auto',
        description: 'netmap network backend support')
-option('slirp', type: 'feature', value: 'auto',
-       description: 'libslirp user mode network backend support')
 option('vde', type : 'feature', value : 'auto',
        description: 'vde network backend support')
 option('vmnet', type : 'feature', value : 'auto',
@@ -281,6 +279,9 @@ option('vduse_blk_export', type: 'feature', value: 'auto',
 
 option('capstone', type: 'feature', value: 'auto',
        description: 'Whether and how to find the capstone library')
+option('slirp', type: 'combo', value: 'auto',
+       choices: ['disabled', 'enabled', 'auto', 'system', 'internal'],
+       description: 'Whether and how to find the slirp library')
 option('fdt', type: 'combo', value: 'auto',
        choices: ['disabled', 'enabled', 'auto', 'system', 'internal'],
        description: 'Whether and how to find the libfdt library')
@@ -317,7 +318,7 @@ option('debug_mutex', type: 'boolean', value: false,
        description: 'mutex debugging support')
 option('debug_stack_usage', type: 'boolean', value: false,
        description: 'measure coroutine stack usage')
-option('qom_cast_debug', type: 'boolean', value: true,
+option('qom_cast_debug', type: 'boolean', value: false,
        description: 'cast debugging support')
 option('gprof', type: 'boolean', value: false,
        description: 'QEMU profiling with gprof',
@@ -329,3 +330,5 @@ option('slirp_smbd', type : 'feature', value : 'auto',
 
 option('hexagon_idef_parser', type : 'boolean', value : true,
        description: 'use idef-parser to automatically generate TCG code for the Hexagon frontend')
+option('libqemu', type: 'boolean', value: 'false',
+       description: 'Build shared libraries instead of executables')
