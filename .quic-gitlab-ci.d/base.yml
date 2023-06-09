@@ -14,7 +14,7 @@ variables:
   HEX_CONFIG_OPTS: --disable-fdt --disable-tools --disable-slirp --disable-sdl --disable-vnc --disable-gtk --disable-install-blobs
   AARCH64_CONFIG_OPTS: --enable-fdt --enable-slirp --disable-debug-info --disable-debug-tcg --enable-virtfs --enable-avx2 --enable-avx512f --disable-png --disable-sanitizers --gdb=aarch64-linux-gnu-gdb
 
-  GENERIC_CONFIG_CMD: installdir="$(realpath "$(mktemp -d -p .)")" && ../configure --prefix="$$installdir" $COMMON_CONFIG_OPTS
+  GENERIC_CONFIG_CMD: ../configure --prefix="$$installdir" $COMMON_CONFIG_OPTS
   HEX_CONFIG_CMD: $GENERIC_CONFIG_CMD $HEX_CONFIG_OPTS --target-list=hexagon-softmmu,hexagon-linux-user
   AARCH64_CONFIG_CMD: $GENERIC_CONFIG_CMD $AARCH64_CONFIG_OPTS --target-list=aarch64-softmmu,aarch64-linux-user
 
@@ -28,6 +28,8 @@ variables:
   variables: {BUILDDIR: $CI_JOB_NAME}
   script:
     mkdir $BUILDDIR &&
+    installdir_rel="$(echo $CI_JOB_NAME | cut -d_ -f1)_install" &&
+    installdir="$(realpath "$installdir_rel")" &&
     cd $BUILDDIR &&
     echo "Configuring with '$CONFIG_CMD'" &&
     eval $CONFIG_CMD &&
@@ -49,6 +51,21 @@ variables:
 .base-install:
   extends: .after-build
   script: make -C $builddir -j install
+  artifacts:
+    paths: [ $CI_JOB_NAME ]
+    expire_in: 2 days
+
+.base-tarball:
+  variables:
+    TARBALL_SUFFIX: "_${CI_COMMIT_REF_NAME}_local"
+    TARBALL_NAME: ${CI_PROJECT_NAME}${TARBALL_SUFFIX}.tgz
+  script:
+    installdir="$(echo $CI_JOB_NAME | cut -d_ -f1)_install" &&
+    mv quic/RELEASE-NOTES.txt $installdir &&
+    tar --exclude-vcs -zcf $TARBALL_NAME --exclude="$installdir/bin/qemu-hexagon" $installdir
+  artifacts:
+    paths: [ $TARBALL_NAME ]
+    expire_in: 1 month
 
 .base-check-tcg:
   extends: .after-build
@@ -82,6 +99,9 @@ hexagon_build:
 hexagon_install:
   needs: [hexagon_build]
   extends: .base-install
+hexagon_tarball:
+  needs: [hexagon_install]
+  extends: .base-tarball
 hexagon_check-tcg:
   needs: [hexagon_build]
   extends: .base-check-tcg
