@@ -27,6 +27,11 @@
 int err;
 #include "../hex_test.h"
 
+#define DECODE_CYCLES(cycles) cycles
+#define DECODE_OPINFO(name, action) \
+    static const int CYCLES_ ## name = action;
+#include "../../../../target/hexagon/cycle_estimates.h.inc"
+
 static inline void __check_range(uint32_t val, uint32_t min, uint32_t max, int line)
 {
     if (val < min || val > max) {
@@ -38,39 +43,80 @@ static inline void __check_range(uint32_t val, uint32_t min, uint32_t max, int l
 
 #define check_range(V, MIN, MAX) __check_range(V, MIN, MAX, __LINE__)
 
+#define ENABLE_PCYCLE() do { \
+        asm volatile("r2 = syscfg\n\t" \
+                     "r2 = clrbit(r2, #%0)\n\t" \
+                     "syscfg = r2\n\t" \
+                     "isync\n\t" \
+                     "r2 = setbit(r2, #%0)\n\t" \
+                     "syscfg = r2\n\t" \
+                     "isync\n\t" \
+                     : \
+                     : "i"(SYSCFG_PCYCLEEN_BIT) \
+                     : "r2", "r3"); \
+    } while (0)
+
+static inline uint64_t combine(uint32_t hi, uint32_t low)
+{
+    return ((uint64_t)hi << 32) | low;
+}
+
 static void test_pcycle(void)
 {
-    uint64_t pcycle;
-    uint32_t pcyclelo, pcyclehi;
+    uint64_t pcycle_0, pcycle_1;
+    uint32_t pcyclelo_0, pcyclehi_0, pcyclelo_1, pcyclehi_1;
 
-    asm volatile("r2 = syscfg\n\t"
-                 "r2 = clrbit(r2, #%3)\n\t"
-                 "syscfg = r2\n\t"
-                 "isync\n\t"
-                 "r2 = setbit(r2, #%3)\n\t"
-                 "syscfg = r2\n\t"
-                 "isync\n\t"
+    ENABLE_PCYCLE();
+    asm volatile("%0 = pcycle\n\t"
+                 "%1 = pcyclehi\n\t"
+                 "%2 = pcyclelo\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "syncht\n\t" /* flush TB */
-                 "%0 = pcycle\n\t"
-                 "%1 = pcyclehi\n\t"
-                 "%2 = pcyclelo\n\t"
-                 : "=r"(pcycle),  "=r"(pcyclehi),
-                   "=r"(pcyclelo)
-                 : "i"(SYSCFG_PCYCLEEN_BIT)
+                 "%3 = pcycle\n\t"
+                 "%4 = pcyclehi\n\t"
+                 "%5 = pcyclelo\n\t"
+                 : "=r"(pcycle_0),  "=r"(pcyclehi_0),
+                   "=r"(pcyclelo_0), "=r"(pcycle_1),
+                   "=r"(pcyclehi_1), "=r"(pcyclelo_1)
+                 :
                  : "r2", "r3");
 
-    /*
-     * QEMU executes threads one at a time, but hexagon-sim interleaves them.
-     * So, we check a range of pcycles to make the same test pass on both.
-     */
-    check32(pcyclehi, 0);
-    check_range(pcycle, 6, 6 * MAX_HW_THREADS);
-    check_range(pcyclelo, 6, 6 * MAX_HW_THREADS);
+    uint64_t cruft = CYCLES_Y2_syncht + (2 * CYCLES_Y2_tfrscrr) + CYCLES_Y4_tfrscpp;
+
+    check64(pcycle_1 - pcycle_0,
+            combine(pcyclehi_1, pcyclelo_1) - combine(pcyclehi_0, pcyclelo_0));
+    check64((pcycle_1 - pcycle_0) - cruft, 5 * CYCLES_A2_addi);
+}
+
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+/*
+ * A bit more precise test, checking the calculations and considering
+ * in-packet parallelism.
+ */
+static void test_pcycle2(void)
+{
+    uint64_t before, after;
+
+    ENABLE_PCYCLE();
+    asm volatile("%0 = pcycle\n\t"
+                 "{\n\t"
+                 "  p0 = tlbmatch(r1:0, r2)\n\t"
+                 "  r2 = add(r0, r1)\n\t"
+                 "}\n\t"
+                 "r2 = add(r0, r1)\n\t"
+                 "syncht\n\t" /* flush TB */
+                 "%1 = pcycle\n\t"
+                 : "=r"(before),  "=r"(after)
+                 :
+                 : "p0", "r0", "r1", "r2");
+
+    check64(after - before - CYCLES_Y4_tfrscpp - CYCLES_Y2_syncht,
+            MAX(CYCLES_A2_add, CYCLES_A4_tlbmatch) + CYCLES_A2_add);
 }
 
 static void test_pcycle_read(void)
@@ -288,6 +334,7 @@ int main()
 
     test_gcycle_xt();
     test_pcycle();
+    test_pcycle2();
     test_pcycle_read();
     test_gpcycle();
     test_upcycle();

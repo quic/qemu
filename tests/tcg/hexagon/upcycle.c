@@ -62,7 +62,7 @@ int main()
 
     check(upcyclehi, 0);
     check(upcyclelo, upcycle);
-    check_range(upcycle, 1500, 3500);
+    check_range(upcycle, 3500, 6500);
 
     puts(err ? "FAIL" : "PASS");
     return err;
