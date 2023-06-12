@@ -64,17 +64,16 @@ unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
     return MMU_USER_IDX;
 }
 
-static const int PCYCLES_PER_PACKET = 3;
 uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env)
 {
-    uint64_t packets = 0;
+    uint64_t cycles = 0;
     CPUState *cs;
     CPU_FOREACH(cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *env_ = &cpu->env;
-        packets += env_->t_packet_count;
+        cycles += env_->t_cycle_count;
     }
-    return *(env->g_pcycle_base) + (packets * PCYCLES_PER_PACKET);
+    return *(env->g_pcycle_base) + cycles;
 }
 
 uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env)
@@ -738,7 +737,7 @@ void hexagon_set_sys_pcycle_count(CPUHexagonState *env, uint64_t cycles)
     CPU_FOREACH(cs) {
         HexagonCPU *cpu = HEXAGON_CPU(cs);
         CPUHexagonState *env_ = &cpu->env;
-        env_->t_packet_count = 0;
+        env_->t_cycle_count = 0;
     }
 }
 

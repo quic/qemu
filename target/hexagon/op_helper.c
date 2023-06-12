@@ -2223,7 +2223,7 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
         CPU_FOREACH(cs) {
             HexagonCPU *cpu = HEXAGON_CPU(cs);
             CPUHexagonState *env = &cpu->env;
-            env->t_packet_count = 0;
+            env->t_cycle_count = 0;
         }
     }
 

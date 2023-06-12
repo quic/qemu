@@ -597,7 +597,7 @@ static void hexagon_cpu_reset_hold(Object *obj)
     set_default_nan_mode(1, &env->fp_status);
     set_float_detect_tininess(float_tininess_before_rounding, &env->fp_status);
 
-    env->t_packet_count = 0;
+    env->t_cycle_count = 0;
     *(env->g_pcycle_base) = 0;
 
 #ifndef CONFIG_USER_ONLY

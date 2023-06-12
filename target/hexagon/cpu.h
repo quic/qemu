@@ -418,7 +418,7 @@ typedef struct CPUArchState {
     processor_t *processor_ptr;
     unsigned int threadId;
     system_t *system_ptr;
-    uint64_t t_packet_count;
+    uint64_t t_cycle_count;
     uint64_t *g_pcycle_base;
 #ifndef CONFIG_USER_ONLY
     int slot;                    /* Needed for exception generation */

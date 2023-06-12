@@ -48,6 +48,7 @@ struct Instruction {
     bool extension_valid;   /* Has a constant extender attached */
     bool is_endloop;   /* This is an end of loop */
     int32_t immed[IMMEDS_MAX];    /* immediate field */
+    uint32_t cycles; /* An estimate for the number of cycles used. */
 };
 
 typedef struct Instruction Insn;

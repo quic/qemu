@@ -33,6 +33,7 @@ typedef struct DisasContext {
     uint32_t next_PC;
     uint32_t mem_idx;
     uint32_t num_packets;
+    uint32_t num_cycles;
     uint32_t hvx_packets;
     uint32_t num_insns;
     uint32_t num_hvx_insns;
@@ -288,7 +289,7 @@ extern TCGv hex_t_sreg_written[NUM_SREGS];
 extern TCGv_ptr hex_g_sreg_ptr;
 extern TCGv hex_g_sreg[NUM_SREGS];
 #endif
-extern TCGv_i64 hex_packet_count;
+extern TCGv_i64 hex_cycle_count;
 extern TCGv hex_vstore_addr[VSTORES_MAX];
 extern TCGv hex_vstore_size[VSTORES_MAX];
 extern TCGv hex_vstore_pending[VSTORES_MAX];

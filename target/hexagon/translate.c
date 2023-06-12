@@ -80,7 +80,7 @@ TCGv_i32 hex_pmu_num_packets;
 TCGv ss_pending;
 TCGv_i32 hex_pmu_hvx_packets;
 #endif
-TCGv_i64 hex_packet_count;
+TCGv_i64 hex_cycle_count;
 TCGv hex_vstore_addr[VSTORES_MAX];
 TCGv hex_vstore_size[VSTORES_MAX];
 TCGv hex_vstore_pending[VSTORES_MAX];
@@ -185,7 +185,7 @@ static void gen_exec_counters(DisasContext *ctx)
                     hex_gpr[HEX_REG_QEMU_HMX_CNT], ctx->num_coproc_insns);
 
     /*
-     * Increment packet count in order to model PCYCLE (global sreg)
+     * Increment cycle count in order to model PCYCLE (global sreg)
      * Only if SYSCFG[PCYCLEEN] is set
      *     Note that we check SYSCFG[PCYCLEEN] in cpu_get_tb_cpu_state,
      *     and we set ctx->pcycle_enabled in hexagon_tr_tb_start.
@@ -198,7 +198,7 @@ static void gen_exec_counters(DisasContext *ctx)
      * accumulated during the TB.
      */
     if (ctx->pcycle_enabled) {
-        tcg_gen_addi_i64(hex_packet_count, hex_packet_count, ctx->num_packets);
+        tcg_gen_addi_i64(hex_cycle_count, hex_cycle_count, ctx->num_cycles);
     }
 #ifndef CONFIG_USER_ONLY
     gen_pmu_counters(ctx);
@@ -1413,6 +1413,7 @@ static void gen_cpu_limit_init(void)
 }
 #endif
 
+static const int PCYCLES_PER_PACKET = 3;
 static void update_exec_counters(DisasContext *ctx)
 {
     Packet *pkt = ctx->pkt;
@@ -1420,6 +1421,7 @@ static void update_exec_counters(DisasContext *ctx)
     int num_real_insns = 0;
     int num_hvx_insns = 0;
     int num_coproc_insns = 0;
+    int max_pkt_cycles = 0;
 
     for (int i = 0; i < num_insns; i++) {
         if (!pkt->insn[i].is_endloop &&
@@ -1433,8 +1435,12 @@ static void update_exec_counters(DisasContext *ctx)
         if (GET_ATTRIB(pkt->insn[i].opcode, A_HMX)) {
             num_coproc_insns++;
         }
+
+        /* Assume perfect parallelism among pkt instructions. */
+        max_pkt_cycles = MAX(max_pkt_cycles, pkt->insn[i].cycles);
     }
 
+    ctx->num_cycles += max_pkt_cycles ? max_pkt_cycles : PCYCLES_PER_PACKET;
     ctx->num_packets++;
     ctx->num_insns += num_real_insns;
     ctx->num_hvx_insns += num_hvx_insns;
@@ -1644,6 +1650,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     uint32_t hex_flags = dcbase->tb->flags;
 
     ctx->num_packets = 0;
+    ctx->num_cycles = 0;
     ctx->hvx_packets = 0;
     ctx->num_insns = 0;
     ctx->num_hvx_insns = 0;
@@ -1868,8 +1875,8 @@ void hexagon_translate_init(void)
     hex_pmu_hvx_packets = tcg_global_mem_new(cpu_env,
             offsetof(CPUHexagonState, pmu.hvx_packets), "pmu.hvx_packets");
 #endif
-    hex_packet_count = tcg_global_mem_new_i64(cpu_env,
-            offsetof(CPUHexagonState, t_packet_count), "t_packet_count");
+    hex_cycle_count = tcg_global_mem_new_i64(cpu_env,
+            offsetof(CPUHexagonState, t_cycle_count), "t_cycle_count");
     hex_new_value_usr = tcg_global_mem_new(cpu_env,
         offsetof(CPUHexagonState, new_value_usr), "new_value_usr");
 
