@@ -721,6 +721,9 @@ get_valid_slot_str(const Packet *pkt, unsigned int slot)
         { BEH  } \
         break; \
 
+#define DECODE_CYCLES(C) \
+    insn->cycles = C;
+
 /*
  * Fill in the operands of the instruction
  * dectree_generated.h.inc has a DECODE_OPINFO entry for each opcode
@@ -749,6 +752,12 @@ decode_op(Insn *insn, Opcode tag, uint32_t encoding)
 
     switch (tag) {
 #include "dectree_generated.h.inc"
+    default:
+        break;
+    }
+
+    switch (tag) {
+#include "cycle_estimates.h.inc"
     default:
         break;
     }
