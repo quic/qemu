@@ -269,8 +269,10 @@ void dma_adapter_set_dm5(dma_t *dma, uint32_t addr);
 uint32_t dma_adapter_get_dmreg(processor_t *proc, uint32_t tnum, uint32_t addr);
 void dma_adapter_set_dmreg(processor_t *proc, uint32_t tnum, uint32_t addr, uint32_t val);
 
-thread_t* dma_adapter_retrieve_thread(dma_t *dma);
-
+static inline thread_t *dma_adapter_retrieve_thread(dma_t *dma)
+{
+    return ((dma_adapter_engine_info_t *)dma->owner)->owner;
+}
 
 uint64_t dma_adapter_get_pcycle(dma_t *dma);
 int dma_adapter_match_tlb_entry (dma_t *dma, uint64_t entry, uint32_t asid, uint32_t va );

@@ -202,19 +202,9 @@ struct dma_addr_range_t* dma_adapter_find_mem(paddr_t paddr) {
 	return mem;
 }
 
-#if 0
-static inline thread_t* dma_adapter_retrieve_thread(dma_t *dma) {
-	return ((dma_adapter_engine_info_t *)dma->owner)->owner;
-}
-#endif
-thread_t* dma_adapter_retrieve_thread(dma_t *dma) {
-	return ((dma_adapter_engine_info_t *)dma->owner)->owner;
-}
-
 static inline dma_adapter_engine_info_t* dma_retrieve_dma_adapter(dma_t *dma) {
 	return (dma_adapter_engine_info_t *)dma->owner;
 }
-
 
 //! Function to request stalling. The DMA engine calls this function to stall
 //! an instruction stream.
