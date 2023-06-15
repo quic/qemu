@@ -75,7 +75,6 @@ static void test_pcycle(void)
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
                  "r2 = add(r2, #1)\n\t"
-                 "syncht\n\t" /* flush TB */
                  "%3 = pcycle\n\t"
                  "%4 = pcyclehi\n\t"
                  "%5 = pcyclelo\n\t"
@@ -85,7 +84,7 @@ static void test_pcycle(void)
                  :
                  : "r2", "r3");
 
-    uint64_t cruft = CYCLES_Y2_syncht + (2 * CYCLES_Y2_tfrscrr) + CYCLES_Y4_tfrscpp;
+    uint64_t cruft = (2 * CYCLES_Y2_tfrscrr) + CYCLES_Y4_tfrscpp;
 
     check64(pcycle_1 - pcycle_0,
             combine(pcyclehi_1, pcyclelo_1) - combine(pcyclehi_0, pcyclelo_0));
@@ -109,13 +108,12 @@ static void test_pcycle2(void)
                  "  r2 = add(r0, r1)\n\t"
                  "}\n\t"
                  "r2 = add(r0, r1)\n\t"
-                 "syncht\n\t" /* flush TB */
                  "%1 = pcycle\n\t"
                  : "=r"(before),  "=r"(after)
                  :
                  : "p0", "r0", "r1", "r2");
 
-    check64(after - before - CYCLES_Y4_tfrscpp - CYCLES_Y2_syncht,
+    check64(after - before - CYCLES_Y4_tfrscpp,
             MAX(CYCLES_A2_add, CYCLES_A4_tlbmatch) + CYCLES_A2_add);
 }
 
@@ -151,8 +149,7 @@ static void test_pcycle_read(void)
 }
 
 #define read_upcycle_regs(pcyclelo, pcyclehi, upcyclelo, upcyclehi) \
-    asm volatile("syncht\n\t" \
-                 "%0 = pcyclelo\n\t" \
+    asm volatile("%0 = pcyclelo\n\t" \
                  "%1 = pcyclehi\n\t" \
                  "%2 = upcyclelo\n\t" \
                  "%3 = upcyclehi\n\t" \
@@ -160,15 +157,13 @@ static void test_pcycle_read(void)
                    "=r"(upcyclelo), "=r"(upcyclehi))
 
 #define read_upcycle_reg_pair(pcycle, upcycle) \
-    asm volatile("syncht\n\t" \
-                 "%0 = pcycle\n\t" \
+    asm volatile("%0 = pcycle\n\t" \
                  "%1 = upcycle\n\t" \
                  : "=r"(pcycle), "=r"(upcycle)) \
 
 
 #define read_gpcycle_regs(pcyclelo, pcyclehi, gpcyclelo, gpcyclehi) \
-    asm volatile("syncht\n\t" \
-                 "%0 = pcyclelo\n\t" \
+    asm volatile("%0 = pcyclelo\n\t" \
                  "%1 = pcyclehi\n\t" \
                  "%2 = gpcyclelo\n\t" \
                  "%3 = gpcyclehi\n\t" \
@@ -176,8 +171,7 @@ static void test_pcycle_read(void)
                    "=r"(gpcyclelo), "=r"(gpcyclehi))
 
 #define read_gpcycle_reg_pair(pcycle, gpcycle) \
-    asm volatile("syncht\n\t" \
-                 "%0 = pcycle\n\t" \
+    asm volatile("%0 = pcycle\n\t" \
                  "%1 = g25:24\n\t" \
                  : "=r"(pcycle), "=r"(gpcycle)) \
 
@@ -257,8 +251,7 @@ static void test_gpcycle(void)
 
 #define read_gcycle_xt_regs(gcycle_1t, gcycle_2t, gcycle_3t, \
                             gcycle_4t, gcycle_5t, gcycle_6t) \
-    asm volatile("syncht\n\t" \
-                 "%0 = gpcycle1t\n\t" \
+    asm volatile("%0 = gpcycle1t\n\t" \
                  "%1 = gpcycle2t\n\t" \
                  "%2 = gpcycle3t\n\t" \
                  "%3 = gpcycle4t\n\t" \

@@ -151,6 +151,14 @@ static inline void gen_precise_exception(int excp, target_ulong PC)
 }
 #endif
 
+static inline void gen_pcycle_counters(DisasContext *ctx)
+{
+    if (ctx->pcycle_enabled) {
+        tcg_gen_addi_i64(hex_cycle_count, hex_cycle_count, ctx->num_cycles);
+        ctx->num_cycles = 0;
+    }
+}
+
 #ifndef CONFIG_USER_ONLY
 static void gen_pmu_counters(DisasContext *ctx)
 {
@@ -191,15 +199,8 @@ static void gen_exec_counters(DisasContext *ctx)
      *     and we set ctx->pcycle_enabled in hexagon_tr_tb_start.
      *     This means, we'll generate code for the TB differently
      *     depending on the value.
-     *
-     * The implications of counting pcycles at the end of a translation
-     * block are that we will not count the number of times it is replayed,
-     * and a read of the pcycles mid-TB will not reflect the pcycles
-     * accumulated during the TB.
      */
-    if (ctx->pcycle_enabled) {
-        tcg_gen_addi_i64(hex_cycle_count, hex_cycle_count, ctx->num_cycles);
-    }
+    gen_pcycle_counters(ctx);
 #ifndef CONFIG_USER_ONLY
     gen_pmu_counters(ctx);
 #endif
@@ -538,6 +539,38 @@ static bool pkt_has_pmu_read(Packet *pkt)
     return false;
 }
 #endif
+
+static bool pkt_has_pcycle_read(Packet *pkt)
+{
+    for (int i = 0; i < pkt->num_insns; i++) {
+        Insn *insn = &pkt->insn[i];
+        int reg = insn->regno[1]; /* source */
+
+        switch (insn->opcode) {
+        case A2_tfrcrr: /* Rd = Cs */
+        case A4_tfrcpp: /* Rdd = Css */
+            if (reg == HEX_REG_UPCYCLELO || reg == HEX_REG_UPCYCLEHI) {
+                return true;
+            }
+            break;
+        case Y2_tfrscrr: /* Rd = Ss */
+        case Y4_tfrscpp: /* Rdd = Sss */
+            if (reg == HEX_SREG_PCYCLELO || reg == HEX_SREG_PCYCLEHI) {
+                return true;
+            }
+            break;
+#ifndef CONFIG_USER_ONLY
+        case G4_tfrgcrr: /* Rd = Gd */
+        case G4_tfrgcpp: /* Rdd = Gdd */
+            if (reg == HEX_GREG_GPCYCLELO || reg == HEX_GREG_GPCYCLEHI) {
+                return true;
+            }
+            break;
+#endif
+        }
+    }
+    return false;
+}
 
 static bool need_next_PC(DisasContext *ctx)
 {
@@ -1043,6 +1076,9 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         gen_pmu_counters(ctx);
     }
 #endif
+    if (pkt_has_pcycle_read(pkt)) {
+        gen_pcycle_counters(ctx);
+    }
     if (pkt->pkt_has_hvx && ctx->hvx_coproc_enabled && ctx->hvx_64b_mode) {
         /*
          * HVX's 64b mode is unsupported by QEMU, we will
