@@ -172,10 +172,9 @@ void hexagon_read_memory_block(CPUHexagonState *env, target_ulong addr,
 
         byte_count -= copy_byte_count;
         if (host_addr) {
+            memcpy(dstbuf, host_addr, copy_byte_count);
             addr += copy_byte_count;
-            while (copy_byte_count-- > 0) {
-                *dstbuf++ = (unsigned char)ldub_p(host_addr++);
-            }
+            dstbuf += copy_byte_count;
         } else {
             while (copy_byte_count-- > 0) {
                 *dstbuf++ = cpu_ldub_mmuidx_ra(env, addr++, mmu_idx, GETPC());
@@ -288,10 +287,9 @@ void hexagon_write_memory_block(CPUHexagonState *env, target_ulong addr,
 
         byte_count -= copy_byte_count;
         if (host_addr) {
+            memcpy(host_addr, srcbuf, copy_byte_count);
             addr += copy_byte_count;
-            while (copy_byte_count-- > 0) {
-                stb_p(host_addr++, *srcbuf++);
-            }
+            srcbuf += copy_byte_count;
         } else {
             while (copy_byte_count-- > 0) {
                 cpu_stb_mmuidx_ra(env, addr++, *srcbuf++, mmu_idx, GETPC());
