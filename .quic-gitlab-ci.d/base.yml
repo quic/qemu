@@ -87,6 +87,13 @@ variables:
     paths: [ "*_build" ]
     expire_in: 4 days
 
+.base-qurt-tests:
+  extends: .after-build
+  script:
+    - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-qurt-tests.git
+    - qemu-qurt-tests/run_tests.sh $builddir/qemu-system-hexagon
+
 ##################################################################
 #    Jobs
 ###################################################################
@@ -112,6 +119,9 @@ hexagon_check-tcg:
 hexagon_check:
   needs: [hexagon_build]
   extends: .base-check
+hexagon_qurt-tests:
+  extends: .base-qurt-tests
+  needs: [hexagon_build]
 
 san-hexagon_build:
   extends: .base-build
@@ -125,6 +135,9 @@ san-hexagon_check-tcg:
 san-hexagon_check:
   needs: [san-hexagon_build]
   extends: .base-check
+san-hexagon_qurt-tests:
+  extends: .base-qurt-tests
+  needs: [san-hexagon_build]
 
 no-idef-parser-hexagon_build:
   extends: .base-build
