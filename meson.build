@@ -136,7 +136,7 @@ endif
 if cpu in ['x86', 'x86_64', 'arm', 'aarch64']
   # i386 emulator provides xenpv machine type for multiple architectures
   accelerator_targets += {
-    'CONFIG_XEN': ['i386-softmmu', 'x86_64-softmmu'],
+    'CONFIG_XEN': ['i386-softmmu', 'x86_64-softmmu', 'aarch64-softmmu'],
   }
 endif
 if cpu in ['x86', 'x86_64']
@@ -1732,6 +1732,8 @@ have_xen_pci_passthrough = get_option('xen_pci_passthrough') \
            error_message: 'Xen PCI passthrough requested but Xen not enabled') \
   .require(targetos == 'linux',
            error_message: 'Xen PCI passthrough not available on this platform') \
+  .require(cpu == 'x86'  or cpu == 'x86_64',
+           error_message: 'Xen PCI passthrough not available on this platform') \
   .allowed()
 
 
@@ -2868,6 +2870,7 @@ foreach target : target_dirs
     endif
     config_target += { 'CONFIG_BSD_USER': 'y' }
   elif target.endswith('softmmu')
+    config_target += { 'CONFIG_SYSTEM_ONLY': 'y' }
     config_target += { 'CONFIG_SOFTMMU': 'y' }
   endif
   if target.endswith('-user')
@@ -2994,7 +2997,7 @@ config_all += config_host
 config_all += config_all_disas
 config_all += {
   'CONFIG_XEN': xen.found(),
-  'CONFIG_SOFTMMU': have_system,
+  'CONFIG_SYSTEM_ONLY': have_system,
   'CONFIG_USER_ONLY': have_user,
   'CONFIG_ALL': true,
 }
@@ -3174,7 +3177,7 @@ hwcore_ss = ss.source_set()
 io_ss = ss.source_set()
 qmp_ss = ss.source_set()
 qom_ss = ss.source_set()
-softmmu_ss = ss.source_set()
+system_ss = ss.source_set()
 specific_fuzz_ss = ss.source_set()
 specific_ss = ss.source_set()
 stub_ss = ss.source_set()
@@ -3400,7 +3403,7 @@ if have_block
   # os-posix.c contains POSIX-specific functions used by qemu-storage-daemon,
   # os-win32.c does not
   blockdev_ss.add(when: 'CONFIG_POSIX', if_true: files('os-posix.c'))
-  softmmu_ss.add(when: 'CONFIG_WIN32', if_true: [files('os-win32.c')])
+  system_ss.add(when: 'CONFIG_WIN32', if_true: [files('os-win32.c')])
 endif
 
 common_ss.add(files('cpus-common.c'))
@@ -3500,7 +3503,7 @@ foreach d, list : modules
       if d == 'block'
         block_ss.add_all(module_ss)
       else
-        softmmu_ss.add_all(module_ss)
+        system_ss.add_all(module_ss)
       endif
     endif
   endforeach
@@ -3605,7 +3608,7 @@ libmigration = static_library('migration', sources: migration_files + genh,
                               build_by_default: false)
 migration = declare_dependency(link_with: libmigration,
                                dependencies: [zlib, qom, io])
-softmmu_ss.add(migration)
+system_ss.add(migration)
 
 block_ss = block_ss.apply(config_host, strict: false)
 libblock = static_library('block', block_ss.sources() + genh,
@@ -3666,10 +3669,10 @@ if emulator_modules.length() > 0
   alias_target('modules', emulator_modules)
 endif
 
-softmmu_ss.add(authz, blockdev, chardev, crypto, io, qmp)
+system_ss.add(authz, blockdev, chardev, crypto, io, qmp)
 common_ss.add(qom, qemuutil)
 
-common_ss.add_all(when: 'CONFIG_SOFTMMU', if_true: [softmmu_ss])
+common_ss.add_all(when: 'CONFIG_SYSTEM_ONLY', if_true: [system_ss])
 common_ss.add_all(when: 'CONFIG_USER_ONLY', if_true: user_ss)
 
 common_all = common_ss.apply(config_all, strict: false)
