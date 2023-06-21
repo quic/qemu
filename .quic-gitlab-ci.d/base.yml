@@ -66,6 +66,10 @@ variables:
   artifacts:
     paths: [ $TARBALL_NAME ]
     expire_in: 1 month
+  only:
+    - tags
+    - web
+    - schedules
 
 .base-check-tcg:
   extends: .after-build
