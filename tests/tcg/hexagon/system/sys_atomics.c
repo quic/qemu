@@ -1,157 +1,100 @@
-#include <math.h>
-#include <time.h>
-#include <sys/types.h>
 #include <stdio.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <errno.h>
 #include <q6standalone.h>
-#include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <inttypes.h>
+
+#define NUM_THREADS 2
+#define STACK_SIZE 0x8000
+char __attribute__((aligned(16))) stack[NUM_THREADS][STACK_SIZE];
+int id[NUM_THREADS + 1];
+volatile int done[NUM_THREADS + 1]; /* volatile because threads will change it */
+volatile int contention[NUM_THREADS + 1]; /* volatile because threads will change it */
 
 static const int LOOP_CNT = 10000;
-static const int EXPECTED_TICK_COUNT = 60001;
+volatile uint32_t tick32; /* volatile because we are testing atomics */
+volatile uint64_t tick64; /* volatile because we are testing atomics */
 
-#define asm_modectl() \
-     __asm__ __volatile__ ( \
-         "%0 = MODECTL" \
-         : "=r" (modectl) \
-    );
-
-#define asm_wait()    \
-    __asm__ __volatile__ (  \
-  "    wait(r0)\n"  \
-  : : : "r0"    \
-    )
-
-static inline void asm_resume(int mask) {
-    __asm__ __volatile__ (
-    "    r0 = %0\n"
-    "    resume(r0)\n"
-    : : "r" (mask) : "r0"
-    );
-}
-
-
-/* Using volatile because we are testing atomics */
-static inline int atomic_inc32(volatile int *x, int increment)
+static inline void asm_resume(int mask)
 {
-    int old, dummy;
-    int iters;
-    __asm__ __volatile__(
-        "   %2 = #0\n\t"
-        "// initialize p0 to false:\n\t"
-        "   p0 = cmp.eq(%2,#1)\n\t"
-        "1: %0 = memw_locked(%3)\n\t"
-        "   %1 = add(%0, %4)\n\t"
-        "   %2 = add(%2, #1)\n\t"
-        "   wait(r0)\n\t"
-        "   memw_locked(%3, p0) = %1\n\t"
-        "   if (!p0) jump 1b\n\t"
-        : "=&r"(old), "=&r"(dummy), "=&r"(iters)
-        : "r"(x), "r"(increment)
-        : "p0", "r0", "memory");
-    return (int) iters;
+    asm volatile (
+        "r0 = %0\n"
+        "resume(r0)\n"
+        : : "r" (mask) : "r0");
 }
 
-static inline int atomic_inc32_mismatch(volatile int *x, volatile int *y)
-{
-    /* This is to cover the case where a store-conditional
-     * targets a virtual address other than the current
-     * load-locked address.
-     */
-     int old, dummy, pred;
-    __asm__ __volatile__(
-        "   r0 = #0\n\t"
-        "// initialize p0 to true:\n\t"
-        "   p0 = cmp.eq(r0,#0)\n\t"
-        "   r1 = #0\n\t"
-        "1: %0 = memw_locked(%2)\n\t"
-        "   memw_locked(%3, p0) = r1\n\t"
-        "   if (p0) %1 = #1\n\t"
-        "   if (!p0) %1 = #0\n\t"
-        : "=&r"(old), "=&r"(pred)
-        : "r"(x), "r"(y)
-        : "p0", "r0", "r1", "memory");
+#define DECLARE_ATOMIC_INC(SIZE, TYPE, SUFFIX) \
+    /* Using volatile because we are testing atomics */ \
+    static inline TYPE atomic_inc## SIZE(volatile TYPE * x, TYPE increment) \
+    { \
+        TYPE old, dummy; \
+        uint32_t iters = 0; \
+        asm volatile( \
+            "1: %0 = mem" SUFFIX "_locked(%3)\n\t" \
+            "   %1 = add(%0, %4)\n\t" \
+            "   %2 = add(%2, #1)\n\t" \
+            /* This pause makes the thread yield in single-thread TCG. */ \
+            "   pause(#0)\n\t" \
+            "   mem" SUFFIX "_locked(%3, p0) = %1\n\t" \
+            "   if (!p0) jump 1b\n\t" \
+            : "=&r"(old), "=&r"(dummy), "+&r"(iters) \
+            : "r"(x), "r"(increment) \
+            : "p0", "memory"); \
+        return (TYPE)iters; \
+    }
 
-    return pred;
-}
+/*
+ * This covers the case where a store-conditional targets a virtual address
+ * other than the current load-locked address.
+ */
+#define DECLARE_ATOMIC_INC_MISMATCH(SIZE, TYPE, SUFFIX) \
+    /* Using volatile because we are testing atomics */ \
+    static inline int atomic_inc## SIZE ##_mismatch(volatile TYPE *x, volatile TYPE *y) \
+    { \
+        TYPE old, dummy = 0; \
+        int pred; \
+        asm volatile( \
+            "%0 = mem" SUFFIX "_locked(%3)\n\t" \
+            "mem" SUFFIX "_locked(%4, p0) = %2\n\t" \
+            "%1 = p0\n\t" \
+            : "=&r"(old), "=&r"(pred) \
+            : "r"(dummy), "r"(x), "r"(y) \
+            : "p0", "memory"); \
+        return pred; \
+    }
 
+#define DECLARE_SAT_ADD(SIZE, TYPE) \
+    static inline void sat_add## SIZE(TYPE *a, TYPE b) \
+    { \
+        TYPE result = *a + b; \
+        *a = (result < *a || result < b) ? UINT## SIZE ##_MAX : result; \
+    }
 
-/* Using volatile because we are testing atomics */
-static inline long long atomic_inc64(volatile long long *x, long long increment)
-{
-    long long old, dummy;
-    int iters;
-    __asm__ __volatile__(
-        "   %2 = #0\n\t"
-        "// initialize p0 to false:\n\t"
-        "   p0 = cmp.eq(%2,#1)\n\t"
-        "1: %0 = memd_locked(%3)\n\t"
-        "   %1 = add(%0, %4)\n\t"
-        "   wait(r0)\n\t"
-        "   %2 = add(%2, #1)\n\t"
-        "   memd_locked(%3, p0) = %1\n\t"
-        "   if (!p0) jump 1b\n\t"
-        : "=&r"(old), "=&r"(dummy), "=&r"(iters)
-        : "r"(x), "r"(increment)
-        : "p0", "r0", "memory");
-    return iters;
-}
+#define TYPE(SIZE) uint## SIZE ##_t
 
-static inline int atomic_inc64_mismatch(volatile long long *x, volatile long long *y)
-{
-    /* This is to cover the case where a store-conditional
-     * targets a virtual address other than the current
-     * load-locked address.
-     */
-     long long old;
-     int pred;
-    __asm__ __volatile__(
-        "   r0 = #0\n\t"
-        "// initialize p0 to true:\n\t"
-        "   p0 = cmp.eq(r0,#0)\n\t"
-        "   r1:0 = #0\n\t"
-        "1: %0 = memd_locked(%2)\n\t"
-        "   memd_locked(%3, p0) = r1:0\n\t"
-        "   if (p0) %1 = #1\n\t"
-        "   if (!p0) %1 = #0\n\t"
-        : "=&r"(old), "=&r"(pred)
-        : "r"(x), "r"(y)
-        : "p0", "r0", "r1", "memory");
+#define DECLARE_AUX_FUNCS(SIZE, SUFFIX) \
+    DECLARE_ATOMIC_INC(SIZE, TYPE(SIZE), SUFFIX) \
+    DECLARE_ATOMIC_INC_MISMATCH(SIZE, TYPE(SIZE), SUFFIX) \
+    DECLARE_SAT_ADD(SIZE, TYPE(SIZE))
 
-    return pred;
-}
-
-
-int err;
-/* Using volatile because we are testing atomics */
-volatile int tick32 = 1;
-/* Using volatile because we are testing atomics */
-volatile long long tick64 = 1;
-int done[3];
-
-uint32_t sat_add(uint32_t a, uint32_t b) {
-    uint32_t result = a + b;
-
-    return (result < a || result < b)
-       ? UINT32_MAX
-       : result;
-}
+DECLARE_AUX_FUNCS(32, "w")
+DECLARE_AUX_FUNCS(64, "d")
 
 int thread_body(int id) {
-    /* These counters are to track how many times an atomic_incZZ()
+    /*
+     * These counters are to track how many times an atomic_incZZ()
      * had to iterate because the store-conditional returned 'false'.
      */
-    unsigned tick32_iters = 0;
+    uint32_t tick32_iters = 0;
+    uint64_t tick64_iters = 0;
     static const int EXPECTED_IGNORED = 99;
-    int ignored32 = EXPECTED_IGNORED;
-    long long ignored64 = EXPECTED_IGNORED;
-    unsigned long long tick64_iters = 0;
+    uint32_t ignored32 = EXPECTED_IGNORED;
+    uint64_t ignored64 = EXPECTED_IGNORED;
     for (int i = 0; i < LOOP_CNT; i++) {
-        int scale = id * (i % 5);
-        tick32_iters = sat_add(tick32_iters, atomic_inc32(&tick32, 1 * scale));
-        tick64_iters = sat_add(tick64_iters, atomic_inc64(&tick64, 1 * scale));
+        uint32_t inc = id * (i % 5);
+
+        sat_add32(&tick32_iters, atomic_inc32(&tick32, inc));
+        sat_add64(&tick64_iters, atomic_inc64(&tick64, inc));
 
         /* For each iteration through the loop, we'll try to load-locked
          * 'ignored32/64' and store-conditional 'tick32/64'.  'ignored'
@@ -168,109 +111,124 @@ int thread_body(int id) {
         assert(ignored64 == EXPECTED_IGNORED);
     }
 
-#if 0
-    printf("tick32_iters[%d]: %u\n", id, tick32_iters);
-    printf("tick64_iters[%d]: %llu\n", id, tick64_iters);
-#endif
     return (tick32_iters - LOOP_CNT) + (tick64_iters - LOOP_CNT);
 }
 
 void my_thread(void *y)
 {
-    asm_wait();
-
     const int id = *(int *)y;
-    const int contention = thread_body(id);
 
-    /* All threads must encounter some contention otherwise
-    ** the test is not valid.
-    */
-    assert(contention > 0);
+    asm volatile ("wait(r0)\n");
+    contention[id] = thread_body(id);
     done[id] = 1;
 }
 
 void wait_for_threads()
 {
     unsigned modectl;
-    unsigned t1mode, t2mode;
+    int waiting;
     do {
-        asm_modectl();
-        t1mode = modectl & (0x1 << (16 + 1));  /* thread 1 wait bit */
-        t2mode = modectl & (0x1 << (16 + 2));  /* thread 2 wait bit */
-    } while (t1mode == 0 || t2mode == 0);
+        asm volatile ("%0 = MODECTL" : "=r" (modectl));
+        waiting = 0;
+        for (int i = 1; i <= NUM_THREADS; i++) {
+            waiting += !!(modectl & (0x1 << (16 + i)));  /* thread i wait bit */
+        }
+    } while (waiting != NUM_THREADS);
 }
 
-static inline void wait_for_threads_waiting_or_stopped(void)
+static inline bool all_done(void)
 {
-    unsigned modectl;
-    unsigned t1_waiting, t2_waiting;
-    unsigned t1_enabled, t2_enabled;
-
-    do {
-        asm_modectl();
-        t1_waiting = modectl & (0x1 << (16 + 1));  /* thread 1 wait bit */
-        t2_waiting = modectl & (0x1 << (16 + 2));  /* thread 2 wait bit */
-        t1_enabled = modectl & (0x1 << (0 + 1));  /* thread 1 enabled bit */
-        t2_enabled = modectl & (0x1 << (0 + 2));  /* thread 2 enabled bit */
-    } while ((!t1_waiting && t1_enabled) || (!t2_waiting && t2_enabled));
+    for (int i = 1; i <= NUM_THREADS; i++) {
+        if (!done[i]) {
+            return false;
+        }
+    }
+    return true;
 }
 
-long long stack1[1024];
-long long stack2[1024];
-int id1 = 1;
-int id2 = 2;
-
-static bool not_done(void) {
-    return !(done[id1] && done[id2]);
-}
-
-int main()
+#define RETRY -1
+int run_test(void)
 {
-    puts("Hexagon atomics test");
+    unsigned int thread_mask = 0;
+    int err = 0;
 
-    memset(done, 0, sizeof(done));
+    tick32 = 1;
+    tick64 = 1;
 
-    /* thread-create takes a HW thread number */
-    thread_create(my_thread, &stack1[1023], 1, (void *)&id1);
-    thread_create(my_thread, &stack2[1023], 2, (void *)&id2);
+    for (int i = 1; i <= NUM_THREADS; i++) {
+        id[i] = i;
+        done[i] = 0;
+        /* thread-create takes a HW thread number */
+        thread_create(my_thread, &stack[i][STACK_SIZE - 16], i, &id[i]);
+        thread_mask |= (1 << i);
+    }
 
-    unsigned modectl = 0;
-    asm_modectl();
     wait_for_threads();
+    asm_resume(thread_mask);
 
-    unsigned int mask = 0x6;
-    asm_resume(mask);
-    asm_modectl();
-
-    int prev_tick32 = tick32;
-    long long prev_tick64 = tick64;
-    while (not_done()) {
-        wait_for_threads_waiting_or_stopped();
-
-        asm_resume(1 << 1);
-        asm_resume(1 << 2);
-
+    uint32_t prev_tick32 = tick32;
+    uint64_t prev_tick64 = tick64;
+    while (!all_done()) {
         /* The tick values must be monotonically increasing. */
         assert(prev_tick32 <= tick32);
         assert(prev_tick64 <= tick64);
 
         prev_tick32 = tick32;
         prev_tick64 = tick64;
+
+        asm volatile("pause(#0)");
     }
 
-    /* join takes a mask not a thread number */
-    thread_join(1 << 1);
-    thread_join(1 << 2);
+    thread_join(thread_mask);
 
-    if (tick32 != EXPECTED_TICK_COUNT) {
-        printf("ERROR: tick32 %d != %d\n", tick32, EXPECTED_TICK_COUNT);
+    for (int i = 1; i <= NUM_THREADS; i++) {
+        /*
+         * All threads must encounter some contention otherwise
+         * the test is not valid.
+         */
+        if (contention[i] == 0) {
+            return RETRY;
+        }
+    }
+
+    uint32_t expected_tick_count = 1;
+    for (int tid = 1; tid <= NUM_THREADS; tid++) {
+        for (int i = 0; i < LOOP_CNT; i++) {
+            expected_tick_count += tid * (i % 5);
+        }
+    }
+
+    if (tick32 != expected_tick_count) {
+        printf("ERROR: tick32 %"PRIu32" != %"PRIu32"\n", tick32, expected_tick_count);
         err++;
     }
-    if (tick64 != EXPECTED_TICK_COUNT) {
-        printf("ERROR: tick64 %lld != %d\n", tick64, EXPECTED_TICK_COUNT);
+    if (tick64 != expected_tick_count) {
+        printf("ERROR: tick64 %"PRIu64" != %"PRIu32"\n", tick64, expected_tick_count);
         err++;
+    }
+    return err;
+}
+
+/*
+ * When there is no thread contention, the test is not valid, as it didn't
+ * really checked the atomic increments implementation. This happens
+ * occasionally (maybe 1/1000 times?). Therefore, we allow the test to repeat
+ * itself a few times. Note that a *real* failure does *not* trigger a retry.
+ * Also, the test is quite fast, so repetition is not an issue.
+ */
+#define NUM_RETRIES 4
+
+int main()
+{
+    puts("Hexagon atomics test");
+    int err;
+    for (int i = 1; i <= NUM_RETRIES; i++) {
+        printf("%d try\n", i);
+        err = run_test();
+        if (err != RETRY) {
+            break;
+        }
     }
     puts(err ? "FAIL" : "PASS");
     return err;
 }
-
