@@ -15,6 +15,8 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define DEBUG 0
+
 #include "hexagon_standalone.h"
 #include "interrupts.h"
 #include "util.h"
@@ -72,7 +74,9 @@ static void thread_func(void *arg)
         k0lock();
         pcycle_pause(100);
         k0unlock();
+#if DEBUG == 1
         printf("thread[%d] round %llu\n", taskId, ++i);
+#endif
     }
     set_thread_imask(ALL_INTERRUPTS_MASK);
     printf("thread exiting %d\n", taskId);
@@ -85,47 +89,6 @@ static void interrupt_handler(int intno)
     isr_work();
     k0unlock();
     __atomic_fetch_add(&ints_handled, 1, __ATOMIC_SEQ_CST);
-}
-
-static inline uint32_t get_modectl()
-{
-    uint32_t modectl;
-    asm volatile("%0 = modectl\n"
-                : "=r"(modectl)
-                );
-    return modectl;
-}
-
-static inline uint32_t get_wait_mask()
-{
-    uint32_t modectl = get_modectl();
-    return (modectl >> 16) & 0xff;
-}
-
-static inline uint32_t get_enabled_mask()
-{
-    uint32_t modectl = get_modectl();
-    return modectl & 0xff;
-}
-
-static bool some_threads_running()
-{
-    uint32_t W = get_wait_mask();
-    uint32_t E = get_enabled_mask();
-    bool some_running = false;
-    unsigned running_mask = 0x0;
-    for (int i = 1; i < COMPUTE_THREADS + 1; i++) {
-        uint32_t th_bit = 1 << i;
-        bool th_w = (W & th_bit) != 0;
-        bool th_e = (E & th_bit) != 0;
-        printf("thread %d, w: %d, e: %d\n", i, th_w, th_e);
-        if (th_w || th_e) {
-            some_running = true;
-            running_mask |= th_bit;
-        }
-    }
-    printf("some running: %d : mask 0x%x\n", some_running, running_mask);
-    return some_running;
 }
 
 int main(int argc, char *argv[])
@@ -150,16 +113,20 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < ROUNDS; i++) {
         int ints_expected = ints_handled + 1;
+#if DEBUG == 1
         printf("Round %d/%d/%d, doing work for each int: expecting %d\n", i,
                ROUNDS, MAX_INT_NUM, ints_expected);
+#endif
         for (int j = 0; j < MAX_INT_NUM; j++) {
             work();
             while (ints_handled < ints_expected) {
                 swi(1 << j);
                 pcycle_pause(10000);
             }
+#if DEBUG == 1
             printf("done: Round %d: %d vs %d\n", i, ints_handled,
                    ints_expected);
+#endif
         }
     }
 
@@ -168,12 +135,9 @@ int main(int argc, char *argv[])
     for (int i = 0; i < ROUNDS; i++) {
         for (int j = 0; j < MAX_INT_NUM; j++) {
             pcycle_pause(10000);
-            swi(1 << j);
+            swi(j);
+            swi(MAX_INT_NUM - j);
         }
-    }
-    while (some_threads_running()) {
-        pcycle_pause(2500000);
-        swi(ALL_INTERRUPTS_MASK);
     }
 
     puts("ints exhausted...");
