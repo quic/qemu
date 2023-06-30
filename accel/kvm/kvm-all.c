@@ -450,6 +450,8 @@ int kvm_init_vcpu(CPUState *cpu, Error **errp)
                          "kvm_init_vcpu: kvm_arch_init_vcpu failed (%lu)",
                          kvm_arch_vcpu_id(cpu));
     }
+    cpu->kvm_vcpu_stats_fd = kvm_vcpu_ioctl(cpu, KVM_GET_STATS_FD, NULL);
+
 err:
     return ret;
 }
@@ -1103,6 +1105,7 @@ static MemoryListener kvm_coalesced_pio_listener = {
     .name = "kvm-coalesced-pio",
     .coalesced_io_add = kvm_coalesce_pio_add,
     .coalesced_io_del = kvm_coalesce_pio_del,
+    .priority = MEMORY_LISTENER_PRIORITY_MIN,
 };
 
 int kvm_check_extension(KVMState *s, unsigned int extension)
@@ -1775,7 +1778,7 @@ void kvm_memory_listener_register(KVMState *s, KVMMemoryListener *kml,
     kml->listener.commit = kvm_region_commit;
     kml->listener.log_start = kvm_log_start;
     kml->listener.log_stop = kvm_log_stop;
-    kml->listener.priority = 10;
+    kml->listener.priority = MEMORY_LISTENER_PRIORITY_ACCEL;
     kml->listener.name = name;
 
     if (s->kvm_dirty_ring_size) {
@@ -1800,7 +1803,7 @@ static MemoryListener kvm_io_listener = {
     .name = "kvm-io",
     .eventfd_add = kvm_io_ioeventfd_add,
     .eventfd_del = kvm_io_ioeventfd_del,
-    .priority = 10,
+    .priority = MEMORY_LISTENER_PRIORITY_DEV_BACKEND,
 };
 
 int kvm_set_irq(KVMState *s, int irq, int level)
@@ -4007,7 +4010,7 @@ static StatsDescriptors *find_stats_descriptors(StatsTarget target, int stats_fd
 
     /* Read stats header */
     kvm_stats_header = &descriptors->kvm_stats_header;
-    ret = read(stats_fd, kvm_stats_header, sizeof(*kvm_stats_header));
+    ret = pread(stats_fd, kvm_stats_header, sizeof(*kvm_stats_header), 0);
     if (ret != sizeof(*kvm_stats_header)) {
         error_setg(errp, "KVM stats: failed to read stats header: "
                    "expected %zu actual %zu",
@@ -4038,7 +4041,8 @@ static StatsDescriptors *find_stats_descriptors(StatsTarget target, int stats_fd
 }
 
 static void query_stats(StatsResultList **result, StatsTarget target,
-                        strList *names, int stats_fd, Error **errp)
+                        strList *names, int stats_fd, CPUState *cpu,
+                        Error **errp)
 {
     struct kvm_stats_desc *kvm_stats_desc;
     struct kvm_stats_header *kvm_stats_header;
@@ -4096,7 +4100,7 @@ static void query_stats(StatsResultList **result, StatsTarget target,
         break;
     case STATS_TARGET_VCPU:
         add_stats_entry(result, STATS_PROVIDER_KVM,
-                        current_cpu->parent_obj.canonical_path,
+                        cpu->parent_obj.canonical_path,
                         stats_list);
         break;
     default:
@@ -4133,10 +4137,9 @@ static void query_stats_schema(StatsSchemaList **result, StatsTarget target,
     add_stats_schema(result, STATS_PROVIDER_KVM, target, stats_list);
 }
 
-static void query_stats_vcpu(CPUState *cpu, run_on_cpu_data data)
+static void query_stats_vcpu(CPUState *cpu, StatsArgs *kvm_stats_args)
 {
-    StatsArgs *kvm_stats_args = (StatsArgs *) data.host_ptr;
-    int stats_fd = kvm_vcpu_ioctl(cpu, KVM_GET_STATS_FD, NULL);
+    int stats_fd = cpu->kvm_vcpu_stats_fd;
     Error *local_err = NULL;
 
     if (stats_fd == -1) {
@@ -4145,14 +4148,13 @@ static void query_stats_vcpu(CPUState *cpu, run_on_cpu_data data)
         return;
     }
     query_stats(kvm_stats_args->result.stats, STATS_TARGET_VCPU,
-                kvm_stats_args->names, stats_fd, kvm_stats_args->errp);
-    close(stats_fd);
+                kvm_stats_args->names, stats_fd, cpu,
+                kvm_stats_args->errp);
 }
 
-static void query_stats_schema_vcpu(CPUState *cpu, run_on_cpu_data data)
+static void query_stats_schema_vcpu(CPUState *cpu, StatsArgs *kvm_stats_args)
 {
-    StatsArgs *kvm_stats_args = (StatsArgs *) data.host_ptr;
-    int stats_fd = kvm_vcpu_ioctl(cpu, KVM_GET_STATS_FD, NULL);
+    int stats_fd = cpu->kvm_vcpu_stats_fd;
     Error *local_err = NULL;
 
     if (stats_fd == -1) {
@@ -4162,7 +4164,6 @@ static void query_stats_schema_vcpu(CPUState *cpu, run_on_cpu_data data)
     }
     query_stats_schema(kvm_stats_args->result.schema, STATS_TARGET_VCPU, stats_fd,
                        kvm_stats_args->errp);
-    close(stats_fd);
 }
 
 static void query_stats_cb(StatsResultList **result, StatsTarget target,
@@ -4180,7 +4181,7 @@ static void query_stats_cb(StatsResultList **result, StatsTarget target,
             error_setg_errno(errp, errno, "KVM stats: ioctl failed");
             return;
         }
-        query_stats(result, target, names, stats_fd, errp);
+        query_stats(result, target, names, stats_fd, NULL, errp);
         close(stats_fd);
         break;
     }
@@ -4194,7 +4195,7 @@ static void query_stats_cb(StatsResultList **result, StatsTarget target,
             if (!apply_str_list_filter(cpu->parent_obj.canonical_path, targets)) {
                 continue;
             }
-            run_on_cpu(cpu, query_stats_vcpu, RUN_ON_CPU_HOST_PTR(&stats_args));
+            query_stats_vcpu(cpu, &stats_args);
         }
         break;
     }
@@ -4220,6 +4221,6 @@ void query_stats_schemas_cb(StatsSchemaList **result, Error **errp)
     if (first_cpu) {
         stats_args.result.schema = result;
         stats_args.errp = errp;
-        run_on_cpu(first_cpu, query_stats_schema_vcpu, RUN_ON_CPU_HOST_PTR(&stats_args));
+        query_stats_schema_vcpu(first_cpu, &stats_args);
     }
 }

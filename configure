@@ -774,7 +774,7 @@ done
 
 if ! test -e "$source_path/.git"
 then
-    git_submodules_action="ignore"
+    git_submodules_action="validate"
 fi
 
 # test for any invalid configuration combinations
@@ -1926,6 +1926,7 @@ if test "$skip_meson" = no; then
   if test "$?" -ne 0 ; then
       error_exit "meson setup failed"
   fi
+  echo "$meson" > build.ninja.stamp
 else
   if test -f meson-private/cmd_line.txt; then
     # Adjust old command line options that were removed
