@@ -188,7 +188,8 @@ reg_mut: reg_mut.c hex_test.h
 
 # This test has to be compiled for the -mv67t target
 usr: usr.c hex_test.h
-	$(CC) $(CFLAGS) -mv67t -O2 -Wno-inline-asm -Wno-expansion-to-defined $< -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) -mv67t -O2 $< -o $@ $(LDFLAGS) \
+		-Wno-inline-asm -Wno-expansion-to-defined -mno-hmx -Wl,--no-warn-mismatch
 
 # Build this test with -mv71 to exercise the CABAC instruction
 misc: misc.c
