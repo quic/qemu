@@ -177,8 +177,7 @@ fail:
 }
 #endif /* WIN32 */
 
-/* QUIC-specific ifdef */
-#if defined(WIN32) || defined(CONFIG_GBM)
+#if defined(CONFIG_GBM) || defined(WIN32)
 static void dbus_update_gl_cb(GObject *source_object,
                               GAsyncResult *res,
                               gpointer user_data)
@@ -210,8 +209,7 @@ static void dbus_update_gl_cb(GObject *source_object,
 static void dbus_call_update_gl(DisplayChangeListener *dcl,
                                 int x, int y, int w, int h)
 {
-/* QUIC-specific ifdef */
-#if defined(WIN32) || defined(CONFIG_GBM)
+#if defined(CONFIG_GBM) || defined(WIN32)
     DBusDisplayListener *ddl = container_of(dcl, DBusDisplayListener, dcl);
 #endif
 
