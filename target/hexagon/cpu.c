@@ -669,6 +669,10 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         error_setg(errp, "Out of threads.  Max is: %d, wanted: %d", THREADS_MAX, cs->cpu_index);
         return;
     }
+    gdb_register_coprocessor(cs, hexagon_hvx_gdb_read_register,
+                             hexagon_hvx_gdb_write_register,
+                             NUM_VREGS + NUM_QREGS,
+                             "hexagon-hvx.xml", 0);
 
 #ifndef CONFIG_USER_ONLY
     gdb_register_coprocessor(cs, hexagon_sys_gdb_read_register,
@@ -676,11 +680,6 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
                              NUM_SREGS + NUM_GREGS,
                              "hexagon-sys.xml", 0);
 #endif
-
-    gdb_register_coprocessor(cs, hexagon_hvx_gdb_read_register,
-                             hexagon_hvx_gdb_write_register,
-                             NUM_VREGS + NUM_QREGS,
-                             "hexagon-hvx.xml", 0);
 
     qemu_init_vcpu(cs);
 
