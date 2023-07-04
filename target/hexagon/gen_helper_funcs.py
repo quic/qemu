@@ -201,6 +201,9 @@ mem_init_attrs = [
 def needs_page_size(tag):
     return any(A in hex_common.attribdict[tag] for A in mem_init_attrs)
 
+def needs_cpu_memop_pc(tag):
+    return any(A in hex_common.attribdict[tag] for A in mem_init_attrs + ['A_DMA'])
+
 ##
 ## Generate the TCG code to call the helper
 ##     For A2_add: Rd32=add(Rs32,Rt32), { RdV=RsV+RtV;}
@@ -322,6 +325,9 @@ def gen_helper_function(f, tag, tagregs, tagimms):
                 f.write(", ")
             f.write("uint32_t part1")
         f.write(")\n{\n")
+
+        if needs_cpu_memop_pc(tag):
+            f.write("    CPU_MEMOP_PC_SET(env);\n")
 
         if hex_common.need_slot(tag):
             f.write("    uint32_t slot = slotval >> 1;\n")
