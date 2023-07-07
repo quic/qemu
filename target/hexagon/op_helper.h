@@ -28,24 +28,6 @@
 #define CPU_MMU_INDEX(ENV) cpu_mmu_index((ENV), false)
 #endif
 
-static inline size1u_t mem_read1(CPUHexagonState *env, paddr_t paddr)
-{
-    return cpu_ldub_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
-}
-static inline size2u_t mem_read2(CPUHexagonState *env, paddr_t paddr)
-{
-    return cpu_lduw_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
-}
-static inline size4u_t mem_read4(CPUHexagonState *env, paddr_t paddr)
-{
-    return cpu_ldl_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
-}
-static inline size8u_t mem_read8(CPUHexagonState *env, paddr_t paddr)
-{
-    return cpu_ldq_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
-}
-
-/* Misc functions */
 void cancel_slot(CPUHexagonState *env, uint32_t slot);
 
 /* Misc functions */
