@@ -25,6 +25,14 @@
 #define CPU_MMU_INDEX(ENV) cpu_mmu_index(env_cpu(ENV), false)
 
 void cancel_slot(CPUHexagonState *env, uint32_t slot);
+#define mem_read1(env, paddr) \
+    (size1u_t)cpu_ldub_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
+#define mem_read2(env, paddr) \
+    (size2u_t)cpu_lduw_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
+#define mem_read4(env, paddr) \
+    (size4u_t)cpu_ldl_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
+#define mem_read8(env, paddr) \
+    (size8u_t)cpu_ldq_mmuidx_ra(env, paddr, CPU_MMU_INDEX(env), GETPC());
 
 /* Misc functions */
 void check_noshuf(CPUHexagonState *env, bool pkt_has_store_s1,
