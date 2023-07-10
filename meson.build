@@ -479,19 +479,10 @@ if targetos != 'darwin'
   warn_flags += ['-Wthread-safety']
 endif
 
-# Check that the C++ compiler exists and works with the C compiler.
-link_language = 'c'
-linker = cc
+# Set up C++ compiler flags
 qemu_cxxflags = []
 if 'cpp' in all_languages
   qemu_cxxflags = ['-D__STDC_LIMIT_MACROS', '-D__STDC_CONSTANT_MACROS', '-D__STDC_FORMAT_MACROS'] + qemu_cflags
-  if cxx.links(files('scripts/main.c'), args: qemu_cflags)
-    link_language = 'cpp'
-    linker = cxx
-  else
-    message('C++ compiler does not work with C compiler')
-    message('Disabling C++-specific optional code')
-  endif
 endif
 
 # clang does not support glibc + FORTIFY_SOURCE (is it still true?)
@@ -1606,7 +1597,7 @@ if not get_option('snappy').auto() or have_system
   snappy = cc.find_library('snappy', has_headers: ['snappy-c.h'],
                            required: get_option('snappy'))
 endif
-if snappy.found() and not linker.links('''
+if snappy.found() and not cc.links('''
    #include <snappy-c.h>
    int main(void) { snappy_max_compressed_length(4096); return 0; }''', dependencies: snappy)
   snappy = not_found
@@ -2680,6 +2671,15 @@ config_host_data.set('CONFIG_AVX512BW_OPT', get_option('avx512bw') \
     int main(int argc, char *argv[]) { return bar(argv[0]); }
   '''), error_message: 'AVX512BW not available').allowed())
 
+# For both AArch64 and AArch32, detect if builtins are available.
+config_host_data.set('CONFIG_ARM_AES_BUILTIN', cc.compiles('''
+    #include <arm_neon.h>
+    #ifndef __ARM_FEATURE_AES
+    __attribute__((target("+crypto")))
+    #endif
+    void foo(uint8x16_t *p) { *p = vaesmcq_u8(*p); }
+  '''))
+
 have_pvrdma = get_option('pvrdma') \
   .require(rdma.found(), error_message: 'PVRDMA requires OpenFabrics libraries') \
   .require(cc.compiles(gnu_source_prefix + '''
@@ -2752,7 +2752,7 @@ config_host_data.set('CONFIG_AF_VSOCK', cc.has_header_symbol(
 
 have_vss = false
 have_vss_sdk = false # old xp/2003 SDK
-if targetos == 'windows' and link_language == 'cpp'
+if targetos == 'windows' and 'cpp' in all_languages
   have_vss = cxx.compiles('''
     #define __MIDL_user_allocate_free_DEFINED__
     #include <vss.h>
@@ -3834,7 +3834,6 @@ foreach target : target_dirs
                c_args: c_args,
                dependencies: arch_deps + deps + exe['dependencies'],
                objects: lib.extract_all_objects(recursive: true),
-               link_language: link_language,
                link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
                link_args: link_args,
                win_subsystem: exe['win_subsystem'])
@@ -4068,7 +4067,7 @@ summary_info += {'host CPU':          cpu}
 summary_info += {'host endianness':   build_machine.endian()}
 summary_info += {'C compiler':        ' '.join(meson.get_compiler('c').cmd_array())}
 summary_info += {'Host C compiler':   ' '.join(meson.get_compiler('c', native: true).cmd_array())}
-if link_language == 'cpp'
+if 'cpp' in all_languages
   summary_info += {'C++ compiler':    ' '.join(meson.get_compiler('cpp').cmd_array())}
 else
   summary_info += {'C++ compiler':      false}
@@ -4081,13 +4080,13 @@ if get_option('optimization') != 'plain'
   option_cflags += ['-O' + get_option('optimization')]
 endif
 summary_info += {'CFLAGS':            ' '.join(get_option('c_args') + option_cflags)}
-if link_language == 'cpp'
+if 'cpp' in all_languages
   summary_info += {'CXXFLAGS':        ' '.join(get_option('cpp_args') + option_cflags)}
 endif
 if targetos == 'darwin'
   summary_info += {'OBJCFLAGS':       ' '.join(get_option('objc_args') + option_cflags)}
 endif
-link_args = get_option(link_language + '_link_args')
+link_args = get_option('c_link_args')
 if link_args.length() > 0
   summary_info += {'LDFLAGS':         ' '.join(link_args)}
 endif
