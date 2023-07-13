@@ -18,11 +18,7 @@
 #include <stdio.h>
 #include <hexagon_standalone.h>
 #include "single_step.h"
-
-static inline void pause()
-{
-    asm volatile ("pause(#0)\n\t");
-}
+#include "thread_common.h"
 
 static inline uint32_t get_ssr()
 {
@@ -50,7 +46,6 @@ int witness_1;
 int witness_2;
 int witness_3;
 int witness_4;
-int ready;
 
 #define STACK_SIZE 0x8000
 char __attribute__ ((aligned(16))) stack1[STACK_SIZE];
@@ -58,7 +53,6 @@ char __attribute__ ((aligned(16))) stack1[STACK_SIZE];
 void thread(void *x)
 {
     /* Enable Single Step Mode, this does nothing until we enter user mode */
-    ready = 1;
     uint32_t ssr = get_ssr();
     ssr = ssr | (1 << 30);
     put_ssr(ssr);
@@ -72,10 +66,7 @@ int main(void)
   /* Vector 12 is the debug exception handler */
   set_event_handler (HEXAGON_EVENT_12, single_step_ex);
 
-  thread_create(thread, (void *)&stack1[STACK_SIZE - 16], 1, (void *)0);
-  while (!ready) {
-    pause();
-  }
+  thread_create_blocked(thread, (void *)&stack1[STACK_SIZE - 16], 1, (void *)0);
   thread_join(1 << 1);
 
   int err = 0;

@@ -125,7 +125,9 @@ invalid_opcode.o: invalid_opcode.c invalid_opcode.h
 invalid_opcode: invalid_opcode.o
 invalid_hmx.o: invalid_hmx.c mmu.h
 invalid_hmx: invalid_hmx.o
-sys_atomics: sys_atomics.o
+thread_common.o: thread_common.c thread_common.h
+sys_atomics.o: sys_atomics.c thread_common.h
+sys_atomics: sys_atomics.o thread_common.o
 timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o
 qtimer: qtimer.o
@@ -175,7 +177,8 @@ rev: rev.o
 pmu: pmu.o
 start.o: start.c mmu.h
 start: start.o
-single_step: single_step.o single_step_asm.o
+single_step.o: single_step.c thread_common.h
+single_step: single_step.o single_step_asm.o thread_common.o
 sys_reg_mut.o: sys_reg_mut.c ../reg_mut.h ../hex_test.h
 sys_reg_mut: sys_reg_mut.o
 

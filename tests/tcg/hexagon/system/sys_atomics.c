@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include "thread_common.h"
 
 #define NUM_THREADS 2
 #define STACK_SIZE 0x8000
@@ -14,14 +15,6 @@ volatile int contention[NUM_THREADS + 1]; /* volatile because threads will chang
 static const int LOOP_CNT = 10000;
 volatile uint32_t tick32; /* volatile because we are testing atomics */
 volatile uint64_t tick64; /* volatile because we are testing atomics */
-
-static inline void asm_resume(int mask)
-{
-    asm volatile (
-        "r0 = %0\n"
-        "resume(r0)\n"
-        : : "r" (mask) : "r0");
-}
 
 #define DECLARE_ATOMIC_INC(SIZE, TYPE, SUFFIX) \
     /* Using volatile because we are testing atomics */ \
@@ -117,23 +110,8 @@ int thread_body(int id) {
 void my_thread(void *y)
 {
     const int id = *(int *)y;
-
-    asm volatile ("wait(r0)\n");
     contention[id] = thread_body(id);
     done[id] = 1;
-}
-
-void wait_for_threads()
-{
-    unsigned modectl;
-    int waiting;
-    do {
-        asm volatile ("%0 = MODECTL" : "=r" (modectl));
-        waiting = 0;
-        for (int i = 1; i <= NUM_THREADS; i++) {
-            waiting += !!(modectl & (0x1 << (16 + i)));  /* thread i wait bit */
-        }
-    } while (waiting != NUM_THREADS);
 }
 
 static inline bool all_done(void)
@@ -159,12 +137,11 @@ int run_test(void)
         id[i] = i;
         done[i] = 0;
         /* thread-create takes a HW thread number */
-        thread_create(my_thread, &stack[i][STACK_SIZE - 16], i, &id[i]);
+        create_waiting_thread(my_thread, &stack[i][STACK_SIZE - 16], i, &id[i]);
         thread_mask |= (1 << i);
     }
 
-    wait_for_threads();
-    asm_resume(thread_mask);
+    start_waiting_threads(thread_mask);
 
     uint32_t prev_tick32 = tick32;
     uint64_t prev_tick64 = tick64;
