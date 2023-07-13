@@ -22,26 +22,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-static inline uint32_t get_htid(void)
-{
-    uint32_t htid;
-    asm volatile("%0 = htid\n\t" : "=r"(htid));
-    return htid;
-}
-
-#define THREAD_SEMAPHORE_OFF 0
-#define THREAD_SEMAPHORE_ON_WAIT 1
-#define THREAD_SEMAPHORE_GO 2
-static volatile int thread_semaphore[32]; /* volatile: changed by multiple threads */
-
-static void wait_on_semaphore(void)
-{
-    uint32_t htid = get_htid();
-    thread_semaphore[htid] = THREAD_SEMAPHORE_ON_WAIT;
-    while (thread_semaphore[htid] != THREAD_SEMAPHORE_GO) {
-        asm volatile("pause(#1)\n");
-    }
-}
+volatile int thread_semaphore[32]; /* volatile: changed by multiple threads */
 
 struct thread_work {
     void *param;
@@ -66,11 +47,6 @@ void create_waiting_thread(void (*func)(void *), void *sp, int tid, void *param)
     thread_create(thread_wrapper, sp, tid, work);
 }
 
-static inline uint32_t remove_myself(uint32_t mask)
-{
-    return mask & ~(1 << get_htid());
-}
-
 static void wait_semaphore_state(uint32_t mask, int state)
 {
     /* Doesn't make sense to wait for myself */
@@ -84,7 +60,7 @@ static void wait_semaphore_state(uint32_t mask, int state)
     }
 }
 
-static void set_semaphore_state(uint32_t mask, int state)
+void set_semaphore_state(uint32_t mask, int state)
 {
     for (int tid = 0; tid < 32; tid++) {
         if (mask & (1 << tid)) {

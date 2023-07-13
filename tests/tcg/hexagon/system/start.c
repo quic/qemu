@@ -32,106 +32,74 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <q6standalone.h>
-#include "mmu.h"
+#include "thread_common.h"
 
 int err;
+#include "../hex_test.h"
 
 /* Mark volatile because it is modified by multiple threads */
 static volatile uint32_t reset_mask;
+
+void (*default_reset_handler)(void);
 
 #define NUM_THREADS           4
 #define DUMMY_CAUSE           0x13
 /* Mark volatile because it is modified by multiple threads */
 static volatile uint32_t ssr_cause_log[NUM_THREADS];
 
-#define get_htid(htid) \
-    asm("%0 = htid\n\t" : "=r"(htid))
+#define get_ssr_cause() \
+    ({ uint32_t ssr; asm volatile ("%0 = ssr\n" : "=r"(ssr)); ssr & 0xff; })
 
-#define get_ssr(ssr) \
-    asm volatile ("%0 = ssr\n\t" : "=r"(ssr))
-
-#define set_ssr(ssr) \
-    asm volatile ("ssr = %0\n\t" : : "r"(ssr))
-
-#define set_ssr_cause(cause) \
-    do { \
+#define set_ssr_cause(CAUSE) do { \
         uint32_t ssr; \
-        get_ssr(ssr); \
+        asm volatile ("%0 = ssr\n\t" : "=r"(ssr)); \
         ssr &= ~0xff; \
-        ssr |= ((cause) & 0xff); \
-        set_ssr(ssr); \
+        ssr |= ((CAUSE) & 0xff); \
+        asm volatile ("ssr = %0\n\t" : : "r"(ssr)); \
     } while (0)
 
-
-#define read_pcycle_reg_pair(pcycle) \
-    asm volatile("syncht\n\t"        \
-                 "%0 = pcycle\n\t"   \
-                 : "=r"(pcycle))
-
-void my_reset_helper(void)
+/*
+ * ATTENTION: this function must be kept as simple as possible and it CANNOT
+ * call other non-inlined functions, as we are overriding the default reset
+ * handler from crt0, so we do not get the basic setup step like stack
+ * allocation.
+ */
+void my_reset_handler(void)
 {
-    uint32_t htid;
-    uint32_t ssr;
+    uint32_t htid = get_htid();
 
-    /* Set the htid bit in the mask */
-    get_htid(htid);
-    reset_mask |= (1 << htid);
+    wait_on_semaphore();
 
     /* Log the SSR cause field */
-    get_ssr(ssr);
-    ssr_cause_log[htid] = ssr & 0xff;
+    ssr_cause_log[htid] = get_ssr_cause();
 
-    /* Stop this thread */
-    asm volatile("stop(r0)\n\t");
-}
+    /* Atomically set the htid bit in the mask */
+    asm volatile("k0lock\n");
+    reset_mask |= (1 << htid);
+    asm volatile("k0unlock\n");
 
-#define MY_EVENT_HANDLE_RESET \
-void my_event_handle_reset(void) \
-{ \
-    asm volatile("jump my_reset_helper\n\t"); \
-}
-
-/* Set up the event handlers */
-MY_EVENT_HANDLE_RESET
-
-DEFAULT_EVENT_HANDLE(my_event_handle_error,       HANDLE_ERROR_OFFSET)
-DEFAULT_EVENT_HANDLE(my_event_handle_nmi,         HANDLE_NMI_OFFSET)
-DEFAULT_EVENT_HANDLE(my_event_handle_tlbmissrw,   HANDLE_TLBMISSRW_OFFSET)
-DEFAULT_EVENT_HANDLE(my_event_handle_tlbmissx,    HANDLE_TLBMISSX_OFFSET)
-DEFAULT_EVENT_HANDLE(my_event_handle_rsvd,        HANDLE_RSVD_OFFSET)
-DEFAULT_EVENT_HANDLE(my_event_handle_trap0,       HANDLE_TRAP0_OFFSET)
-DEFAULT_EVENT_HANDLE(my_event_handle_trap1,       HANDLE_TRAP1_OFFSET)
-DEFAULT_EVENT_HANDLE(my_event_handle_int,         HANDLE_INT_OFFSET)
-
-void pcycle_pause(uint64_t pcycle_wait)
-{
-    uint64_t pcycle, pcycle_start;
-
-    read_pcycle_reg_pair(pcycle_start);
-    do {
-        asm volatile("pause(#1)\n\t");
-        read_pcycle_reg_pair(pcycle);
-    } while (pcycle < pcycle_start + pcycle_wait);
+    asm volatile("stop(r0)\n");
 }
 
 static void test_start(uint32_t mask)
 {
-    uint32_t htid;
-    uint32_t expect;
-    uint32_t ssr;
+    uint32_t htid = get_htid();
 
-    get_htid(htid);
-    expect = ~(1 << htid);
     reset_mask = 0;
     for (int i = 0; i < NUM_THREADS; i++) {
         ssr_cause_log[i] = DUMMY_CAUSE;
     }
     set_ssr_cause(0x15);
+
+    set_event_handler(HEXAGON_EVENT_0, my_reset_handler);
+    set_semaphore_state(mask, THREAD_SEMAPHORE_OFF);
     asm volatile("start(%0)\n\t" :: "r"(mask));
-    get_ssr(ssr);
-    check32(ssr & 0xff, 0x15);
-    pcycle_pause(100);
-    check32(reset_mask, (mask & expect));
+    start_waiting_threads(mask);
+    thread_join(remove_myself(mask));
+    set_event_handler(HEXAGON_EVENT_0, default_reset_handler);
+
+    check32(get_ssr_cause(), 0x15);
+    check32(reset_mask, remove_myself(mask));
     for (int i = 0; i < NUM_THREADS; i++) {
         if (i != htid) {
             if (mask & (1 << i)) {
@@ -148,26 +116,24 @@ char __attribute__((aligned(16))) thread_stack[STACK_SIZE];
 
 static void thread_func(void *x)
 {
-    test_start(0x3);
-    test_start(0x7);
-    test_start(0xf);
+    test_start(0x2);
+    test_start(0x6);
+    test_start(0xe);
 }
 
 int main()
 {
     puts("Hexagon start instruction test");
 
-    install_my_event_vectors();
+    default_reset_handler = (void (*)(void))get_event_handler(HEXAGON_EVENT_0);
 
     /* Run the tests on thread 0 */
-    test_start(0x3);
-    test_start(0x7);
-    test_start(0xf);
+    thread_func(NULL);
 
     /* Run the tests on other threads */
-    for (int i = 0; i < NUM_THREADS; i++) {
-        thread_create(thread_func, (void *)&thread_stack[STACK_SIZE - 16],
-                      i, NULL);
+    for (int i = 1; i < NUM_THREADS; i++) {
+        thread_create_blocked(thread_func, (void *)&thread_stack[STACK_SIZE - 16],
+                              i, NULL);
         thread_join(1 << i);
     }
     puts(err ? "FAIL" : "PASS");
