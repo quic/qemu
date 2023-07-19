@@ -34,10 +34,16 @@ typedef struct DisasContext {
     uint32_t mem_idx;
     uint32_t num_packets;
     uint32_t num_cycles;
-    uint32_t hvx_packets;
     uint32_t num_insns;
     uint32_t num_hvx_insns;
     uint32_t num_coproc_insns;
+
+#ifndef CONFIG_USER_ONLY 
+    /* Used for PMU counters. */
+    uint32_t pmu_num_packets;
+    uint32_t pmu_hvx_packets;
+#endif
+
     int reg_log[REG_WRITES_MAX];
     int reg_log_idx;
     DECLARE_BITMAP(regs_written, TOTAL_PER_THREAD_REGS);
@@ -62,7 +68,6 @@ typedef struct DisasContext {
     int sreg_log_idx;
     bool need_cpu_limit;
     bool pmu_enabled;
-    bool pmu_counters_updated;
     TCGv t_sreg_new_value[NUM_SREGS];
     TCGv greg_new_value[NUM_GREGS];
 #endif

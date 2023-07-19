@@ -163,22 +163,14 @@ static inline void gen_pcycle_counters(DisasContext *ctx)
 #ifndef CONFIG_USER_ONLY
 static void gen_pmu_counters(DisasContext *ctx)
 {
-    if (!ctx->pmu_enabled) {
-        return;
+    if (ctx->pmu_enabled) {
+        tcg_gen_addi_i32(hex_pmu_num_packets, hex_pmu_num_packets,
+                         ctx->pmu_num_packets);
+        tcg_gen_addi_i32(hex_pmu_hvx_packets, hex_pmu_hvx_packets,
+                         ctx->pmu_hvx_packets);
+        ctx->pmu_num_packets = 0;
+        ctx->pmu_hvx_packets = 0;
     }
-    /*
-     * Note: if we ever need finer resolution for the PMU counters, we can
-     * remove this "already-updated-in-this-TB" check (possibly at the cost
-     * of performance).
-     */
-    if (ctx->pmu_counters_updated) {
-        return;
-    }
-    tcg_gen_addi_i32(hex_pmu_num_packets, hex_pmu_num_packets,
-                     ctx->num_packets);
-    tcg_gen_addi_i32(hex_pmu_hvx_packets, hex_pmu_hvx_packets,
-                     ctx->hvx_packets);
-    ctx->pmu_counters_updated = true;
 }
 #endif
 
@@ -1489,7 +1481,10 @@ static void update_exec_counters(DisasContext *ctx)
     ctx->num_insns += num_real_insns;
     ctx->num_hvx_insns += num_hvx_insns;
     ctx->num_coproc_insns += num_coproc_insns;
-    ctx->hvx_packets += (num_hvx_insns > 0);
+#ifndef CONFIG_USER_ONLY
+    ctx->pmu_num_packets++;
+    ctx->pmu_hvx_packets += (num_hvx_insns > 0);
+#endif
 }
 
 #ifndef CONFIG_USER_ONLY
@@ -1695,7 +1690,6 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
 
     ctx->num_packets = 0;
     ctx->num_cycles = 0;
-    ctx->hvx_packets = 0;
     ctx->num_insns = 0;
     ctx->num_hvx_insns = 0;
     ctx->num_coproc_insns = 0;
@@ -1707,6 +1701,10 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->hvx_coproc_enabled = false;
     ctx->hvx_64b_mode = false;
     ctx->paranoid_commit_state = hex_cpu->paranoid_commit_state;
+#ifndef CONFIG_USER_ONLY
+    ctx->pmu_num_packets = 0;
+    ctx->pmu_hvx_packets = 0;
+#endif
 
     ctx->mem_idx = FIELD_EX32(hex_flags, TB_FLAGS, MMU_INDEX);
 
@@ -1721,7 +1719,6 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
     ctx->pmu_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PMU_ENABLED);
-    ctx->pmu_counters_updated = false;
 #endif
     ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->hvx_coproc_enabled = FIELD_EX32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED);
