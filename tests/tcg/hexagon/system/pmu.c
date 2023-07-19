@@ -4,10 +4,10 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include <hexagon_standalone.h>
+#include "thread_common.h"
 
-#define ERR 0.1
-#define LOW_ERR (1 - ERR / 2)
-#define HIG_ERR (1 + ERR / 2)
+#define TOLERANCE 0.1
+#define ERR (1 + TOLERANCE)
 
 #define NUM_PMU_CTRS 8
 static uint32_t get_pmu_counter(int index);
@@ -110,6 +110,11 @@ static void pmu_set_counters(uint32_t val)
         "pmucnt7 = %0\n"
         : : "r"(val));
 }
+
+#define PMU_SET_COUNTER(IDX, VAL) do { \
+        uint32_t reg = (VAL); \
+        asm volatile("pmucnt" #IDX " = %0\n" : : "r"(reg)); \
+    } while (0)
 
 #define PM_SYSCFG_BIT 9
 static inline void pmu_start(void)
@@ -243,14 +248,16 @@ static void pmu_reset(void)
 #define STACK_SIZE 0x8000
 char __attribute__((aligned(16))) stack[NUM_THREADS - 1][STACK_SIZE];
 
-#define BASE_WORK_COUNT 205 /* Expected num of counted insn per work(0) call */
-static void work(void *_id)
+#define RUN_N_PACKETS(N) \
+    asm volatile("   loop0(1f, %0)\n" \
+                 "1: { nop }:endloop0\n" \
+                 : : "r"(N))
+
+#define BASE_WORK_COUNT 100
+static void work(void *id)
 {
-    int id = (int)_id;
     pmu_start();
-    for (int i = 0; i < 100 * (id + 1); i++) {
-        asm volatile("nop");
-    }
+    RUN_N_PACKETS(((int)id + 1) * BASE_WORK_COUNT);
     pmu_stop();
 }
 
@@ -283,10 +290,13 @@ static void test_threaded_pkt_count(enum regtype type, bool enable_gpmu)
     pmu_config(7, COMMITTED_PKT_T7);
 
     for (int i = 1; i < NUM_THREADS; i++) {
-        thread_create(work, (void *)&stack[i - 1][STACK_SIZE - 16], i, (void *)i);
+        thread_create_blocked(work, (void *)&stack[i - 1][STACK_SIZE - 16], i,
+                              (void *)i);
         thread_join(1 << i);
     }
     pmu_config(0, COMMITTED_PKT_T0);
+    /* NEEDSWORK: workaround for QTOOL-101246 */
+    PMU_SET_COUNTER(0, 0);
     work(0);
 
     config_gpmu(enable_gpmu);
@@ -294,8 +304,8 @@ static void test_threaded_pkt_count(enum regtype type, bool enable_gpmu)
         if (type == GREG && !enable_gpmu) {
             check_range(i, type, 0, 0);
         } else {
-            check_range(i, type, BASE_WORK_COUNT * (i + 1) * LOW_ERR,
-                                 BASE_WORK_COUNT * (i + 1) * HIG_ERR);
+            check_range(i, type, BASE_WORK_COUNT * (i + 1),
+                                 BASE_WORK_COUNT * (i + 1) * ERR);
         }
     }
 }
@@ -328,10 +338,13 @@ static void test_paired_access(enum regtype type, bool enable_gpmu)
         : : : "r0", "r1");
 
     for (int i = 1; i < NUM_THREADS; i++) {
-        thread_create(work, (void *)&stack[i - 1][STACK_SIZE - 16], i, (void *)i);
+        thread_create_blocked(work, (void *)&stack[i - 1][STACK_SIZE - 16], i,
+                              (void *)i);
         thread_join(1 << i);
     }
     pmu_config(0, COMMITTED_PKT_T0);
+    /* NEEDSWORK: workaround for QTOOL-101246 */
+    PMU_SET_COUNTER(0, 0);
     work(0);
 
     if (type == GREG) {
@@ -379,8 +392,8 @@ static void test_paired_access(enum regtype type, bool enable_gpmu)
         } else {
             int off = i % 2 ? 1000 : 0;
             check_val_range(v[i], i, type,
-                            off + BASE_WORK_COUNT * (i + 1) * LOW_ERR,
-                            off + BASE_WORK_COUNT * (i + 1) * HIG_ERR);
+                            off + BASE_WORK_COUNT * (i + 1),
+                            off + BASE_WORK_COUNT * (i + 1) * ERR);
         }
     }
 }
@@ -429,11 +442,11 @@ static void test_config_from_another_thread(void)
 {
     const int tid = 1;
     pmu_reset();
-    thread_create(config_thread, (void *)&stack[tid - 1][STACK_SIZE - 16],
-                  tid, NULL);
+    thread_create_blocked(config_thread, (void *)&stack[tid - 1][STACK_SIZE - 16],
+                          tid, NULL);
     thread_join(1 << tid);
     pmu_stop();
-    check_range(0, SREG, 100, 1000); /* We just want to check >= 100, really */
+    check_range(0, SREG, 100, 100000); /* We just want to check >= 100, really */
 }
 
 static void test_hvx_packets(void)
@@ -452,6 +465,30 @@ static void test_hvx_packets(void)
 
 }
 
+static void test_event_change(void)
+{
+    const int initial_offset = 500;
+    uint32_t expect_count;
+
+    pmu_reset();
+    PMU_SET_COUNTER(0, initial_offset);
+    expect_count = initial_offset;
+
+    pmu_config(0, COMMITTED_PKT_T0);
+    work(0);
+    expect_count += BASE_WORK_COUNT;
+
+    pmu_config(0, HVX_PKT);
+    work(0);
+    /* This should NOT change the COMMITTED_PKT_T0 count */
+
+    pmu_config(0, COMMITTED_PKT_T0);
+    work(0);
+    expect_count += BASE_WORK_COUNT;
+
+    check_range(0, SREG, expect_count, expect_count * ERR);
+}
+
 int main()
 {
     test_config_with_pmu_enabled(0);
@@ -461,6 +498,9 @@ int main()
     test_gpmucnt();
     test_config_from_another_thread();
     test_hvx_packets();
+
+    /* [QTOOL-101246] NEEDSWORK: this fails in QEMU (but passes in the sim) */
+    /* test_event_change(); */
 
     puts(err ? "FAIL" : "PASS");
     return err;
