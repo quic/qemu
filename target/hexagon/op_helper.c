@@ -2242,6 +2242,7 @@ static void set_pmu_event(CPUHexagonState *env, unsigned int index,
 {
     g_assert(index < NUM_PMU_CTRS);
 
+    pmu_lock();
     uint16_t old_event = env->pmu.g_events[index];
     env->pmu.g_events[index] = event;
 
@@ -2252,6 +2253,7 @@ static void set_pmu_event(CPUHexagonState *env, unsigned int index,
         log_if_unimp_pmu_event(event);
         hexagon_reset_pmu_event_stats(event);
     }
+    pmu_unlock();
 }
 
 static bool handle_pmu_sreg_write(CPUHexagonState *env, uint32_t reg,

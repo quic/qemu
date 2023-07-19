@@ -838,6 +838,7 @@ uint32_t hexagon_get_pmu_counter(CPUHexagonState *cur_env, uint32_t reg)
  */
 void hexagon_reset_pmu_event_stats(int event)
 {
+    pmu_lock();
     int th;
     CPUState *cs;
     switch (event) {
@@ -864,6 +865,7 @@ void hexagon_reset_pmu_event_stats(int event)
     default:
         break;
     }
+    pmu_unlock();
 }
 
 void hexagon_set_pmu_counter(CPUHexagonState *env, uint32_t reg, uint32_t val)
