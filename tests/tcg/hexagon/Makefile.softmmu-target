@@ -206,6 +206,8 @@ hvx_ext-0x79: hvx_ext-0x79.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
 pendalot.o: pendalot.c filename.h cfgtable.h
+hvx-multi.o: hvx-multi.c
+hvx-multi: hvx-multi.o hvx-multi-asm.o
 pendalot: pendalot.o
 vid-group.o : vid-group.c thread_common.h filename.h cfgtable.h
 vid-group: vid-group.o thread_common.o
