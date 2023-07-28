@@ -294,8 +294,6 @@ static void test_threaded_pkt_count(enum regtype type, bool enable_gpmu)
                            (void *)i);
     }
     pmu_config(0, COMMITTED_PKT_T0);
-    /* NEEDSWORK: workaround for QTOOL-101246 */
-    PMU_SET_COUNTER(0, 0);
     work(0);
 
     config_gpmu(enable_gpmu);
@@ -341,8 +339,6 @@ static void test_paired_access(enum regtype type, bool enable_gpmu)
                            (void *)i);
     }
     pmu_config(0, COMMITTED_PKT_T0);
-    /* NEEDSWORK: workaround for QTOOL-101246 */
-    PMU_SET_COUNTER(0, 0);
     work(0);
 
     if (type == GREG) {
@@ -474,9 +470,9 @@ static void test_event_change(void)
     work(0);
     expect_count += BASE_WORK_COUNT;
 
-    pmu_config(0, HVX_PKT);
-    work(0);
-    /* This should NOT change the COMMITTED_PKT_T0 count */
+    pmu_config(0, COMMITTED_PKT_T1);
+    thread_run_blocked(work, (void *)&stack[0][STACK_SIZE - 16], 1, (void *)0);
+    expect_count += BASE_WORK_COUNT;
 
     pmu_config(0, COMMITTED_PKT_T0);
     work(0);
@@ -494,9 +490,7 @@ int main()
     test_gpmucnt();
     test_config_from_another_thread();
     test_hvx_packets();
-
-    /* [QTOOL-101246] NEEDSWORK: this fails in QEMU (but passes in the sim) */
-    /* test_event_change(); */
+    test_event_change();
 
     puts(err ? "FAIL" : "PASS");
     return err;

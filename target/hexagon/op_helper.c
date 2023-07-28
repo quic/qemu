@@ -2287,8 +2287,16 @@ static void set_pmu_event(CPUHexagonState *env, unsigned int index,
     bool pmu_enabled =
             GET_SYSCFG_FIELD(SYSCFG_PM, env->g_sreg[HEX_SREG_SYSCFG]);
 
-    if (pmu_enabled && event != old_event) {
-        log_if_unimp_pmu_event(event);
+    if (event != old_event) {
+        if (pmu_enabled) {
+            log_if_unimp_pmu_event(event);
+        }
+        /*
+         * As we are changing event, accumulate the current event's stats into
+         * the counter offset, so that we don't lose this value. Also reset
+         * the new event stats.
+         */
+        env->pmu.g_ctrs_off[index] += hexagon_get_pmu_event_stats(old_event);
         hexagon_reset_pmu_event_stats(event);
     }
     pmu_unlock();
