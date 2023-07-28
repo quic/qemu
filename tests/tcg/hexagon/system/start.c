@@ -132,9 +132,8 @@ int main()
 
     /* Run the tests on other threads */
     for (int i = 1; i < NUM_THREADS; i++) {
-        thread_create_blocked(thread_func, (void *)&thread_stack[STACK_SIZE - 16],
-                              i, NULL);
-        thread_join(1 << i);
+        thread_run_blocked(thread_func, (void *)&thread_stack[STACK_SIZE - 16],
+                           i, NULL);
     }
     puts(err ? "FAIL" : "PASS");
     return err;

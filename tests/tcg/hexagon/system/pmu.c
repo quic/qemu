@@ -290,9 +290,8 @@ static void test_threaded_pkt_count(enum regtype type, bool enable_gpmu)
     pmu_config(7, COMMITTED_PKT_T7);
 
     for (int i = 1; i < NUM_THREADS; i++) {
-        thread_create_blocked(work, (void *)&stack[i - 1][STACK_SIZE - 16], i,
-                              (void *)i);
-        thread_join(1 << i);
+        thread_run_blocked(work, (void *)&stack[i - 1][STACK_SIZE - 16], i,
+                           (void *)i);
     }
     pmu_config(0, COMMITTED_PKT_T0);
     /* NEEDSWORK: workaround for QTOOL-101246 */
@@ -338,9 +337,8 @@ static void test_paired_access(enum regtype type, bool enable_gpmu)
         : : : "r0", "r1");
 
     for (int i = 1; i < NUM_THREADS; i++) {
-        thread_create_blocked(work, (void *)&stack[i - 1][STACK_SIZE - 16], i,
-                              (void *)i);
-        thread_join(1 << i);
+        thread_run_blocked(work, (void *)&stack[i - 1][STACK_SIZE - 16], i,
+                           (void *)i);
     }
     pmu_config(0, COMMITTED_PKT_T0);
     /* NEEDSWORK: workaround for QTOOL-101246 */
@@ -440,11 +438,9 @@ static void config_thread(void *_)
 
 static void test_config_from_another_thread(void)
 {
-    const int tid = 1;
     pmu_reset();
-    thread_create_blocked(config_thread, (void *)&stack[tid - 1][STACK_SIZE - 16],
-                          tid, NULL);
-    thread_join(1 << tid);
+    thread_run_blocked(config_thread, (void *)&stack[0][STACK_SIZE - 16], 1,
+                       NULL);
     pmu_stop();
     check_range(0, SREG, 100, 100000); /* We just want to check >= 100, really */
 }

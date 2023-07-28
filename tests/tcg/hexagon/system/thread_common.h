@@ -43,6 +43,7 @@ void set_semaphore_state(uint32_t mask, int state);
 void create_waiting_thread(void (*func)(void *), void *sp, int tid, void *param);
 void start_waiting_threads(uint32_t mask);
 void thread_create_blocked(void (*func)(void *), void *sp, int tid, void *param);
+void thread_run_blocked(void (*func)(void *), void *sp, int tid, void *param);
 
 extern volatile int thread_semaphore[32]; /* volatile: changed by multiple threads */
 

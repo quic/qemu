@@ -84,4 +84,8 @@ void thread_create_blocked(void (*func)(void *), void *sp, int tid, void *param)
     start_waiting_threads(1 << tid);
 }
 
-
+void thread_run_blocked(void (*func)(void *), void *sp, int tid, void *param)
+{
+    thread_create_blocked(func, sp, tid, param);
+    thread_join(1 << tid);
+}

@@ -66,8 +66,7 @@ int main(void)
   /* Vector 12 is the debug exception handler */
   set_event_handler (HEXAGON_EVENT_12, single_step_ex);
 
-  thread_create_blocked(thread, (void *)&stack1[STACK_SIZE - 16], 1, (void *)0);
-  thread_join(1 << 1);
+  thread_run_blocked(thread, (void *)&stack1[STACK_SIZE - 16], 1, (void *)0);
 
   int err = 0;
   if (witness_1 != check_point_1) {
