@@ -10,11 +10,45 @@ include:
 ###################################################################
 
 variables:
-  COMMON_CONFIG_OPTS: --enable-lto --disable-capstone --disable-guest-agent --enable-plugins --assert-target-compiler
-  HEX_CONFIG_OPTS: --disable-fdt --disable-tools --disable-slirp --disable-sdl --disable-vnc --disable-gtk --disable-install-blobs
-  AARCH64_CONFIG_OPTS: --enable-fdt --enable-slirp --disable-debug-info --disable-debug-tcg --enable-virtfs --enable-avx2 --enable-avx512f --disable-png --disable-sanitizers --gdb=aarch64-linux-gnu-gdb
+  QEMU_CONFIGURABLE_FEATURES_OPTS: >-
+    --enable-vhost-kernel --enable-vhost-net --enable-vhost-user
+    --enable-vhost-crypto --enable-vhost-user-blk-server --enable-vhost-vdpa
 
-  GENERIC_CONFIG_CMD: ../configure --prefix="$$installdir" $COMMON_CONFIG_OPTS
+  QEMU_COMPILATION_OPTS: --enable-malloc-trim --enable-avx2 --enable-avx512f
+  QEMU_TARGETS_AND_ACCELERATORS_OPTS: --enable-plugins --enable-multiprocess
+  QEMU_BLOCK_LAYER_SUPPORT_OPTS: >-
+    --enable-coroutine-pool --enable-virtfs --enable-live-block-migration
+    --enable-replication --enable-bochs --enable-cloop --enable-dmg
+    --enable-qcow1 --enable-vdi --enable-vvfat --enable-qed --enable-parallels
+    --enable-vduse-blk-export --enable-libvduse
+
+  QEMU_CRYPTO_OPTS: --enable-keyring
+  QEMU_USER_INTERFACE_OPTS: --enable-png
+  QEMU_AUDIO_OPTS: --enable-oss --enable-pa --enable-alsa
+  QEMU_NETWORK_BACKENDS_OPTS: --enable-l2tpv3
+  QEMU_DEPENDENCIES_OPTS: >-
+    --enable-iconv --enable-virglrenderer --enable-attr --enable-cap-ng
+    --enable-opengl --enable-tpm --enable-libudev
+
+  DEFAULT_CONFIG_OPTS: >-
+    --without-default-features --disable-install-blobs --assert-target-compiler
+    $QEMU_CONFIGURABLE_FEATURES_OPTS $QEMU_COMPILATION_OPTS
+    $QEMU_TARGETS_AND_ACCELERATORS_OPTS $QEMU_BLOCK_LAYER_SUPPORT_OPTS
+    $QEMU_CRYPTO_OPTS $QEMU_USER_INTERFACE_OPTS $QEMU_AUDIO_OPTS
+    $QEMU_NETWORK_BACKENDS_OPTS $QEMU_DEPENDENCIES_OPTS
+
+  # Can be used for overriding DEFAULT_CONFIG_OPTS with options specific to
+  # Hexagon
+  HEX_CONFIG_OPTS: >-
+
+  # Can be used for overriding DEFAULT_CONFIG_OPTS with options specific to
+  # AArch64
+  AARCH64_CONFIG_OPTS: >-
+    --enable-fdt --enable-slirp --enable-sdl --enable-gtk
+    --enable-install-blobs --disable-png --disable-debug-info
+    --disable-debug-tcg --gdb=aarch64-linux-gnu-gdb
+
+  GENERIC_CONFIG_CMD: ../configure --prefix="$$installdir" $DEFAULT_CONFIG_OPTS
   HEX_CONFIG_CMD: $GENERIC_CONFIG_CMD $HEX_CONFIG_OPTS --target-list=hexagon-softmmu,hexagon-linux-user
   AARCH64_CONFIG_CMD: $GENERIC_CONFIG_CMD $AARCH64_CONFIG_OPTS --target-list=aarch64-softmmu,aarch64-linux-user
 
