@@ -159,7 +159,8 @@ hvx_64b: hvx_64b.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
 pendalot: pendalot.o
-vid-group: vid-group.o
+vid-group.o: vid-group.c thread_common.h
+vid-group: vid-group.o thread_common.o
 levelint: levelint.o
 swi_fs: swi_fs.o
 vid_reg: vid_reg.o

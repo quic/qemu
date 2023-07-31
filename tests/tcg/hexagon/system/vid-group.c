@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <hexagon_standalone.h>
+#include "thread_common.h"
 
 /* This and other volatiles are for dealing with mmio registers */
 typedef volatile unsigned int vu32;
@@ -21,6 +22,10 @@ static uint32_t _rdcfg(uint32_t cfgbase, uint32_t offset)
     :
     : );
   return offset;
+}
+void pause()
+{
+    __asm__ __volatile__("pause(#1)");
 }
 
 vu32 g_l2vic_base;
@@ -100,10 +105,6 @@ void intr_handler(int irq)
 
 
     vid = *((uint32_t *)(g_l2vic_base + (irq - 2) * 4));
-    printf(" ### INT %d on HT %lu l2vid %lu\n", irq, htid, vid);
-    fflush(stdout);
-    printf("     @ 0x%lx\n", pcyclo);
-    fflush(stdout);
     if ((vid - FIRST_IRQ) > 3) {
         printf(" unexpected L2IRQ number %lu\n", vid);
         fflush(stdout);
@@ -116,11 +117,41 @@ void intr_handler(int irq)
             j++;
         }
     }
-    if (j == 4) {
-        printf("We have done enough\n");
-    }
-    fflush(stdout);
     update_l2vic(vid);
+}
+
+int int1;
+int int2;
+int int3;
+int int4;
+
+void do_int1(int irq)
+{
+    int tnum = thread_get_tnum();
+    assert(tnum == 1);
+    intr_handler(irq);
+    int1 = 1;
+}
+void do_int2(int irq)
+{
+    int tnum = thread_get_tnum();
+    assert(tnum == 2);
+    intr_handler(irq);
+    int2 = 1;
+}
+void do_int3(int irq)
+{
+    int tnum = thread_get_tnum();
+    assert(tnum == 3);
+    intr_handler(irq);
+    int3 = 1;
+}
+void do_int4(int irq)
+{
+    int tnum = thread_get_tnum();
+    assert(tnum == 4);
+    intr_handler(irq);
+    int4 = 1;
 }
 
 /* assign l2irq to specific L1INT */
@@ -140,30 +171,30 @@ void enable_core_interrupt()
 {
     uint32_t set;
 
-    register_interrupt(2, intr_handler); /* T1 */
-    register_interrupt(3, intr_handler); /* T2 */
-    register_interrupt(4, intr_handler); /* T3 */
-    register_interrupt(5, intr_handler); /* T4 */
+    register_interrupt(2, do_int1); /* T1 */
+    register_interrupt(3, do_int2); /* T2 */
+    register_interrupt(4, do_int3); /* T3 */
+    register_interrupt(5, do_int4); /* T4 */
 
-    set = (2 << 16) + 0xd; /* only T1 to serve INT#2 */
+    set = (2 << 16) + 0xfd; /* only T1 to serve INT#2 */
     __asm__ __volatile__("r0 = %0\n"
              "iassignw(r0)\n"
              :
              : "r"(set)
              : "r0");
-    set = (3 << 16) + 0xb; /* only T2 to serve INT#3 */
+    set = (3 << 16) + 0xfb; /* only T2 to serve INT#3 */
     __asm__ __volatile__("r0 = %0\n"
              "iassignw(r0)\n"
              :
              : "r"(set)
              : "r0");
-    set = (4 << 16) + 0x7; /* T3 serves INT#4 and INT#5 */
+    set = (4 << 16) + 0xf7; /* T3 serves INT#4 and INT#5 */
     __asm__ __volatile__("r0 = %0\n"
              "iassignw(r0)\n"
              :
              : "r"(set)
              : "r0");
-    set = (5 << 16) + 0x1f; /* T4 serves INT#4 and INT#5 */
+    set = (5 << 16) + 0xef; /* T4 serves INT#4 and INT#5 */
     __asm__ __volatile__("r0 = %0\n"
              "iassignw(r0)\n"
              :
@@ -173,53 +204,17 @@ void enable_core_interrupt()
     assign_l2irq_to_l1int(IRQ, 4);
 }
 
-void pause();
-int waste_some_time(int count)
-{
-    uint64_t delay_cycles = (10000 * count);
-
-    /* This unnatural arithmetic is designed to handle
-     * overflow.
-     */
-    const uint64_t start_time = my_read_pcycles();
-    while ((my_read_pcycles() - delay_cycles) >= start_time) {
-        pause();
-    }
-    return delay_cycles;
-}
-
 char __attribute__((aligned(16))) stack1[STACK_SIZE];
 char __attribute__((aligned(16))) stack2[STACK_SIZE];
 char __attribute__((aligned(16))) stack3[STACK_SIZE];
+char __attribute__((aligned(16))) stack4[STACK_SIZE];
 
-void pause() {
-    __asm__ __volatile__("pause(#1)");
-}
 
-void thread1()
+void thread(void *data)
 {
     uint32_t pcyclo;
-    for (;;) {
-        __asm__ __volatile__("%0 = pcyclelo" : "=r"(pcyclo));
-        pause();
-    }
-    return;
-}
-
-void thread2()
-{
-    uint32_t pcyclo;
-    for (;;) {
-        __asm__ __volatile__("%0 = pcyclelo" : "=r"(pcyclo));
-        pause();
-    }
-    return;
-}
-
-void thread3()
-{
-    uint32_t pcyclo;
-    for (;;) {
+    int *int_seen = (int *)data;
+    while (*int_seen == 0) {
         __asm__ __volatile__("%0 = pcyclelo" : "=r"(pcyclo));
         pause();
     }
@@ -231,9 +226,11 @@ int main()
     unsigned int base;
     unsigned int va;
     unsigned long long int pa;
-    thread_create(thread3, &stack3[STACK_SIZE - 16], 3, NULL);
-    thread_create(thread2, &stack2[STACK_SIZE - 16], 2, NULL);
-    thread_create(thread1, &stack1[STACK_SIZE - 16], 1, NULL);
+
+    thread_create_blocked(thread, &stack4[STACK_SIZE - 16], 4, (void *)&int4);
+    thread_create_blocked(thread, &stack3[STACK_SIZE - 16], 3, (void *)&int3);
+    thread_create_blocked(thread, &stack2[STACK_SIZE - 16], 2, (void *)&int2);
+    thread_create_blocked(thread, &stack1[STACK_SIZE - 16], 1, (void *)&int1);
 
     /* setup the fastl2vic interface and setup an indirect mapping */
     uint32_t cfgbase = get_cfgbase();
@@ -245,7 +242,6 @@ int main()
 
     enable_core_interrupt();
     init_l2vic();
-    waste_some_time(5);
 
     for (int i = 0; i < 6; i++) { /* disable(1)-enable(4)-disable(1) */
         printf(" iteration S0 %d @ 0x%llx\n", i, my_read_pcycles());
@@ -256,7 +252,6 @@ int main()
             unsigned int bit = 1 << (IRQ[j] % 32);
             *L2VIC_INT_CLEAR(IRQ[j]) = bit;
         }
-        waste_some_time(5);
 
         /* set up */
         printf(" iteration S1 %d @ 0x%llx\n", i, my_read_pcycles());
@@ -271,7 +266,6 @@ int main()
                 *FAST_INTF_VA = (0 << 16) + IRQ[j]; /* enable them */
             }
         }
-        waste_some_time(5);
 
         /* action */
         printf(" iteration S2 %d @ 0x%llx\n", i, my_read_pcycles());
@@ -280,17 +274,29 @@ int main()
         for (int j = 0; j < 4; j++) {
             *FAST_INTF_VA = (2 << 16) + IRQ[j];
         }
-        waste_some_time(50);
-    }
-    waste_some_time(50);
 
-    /* Each of the selected HW threads should get at least one interrupt */
-    for (int i = 1; i < 3; i++) {
-        if (HWTID[i] < 1) {
-            printf("FAIL: HWTID[%d] = %ld\n", i, HWTID[i]);
-            return 1;
+        /*
+         * This takes the place of the "waste_some_time" function.
+         * With MTTCG we can reach points where we always clear pendings
+         * at the top of this loop such that the lower priority ints never
+         * get a chance to run.
+         * Wait until the lowest priority int is seen before moving
+         * forward.  NOTE: Changing int4 to int1 would expose the periodic
+         * failures when mttcg is enabled.
+         */
+        while (!int4) {
+                pause();
         }
     }
+
+    /*
+     * Wait until each thread has exited.
+     * This could hang if a thread never gets an interrupt.
+     */
+    for (int i = 1; i < 5; i++) {
+        thread_join(1 << i);
+    }
+
     printf("PASS\n");
     return 0;
 }
