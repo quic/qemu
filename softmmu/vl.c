@@ -2979,6 +2979,9 @@ void qemu_init(int argc, char **argv)
                 break;
             case QEMU_OPTION_gdb:
                 add_device_config(DEV_GDB, optarg);
+                if (strstart(optarg, "revcon:", NULL)) {
+                    autostart = 0;
+                }
                 break;
             case QEMU_OPTION_L:
                 if (is_help_option(optarg)) {
