@@ -108,7 +108,7 @@ variables:
 
 .base-check-tcg:
   extends: .after-build
-  script: make -C $builddir -j check-tcg V=1
+  script: make -C $builddir -j check-tcg V=1 OVERRIDE_OPTS="$OVERRIDE_OPTS"
   artifacts:
     when: on_failure
     paths: [ "*_build" ]
@@ -151,6 +151,10 @@ hexagon_tarball:
 hexagon_check-tcg:
   needs: [hexagon_build]
   extends: .base-check-tcg
+hexagon_check-tcg-MTTCG:
+  needs: [hexagon_build]
+  extends: .base-check-tcg
+  variables: { OVERRIDE_OPTS: "-accel tcg,thread=multi" }
 hexagon_check:
   needs: [hexagon_build]
   extends: .base-check
