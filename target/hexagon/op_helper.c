@@ -2381,6 +2381,18 @@ static inline QEMU_ALWAYS_INLINE void sreg_write(CPUHexagonState *env,
     }
 }
 
+void HELPER(check_ccr_write)(CPUHexagonState *env, uint32_t new, uint32_t old)
+{
+    if (qemu_loglevel_mask(LOG_UNIMP)) {
+        const uint32_t unimp_bits = 0xef000000; /* GRE, GEE, GTE, GIE, VV[1-3] */
+        uint32_t changed_bits = (old ^ new) & new;
+        if (changed_bits & unimp_bits) {
+            qemu_log("WARN: direct-to-guest interrupts/exceptions and virtual"
+                     " VIC not supported in QEMU\n");
+        }
+    }
+}
+
 void HELPER(sreg_write)(CPUHexagonState *env, uint32_t reg, uint32_t val)
 {
     sreg_write(env, reg, val);
