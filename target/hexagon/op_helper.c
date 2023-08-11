@@ -100,6 +100,8 @@ void do_raise_exception(CPUHexagonState *env, uint32_t exception,
     qemu_log_mask(CPU_LOG_INT, "%s: %d, @ %08" PRIx32 ", tbl = %d\n",
                   __func__, exception, PC,
                   env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
+
+    ASSERT_DIRECT_TO_GUEST_UNSET(env, exception);
 #endif
 
     env->gpr[HEX_REG_PC] = PC;
@@ -1647,6 +1649,7 @@ void HELPER(raise_stack_overflow)(CPUHexagonState *env, uint32_t slot,
     CPUState *cs = env_cpu(env);
     cs->exception_index = HEX_EVENT_PRECISE;
     env->cause_code = HEX_CAUSE_STACK_LIMIT;
+    ASSERT_DIRECT_TO_GUEST_UNSET(env, cs->exception_index);
 
     if (slot == 0) {
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_BADVA0, badva);
@@ -2587,6 +2590,7 @@ void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
             found = true;
             cs->exception_index = HEX_EVENT_IMPRECISE;
             thread_env->cause_code = HEX_CAUSE_IMPRECISE_NMI;
+            ASSERT_DIRECT_TO_GUEST_UNSET(env, cs->exception_index);
             HEX_DEBUG_LOG("tid %d gets nmi\n", thread_env->threadId);
         }
     }

@@ -60,6 +60,31 @@
 #define SET_SYSCFG_FIELD(ENV, FIELD, VAL) \
     SET_SYSTEM_FIELD(ENV, HEX_SREG_SYSCFG, FIELD, VAL)
 
+#define CCR_FIELD_SET(ENV, FIELD) \
+    (!!GET_FIELD(FIELD, ARCH_GET_SYSTEM_REG(ENV, HEX_SREG_CCR)))
+
+/*
+ * Direct-to-guest is not implemented yet, continuing would cause unexpected
+ * behavior, so we abort.
+ */
+#define ASSERT_DIRECT_TO_GUEST_UNSET(ENV, EXCP) \
+    do { \
+        switch (EXCP) { \
+        case HEX_EVENT_TRAP0: \
+            g_assert(!CCR_FIELD_SET(ENV, CCR_GTE)); \
+            break; \
+        case HEX_EVENT_IMPRECISE: \
+        case HEX_EVENT_PRECISE: \
+        case HEX_EVENT_FPTRAP: \
+            g_assert(!CCR_FIELD_SET(ENV, CCR_GEE)); \
+            break; \
+        default: \
+            if ((EXCP) >= HEX_EVENT_INT0) { \
+                g_assert(!CCR_FIELD_SET(ENV, CCR_GIE)); \
+            } \
+            break; \
+        } \
+    } while (0)
 #endif
 
 #define fREAD_ELR() (READ_SREG(HEX_SREG_ELR))

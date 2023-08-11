@@ -411,6 +411,7 @@ static void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
     env->gpr[HEX_REG_PC] = env->wait_next_pc;
     cs = env_cpu(env);
     cs->exception_index = ei;
+    ASSERT_DIRECT_TO_GUEST_UNSET(env, cs->exception_index);
     cpu_resume(cs);
 }
 

@@ -1292,6 +1292,7 @@ void register_trap_exception(CPUHexagonState *env, int traptype, int imm,
     /* assert(cs->exception_index == HEX_EVENT_NONE); */
 
     cs->exception_index = (traptype == 0) ? HEX_EVENT_TRAP0 : HEX_EVENT_TRAP1;
+    ASSERT_DIRECT_TO_GUEST_UNSET(env, cs->exception_index);
 
     env->cause_code = imm;
     env->gpr[HEX_REG_PC] = PC;
