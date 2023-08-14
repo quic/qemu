@@ -77,13 +77,13 @@ static inline void write_control_register_pairs(void)
 {
     uint64_t result = 0;
 
-    WRITE_REG_NOCLOBBER(result, "c11:10", 0xffffffffffffffff);
+    WRITE_REG_PAIR_NOCLOBBER(result, "c11:10", 0xffffffffffffffff);
     check64(result, 0xffffffc0ffffffff);
 
-    WRITE_REG_NOCLOBBER(result, "c15:14", 0xffffffffffffffff);
+    WRITE_REG_PAIR_NOCLOBBER(result, "c15:14", 0xffffffffffffffff);
     check64_ne(result, 0xffffffffffffffff);
 
-    WRITE_REG_NOCLOBBER(result, "c31:30", 0xffffffffffffffff);
+    WRITE_REG_PAIR_NOCLOBBER(result, "c31:30", 0xffffffffffffffff);
     check64(result, 0x0000000000000000);
 
     WRITE_REG_PAIR_ENCODED(result, "c9:8", (uint64_t) 0x0000000000000000,
