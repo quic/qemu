@@ -564,6 +564,18 @@ int sys_in_user_mode(CPUHexagonState *env)
     return sys_in_user_mode_ssr(ssr);
 }
 
+static bool sys_hmx_active(CPUHexagonState *env)
+{
+    uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    return (GET_SSR_FIELD(SSR_XE2, ssr) == 1);
+}
+
+static bool sys_hvx_active(CPUHexagonState *env)
+{
+    uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    return (GET_SSR_FIELD(SSR_XE, ssr) == 1);
+}
+
 int get_cpu_mode(CPUHexagonState *env)
 
 {
@@ -679,8 +691,8 @@ void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause)
     UNLOCK_IOTHREAD(exception_context);
 }
 
-static MMVector VRegs[4][NUM_VREGS];
-static MMQReg QRegs[4][NUM_QREGS];
+static MMVector VRegs[VECTOR_UNIT_MAX][NUM_VREGS];
+static MMQReg QRegs[VECTOR_UNIT_MAX][NUM_QREGS];
 
 void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
@@ -691,11 +703,13 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
     bool old_UM = GET_SSR_FIELD(SSR_UM, old);
     bool old_GM = GET_SSR_FIELD(SSR_GM, old);
     bool old_IE = GET_SSR_FIELD(SSR_IE, old);
+    bool old_XE2 = GET_SSR_FIELD(SSR_XE2, old);
     uint8_t old_XA = GET_SSR_FIELD(SSR_XA, old);
     bool new_EX = GET_SSR_FIELD(SSR_EX, new);
     bool new_UM = GET_SSR_FIELD(SSR_UM, new);
     bool new_GM = GET_SSR_FIELD(SSR_GM, new);
     bool new_IE = GET_SSR_FIELD(SSR_IE, new);
+    bool new_XE2 = GET_SSR_FIELD(SSR_XE2, new);
     uint8_t new_XA = GET_SSR_FIELD(SSR_XA, new);
 
     if ((old_EX != new_EX) ||
@@ -709,6 +723,22 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
     if (new_asid != old_asid) {
         CPUState *cs = env_cpu(env);
         tlb_flush(cs);
+    }
+
+    if (old_XE2 != new_XE2) {
+        CPUState *cs;
+        int xe2max = 0;
+        CPU_FOREACH(cs) {
+            HexagonCPU *cpu = HEXAGON_CPU(cs);
+            CPUHexagonState *env_ = &cpu->env;
+            if (sys_hmx_active(env_)) {
+                xe2max++;
+            }
+        }
+        if (xe2max > 1) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "Undefined behavior: HMX unit over committed.\n");
+        }
     }
 
     if (old_XA != new_XA) {
@@ -725,6 +755,19 @@ void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
         }
         /* New owner acquire */
         else if (new_XA != 0) {
+            CPUState *cs;
+            int hvxmax = 0;
+            CPU_FOREACH(cs) {
+                HexagonCPU *cpu = HEXAGON_CPU(cs);
+                CPUHexagonState *env_ = &cpu->env;
+                if (sys_hvx_active(env_)) {
+                    hvxmax++;
+                }
+            }
+            if (hvxmax > VECTOR_UNIT_MAX) {
+                qemu_log_mask(LOG_GUEST_ERROR,
+                              "Undefined behavior: HVX Units over committed\n");
+            }
             memcpy(env->VRegs, VRegs[new_unit], sizeof(env->VRegs));
             memcpy(env->QRegs, QRegs[new_unit], sizeof(env->QRegs));
         }
