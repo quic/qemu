@@ -25,10 +25,10 @@ main()
     int rc = 0;
     char buf[2048];
     char *path;
-    
-    if ((path = getcwd((char *)&buf[0], 2048)) == (char *)0)
-    {
-        printf ("getcwd didn't return path.\n");
+
+    path = getcwd((char *)&buf[0], 2048);
+    if (path  == (char *)0) {
+        printf("getcwd didn't return path.\n");
         rc++;
     }
 

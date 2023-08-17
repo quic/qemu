@@ -161,12 +161,6 @@ hexagon_ss.add(files(
     'system.c',
     'arch_options_calc.c',
     'coproc.c',
-    'hmx/hmx_coproc.c',
-    'hmx/ext_hmx.c',
-    'hmx/system_ext_hmx.c',
-    'hmx/mpy_hmx_fp_custom.c',
-    'hmx/hmx_int_ops.c',
-    'hmx/hmx_system.c',
     'dma_adapter.c',
     'dma/dma.c',
     'dma/dma_descriptor.c',
@@ -316,14 +310,30 @@ analyze_funcs_generated = custom_target(
 )
 hexagon_ss.add(analyze_funcs_generated)
 
-coproc_cases_generated = custom_target(
-    'coproc_cases_generated.c.inc',
-    output: 'coproc_cases_generated.c.inc',
-    depends: [semantics_generated, op_attribs_generated],
-    depend_files: [hex_common_py, attribs_def],
-    command: [python, files('gen_coproc_cases.py'), semantics_generated, op_attribs_generated, '@OUTPUT@'],
-)
-hexagon_ss.add(coproc_cases_generated)
+#coproc_cases_generated = custom_target(
+#    'coproc_cases_generated.c.inc',
+#    output: 'coproc_cases_generated.c.inc',
+#    depends: [semantics_generated, op_attribs_generated],
+#    depend_files: [hex_common_py, attribs_def],
+#    command: [python, files('gen_coproc_cases.py'), semantics_generated, op_attribs_generated, '@OUTPUT@'],
+#)
+#hexagon_ss.add(coproc_cases_generated)
+
+rpclib_dir = 'subprojects/rpclib'
+cmake = import('cmake')
+cmake_opts = cmake.subproject_options()
+cmake_opts.append_compile_args('cpp', ['-Wno-class-memaccess', '-Wno-unused-but-set-variable'] + qemu_cflags)
+rpclib_proj = cmake.subproject('rpclib', options:cmake_opts)
+rpclib_dep = rpclib_proj.dependency('rpc')
+hexagon_ss.add(rpclib_dep)
+
+rpclib = 'rpc'
+rpclib_dir_abs_lib = meson.project_build_root() / rpclib_dir
+rpclib_dir_inc = include_directories('../../'+rpclib_dir / 'include')
+rpclib_dep = declare_dependency(
+    link_args : ['-L' + rpclib_dir_abs_lib, '-l' + rpclib] + qemu_ldflags,
+    include_directories : rpclib_dir_inc)
+coproc_rpc = static_library('coproc_rpc', 'coproc_rpc.cpp',dependencies : [rpclib_dep])
 
 target_arch += {'hexagon': hexagon_ss}
 target_softmmu_arch += {'hexagon': hexagon_softmmu_ss}

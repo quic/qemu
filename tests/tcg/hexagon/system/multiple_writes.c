@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2022-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include "hexagon_standalone.h"
 #define NO_DEFAULT_EVENT_HANDLES
 #include "mmu.h"
+#include "filename.h"
 
 #define HEX_CAUSE_REG_WRITE_CONFLICT 0x01d
 
@@ -169,6 +170,6 @@ int main()
     check32(*my_exceptions, 1 << HEX_CAUSE_REG_WRITE_CONFLICT);
     *my_exceptions &= ~(1 << HEX_CAUSE_REG_WRITE_CONFLICT);
 
-    puts(err ? "FAIL" : "PASS");
+    printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);
     return err;
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2022-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,8 +18,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "hexagon_standalone.h"
+#include "filename.h"
 
-void do_activation_weight(uintptr_t activations_vtcm, unsigned activations_range,
+void do_activation_weight(uintptr_t activations_vtcm,
+                          unsigned activations_range,
                           uintptr_t weights_vtcm, unsigned weights_range)
 
 {
@@ -33,10 +35,10 @@ void do_activation_weight(uintptr_t activations_vtcm, unsigned activations_range
     );
 }
 
-void acquire_hmx()
+void acquire_coproc()
 
 {
-    // acquire HMX
+    /* acquire coproc */
     asm volatile("R6=SSR\n"
                "R6=setbit(R6, #26)\n"
                "SSR = R6\n"
@@ -69,9 +71,9 @@ int main()
 
 {
     setup_translation();
-    acquire_hmx();
+    acquire_coproc();
     do_activation_weight(0xd8702740, 0xffff971f, 0xd8677800, 0x00000bff);
-    puts("PASS");
+    printf("%s : %s\n", "PASS", __FILENAME__);
 
     return 0;
 }

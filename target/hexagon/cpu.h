@@ -31,6 +31,7 @@ typedef struct SystemState system_t;
 #include "dma/dma.h"
 #include "hw/registerfields.h"
 #include "hw/hexagon/hexagon.h"
+#include "coproc_rpc.h"
 #include "max.h"
 
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
@@ -423,6 +424,9 @@ typedef struct CPUArchState {
     /* Used by cpu_{ld,st}* calls down in TCG code. Set by top level helpers. */
     uintptr_t cpu_memop_pc;
     bool cpu_memop_pc_set;
+    hwaddr vtcm_base;
+    uint32_t vtcm_size;
+    int memfd_fd;
 #ifndef CONFIG_USER_ONLY
     int slot;                    /* Needed for exception generation */
     hex_exception_info einfo;
@@ -465,6 +469,7 @@ struct ArchCPU {
     bool sched_limit;
     bool cacheop_exceptions;
     gchar *usefs;
+    gchar *coproc_path;
     uint64_t config_table_addr;
     bool vp_mode;
     uint32_t boot_addr;

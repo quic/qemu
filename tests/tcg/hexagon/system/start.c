@@ -36,6 +36,7 @@
 
 int err;
 #include "../hex_test.h"
+#include "filename.h"
 
 /* Mark volatile because it is modified by multiple threads */
 static volatile uint32_t reset_mask;
@@ -135,6 +136,6 @@ int main()
         thread_run_blocked(thread_func, (void *)&thread_stack[STACK_SIZE - 16],
                            i, NULL);
     }
-    puts(err ? "FAIL" : "PASS");
+    printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);
     return err;
 }

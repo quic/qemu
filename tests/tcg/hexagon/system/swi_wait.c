@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "filename.h"
 
 #define MAX_INT_NUM (8)
 #define ALL_INTERRUPTS_MASK (0xff)
@@ -148,6 +149,6 @@ int main()
     }
     thread_join(1 << WAIT_THREAD_ID);
 
-    puts("PASS");
+    printf("%s : %s\n", "PASS", __FILENAME__);
     return 0;
 }

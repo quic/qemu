@@ -332,17 +332,17 @@ def gen_helper_function(f, tag, tagregs, tagimms):
         if hex_common.need_slot(tag):
             f.write("    uint32_t slot = slotval >> 1;\n")
 
-        if "A_HMX" in hex_common.attribdict[tag]:
-            f.write("    CoprocArgs args;\n")
+        if "A_COPROC" in hex_common.attribdict[tag]:
+            f.write("    CoprocArgs args = {0};\n")
             f.write(f"    args.opcode = {tag};\n")
+            f.write(f"    args.unit = env->threadId;\n")
             arg = 1
             for regtype, regid in regs:
                 f.write(f"    args.arg{arg} = {regtype}{regid}V;\n")
                 arg += 1;
             if needs_page_size(tag):
-                f.write("    args.slot = slot;\n")
                 f.write("    args.page_size = hex_get_page_size(env, RsV, 1);\n")
-            f.write("    coproc(args);\n")
+            f.write("    coproc(&args);\n")
         else:
             if hex_common.need_ea(tag):
                 gen_decl_ea(f)

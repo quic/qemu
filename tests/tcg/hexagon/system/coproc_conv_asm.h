@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,9 +15,16 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SYSTEM_EXT_H
-#define SYSTEM_EXT_H
-#include "hmx/hmx_coproc.h"
-#include "hmx/hmx.h"
+#ifndef COPROC_CONV_ASM_H
+#define COPROC_CONV_ASM_H
 
+extern void coproc_conv_spatial_major_deep_asm(
+    coproc_param_t *coproc_parameters);
+extern void coproc_conv_channel_major_deep_asm(
+    coproc_param_t *coproc_parameters);
+extern void coproc_conv_spatial_major_asm(
+    coproc_param_t *p_coproc_parameters);
+extern void coproc_conv_channel_major_asm(
+    coproc_param_t *p_coproc_parameters);
 #endif
+

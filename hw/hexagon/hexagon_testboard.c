@@ -17,9 +17,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include "qemu/osdep.h"
 #include "qemu/units.h"
 #include "exec/address-spaces.h"
+#include "hw/hw.h"
 #include "hw/boards.h"
 #include "hw/qdev-properties.h"
 #include "hw/hexagon/hexagon.h"
@@ -37,11 +39,13 @@
 #include "target/hexagon/internal.h"
 #include "libgen.h"
 
+#include <fcntl.h>
+#include <sys/mman.h>
 #include "machine_configs.h.inc"
 
 static hexagon_config_table *cfgTable;
 static hexagon_config_extensions *cfgExtensions;
-static bool syscfg_is_linux = false;
+static bool syscfg_is_linux;
 
 
 /* Board init.  */
@@ -79,10 +83,10 @@ static GString *get_exe_dir(GString *exe_dir)
 #error "No host implementation for get_exe_dir() provided"
 #endif
 }
-static hwaddr isdb_secure_flag = 0;
-static hwaddr isdb_trusted_flag = 0;
-static void hex_symbol_callback(const char *st_name, int st_info, uint64_t st_value,
-                          uint64_t st_size) {
+static hwaddr isdb_secure_flag;
+static hwaddr isdb_trusted_flag;
+static void hex_symbol_callback(const char *st_name, int st_info,
+                                uint64_t st_value, uint64_t st_size) {
     if (!g_strcmp0("isdb_secure_flag", st_name)) {
         isdb_secure_flag = st_value;
     }
@@ -145,6 +149,63 @@ static gchar *hexagon_get_usefs_path(void)
     g_free(exe_dir);
     return g_string_free(lib_search_dir, false);
 }
+#define SHMEM_VTCM "hexagon_vtcm"
+
+static void *vtcm_addr;
+uint64_t vtcm_size;
+
+static void vtcm_exit_handler(void)
+
+{
+    if (vtcm_addr) {
+        #if defined(__APPLE__)
+        g_free(vtcm_addr);
+        #else
+        munmap(vtcm_addr, vtcm_size);
+        #endif
+    }
+}
+
+volatile int hexagon_coproc_available; /* set/used by multipole threads */
+static int memfd_fd = -1;
+static void *setup_shared_vtcm(uint64_t vtcm_size)
+
+{
+    #if defined(__APPLE__)
+    void *addr = g_malloc0(vtcm_size);
+    #else
+    GString *s = g_string_new(NULL);
+
+    g_string_printf(s, "%s_%u", SHMEM_VTCM, getpid());
+    gchar *shm_name = g_string_free(s, false);
+    int fd = memfd_create(shm_name, 0);
+    if (fd == -1) {
+        hw_error("qemu: shm_open failed:%s:%s\n", strerror(errno), shm_name);
+        g_free(shm_name);
+        exit(1);
+    }
+    memfd_fd = fd;
+
+    if (ftruncate(fd, vtcm_size) == -1) {
+        hw_error("qemu: ftruncate failed:%s:%s\n", strerror(errno), shm_name);
+        g_free(shm_name);
+        exit(1);
+    }
+
+    void *addr = (void *)mmap(0, vtcm_size, PROT_READ | PROT_WRITE,
+             MAP_SHARED, fd, 0);
+    if (addr == MAP_FAILED) {
+        hw_error("qemu: mmap failed : %s:%s\n", strerror(errno), shm_name);
+        g_free(shm_name);
+        exit(1);
+    }
+    ATOMIC_STORE(hexagon_coproc_available, true);
+    g_free(shm_name);
+    #endif
+    atexit(vtcm_exit_handler);
+
+    return addr;
+}
 
 static void hexagon_common_init(MachineState *machine, Rev_t rev)
 {
@@ -169,24 +230,11 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
         machine->ram_size, &error_fatal);
     memory_region_add_subregion(address_space, 0x0, sram);
 
-#if 0
-see hw/vfio/pci-quirks.c
-
-*info = g_malloc0(size)
-
-    p = mmap(NULL, nv2reg->size, PROT_READ | PROT_WRITE,
-             MAP_SHARED | MAP_ANONYMOUS, vdev->vbasedev. -1, nv2reg->offset);
-    if (p == MAP_FAILED) {
-        ret = -errno;
-        goto free_exit;
-    }
-    memory_region_init_ram_ptr(&quirk->mem[0], OBJECT(vdev), "nvlink2-mr",
-                               nv2reg->size, p);
-#endif
-
     MemoryRegion *vtcm = g_new(MemoryRegion, 1);
-    memory_region_init_ram(vtcm, NULL, "vtcm.ram", cfgTable->vtcm_size_kb * 1024,
-        &error_fatal);
+    vtcm_size = cfgTable->vtcm_size_kb * 1024;
+    vtcm_addr = setup_shared_vtcm(vtcm_size);
+
+    memory_region_init_ram_ptr(vtcm, NULL, "vtcm.ram", vtcm_size, vtcm_addr);
     memory_region_add_subregion(address_space, cfgTable->vtcm_base, vtcm);
 
     /* Test region for cpz addresses above 32-bits */
@@ -211,23 +259,30 @@ see hw/vfio/pci-quirks.c
         CPUHexagonState *env = &cpu->env;
 
         qdev_prop_set_uint32(DEVICE(cpu), "thread-count", machine->smp.cpus);
-        qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr", cfgExtensions->cfgbase);
+        qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr",
+            cfgExtensions->cfgbase);
         if (cpu->rev_reg == 0) {
             qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
         }
-        qdev_prop_set_uint32(DEVICE(cpu), "l2vic-base-addr", cfgExtensions->l2vic_base);
-        qdev_prop_set_uint32(DEVICE(cpu), "qtimer-base-addr", cfgExtensions->qtmr_rg0);
+        qdev_prop_set_uint32(DEVICE(cpu), "l2vic-base-addr",
+            cfgExtensions->l2vic_base);
+        qdev_prop_set_uint32(DEVICE(cpu), "qtimer-base-addr",
+            cfgExtensions->qtmr_rg0);
         object_property_set_link(OBJECT(cpu), "vtcm", OBJECT(vtcm),
                 &error_fatal);
 
-        /* CPU #0 is the only CPU running at boot, others must be
+        /*
+         * CPU #0 is the only CPU running at boot, others must be
          * explicitly enabled via start instruction.
          */
         qdev_prop_set_bit(DEVICE(cpu), "start-powered-off", (i != 0));
 
         HEX_DEBUG_LOG("%s: first cpu at 0x%p, env %p\n",
-                __FUNCTION__, cpu, env);
+                __func__, cpu, env);
 
+        env->vtcm_base = cfgTable->vtcm_base;
+        env->vtcm_size = vtcm_size;
+        env->memfd_fd = memfd_fd;
         if (i == 0) {
             hexagon_init_bootstrap(machine, cpu);
             if (!cpu->usefs) {
@@ -240,8 +295,7 @@ see hw/vfio/pci-quirks.c
             g_string_append(argv, machine->kernel_cmdline);
             env->cmdline = g_string_free(argv, false);
             env->dir_list = NULL;
-        }
-        else {
+        } else {
             if (cpu_0->usefs) {
                 qdev_prop_set_string(DEVICE(cpu), "usefs", cpu_0->usefs);
             }
@@ -267,7 +321,8 @@ see hw/vfio/pci-quirks.c
         NULL);
     sysbus_mmio_map(SYS_BUS_DEVICE(dev), 1, cfgTable->fastl2vic_base);
 
-    /* This is tightly with the IRQ selected must match the value below
+    /*
+     * This is tightly with the IRQ selected must match the value below
      * or the interrupts will not be seen
      */
     QCTQtimerState *qtimer = QCT_QTIMER(qdev_new(TYPE_QCT_QTIMER));
@@ -294,7 +349,8 @@ see hw/vfio/pci-quirks.c
     hexagon_config_table *config_table = cfgTable;
 
     config_table->l2tcm_base = HEXAGON_CFG_ADDR_BASE(cfgTable->l2tcm_base);
-    config_table->subsystem_base = HEXAGON_CFG_ADDR_BASE(cfgExtensions->csr_base);
+    config_table->subsystem_base =
+        HEXAGON_CFG_ADDR_BASE(cfgExtensions->csr_base);
     config_table->vtcm_base = HEXAGON_CFG_ADDR_BASE(cfgTable->vtcm_base);
     config_table->l2cfg_base = HEXAGON_CFG_ADDR_BASE(cfgTable->l2cfg_base);
     config_table->fastl2vic_base =

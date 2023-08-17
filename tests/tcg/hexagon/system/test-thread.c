@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 #include <q6standalone.h>
 #include <string.h>
+#include "filename.h"
 
 #define THCNT 8
 static int thid[THCNT] = { 0 };
@@ -74,12 +75,12 @@ int main()
     thread_join(1 << 7);
 
     if (memcmp(thid, expect, sizeof(expect))) {
-        printf("FAIL\n");
+        printf("FAIL : %s\n", __FILENAME__);
         for (int I = 0; I < THCNT; I++)
             printf("EXPECT: expect[%d] = %d, GOT: thid[%d] = %d\n", I,
                    expect[I], I, thid[I]);
         return 1;
     }
-    printf("PASS\n");
+    printf("PASS : %s\n", __FILENAME__);
     return 0;
 }

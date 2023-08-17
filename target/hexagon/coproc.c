@@ -15,8 +15,8 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef HMX_STANDALONE_BUILD
-#include "hmx/hmx_hex_arch_types.h"
+#ifdef COPROC_STANDALONE_BUILD
+#include "hex_arch_types.h"
 #else
 #include "qemu/osdep.h"
 #include "exec/cpu_ldst.h"
@@ -25,11 +25,13 @@
 #endif
 #include "coproc.h"
 
-/* NOTE: hmx_coproc doesnt actualy exist in qemu build it is on server */
-extern void hmx_coproc(CoprocArgs args);
-
-void coproc(CoprocArgs args)
+/* this is called from the client side */
+void coproc(const CoprocArgs *args)
 {
-    hmx_coproc(args); /* NOTE: this should be the actual rpc call to server */
+#if !defined(CONFIG_USER_ONLY)
+    if (ATOMIC_LOAD(hexagon_coproc_available) == true) {
+        hexagon_coproc_rpclib_call((const void *)args);
+    }
+#endif
 }
 

@@ -38,7 +38,7 @@ TESTS += \
 	tlblock \
 	k0lock \
 	invalid_opcode \
-	invalid_hmx \
+	invalid_coproc \
 	sys_atomics \
 	timer_reg \
 	qtimer_test \
@@ -52,10 +52,10 @@ TESTS += \
 	swi_wait \
 	udma \
 	ieee_fp \
-	hmx \
-	hmx_conv \
-	hmx_conv_fp16 \
-	hmx_range \
+	coproc \
+	coproc_conv \
+	coproc_conv_fp16 \
+	coproc_range \
 	pcycle \
 	neg-framelimit \
 	neg-float_excp \
@@ -120,33 +120,31 @@ mmu_cacheops.o: mmu_cacheops.c mmu.h
 mmu_cacheops: mmu_cacheops.o dummy_mutex.o
 badva.o: badva.c ../hex_test.h
 badva: badva.o
-tlblock: tlblock.o
-k0lock: k0lock.o
+tlblock: tlblock.o thread_common.o
+k0lock: k0lock.o thread_common.o
 invalid_opcode.o: invalid_opcode.c invalid_opcode.h
 invalid_opcode: invalid_opcode.o
-invalid_hmx.o: invalid_hmx.c mmu.h
-invalid_hmx: invalid_hmx.o
-thread_common.o: thread_common.c thread_common.h
-sys_atomics.o: sys_atomics.c thread_common.h
+invalid_coproc.o: invalid_coproc.c mmu.h
+invalid_coproc: invalid_coproc.o
 sys_atomics: sys_atomics.o thread_common.o
 timer_reg: timer_reg.o
 qtimer_test: qtimer_test.o
-qtimer: qtimer.o
-bestwait: bestwait.o
+qtimer: qtimer.o thread_common.o
+bestwait: bestwait.o thread_common.o
 ciad-siad: ciad-siad.o
 fastl2vic: fastl2vic.o
 fastint: fastint.o
-swi: swi.o
+swi: swi.o thread_common.o
 swi2.o: swi2.c interrupts.h
-swi2: swi2.o
+swi2: swi2.o thread_common.o
 swi_wait.o: swi_wait.c util.h thread_common.h
 swi_wait: swi_wait.o util.o thread_common.o
 udma: udma.o
 ieee_fp: ieee_fp.o
-hmx: hmx.o
-hmx_conv: hmx_conv.o hmx_conv_asm.o util.o
-hmx_conv_fp16: hmx_conv_fp16.o
-hmx_range: hmx_range.o
+coproc: coproc.o
+coproc_conv: coproc_conv.o coproc_conv_asm.o util.o
+coproc_conv_fp16: coproc_conv_fp16.o
+coproc_range: coproc_range.o
 wait: wait.o
 pcycle.o: pcycle.c ../hex_test.h
 pcycle: pcycle.o
@@ -160,7 +158,6 @@ hvx_64b: hvx_64b.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
 pendalot: pendalot.o
-vid-group.o: vid-group.c thread_common.h
 vid-group: vid-group.o thread_common.o
 levelint: levelint.o
 swi_fs: swi_fs.o
@@ -168,22 +165,20 @@ vid_reg: vid_reg.o
 int_range: int_range.o
 fopen: fopen.o
 ftrunc: ftrunc.o
-test-thread: test-thread.o
+test-thread: test-thread.o thread_common.o
 access: access.o
 getcwd: getcwd.o
 checkforpriv.o: checkforpriv.c mmu.h
 checkforpriv: checkforpriv.o
-pend_wake_wait: pend_wake_wait.o util.o
+pend_wake_wait: pend_wake_wait.o util.o thread_common.o
 gregs: gregs.o
 multiple_writes.o: multiple_writes.c mmu.h
 multiple_writes: multiple_writes.o
-thread_scheduling: thread_scheduling.o
+thread_scheduling: thread_scheduling.o thread_common.o
 rev: rev.o
-pmu.o: pmu.c thread_common.h
 pmu: pmu.o thread_common.o
-start.o: start.c mmu.h thread_common.h ../hex_test.h
+start.o: start.c mmu.h
 start: start.o thread_common.o
-single_step.o: single_step.c thread_common.h
 single_step: single_step.o single_step_asm.o thread_common.o
 sys_reg_mut.o: sys_reg_mut.c ../reg_mut.h ../hex_test.h
 sys_reg_mut: sys_reg_mut.o
@@ -205,11 +200,11 @@ hvx_64b.o: CFLAGS+= -O2 -mhvx
 hvx-multi.o: CFLAGS+= -O2 -mhvx
 hvx-multi-asm.o: ASFLAGS+= -mhvx
 ieee_fp.o: CFLAGS += -mhvx -mhvx-length=128B -mhvx-ieee-fp
-hmx.o: CFLAGS+= -mhmx
-hmx_conv.o: CFLAGS+= -mhmx
-hmx_conv_asm.o: ASFLAGS+= -mhmx
-hmx_conv_fp16.o: CFLAGS+= -mhmx
-hmx_range.o: CFLAGS+= -mhmx
+coproc.o: CFLAGS+= -mhmx
+coproc_conv.o: CFLAGS+= -mhmx
+coproc_conv_asm.o: ASFLAGS+= -mhmx
+coproc_conv_fp16.o: CFLAGS+= -mhmx
+coproc_range.o: CFLAGS+= -mhmx
 vtcm_error.o: CFLAGS += -mhvx
 pmu.o: CFLAGS += -mhvx
 
@@ -321,8 +316,8 @@ run-access: access
 	echo "valid" > _testfile_access
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
 
-run-hmx_conv_fp16: hmx_conv_fp16
-	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 hmx_input_fp16.dat hmx_output_fp16.dat","$< on $(TARGET_NAME)")
+run-coproc_conv_fp16: coproc_conv_fp16
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 coproc_input_fp16.dat coproc_output_fp16.dat","$< on $(TARGET_NAME)")
 
 run-hvx_64b: hvx_64b
 	$(call run-test, $<, $(QEMU) -M V66G_1024 -kernel $<, "$< on $(TARGET_NAME) V66")

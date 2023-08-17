@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <hexagon_standalone.h>
 #include <hexagon_types.h>
 #include "hexagon_protos.h"
+#include "filename.h"
 #include "ieee_ref_output_dat.h"
 
 union ui32f { int32_t i; float f; };
@@ -137,8 +138,8 @@ int main(int argc, char **argv)
 
     FILE *test_file = fopen("result.txt", "w+");
     if (test_file == NULL) {
+        printf("%s : %s\n", "FAIL", __FILENAME__);
         puts("fopen fail");
-        puts("ieee_fp: FAIL");
         exit(-1);
     }
 
@@ -331,7 +332,7 @@ int main(int argc, char **argv)
     long int pos = ftell(test_file);
     unsigned char *buf = (unsigned char *)malloc((size_t)pos);
     if (!buf) {
-        puts("ieee_fp: FAIL");
+        printf("%s : %s\n", "FAIL", __FILENAME__);
         fclose(test_file);
         exit(-1);
     }
@@ -340,11 +341,11 @@ int main(int argc, char **argv)
     size_t len = fread(buf, 1, (size_t)pos, test_file);
     fclose(test_file);
     if (len != (size_t)pos) {
-        puts("ieee_fp: FAIL");
+        printf("%s : %s\n", "FAIL", __FILENAME__);
         exit(-1);
     }
 
     err = memcmp(buf, &ieee_ref_output_dat[0], sizeof(ieee_ref_output_dat));
-    printf("ieee_fp: %s\n", (err) ? "FAIL" : "PASS");
+    printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);
 	return err;
 }

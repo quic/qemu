@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "hexagon_standalone.h"
+#include "filename.h"
 
 static inline void tlblock(void)
 {
@@ -62,6 +63,6 @@ int main(int argc, char *argv[])
         tlbunlock();
         thread_join(((1 << COMPUTE_THREADS) - 1) << 1);
     }
-    puts("PASS");
+    printf("%s : %s\n", "PASS", __FILENAME__);
     return 0;
 }

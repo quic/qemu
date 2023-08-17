@@ -317,6 +317,7 @@ def need_slot(tag):
     if (
         "A_CVI_SCATTER" not in attribdict[tag]
         and "A_CVI_GATHER" not in attribdict[tag]
+        and "A_COPROC" not in attribdict[tag]
         and ("A_STORE" in attribdict[tag]
              or "A_LOAD" in attribdict[tag])
         and tag != "L4_loadw_phys"
@@ -373,7 +374,7 @@ def is_tmp_result(tag):
 
 
 def is_coproc(tag):
-    return ('A_HMX' in attribdict[tag])
+    return ('A_COPROC' in attribdict[tag])
 
 def is_scatter_gather(tag):
     return (
@@ -388,10 +389,10 @@ def is_gather(tag):
 
 
 def is_coproc_act(tag):
-    return ('A_HMX' in attribdict[tag] and 'A_PAIR_1OF2' in attribdict[tag]);
+    return ('A_COPROC' in attribdict[tag] and 'A_PAIR_1OF2' in attribdict[tag]);
 
 def is_coproc(tag):
-    return ('A_HMX' in attribdict[tag])
+    return ('A_COPROC' in attribdict[tag])
 
 def is_scatter_gather(tag):
     return (

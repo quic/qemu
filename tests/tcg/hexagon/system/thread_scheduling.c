@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2022-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 
 #include <hexagon_standalone.h>
 #include <stdio.h>
+#include "filename.h"
 
 volatile int running = 1;
 
@@ -39,6 +40,6 @@ int main()
     thread_create(thread_fn, &stack[STACK_SZ - 1], 1, NULL);
     running = 0;
     thread_join(1 << 1);
-    puts("PASS");
+    printf("%s : %s\n", "PASS", __FILENAME__);
     return 0;
 }

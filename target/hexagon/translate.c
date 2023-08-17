@@ -181,8 +181,8 @@ static void gen_exec_counters(DisasContext *ctx)
                     hex_gpr[HEX_REG_QEMU_INSN_CNT], ctx->num_insns);
     tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HVX_CNT],
                     hex_gpr[HEX_REG_QEMU_HVX_CNT], ctx->num_hvx_insns);
-    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HMX_CNT],
-                    hex_gpr[HEX_REG_QEMU_HMX_CNT], ctx->num_coproc_insns);
+    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_COPROC_CNT],
+                    hex_gpr[HEX_REG_QEMU_COPROC_CNT], ctx->num_coproc_insns);
 
     /*
      * Increment cycle count in order to model PCYCLE (global sreg)
@@ -1467,7 +1467,7 @@ static void update_exec_counters(DisasContext *ctx)
         if (GET_ATTRIB(pkt->insn[i].opcode, A_CVI)) {
             num_hvx_insns++;
         }
-        if (GET_ATTRIB(pkt->insn[i].opcode, A_HMX)) {
+        if (GET_ATTRIB(pkt->insn[i].opcode, A_COPROC)) {
             num_coproc_insns++;
         }
 
@@ -1601,9 +1601,11 @@ static void gen_commit_packet(DisasContext *ctx)
     if (pkt->pkt_has_hvx) {
         gen_commit_hvx(ctx);
     }
+#if !defined(CONFIG_USER_ONLY)
     if (pkt->pkt_has_coproc) {
         gen_helper_commit_coproc(cpu_env);
     }
+#endif
     update_exec_counters(ctx);
     if (HEX_DEBUG) {
         TCGv has_st0 =

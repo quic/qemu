@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2020-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "filename.h"
 
 #define QTMR_BASE ((CSR_BASE) + 0x20000)
 #define QTMR_CNTP1_CTL ((uint32_t *)((QTMR_BASE) + 0x102c))
@@ -93,5 +94,5 @@ int main()
     while (start == timer_read()) {
         ;
     }
-    puts("PASS");
+    printf("%s : %s\n", "PASS", __FILENAME__);
 }

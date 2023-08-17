@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include "filename.h"
 
 
 int main() {
@@ -36,7 +37,7 @@ int main() {
   memset(&st, 0, sizeof(struct stat));
   if ((rc = stat(fname, &st)) != 0) {
     perror("stat");
-    printf ("rc = %d\n", rc);
+    printf("FAIL: %s: rc = %d\n", __FILENAME__, rc);
     return 1;
   }
   assert (st.st_size == 6);
@@ -53,14 +54,14 @@ int main() {
   }
   if ((rc = ftruncate(fp, 1)) != 0) {
     perror("ftruncate");
-    printf ("rc = %d\n", rc);
+    printf("FAIL: %s: rc = %d\n", __FILENAME__, rc);
     return 1;
   }
 
   memset(&st, 0, sizeof(struct stat));
   if ((rc = fstat(fp, &st)) != 0) {
     perror("fstat");
-    printf ("rc = %d\n", rc);
+    printf("FAIL: %s: rc = %d\n", __FILENAME__, rc);
     return 1;
   }
   assert (st.st_size == 1);

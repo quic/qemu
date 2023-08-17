@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include "filename.h"
 
 #define DEBUG        0
 
@@ -85,6 +86,6 @@ int main()
 
     test_asids();
 
-    puts(err ? "FAIL" : "PASS");
+    printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);
     return err;
 }

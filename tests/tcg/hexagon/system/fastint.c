@@ -1,4 +1,21 @@
 /*
+ *  Copyright(c) 2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+/*
  * Test the fastl2vic interface.
  *
  *  hexagon-sim a.out --subsystem_base=0xfab0  --cosim_file q6ss.cfg
@@ -9,6 +26,7 @@
 
 #include <assert.h>
 #include <hexagon_standalone.h>
+#include "filename.h"
 
 static uint32_t get_cfgbase()
 {
@@ -99,9 +117,9 @@ main()
      }
 
     if (ret) {
-        printf("%s: FAIL, last failure near line %d\n", __FILE__, ret);
+        printf("%s: FAIL, last failure near line %d\n", __FILENAME__, ret);
     } else {
-        printf("PASS\n");
+        printf("PASS : %s\n", __FILENAME__);
     }
     return ret;
 }

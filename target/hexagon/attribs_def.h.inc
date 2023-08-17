@@ -149,22 +149,22 @@ DEF_ATTRIB(VFETCH, "memory fetch op to L2 for a single vector", "", "")
 
 DEF_ATTRIB(CVI_SLOT23, "Can execute in slot 2 or slot 3 (HVX)", "", "")
 
-DEF_ATTRIB(HMX, "This a matrix multiply instruction.", "", "")
-DEF_ATTRIB(HMX_ACC, "This a matrix multiply instruction accessing only accumulator(s).", "", "")
-DEF_ATTRIB(HMX_CVT,"This a matrix convert instruction.","","")
-DEF_ATTRIB(HMX_POLY,"This a matrix polynomial convert instruction.","","")
+DEF_ATTRIB(COPROC, "", "", "")
+DEF_ATTRIB(COPROC_ACC, "", "", "")
+DEF_ATTRIB(COPROC_CVT, "", "", "")
+DEF_ATTRIB(COPROC_POLY, "", "", "")
 
-DEF_ATTRIB(HMX_CU_SCALAR,"This a matrix instruction that uses the cu scalar bus.","","")
+DEF_ATTRIB(COPROC_CU_SCALAR, "", "", "")
 
-DEF_ATTRIB(HMX_FLT, "This a matrix multiply instruction with FP16.", "", "")
+DEF_ATTRIB(COPROC_FLT, "", "", "")
 DEF_ATTRIB(HVX_FLT, "This a floating point HVX instruction.", "", "")
 
 DEF_ATTRIB(VTCM_ALLBANK_ACCESS, "This instruction allocates in all VTCM schedulers due to a region access.", "", "")
 DEF_ATTRIB(XUMINOR, "XU minor SMTable instruction", "", "")
 
 DEF_ATTRIB(SYNC_MARKER, "This instruction needs a sync marker.", "", "")
-DEF_ATTRIB(HMX_BLOCK_ALIGN, "This instruction aligns the address to the HMX block size for page translation checks.", "", "")
-DEF_ATTRIB(HMX_128B_ALIGN,"This instruction aligns the address to the cache line (128B) size.","","")
+DEF_ATTRIB(COPROC_BLOCK_ALIGN, "", "", "")
+DEF_ATTRIB(COPROC_128B_ALIGN, "", "", "")
 
 
 /* Change-of-flow attributes */
@@ -452,15 +452,15 @@ DEF_ATTRIB(NO_INTRINSIC, "Don't generate an intrisic", "", "")
 
 DEF_ATTRIB(NO_XML, "Don't generate a XML docs for this instruction", "", "")
 
-DEF_ATTRIB(DMA,  "User-DMA instruction", "", "")
+DEF_ATTRIB(DMA, "User-DMA instruction", "", "")
 DEF_ATTRIB(VERIF_DMASTEP,  "Hiphop needs to step dma prior to executing this packet", "", "")
 DEF_ATTRIB(VERIF_DMATICK,  "DMA gets a tick in verif mode for this instruction after a commit", "", "")
 
-DEF_ATTRIB(HVX_IEEE_FP, "HVX IEEE FP extension instruction","","")
+DEF_ATTRIB(HVX_IEEE_FP, "HVX IEEE FP extension instruction", "", "")
 DEF_ATTRIB(NOTE_HVX_IEEE_FP, "Only supported on the HVX cores with the IEEE FP extension","","")
 
 DEF_ATTRIB(HVX_IEEE_FP_DV_ONE, "HVX IEEE FP extension instruction - dual pipes: P2 and P3 - output only on P2","","")
-DEF_ATTRIB(HVX_IEEE_FP_ACC, "HVX IEEE FP accumulate instruction","","")
+DEF_ATTRIB(HVX_IEEE_FP_ACC, "HVX IEEE FP accumulate instruction", "", "")
 DEF_ATTRIB(HVX_IEEE_BF, "HVX IEEE BF extension instruction: 16-bit bfloat input","","")
 DEF_ATTRIB(HVX_IEEE_FP_OUT_BF, "HVX IEEE FP extension instruction: 16-bit bfloat output","","")
 DEF_ATTRIB(HVX_IEEE_FP_OUT_16, "HVX IEEE FP extension instruction: 16-bit output","","")

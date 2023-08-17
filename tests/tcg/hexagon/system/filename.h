@@ -14,25 +14,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef FILENAME_H
+#define FILENAME_H 1
 
-#ifndef HEX_COPROC_H
-#define HEX_COPROC_H
+#include <string.h>
 
-typedef struct {
-    int32_t opcode;
-    hwaddr vtcm_base;
-    uint32_t vtcm_size;
-    uint8_t minver;
-    uint8_t unit;
-    uint16_t spare;
-    uint32_t reg_usr;
-    int32_t fd;
-    int32_t page_size;
-    int32_t arg1;
-    int32_t arg2;
-} CoprocArgs;
+#define __FILENAME__ \
+    ((strrchr(__FILE__, '/')) ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-void coproc(const CoprocArgs *args);
-
-extern int hexagon_coproc_available;
 #endif

@@ -109,6 +109,7 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_BOOL("count-gcycle-xt", HexagonCPU, count_gcycle_xt, false),
     DEFINE_PROP_BOOL("sched-limit", HexagonCPU, sched_limit, false),
     DEFINE_PROP_STRING("usefs", HexagonCPU, usefs),
+    DEFINE_PROP_STRING("coproc", HexagonCPU, coproc_path),
     DEFINE_PROP_UINT64("config-table-addr", HexagonCPU, config_table_addr,
         0xffffffffULL),
     DEFINE_PROP_BOOL("virtual-platform-mode", HexagonCPU, vp_mode, false),
@@ -604,9 +605,9 @@ static void hexagon_cpu_reset_hold(Object *obj)
     clear_wait_mode(env);
 
     if (cs->cpu_index == 0) {
-        CoprocArgs args;
+        CoprocArgs args = {0};
         args.opcode = COPROC_RESET;
-        coproc(args);
+        coproc(&args);
 
         *(env->g_pcycle_base) = 0;
         memset(env->g_sreg, 0, sizeof(target_ulong) * NUM_SREGS);
@@ -726,6 +727,59 @@ static struct ProcessorState ProcessorStateV68 = {
     .timing_on = 0,
 };
 
+#if !defined(CONFIG_USER_ONLY)
+#define COPROC_ENV_VAR "QEMU_HEXAGON_COPROC"
+static const char *get_coproc_env_path(void)
+
+{
+    char path[2048];
+
+    if (!getenv(COPROC_ENV_VAR)) {
+        return NULL;
+    }
+    unsigned len = snprintf(path, sizeof(path), "%s", getenv(COPROC_ENV_VAR));
+    if (len >= sizeof(path)) {
+        return NULL;
+    }
+    return g_strdup(path);
+}
+
+static const char *get_coproc_path(CPUHexagonState *env)
+
+{
+    HexagonCPU *cpu = env_archcpu(env);
+
+    /* try command line first */
+    if (cpu->coproc_path && *cpu->coproc_path != '\0') {
+        /*
+         * qemu_log("Hexagon COPROC: coproc=<path> found:\n"
+         *    "\tUsing (%s)\n",
+         *    cpu->coproc_path);
+         */
+        return g_strdup(cpu->coproc_path);
+    }
+
+    /* try environment variable second */
+    const char *env_coproc_path = get_coproc_env_path();
+    if (env_coproc_path) {
+        /*
+         * qemu_log("Hexagon COPROC: %s environement variable found:\n"
+         *    "\tUsing (%s)\n",
+         *    COPROC_ENV_VAR,
+         *    env_coproc_path);
+         */
+        return env_coproc_path;
+    }
+
+    qemu_log("Fatal error: Hexagon COPROC path not found:\n"
+        "\tEither set environment variable (%s).\n"
+        "\tOr use -cpu coproc=<path> command line option.\n",
+        COPROC_ENV_VAR);
+    abort();
+    return NULL;
+}
+#endif
+
 static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 {
     CPUState *cs = CPU(dev);
@@ -776,15 +830,24 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->pmu.g_ctrs_off = g_malloc0(NUM_PMU_CTRS * sizeof(*env->pmu.g_ctrs_off));
         env->pmu.g_events = g_malloc0(NUM_PMU_CTRS * sizeof(*env->pmu.g_events));
 
-        CoprocArgs args;
-        memset(&args, 0, sizeof(args));
-        args.opcode = COPROC_INIT;
-        if (cpu->vtcm) {
-            args.vtcm_haddr = memory_region_get_ram_ptr(cpu->vtcm);
-            args.vtcm_base = cpu->vtcm->addr;
+        const char *coproc_path = get_coproc_path(env);
+        if (coproc_path) {
+            if (ATOMIC_LOAD(hexagon_coproc_available) == true) {
+                if (hexagon_coproc_rpclib_init(coproc_path) == 1) {
+                    g_assert_not_reached();
+                }
+            }
+            g_free((void *)coproc_path);
         }
+
+        CoprocArgs args = {0};
+        args.opcode = COPROC_INIT;
+        args.vtcm_base = env->vtcm_base;
+        args.vtcm_size = env->vtcm_size;
+        args.minver = 0;
         args.reg_usr = GET_FIELD(USR_FPCOPROC, env->gpr[HEX_REG_USR]);
-        coproc(args);
+        args.fd = env->memfd_fd;
+        coproc(&args);
     } else {
         CPUState *cpu0_s = NULL;
         CPUHexagonState *env0 = NULL;

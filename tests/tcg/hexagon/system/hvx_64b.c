@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2022-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include "hexagon_standalone.h"
 #define NO_DEFAULT_EVENT_HANDLES
 #include "mmu.h"
+#include "filename.h"
 
 #define HEX_CAUSE_UNSUPORTED_HVX_64B 0x002
 #define HEX_CAUSE_NO_COPROC_ENABLE 0x016
@@ -118,6 +119,6 @@ int main(int argc, char **argv)
              : : : "r0");
     check_hvx(set_hvx_64b, 1 << HEX_CAUSE_NO_COPROC_ENABLE);
 
-    puts(err ? "FAIL" : "PASS");
+    printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);
     return err;
 }

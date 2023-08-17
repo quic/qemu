@@ -793,7 +793,7 @@ typedef enum hvx_resource {
 
 enum coproc_type_info {
     COPROC_HVX,
-	COPROC_HMX,
+    COPROC_RPC,
 	COPROC_EXT
 };
 typedef enum coproc_type_info coproc_type_info_t;

@@ -55,7 +55,7 @@ def main():
         for tag in hex_common.tags:
             if hex_common.tag_ignore(tag):
                 continue
-            if "A_HMX" in hex_common.attribdict[tag]:
+            if "A_COPROC" in hex_common.attribdict[tag]:
                 continue
             if "A_MEMSIZE_0B" in hex_common.attribdict[tag]:
                 continue

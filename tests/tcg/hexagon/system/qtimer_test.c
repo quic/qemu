@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2020-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 
 /*
  *
- *	Qtimer Example
+ * Qtimer Example
  *
  * This example initializes two timers that cause interrupts at different
  * intervals.  The thread 0 will sit in wait mode till the interrupt is
@@ -26,6 +26,7 @@
  */
 #include <assert.h>
 
+#include "filename.h"
 #include "qtimer.h"
 
 int main()
@@ -43,7 +44,7 @@ int main()
     enable_core_interrupt();
 
     init_l2vic();
-    // initialize qtimers 1 and 2
+    /* initialize qtimers 1 and 2 */
     init_qtimers(3);
 
     u32 ver1 = read_ver1();
@@ -53,13 +54,15 @@ int main()
     assert(ver2 == ver1);
 
     while (qtimer2_cnt < 2) {
-        /* Thread 0 waits for interrupts */
-        /* Wait disabled, spin instead: qemu timer bug when
-         *  all threads are waiting.
+        /*
+         * Thread 0 waits for interrupts
+         * Wait disabled, spin instead: qemu timer bug when
+         * all threads are waiting.
          */
         asm_wait();
-	printf ("qtimer_cnt1 = %d, qtimer_cnt2 = %d\n", qtimer1_cnt, qtimer2_cnt);
+        printf("qtimer_cnt1 = %d, qtimer_cnt2 = %d\n", qtimer1_cnt,
+               qtimer2_cnt);
     }
-    printf("PASS\n");
+    printf("PASS : %s\n", __FILENAME__);
     return 0;
 }

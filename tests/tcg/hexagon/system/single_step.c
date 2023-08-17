@@ -19,6 +19,7 @@
 #include <hexagon_standalone.h>
 #include "single_step.h"
 #include "thread_common.h"
+#include "filename.h"
 
 static inline uint32_t get_ssr()
 {
@@ -94,14 +95,14 @@ int main(void)
   }
 
   if (err) {
-    printf("FAIL:\n");
+    printf("FAIL : %s\n", __FILENAME__);
     return 1;
   }
 
   printf("witness_1=%d, witness_2=%d, witness_3=%d, witness_4=%d\n",
            witness_1, witness_2, witness_3, witness_4);
 
-  printf("PASS:\n");
+  printf("PASS : %s\n", __FILENAME__);
   return 0;
 
 }

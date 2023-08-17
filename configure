@@ -185,7 +185,7 @@ cross_compile="no"
 cross_prefix=""
 host_cc="cc"
 EXTRA_CFLAGS=""
-EXTRA_CXXFLAGS=""
+EXTRA_CXXFLAGS="-Wno-undef"
 EXTRA_OBJCFLAGS=""
 EXTRA_LDFLAGS=""
 

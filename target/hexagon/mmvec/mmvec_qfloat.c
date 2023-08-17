@@ -17,10 +17,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
-/* Not supported and rejected by clang-11, possibly available in newer
- * clang releases:
- */
-#if !defined(__clang_major__) || (defined(__clang_major__) && __clang_major__ < 11)
+#if !defined(__clang__)
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
 

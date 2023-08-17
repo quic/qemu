@@ -1060,7 +1060,7 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         pkt->pkt_has_hvx |=
             GET_ATTRIB(pkt->insn[i].opcode, A_CVI);
         pkt->pkt_has_coproc |=
-            GET_ATTRIB(pkt->insn[i].opcode, A_HMX);
+            GET_ATTRIB(pkt->insn[i].opcode, A_COPROC);
     }
 
     decode_assembler_count_fpops(pkt);

@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2020-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 
 /*
  *
- *	Qtimer Example
+ * Qtimer Example
  *
  * This example initializes two timers that cause interrupts at different
  * intervals.  The thread 0 will sit in wait mode till the interrupt is
@@ -30,11 +30,12 @@
 #include <hexagon_sim_timer.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "filename.h"
 
 #define COMPUTE_THREADS 3
 #define STACK_SIZE 16384
 
-volatile int exit_flag;
+volatile int exit_flag; /* required */
 unsigned long long start_cycles, current_cycles;
 static char stack[COMPUTE_THREADS][STACK_SIZE] __attribute__((__aligned__(8)));
 
@@ -47,8 +48,8 @@ void add_translation(void(*va), void(*pa), int cacheability);
 typedef unsigned long u32;
 typedef unsigned long long u64;
 
-typedef volatile unsigned long vu32;
-typedef volatile unsigned long long vu64;
+typedef volatile unsigned long vu32; /* reqiured */
+typedef volatile unsigned long long vu64; /* required */
 
 #define QTMR_BASE ((CSR_BASE) + 0x20000)
 #define QTMR_AC_CNTACR ((vu32 *)((QTMR_BASE) + 0x40))
@@ -78,16 +79,16 @@ typedef volatile unsigned long long vu64;
 #define ticks_per_qtimer1 ((QTMR_FREQ) / 7000)
 #define ticks_per_qtimer2 ((QTMR_FREQ) / 700)
 
-static volatile int qtimer1_cnt = 0, qtimer2_cnt = 0, loop = 0,
-                    thread_cnt[4] = { 0, 0, 0, 0 };
+static volatile int qtimer1_cnt = 0, qtimer2_cnt = 0, loop = 0, /* required */
+                    thread_cnt[4] = { 0, 0, 0, 0 }; /* required */
 static u32 tval, tval2;
 
 static void thread_resume(int thread_num)
 {
     asm volatile(".align 32\n"
-                 // get thread number
+                 /* get thread number */
                  "r1 = %0\n"
-                 // put thread in wait mode
+                 /* put thread in wait mode */
                  "    resume(r1)\n"
                  :
                  : "r"(thread_num)
@@ -96,7 +97,7 @@ static void thread_resume(int thread_num)
 
 static void asm_wait()
 {
-    // printf("All threads going into wait mode\n");
+    /* printf("All threads going into wait mode\n"); */
     asm volatile("r0 = #7\n"
                  "wait(r0)\n"
                  :
@@ -106,7 +107,8 @@ static void asm_wait()
 
 void update_qtimer1()
 {
-    u64 cval = (((u64)*QTMR_CNTP_CVAL_HI) << 32) | ((u64)*QTMR_CNTP_CVAL_LO);
+    u64 cval = (((u64) *QTMR_CNTP_CVAL_HI) << 32) |
+        ((u64) *QTMR_CNTP_CVAL_LO);
     cval += ticks_per_qtimer1;
     *QTMR_CNTP_CVAL_LO = (u32)(cval & 0xffffffff);
     *QTMR_CNTP_CVAL_HI = (u32)(cval >> 32);
@@ -114,7 +116,8 @@ void update_qtimer1()
 
 void update_qtimer2()
 {
-    u64 cval = (((u64)*QTMR_CNTP2_CVAL_HI) << 32) | ((u64)*QTMR_CNTP2_CVAL_LO);
+    u64 cval = (((u64) *QTMR_CNTP2_CVAL_HI) << 32) |
+        ((u64) *QTMR_CNTP2_CVAL_LO);
     cval += ticks_per_qtimer2;
     *QTMR_CNTP2_CVAL_LO = (u32)(cval & 0xffffffff);
     *QTMR_CNTP2_CVAL_HI = (u32)(cval >> 32);
@@ -122,15 +125,15 @@ void update_qtimer2()
 
 void init_qtimers(int ctr)
 {
-    // enable read/write access to all timers
+    /* enable read/write access to all timers */
     *QTMR_AC_CNTACR = 0x3f;
     if (ctr & 1) {
-        // set up timer 1
+        /* set up timer 1 */
         *QTMR_CNTP_TVAL = ticks_per_qtimer1;
         *QTMR_CNTP_CTL = 1;
     }
     if (ctr & 2) {
-        // set up timer 2
+        /* set up timer 2 */
         *QTMR_CNTP2_TVAL = ticks_per_qtimer2;
         *QTMR_CNTP2_CTL = 1;
     }
@@ -175,34 +178,40 @@ void intr_handler(int irq)
     __asm__ __volatile__("%0 = VID" : "=r"(vid));
 
     if (vid == IRQ1) {
-        //printf ("IRQ1 start\n");
+        /* printf("IRQ1 start\n"); */
         qtimer1_cnt++;
         update_l2vic(vid);
         update_qtimer1();
-        //printf ("IRQ1 end\n");
+        /* printf("IRQ1 end\n"); */
     } else if (vid == IRQ2) {
         int i = 0;
         int pending = *L2VIC_INT_PENDING(0);
         update_l2vic(vid);
-        //printf ("IRQ2 is waiting for next pending, pending = 0x%x\n", pending);
+        /*
+         * printf("IRQ2 is waiting for next pending,
+         * pending = 0x%x\n", pending);
+         */
         while (1) {
-            //printf ("tripcnt: %d\n", i++);
+            /* printf("tripcnt: %d\n", i++); */
             if (*L2VIC_INT_PENDING(IRQ1) == 0x8) {
-                //printf ("Notice another IRQ1 event while running IRQ2 handler\n");
+                /*
+                 *printf("Notice another IRQ1 event while running
+                 * IRQ2 handler\n");
+                 */
                 break;
             }
         }
         qtimer2_cnt++;
         update_qtimer2();
-        //printf ("IRQ2 is serviced\n");
+        /* printf("IRQ2 is serviced\n"); */
     } else {
         printf("Other IRQ %lu\n", vid);
     }
 }
 
 /*
-    Hexagon cores v65 and above use interrupt 2 instead of interrupt 32
-*/
+ *  Hexagon cores v65 and above use interrupt 2 instead of interrupt 32
+ */
 void enable_core_interrupt()
 {
     int irq = 2;
@@ -225,16 +234,18 @@ int main()
     enable_core_interrupt();
 
     init_l2vic();
-    // initialize qtimers 1 and 2
+    /* initialize qtimers 1 and 2 */
     init_qtimers(3);
     int last = 1;
 
     while (qtimer2_cnt < 25) {
         /* Thread 0 waits for interrupts */
-	if (last == qtimer2_cnt) printf ("tick: %d\n", qtimer2_cnt);
-	last = qtimer2_cnt+1;
+        if (last == qtimer2_cnt) {
+            printf("tick: %d\n", qtimer2_cnt);
+        }
+        last = qtimer2_cnt + 1;
         asm_wait();
     }
-    printf("PASS\n");
+    printf("PASS : %s\n", __FILENAME__);
     return 0;
 }

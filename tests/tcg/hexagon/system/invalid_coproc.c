@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,10 +22,11 @@
 #include "hexagon_standalone.h"
 #define NO_DEFAULT_EVENT_HANDLES
 #include "mmu.h"
+#include "filename.h"
 
 #define HEX_CAUSE_NO_COPROC2_ENABLE 0x18
 
-void invalid_hmx(void)
+void invalid_coproc(void)
 {
     /* nops pads are a workaround for QTOOL-54399 */
     asm volatile ("nop");
@@ -36,7 +37,7 @@ void invalid_hmx(void)
 void my_err_handler_helper(uint32_t ssr)
 {
     uint32_t cause = GET_FIELD(ssr, SSR_CAUSE);
-    
+
     if (cause < 64) {
         *my_exceptions |= 1LL << cause;
     } else {
@@ -58,12 +59,12 @@ MAKE_ERR_HANDLER(my_err_handler, my_err_handler_helper)
 
 int main()
 {
-    puts("Hexagon invalid hmx test");
+    puts("Hexagon invalid coproc test");
 
     INSTALL_ERR_HANDLER(my_err_handler);
-    invalid_hmx();
+    invalid_coproc();
     check32(*my_exceptions, 1 << HEX_CAUSE_NO_COPROC2_ENABLE);
 
-    puts(err ? "FAIL" : "PASS");
+    printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);
     return err;
 }

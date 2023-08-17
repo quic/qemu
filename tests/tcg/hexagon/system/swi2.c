@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2022-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "filename.h"
 
 #define MAX_INT_NUM (8)
 #define ALL_INTERRUPTS_MASK (0xff)
@@ -148,6 +149,6 @@ int main()
         thread_join(1 << (i + 1 + 1));
     }
 
-    puts("PASS");
+    printf("%s : %s\n", "PASS", __FILENAME__);
     return 0;
 }

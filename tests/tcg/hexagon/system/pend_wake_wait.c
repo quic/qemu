@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2022-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "filename.h"
 
 static const int MAX_INT_NUM = 8;
 static const int ALL_INTERRUPTS_MASK = 0xff;
@@ -143,6 +144,6 @@ int main(int argc, char *argv[])
     puts("ints exhausted...");
     thread_join(((1 << COMPUTE_THREADS) - 1) << 1);
 
-    puts("PASS");
+    printf("%s : %s\n", "PASS", __FILENAME__);
     return 0;
 }

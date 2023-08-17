@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "filename.h"
 
 int main(int argc, char *argv[])
 {
@@ -34,23 +35,23 @@ int main(int argc, char *argv[])
         sprintf(fileName, "%s", argv[i]);
         fp = fopen(fileName, "r+");
         if (!fp) {
-            printf("FAIL: file not found: %s\n", fileName);
+            printf("FAIL : %s: file not found: %s\n", __FILENAME__, fileName);
             return 1;
         }
         errno = 0;
         rc = fread(contents, strlen("valid"), 1, fp);
         if (rc != 1) {
-            printf("FAIL: file length mismatch!\n");
+            printf("FAIL : %s: file length mismatch!\n", __FILENAME__);
             fclose(fp);
             return 1;
         }
         if (strncmp(contents, "valid", strlen("valid"))) {
-            printf("FAIL: file contents mismatch!\n");
+            printf("FAIL : %s:  file contents mismatch!\n", __FILENAME__);
             return 1;
         }
         printf("%s\n", contents);
         fclose(fp);
     }
-    printf("PASS\n");
+    printf("PASS : %s\n", __FILENAME__);
     return 0;
 }

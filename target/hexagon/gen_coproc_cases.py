@@ -74,7 +74,7 @@ def main():
     output_file = sys.argv[-1]
     with open(output_file, "w") as f:
         for tag in hex_common.get_user_tags():
-            if "A_HMX" not in hex_common.attribdict[tag]:
+            if "A_COPROC" not in hex_common.attribdict[tag]:
                 continue
             if not hex_common.tag_ignore(tag):
                 gen_coproc_case(f, tag, tagregs, tagimms)

@@ -2687,10 +2687,10 @@ uint32_t HELPER(read_pcyclehi)(CPUHexagonState *env)
 
 void HELPER(commit_coproc)(CPUHexagonState *env)
 {
-    CoprocArgs args;
+    CoprocArgs args = {0};
 
     args.opcode = COPROC_COMMIT;
-    coproc(args);
+    coproc(&args);
 }
 
 /* These macros can be referenced in the generated helper functions */

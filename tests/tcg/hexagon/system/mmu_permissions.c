@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2022 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #define DEBUG        0
 
 #include "mmu.h"
+#include "filename.h"
 
 /* Set up the event handlers */
 MY_EVENT_HANDLE(my_event_handle_error,            my_event_handle_error_helper)
@@ -135,6 +136,6 @@ int main()
 
     test_permissions();
 
-    puts(err ? "FAIL" : "PASS");
+    printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);
     return err;
 }

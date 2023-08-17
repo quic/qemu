@@ -1,5 +1,5 @@
-project('qemu', ['c'], meson_version: '>=0.63.0',
-        default_options: ['warning_level=1', 'c_std=gnu11', 'cpp_std=gnu++11', 'b_colorout=auto',
+project('qemu', ['c', 'cpp'], meson_version: '>=0.63.0',
+        default_options: ['warning_level=1', 'c_std=gnu11', 'cpp_std=gnu++14', 'b_colorout=auto',
                           'b_staticpic=false', 'stdsplit=false', 'optimization=2', 'b_pie=true'],
         version: files('VERSION'))
 
@@ -3838,10 +3838,16 @@ foreach target : target_dirs
       exe_name += '-unsigned'
     endif
 
+    libs_to_link = []
+    if target_name == 'hexagon'
+      libs_to_link = [coproc_rpc]
+    endif
+
     emulator = executable(exe_name, exe['sources'],
                install: true,
                c_args: c_args,
                dependencies: arch_deps + deps + exe['dependencies'],
+               link_with : libs_to_link,
                objects: lib.extract_all_objects(recursive: true),
                link_depends: [block_syms, qemu_syms] + exe.get('link_depends', []),
                link_args: link_args,

@@ -286,7 +286,6 @@ extern TCGv hex_llsc_val;
 extern TCGv_i64 hex_llsc_val_i64;
 extern TCGv hex_cpu_memop_pc_set;
 extern TCGv hex_VRegs_updated;
-extern TCGv hex_QRegs_updated;
 #ifndef CONFIG_USER_ONLY
 extern TCGv hex_greg[NUM_GREGS];
 extern TCGv hex_greg_written[NUM_GREGS];

@@ -1,6 +1,25 @@
+/*
+ *  Copyright(c) 2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ */
+
+
 #include "hvx-multi.h"
 #include <stdio.h>
 #include <hexagon_standalone.h>
+#include "filename.h"
 
 enum {
   resource_unmapped = -1,
@@ -38,10 +57,10 @@ int main()
  * independend of the thread.
  */
     if ((vb[0] == 0) && (va[1] == 0xffffffff)) {
-        printf("PASS: vb[0] = 0x%x\n", vb[0]);
+        printf("PASS : %s: vb[0] = 0x%x\n", __FILENAME__, vb[0]);
         return 0;
     }
-    printf("FAIL: va[0] = 0x%x\n", va[0]);
+    printf("FAIL : %s: va[0] = 0x%x\n", __FILENAME__, va[0]);
     printf("      vb[0] = 0x%x\n", vb[0]);
     return 1;
 

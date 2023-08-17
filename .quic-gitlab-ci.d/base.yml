@@ -55,9 +55,22 @@ variables:
 
   GITLAB_URL: echo "$CI_SERVER_URL" | sed -e 's/^.*:\/\///g' -e 's/:[0-9]*$//g'
 
+  HEX_COPROC_PROJ: qemu/quic-qemu-plugins
+  HEX_COPROC_BIN: coproc_rpc_remote
+  HEX_COPROC_SHA: bba8fe40ed31d090da02bad2330e1e350902ff2a
 ###################################################################
 #    Base templates
 ###################################################################
+coproc_build:
+  script:
+    - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/${HEX_COPROC_PROJ}.git
+    - repo=$(basename $HEX_COPROC_PROJ)
+    - git -C $repo checkout $HEX_COPROC_SHA
+    - make -C $repo/hexagon/coprocs -j
+    - mv $repo/hexagon/coprocs/$HEX_COPROC_BIN ./
+  artifacts:
+    paths: [ $HEX_COPROC_BIN ]
 
 .base-build:
   variables: {BUILDDIR: $CI_JOB_NAME}
@@ -111,7 +124,9 @@ variables:
 
 .base-check-tcg:
   extends: .after-build
-  script: make -C $builddir -j check-tcg V=1 OVERRIDE_OPTS="$OVERRIDE_OPTS"
+  script:
+    - export QEMU_HEXAGON_COPROC=$PWD
+    - make -C $builddir -j check-tcg V=1 OVERRIDE_OPTS="$OVERRIDE_OPTS"
   artifacts:
     when: on_failure
     paths: [ "*_build" ]
@@ -119,7 +134,9 @@ variables:
 
 .base-check:
   extends: .after-build
-  script: make -C $builddir -j check
+  script:
+    - export QEMU_HEXAGON_COPROC=$PWD
+    - make -C $builddir -j check
   artifacts:
     when: on_failure
     paths: [ "*_build" ]
@@ -130,6 +147,7 @@ variables:
   script:
     - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-qurt-tests.git
+    - export QEMU_HEXAGON_COPROC=$PWD
     - qemu-qurt-tests/run_tests.sh $builddir/qemu-system-hexagon
 
 ##################################################################
@@ -152,18 +170,18 @@ hexagon_tarball:
   needs: [hexagon_install]
   extends: .base-tarball
 hexagon_check-tcg:
-  needs: [hexagon_build]
+  needs: [hexagon_build, coproc_build]
   extends: .base-check-tcg
 hexagon_check-tcg-MTTCG:
-  needs: [hexagon_build]
+  needs: [hexagon_build, coproc_build]
   extends: .base-check-tcg
   variables: { OVERRIDE_OPTS: "-accel tcg,thread=multi" }
 hexagon_check:
-  needs: [hexagon_build]
+  needs: [hexagon_build, coproc_build]
   extends: .base-check
 hexagon_qurt-tests:
   extends: .base-qurt-tests
-  needs: [hexagon_build]
+  needs: [hexagon_build, coproc_build]
 
 hexagon-mac_build:
   tags:
@@ -183,14 +201,14 @@ san-hexagon_install:
   needs: [san-hexagon_build]
   extends: .base-install
 san-hexagon_check-tcg:
-  needs: [san-hexagon_build]
+  needs: [san-hexagon_build, coproc_build]
   extends: .base-check-tcg
 san-hexagon_check:
-  needs: [san-hexagon_build]
+  needs: [san-hexagon_build, coproc_build]
   extends: .base-check
 san-hexagon_qurt-tests:
   extends: .base-qurt-tests
-  needs: [san-hexagon_build]
+  needs: [san-hexagon_build, coproc_build]
 
 no-idef-parser-hexagon_build:
   extends: .base-build
@@ -232,7 +250,7 @@ aarch64_check:
 
 test_hexagon_perf:
   extends: .after-build
-  needs: [hexagon_build]
+  needs: [hexagon_build, coproc_build]
   tags:
      - performance-hardware
   # We'll execute a smaller subset of tests, fewer iters for routine
@@ -251,6 +269,7 @@ test_hexagon_perf:
     - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-perf.git
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-benchmarks.git
+    - export QEMU_HEXAGON_COPROC=$PWD
     - res=0 ;
       for mode in default mttcg; do
           cfg=${PERF_TEST_CFG} ;

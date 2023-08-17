@@ -15,8 +15,8 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HMX_COMMON_H
-#define HMX_COMMON_H 1
+#ifndef COPROC_COMMON_H
+#define COPROC_COMMON_H 1
 
 #define BYTE_ALIGNMENT_REQ 2048
 
@@ -114,7 +114,7 @@ void * setup_vtcm(int page_size) {
 	return va;
 }
 
-typedef struct hmx_param {
+typedef struct coproc_param {
 	uint32_t activations_start;
 	uint32_t activations_range;
 	uint32_t weights_start;
@@ -125,7 +125,7 @@ typedef struct hmx_param {
 	uint32_t x_tiles;
 	uint32_t y_tiles;
 	uint32_t z_tiles;
-} hmx_param_t;
+} coproc_param_t;
 
 static uint32_t convert_mask(uint32_t v) {
 	switch(v) {

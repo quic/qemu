@@ -16,10 +16,10 @@
  */
 
 
-#define EXTNAME hmx
-#define EXTSTR "hmx"
+#define EXTNAME coproc
+#define EXTSTR "coproc"
 #include "ext_macros.h"
-#include "hmx/ext.idef"
+#include "coproc/ext.idef"
 #include "ext_unmacros.h"
 #undef EXTNAME
 #undef EXTSTR
