@@ -45,7 +45,7 @@ DEBUG_PRINT_XFP("%s : stat {z:%x inf:%x neg:%x under:%x} exp=0x%04x sig raw=0x%0
 #define DEBUG_PRINT_XFP_VAL(NAME, V)
 #endif
 
-
+#define _mm_srli_epi8(mm, Imm) _mm_and_si128(_mm_set1_epi8(0xFF >> Imm), _mm_srli_epi32(mm, Imm))
 
 #ifdef STANDALONE
 #define VERIF(...)
@@ -504,15 +504,68 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_add)(
 		usr_fp_reg_t usr,
 		hmx_xfp_t 	in_a,
 		hmx_xfp_t 	in_b)
-{
 
+{
 	hmx_xfp_t out = {.EXP = in_a.EXP, .FRAC = in_a.FRAC, .INT = (uint8_t)(in_a.INT+1) };
+/*#if defined(__SSE4_2__)
+	__m128i neg_a = _mm_cvtsi32_si128(_mm_movemask_epi8(_mm_cmpeq_epi32(_mm_or_si128(_mm_set1_epi32(in_a.status.zero),_mm_set1_epi32(in_a.status.inf)),_mm_set1_epi32(1)))? in_a.status.negative : in_a.sig < 0);
+	__m128i neg_b = _mm_cvtsi32_si128(_mm_movemask_epi8(_mm_cmpeq_epi32(_mm_or_si128(_mm_set1_epi32(in_b.status.zero),_mm_set1_epi32(in_b.status.inf)),_mm_set1_epi32(1)))? in_b.status.negative : in_b.sig < 0);
+	uint32_t res = in_a.status.negative && in_b.status.negative;
+	__m128i z = _mm_cvtsi32_si128(_mm_movemask_epi8(_mm_cmpeq_epi32(_mm_and_si128(_mm_cmpeq_epi32(_mm_set1_epi32(in_a.sig),_mm_setzero_si128()),_mm_cmpeq_epi32(_mm_set1_epi32(in_a.status.inf),_mm_setzero_si128())),_mm_set1_epi32(1)))?res:0);
+	__m128i inf = _mm_or_si128(_mm_set1_epi32(in_a.status.inf),_mm_set1_epi32(in_b.status.inf));
+	__m128i in_a_exp = _mm_cvtsi32_si128(in_a.exp);
+	__m128i in_b_exp = _mm_cvtsi32_si128(in_b.exp);
+	if(_mm_movemask_epi8(_mm_cmpeq_epi32(_mm_set1_epi32(in_a.status.under),_mm_set1_epi32(1)))){
+		in_a_exp = _mm_sub_epi32(_mm_setzero_si128(), _mm_slli_epi32(_mm_set1_epi32(1), (in_a.EXP-1)));
+	}
+	if(_mm_movemask_epi8(_mm_cmpeq_epi32(_mm_set1_epi32(in_b.status.under),_mm_set1_epi32(1)))){
+        in_b_exp = _mm_sub_epi32(_mm_setzero_si128(), _mm_slli_epi32(_mm_set1_epi32(1), (in_b.EXP-1)));
+    }
+
+	__m128i deltaexp = _mm_sub_epi32(in_a_exp,in_b_exp);
+	__m128i deltaexpneg = _mm_set1_epi8(_mm_cvtsi128_si32(deltaexp)<=0);
+	//__m128i deltaexpneg = _mm_castps_si128(_mm_cmple_ps(_mm_castsi128_ps(deltaexp),_mm_castsi128_ps(_mm_setzero_si128())));
+	__m128i maxsig = _mm_cvtsi64_si128((_mm_movemask_epi8(deltaexpneg)==0)? in_a.sig : in_b.sig);
+	__m128i minsig = _mm_cvtsi64_si128((_mm_movemask_epi8(deltaexpneg)==0)? in_b.sig : in_a.sig);
+	out.exp = (_mm_movemask_epi8(deltaexpneg)==0)? in_a.exp : in_b.exp;
+	deltaexp = (_mm_movemask_epi8(deltaexpneg)==0)? deltaexp:_mm_sub_epi32(_mm_setzero_si128(),deltaexp);
+	deltaexp = _mm_cvtsi128_si32(deltaexp)>63?_mm_set1_epi32(63):deltaexp;
+//	deltaexp = _mm_cvtsi128_si32(_mm_castps_si128(_mm_cmpgt_ps(_mm_cvtsi128_ps(deltaexp),_mm_castsi128_ps(_mm_set1_epi32(63)))))? _mm_set1_epi32(63):deltaexp;
+	__m128i inexact_mask =_mm_cvtsi128_si32(_mm_cmpeq_epi32(_mm_cvtsi32_si128(state_ptr->thread->processor_ptr->arch_proc_options->xfp_inexact_enable),_mm_setzero_si128()))?_mm_set1_epi64x(0):_mm_sub_epi64(_mm_slli_epi32(_mm_set1_epi64x((int64_t)1LL),_mm_cvtsi128_si32(deltaexp)),_mm_set1_epi64x((int64_t)1));
+	__m128i inexact = _mm_castps_si128(_mm_cmpneq_ss(_mm_castsi128_ps(_mm_and_si128(inexact_mask,minsig)),_mm_setzero_ps()));
+//	int64_t mid = _mm_cvtsi128_si64(minsig);
+	minsig = _mm_or_si128(_mm_srli_epi32(minsig,_mm_cvtsi128_si32(deltaexp)),inexact);
+	out.sig = _mm_cvtsi128_si64(_mm_add_epi64(maxsig,minsig));
+
+	uint8_t neg_out = out.sig < 0;
+
+    out.status.zero = 0;    // Can't have true zero coming out of the adder, yet.
+    out.status.inf =  _mm_cvtsi128_si32(inf); // Doesn't change the flag
+    out.status.under = _mm_cvtsi128_si32(_mm_andnot_si128(inf,_mm_and_si128(_mm_cvtsi32_si128(in_a.status.under), _mm_cvtsi32_si128(in_b.status.under))));
+
+    if (out.status.inf == 0) {  // Don't flip sign if already inf
+        out.status.negative =_mm_movemask_epi8(_mm_or_si128(_mm_or_si128(_mm_and_si128(neg_a, neg_b), z),_mm_set1_epi8(neg_out)));    // both negative, -0 + -0, or negative output
+    } else {
+        out.status.negative = _mm_movemask_epi8(_mm_srli_epi8(inf,1));
+    }
+//THIS SEEMS TO WORK MOST OF THE TIME HOWEVER THERE WAS ONE INSTANCE WHEN I GOT AN ERROR ON qnn_delegate_aib5_mobilenet_v2_b8_float.0.dat. HENCE COMMENTING THIS PORTION OUT!
+	
+#else*/
 
 	uint8_t a_neg = (in_a.status.zero | in_a.status.inf) ? in_a.status.negative : in_a.sig < 0;
 	uint8_t b_neg = (in_b.status.zero | in_b.status.inf) ? in_b.status.negative : in_b.sig < 0;
 	uint8_t z_plus_z_sign = ((in_a.sig==0) && (in_b.sig==0)) ? (in_a.status.negative && in_b.status.negative) : 0;
-	uint8_t inf = in_a.status.inf | in_b.status.inf; // Inf + Inf = Inf, -Inf + -Inf = -Inf, Inf + -Inf = NaN
-
+	uint8_t inf_ = in_a.status.inf | in_b.status.inf; // Inf + Inf = Inf, -Inf + -Inf = -Inf, Inf + -Inf = NaN
+/*	uint8_t a_neg = _mm_movemask_epi8(neg_a);
+	uint8_t b_neg = _mm_movemask_epi8(neg_b);
+	uint8_t z_plus_z_sign = _mm_movemask_epi8(z);
+	uint8_t inf_ = _mm_movemask_epi8(inf);
+	in_a.exp = _mm_cvtsi128_si32(in_a_exp);
+	in_b.exp = _mm_cvtsi128_si32(in_b_exp);
+	int32_t delta_exp = _mm_cvtsi128_si32(deltaexp);
+	uint8_t delta_exp_neg = _mm_movemask_epi8(deltaexpneg);
+	int64_t max_sig = _mm_cvtsi128_si64(maxsig);
+	int64_t min_sig = _mm_cvtsi128_si64(minsig);*/
 	if (in_a.status.under) {
 		in_a.exp = -(1 << (in_a.EXP-1));
 	}
@@ -535,25 +588,24 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_add)(
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_add in1               ", in_b);
 	DEBUG_PRINT_XFP("hmx_xfp_add                    : delta_exp=%x exp_out=%04x", delta_exp, out.exp);
 
+	
 	min_sig =  right_shift_with_inexact(state_ptr, min_sig, delta_exp);
-	out.sig = (max_sig + min_sig) ;
+	out.sig = (max_sig + min_sig);
+	
 	uint8_t neg_out = out.sig < 0;
 	DEBUG_PRINT_XFP("hmx_xfp_add sig addition       : max_sig=0x%016llx min_sig=0x%016llx sig=0x%016llx sign=%u", (long long int)max_sig,(long long int)min_sig,(long long int)out.sig, neg_out);
 
 	out.status.zero = 0; 	// Can't have true zero coming out of the adder, yet.
-	out.status.inf =   inf; // Doesn't change the flag
-	out.status.under = (in_a.status.under && in_b.status.under) && !inf;
+	out.status.inf =   inf_; // Doesn't change the flag
+	out.status.under = (in_a.status.under && in_b.status.under) && !inf_;
 
 	if (out.status.inf == 0) {	// Don't flip sign if already inf
 		out.status.negative = (a_neg & b_neg) | z_plus_z_sign | neg_out;	// both negative, -0 + -0, or negative output
 	} else {
-		out.status.negative = (inf >> 1);
+		out.status.negative = (inf_ >> 1);
 	}
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_add out               ", out);
-
-
-
-
+//#endif
 	return out;
 }
 
@@ -590,6 +642,39 @@ static inline uint8_t hmx_xfp_compute_lza(hmx_state_t * state_ptr, int64_t a, in
 	}
 	return lza;
 }
+static inline __m128i _mm_not_si128 (__m128i x)
+{
+	return _mm_xor_si128(x, _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128()));
+}
+
+static inline __m128i hmx_xfp_compute_lza_intrinsics(hmx_state_t * state_ptr, __m128i a, __m128i b, int32_t msb_bit)
+{
+	__m128i p =  _mm_xor_epi64(a, b);
+	__m128i g = _mm_and_si128(a, b);
+	__m128i z = _mm_or_si128(a, b);
+	__m128i msb = _mm_slli_epi32(_mm_set1_epi64x(1ll),msb_bit);
+	__m128i zeros = _mm_xor_epi64(p,_mm_not_si128(_mm_slli_epi64(z,1)));
+	__m128i ones = _mm_xor_epi64(p,_mm_not_si128(_mm_slli_epi64(g,1)));
+	__m128i z_msb = _mm_srli_epi32(_mm_and_si128(msb,zeros),msb_bit);
+	__m128i o_msb = _mm_srli_epi32(_mm_and_si128(msb,ones),msb_bit);
+	__m128i temp_z = _mm_cvtsi128_si64(z_msb)?_mm_not_si128(zeros):zeros;
+	__m128i temp_o = _mm_cvtsi128_si64(o_msb)?_mm_not_si128(ones):ones;
+	__m128i subtrahend = _mm_sub_epi32(_mm_set1_epi32(64),_mm_set1_epi32(msb_bit));
+	__m128i lza_z = _mm_sub_epi32(_mm_cvtsi64_si128(_mm_cvtsi128_si64(temp_z) ? __builtin_clzll(_mm_cvtsi128_si64(temp_z)) : 64),subtrahend);
+	__m128i lza_o = _mm_sub_epi32(_mm_cvtsi64_si128(_mm_cvtsi128_si64(temp_o) ? __builtin_clzll(_mm_cvtsi128_si64(temp_o)) : 64),subtrahend);
+
+	__m128i lza = _mm_setzero_si128();
+	if(_mm_cvtsi128_si64(_mm_and_si128(msb,z))){
+		lza = lza_z;
+	}
+	else if(_mm_cvtsi128_si64(_mm_and_si128(msb,g))){
+        lza = lza_o; 
+    }
+	else{
+		lza = _mm_cvtsi128_si64(_mm_castps_si128(_mm_cmpgt_ps(_mm_castsi128_ps(lza_z), _mm_castsi128_ps(lza_o)))) ? lza_z : lza_o;
+	}
+	return lza;
+}
 
 
 static inline hmx_xfp_t xfp_adder( hmx_state_t * state_ptr,
@@ -601,8 +686,47 @@ static inline hmx_xfp_t xfp_adder( hmx_state_t * state_ptr,
 		uint32_t EXP,
 		uint32_t compute_lza)
 {
+//	printf("xfp_Adder\n");
 	hmx_xfp_t out   = {.EXP = (uint8_t)(EXP), .FRAC = (uint8_t)(FRAC), .INT = (uint8_t)(INT)  };
-
+#if defined(__SSE_4_2__)
+	__m128i a_z = _mm_set1_epi8((uint8_t) 1);
+	__m128i z = _mm_setzero_si128();
+	__m128i a_t_z = _mm_set1_epi8((uint8_t) 1);
+	__m128i infi = _mm_setzero_si128();
+	__m128i out_exp = _mm_sub_epi32(_mm_setzero_si128(), _mm_slli_epi32(_mm_set1_epi32(1), (out.EXP-1))); 
+	for(uint32_t i = 0; i < N; i++ ) {
+		a_z = _mm_and_si128(a_z,_mm_set1_epi8(in[i].sig==0));
+		a_t_z = _mm_and_si128(a_t_z,_mm_set1_epi8(in[i].status.zero));
+		z = _mm_or_si128(z,_mm_set1_epi32(in[i].status.negative));
+		infi = _mm_or_si128(infi,_mm_set1_epi32(in[i].status.inf));
+		if(_mm_cmpgt_ps(_mm_castsi128_ps(out_exp),_mm_set_ps(0,0,0,in[i].exp))){
+			out_exp = _mm_castps_si128(_mm_set_ps(0,0,0,in[i].exp));
+		}
+	}
+	z = _mm_and_si128(z,a_z);
+	__m128i out_sig = _mm_setzero_si128();
+	int64_t aligned_sig[32] = {0};
+    for(uint32_t i = 0; i < N; i++ ) {
+		__m128i delta_exp = _mm_sub_epi32(out_exp,_mm_set1_epi32(in[i].exp));
+		delta_exp = _mm_cvtsi128_si32(_mm_castps_si128(_mm_cmpgt_ps(_mm_castsi128_ps(delta_exp),_mm_castsi128_ps(_mm_set1_epi32(63)))))? _mm_set1_epi32(63):delta_exp;
+        delta_exp = _mm_cvtsi128_si32(_mm_castps_si128(_mm_cmplt_ps(_mm_castsi128_ps(delta_exp),_mm_castsi128_ps(_mm_set1_epi32(0)))))? _mm_sub_epi32(_mm_setzero_si128(),delta_exp):delta_exp;
+		__m128i inexact_mask =_mm_cvtsi128_si32(_mm_cmpeq_epi32(_mm_cvtsi32_si128(state_ptr->thread->processor_ptr->arch_proc_options->xfp_inexact_enable),_mm_setzero_si128()))?_mm_set1_epi64x(0):_mm_sub_epi64(_mm_slli_epi32(_mm_set1_epi64x((int64_t)1LL),_mm_cvtsi128_si32(delta_exp)),_mm_set1_epi64x((int64_t)1));
+		__m128i inexact = _mm_castps_si128(_mm_cmpneq_ss(_mm_castsi128_ps(_mm_and_si128(inexact_mask,_mm_set1_epi64x(in[i].sig)),_mm_setzero_ps()));
+		__m128i inter = _mm_or_si128(_mm_srli_epi32(_mm_set1_epi64x(in[i].sig),_mm_cvtsi128_si32(delta_exp)),inexact);
+		aligned_sig[i]=_mm_cvtsi128_si64(inter);
+		out_sig = _mm_add_epi64(out_sig+inter);
+		}
+			
+	if(compute_lza){
+		int32_t msb_bit = FRAC + INT - 1;
+		out.lza = _mm_movemask_epi8(hmx_xfp_compute_lza_intrinsics(state_ptr, _mm_cvtsi64_si128(aligned_sig[0]), _mm_cvtsi64_si128(aligned_sig[1]), msb_bit));
+	}
+	out.sig = _mm_cvtsi128_si64(_mm_or_si128(_mm_srli_epi32(out_sig, extra_adder_bit), _mm_and_si128(out_sig,1))); // Remove extra bit
+    out.status.zero = _mm_cvtsi128_si32(_all_true_zeros);   // Can't have true zero coming out of the adder, yet.
+    out.status.inf =  _mm_cvtsi128_si32(infi);  // Doesn't change from input
+    out.status.negative =  _mm_cvtsi128_si32(_mm_cvtsi128_si32(_mm_cmpeq_epi32(infi,_mm_set1_epi32(0))) ? _mm_or_si128(z,_mm_cmplt_ps(_mm_castsi128_ps(_mm_cvtsi64_si128(out.sig)),_mm_castsi128_ps(_mm_set1_epi32(0)))) : _mm_srli_epi8(infi,1));
+	out.exp = _mm_cvtsi128_si32(out_exp);
+#else
 	uint8_t all_zeros = 1;
 	uint8_t all_true_zeros = 1;
 	uint8_t z_plus_z_sign = 0;
@@ -643,6 +767,7 @@ static inline hmx_xfp_t xfp_adder( hmx_state_t * state_ptr,
 	out.status.inf =  inf;	// Doesn't change from input
 	out.status.negative =  (out.status.inf == 0) ? (z_plus_z_sign | (out.sig < 0)) : (inf >> 1);	// 0 + (-) 0, or negative output
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_add_out               ", out);
+#endif
 	return out;
 }
 

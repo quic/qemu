@@ -580,28 +580,6 @@ case "$cpu" in
     # If we truly care, we should simply detect this case at
     # runtime and generate the fallback to serial emulation.
     CPU_CFLAGS="-m64 -mcx16 -msse4.2 -mavx" ;;
-
-  mips*)
-    cpu="mips" ;;
-
-  ppc)
-    CPU_CFLAGS="-m32" ;;
-  ppc64)
-    CPU_CFLAGS="-m64 -mbig-endian" ;;
-  ppc64le)
-    cpu="ppc64"
-    CPU_CFLAGS="-m64 -mlittle-endian" ;;
-
-  s390)
-    CPU_CFLAGS="-m31" ;;
-  s390x)
-    CPU_CFLAGS="-m64" ;;
-
-  sparc|sun4[cdmuv])
-    cpu="sparc"
-    CPU_CFLAGS="-m32 -mv8plus -mcpu=ultrasparc" ;;
-  sparc64)
-    CPU_CFLAGS="-m64 -mcpu=ultrasparc" ;;
 esac
 
 if test -n "$host_arch" && {

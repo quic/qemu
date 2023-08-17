@@ -497,7 +497,9 @@ ARCH_FUNCTION(hmx_ld_act)(hmx_state_t * state_ptr, const paddr_t paddr, const ui
 
     for (uint32_t act_pa_offset = 0, cache_idx = 0; act_pa_offset < block_size; act_pa_offset+=8, cache_idx++)
 	{
-		state_ptr->act_cache_dw[cache_idx] = sim_mem_read8(state_ptr->system, state_ptr->threadId, act_pa_base0 + act_pa_offset);		// would be nice to have a sim_mem_read128
+		state_ptr->act_cache_dw[cache_idx] = sim_mem_read8(state_ptr->system, state_ptr->threadId, act_pa_base0 + act_pa_offset);
+		//paddr_t offset = (act_pa_base0 + act_pa_offset) - state_ptr->system->vtcm_base; 
+		//state_ptr->act_cache_dw[cache_idx] = *(size8u_t*)((uintptr_t)(state_ptr->system->vtcm_haddr) + offset);	// would be nice to have a sim_mem_read128
 #ifdef VERIFICATION
         state_ptr->act_cache_dw_accessed[cache_idx] = 0;  // Clear read flag, mainly used for verif, wrap in some MACRO?
 #endif
@@ -505,7 +507,9 @@ ARCH_FUNCTION(hmx_ld_act)(hmx_state_t * state_ptr, const paddr_t paddr, const ui
 
     for (uint32_t act_pa_offset = 0, cache_idx = (block_size>>3); act_pa_offset < block_size*second_block; act_pa_offset+=8, cache_idx++)
 	{
-        state_ptr->act_cache_dw[cache_idx] = sim_mem_read8(state_ptr->system, state_ptr->threadId, act_pa_base1 + act_pa_offset);
+       // paddr_t offset = (act_pa_base1 + act_pa_offset) - state_ptr->system->vtcm_base;
+       // state_ptr->act_cache_dw[cache_idx] = *(size8u_t*)((uintptr_t)(state_ptr->system->vtcm_haddr) + offset);
+		state_ptr->act_cache_dw[cache_idx] = sim_mem_read8(state_ptr->system, state_ptr->threadId, act_pa_base1 + act_pa_offset);
 #ifdef VERIFICATION
         state_ptr->act_cache_dw_accessed[cache_idx] = 0;  // Clear read flag, mainly used for verif, wrap in some MACRO?
 #endif
@@ -1048,7 +1052,7 @@ void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_b
 	int32_t deep_mode = state_ptr->deep;
 	int32_t flt_mode = type==HMX_FP16;
 	int32_t deep_block_end = deep_mode ? 2 : 1 ;
-	int32_t current_acc = flt_mode ? state_ptr->current_acc_flt : state_ptr->current_acc_fxp;
+	
 	int32_t wgt_stream_idx = 0;
     int x_tap_array[MAX_ACCUMULATORS_SPATIAL];
     int y_tap_array[MAX_ACCUMULATORS_SPATIAL];
@@ -1067,143 +1071,346 @@ void ARCH_FUNCTION(hmx_multiply)(hmx_state_t * state_ptr, uint32_t weights_per_b
 	paddr_t wgt_len = state_ptr->max_weight_pa;
     int32_t mx_fp_rate = state_ptr->QDSP6_MX_FP_RATE;
     int32_t input_ch_fp_rate_stride = 4 * input_ch_stride;
-    if(__builtin_expect(((mx_fp_rate == 2) && (group_size <= parallel_group_size/2) && flt_mode),0)) {
-        input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
-    } else if (__builtin_expect(((mx_fp_rate == 8) && flt_mode), 0)) {
-		input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
-    }
+	if(flt_mode)
+	{
+		int32_t current_acc = state_ptr->current_acc_flt;
+		if((mx_fp_rate == 2) && (group_size <= parallel_group_size/2)) {
+        	input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
+			ARCH_FUNCTION(hmx_ld_wgt)(state_ptr, wgt_addr, wgt_len,  wgt_per_word, output_channel_scale, flt_mode, unpack );
+			for(int32_t block_idx = 0; block_idx < block_end; block_idx++)
+			{
+				int32_t input_ch_end = (((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_channels;
+				int32_t input_ch_start = (block_idx == 0) ? input_ch_start_first_block : 0;
+				ARCH_FUNCTION(hmx_ld_act)(state_ptr,  state_ptr->act_addr, block_idx);
+				for(int32_t y_tap_decoded = 0; y_tap_decoded < y_tap_count; y_tap_decoded++)
+				{
+					y_tap_idx = y_tap_array[y_tap_decoded];
+					for(int32_t deep_block_idx = 0; deep_block_idx < deep_block_end; deep_block_idx++)
+					{
+						for(int32_t x_tap_decoded = 0; x_tap_decoded < x_tap_count; x_tap_decoded++)
+						{
+							x_tap_idx = x_tap_array[x_tap_decoded];
+							for(int32_t input_ch_idx = input_ch_start; input_ch_idx < input_ch_end; input_ch_idx += input_ch_fp_rate_stride)
+							{
+								int32_t wgt_stream_group_idx = wgt_stream_idx; /* save wgt stream pointer for grouped convolution*/
+								int32_t group_idx_stride = 1;
+								for(int32_t group_idx = 0; group_idx < group_count; group_idx += group_idx_stride)
+								{ /* process all groups */
+									DEBUG_PRINT(2, "MX GROUP MULT: saved wgt_stream_group_idx=%d, wgt_stream_idx=%d", wgt_stream_group_idx, wgt_stream_idx);
+									wgt_stream_idx = wgt_stream_group_idx; /* restore wgt stream pointer, reset per group */
+									int32_t input_ch_start_group =  input_ch_idx + (group_idx << format) *group_size; /* starting channel of group */
+									int32_t input_ch_stop_group =  input_ch_start_group + 4*input_ch_stride; /* stop at next group ltin*/
+									input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
+									for(int32_t input_ch_idx2 = input_ch_start_group; input_ch_idx2 < input_ch_stop_group; input_ch_idx2 += input_ch_stride)
+									{
+										int32_t input_ch_idx_raw = (input_ch_idx2 >> format);
+										uint32_t fp8_ch_start = input_ch_start >> format;
+										uint32_t fp8_ch_stop = ((((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_ch_end ) >> format;
+										DEBUG_PRINT(2, "MX MULT: x_tap=%d y_tap=%d input_channel=%d deep_block=%d, group_idx=%d, input_ch_idx=%d, input_ch_idx2=%d, stop_ch=%d", x_tap_decoded, y_tap_decoded, input_ch_idx_raw,deep_block_idx, group_idx, input_ch_idx, input_ch_idx2, input_ch_stop_group);
+										for(int32_t intra_y_counter = 0; intra_y_counter < y_count; intra_y_counter++)
+										{
+											intra_tile_y = intra_tile_y_array[intra_y_counter];
+											int32_t y_next_tile = 0;
+											int32_t act_y_offset = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(y_tap_idx, intra_tile_y, tile_y_mask, &y_next_tile);
 
-    ARCH_FUNCTION(hmx_ld_wgt)(state_ptr, wgt_addr, wgt_len,  wgt_per_word, output_channel_scale, flt_mode, unpack );
+											//DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
+											act_y_offset = (act_y_offset & 0x7FFFFFFF) + (y_next_tile * 0x800); // Clean negative overflow bit
+											//DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
+											for(int32_t intra_x_counter = 0; intra_x_counter < x_count; intra_x_counter++)
+											{
+												intra_tile_x = intra_tile_x_array[intra_x_counter];
+												int32_t overflow = 0;
+												int32_t output_idx = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(x_tap_idx, intra_tile_x, tile_x_mask, &overflow);
+												int32_t acc_select = (overflow) ? (current_acc ^ 0x1) & 0x1 : current_acc & 0x1;
 
-	for(int32_t block_idx = 0; block_idx < block_end; block_idx++)
-    {
-		int32_t input_ch_end = (((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_channels;
-		int32_t input_ch_start = (block_idx == 0) ? input_ch_start_first_block : 0;
-		if (__builtin_expect(((mx_fp_rate == 8) && flt_mode),0)) { input_ch_start &= (0xfff8 << format); input_ch_end = ((input_ch_end & 0x1f) > 0) ? ((input_ch_end + 32) & (0xfff8 << format)) : (input_ch_end & (0xfff8 << format));}
+												output_idx |= intra_tile_y;
 
-        DEBUG_PRINT(2, "MX MULT: Block %d Channel Range: [%d, %d] Deep Block Count=%d, fp_rate=%d flt_mode=%d", block_idx, input_ch_start >> format, input_ch_end >> format, deep_block_end, mx_fp_rate, flt_mode);
+												int32_t mask = (1 << format)-1;
+												output_idx = ((output_idx >> 5) & ~mask) | (output_idx & mask);
 
-		ARCH_FUNCTION(hmx_ld_act)(state_ptr,  state_ptr->act_addr, block_idx);
+												if (overflow && (state_ptr->drop || state_ptr->deep)) {
+													output_idx = -1;
+												}
 
-        for(int32_t y_tap_decoded = 0; y_tap_decoded < y_tap_count; y_tap_decoded++)
-        {
-            y_tap_idx = y_tap_array[y_tap_decoded];
-			for(int32_t deep_block_idx = 0; deep_block_idx < deep_block_end; deep_block_idx++)
-            {
-                for(int32_t x_tap_decoded = 0; x_tap_decoded < x_tap_count; x_tap_decoded++)
-                {
-                    x_tap_idx = x_tap_array[x_tap_decoded];
-					for(int32_t input_ch_idx = input_ch_start; input_ch_idx < input_ch_end; input_ch_idx += input_ch_fp_rate_stride)
-                    {
-						int32_t wgt_stream_group_idx = wgt_stream_idx; /* save wgt stream pointer for grouped convolution*/
-						int32_t group_idx_stride = 1;
-						for(int32_t group_idx = 0; group_idx < group_count; group_idx += group_idx_stride)
-                        { /* process all groups */
-							DEBUG_PRINT(2, "MX GROUP MULT: saved wgt_stream_group_idx=%d, wgt_stream_idx=%d", wgt_stream_group_idx, wgt_stream_idx);
-							wgt_stream_idx = wgt_stream_group_idx; /* restore wgt stream pointer, reset per group */
-							int32_t input_ch_start_group =  input_ch_idx + (group_idx << format) *group_size; /* starting channel of group */
-							int32_t input_ch_stop_group =  input_ch_start_group + 4*input_ch_stride; /* stop at next group ltin*/
-							if(__builtin_expect(flt_mode,0)){
-								if ((mx_fp_rate == 2) && (group_size <= parallel_group_size/2)) {
-                                				input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
-                            					} 
-								else if ((mx_fp_rate == 8) && (group_size > 4)) {
-								input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
-								} 
-								else if ((mx_fp_rate == 8) && (group_size <= 4)) {
-								input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end);
-								//wgt_stream_idx = wgt_stream_group_idx + group_idx % ( 8 / group_size);
-                            					}
-							}
-                            				if(group_size < 4) {
-                                			input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end) ;
-                            				}		
-							for(int32_t input_ch_idx2 = input_ch_start_group; input_ch_idx2 < input_ch_stop_group; input_ch_idx2 += input_ch_stride)
-                            {
-								int32_t input_ch_idx_raw = (input_ch_idx2 >> format);
-								uint32_t fp8_ch_start = input_ch_start >> format;
-								uint32_t fp8_ch_stop = ((((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_ch_end ) >> format;
-                                DEBUG_PRINT(2, "MX MULT: x_tap=%d y_tap=%d input_channel=%d deep_block=%d, group_idx=%d, input_ch_idx=%d, input_ch_idx2=%d, stop_ch=%d", x_tap_decoded, y_tap_decoded, input_ch_idx_raw,deep_block_idx, group_idx, input_ch_idx, input_ch_idx2, input_ch_stop_group);
-                                for(int32_t intra_y_counter = 0; intra_y_counter < y_count; intra_y_counter++)
-                                {
-                                    intra_tile_y = intra_tile_y_array[intra_y_counter];
-                                    int32_t y_next_tile = 0;
-                                    int32_t act_y_offset = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(y_tap_idx, intra_tile_y, tile_y_mask, &y_next_tile);
+												uint16_t act = 0;
+												if (!state_ptr->limit_execeeded) {
+													int32_t cache_idx = act_y_offset + intra_tile_x + input_ch_idx2;
+													act = state_ptr->act_cache_uh[cache_idx>>1] ;
+													VERIF(ARCH_FUNCTION(hmx_act_ld_verif_callback)(state_ptr, act, cache_idx, flt_mode, block_idx););
+												}
+												
+												int32_t output_ch_group_start = (group_idx/(parallel_group_size/group_size))*parallel_group_size; 
+												int32_t output_ch_group_end = output_ch_group_start + parallel_group_size;
+												
 
-                                    //DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
-                                    act_y_offset = (act_y_offset & 0x7FFFFFFF) + (y_next_tile * 0x800); // Clean negative overflow bit
-                                    //DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
-                                    for(int32_t intra_x_counter = 0; intra_x_counter < x_count; intra_x_counter++)
-                                    {
-                                        intra_tile_x = intra_tile_x_array[intra_x_counter];
-                                        int32_t overflow = 0;
-                                        int32_t output_idx = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(x_tap_idx, intra_tile_x, tile_x_mask, &overflow);
-                                        int32_t acc_select = (overflow) ? (current_acc ^ 0x1) & 0x1 : current_acc & 0x1;
+												ARCH_FUNCTION(hmx_mult_inner)(state_ptr, output_idx,acc_select,act,wgt_stream_idx,mult_type,input_ch_idx_raw,x_tap_decoded,y_tap_decoded,block_idx,deep_block_idx, output_channel_scale, flt_mode, group_idx, output_ch_group_start, output_ch_group_end, group_size, fp8_ch_start, fp8_ch_stop);
 
-                                        output_idx |= intra_tile_y;
-
-                                        int32_t mask = (1 << format)-1;
-                                        output_idx = ((output_idx >> 5) & ~mask) | (output_idx & mask);
-
-                                        if (overflow && (state_ptr->drop || state_ptr->deep)) {
-                                            output_idx = -1;
-                                        }
-
-                                        uint16_t act = 0;
-                                        if (!state_ptr->limit_execeeded) {
-                                            int32_t cache_idx = act_y_offset + intra_tile_x + input_ch_idx2;
-                                            act = (flt_mode) ? state_ptr->act_cache_uh[cache_idx>>1] : state_ptr->act_cache_ub[cache_idx];
-                                            VERIF(ARCH_FUNCTION(hmx_act_ld_verif_callback)(state_ptr, act, cache_idx, flt_mode, block_idx););
-                                        }
-                                        int32_t output_ch_group_start = group_idx*group_size; /* output channel group corresponds to input channel group */
-										int32_t output_ch_group_end = output_ch_group_start + group_size; /* stop at next group */
-										if((group_size <= parallel_group_size/2) && flt_mode)
-                                        {
-                                            output_ch_group_start = (group_idx/(parallel_group_size/group_size))*parallel_group_size; output_ch_group_end = output_ch_group_start + parallel_group_size;
-                                        }
-
-                                        ARCH_FUNCTION(hmx_mult_inner)(state_ptr, output_idx,acc_select,act,wgt_stream_idx,mult_type,input_ch_idx_raw,x_tap_decoded,y_tap_decoded,block_idx,deep_block_idx, output_channel_scale, flt_mode, group_idx, output_ch_group_start, output_ch_group_end, group_size, fp8_ch_start, fp8_ch_stop);
-
+											}
+										}
+										wgt_stream_idx++;
 									}
 								}
-								if(__builtin_expect(flt_mode && (mx_fp_rate == 8) && (input_ch_idx_raw - group_idx * group_size >= fp8_ch_stop) && (group_size > 4),0)){
-									DEBUG_PRINT(2, "MX MULT not increase wgt_stream_idx: input_ch_idx_raw=%d, group_idx=%d, fp8_ch_stop=%d", input_ch_idx_raw, group_idx, fp8_ch_stop);
+							
+							if(--state_ptr->mac_cycle_limit == 0 )
+							{
+								x_tap_count = x_tap_decoded;
+								block_idx = block_end;
+								input_ch_idx = input_ch_end;
+								deep_block_idx = deep_block_end;
+								// Set rest of cache to invalid
+								for(; wgt_stream_idx < WGT_CACHE_MAX_SIZE; wgt_stream_idx++ )
+								{
+									const int32_t output_ch_wgt_end = state_ptr->QDSP6_MX_COLS;
+									for(int32_t output_ch_wgt_idx = 0; output_ch_wgt_idx < output_ch_wgt_end; output_ch_wgt_idx++) {
+										state_ptr->wgt_cache[wgt_stream_idx][output_ch_wgt_idx].valid = 0;
+									}
 								}
-								else
-								wgt_stream_idx++;
 							}
 						}
-						if(--state_ptr->mac_cycle_limit == 0 )
-                        {
-                            x_tap_count = x_tap_decoded;
-                            block_idx = block_end;
-                            input_ch_idx = input_ch_end;
-                            deep_block_idx = deep_block_end;
-                            // Set rest of cache to invalid
-                            for(; wgt_stream_idx < WGT_CACHE_MAX_SIZE; wgt_stream_idx++ )
-                            {
-                                const int32_t output_ch_wgt_end = state_ptr->QDSP6_MX_COLS;
-                                for(int32_t output_ch_wgt_idx = 0; output_ch_wgt_idx < output_ch_wgt_end; output_ch_wgt_idx++) {
-                                    state_ptr->wgt_cache[wgt_stream_idx][output_ch_wgt_idx].valid = 0;
-                                }
-                            }
-                        }
-                    }
+					}
+					current_acc = (deep_mode) ? current_acc ^ 0x1 : current_acc;
 				}
-				current_acc = (deep_mode) ? current_acc ^ 0x1 : current_acc;
-			}
 
+				}
+				block_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, block_idx, block_end);
+			}
 		}
-		block_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, block_idx, block_end);
-	}
-	fDEBUG_VERIF_ACC_PRINT(flt_mode);
-    if (__builtin_expect(flt_mode,0)) {
+
+    	 
+		else if (mx_fp_rate == 8){
+			input_ch_fp_rate_stride = mx_fp_rate * input_ch_stride;
+			ARCH_FUNCTION(hmx_ld_wgt)(state_ptr, wgt_addr, wgt_len,  wgt_per_word, output_channel_scale, flt_mode, unpack );
+			for(int32_t block_idx = 0; block_idx < block_end; block_idx++)
+			{
+				int32_t input_ch_end = (((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_channels;
+				int32_t input_ch_start = (block_idx == 0) ? input_ch_start_first_block : 0;
+				input_ch_start &= (0xfff8 << format); 
+				input_ch_end = ((input_ch_end & 0x1f) > 0) ? ((input_ch_end + 32) & (0xfff8 << format)) : (input_ch_end & (0xfff8 << format));
+				ARCH_FUNCTION(hmx_ld_act)(state_ptr,  state_ptr->act_addr, block_idx);
+				for(int32_t y_tap_decoded = 0; y_tap_decoded < y_tap_count; y_tap_decoded++)
+				{
+					y_tap_idx = y_tap_array[y_tap_decoded];
+					for(int32_t deep_block_idx = 0; deep_block_idx < deep_block_end; deep_block_idx++)
+					{
+						for(int32_t x_tap_decoded = 0; x_tap_decoded < x_tap_count; x_tap_decoded++)
+						{
+							x_tap_idx = x_tap_array[x_tap_decoded];
+							for(int32_t input_ch_idx = input_ch_start; input_ch_idx < input_ch_end; input_ch_idx += input_ch_fp_rate_stride)
+							{
+								int32_t wgt_stream_group_idx = wgt_stream_idx; /* save wgt stream pointer for grouped convolution*/
+								int32_t group_idx_stride = 1;
+								for(int32_t group_idx = 0; group_idx < group_count; group_idx += group_idx_stride)
+								{ /* process all groups */
+									DEBUG_PRINT(2, "MX GROUP MULT: saved wgt_stream_group_idx=%d, wgt_stream_idx=%d", wgt_stream_group_idx, wgt_stream_idx);
+									wgt_stream_idx = wgt_stream_group_idx; /* restore wgt stream pointer, reset per group */
+									int32_t input_ch_start_group =  input_ch_idx + (group_idx << format) *group_size; /* starting channel of group */
+									int32_t input_ch_stop_group =  input_ch_start_group + 4*input_ch_stride; /* stop at next group ltin*/
+									if  (group_size > 4) {
+										input_ch_stop_group = input_ch_start_group + mx_fp_rate*input_ch_stride;
+													} 
+									else if (group_size <= 4) {
+										input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end);
+									//wgt_stream_idx = wgt_stream_group_idx + group_idx % ( 8 / group_size);
+													}
+									for(int32_t input_ch_idx2 = input_ch_start_group; input_ch_idx2 < input_ch_stop_group; input_ch_idx2 += input_ch_stride)
+									{
+										int32_t input_ch_idx_raw = (input_ch_idx2 >> format);
+										uint32_t fp8_ch_start = input_ch_start >> format;
+										uint32_t fp8_ch_stop = ((((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_ch_end ) >> format;
+										DEBUG_PRINT(2, "MX MULT: x_tap=%d y_tap=%d input_channel=%d deep_block=%d, group_idx=%d, input_ch_idx=%d, input_ch_idx2=%d, stop_ch=%d", x_tap_decoded, y_tap_decoded, input_ch_idx_raw,deep_block_idx, group_idx, input_ch_idx, input_ch_idx2, input_ch_stop_group);
+										for(int32_t intra_y_counter = 0; intra_y_counter < y_count; intra_y_counter++)
+										{
+											intra_tile_y = intra_tile_y_array[intra_y_counter];
+											int32_t y_next_tile = 0;
+											int32_t act_y_offset = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(y_tap_idx, intra_tile_y, tile_y_mask, &y_next_tile);
+
+											//DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
+											act_y_offset = (act_y_offset & 0x7FFFFFFF) + (y_next_tile * 0x800); // Clean negative overflow bit
+											//DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
+											for(int32_t intra_x_counter = 0; intra_x_counter < x_count; intra_x_counter++)
+											{
+												intra_tile_x = intra_tile_x_array[intra_x_counter];
+												int32_t overflow = 0;
+												int32_t output_idx = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(x_tap_idx, intra_tile_x, tile_x_mask, &overflow);
+												int32_t acc_select = (overflow) ? (current_acc ^ 0x1) & 0x1 : current_acc & 0x1;
+
+												output_idx |= intra_tile_y;
+
+												int32_t mask = (1 << format)-1;
+												output_idx = ((output_idx >> 5) & ~mask) | (output_idx & mask);
+
+												if (overflow && (state_ptr->drop || state_ptr->deep)) {
+													output_idx = -1;
+												}
+
+												uint16_t act = 0;
+												if (!state_ptr->limit_execeeded) {
+													int32_t cache_idx = act_y_offset + intra_tile_x + input_ch_idx2;
+													act = state_ptr->act_cache_uh[cache_idx>>1];
+													VERIF(ARCH_FUNCTION(hmx_act_ld_verif_callback)(state_ptr, act, cache_idx, flt_mode, block_idx););
+												}
+												int32_t output_ch_group_start = group_idx*group_size; /* output channel group corresponds to input channel group */
+												int32_t output_ch_group_end = output_ch_group_start + group_size; /* stop at next group */
+												
+
+												ARCH_FUNCTION(hmx_mult_inner)(state_ptr, output_idx,acc_select,act,wgt_stream_idx,mult_type,input_ch_idx_raw,x_tap_decoded,y_tap_decoded,block_idx,deep_block_idx, output_channel_scale, flt_mode, group_idx, output_ch_group_start, output_ch_group_end, group_size, fp8_ch_start, fp8_ch_stop);
+
+											}
+										}
+										if((input_ch_idx_raw - group_idx * group_size >= fp8_ch_stop) && (group_size > 4)){
+									DEBUG_PRINT(2, "MX MULT not increase wgt_stream_idx: input_ch_idx_raw=%d, group_idx=%d, fp8_ch_stop=%d", input_ch_idx_raw, group_idx, fp8_ch_stop);
+										}
+										else
+											wgt_stream_idx++;
+									}
+								}
+							if(--state_ptr->mac_cycle_limit == 0 )
+							{
+								x_tap_count = x_tap_decoded;
+								block_idx = block_end;
+								input_ch_idx = input_ch_end;
+								deep_block_idx = deep_block_end;
+								// Set rest of cache to invalid
+								for(; wgt_stream_idx < WGT_CACHE_MAX_SIZE; wgt_stream_idx++ )
+								{
+									const int32_t output_ch_wgt_end = state_ptr->QDSP6_MX_COLS;
+									for(int32_t output_ch_wgt_idx = 0; output_ch_wgt_idx < output_ch_wgt_end; output_ch_wgt_idx++) {
+										state_ptr->wgt_cache[wgt_stream_idx][output_ch_wgt_idx].valid = 0;
+									}
+								}
+							}
+						}
+					}
+					current_acc = (deep_mode) ? current_acc ^ 0x1 : current_acc;
+				}
+
+				}
+				block_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, block_idx, block_end);
+			}
+		}
+			
 		state_ptr->flt_commit_state.acc_update = 1;
-	} else {
+			
+			
+		
+	}
+    
+	else{
+		int32_t current_acc = state_ptr->current_acc_fxp;
+		ARCH_FUNCTION(hmx_ld_wgt)(state_ptr, wgt_addr, wgt_len,  wgt_per_word, output_channel_scale, flt_mode, unpack );
+
+		for(int32_t block_idx = 0; block_idx < block_end; block_idx++)
+		{
+			int32_t input_ch_end = (((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_channels;
+			int32_t input_ch_start = (block_idx == 0) ? input_ch_start_first_block : 0;
+			
+
+			DEBUG_PRINT(2, "MX MULT: Block %d Channel Range: [%d, %d] Deep Block Count=%d, fp_rate=%d flt_mode=%d", block_idx, input_ch_start >> format, input_ch_end >> format, deep_block_end, mx_fp_rate, flt_mode);
+
+			ARCH_FUNCTION(hmx_ld_act)(state_ptr,  state_ptr->act_addr, block_idx);
+
+			for(int32_t y_tap_decoded = 0; y_tap_decoded < y_tap_count; y_tap_decoded++)
+			{
+				y_tap_idx = y_tap_array[y_tap_decoded];
+				for(int32_t deep_block_idx = 0; deep_block_idx < deep_block_end; deep_block_idx++)
+				{
+					for(int32_t x_tap_decoded = 0; x_tap_decoded < x_tap_count; x_tap_decoded++)
+					{
+						x_tap_idx = x_tap_array[x_tap_decoded];
+						for(int32_t input_ch_idx = input_ch_start; input_ch_idx < input_ch_end; input_ch_idx += input_ch_fp_rate_stride)
+						{
+							int32_t wgt_stream_group_idx = wgt_stream_idx; /* save wgt stream pointer for grouped convolution*/
+							int32_t group_idx_stride = 1;
+							for(int32_t group_idx = 0; group_idx < group_count; group_idx += group_idx_stride)
+							{ /* process all groups */
+								DEBUG_PRINT(2, "MX GROUP MULT: saved wgt_stream_group_idx=%d, wgt_stream_idx=%d", wgt_stream_group_idx, wgt_stream_idx);
+								wgt_stream_idx = wgt_stream_group_idx; /* restore wgt stream pointer, reset per group */
+								int32_t input_ch_start_group =  input_ch_idx + (group_idx << format) *group_size; /* starting channel of group */
+								int32_t input_ch_stop_group =  input_ch_start_group + 4*input_ch_stride; /* stop at next group ltin*/
+								
+								if(group_size < 4) {
+									input_ch_stop_group = (group_idx << format) *group_size + (((group_size << format) < input_ch_end) ? (group_size << format) : input_ch_end) ;
+								}		
+								for(int32_t input_ch_idx2 = input_ch_start_group; input_ch_idx2 < input_ch_stop_group; input_ch_idx2 += input_ch_stride)
+								{
+									int32_t input_ch_idx_raw = (input_ch_idx2 >> format);
+									uint32_t fp8_ch_start = input_ch_start >> format;
+									uint32_t fp8_ch_stop = ((((block_idx + 1) >= block_end)) ? input_ch_end_last_block : input_ch_end ) >> format;
+									DEBUG_PRINT(2, "MX MULT: x_tap=%d y_tap=%d input_channel=%d deep_block=%d, group_idx=%d, input_ch_idx=%d, input_ch_idx2=%d, stop_ch=%d", x_tap_decoded, y_tap_decoded, input_ch_idx_raw,deep_block_idx, group_idx, input_ch_idx, input_ch_idx2, input_ch_stop_group);
+									for(int32_t intra_y_counter = 0; intra_y_counter < y_count; intra_y_counter++)
+									{
+										intra_tile_y = intra_tile_y_array[intra_y_counter];
+										int32_t y_next_tile = 0;
+										int32_t act_y_offset = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(y_tap_idx, intra_tile_y, tile_y_mask, &y_next_tile);
+
+										//DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
+										act_y_offset = (act_y_offset & 0x7FFFFFFF) + (y_next_tile * 0x800); // Clean negative overflow bit
+										//DEBUG_PRINT(2, "MX MULT: y_next_tile =%x act_y_offset=%x y_tap_idx=%x intra_tile_y=%x tile_y_mask=%x", y_next_tile, act_y_offset, y_tap_idx, intra_tile_y, tile_y_mask);
+										for(int32_t intra_x_counter = 0; intra_x_counter < x_count; intra_x_counter++)
+										{
+											intra_tile_x = intra_tile_x_array[intra_x_counter];
+											int32_t overflow = 0;
+											int32_t output_idx = ARCH_FUNCTION(hmx_inc_with_spatial_mask_ovf)(x_tap_idx, intra_tile_x, tile_x_mask, &overflow);
+											int32_t acc_select = (overflow) ? (current_acc ^ 0x1) & 0x1 : current_acc & 0x1;
+
+											output_idx |= intra_tile_y;
+
+											int32_t mask = (1 << format)-1;
+											output_idx = ((output_idx >> 5) & ~mask) | (output_idx & mask);
+
+											if (overflow && (state_ptr->drop || state_ptr->deep)) {
+												output_idx = -1;
+											}
+
+											uint16_t act = 0;
+											if (!state_ptr->limit_execeeded) {
+												int32_t cache_idx = act_y_offset + intra_tile_x + input_ch_idx2;
+												act = state_ptr->act_cache_ub[cache_idx];
+												VERIF(ARCH_FUNCTION(hmx_act_ld_verif_callback)(state_ptr, act, cache_idx, flt_mode, block_idx););
+											}
+											int32_t output_ch_group_start = group_idx*group_size; /* output channel group corresponds to input channel group */
+											int32_t output_ch_group_end = output_ch_group_start + group_size; /* stop at next group */
+											if((group_size <= parallel_group_size/2) && flt_mode)
+											{
+												output_ch_group_start = (group_idx/(parallel_group_size/group_size))*parallel_group_size; output_ch_group_end = output_ch_group_start + parallel_group_size;
+											}
+
+											ARCH_FUNCTION(hmx_mult_inner)(state_ptr, output_idx,acc_select,act,wgt_stream_idx,mult_type,input_ch_idx_raw,x_tap_decoded,y_tap_decoded,block_idx,deep_block_idx, output_channel_scale, flt_mode, group_idx, output_ch_group_start, output_ch_group_end, group_size, fp8_ch_start, fp8_ch_stop);
+
+										}
+									}
+
+									wgt_stream_idx++;
+								}
+							}
+							if(--state_ptr->mac_cycle_limit == 0 )
+							{
+								x_tap_count = x_tap_decoded;
+								block_idx = block_end;
+								input_ch_idx = input_ch_end;
+								deep_block_idx = deep_block_end;
+								// Set rest of cache to invalid
+								for(; wgt_stream_idx < WGT_CACHE_MAX_SIZE; wgt_stream_idx++ )
+								{
+									const int32_t output_ch_wgt_end = state_ptr->QDSP6_MX_COLS;
+									for(int32_t output_ch_wgt_idx = 0; output_ch_wgt_idx < output_ch_wgt_end; output_ch_wgt_idx++) {
+										state_ptr->wgt_cache[wgt_stream_idx][output_ch_wgt_idx].valid = 0;
+									}
+								}
+							}
+						}
+					}
+					current_acc = (deep_mode) ? current_acc ^ 0x1 : current_acc;
+				}
+
+			}
+			block_idx = ARCH_FUNCTION(hmx_wgt_range_check)(state_ptr, wgt_stream_idx, block_idx, block_end);
+		}
+		
 		state_ptr->fxp_commit_state.acc_update = 1;
+		
 	}
 }
-
 
 void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t acc_select,uint32_t act,uint32_t wgt_stream_idx,uint32_t mult_type,uint32_t input_channel,uint32_t x_tap,uint32_t y_tap,uint32_t block,uint32_t deep_block,uint32_t output2x,uint32_t is_flt,uint32_t grp_idx,uint32_t grp_start,uint32_t grp_end,uint32_t grp_size, uint32_t fp8_ch_start, uint32_t fp8_ch_stop){
     uint8_t valid = state_ptr->wgt_cache[wgt_stream_idx][0].valid;	// Should be valid for all output channels
@@ -1247,12 +1454,9 @@ void ARCH_FUNCTION(hmx_mult_inner)(hmx_state_t * state_ptr, int32_t row,uint32_t
     }
 }
 
-
-
-
 void ARCH_FUNCTION(hmx_unpack_bytes)(hmx_state_t * state_ptr, uint32_t raw_wgt, uint32_t output_ch_wgt_idx, uint32_t wgt_cache_idx, uint32_t wgt_per_word, uint32_t output_scale, uint32_t unpack_idx, paddr_t wgt_addr )
 {
-    if (wgt_per_word==2) {
+    if (__builtin_expect((wgt_per_word==2),0)) {
         for(uint32_t bit_select = 0, wgt_cache_idx2 = wgt_cache_idx; bit_select < 32; bit_select += 16, wgt_cache_idx2++)
         {
             uint16_t unpacked_wgt = (raw_wgt >> bit_select) & 0xFFFF;
@@ -1268,13 +1472,13 @@ void ARCH_FUNCTION(hmx_unpack_bytes)(hmx_state_t * state_ptr, uint32_t raw_wgt, 
         const uint32_t bit_stride = 32 / wgt_per_word;
         hmx_unpack_ptr_t unpack_fptr = hmx_unpack_ptr_table[unpack_idx];
         for(int32_t bit_select = 0, wgt_cache_idx2 = wgt_cache_idx, wgt_cache_idx3 = wgt_cache_idx; bit_select < 8; bit_select+=bit_stride)
-        {
+        {//tried loop unrolling, negative impact on performance
             for(int32_t byte_select = 0; byte_select < 32; byte_select += 8)
             {
                 int8_t packed_wgt = (int8_t)(raw_wgt >> byte_select) & 0xFF;
                 int8_t unpacked_wgt = unpack_fptr(packed_wgt, bit_select);
 
-                if ((output_scale == 2) && (bit_select == 4))
+                if (__builtin_expect(((output_scale == 2) && (bit_select == 4)),0))
                 {
                     DEBUG_PRINT(2, "WGT_LOAD[%02d][%02d]=0x%02x raw_wgt=0x%08x packed_wgt=0x%02x PA=%llx unpack from bit=%d byte=%d", wgt_cache_idx3, output_ch_wgt_idx + output_ch_wgt_end, (uint8_t)unpacked_wgt, raw_wgt, (uint8_t)packed_wgt, wgt_addr, bit_select, byte_select);
                     state_ptr->wgt_cache[wgt_cache_idx3][output_ch_wgt_idx + output_ch_wgt_end].wgt = unpacked_wgt;
@@ -1287,7 +1491,7 @@ void ARCH_FUNCTION(hmx_unpack_bytes)(hmx_state_t * state_ptr, uint32_t raw_wgt, 
                     state_ptr->wgt_cache[wgt_cache_idx2][output_ch_wgt_idx].valid = 1;
                     wgt_cache_idx2++;
                 }
-            }
+			}
         }
     }
 }
@@ -1297,7 +1501,6 @@ int8_t ARCH_FUNCTION(hmx_wgt_ld_meta_data)(hmx_state_t * state_ptr, uint32_t * m
     int8_t meta_addr_valid = 1;
     uint32_t wgtc_transpose_metadata[128];
     const int32_t output_ch_wgt_lane_end = 4 * state_ptr->QDSP6_MX_COLS;
-	printf("Hello %d\n",output_ch_wgt_lane_end);
     for(int32_t output_ch_wgt_lane_idx = 0; output_ch_wgt_lane_idx < output_ch_wgt_lane_end; output_ch_wgt_lane_idx += 16)
     {
         for(int32_t output_ch_idx = 0; output_ch_idx < 16; output_ch_idx += 4)
@@ -1342,7 +1545,7 @@ void ARCH_FUNCTION(hmx_ld_wgt)(hmx_state_t * state_ptr, paddr_t wgt_addr, paddr_
     DEBUG_PRINT(2, "Loading WGTs from pa range[%llx %llx]  WGTs per word=%d, output channel scale=%d wgtc_mode=%d", wgt_addr, wgt_addr_end, wgt_per_word, output_scale, state_ptr->wgtc_mode);
 //	printf("Loading WGTs from pa range[%lx %lx]  WGTs per word=%d, output channel scale=%d wgtc_mode=%d", wgt_addr, wgt_addr_end, wgt_per_word, output_scale, state_ptr->wgtc_mode);
     const uint32_t output_ch_wgt_end = state_ptr->QDSP6_MX_COLS;
-	printf("%d\n",output_ch_wgt_end);
+	//printf("%d\n",output_ch_wgt_end);
     int32_t wgt_cache_idx = 0;
     uint32_t block_idx = 0;
     while(wgt_addr <= wgt_addr_end)
@@ -1352,15 +1555,15 @@ void ARCH_FUNCTION(hmx_ld_wgt)(hmx_state_t * state_ptr, paddr_t wgt_addr, paddr_
             // First Load metadata
             uint32_t wgtc_metadata[128] = {0};
             DEBUG_PRINT_VAR(paddr_t wgt_uc_metadata_addr = wgt_addr + (4 * output_ch_wgt_end);)
-            INC_PSTATN(phmxwgtcomp_metadata_rd, 1);
-            INC_PSTATN(phmxwgtdcomp_issue, 2);
+           // INC_PSTATN(phmxwgtcomp_metadata_rd, 1);
+           // INC_PSTATN(phmxwgtdcomp_issue, 2);
 #ifdef VERIFICATION
             int8_t meta_addr_valid = ARCH_FUNCTION(hmx_wgt_ld_meta_data)(state_ptr, wgtc_metadata, wgt_uc_metadata_addr,  wgt_addr, wgt_addr_end);
 #endif
             const int32_t wgt_total_bytes = state_ptr->wgtc_total_bytes + 1;
             int32_t wgt_total_bytes_lane_cnt[8] = {0};
             int32_t wgt_local_total_bytes_lane[8] = {0};
-            INC_PSTATN(phmxwgtcomp_compdata_rd, wgt_total_bytes/16);
+          //  INC_PSTATN(phmxwgtcomp_compdata_rd, wgt_total_bytes/16);
 
             for(uint32_t vector_idx = 0; vector_idx < 8; vector_idx++)
             {
