@@ -703,6 +703,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         env->g_gcycle = g_malloc0(sizeof(target_ulong) * NUM_GLOBAL_GCYCLE);
         hex_mmu_init(env);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_EVB, 0x0);
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_LIVELOCK, 0x0);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_CFGBASE,
                             HEXAGON_CFG_ADDR_BASE(cpu->config_table_addr));
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_REV, cpu->rev_reg);
