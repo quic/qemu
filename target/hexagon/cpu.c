@@ -611,6 +611,7 @@ static void hexagon_cpu_reset_hold(Object *obj)
     ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_UNLOCKED);
     ATOMIC_STORE(env->ss_pending, false);
 
+    hex_mmu_reset(env);
     hexagon_cpu_soft_reset(env);
 #endif
 }
@@ -697,11 +698,11 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 
 #ifndef CONFIG_USER_ONLY
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
+    hex_mmu_realize(env);
 #define HEXAGON_CFG_ADDR_BASE(addr) ((addr >> 16) & 0x0fffff)
     if (cs->cpu_index == 0) {
         env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
         env->g_gcycle = g_malloc0(sizeof(target_ulong) * NUM_GLOBAL_GCYCLE);
-        hex_mmu_init(env);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_EVB, 0x0);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_LIVELOCK, 0x0);
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_CFGBASE,
@@ -762,7 +763,6 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         }
         env->g_sreg = env0->g_sreg;
         env->g_gcycle = env0->g_gcycle;
-        env->hex_tlb = env0->hex_tlb;
         env->cmdline = env0->cmdline;
         env->lib_search_dir = env0->lib_search_dir;
         env->g_pcycle_base = env0->g_pcycle_base;
