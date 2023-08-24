@@ -644,6 +644,16 @@ static void hexagon_cpu_reset_hold(Object *obj)
         ARCH_SET_SYSTEM_REG(env, HEX_SREG_PMUCNT7, INVALID_REG_VAL);
     }
 
+    memset(env->gpr, 0, sizeof(target_ulong) * TOTAL_PER_THREAD_REGS);
+    memset(env->pred, 0, sizeof(target_ulong) * NUM_PREGS);
+#ifndef CONFIG_USER_ONLY
+    memset(env->t_sreg, 0, sizeof(target_ulong) * NUM_SREGS);
+    memset(env->greg, 0, sizeof(target_ulong) * NUM_GREGS);
+#endif
+    memset(env->VRegs, 0, sizeof(MMVector) * NUM_VREGS);
+    memset(env->QRegs, 0, sizeof(MMQReg) * NUM_QREGS);
+    env->t_cycle_count = 0;
+
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
 
     env->gpr[HEX_REG_UPCYCLELO] = INVALID_REG_VAL;
