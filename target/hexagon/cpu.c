@@ -646,13 +646,19 @@ static void hexagon_cpu_reset_hold(Object *obj)
 
     memset(env->gpr, 0, sizeof(target_ulong) * TOTAL_PER_THREAD_REGS);
     memset(env->pred, 0, sizeof(target_ulong) * NUM_PREGS);
-#ifndef CONFIG_USER_ONLY
-    memset(env->t_sreg, 0, sizeof(target_ulong) * NUM_SREGS);
-    memset(env->greg, 0, sizeof(target_ulong) * NUM_GREGS);
-#endif
     memset(env->VRegs, 0, sizeof(MMVector) * NUM_VREGS);
     memset(env->QRegs, 0, sizeof(MMQReg) * NUM_QREGS);
+    memset(env->vstore_pending, 0, sizeof(target_ulong) * VSTORES_MAX);
     env->t_cycle_count = 0;
+    env->cpu_memop_pc_set = false;
+    env->vtcm_pending = false;
+
+#ifndef CONFIG_USER_ONLY
+     memset(env->t_sreg, 0, sizeof(target_ulong) * NUM_SREGS);
+     memset(env->greg, 0, sizeof(target_ulong) * NUM_GREGS);
+     env->pmu.num_packets = 0;
+     env->pmu.hvx_packets = 0;
+#endif
 
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_HTID, env->threadId);
 
