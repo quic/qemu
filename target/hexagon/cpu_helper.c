@@ -314,14 +314,23 @@ void hexagon_write_memory(CPUHexagonState *env, target_ulong vaddr,
     cpu_abort(cs, "%s: ERROR: bad size = %d!\n", __func__, size);
 }
 
+static inline uint32_t page_start(uint32_t addr)
+{
+    uint32_t page_align = ~(TARGET_PAGE_SIZE - 1);
+    return addr & page_align;
+}
+
 void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
     uint32_t length)
-
 {
     unsigned int warm;
+    uint32_t first_page = page_start(start_addr);
+    uint32_t last_page = page_start(start_addr + length - 1);
 
-    for (uint32_t i = 0; i < length; i += 0x1000) {
-        DEBUG_MEMORY_READ(start_addr + i, 1, &warm);
+    for (uint32_t page = first_page;
+         page <= last_page;
+         page += TARGET_PAGE_SIZE) {
+        DEBUG_MEMORY_READ(page, 1, &warm);
     }
 }
 
