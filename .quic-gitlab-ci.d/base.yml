@@ -48,9 +48,10 @@ variables:
     --enable-install-blobs --disable-png --disable-debug-info
     --disable-debug-tcg --gdb=aarch64-linux-gnu-gdb
 
-  GENERIC_CONFIG_CMD: ../configure --prefix="$$installdir" $DEFAULT_CONFIG_OPTS
-  HEX_CONFIG_CMD: $GENERIC_CONFIG_CMD $HEX_CONFIG_OPTS --target-list=hexagon-softmmu,hexagon-linux-user
-  AARCH64_CONFIG_CMD: $GENERIC_CONFIG_CMD $AARCH64_CONFIG_OPTS --target-list=aarch64-softmmu,aarch64-linux-user
+  GENERIC_CONFIG_CMD: ../configure --prefix="$$installdir"
+  HEX_CONFIG_CMD: $GENERIC_CONFIG_CMD $DEFAULT_CONFIG_OPTS $HEX_CONFIG_OPTS --target-list=hexagon-softmmu,hexagon-linux-user
+  AARCH64_CONFIG_CMD: $GENERIC_CONFIG_CMD $DEFAULT_CONFIG_OPTS $AARCH64_CONFIG_OPTS --target-list=aarch64-softmmu,aarch64-linux-user
+  HEX_MAC_CONFIG_CMD: $GENERIC_CONFIG_CMD $HEX_CONFIG_OPTS --disable-strip --disable-pie --disable-virglrenderer --disable-opengl --target-list=hexagon-softmmu
 
   GITLAB_URL: echo "$CI_SERVER_URL" | sed -e 's/^.*:\/\///g' -e 's/:[0-9]*$//g'
 
@@ -163,6 +164,17 @@ hexagon_check:
 hexagon_qurt-tests:
   extends: .base-qurt-tests
   needs: [hexagon_build]
+
+hexagon-mac_build:
+  tags:
+    - mac
+  extends: .base-build
+  variables: { CONFIG_CMD: $HEX_MAC_CONFIG_CMD }
+hexagon-mac_qurt-tests:
+  tags:
+    - mac
+  extends: .base-qurt-tests
+  needs: [hexagon-mac_build]
 
 san-hexagon_build:
   extends: .base-build
