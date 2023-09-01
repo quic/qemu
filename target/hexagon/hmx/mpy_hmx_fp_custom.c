@@ -23,8 +23,10 @@
 #include "hmx/macros_auto.h"
 #include <math.h>
 #include "hmx/mpy_hmx_fp_custom.h"
+#if defined(__x86_64__)
 #include <immintrin.h>
 #include <x86intrin.h>
+#endif
 #include <stdint.h>
 
 #ifndef ARCH_FUNCTION
@@ -507,7 +509,7 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_add)(
 
 {
 	hmx_xfp_t out = {.EXP = in_a.EXP, .FRAC = in_a.FRAC, .INT = (uint8_t)(in_a.INT+1) };
-/*#if defined(__SSE4_2__)
+#if defined(__SSE4_2__)
 	__m128i neg_a = _mm_cvtsi32_si128(_mm_movemask_epi8(_mm_cmpeq_epi32(_mm_or_si128(_mm_set1_epi32(in_a.status.zero),_mm_set1_epi32(in_a.status.inf)),_mm_set1_epi32(1)))? in_a.status.negative : in_a.sig < 0);
 	__m128i neg_b = _mm_cvtsi32_si128(_mm_movemask_epi8(_mm_cmpeq_epi32(_mm_or_si128(_mm_set1_epi32(in_b.status.zero),_mm_set1_epi32(in_b.status.inf)),_mm_set1_epi32(1)))? in_b.status.negative : in_b.sig < 0);
 	uint32_t res = in_a.status.negative && in_b.status.negative;
@@ -550,7 +552,7 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_add)(
     }
 //THIS SEEMS TO WORK MOST OF THE TIME HOWEVER THERE WAS ONE INSTANCE WHEN I GOT AN ERROR ON qnn_delegate_aib5_mobilenet_v2_b8_float.0.dat. HENCE COMMENTING THIS PORTION OUT!
 	
-#else*/
+#else
 
 	uint8_t a_neg = (in_a.status.zero | in_a.status.inf) ? in_a.status.negative : in_a.sig < 0;
 	uint8_t b_neg = (in_b.status.zero | in_b.status.inf) ? in_b.status.negative : in_b.sig < 0;
@@ -605,7 +607,7 @@ hmx_xfp_t ARCH_FUNCTION(hmx_xfp_add)(
 		out.status.negative = (inf_ >> 1);
 	}
 	DEBUG_PRINT_XFP_VAL("hmx_xfp_add out               ", out);
-//#endif
+#endif
 	return out;
 }
 
@@ -642,6 +644,9 @@ static inline uint8_t hmx_xfp_compute_lza(hmx_state_t * state_ptr, int64_t a, in
 	}
 	return lza;
 }
+
+
+#if defined(__SSE_4_2__)
 static inline __m128i _mm_not_si128 (__m128i x)
 {
 	return _mm_xor_si128(x, _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128()));
@@ -675,7 +680,7 @@ static inline __m128i hmx_xfp_compute_lza_intrinsics(hmx_state_t * state_ptr, __
 	}
 	return lza;
 }
-
+#endif
 
 static inline hmx_xfp_t xfp_adder( hmx_state_t * state_ptr,
 		hmx_xfp_t *	in,

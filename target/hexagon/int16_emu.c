@@ -5,14 +5,16 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "int16_emu.h"
-#include <immintrin.h>
 #include <stdint.h>
+#if defined(__x86_64__)
+#include <immintrin.h>
 #include <x86intrin.h>
 #include <nmmintrin.h>
 #include <smmintrin.h>
 #include <emmintrin.h>
 #include <xmmintrin.h>
 #include <pmmintrin.h>
+#endif
 #ifndef HEX_CONFIG_INT128
 size16s_t cast8s_to_16s(size8s_t a)
 {

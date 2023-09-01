@@ -23,8 +23,10 @@
 #include "hmx/macros_auto.h"
 #include "hmx/hmx_int16_emu.h"
 #include <math.h>
+#if defined(__x86_64__)
 #include <immintrin.h>
 #include <x86intrin.h>
+#endif
 #include "hmx/hmx_int_ops.h"
 #include "hmx/hmx_int_ops.h"
 #define INC_PSTAT(...)

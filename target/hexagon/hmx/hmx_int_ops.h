@@ -20,9 +20,13 @@
 #include "hmx/hmx_int16_emu.h"
 #include "hmx/mpy_hmx_support.h"
 #include "hmx/hmx_coproc.h"
-#include <x86intrin.h>
+
 #include <stdint.h>
+#if defined(__x86_64__)
+#include <x86intrin.h>
 #include <immintrin.h>
+#endif
+
 struct HMX_State;
 union hmx_bias;
 union hmx_cvt_rs_reg;
