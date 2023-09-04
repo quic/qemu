@@ -17,6 +17,7 @@
 
 #include "interrupts.h"
 #include "util.h"
+#include "thread_common.h"
 #include <hexagon_standalone.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -42,27 +43,6 @@ static bool all_ints_delivered(int n)
     return all_delivered;
 }
 
-static void wait_for_ints_delivered(int n, int mask)
-{
-    bool all_delivered = false;
-    while (!all_delivered) {
-        int delivered_mask = 0;
-        for (int i = 0; i < MAX_INT_NUM; i++) {
-            if ((mask & (1 << i)) == 0) {
-                continue;
-            }
-            if (ints_by_irq[i] == n) {
-                delivered_mask = delivered_mask | (1 << n);
-            } else {
-                printf("ints_by_irq[%d] == %d\n", i, ints_by_irq[i]);
-            }
-        }
-        printf("delivered mask 0x%02x, compare mask 0x%02x\n",
-            delivered_mask, mask);
-        all_delivered = delivered_mask == mask;
-    }
-}
-
 uint32_t read_modectl(void)
 {
     unsigned modectl;
@@ -78,6 +58,8 @@ void wait_for_thread(int tid)
         tmode = modectl & (0x1 << (16 + tid));
     } while (tmode == 0);
 }
+
+static long long wait_stack[1024];
 volatile bool tasks_enabled = true; /* multiple hw threads running */
 volatile int times_woken; /* multiple hw threads running */
 static void wait_thread(void *param)
@@ -88,24 +70,22 @@ static void wait_thread(void *param)
     }
 }
 
-static long long wait_stack[1024];
-void wait_for_wake_count(int wake_count)
+void wait_for_ints_delivered(int n)
 {
-    while (times_woken < wake_count) {
+    while (!all_ints_delivered(n)) {
+        pcycle_pause(10000);
+    }
+    /*
+     * We can't use '==' because more than one interrupt may have been
+     * processed in the same "wake window".
+     */
+    while (times_woken < n) {
         pcycle_pause(10000);
     }
 }
 
-static inline uint32_t get_htid(void)
-{
-    uint32_t htid;
-    asm volatile("%0 = htid\n\t" : "=r"(htid));
-    return htid;
-}
-
 static void interrupt_handler(int intno)
 {
-    uint32_t htid = get_htid();
     ints_by_irq[intno]++;
 }
 
@@ -117,8 +97,8 @@ int main()
 
     set_thread_imask(ALL_INTERRUPTS_MASK);
 
-    static int WAIT_THREAD_ID = 1;
-    thread_create(wait_thread,
+    const int WAIT_THREAD_ID = 1;
+    thread_create_blocked(wait_thread,
             &wait_stack[ARRAY_SIZE(wait_stack) - 1], WAIT_THREAD_ID,
             NULL);
     /* make sure thread is up and in wait state before sending int */
@@ -129,9 +109,7 @@ int main()
     /* Test ordinary swi interrupts */
     swi(INT_MASK);
     printf("waiting for wake #1\n");
-    wait_for_wake_count(1);
-    printf("\twake count now %d\n", times_woken);
-    assert(all_ints_delivered(1));
+    wait_for_ints_delivered(1);
 
     /*
      * Test swi interrupts, triggered
@@ -141,15 +119,14 @@ int main()
     global_int_disable();
     swi(INT_MASK);
     global_int_enable();
-    wait_for_wake_count(2);
-    printf("\twake count now %d\n", times_woken);
-    assert(all_ints_delivered(2));
+    printf("waiting for wake #2\n");
+    wait_for_ints_delivered(2);
 
     /*
      * Test swi interrupts, triggered
      * while ints masked for all threads.
      */
-    delay(1);
+    wait_for_thread(WAIT_THREAD_ID);
     int INT_THREAD_MASK = 0x1f;
     for (int i = 0; i < MAX_INT_NUM; i++) {
         iassignw(i, INT_THREAD_MASK);
@@ -160,11 +137,8 @@ int main()
     for (int i = 0; i < MAX_INT_NUM; i++) {
         iassignw(i, INT_THREAD_MASK);
     }
-    delay(1);
     printf("waiting for wake #3\n");
-    wait_for_wake_count(3);
-    printf("\twake count now %d\n", times_woken);
-    assert(all_ints_delivered(3));
+    wait_for_ints_delivered(3);
 
     /* Teardown: */
     tasks_enabled = false;

@@ -139,7 +139,8 @@ fastint: fastint.o
 swi: swi.o
 swi2.o: swi2.c interrupts.h
 swi2: swi2.o
-swi_wait: swi_wait.o util.o
+swi_wait.o: swi_wait.c util.h thread_common.h
+swi_wait: swi_wait.o util.o thread_common.o
 udma: udma.o
 ieee_fp: ieee_fp.o
 hmx: hmx.o
