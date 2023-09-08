@@ -29,6 +29,7 @@
 #include "coproc_input_fp16_dat.h"
 #include "coproc_ref_output_fp16_dat.h"
 #include "filename.h"
+#include "vtcm_common.h"
 
 int main(int argc, const char *argv[])
 {

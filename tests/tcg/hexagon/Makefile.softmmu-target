@@ -142,7 +142,13 @@ swi_wait: swi_wait.o util.o thread_common.o
 udma: udma.o
 ieee_fp: ieee_fp.o
 coproc: coproc.o
+coproc_conv.o: coproc_conv.c coproc_common.h coproc_conv_asm.h \
+	       coproc_input_dat.h coproc_ref_output_dat.h util.h filename.h \
+	       vtcm_common.h
 coproc_conv: coproc_conv.o coproc_conv_asm.o util.o
+coproc_conv_fp16.o: coproc_conv_fp16.cpp coproc_common.h \
+	            coproc_input_fp16_dat.h coproc_ref_output_fp16_dat.h \
+		    filename.h vtcm_common.h
 coproc_conv_fp16: coproc_conv_fp16.o
 coproc_range: coproc_range.o
 wait: wait.o

@@ -31,6 +31,7 @@
 #include "coproc_ref_output_dat.h"
 #include "util.h"
 #include "filename.h"
+#include "vtcm_common.h"
 
 unsigned int mxmem_gen_start(unsigned int dx, unsigned int dy, int input_depth,
                              unsigned int Y0, int spatial_major)
