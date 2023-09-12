@@ -418,7 +418,7 @@ struct BlockDriver {
 
     /**
      * Called to inform the driver that the set of cumulative set of used
-     * permissions for @bs has changed to @perm, and the set of sharable
+     * permissions for @bs has changed to @perm, and the set of shareable
      * permission to @shared. The driver can use this to propagate changes to
      * its children (i.e. request permissions only if a parent actually needs
      * them).
@@ -1231,7 +1231,7 @@ struct BlockDriverState {
     unsigned int write_gen;               /* Current data generation */
 
     /* Protected by reqs_lock.  */
-    CoMutex reqs_lock;
+    QemuMutex reqs_lock;
     QLIST_HEAD(, BdrvTrackedRequest) tracked_requests;
     CoQueue flush_queue;                  /* Serializing flush queue */
     bool active_flush_req;                /* Flush request in flight? */

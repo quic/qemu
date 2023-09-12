@@ -15,7 +15,6 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef EXTINSN
 #define EXTINSN Q6INSN
 #define __SELF_DEF_EXTINSN 1
@@ -188,7 +187,7 @@ MMVEC_COND_EACH_EA(vS32Ub,"Unaligned Vector Store",ATTRIBS(ATTR_VMEMU,A_STORE,A_
 
 MMVEC_EACH_EA(vS32b_new,"Aligned Vector Store New",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_NEW,A_RESTRICT_SINGLE_MEM_FIRST,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),,"vmem","=Os8.new",fSTOREMMV(EA,fNEWVREG(OsN)))
 
-// V65 store relase, zero byte store
+// V65 store release, zero byte store
 MMVEC_EACH_EA(vS32b_srls,"Aligned Vector Scatter Release",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_SCATTER_RELEASE,A_CVI_NEW,A_RESTRICT_SLOT0ONLY,A_VTCM_ALLBANK_ACCESS,A_NO_XML),,"vmem",":scatter_release",fSTORERELEASE(EA,0))
 
 
@@ -2192,9 +2191,9 @@ DEF_CVI_MAPPING(V6_extractw_alt,"Rd32.w=vextract(Vu32,Rs32)","Rd32=vextract(Vu32
 
 EXTINSN(V6_vinsertwr, "Vx32.w=vinsert(Rt32)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_LATE,A_NOTE_MPY_RESOURCE), "Insert Word Scalar into Vector", VxV.uw[0] = RtV;)
 
-ITERATOR_INSN_MPY_SLOT_LATE(32,lvsplatw, "Vd32=vsplat(Rt32)",   "Replicates scalar accross words in vector",  VdV.uw[i] = RtV)
-ITERATOR_INSN_MPY_SLOT_LATE(16,lvsplath, "Vd32.h=vsplat(Rt32)", "Replicates scalar accross halves in vector", VdV.uh[i] = RtV)
-ITERATOR_INSN_MPY_SLOT_LATE(8, lvsplatb, "Vd32.b=vsplat(Rt32)", "Replicates scalar accross bytes in vector",  VdV.ub[i] = RtV)
+ITERATOR_INSN_MPY_SLOT_LATE(32,lvsplatw, "Vd32=vsplat(Rt32)",   "Replicates scalar across words in vector",  VdV.uw[i] = RtV)
+ITERATOR_INSN_MPY_SLOT_LATE(16,lvsplath, "Vd32.h=vsplat(Rt32)", "Replicates scalar across halves in vector", VdV.uh[i] = RtV)
+ITERATOR_INSN_MPY_SLOT_LATE(8, lvsplatb, "Vd32.b=vsplat(Rt32)", "Replicates scalar across bytes in vector",  VdV.ub[i] = RtV)
 
 
 DEF_CVI_MAPPING(V6_vassignp,"Vdd32=Vuu32","Vdd32=vcombine(Vuu.H32,Vuu.L32)")

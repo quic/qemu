@@ -186,6 +186,7 @@ DEF("accel", HAS_ARG, QEMU_OPTION_accel,
     "                split-wx=on|off (enable TCG split w^x mapping)\n"
     "                tb-size=n (TCG translation block cache size)\n"
     "                dirty-ring-size=n (KVM dirty ring GFN count, default 0)\n"
+    "                eager-split-size=n (KVM Eager Page Split chunk size, default 0, disabled. ARM only)\n"
     "                notify-vmexit=run|internal-error|disable,notify-window=n (enable notify VM exit and set notify window, x86 only)\n"
     "                thread=single|multi (enable multi-threaded TCG)\n", QEMU_ARCH_ALL)
 SRST
@@ -243,6 +244,20 @@ SRST
         Set this value to 0 to disable the feature.  By default, this feature
         is disabled (dirty-ring-size=0).  When enabled, KVM will instead
         record dirty pages in a bitmap.
+
+    ``eager-split-size=n``
+        KVM implements dirty page logging at the PAGE_SIZE granularity and
+        enabling dirty-logging on a huge-page requires breaking it into
+        PAGE_SIZE pages in the first place. KVM on ARM does this splitting
+        lazily by default. There are performance benefits in doing huge-page
+        split eagerly, especially in situations where TLBI costs associated
+        with break-before-make sequences are considerable and also if guest
+        workloads are read intensive. The size here specifies how many pages
+        to break at a time and needs to be a valid block size which is
+        1GB/2MB/4KB, 32MB/16KB and 512MB/64KB for 4KB/16KB/64KB PAGE_SIZE
+        respectively. Be wary of specifying a higher size as it will have an
+        impact on the memory. By default, this feature is disabled
+        (eager-split-size=0).
 
     ``notify-vmexit=run|internal-error|disable,notify-window=n``
         Enables or disables notify VM exit support on x86 host and specify
@@ -1209,10 +1224,10 @@ SRST
 ERST
 
 DEF("hda", HAS_ARG, QEMU_OPTION_hda,
-    "-hda/-hdb file  use 'file' as IDE hard disk 0/1 image\n", QEMU_ARCH_ALL)
+    "-hda/-hdb file  use 'file' as hard disk 0/1 image\n", QEMU_ARCH_ALL)
 DEF("hdb", HAS_ARG, QEMU_OPTION_hdb, "", QEMU_ARCH_ALL)
 DEF("hdc", HAS_ARG, QEMU_OPTION_hdc,
-    "-hdc/-hdd file  use 'file' as IDE hard disk 2/3 image\n", QEMU_ARCH_ALL)
+    "-hdc/-hdd file  use 'file' as hard disk 2/3 image\n", QEMU_ARCH_ALL)
 DEF("hdd", HAS_ARG, QEMU_OPTION_hdd, "", QEMU_ARCH_ALL)
 SRST
 ``-hda file``
@@ -1222,18 +1237,22 @@ SRST
 ``-hdc file``
   \ 
 ``-hdd file``
-    Use file as hard disk 0, 1, 2 or 3 image (see the :ref:`disk images`
-    chapter in the System Emulation Users Guide).
+    Use file as hard disk 0, 1, 2 or 3 image on the default bus of the
+    emulated machine (this is for example the IDE bus on most x86 machines,
+    but it can also be SCSI, virtio or something else on other target
+    architectures). See also the :ref:`disk images` chapter in the System
+    Emulation Users Guide.
 ERST
 
 DEF("cdrom", HAS_ARG, QEMU_OPTION_cdrom,
-    "-cdrom file     use 'file' as IDE cdrom image (cdrom is ide1 master)\n",
+    "-cdrom file     use 'file' as CD-ROM image\n",
     QEMU_ARCH_ALL)
 SRST
 ``-cdrom file``
-    Use file as CD-ROM image (you cannot use ``-hdc`` and ``-cdrom`` at
-    the same time). You can use the host CD-ROM by using ``/dev/cdrom``
-    as filename.
+    Use file as CD-ROM image on the default bus of the emulated machine
+    (which is IDE1 master on x86, so you cannot use ``-hdc`` and ``-cdrom``
+    at the same time there). On systems that support it, you can use the
+    host CD-ROM by using ``/dev/cdrom`` as filename.
 ERST
 
 DEF("blockdev", HAS_ARG, QEMU_OPTION_blockdev,

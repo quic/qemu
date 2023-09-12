@@ -1026,6 +1026,16 @@ S: Maintained
 F: hw/ssi/xlnx-versal-ospi.c
 F: include/hw/ssi/xlnx-versal-ospi.h
 
+Xilinx Versal CFI
+M: Francisco Iglesias <francisco.iglesias@amd.com>
+S: Maintained
+F: hw/misc/xlnx-cfi-if.c
+F: include/hw/misc/xlnx-cfi-if.h
+F: hw/misc/xlnx-versal-cfu.c
+F: include/hw/misc/xlnx-versal-cfu.h
+F: hw/misc/xlnx-versal-cframe-reg.c
+F: include/hw/misc/xlnx-versal-cframe-reg.h
+
 STM32F100
 M: Alexandre Iooss <erdnaxe@crans.org>
 L: qemu-arm@nongnu.org
@@ -2247,6 +2257,13 @@ F: include/block/nvme.h
 F: tests/qtest/nvme-test.c
 F: docs/system/devices/nvme.rst
 T: git git://git.infradead.org/qemu-nvme.git nvme-next
+
+ufs
+M: Jeuk Kim <jeuk20.kim@samsung.com>
+S: Supported
+F: hw/ufs/*
+F: include/block/ufs.h
+F: tests/qtest/ufs-test.c
 
 megasas
 M: Hannes Reinecke <hare@suse.com>
