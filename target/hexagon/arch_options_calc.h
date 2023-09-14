@@ -30,11 +30,11 @@
 
 static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr)
 {
-    static bool init_needed = true;
+    static gsize init_needed;
     static paddr_t vtcm_base;
     static target_ulong vtcm_size;
 
-    if (init_needed == true) {
+    if (g_once_init_enter(&init_needed)) {
         init_needed = false;
         hwaddr cfgbase = (hwaddr)ARCH_GET_SYSTEM_REG(thread, HEX_SREG_CFGBASE)
             << 16;
@@ -44,6 +44,7 @@ static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr)
         cpu_physical_memory_read(cfgbase + VTCM_CFG_SIZE_OFF, &vtcm_size,
             sizeof(target_ulong));
         vtcm_size *= 1024;
+        g_once_init_leave(&init_needed, 1);
     }
 
     if (paddr >= vtcm_base && paddr < (vtcm_base + vtcm_size))
