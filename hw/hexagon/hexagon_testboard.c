@@ -270,6 +270,7 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev)
             cfgExtensions->qtmr_rg0);
         object_property_set_link(OBJECT(cpu), "vtcm", OBJECT(vtcm),
                 &error_fatal);
+        qdev_prop_set_uint32(DEVICE(cpu), "l2line-size", cfgTable->l2line_size);
 
         /*
          * CPU #0 is the only CPU running at boot, others must be

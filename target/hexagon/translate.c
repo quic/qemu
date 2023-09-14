@@ -1702,6 +1702,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->hvx_coproc_enabled = false;
     ctx->hvx_64b_mode = false;
     ctx->paranoid_commit_state = hex_cpu->paranoid_commit_state;
+    ctx->l2line_size = hex_cpu->l2line_size;
 #ifndef CONFIG_USER_ONLY
     ctx->pmu_num_packets = 0;
     ctx->pmu_hvx_packets = 0;

@@ -107,6 +107,7 @@ typedef struct DisasContext {
     TCGv ones;
     TCGv_i64 ones64;
     bool gen_cacheop_exceptions;
+    uint32_t l2line_size;
     bool paranoid_commit_state;
     bool ss_active;
     bool ss_pending;

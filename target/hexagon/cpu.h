@@ -489,6 +489,7 @@ struct ArchCPU {
     bool short_circuit;
     uint32_t cluster_thread_count;
     gchar *dump_json_file;
+    uint32_t l2line_size;
 };
 
 #ifndef CONFIG_USER_ONLY
