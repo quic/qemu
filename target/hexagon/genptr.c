@@ -1836,6 +1836,9 @@ static void gen_vtcm_memcpy(DisasContext *ctx, TCGv dst, TCGv src, TCGv size)
     gen_set_label(remainder_is_zero);
     tcg_gen_div_tl(N, cp_size, tcg_constant_tl(4));
 
+    gen_helper_check_vtcm_memcpy(cpu_env, dst, src, N,
+                                 tcg_constant_tl(ctx->insn->slot));
+
     /*
      * 2) Then we copy N chunks of 4 bytes
      *

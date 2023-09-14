@@ -55,6 +55,8 @@ DEF_HELPER_1(stop, void, env)
 
 DEF_HELPER_1(commit_coproc, void, env)
 
+DEF_HELPER_5(check_vtcm_memcpy, void, env, i32, i32, i32, i32)
+
 /* Floating point */
 DEF_HELPER_2(conv_sf2df, f64, env, f32)
 DEF_HELPER_2(conv_df2sf, f32, env, f64)

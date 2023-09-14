@@ -18,6 +18,7 @@
 #ifndef MMU_H
 #define MMU_H
 #include <assert.h>
+#include <string.h>
 
 /*
  * Helpers for MMU tests

@@ -196,7 +196,7 @@ start: start.o thread_common.o
 single_step: single_step.o single_step_asm.o thread_common.o
 sys_reg_mut.o: sys_reg_mut.c ../reg_mut.h ../hex_test.h
 sys_reg_mut: sys_reg_mut.o
-memcpy.o: memcpy.c vtcm_common.h
+memcpy.o: memcpy.c vtcm_common.h mmu.h
 memcpy: memcpy.o
 
 $(TESTS):

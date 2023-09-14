@@ -2693,6 +2693,22 @@ void HELPER(commit_coproc)(CPUHexagonState *env)
     coproc(&args);
 }
 
+void HELPER(check_vtcm_memcpy)(CPUHexagonState *env, uint32_t dst, uint32_t src,
+                               uint32_t cp_chunks, uint32_t slot)
+{
+    /*
+     * TODO: there are other exception triggers to be implemented:
+     * - Source or destination base address in illegal space
+     * - Source or destination buffer crosses a page boundary
+     * - Source base address is NOT in AXI space
+     */
+    for (uint32_t i = 0; i < cp_chunks; i++) {
+        if (!in_vtcm_space(env, dst + (i * 4))) {
+            register_coproc_ldst_exception(env, slot, dst);
+        }
+    }
+}
+
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();
