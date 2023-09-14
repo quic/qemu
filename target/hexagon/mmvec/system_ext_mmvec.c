@@ -88,12 +88,12 @@ void mem_vector_scatter_init(CPUHexagonState *env, Insn *insn,
 
     thread->mem_access[slot].paddr = thread->mem_access[slot].paddr & ~(element_size-1);   // Align to element Size
 
-	int in_tcm = in_vtcm_space(thread->processor_ptr,base_paddr,SHOW_WARNING);
+	int in_tcm = in_vtcm_space(thread,base_paddr);
     if (maptr->xlate_info.memtype.device && !in_tcm) register_coproc_ldst_exception(thread,slot,base_vaddr);
 
     int scatter_gather_exception =  (length < 0);
     scatter_gather_exception |= !in_tcm;
-    scatter_gather_exception |= !in_vtcm_space(thread->processor_ptr,base_paddr+length, SHOW_WARNING);
+    scatter_gather_exception |= !in_vtcm_space(thread,base_paddr+length);
     scatter_gather_exception |= check_scatter_gather_page_cross(thread,base_vaddr,length, thread->mem_access[slot].xlate_info.size);
     if (scatter_gather_exception)
         register_coproc_ldst_exception(thread,slot,base_vaddr);
@@ -147,12 +147,12 @@ void mem_vector_gather_init(CPUHexagonState *env, Insn *insn,
     // M register is positive
     // Base and Base+Length-1 are in TCM
     // Base + Length doesn't cross a page
-	int in_tcm = in_vtcm_space(thread->processor_ptr,base_paddr, SHOW_WARNING);
+	int in_tcm = in_vtcm_space(thread,base_paddr);
     if (maptr->xlate_info.memtype.device && !in_tcm) register_coproc_ldst_exception(thread,slot,base_vaddr);
 
     int scatter_gather_exception =  (length < 0);
     scatter_gather_exception |= !in_tcm;
-    scatter_gather_exception |= !in_vtcm_space(thread->processor_ptr,base_paddr+length, SHOW_WARNING);
+    scatter_gather_exception |= !in_vtcm_space(thread,base_paddr+length);
     scatter_gather_exception |= check_scatter_gather_page_cross(thread,base_vaddr,length, thread->mem_access[slot].xlate_info.size);
     if (scatter_gather_exception)
         register_coproc_ldst_exception(thread,slot,base_vaddr);

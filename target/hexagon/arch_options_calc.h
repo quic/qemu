@@ -25,12 +25,10 @@
 #define VTCM_CFG_BASE_OFF 0x38
 #define VTCM_CFG_SIZE_OFF 0x3c
 
-#define in_vtcm_space(proc, paddr, warning) \
-    in_vtcm_space_impl(thread, paddr, warning)
+#define in_vtcm_space(ENV, PADDR) \
+    in_vtcm_space_impl(ENV, PADDR)
 
-static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr,
-    int warning)
-
+static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr)
 {
     static bool init_needed = true;
     static paddr_t vtcm_base;
@@ -67,7 +65,7 @@ static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr,
     return false;
 }
 #else
-#define in_vtcm_space(proc, paddr, warning) 1
+#define in_vtcm_space(ENV, PADDR) 1
 #endif
 
 struct ProcessorState;
