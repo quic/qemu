@@ -134,6 +134,5 @@
 #define fWRITE_P3_LATE(VAL) P3 = VAL
 #define fPREDUSE_TIMING()
 #define fNOP_EXECUTED
-#define fVTCM_MEMCPY(DST, SRC, SIZE)
 #define fACC()
 #define fEXTENSION_AUDIO(A) A

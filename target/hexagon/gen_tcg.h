@@ -2863,4 +2863,6 @@
 #define fGEN_TCG_S2_storew_rl_st_vi(SHORTCODE)          SHORTCODE
 #define fGEN_TCG_S4_stored_rl_st_vi(SHORTCODE)          SHORTCODE
 
+#define fGEN_TCG_L6_memcpy(SHORTCODE) gen_vtcm_memcpy(ctx, RsV, RtV, MuV)
+
 #endif

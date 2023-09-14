@@ -85,6 +85,7 @@ TESTS += \
 	single_step \
 	sys_reg_mut \
 	hvx-multi \
+	memcpy \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -195,6 +196,8 @@ start: start.o thread_common.o
 single_step: single_step.o single_step_asm.o thread_common.o
 sys_reg_mut.o: sys_reg_mut.c ../reg_mut.h ../hex_test.h
 sys_reg_mut: sys_reg_mut.o
+memcpy.o: memcpy.c vtcm_common.h
+memcpy: memcpy.o
 
 $(TESTS):
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
