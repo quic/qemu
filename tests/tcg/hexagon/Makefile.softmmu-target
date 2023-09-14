@@ -105,6 +105,7 @@ mmu.h: ../hex_test.h
 invalid_opcode.h: mmu.h
 
 standalone_hw: standalone_hw.o monitor_insts.o
+standalone_vec.o: standalone_vec.c filename.h cfgtable.h
 standalone_vec: standalone_vec.o
 mmu_multi_tlb.o: mmu_multi_tlb.c mmu.h
 mmu_multi_tlb: mmu_multi_tlb.o dummy_mutex.o
@@ -132,7 +133,9 @@ qtimer_test: qtimer_test.o
 qtimer: qtimer.o thread_common.o
 bestwait: bestwait.o thread_common.o
 ciad-siad: ciad-siad.o
+fastl2vic.o: fastl2vic.c filename.h cfgtable.h
 fastl2vic: fastl2vic.o
+fastint.o: fastint.c filename.h cfgtable.h
 fastint: fastint.o
 swi: swi.o thread_common.o
 swi2.o: swi2.c interrupts.h
@@ -163,11 +166,15 @@ hvx_64b.o: hvx_64b.c mmu.h
 hvx_64b: hvx_64b.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
+pendalot.o: pendalot.c filename.h cfgtable.h
 pendalot: pendalot.o
+vid-group.o : vid-group.c thread_common.h filename.h cfgtable.h
 vid-group: vid-group.o thread_common.o
+levelint.o: levelint.c filename.h cfgtable.h
 levelint: levelint.o
 swi_fs: swi_fs.o
 vid_reg: vid_reg.o
+int_range.o: int_range.c filename.h cfgtable.h
 int_range: int_range.o
 fopen: fopen.o
 ftrunc: ftrunc.o

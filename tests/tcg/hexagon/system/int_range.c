@@ -22,22 +22,7 @@
 #include "filename.h"
 #include <assert.h>
 #include <hexagon_standalone.h>
-
-static uint32_t get_cfgbase()
-{
-    uint32_t R;
-    asm volatile("%0=cfgbase;" : "=r"(R));
-    return R;
-}
-static uint32_t _rdcfg(uint32_t cfgbase, uint32_t offset)
-{
-    asm volatile("%[cfgbase]=asl(%[cfgbase], #5)\n\t"
-                 "%[offset]=memw_phys(%[offset], %[cfgbase])"
-                 : [cfgbase] "+r"(cfgbase), [offset] "+r"(offset)
-                 :
-                 : );
-    return offset;
-}
+#include "cfgtable.h"
 
 #define L2VIC_INT_ENABLE(b, n)                                               \
     ((volatile unsigned int *)((b) + 0x100 + 4 * (n / 32))) /* device mem */
@@ -73,8 +58,7 @@ int main()
     int ret = 0;
 
     /* setup the fastl2vic interface and setup an indirect mapping */
-    uint32_t cfgbase = get_cfgbase();
-    g_l2vic_base = (_rdcfg(cfgbase, 0x8) << 16) + 0x10000;
+    g_l2vic_base = GET_SUBSYSTEM_BASE() + 0x10000;
 
     /* Setup interrupts */
     for (int irq = 1; irq < INTMAX; irq++) {

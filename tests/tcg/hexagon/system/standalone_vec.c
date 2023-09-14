@@ -28,6 +28,7 @@
 #endif
 #include <hexagon_protos.h>
 #include "filename.h"
+#include "cfgtable.h"
 
 int err = 0;
 
@@ -1267,7 +1268,7 @@ static uintptr_t get_vtcm_base(void)
 #if __HEXAGON_ARCH__ == 65
     return 0xD8200000L;
 #elif __HEXAGON_ARCH__ >= 66
-    return (__rdcfg(vtcm_offset) << 16);
+    return read_cfgtable_field(vtcm_offset) << 16;
 #endif /* __HEXAGON_ARCH__ */
 #endif /* __linux __ */
 #else

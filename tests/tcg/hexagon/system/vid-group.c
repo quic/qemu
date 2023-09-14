@@ -20,27 +20,12 @@
 #include <hexagon_standalone.h>
 #include "thread_common.h"
 #include "filename.h"
+#include "cfgtable.h"
 
 /* This and other volatiles are for dealing with mmio registers */
 typedef volatile unsigned int vu32;
 static uint32_t HWTID[6];
 
-static uint32_t get_cfgbase()
-{
-  uint32_t R;
-  asm volatile ("%0=cfgbase;"
-    : "=r"(R));
-    return R;
-}
-static uint32_t _rdcfg(uint32_t cfgbase, uint32_t offset)
-{
-  asm volatile ("%[cfgbase]=asl(%[cfgbase], #5)\n\t"
-                "%[offset]=memw_phys(%[offset], %[cfgbase])"
-    : [cfgbase] "+r" (cfgbase), [offset] "+r" (offset)
-    :
-    : );
-  return offset;
-}
 void pause()
 {
     __asm__ __volatile__("pause(#1)");
@@ -252,11 +237,9 @@ int main()
     thread_create_blocked(thread, &stack1[STACK_SIZE - 16], 1, (void *)&int1);
 
     /* setup the fastl2vic interface and setup an indirect mapping */
-    uint32_t cfgbase = get_cfgbase();
-    unsigned int fastl2vic = _rdcfg(cfgbase, 0x28);   /* Fastl2vic */
-    add_translation_extended(3, (void *)FAST_INTF_VA, fastl2vic << 16, 16, 7, 4, 0, 0, 3);
+    add_translation_extended(3, (void *)FAST_INTF_VA, GET_FASTL2VIC_BASE(), 16, 7, 4, 0, 0, 3);
 
-    g_l2vic_base = (_rdcfg(cfgbase, 0x8) << 16) + 0x10000;
+    g_l2vic_base = GET_SUBSYSTEM_BASE() + 0x10000;
 
 
     enable_core_interrupt();

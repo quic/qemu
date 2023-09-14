@@ -23,23 +23,7 @@
 
 #include <hexagon_standalone.h>
 #include "filename.h"
-
-static uint32_t get_cfgbase()
-{
-  uint32_t R;
-  asm volatile ("%0=cfgbase;"
-    : "=r"(R));
-    return R;
-}
-static uint32_t _rdcfg(uint32_t cfgbase, uint32_t offset)
-{
-  asm volatile ("%[cfgbase]=asl(%[cfgbase], #5)\n\t"
-                "%[offset]=memw_phys(%[offset], %[cfgbase])"
-    : [cfgbase] "+r" (cfgbase), [offset] "+r" (offset)
-    :
-    : );
-  return offset;
-}
+#include "cfgtable.h"
 
 #define CSR_BASE  0xfab00000
 #define L2VIC_BASE ((CSR_BASE) + 0x10000)
@@ -56,11 +40,9 @@ main()
 
     /* setup the fastl2vic interface and setup an indirect mapping */
     volatile  uint32_t *A = (uint32_t *)0x888e0000;
-    uint32_t cfgbase = get_cfgbase();
-    unsigned int fastl2vic = _rdcfg(cfgbase, 0x28);   /* Fastl2vic */
-    add_translation_extended(3, (void *)A, fastl2vic << 16, 16, 7, 4, 0, 0, 3);
+    add_translation_extended(3, (void *)A, GET_FASTL2VIC_BASE(), 16, 7, 4, 0, 0, 3);
 
-    uint32_t l2vic_base = (_rdcfg(cfgbase, 0x8) << 16) + 0x10000;
+    uint32_t l2vic_base = GET_SUBSYSTEM_BASE() + 0x10000;
 
     /* set and verify an interrupt using the L2VIC_BASE */
     irq_bit  = (1 << (66  % 32));
