@@ -28,10 +28,7 @@
 
 void invalid_coproc(void)
 {
-    /* nops pads are a workaround for QTOOL-54399 */
-    asm volatile ("nop");
     asm volatile (".word 0xa6e0c011\n\t"); /* mxclracc */
-    asm volatile ("nop");
 }
 
 void my_err_handler_helper(uint32_t ssr)
