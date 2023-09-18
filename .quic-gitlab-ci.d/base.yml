@@ -150,6 +150,14 @@ coproc_build:
     - export QEMU_HEXAGON_COPROC=$PWD
     - qemu-qurt-tests/run_tests.sh $builddir/qemu-system-hexagon
 
+.base-sival-tests:
+  extends: .after-build
+  script:
+    - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-sival-tests.git
+    - export QEMU_HEXAGON_COPROC=$PWD
+    - qemu-sival-tests/run_tests.sh $builddir/qemu-system-hexagon
+
 ##################################################################
 #    Jobs
 ###################################################################
@@ -182,6 +190,9 @@ hexagon_check:
 hexagon_qurt-tests:
   extends: .base-qurt-tests
   needs: [hexagon_build, coproc_build]
+hexagon_sival-tests:
+  extends: .base-sival-tests
+  needs: [hexagon_build, coproc_build]
 
 hexagon-mac_build:
   tags:
@@ -192,6 +203,11 @@ hexagon-mac_qurt-tests:
   tags:
     - mac
   extends: .base-qurt-tests
+  needs: [hexagon-mac_build]
+hexagon-mac_sival-tests:
+  tags:
+    - mac
+  extends: .base-sival-tests
   needs: [hexagon-mac_build]
 
 san-hexagon_build:
@@ -208,6 +224,9 @@ san-hexagon_check:
   extends: .base-check
 san-hexagon_qurt-tests:
   extends: .base-qurt-tests
+  needs: [san-hexagon_build, coproc_build]
+san-hexagon_sival-tests:
+  extends: .base-sival-tests
   needs: [san-hexagon_build, coproc_build]
 
 no-idef-parser-hexagon_build:
