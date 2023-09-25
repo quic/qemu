@@ -252,6 +252,7 @@ static void pmu_reset(void)
     }
 }
 
+#define COMMITTED_PKT_ANY 3
 #define COMMITTED_PKT_T0 12
 #define COMMITTED_PKT_T1 13
 #define COMMITTED_PKT_T2 14
@@ -499,6 +500,19 @@ static void test_event_change(void)
     check_range(0, SREG, expect_count, expect_count * ERR);
 }
 
+static void test_committed_pkt_any(void)
+{
+    uint32_t expect_count;
+    pmu_reset();
+    pmu_config(0, COMMITTED_PKT_ANY);
+    pmu_config(1, COMMITTED_PKT_T0);
+    pmu_config(2, COMMITTED_PKT_T1);
+    thread_run_blocked(work, (void *)&stack[0][STACK_SIZE - 16], 1, (void *)1);
+    work(0);
+    expect_count = get_pmu_counter(1) + get_pmu_counter(2);
+    check_range(0, SREG, expect_count, expect_count * ERR);
+}
+
 int main()
 {
     test_config_with_pmu_enabled(0);
@@ -509,6 +523,7 @@ int main()
     test_config_from_another_thread();
     test_hvx_packets();
     test_event_change();
+    test_committed_pkt_any();
 
     printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);
     return err;
