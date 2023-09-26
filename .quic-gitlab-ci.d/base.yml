@@ -217,6 +217,39 @@ hexagon_qurt-tests:
 hexagon_sival-tests:
   extends: .base-sival-tests
   needs: [hexagon_build, coproc_build]
+hexagon_publish:
+  tags: [publish_runner]
+  variables:
+    PUBLISH_PATH: /prj/qct/llvm/target/vp_qemu_llvm/qemu_builds/
+    MAX_PUBLISH_NR: 90 # 3 months
+  needs: [hexagon_install, coproc_build]
+  script:
+    - |
+      installdir="$(echo $CI_JOB_NAME | cut -d_ -f1)_install"
+      cp quic/RELEASE-NOTES.txt $installdir
+      cp $HEX_COPROC_BIN $installdir/bin/
+      rel_publishdir="build-$(date +%Y%m%d)"
+      publishdir="$PUBLISH_PATH/$rel_publishdir"
+      rm -rf "$PUBLISH_PATH/build-latest" "$publishdir"
+      mv $installdir "$publishdir"
+      ln -s $rel_publishdir "$PUBLISH_PATH/build-latest"
+      nr="$(ls "$PUBLISH_PATH" | wc -l)"
+      if test $nr -gt $(($MAX_PUBLISH_NR + 1))
+      then
+          to_rm=$(( $nr - $MAX_PUBLISH_NR - 1 ))
+          (
+              cd $PUBLISH_PATH
+              for f in $(ls | head -n $to_rm)
+              do
+                  echo "Removing old $f"
+                  rm -rf $f
+              done
+          )
+      fi
+  only:
+    - tags
+    - web
+    - schedules
 
 hexagon-win_build:
   image: $CI_REGISTRY/qqvp/containers/qqvp-dev-win:latest
