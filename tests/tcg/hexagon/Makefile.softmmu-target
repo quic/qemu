@@ -200,8 +200,9 @@ sys_reg_mut.o: sys_reg_mut.c ../reg_mut.h ../hex_test.h
 sys_reg_mut: sys_reg_mut.o
 memcpy.o: memcpy.c vtcm_common.h mmu.h
 memcpy: memcpy.o
+inf-loop: inf-loop.o
 
-$(TESTS):
+$(TESTS) inf-loop:
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
 
 
@@ -368,6 +369,26 @@ run-start: start
 	$(call quiet-command, \
 		grep -q "PASS" $<.stdout, \
 		"GREP", "PASS");
+
+run-reset-test: inf-loop
+	$(call run-test, $@, \
+		echo "starting qemu through 'expect'"; \
+		{ \
+		  echo "spawn $(QEMU) -monitor stdio $(QEMU_OPTS) $<"; \
+		  echo 'expect "Starting thread 0"'; \
+		  echo 'expect "Starting thread 1"'; \
+		  echo 'expect "Starting thread 2"'; \
+		  echo 'expect "Starting thread 3"'; \
+		  echo 'send "system_reset\r"'; \
+		  echo 'expect "Starting thread 0"'; \
+		  echo 'expect "Starting thread 1"'; \
+		  echo 'expect "Starting thread 2"'; \
+		  echo 'expect "Starting thread 3"'; \
+		  echo 'send "quit\r"'; \
+		} | expect, \
+	"reset through monitor")
+
+EXTRA_RUNS += run-reset-test
 
 ifneq ($(HAVE_HEXAGON_LLDB_BIN),)
 

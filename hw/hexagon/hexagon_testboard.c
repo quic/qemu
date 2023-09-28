@@ -38,6 +38,7 @@
 #include "include/sysemu/sysemu.h"
 #include "target/hexagon/internal.h"
 #include "libgen.h"
+#include "sysemu/reset.h"
 
 #include "machine_configs.h.inc"
 
@@ -183,6 +184,13 @@ static void *setup_vtcm(uint64_t vtcm_size,
     return addr;
 }
 
+static void do_cpu_reset(void *opaque)
+{
+    HexagonCPU *cpu = opaque;
+    CPUState *cs = CPU(cpu);
+    cpu_reset(cs);
+}
+
 static void hexagon_common_init(MachineState *machine, Rev_t rev,
     hexagon_config_table *cfgTable, hexagon_config_extensions *cfgExtensions)
 {
@@ -234,6 +242,7 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
     for (int i = 0; i < machine->smp.cpus; i++) {
         HexagonCPU *cpu = HEXAGON_CPU(object_new(machine->cpu_type));
         CPUHexagonState *env = &cpu->env;
+        qemu_register_reset(do_cpu_reset, cpu);
 
         qdev_prop_set_uint32(DEVICE(cpu), "thread-count", machine->smp.cpus);
         qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr",
