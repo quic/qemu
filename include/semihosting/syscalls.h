@@ -20,6 +20,8 @@
 
 typedef struct GuestFD GuestFD;
 
+void semihost_host_open_str(CPUState *cs, gdb_syscall_complete_cb complete,
+                            char *fname, int gdb_flags, int mode);
 void semihost_sys_open(CPUState *cs, gdb_syscall_complete_cb complete,
                        target_ulong fname, target_ulong fname_len,
                        int gdb_flags, int mode);
@@ -71,5 +73,11 @@ void semihost_sys_gettimeofday(CPUState *cs, gdb_syscall_complete_cb complete,
 
 void semihost_sys_poll_one(CPUState *cs, gdb_syscall_complete_cb complete,
                            int fd, GIOCondition cond, int timeout);
+
+void semihost_sys_ftruncate(CPUState *cs, gdb_syscall_complete_cb complete,
+                            int fd, off_t len);
+
+int validate_lock_user_string(char **pstr, CPUState *cs,
+                              target_ulong tstr, target_ulong tlen);
 
 #endif /* SEMIHOSTING_SYSCALLS_H */

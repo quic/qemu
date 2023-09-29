@@ -11,3 +11,5 @@ specific_ss.add(when: ['CONFIG_SEMIHOSTING', 'CONFIG_SYSTEM_ONLY'], if_true: fil
 
 specific_ss.add(when: ['CONFIG_ARM_COMPATIBLE_SEMIHOSTING'],
 		if_true: files('arm-compat-semi.c'))
+
+specific_ss.add(when: ['CONFIG_SEMIHOSTING_USE_STDIO_FD'])

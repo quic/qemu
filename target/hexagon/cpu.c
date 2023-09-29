@@ -782,7 +782,6 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
         }
         env->g_sreg = env0->g_sreg;
         env->g_gcycle = env0->g_gcycle;
-        env->cmdline = env0->cmdline;
         env->lib_search_dir = env0->lib_search_dir;
         env->g_pcycle_base = env0->g_pcycle_base;
         env->pmu.g_ctrs_off = env0->pmu.g_ctrs_off;

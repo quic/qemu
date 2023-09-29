@@ -39,6 +39,7 @@
 #include "target/hexagon/internal.h"
 #include "libgen.h"
 #include "sysemu/reset.h"
+#include "include/semihosting/semihost.h"
 
 #include "machine_configs.h.inc"
 
@@ -209,11 +210,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
         if (i == 0) {
             hexagon_init_bootstrap(machine, cpu);
             cpu_0 = cpu;
-
-            GString *argv = g_string_new(machine->kernel_filename);
-            g_string_append(argv, " ");
-            g_string_append(argv, machine->kernel_cmdline);
-            env->cmdline = g_string_free(argv, false);
             env->dir_list = NULL;
         } else {
             if (cpu_0->usefs) {
@@ -303,6 +299,7 @@ static void v66g_1024_init(ObjectClass *oc, void *data)
     mc->default_cpus = 4;
     mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
+    qemu_semihosting_enable();
 }
 
 
@@ -320,6 +317,7 @@ static void v66g_linux_init(ObjectClass *oc, void *data)
     MachineClass *mc = MACHINE_CLASS(oc);
     mc->init = v66g_1024_linux_init;
     mc->desc = "Hexagon Linux V66G_1024";
+    qemu_semihosting_enable();
 }
 
 static void v68n_1024_config_init(MachineState *machine)
@@ -341,6 +339,7 @@ static void v68n_1024_init(ObjectClass *oc, void *data)
     mc->default_cpus = 6;
     mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
+    qemu_semihosting_enable();
 }
 
 static void v68g_1024_h2_init(MachineState *machine)
@@ -359,6 +358,7 @@ static void v68g_h2_init(ObjectClass *oc, void *data)
 
     mc->default_cpus = 4;
     mc->max_cpus = THREADS_MAX;
+    qemu_semihosting_enable();
 }
 
 
@@ -380,6 +380,7 @@ static void v69na_1024_init(ObjectClass *oc, void *data)
     mc->default_cpus = 6;
     mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
+    qemu_semihosting_enable();
 }
 
 static void v73na_1024_config_init(MachineState *machine)
@@ -406,6 +407,7 @@ static void SA8775P_cdsp0_init(ObjectClass *oc, void *data)
     mc->default_cpus = 6;
     mc->max_cpus = 6;
     mc->default_ram_size = 4 * GiB;
+    qemu_semihosting_enable();
 }
 
 static void SA8540P_cdsp0_config_init(MachineState *machine)
@@ -426,6 +428,7 @@ static void SA8540P_cdsp0_init(ObjectClass *oc, void *data)
     mc->default_cpus = 6;
     mc->max_cpus = 6;
     mc->default_ram_size = 4 * GiB;
+    qemu_semihosting_enable();
 }
 
 static void v73na_1024_linux_config_init(MachineState *machine)
@@ -447,6 +450,7 @@ static void v73na_1024_linux_init(ObjectClass *oc, void *data)
     mc->default_cpus = 6;
     mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
+    qemu_semihosting_enable();
 }
 
 static void v73na_1024_init(ObjectClass *oc, void *data)
@@ -461,6 +465,7 @@ static void v73na_1024_init(ObjectClass *oc, void *data)
     mc->default_cpus = 6;
     mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
+    qemu_semihosting_enable();
 }
 
 static void virt_init(ObjectClass *oc, void *data)
@@ -475,6 +480,7 @@ static void virt_init(ObjectClass *oc, void *data)
     mc->default_cpus = 6;
     mc->max_cpus = THREADS_MAX;
     mc->default_ram_size = 4 * GiB;
+    qemu_semihosting_enable();
 }
 
 static const TypeInfo hexagon_machine_types[] = {

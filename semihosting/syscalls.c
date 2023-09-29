@@ -50,8 +50,8 @@ static int validate_strlen(CPUState *cs, target_ulong str, target_ulong tlen)
     return tlen;
 }
 
-static int validate_lock_user_string(char **pstr, CPUState *cs,
-                                     target_ulong tstr, target_ulong tlen)
+int validate_lock_user_string(char **pstr, CPUState *cs,
+                              target_ulong tstr, target_ulong tlen)
 {
     int ret = validate_strlen(cs, tstr, tlen);
     CPUArchState *env G_GNUC_UNUSED = cpu_env(cs);
@@ -254,19 +254,10 @@ static void gdb_gettimeofday(CPUState *cs, gdb_syscall_complete_cb complete,
  * Host semihosting syscall implementations.
  */
 
-static void host_open(CPUState *cs, gdb_syscall_complete_cb complete,
-                      target_ulong fname, target_ulong fname_len,
-                      int gdb_flags, int mode)
+void semihost_host_open_str(CPUState *cs, gdb_syscall_complete_cb complete,
+                            char *fname, int gdb_flags, int mode)
 {
-    CPUArchState *env G_GNUC_UNUSED = cpu_env(cs);
-    char *p;
     int ret, host_flags = O_BINARY;
-
-    ret = validate_lock_user_string(&p, cs, fname, fname_len);
-    if (ret < 0) {
-        complete(cs, -1, -ret);
-        return;
-    }
 
     if (gdb_flags & GDB_O_WRONLY) {
         host_flags |= O_WRONLY;
@@ -285,7 +276,7 @@ static void host_open(CPUState *cs, gdb_syscall_complete_cb complete,
         host_flags |= O_EXCL;
     }
 
-    ret = open(p, host_flags, mode);
+    ret = open(fname, host_flags, mode);
     if (ret < 0) {
         complete(cs, -1, errno);
     } else {
@@ -293,6 +284,20 @@ static void host_open(CPUState *cs, gdb_syscall_complete_cb complete,
         associate_guestfd(guestfd, ret);
         complete(cs, guestfd, 0);
     }
+}
+
+static void host_open(CPUState *cs, gdb_syscall_complete_cb complete,
+                      target_ulong fname, target_ulong fname_len,
+                      int gdb_flags, int mode)
+{
+    CPUArchState *env G_GNUC_UNUSED = cpu_env(cs);
+    char *p;
+    int ret = validate_lock_user_string(&p, cs, fname, fname_len);
+    if (ret < 0) {
+        complete(cs, -1, -ret);
+        return;
+    }
+    semihost_host_open_str(cs, complete, p, gdb_flags, mode);
     unlock_user(p, fname, 0);
 }
 
@@ -539,6 +544,13 @@ static void host_poll_one(CPUState *cs, gdb_syscall_complete_cb complete,
     complete(cs, cond & (G_IO_IN | G_IO_OUT), 0);
 }
 #endif
+
+static void host_ftruncate(CPUState *cs, gdb_syscall_complete_cb complete,
+                           GuestFD *gf, off_t len)
+{
+    int err = ftruncate(gf->hostfd, len);
+    complete(cs, err, err < 0 ? errno : 0);
+}
 
 /*
  * Static file semihosting syscall implementations.
@@ -981,3 +993,22 @@ void semihost_sys_poll_one(CPUState *cs, gdb_syscall_complete_cb complete,
     }
 }
 #endif
+
+void semihost_sys_ftruncate(CPUState *cs, gdb_syscall_complete_cb complete,
+                            int fd, off_t len)
+{
+    GuestFD *gf = get_guestfd(fd);
+    if (!gf) {
+        complete(cs, -1, EBADF);
+        return;
+    }
+
+    switch (gf->type) {
+    case GuestFDHost:
+        host_ftruncate(cs, complete, gf, len);
+        break;
+    default:
+        fprintf(stderr, "ftruncate call not implemented for this semihosting mode.\n");
+        g_assert_not_reached();
+    }
+}

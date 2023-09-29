@@ -430,7 +430,6 @@ typedef struct CPUArchState {
     int slot;                    /* Needed for exception generation */
     hex_exception_info einfo;
     systemstate_t systemstate;
-    const char *cmdline;
     CPUHexagonTLBContext *hex_tlb;
     target_ulong imprecise_exception;
     volatile hex_lock_state_t tlb_lock_state; /* different threads modify */

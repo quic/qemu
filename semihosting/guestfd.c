@@ -42,10 +42,13 @@ void qemu_semihosting_guestfd_init(void)
         console_in_gf.type = GuestFDConsole;
         console_out_gf.type = GuestFDConsole;
     }
-#else
+#endif
+
+#if !defined(CONFIG_ARM_COMPATIBLE_SEMIHOSTING) || \
+    defined(CONFIG_SEMIHOSTING_USE_STDIO_FDS)
     /* Otherwise, the stdio file descriptors apply. */
     guestfd_array = g_array_set_size(guestfd_array, 3);
-#ifndef CONFIG_USER_ONLY
+#if !defined(CONFIG_USER_ONLY) && !defined(CONFIG_SEMIHOSTING_USE_STDIO_FDS)
     if (!use_gdb_syscalls()) {
         GuestFD *gf = &g_array_index(guestfd_array, GuestFD, 0);
         gf[0].type = GuestFDConsole;

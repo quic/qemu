@@ -85,7 +85,16 @@
 #define O_BINARY 0
 #endif
 
-static int gdb_open_modeflags[12] = {
+
+#include "common-semi-target.h"
+
+#ifdef SEMIHOSTING_EXT_OPEN_MODES
+#define GDB_OPEN_MODES_NR 14
+#else
+#define GDB_OPEN_MODES_NR 12
+#endif
+
+static int gdb_open_modeflags[GDB_OPEN_MODES_NR] = {
     GDB_O_RDONLY,
     GDB_O_RDONLY,
     GDB_O_RDWR,
@@ -98,6 +107,10 @@ static int gdb_open_modeflags[12] = {
     GDB_O_WRONLY | GDB_O_CREAT | GDB_O_APPEND,
     GDB_O_RDWR | GDB_O_CREAT | GDB_O_APPEND,
     GDB_O_RDWR | GDB_O_CREAT | GDB_O_APPEND,
+#ifdef SEMIHOSTING_EXT_OPEN_MODES
+    GDB_O_RDWR | GDB_O_CREAT,
+    GDB_O_RDWR | GDB_O_CREAT | GDB_O_EXCL,
+#endif
 };
 
 #ifndef CONFIG_USER_ONLY
@@ -166,8 +179,6 @@ static LayoutInfo common_semi_find_bases(CPUState *cs)
 
 #endif
 
-#include "common-semi-target.h"
-
 /*
  * Read the input value from the argument block; fail the semihosting
  * call if the memory read fails. Eventually we could use a generic
@@ -180,6 +191,9 @@ static LayoutInfo common_semi_find_bases(CPUState *cs)
  * should check.
  */
 
+#ifdef SEMIHOSTING_CUSTOM_GET_ARG
+#define GET_ARG(n) SEMIHOSTING_CUSTOM_GET_ARG(n)
+#else
 #define GET_ARG(n) do {                                 \
     if (is_64bit_semihosting(env)) {                    \
         if (get_user_u64(arg ## n, args + (n) * 8)) {   \
@@ -191,6 +205,7 @@ static LayoutInfo common_semi_find_bases(CPUState *cs)
         }                                               \
     }                                                   \
 } while (0)
+#endif
 
 #define SET_ARG(n, val)                                 \
     (is_64bit_semihosting(env) ?                        \
@@ -222,7 +237,7 @@ static inline uint32_t get_swi_errno(CPUState *cs)
 #endif
 }
 
-static void common_semi_cb(CPUState *cs, uint64_t ret, int err)
+void common_semi_cb(CPUState *cs, uint64_t ret, int err)
 {
     if (err) {
 #ifdef CONFIG_USER_ONLY
@@ -230,6 +245,9 @@ static void common_semi_cb(CPUState *cs, uint64_t ret, int err)
         ts->swi_errno = err;
 #else
         syscall_err = err;
+#  ifdef SEMIHOSTING_SET_ERR
+        common_semi_set_err(cs, err);
+#  endif
 #endif
     }
     common_semi_set_ret(cs, ret);
@@ -257,7 +275,9 @@ static void common_semi_rw_cb(CPUState *cs, uint64_t ret, int err)
     GET_ARG(2);
 
     if (err) {
+#ifndef SEMIHOSTING_CUSTOM_GET_ARG
  do_fault:
+#endif
         ret = 0; /* error: no bytes transmitted */
     }
     common_semi_set_ret(cs, arg2 - ret);
@@ -385,7 +405,7 @@ void do_common_semihosting(CPUState *cs)
         if (!s) {
             goto do_fault;
         }
-        if (arg1 >= 12) {
+        if (arg1 >= GDB_OPEN_MODES_NR) {
             unlock_user(s, arg0, 0);
             common_semi_cb(cs, -1, EINVAL);
             break;
@@ -419,8 +439,13 @@ void do_common_semihosting(CPUState *cs)
             }
         } else {
             unlock_user(s, arg0, 0);
+#ifdef SEMIHOSTING_CUSTOM_OPEN
+            common_semi_sys_open(cs, arg0, arg2 + 1,
+                                 gdb_open_modeflags[arg1], 0644);
+#else
             semihost_sys_open(cs, common_semi_cb, arg0, arg2 + 1,
                               gdb_open_modeflags[arg1], 0644);
+#endif
             break;
         }
         unlock_user(s, arg0, 0);
@@ -465,6 +490,9 @@ void do_common_semihosting(CPUState *cs)
         GET_ARG(0);
         GET_ARG(1);
         GET_ARG(2);
+#ifdef SEMIHOSTING_READ_PREPARE_BUF
+        common_semi_read_prepare_buf(cs, arg1, arg2);
+#endif
         semihost_sys_read(cs, common_semi_rw_cb, arg0, arg1, arg2);
         break;
 
