@@ -501,6 +501,10 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             sys_stat.atime = (uint32_t) st_buf.st_atim.tv_sec;
             sys_stat.mtime = (uint32_t) st_buf.st_mtim.tv_sec;
             sys_stat.ctime = (uint32_t) st_buf.st_ctim.tv_sec;
+#elif defined(_WIN32)
+            sys_stat.atime = st_buf.st_atime;
+            sys_stat.mtime = st_buf.st_mtime;
+            sys_stat.ctime = st_buf.st_ctime;
 #endif
         }
         DEBUG_MEMORY_READ(swi_info + 4, 4, &statBufferAddr);
