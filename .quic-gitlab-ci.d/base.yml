@@ -52,7 +52,7 @@ variables:
   HEX_CONFIG_CMD: $GENERIC_CONFIG_CMD $DEFAULT_CONFIG_OPTS $HEX_CONFIG_OPTS --target-list=hexagon-softmmu,hexagon-linux-user
   AARCH64_CONFIG_CMD: $GENERIC_CONFIG_CMD $DEFAULT_CONFIG_OPTS $AARCH64_CONFIG_OPTS --target-list=aarch64-softmmu,aarch64-linux-user
   HEX_MAC_CONFIG_CMD: $GENERIC_CONFIG_CMD $HEX_CONFIG_OPTS --disable-strip --disable-pie --disable-virglrenderer --disable-opengl --target-list=hexagon-softmmu
-  HEX_WIN_CONFIG_CMD: $GENERIC_CONFIG_CMD $HEX_CONFIG_OPTS --without-default-features --cross-prefix=x86_64-w64-mingw32- --target-list=hexagon-softmmu
+  HEX_WIN_CONFIG_CMD: $GENERIC_CONFIG_CMD $HEX_CONFIG_OPTS --without-default-features --assert-target-compiler --cross-prefix=x86_64-w64-mingw32- --target-list=hexagon-softmmu --qemu-testing-path="wine $$installdir/qemu-system-hexagon.exe"
 
   GITLAB_URL: echo "$CI_SERVER_URL" | sed -e 's/^.*:\/\///g' -e 's/:[0-9]*$//g'
 
@@ -131,8 +131,10 @@ coproc_build:
 
 .base-check-tcg:
   extends: .after-build
+  variables:
+    EXPORT_COPROC: "true"
   script:
-    - export QEMU_HEXAGON_COPROC=$PWD
+    - if test "${EXPORT_COPROC}" == "true"; then export QEMU_HEXAGON_COPROC=$PWD; fi
     - make -C $builddir -j check-tcg V=1 OVERRIDE_OPTS="$OVERRIDE_OPTS"
   artifacts:
     when: on_failure
@@ -231,6 +233,14 @@ hexagon-win_install:
   image: $CI_REGISTRY/qqvp/containers/qqvp-dev-win:latest
   needs: [hexagon-win_build]
   extends: .base-install
+hexagon-win_check-tcg:
+  image: $CI_REGISTRY/qqvp/containers/qqvp-dev-win:latest
+  # We need install dir due to a bug that prevents running qemu from
+  # the build dir in this mingw64/wine setup.
+  needs: [hexagon-win_build, hexagon-win_install]
+  extends: .base-check-tcg
+  variables:
+    EXPORT_COPROC: "false"
 hexagon-win_tarball:
   image: $CI_REGISTRY/qqvp/containers/qqvp-dev-win:latest
   needs: [hexagon-win_install]

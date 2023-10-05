@@ -25,6 +25,33 @@ HEXAGON_SYSTEM_SRC=$(SRC_PATH)/tests/tcg/hexagon/system
 # Set search path for all sources
 VPATH 		+= $(HEXAGON_SYSTEM_SRC)
 
+ifneq (,$(findstring w64,$(CROSS_PREFIX)))
+WIN=yes
+else
+WIN=no
+endif
+
+ifeq ($(WIN),no)
+TESTS += \
+	invalid_coproc \
+	timer_reg \
+	qtimer_test \
+	qtimer \
+	ieee_fp \
+	coproc \
+	coproc_conv \
+	coproc_conv_fp16 \
+	coproc_range \
+	pcycle \
+	neg-framelimit \
+	neg-float_excp \
+	neg-hvx_nocoproc \
+	neg-no-coproc \
+	swi_fs \
+	test-thread \
+	$()
+endif
+
 TESTS += \
 	standalone_hw \
 	standalone_vec \
@@ -38,11 +65,7 @@ TESTS += \
 	tlblock \
 	k0lock \
 	invalid_opcode \
-	invalid_coproc \
 	sys_atomics \
-	timer_reg \
-	qtimer_test \
-	qtimer \
 	bestwait \
 	ciad-siad \
 	fastl2vic \
@@ -51,28 +74,16 @@ TESTS += \
 	swi2 \
 	swi_wait \
 	udma \
-	ieee_fp \
-	coproc \
-	coproc_conv \
-	coproc_conv_fp16 \
-	coproc_range \
-	pcycle \
-	neg-framelimit \
-	neg-float_excp \
-	neg-hvx_nocoproc \
 	hvx_64b \
 	neg-unaligned \
 	neg-vtcm_error \
-	neg-no-coproc \
 	pendalot \
 	vid-group \
 	levelint \
-	swi_fs \
 	vid_reg \
 	int_range \
 	fopen \
 	ftrunc \
-	test-thread \
 	access \
 	getcwd \
 	checkforpriv \
@@ -127,12 +138,7 @@ tlblock: tlblock.o thread_common.o
 k0lock: k0lock.o thread_common.o
 invalid_opcode.o: invalid_opcode.c invalid_opcode.h
 invalid_opcode: invalid_opcode.o
-invalid_coproc.o: invalid_coproc.c mmu.h
-invalid_coproc: invalid_coproc.o
 sys_atomics: sys_atomics.o thread_common.o
-timer_reg: timer_reg.o
-qtimer_test: qtimer_test.o
-qtimer: qtimer.o thread_common.o
 bestwait: bestwait.o thread_common.o
 ciad-siad: ciad-siad.o
 fastl2vic.o: fastl2vic.c filename.h cfgtable.h
@@ -145,6 +151,13 @@ swi2: swi2.o thread_common.o
 swi_wait.o: swi_wait.c util.h thread_common.h
 swi_wait: swi_wait.o util.o thread_common.o
 udma: udma.o
+
+ifeq ($(WIN),no)
+invalid_coproc.o: invalid_coproc.c mmu.h
+invalid_coproc: invalid_coproc.o
+timer_reg: timer_reg.o
+qtimer_test: qtimer_test.o
+qtimer: qtimer.o thread_common.o
 ieee_fp: ieee_fp.o
 coproc: coproc.o
 coproc_conv.o: coproc_conv.c coproc_common.h coproc_conv_asm.h \
@@ -156,32 +169,34 @@ coproc_conv_fp16.o: coproc_conv_fp16.cpp coproc_common.h \
 		    filename.h vtcm_common.h
 coproc_conv_fp16: coproc_conv_fp16.o
 coproc_range: coproc_range.o
+neg-hvx_nocoproc: hvx_nocoproc.o
+neg-no-coproc: coproc.o
+swi_fs: swi_fs.o
+test-thread: test-thread.o thread_common.o
+endif
+
 wait: wait.o
 pcycle.o: pcycle.c ../hex_test.h
 pcycle: pcycle.o
 neg-framelimit: framelimit.o
 neg-float_excp: float_excp.o
-neg-hvx_nocoproc: hvx_nocoproc.o
 hvx-multi.o: hvx-multi.c
 hvx-multi: hvx-multi.o hvx-multi-asm.o
 hvx_64b.o: hvx_64b.c mmu.h
 hvx_64b: hvx_64b.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
-neg-no-coproc: coproc.o
 pendalot.o: pendalot.c filename.h cfgtable.h
 pendalot: pendalot.o
 vid-group.o : vid-group.c thread_common.h filename.h cfgtable.h
 vid-group: vid-group.o thread_common.o
 levelint.o: levelint.c filename.h cfgtable.h
 levelint: levelint.o
-swi_fs: swi_fs.o
 vid_reg: vid_reg.o
 int_range.o: int_range.c filename.h cfgtable.h
 int_range: int_range.o
 fopen: fopen.o
 ftrunc: ftrunc.o
-test-thread: test-thread.o thread_common.o
 access: access.o
 getcwd: getcwd.o
 checkforpriv.o: checkforpriv.c mmu.h
@@ -214,22 +229,26 @@ memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
 standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
 
 standalone_vec.o: CFLAGS+= -mv69 -O2 -mhvx  -fvectorize
-hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
 hvx_64b.o: CFLAGS+= -O2 -mhvx
 hvx-multi.o: CFLAGS+= -O2 -mhvx
 hvx-multi-asm.o: ASFLAGS+= -mhvx
+
+vtcm_error.o: CFLAGS += -mhvx
+pmu.o: CFLAGS += -mhvx
+
+ifeq ($(WIN),no)
+hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
 ieee_fp.o: CFLAGS += -mhvx -mhvx-length=128B -mhvx-ieee-fp
 coproc.o: CFLAGS+= -mhmx
 coproc_conv.o: CFLAGS+= -mhmx
 coproc_conv_asm.o: ASFLAGS+= -mhmx
 coproc_conv_fp16.o: CFLAGS+= -mhmx
 coproc_range.o: CFLAGS+= -mhmx
-vtcm_error.o: CFLAGS += -mhvx
-pmu.o: CFLAGS += -mhvx
 
 timer_reg.o: CFLAGS+= -DCSR_BASE=0xfc900000
 qtimer_test.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
 qtimer.o: CFLAGS+= -DCSR_BASE=0xfc900000 -DQTMR_FREQ=19200000 -DIRQ1=3 -DIRQ2=4
+endif
 
 QEMU_BASE_MACHINE=-M virt -cpu any,count-gcycle-xt=on,cacheop-exceptions=true,usefs=$(SRC_PATH)/tests/tcg/hexagon/system
 QEMU_OPTS+=-display none
@@ -242,7 +261,6 @@ QEMU_OPTS+=$(QEMU_BASE_MACHINE) $(QEMU_EXTRA_OPTS) $(OVERRIDE_OPTS) -kernel
 
 run-neg-framelimit: neg-framelimit
 run-neg-float_excp: neg-float_excp
-run-neg-hvx_nocoproc: neg-hvx_nocoproc
 run-neg-unaligned: neg-unaligned
 
 run-neg-vtcm_error: neg-vtcm_error
@@ -253,6 +271,9 @@ run-neg-vtcm_error: neg-vtcm_error
 	$(call quiet-command, \
 		grep -q "exception 0x26" $<.stderr, \
 		"GREP", "exception 0x26");
+
+ifeq ($(WIN),no)
+run-neg-hvx_nocoproc: neg-hvx_nocoproc
 
 run-neg-no-coproc:neg-no-coproc
 	$(call run-test-neg, $<, $(QEMU) $< 2> $<.stderr,"$< on $(TARGET_NAME)"); \
@@ -332,19 +353,6 @@ run-test-thread-v73-mttcg: QEMU_EXTRA_OPTS+=-M V73NA_1024 -accel tcg,thread=mult
 run-test-thread-v68 run-test-thread-v73 run-test-thread-v73-mttcg: test-thread
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< ,"$< on $(TARGET_NAME) $(@:run-$<-%=%)")
 
-run-fopen: fopen
-	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< -append dummy.so,"$< on $(TARGET_NAME)")
-run-ftrunc: ftrunc
-	echo "valid" > _testfile_ftrunc
-	stat _testfile_ftrunc | fgrep "Size: 6"
-	sleep 1
-	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
-	stat _testfile_ftrunc | fgrep "Size: 1"
-
-run-access: access
-	echo "valid" > _testfile_access
-	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
-
 # coproc tests
 run-coproc:QEMU_EXTRA_OPTS=-M virt_coproc
 run-coproc:coproc
@@ -357,6 +365,21 @@ run-coproc_conv_fp16: coproc_conv_fp16
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< --append "2 2 2 coproc_input_fp16.dat coproc_output_fp16.dat","$< on $(TARGET_NAME)")
 run-invalid_coproc:QEMU_EXTRA_OPTS=-M virt_coproc
 run-invalid_coproc:invalid_coproc
+endif # no WIN
+
+run-fopen: fopen
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< -append dummy.so,"$< on $(TARGET_NAME)")
+
+run-ftrunc: ftrunc
+	echo "valid" > _testfile_ftrunc
+	stat _testfile_ftrunc | fgrep "Size: 6"
+	sleep 1
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
+	stat _testfile_ftrunc | fgrep "Size: 1"
+
+run-access: access
+	echo "valid" > _testfile_access
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
 
 run-hvx_64b: hvx_64b
 	$(call run-test, $<, $(QEMU) -M V66G_1024 -kernel $<, "$< on $(TARGET_NAME) V66")
@@ -370,6 +393,7 @@ run-start: start
 		grep -q "PASS" $<.stdout, \
 		"GREP", "PASS");
 
+ifeq ($(WIN),no)
 run-reset-test: inf-loop
 	$(call run-test, $@, \
 		echo "starting qemu through 'expect'"; \
@@ -418,4 +442,6 @@ run-lldb-revcon: simple-assign qemu-wrapper-for-lldb
 
 EXTRA_RUNS += run-lldb-revcon
 
-endif
+endif # have LLDB
+
+endif # no WIN
