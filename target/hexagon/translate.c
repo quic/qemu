@@ -139,7 +139,7 @@ intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
 
 void gen_exception(int excp, target_ulong PC)
 {
-    gen_helper_raise_exception(cpu_env, tcg_constant_i32(excp),
+    gen_helper_raise_exception(tcg_env, tcg_constant_i32(excp),
                                tcg_constant_tl(PC));
 }
 
@@ -207,7 +207,7 @@ static void gen_cpu_limit(DisasContext *ctx, TCGv dest)
 {
     if (ctx->need_cpu_limit) {
         TCGv PC = tcg_constant_tl(ctx->pkt->pc);
-        gen_helper_cpu_limit(cpu_env, PC, dest);
+        gen_helper_cpu_limit(tcg_env, PC, dest);
     }
 }
 #endif
@@ -958,7 +958,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
 
     if (HEX_DEBUG) {
         /* Handy place to set a breakpoint before the packet executes */
-        gen_helper_debug_start_packet(cpu_env);
+        gen_helper_debug_start_packet(tcg_env);
     }
 
     /* Initialize the runtime state for packet semantics */
@@ -1054,7 +1054,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
     HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
 
     if (hex_cpu->count_gcycle_xt) {
-        gen_helper_inc_gcycle_xt(cpu_env);
+        gen_helper_inc_gcycle_xt(tcg_env);
     }
     if (pkt->pkt_has_hvx && !ctx->hvx_coproc_enabled && !ctx->hvx_check_emitted) {
         gen_precise_exception(HEX_CAUSE_NO_COPROC_ENABLE, ctx->pkt->pc);
@@ -1203,7 +1203,7 @@ static void gen_sreg_writes(DisasContext *ctx)
         if (reg_num == HEX_SREG_SSR) {
             tcg_gen_mov_tl(old_reg, hex_t_sreg[reg_num]);
             tcg_gen_mov_tl(hex_t_sreg[reg_num], ctx->t_sreg_new_value[reg_num]);
-            gen_helper_modify_ssr(cpu_env, ctx->t_sreg_new_value[reg_num],
+            gen_helper_modify_ssr(tcg_env, ctx->t_sreg_new_value[reg_num],
                                   old_reg);
             /* This can change processor state, so end the TB */
             ctx->base.is_jmp = DISAS_NORETURN;
@@ -1216,12 +1216,12 @@ static void gen_sreg_writes(DisasContext *ctx)
                                ctx->t_sreg_new_value[reg_num]);
             }
             /* This can change the interrupt state, so end the TB */
-            gen_helper_pending_interrupt(cpu_env);
+            gen_helper_pending_interrupt(tcg_env);
             ctx->base.is_jmp = DISAS_NORETURN;
         } else if ((reg_num == HEX_SREG_BESTWAIT) ||
                    (reg_num == HEX_SREG_SCHEDCFG)) {
             /* This can trigger resched interrupt, so end the TB */
-            gen_helper_resched(cpu_env);
+            gen_helper_resched(tcg_env);
             ctx->base.is_jmp = DISAS_NORETURN;
         }
         if (reg_num < HEX_SREG_GLB_START) {
@@ -1251,7 +1251,7 @@ static void gen_pred_writes(DisasContext *ctx)
 static void gen_check_store_width(DisasContext *ctx, int slot_num)
 {
     if (HEX_DEBUG) {
-        gen_helper_debug_check_store_width(cpu_env,
+        gen_helper_debug_check_store_width(tcg_env,
             tcg_constant_tl(slot_num),
             tcg_constant_tl(ctx->store_width[slot_num]));
     }
@@ -1295,7 +1295,7 @@ void process_store(DisasContext *ctx, int slot_num)
         tcg_gen_mov_tl(address, hex_store_addr[slot_num]);
 
         if (ctx->paranoid_commit_state) {
-            gen_helper_assert_store_valid(cpu_env, tcg_constant_tl(slot_num));
+            gen_helper_assert_store_valid(tcg_env, tcg_constant_tl(slot_num));
         }
 
         /*
@@ -1338,7 +1338,7 @@ void process_store(DisasContext *ctx, int slot_num)
                  * TCG generation time, we'll use a helper to
                  * avoid branching based on the width at runtime.
                  */
-                gen_helper_commit_store(cpu_env,
+                gen_helper_commit_store(tcg_env,
                     tcg_constant_tl(slot_num));
             }
         }
@@ -1437,7 +1437,7 @@ static void gen_commit_hvx(DisasContext *ctx)
     }
 
     if (pkt_has_hvx_store(ctx->pkt)) {
-        gen_helper_commit_hvx_stores(cpu_env);
+        gen_helper_commit_hvx_stores(tcg_env);
     }
 }
 
@@ -1500,7 +1500,7 @@ static void check_imprecise_exception(Packet *pkt)
             TCGv PC = tcg_constant_tl(pkt->pc);
             TCGLabel *label = gen_new_label();
             tcg_gen_brcondi_tl(TCG_COND_EQ, hex_imprecise_exception, 0, label);
-            gen_helper_raise_exception(cpu_env, hex_imprecise_exception, PC);
+            gen_helper_raise_exception(tcg_env, hex_imprecise_exception, PC);
             gen_set_label(label);
             return;
         }
@@ -1546,7 +1546,7 @@ static void gen_commit_packet(DisasContext *ctx)
     } else if (has_hvx_store) {
         if (!has_store_s0 && !has_store_s1) {
             TCGv mem_idx = tcg_constant_tl(ctx->mem_idx);
-            gen_helper_probe_hvx_stores(cpu_env, mem_idx);
+            gen_helper_probe_hvx_stores(tcg_env, mem_idx);
         } else {
             int mask = 0;
 
@@ -1575,7 +1575,7 @@ static void gen_commit_packet(DisasContext *ctx)
             }
             mask = FIELD_DP32(mask, PROBE_PKT_SCALAR_HVX_STORES, MMU_IDX,
                               ctx->mem_idx);
-            gen_helper_probe_pkt_scalar_hvx_stores(cpu_env,
+            gen_helper_probe_pkt_scalar_hvx_stores(tcg_env,
                                                    tcg_constant_tl(mask));
         }
     } else if (has_store_s0 && has_store_s1) {
@@ -1591,7 +1591,7 @@ static void gen_commit_packet(DisasContext *ctx)
                 FIELD_DP32(args, PROBE_PKT_SCALAR_STORE_S0, IS_PREDICATED, 1);
         }
         TCGv args_tcgv = tcg_constant_tl(args);
-        gen_helper_probe_pkt_scalar_store_s0(cpu_env, args_tcgv);
+        gen_helper_probe_pkt_scalar_store_s0(tcg_env, args_tcgv);
     }
 
     process_store_log(ctx);
@@ -1607,7 +1607,7 @@ static void gen_commit_packet(DisasContext *ctx)
     }
 #if !defined(CONFIG_USER_ONLY)
     if (pkt->pkt_has_coproc) {
-        gen_helper_commit_coproc(cpu_env);
+        gen_helper_commit_coproc(tcg_env);
     }
 #endif
     update_exec_counters(ctx);
@@ -1620,7 +1620,7 @@ static void gen_commit_packet(DisasContext *ctx)
                          !pkt->pkt_has_dczeroa);
 
         /* Handy place to set a breakpoint at the end of execution */
-        gen_helper_debug_commit_end(cpu_env, tcg_constant_tl(ctx->pkt->pc),
+        gen_helper_debug_commit_end(tcg_env, tcg_constant_tl(ctx->pkt->pc),
                                     ctx->pred_written, has_st0, has_st1);
     }
 
@@ -1690,7 +1690,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
                                           CPUState *cs)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
-    HexagonCPU *hex_cpu = env_archcpu(cs->env_ptr);
+    HexagonCPU *hex_cpu = env_archcpu(cpu_env(cs));
     uint32_t hex_flags = dcbase->tb->flags;
 
     ctx->num_packets = 0;
@@ -1792,7 +1792,7 @@ static bool pkt_crosses_page(CPUHexagonState *env, DisasContext *ctx)
 static void hexagon_tr_translate_packet(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *ctx = container_of(dcbase, DisasContext, base);
-    CPUHexagonState *env = cpu->env_ptr;
+    CPUHexagonState *env = cpu_env(cpu);
 
     decode_and_translate_packet(env, ctx);
 
@@ -1879,37 +1879,37 @@ void hexagon_translate_init(void)
     opcode_init();
 
     for (i = 0; i < TOTAL_PER_THREAD_REGS; i++) {
-        hex_gpr[i] = tcg_global_mem_new(cpu_env,
+        hex_gpr[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, gpr[i]),
             hexagon_regnames[i]);
 
         if (HEX_DEBUG) {
             snprintf(reg_written_names[i], NAME_LEN, "reg_written_%s",
                      hexagon_regnames[i]);
-            hex_reg_written[i] = tcg_global_mem_new(cpu_env,
+            hex_reg_written[i] = tcg_global_mem_new(tcg_env,
                 offsetof(CPUHexagonState, reg_written[i]),
                 reg_written_names[i]);
         }
     }
 #ifndef CONFIG_USER_ONLY
     for (i = 0; i < NUM_GREGS; i++) {
-            hex_greg[i] = tcg_global_mem_new(cpu_env,
+            hex_greg[i] = tcg_global_mem_new(tcg_env,
                 offsetof(CPUHexagonState, greg[i]),
                 hexagon_gregnames[i]);
 #if HEX_DEBUG
-            hex_greg_written[i] = tcg_global_mem_new(cpu_env,
+            hex_greg_written[i] = tcg_global_mem_new(tcg_env,
                 offsetof(CPUHexagonState, greg_written[i]), "greg_written");
 #endif
     }
-    hex_g_sreg_ptr = tcg_global_mem_new_ptr(cpu_env,
+    hex_g_sreg_ptr = tcg_global_mem_new_ptr(tcg_env,
             offsetof(CPUHexagonState, g_sreg), "hex_g_sreg_ptr");
     for (i = 0; i < NUM_SREGS; i++) {
         if (i < HEX_SREG_GLB_START) {
-            hex_t_sreg[i] = tcg_global_mem_new(cpu_env,
+            hex_t_sreg[i] = tcg_global_mem_new(tcg_env,
                 offsetof(CPUHexagonState, t_sreg[i]),
                 hexagon_sregnames[i]);
 #if HEX_DEBUG
-            hex_t_sreg_written[i] = tcg_global_mem_new(cpu_env,
+            hex_t_sreg_written[i] = tcg_global_mem_new(tcg_env,
                 offsetof(CPUHexagonState, t_sreg_written[i]), "sreg_written");
 #endif
         } else {
@@ -1918,81 +1918,81 @@ void hexagon_translate_init(void)
                 hexagon_sregnames[i]);
         }
     }
-    hex_pmu_num_packets = tcg_global_mem_new(cpu_env,
+    hex_pmu_num_packets = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, pmu.num_packets), "pmu.num_packets");
-    hex_pmu_hvx_packets = tcg_global_mem_new(cpu_env,
+    hex_pmu_hvx_packets = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, pmu.hvx_packets), "pmu.hvx_packets");
 #endif
-    hex_cycle_count = tcg_global_mem_new_i64(cpu_env,
+    hex_cycle_count = tcg_global_mem_new_i64(tcg_env,
             offsetof(CPUHexagonState, t_cycle_count), "t_cycle_count");
-    hex_new_value_usr = tcg_global_mem_new(cpu_env,
+    hex_new_value_usr = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, new_value_usr), "new_value_usr");
 
     for (i = 0; i < NUM_PREGS; i++) {
-        hex_pred[i] = tcg_global_mem_new(cpu_env,
+        hex_pred[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, pred[i]),
             hexagon_prednames[i]);
     }
-    hex_slot_cancelled = tcg_global_mem_new(cpu_env,
+    hex_slot_cancelled = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, slot_cancelled), "slot_cancelled");
-    hex_llsc_addr = tcg_global_mem_new(cpu_env,
+    hex_llsc_addr = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, llsc_addr), "llsc_addr");
-    hex_llsc_val = tcg_global_mem_new(cpu_env,
+    hex_llsc_val = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, llsc_val), "llsc_val");
-    hex_llsc_val_i64 = tcg_global_mem_new_i64(cpu_env,
+    hex_llsc_val_i64 = tcg_global_mem_new_i64(tcg_env,
         offsetof(CPUHexagonState, llsc_val_i64), "llsc_val_i64");
-    hex_cpu_memop_pc_set = tcg_global_mem_new(cpu_env,
+    hex_cpu_memop_pc_set = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, cpu_memop_pc_set), "cpu_memop_pc_set");
 
 #ifndef CONFIG_USER_ONLY
-    hex_slot = tcg_global_mem_new(cpu_env,
+    hex_slot = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, slot), "slot");
-    hex_imprecise_exception = tcg_global_mem_new(cpu_env,
+    hex_imprecise_exception = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, imprecise_exception), "imprecise_exception");
-    hex_cause_code = tcg_global_mem_new(cpu_env,
+    hex_cause_code = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, cause_code), "cause_code");
-    hex_last_cpu = tcg_global_mem_new(cpu_env,
+    hex_last_cpu = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, last_cpu), "last_cpu");
-    hex_thread_id = tcg_global_mem_new(cpu_env,
+    hex_thread_id = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, threadId), "threadId");
-    ss_pending = tcg_global_mem_new(cpu_env,
+    ss_pending = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, ss_pending), "ss_pending");
 
 #endif
     for (i = 0; i < STORES_MAX; i++) {
         snprintf(store_addr_names[i], NAME_LEN, "store_addr_%d", i);
-        hex_store_addr[i] = tcg_global_mem_new(cpu_env,
+        hex_store_addr[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, mem_log_stores[i].va),
             store_addr_names[i]);
 
         snprintf(store_width_names[i], NAME_LEN, "store_width_%d", i);
-        hex_store_width[i] = tcg_global_mem_new(cpu_env,
+        hex_store_width[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, mem_log_stores[i].width),
             store_width_names[i]);
 
         snprintf(store_val32_names[i], NAME_LEN, "store_val32_%d", i);
-        hex_store_val32[i] = tcg_global_mem_new(cpu_env,
+        hex_store_val32[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, mem_log_stores[i].data32),
             store_val32_names[i]);
 
         snprintf(store_val64_names[i], NAME_LEN, "store_val64_%d", i);
-        hex_store_val64[i] = tcg_global_mem_new_i64(cpu_env,
+        hex_store_val64[i] = tcg_global_mem_new_i64(tcg_env,
             offsetof(CPUHexagonState, mem_log_stores[i].data64),
             store_val64_names[i]);
     }
     for (int i = 0; i < VSTORES_MAX; i++) {
         snprintf(vstore_addr_names[i], NAME_LEN, "vstore_addr_%d", i);
-        hex_vstore_addr[i] = tcg_global_mem_new(cpu_env,
+        hex_vstore_addr[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, vstore[i].va),
             vstore_addr_names[i]);
 
         snprintf(vstore_size_names[i], NAME_LEN, "vstore_size_%d", i);
-        hex_vstore_size[i] = tcg_global_mem_new(cpu_env,
+        hex_vstore_size[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, vstore[i].size),
             vstore_size_names[i]);
 
         snprintf(vstore_pending_names[i], NAME_LEN, "vstore_pending_%d", i);
-        hex_vstore_pending[i] = tcg_global_mem_new(cpu_env,
+        hex_vstore_pending[i] = tcg_global_mem_new(tcg_env,
             offsetof(CPUHexagonState, vstore_pending[i]),
             vstore_pending_names[i]);
     }

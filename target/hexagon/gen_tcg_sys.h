@@ -20,51 +20,51 @@
 
 /* System mode instructions */
 #define fGEN_TCG_Y2_swi(SHORTCODE) \
-    gen_helper_swi(cpu_env, RsV)
+    gen_helper_swi(tcg_env, RsV)
 
 #define fGEN_TCG_Y2_cswi(SHORTCODE) \
-    gen_helper_cswi(cpu_env, RsV)
+    gen_helper_cswi(tcg_env, RsV)
 
 #define fGEN_TCG_Y2_ciad(SHORTCODE) \
-    gen_helper_ciad(cpu_env, RsV)
+    gen_helper_ciad(tcg_env, RsV)
 
 #define fGEN_TCG_Y4_siad(SHORTCODE) \
-    gen_helper_siad(cpu_env, RsV)
+    gen_helper_siad(tcg_env, RsV)
 
 #define fGEN_TCG_Y2_wait(SHORTCODE) \
     do { \
         RsV = RsV; \
-        gen_helper_wait(cpu_env, tcg_constant_tl(ctx->pkt->pc)); \
+        gen_helper_wait(tcg_env, tcg_constant_tl(ctx->pkt->pc)); \
     } while (0)
 
 #define fGEN_TCG_Y2_resume(SHORTCODE) \
-    gen_helper_resume(cpu_env, RsV)
+    gen_helper_resume(tcg_env, RsV)
 
 #define fGEN_TCG_Y2_getimask(SHORTCODE) \
-    gen_helper_getimask(RdV, cpu_env, RsV)
+    gen_helper_getimask(RdV, tcg_env, RsV)
 
 #define fGEN_TCG_Y2_iassignw(SHORTCODE) \
-    gen_helper_iassignw(cpu_env, RsV)
+    gen_helper_iassignw(tcg_env, RsV)
 
 #define fGEN_TCG_Y2_iassignr(SHORTCODE) \
-    gen_helper_iassignr(RdV, cpu_env, RsV)
+    gen_helper_iassignr(RdV, tcg_env, RsV)
 
 #define fGEN_TCG_Y2_setimask(SHORTCODE) \
-    gen_helper_setimask(cpu_env, PtV, RsV)
+    gen_helper_setimask(tcg_env, PtV, RsV)
 
 #define fGEN_TCG_Y4_nmi(SHORTCODE) \
-    gen_helper_nmi(cpu_env, RsV)
+    gen_helper_nmi(tcg_env, RsV)
 
 #define fGEN_TCG_Y2_setprio(SHORTCODE) \
-    gen_helper_setprio(cpu_env, PtV, RsV)
+    gen_helper_setprio(tcg_env, PtV, RsV)
 
 #define fGEN_TCG_Y2_start(SHORTCODE) \
-    gen_helper_start(cpu_env, RsV)
+    gen_helper_start(tcg_env, RsV)
 
 #define fGEN_TCG_Y2_stop(SHORTCODE) \
     do { \
         RsV = RsV; \
-        gen_helper_stop(cpu_env); \
+        gen_helper_stop(tcg_env); \
     } while (0)
 
 #define fGEN_TCG_Y2_tfrscrr(SHORTCODE) \

@@ -51,7 +51,7 @@ static inline bool vhist_tmp_valid(DisasContext *ctx)
 #define fGEN_TCG_V6_vhist(SHORTCODE) \
     if (!ctx->pre_commit) { \
         if (vhist_tmp_valid(ctx)) { \
-            gen_helper_vhist(cpu_env); \
+            gen_helper_vhist(tcg_env); \
         } \
     }
 #define fGEN_TCG_V6_vhistq(SHORTCODE) \
@@ -62,14 +62,14 @@ static inline bool vhist_tmp_valid(DisasContext *ctx)
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
             if (vhist_tmp_valid(ctx)) { \
-                gen_helper_vhistq(cpu_env); \
+                gen_helper_vhistq(tcg_env); \
             } \
         } \
     } while (0)
 #define fGEN_TCG_V6_vwhist256(SHORTCODE) \
     if (!ctx->pre_commit) { \
         if (vhist_tmp_valid(ctx)) { \
-            gen_helper_vwhist256(cpu_env); \
+            gen_helper_vwhist256(tcg_env); \
         } \
     }
 #define fGEN_TCG_V6_vwhist256q(SHORTCODE) \
@@ -80,14 +80,14 @@ static inline bool vhist_tmp_valid(DisasContext *ctx)
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
             if (vhist_tmp_valid(ctx)) {  \
-                gen_helper_vwhist256q(cpu_env); \
+                gen_helper_vwhist256q(tcg_env); \
             } \
         } \
     } while (0)
 #define fGEN_TCG_V6_vwhist256_sat(SHORTCODE) \
     if (!ctx->pre_commit) { \
         if (vhist_tmp_valid(ctx)) { \
-            gen_helper_vwhist256_sat(cpu_env); \
+            gen_helper_vwhist256_sat(tcg_env); \
         } \
     }
 #define fGEN_TCG_V6_vwhist256q_sat(SHORTCODE) \
@@ -98,14 +98,14 @@ static inline bool vhist_tmp_valid(DisasContext *ctx)
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
             if (vhist_tmp_valid(ctx)) { \
-                gen_helper_vwhist256q_sat(cpu_env); \
+                gen_helper_vwhist256q_sat(tcg_env); \
             } \
         } \
     } while (0)
 #define fGEN_TCG_V6_vwhist128(SHORTCODE) \
     if (!ctx->pre_commit) { \
         if (vhist_tmp_valid(ctx)) { \
-            gen_helper_vwhist128(cpu_env); \
+            gen_helper_vwhist128(tcg_env); \
         } \
     }
 #define fGEN_TCG_V6_vwhist128q(SHORTCODE) \
@@ -116,14 +116,14 @@ static inline bool vhist_tmp_valid(DisasContext *ctx)
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
             if (vhist_tmp_valid(ctx)) { \
-                gen_helper_vwhist128q(cpu_env); \
+                gen_helper_vwhist128q(tcg_env); \
             } \
         } \
     } while (0)
 #define fGEN_TCG_V6_vwhist128m(SHORTCODE) \
     if (!ctx->pre_commit) { \
         if (vhist_tmp_valid(ctx)) { \
-            gen_helper_vwhist128m(cpu_env, tcg_constant_tl(uiV)); \
+            gen_helper_vwhist128m(tcg_env, tcg_constant_tl(uiV)); \
         } \
     }
 #define fGEN_TCG_V6_vwhist128qm(SHORTCODE) \
@@ -134,7 +134,7 @@ static inline bool vhist_tmp_valid(DisasContext *ctx)
                              sizeof(MMVector), sizeof(MMVector)); \
         } else { \
             if (vhist_tmp_valid(ctx)) { \
-                gen_helper_vwhist128qm(cpu_env, tcg_constant_tl(uiV)); \
+                gen_helper_vwhist128qm(tcg_env, tcg_constant_tl(uiV)); \
             } \
         } \
     } while (0)

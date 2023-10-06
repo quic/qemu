@@ -930,10 +930,8 @@ static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 
 static void hexagon_cpu_init(Object *obj)
 {
-    HexagonCPU *cpu = HEXAGON_CPU(obj);
-
-    cpu_set_cpustate_pointers(cpu);
 #if !defined(CONFIG_USER_ONLY)
+    HexagonCPU *cpu = HEXAGON_CPU(obj);
     qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
 #endif
     qdev_property_add_static(DEVICE(obj), &hexagon_short_circuit_property);
@@ -1288,6 +1286,7 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .name = TYPE_HEXAGON_CPU,
         .parent = TYPE_CPU,
         .instance_size = sizeof(HexagonCPU),
+        .instance_align = __alignof(HexagonCPU),
         .instance_init = hexagon_cpu_init,
         .abstract = true,
         .class_size = sizeof(HexagonCPUClass),

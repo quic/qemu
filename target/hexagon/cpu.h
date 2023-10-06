@@ -461,7 +461,7 @@ struct ArchCPU {
     /*< private >*/
     CPUState parent_obj;
     /*< public >*/
-    CPUNegativeOffsetState neg;
+
     CPUHexagonState env;
 
 #if !defined(CONFIG_USER_ONLY)

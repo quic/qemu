@@ -260,13 +260,13 @@ static void gen_log_sreg_write(DisasContext *ctx, int rnum, TCGv val)
     if (reg_mask != IMMUTABLE) {
         if (rnum < HEX_SREG_GLB_START) {
             if (rnum == HEX_SREG_CCR) {
-                gen_helper_check_ccr_write(cpu_env, val, hex_t_sreg[rnum]);
+                gen_helper_check_ccr_write(tcg_env, val, hex_t_sreg[rnum]);
             }
             gen_masked_reg_write(val, hex_t_sreg[rnum], reg_mask);
             tcg_gen_mov_tl(ctx->t_sreg_new_value[rnum], val);
         } else {
             gen_masked_reg_write(val, hex_g_sreg[rnum], reg_mask);
-            gen_helper_sreg_write(cpu_env, tcg_constant_i32(rnum), val);
+            gen_helper_sreg_write(tcg_env, tcg_constant_i32(rnum), val);
         }
     }
 }
@@ -316,12 +316,12 @@ static void gen_read_sreg(TCGv dst, int reg_num)
 {
     if (reg_num < HEX_SREG_GLB_START) {
         if (reg_num == HEX_SREG_BADVA) {
-            gen_helper_sreg_read(dst, cpu_env, tcg_constant_i32(reg_num));
+            gen_helper_sreg_read(dst, tcg_env, tcg_constant_i32(reg_num));
         } else {
             tcg_gen_mov_tl(dst, hex_t_sreg[reg_num]);
         }
     } else {
-        gen_helper_sreg_read(dst, cpu_env, tcg_constant_i32(reg_num));
+        gen_helper_sreg_read(dst, tcg_env, tcg_constant_i32(reg_num));
     }
 }
 
@@ -330,7 +330,7 @@ static void gen_read_sreg_pair(TCGv_i64 dst, int reg_num)
     if (reg_num < HEX_SREG_GLB_START) {
         if (reg_num + 1 == HEX_SREG_BADVA) {
             TCGv badva = tcg_temp_new();
-            gen_helper_sreg_read(badva, cpu_env,
+            gen_helper_sreg_read(badva, tcg_env,
                                  tcg_constant_tl(HEX_SREG_BADVA));
             tcg_gen_concat_i32_i64(dst, hex_t_sreg[reg_num], badva);
         } else {
@@ -338,18 +338,18 @@ static void gen_read_sreg_pair(TCGv_i64 dst, int reg_num)
                                         hex_t_sreg[reg_num + 1]);
         }
     } else {
-        gen_helper_sreg_read_pair(dst, cpu_env, tcg_constant_tl(reg_num));
+        gen_helper_sreg_read_pair(dst, tcg_env, tcg_constant_tl(reg_num));
     }
 }
 
 static void gen_read_greg(TCGv dst, int reg_num)
 {
-    gen_helper_greg_read(dst, cpu_env, tcg_constant_tl(reg_num));
+    gen_helper_greg_read(dst, tcg_env, tcg_constant_tl(reg_num));
 }
 
 static void gen_read_greg_pair(TCGv_i64 dst, int reg_num)
 {
-    gen_helper_greg_read_pair(dst, cpu_env, tcg_constant_tl(reg_num));
+    gen_helper_greg_read_pair(dst, tcg_env, tcg_constant_tl(reg_num));
 }
 #endif
 
@@ -370,9 +370,9 @@ static inline void gen_read_upcycle_reg(TCGv dest, int regnum, TCGv zero)
 #endif
 
     if (regnum == HEX_REG_UPCYCLEHI) {
-        gen_helper_read_pcyclehi(counter, cpu_env);
+        gen_helper_read_pcyclehi(counter, tcg_env);
     } else if (regnum == HEX_REG_UPCYCLELO) {
-        gen_helper_read_pcyclelo(counter, cpu_env);
+        gen_helper_read_pcyclelo(counter, tcg_env);
     } else {
         g_assert_not_reached();
     }
@@ -428,7 +428,7 @@ static inline void gen_read_ctrl_reg(DisasContext *ctx, const int reg_num,
             || (reg_num == HEX_REG_PKTCNTHI)
             || (reg_num == HEX_REG_UTIMERLO)
             || (reg_num == HEX_REG_UTIMERHI) ) {
-        gen_helper_creg_read(dest, cpu_env, tcg_constant_tl(reg_num));
+        gen_helper_creg_read(dest, tcg_env, tcg_constant_tl(reg_num));
     } else {
         tcg_gen_mov_tl(dest, hex_gpr[reg_num]);
     }
@@ -464,7 +464,7 @@ static inline void gen_read_ctrl_reg_pair(DisasContext *ctx, const int reg_num,
             || (reg_num == HEX_REG_UTIMERLO)
             || (reg_num == HEX_REG_UPCYCLELO)
             ) {
-        gen_helper_creg_read_pair(dest, cpu_env, tcg_constant_i32(reg_num));
+        gen_helper_creg_read_pair(dest, tcg_env, tcg_constant_i32(reg_num));
     } else {
         tcg_gen_concat_i32_i64(dest,
             hex_gpr[reg_num],
@@ -655,46 +655,46 @@ void gen_store32(TCGv vaddr, TCGv src, int width, uint32_t slot)
     tcg_gen_mov_tl(hex_store_val32[slot], src);
 }
 
-void gen_store1(TCGv_env cpu_env, TCGv vaddr, TCGv src, uint32_t slot)
+void gen_store1(TCGv_env tcg_env, TCGv vaddr, TCGv src, uint32_t slot)
 {
     gen_store32(vaddr, src, 1, slot);
 }
 
-void gen_store1i(TCGv_env cpu_env, TCGv vaddr, int32_t src, uint32_t slot)
+void gen_store1i(TCGv_env tcg_env, TCGv vaddr, int32_t src, uint32_t slot)
 {
-    gen_store1(cpu_env, vaddr, tcg_constant_tl(src), slot);
+    gen_store1(tcg_env, vaddr, tcg_constant_tl(src), slot);
 }
 
-void gen_store2(TCGv_env cpu_env, TCGv vaddr, TCGv src, uint32_t slot)
+void gen_store2(TCGv_env tcg_env, TCGv vaddr, TCGv src, uint32_t slot)
 {
     gen_store32(vaddr, src, 2, slot);
 }
 
-void gen_store2i(TCGv_env cpu_env, TCGv vaddr, int32_t src, uint32_t slot)
+void gen_store2i(TCGv_env tcg_env, TCGv vaddr, int32_t src, uint32_t slot)
 {
-    gen_store2(cpu_env, vaddr, tcg_constant_tl(src), slot);
+    gen_store2(tcg_env, vaddr, tcg_constant_tl(src), slot);
 }
 
-void gen_store4(TCGv_env cpu_env, TCGv vaddr, TCGv src, uint32_t slot)
+void gen_store4(TCGv_env tcg_env, TCGv vaddr, TCGv src, uint32_t slot)
 {
     gen_store32(vaddr, src, 4, slot);
 }
 
-void gen_store4i(TCGv_env cpu_env, TCGv vaddr, int32_t src, uint32_t slot)
+void gen_store4i(TCGv_env tcg_env, TCGv vaddr, int32_t src, uint32_t slot)
 {
-    gen_store4(cpu_env, vaddr, tcg_constant_tl(src), slot);
+    gen_store4(tcg_env, vaddr, tcg_constant_tl(src), slot);
 }
 
-void gen_store8(TCGv_env cpu_env, TCGv vaddr, TCGv_i64 src, uint32_t slot)
+void gen_store8(TCGv_env tcg_env, TCGv vaddr, TCGv_i64 src, uint32_t slot)
 {
     tcg_gen_mov_tl(hex_store_addr[slot], vaddr);
     tcg_gen_movi_tl(hex_store_width[slot], 8);
     tcg_gen_mov_i64(hex_store_val64[slot], src);
 }
 
-void gen_store8i(TCGv_env cpu_env, TCGv vaddr, int64_t src, uint32_t slot)
+void gen_store8i(TCGv_env tcg_env, TCGv vaddr, int64_t src, uint32_t slot)
 {
-    gen_store8(cpu_env, vaddr, tcg_constant_i64(src), slot);
+    gen_store8(tcg_env, vaddr, tcg_constant_i64(src), slot);
 }
 
 TCGv gen_8bitsof(TCGv result, TCGv value, DisasContext *ctx)
@@ -1031,7 +1031,7 @@ static void gen_allocframe(DisasContext *ctx, TCGv r29, int framesize)
     TCGv_i64 frame;
     tcg_gen_addi_tl(r30, r29, -8);
     frame = gen_frame_scramble();
-    gen_store8(cpu_env, r30, frame, ctx->insn->slot);
+    gen_store8(tcg_env, r30, frame, ctx->insn->slot);
     gen_log_reg_write(ctx, HEX_REG_FP, r30);
     gen_framecheck(r30, framesize);
     tcg_gen_subi_tl(r29, r30, framesize);
@@ -1582,7 +1582,7 @@ static void gen_vreg_load(DisasContext *ctx, intptr_t dstoff, TCGv src,
     for (int i = 0; i < sizeof(MMVector) / 8; i++) {
         tcg_gen_qemu_ld_i64(tmp, src, ctx->mem_idx, MO_UNALN | MO_TEUQ);
         tcg_gen_addi_tl(src, src, 8);
-        tcg_gen_st_i64(tmp, cpu_env, dstoff + i * 8);
+        tcg_gen_st_i64(tmp, tcg_env, dstoff + i * 8);
     }
 }
 
@@ -1594,7 +1594,7 @@ static void gen_vreg_store(DisasContext *ctx, TCGv EA, intptr_t srcoff,
 
     if (is_gather_store_insn(ctx)) {
         TCGv sl = tcg_constant_tl(slot);
-        gen_helper_gather_store(cpu_env, EA, sl);
+        gen_helper_gather_store(tcg_env, EA, sl);
         return;
     }
 
@@ -1643,7 +1643,7 @@ static void vec_to_qvec(size_t size, intptr_t dstoff, intptr_t srcoff,
     TCGv_i64 mask = tcg_temp_new_i64();
 
     for (int i = 0; i < sizeof(MMVector) / 8; i++) {
-        tcg_gen_ld_i64(tmp, cpu_env, srcoff + i * 8);
+        tcg_gen_ld_i64(tmp, tcg_env, srcoff + i * 8);
         tcg_gen_movi_i64(mask, 0);
 
         for (int j = 0; j < 8; j += size) {
@@ -1653,7 +1653,7 @@ static void vec_to_qvec(size_t size, intptr_t dstoff, intptr_t srcoff,
             tcg_gen_deposit_i64(mask, mask, bits, j, size);
         }
 
-        tcg_gen_st8_i64(mask, cpu_env, dstoff + i);
+        tcg_gen_st8_i64(mask, tcg_env, dstoff + i);
     }
 }
 
@@ -1661,7 +1661,7 @@ void probe_noshuf_load(TCGv va, int s, int mi)
 {
     TCGv size = tcg_constant_tl(s);
     TCGv mem_idx = tcg_constant_tl(mi);
-    gen_helper_probe_noshuf_load(cpu_env, va, size, mem_idx);
+    gen_helper_probe_noshuf_load(tcg_env, va, size, mem_idx);
 }
 
 /*
@@ -1836,7 +1836,7 @@ static void gen_vtcm_memcpy(DisasContext *ctx, TCGv dst, TCGv src, TCGv size)
     gen_set_label(remainder_is_zero);
     tcg_gen_div_tl(N, cp_size, tcg_constant_tl(4));
 
-    gen_helper_check_vtcm_memcpy(cpu_env, dst, src, N,
+    gen_helper_check_vtcm_memcpy(tcg_env, dst, src, N,
                                  tcg_constant_tl(ctx->insn->slot));
 
     /*
@@ -1861,7 +1861,7 @@ static void gen_vtcm_memcpy(DisasContext *ctx, TCGv dst, TCGv src, TCGv size)
     tcg_gen_add_tl(src_plus_i, src, tmp);
     tcg_gen_add_tl(dst_plus_i, dst, tmp);
     tcg_gen_qemu_ld_i32(val, src_plus_i, ctx->mem_idx, MO_TEUL);
-    gen_helper_debug_value(cpu_env, val);
+    gen_helper_debug_value(tcg_env, val);
     tcg_gen_qemu_st_i32(val, dst_plus_i, ctx->mem_idx, MO_TEUL);
     tcg_gen_addi_tl(i, i, 1);
     tcg_gen_br(loop);
