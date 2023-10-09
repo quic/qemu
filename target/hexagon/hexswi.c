@@ -595,30 +595,27 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     break;
     case SYS_GETCWD:
     {
-       char *cwdPtr;
-       size4u_t BufferAddr;
-       size4u_t BufferSize;
-       unsigned int indx = 0;
+        char *cwdPtr;
+        size4u_t BufferAddr;
+        size4u_t BufferSize;
 
-       DEBUG_MEMORY_READ(swi_info, 4, &BufferAddr);
-       DEBUG_MEMORY_READ(swi_info + 4, 4, &BufferSize);
+        DEBUG_MEMORY_READ(swi_info, 4, &BufferAddr);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &BufferSize);
 
-       cwdPtr = (char *)malloc(BufferSize);
-       if (cwdPtr == (char *)0) {
+        cwdPtr = malloc(BufferSize);
+        if (!cwdPtr || !getcwd(cwdPtr, BufferSize)) {
             ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(errno));
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
-            break;
-       }
-
-       if (getcwd(cwdPtr, BufferSize) == cwdPtr) {
-            for (indx = 0; indx < BufferSize; indx++) {
-                DEBUG_MEMORY_READ(BufferAddr + indx, 1, &cwdPtr[indx]);
+        } else {
+            for (int i = 0; i < BufferSize; i++) {
+                DEBUG_MEMORY_WRITE(BufferAddr + i, 1, (size8u_t)cwdPtr[i]);
             }
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, BufferAddr);
-       }
-       free(cwdPtr);
+        }
+        free(cwdPtr);
+        break;
     }
-    break;
+
     case SYS_EXEC:
     {
         qemu_log_mask(LOG_UNIMP, "SYS_EXEC is deprecated\n");
