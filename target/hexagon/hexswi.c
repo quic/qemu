@@ -900,7 +900,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         int retval;
 
         DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
-        DEBUG_MEMORY_READ(swi_info + 8, 4, &bufptr2);
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &bufptr2);
         i = 0;
         do {
             DEBUG_MEMORY_READ(bufptr + i, 1, &buf[i]);
