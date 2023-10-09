@@ -98,6 +98,7 @@ TESTS += \
 	sys_reg_mut \
 	hvx-multi \
 	memcpy \
+	semihost \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -216,6 +217,7 @@ sys_reg_mut: sys_reg_mut.o
 memcpy.o: memcpy.c vtcm_common.h mmu.h
 memcpy: memcpy.o
 inf-loop: inf-loop.o
+semihost: semihost.o
 
 $(TESTS) inf-loop:
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
@@ -392,6 +394,18 @@ run-start: start
 	$(call quiet-command, \
 		grep -q "PASS" $<.stdout, \
 		"GREP", "PASS");
+
+run-semihost: semihost
+	$(call run-test, $<, echo "SKIPPED")
+	# TODO: this test is currently skipped as it fails due to different
+	# issues in our semihost implementation. Once those are fixed,
+	# we should reenable the test.
+	#
+	# mkdir -p _semihost_dir
+	# touch _semihost_dir/fileA _semihost_dir/fileB
+	# $(call run-test, $<, $(QEMU) --append "arg1 arg2" $(QEMU_OPTS) $< \
+	# 	             > $<.stdout)
+	# $(call quiet-command, grep -q "PASS" $<.stdout, "GREP", "PASS")
 
 ifeq ($(WIN),no)
 run-reset-test: inf-loop
