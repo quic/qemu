@@ -39,6 +39,7 @@
 #include "hex_mmu.h"
 #endif
 #include "sysemu/runstate.h"
+#include <dirent.h>
 
 #ifndef CONFIG_USER_ONLY
 
@@ -103,9 +104,7 @@
 #define SYS_EXEC            0x185
 #define SYS_FTRUNC          0x186
 
-#ifndef _WIN32
 static const int DIR_INDEX_OFFSET = 0x0b000;
-#endif
 
 static int MapError(int ERR)
 {
@@ -623,7 +622,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     break;
 
     case SYS_OPENDIR:
-#ifndef _WIN32
     {
         DIR *dir;
         char buf[BUFSIZ];
@@ -645,15 +643,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, dir_index);
         break;
     }
-#else
-    {
-        /* TODO: implement angel calls for Windows */
-        qemu_log_mask(LOG_UNIMP, "opendir() angel call not implemented\n");
-        break;
-    }
-#endif
+
     case SYS_READDIR:
-#ifndef _WIN32
     {
         DIR *dir;
         struct dirent *host_dir_entry = NULL;
@@ -690,15 +681,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, 0);
         break;
     }
-#else
-    {
-        /* TODO: implement angel calls for Windows */
-        qemu_log_mask(LOG_UNIMP, "readdir() angel call not implemented\n");
-        break;
-    }
-#endif
+
     case SYS_CLOSEDIR:
-#ifndef _WIN32
     {
         DIR *dir;
         int ret = 0;
@@ -714,13 +698,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, ret);
         break;
     }
-#else
-    {
-        /* TODO: implement angel calls for Windows */
-        qemu_log_mask(LOG_UNIMP, "closedir() angel call not implemented\n");
-        break;
-    }
-#endif
 
     case SYS_COREDUMP:
       printf("CRASH!\n");
