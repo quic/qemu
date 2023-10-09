@@ -396,16 +396,11 @@ run-start: start
 		"GREP", "PASS");
 
 run-semihost: semihost
-	$(call run-test, $<, echo "SKIPPED")
-	# TODO: this test is currently skipped as it fails due to different
-	# issues in our semihost implementation. Once those are fixed,
-	# we should reenable the test.
-	#
-	# mkdir -p _semihost_dir
-	# touch _semihost_dir/fileA _semihost_dir/fileB
-	# $(call run-test, $<, $(QEMU) --append "arg1 arg2" $(QEMU_OPTS) $< \
-	# 	             > $<.stdout)
-	# $(call quiet-command, grep -q "PASS" $<.stdout, "GREP", "PASS")
+	mkdir -p _semihost_dir
+	touch _semihost_dir/fileA _semihost_dir/fileB
+	$(call run-test, $<, $(QEMU) --append "arg1 arg2" $(QEMU_OPTS) $< \
+		             > $<.stdout)
+	$(call quiet-command, grep -q "PASS" $<.stdout, "GREP", "PASS")
 
 ifeq ($(WIN),no)
 run-reset-test: inf-loop
