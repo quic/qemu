@@ -472,7 +472,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         } sys_stat;
         struct stat st_buf;
         uint8_t *st_bufptr = (uint8_t *)&sys_stat;
-        int rc;
+        int rc, err;
         char filename[BUFSIZ];
         target_ulong physicalFilenameAddr;
         target_ulong statBufferAddr;
@@ -485,9 +485,11 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
                 i++;
             } while ((i < BUFSIZ) && filename[i - 1]);
             rc = stat(filename, &st_buf);
+            err = errno;
         } else{
             int fd = physicalFilenameAddr;
             rc = fstat(fd, &st_buf);
+            err = errno;
         }
         if (rc == 0) {
             sys_stat.dev   = st_buf.st_dev;
@@ -505,6 +507,8 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             sys_stat.mtime = st_buf.st_mtime;
             sys_stat.ctime = st_buf.st_ctime;
 #endif
+        } else {
+            ARCH_SET_THREAD_REG(env, HEX_REG_R01, err);
         }
         DEBUG_MEMORY_READ(swi_info + 4, 4, &statBufferAddr);
 
