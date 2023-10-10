@@ -338,4 +338,4 @@ if targetos != 'windows'
 endif
 
 target_arch += {'hexagon': hexagon_ss}
-target_softmmu_arch += {'hexagon': hexagon_softmmu_ss}
+target_system_arch += {'hexagon': hexagon_softmmu_ss}

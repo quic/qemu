@@ -1012,8 +1012,17 @@ int qemu_pstrcmp0(const char **str1, const char **str2)
 static inline bool starts_with_prefix(const char *dir)
 {
     size_t prefix_len = strlen(CONFIG_PREFIX);
+    /*
+     * dir[prefix_len] is only accessed if the length of dir is
+     * >= prefix_len, so no out of bounds access is possible.
+     */
+#pragma GCC diagnostic push
+#if !defined(__clang__) || __has_warning("-Warray-bounds=")
+#pragma GCC diagnostic ignored "-Warray-bounds="
+#endif
     return !memcmp(dir, CONFIG_PREFIX, prefix_len) &&
         (!dir[prefix_len] || G_IS_DIR_SEPARATOR(dir[prefix_len]));
+#pragma GCC diagnostic pop
 }
 
 /* Return the next path component in dir, and store its length in *p_len.  */
@@ -1144,7 +1153,6 @@ char *get_relocated_path(const char *dir)
 {
     size_t prefix_len = strlen(CONFIG_PREFIX);
     const char *bindir = CONFIG_BINDIR;
-    const char *exec_dir = qemu_get_exec_dir();
     GString *result;
     int len_dir, len_bindir;
 
