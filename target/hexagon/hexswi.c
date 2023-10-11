@@ -896,20 +896,21 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         char buf[BUFSIZ];
         char buf2[BUFSIZ];
         size4u_t bufptr, bufptr2;
-        int retval;
+        int buflen, buf2len, retval;
 
         DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
-        DEBUG_MEMORY_READ(swi_info + 4, 4, &bufptr2);
-        i = 0;
-        do {
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &buflen);
+        DEBUG_MEMORY_READ(swi_info + 8, 4, &bufptr2);
+        DEBUG_MEMORY_READ(swi_info + 12, 4, &buf2len);
+
+        for (i = 0; i < buflen; i++) {
             DEBUG_MEMORY_READ(bufptr + i, 1, &buf[i]);
-            i++;
-        } while (buf[i - 1]);
-        i = 0;
-        do {
+        }
+        buf[i] = '\0';
+        for (i = 0; i < buf2len; i++) {
             DEBUG_MEMORY_READ(bufptr2 + i, 1, &buf2[i]);
-            i++;
-        } while (buf2[i - 1]);
+        }
+        buf2[i] = '\0';
 
         retval = rename(buf, buf2);
         if (retval == -1) {

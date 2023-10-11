@@ -64,12 +64,12 @@
 #define HEX_SYS_WRITE0          0x04
 #define HEX_SYS_WRITECREG       0x43
 
-static uint32_t ret, err, args[3];
+static uint32_t ret, err, args[4];
 
 /*
  * Macro flavors:
  * - DIRECT_SWI takes up to two args an put them at r1 and r2.
- * - SWI takes up to three args and puts them in an array, placing the
+ * - SWI takes up to four args and puts them in an array, placing the
  *   array address at r1.
  */
 
@@ -95,10 +95,12 @@ static uint32_t ret, err, args[3];
     do { args[1] = (uint32_t)(ARG1); SWI1(CODE, ARG0); } while (0)
 #define SWI3(CODE, ARG0, ARG1, ARG2) \
     do { args[2] = (uint32_t)(ARG2); SWI2(CODE, ARG0, ARG1); } while (0)
+#define SWI4(CODE, ARG0, ARG1, ARG2, ARG3) \
+    do { args[3] = (uint32_t)(ARG3); SWI3(CODE, ARG0, ARG1, ARG2); } while (0)
 
-#define GET_MACRO_4(_1, _2, _3, _4, NAME, ...) NAME
+#define GET_MACRO_5(_1, _2, _3, _4, _5, NAME, ...) NAME
 #define SWI(...) \
-    GET_MACRO_4(__VA_ARGS__, SWI3, SWI2, SWI1, SWI0)(__VA_ARGS__)
+    GET_MACRO_5(__VA_ARGS__, SWI4, SWI3, SWI2, SWI1, SWI0)(__VA_ARGS__)
 
 #define DIRECT_SWI0(CODE) DO_SWI(CODE, 0, 0)
 #define DIRECT_SWI1(CODE, ARG1) DO_SWI(CODE, ARG1, 0)
@@ -235,9 +237,10 @@ int main(int argc, char **argv)
 
     /* RENAME */
     char *ogfname = strdup(fname);
+    int len = strlen(fname);
     assert(ogfname);
-    fname[strlen(fname) - 1] = (fname[strlen(fname) - 1] == 'a' ? 'b' : 'a');
-    SWI(HEX_SYS_RENAME, ogfname, fname);
+    fname[len - 1] = (fname[len - 1] == 'a' ? 'b' : 'a');
+    SWI(HEX_SYS_RENAME, ogfname, len, fname, len);
     assert(!ret);
     free(ogfname);
 
