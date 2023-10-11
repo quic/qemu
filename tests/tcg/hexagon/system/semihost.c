@@ -252,7 +252,7 @@ int main(int argc, char **argv)
     assert((st.mode & S_IFMT) == S_IFREG);
 
     /* REMOVE */
-    SWI(HEX_SYS_REMOVE, fname);
+    SWI(HEX_SYS_REMOVE, fname, strlen(fname));
     assert(!ret);
 
     /* STAT w/ error */

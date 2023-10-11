@@ -874,14 +874,14 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         char buf[BUFSIZ];
         size4u_t bufptr;
-        int retval;
+        int buflen, retval;
 
         DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
-        i = 0;
-        do {
+        DEBUG_MEMORY_READ(swi_info + 4, 4, &buflen);
+        for (i = 0; i < buflen; i++) {
             DEBUG_MEMORY_READ(bufptr + i, 1, &buf[i]);
-            i++;
-        } while (buf[i - 1]);
+        }
+        buf[i] = '\0';
 
         retval = unlink(buf);
         if (retval == -1) {
