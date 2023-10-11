@@ -120,7 +120,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     target_ulong what_swi = ARCH_GET_THREAD_REG(env, HEX_REG_R00);
     target_ulong swi_info = ARCH_GET_THREAD_REG(env, HEX_REG_R01);
-    int i = 0, c;
+    int i = 0;
     int retval = 1;
 
     HEX_DEBUG_LOG("%s:%d: tid %d, what_swi 0x%x, swi_info 0x%x\n",
@@ -188,6 +188,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_WRITEC:
     {
         FILE *fp = stdout;
+        char c;
         rcu_read_lock();
         DEBUG_MEMORY_READ(swi_info, 1, &c);
         fprintf(fp, "%c", c);
@@ -209,6 +210,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     case SYS_WRITE0:
     {
         FILE *fp = stdout;
+        char c;
         i = 0;
         rcu_read_lock();
         do {
