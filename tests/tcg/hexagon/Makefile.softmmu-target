@@ -84,6 +84,7 @@ TESTS += \
 	int_range \
 	fopen \
 	ftrunc \
+	dirent \
 	access \
 	getcwd \
 	checkforpriv \
@@ -198,6 +199,7 @@ int_range.o: int_range.c filename.h cfgtable.h
 int_range: int_range.o
 fopen: fopen.o
 ftrunc: ftrunc.o
+dirent: dirent.o
 access: access.o
 getcwd: getcwd.o
 checkforpriv.o: checkforpriv.c mmu.h
@@ -378,6 +380,14 @@ run-ftrunc: ftrunc
 	sleep 1
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $<)
 	stat _testfile_ftrunc | fgrep "Size: 1"
+
+run-dirent: dirent
+	rm -rf _dirent_testdir
+	mkdir _dirent_testdir
+	touch _dirent_testdir/fileA _dirent_testdir/fileB
+	echo -n ". .. fileA fileB" > $<.expected
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< --append _dirent_testdir > $<.stdout)
+	$(call quiet-command, diff -q $<.expected $<.stdout, "DIFF", "expected stdout")
 
 run-access: access
 	echo "valid" > _testfile_access
