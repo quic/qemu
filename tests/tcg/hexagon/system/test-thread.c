@@ -27,10 +27,7 @@ static int Mx;
 volatile int thcnt = 0;
 void thread(void *y)
 {
-    int i;
-    unsigned int id;
-    unsigned int ex;
-    id = thread_get_tnum();
+    unsigned int id = thread_get_tnum();
     assert(id < (THCNT));
     while (1) {
         if (trylockMutex(&Mx))
@@ -43,42 +40,29 @@ void thread(void *y)
 }
 
 #define STACK_SIZE 0x8000
-char __attribute__((aligned(16))) stack1[STACK_SIZE];
-char __attribute__((aligned(16))) stack2[STACK_SIZE];
-char __attribute__((aligned(16))) stack3[STACK_SIZE];
-char __attribute__((aligned(16))) stack4[STACK_SIZE];
-char __attribute__((aligned(16))) stack5[STACK_SIZE];
-char __attribute__((aligned(16))) stack6[STACK_SIZE];
-char __attribute__((aligned(16))) stack7[STACK_SIZE];
+char __attribute__((aligned(16))) stack[THCNT - 1][STACK_SIZE];
 
 int main()
 {
-    unsigned int id;
+    unsigned int id, thmask = 0;
     lockMutex(&Mx);
-    thread_create(thread, (void *)&stack1[STACK_SIZE - 16], 1, (void *)&thcnt);
-    thread_create(thread, (void *)&stack2[STACK_SIZE - 16], 2, (void *)&thcnt);
-    thread_create(thread, (void *)&stack3[STACK_SIZE - 16], 3, (void *)&thcnt);
-    thread_create(thread, (void *)&stack4[STACK_SIZE - 16], 4, (void *)&thcnt);
-    thread_create(thread, (void *)&stack5[STACK_SIZE - 16], 5, (void *)&thcnt);
-    thread_create(thread, (void *)&stack6[STACK_SIZE - 16], 6, (void *)&thcnt);
-    thread_create(thread, (void *)&stack7[STACK_SIZE - 16], 7, (void *)&thcnt);
+    for (int i = 1; i <= THCNT; i++) {
+        thread_create(thread, &stack[i - 1][STACK_SIZE - 16], i, NULL);
+        thmask |= (1 << i);
+    }
     unlockMutex(&Mx);
-    while (thcnt < (THCNT - 1))
-        __asm__ volatile("pause (#200)\n");
 
-    thread_join(1 << 1);
-    thread_join(1 << 2);
-    thread_join(1 << 3);
-    thread_join(1 << 4);
-    thread_join(1 << 5);
-    thread_join(1 << 6);
-    thread_join(1 << 7);
+    while (thcnt < (THCNT - 1)) {
+        __asm__ volatile("pause (#200)\n");
+    }
+
+    thread_join(thmask);
 
     if (memcmp(thid, expect, sizeof(expect))) {
         printf("FAIL : %s\n", __FILENAME__);
-        for (int I = 0; I < THCNT; I++)
-            printf("EXPECT: expect[%d] = %d, GOT: thid[%d] = %d\n", I,
-                   expect[I], I, thid[I]);
+        for (int i = 0; i < THCNT; i++)
+            printf("EXPECT: expect[%d] = %d, GOT: thid[%d] = %d\n", i,
+                   expect[i], i, thid[i]);
         return 1;
     }
     printf("PASS : %s\n", __FILENAME__);

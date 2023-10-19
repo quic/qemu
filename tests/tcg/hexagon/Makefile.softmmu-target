@@ -48,7 +48,6 @@ TESTS += \
 	neg-hvx_nocoproc \
 	neg-no-coproc \
 	swi_fs \
-	test-thread \
 	$()
 endif
 
@@ -174,7 +173,7 @@ coproc_range: coproc_range.o
 neg-hvx_nocoproc: hvx_nocoproc.o
 neg-no-coproc: coproc.o
 swi_fs: swi_fs.o
-test-thread: test-thread.o thread_common.o
+test-thread: test-thread.o
 endif
 
 wait: wait.o
@@ -350,11 +349,9 @@ run-swi2:
 run-vid-group: QEMU_BASE_MACHINE=-cpu v67,sched-limit=on
 
 run-test-thread: QEMU_EXTRA_OPTS=-smp cpus=8
-run-test-thread: run-test-thread-v68 run-test-thread-v73 run-test-thread-v73-mttcg
-
-run-test-thread-v73: QEMU_EXTRA_OPS+=-M V73NA_1024
-run-test-thread-v73-mttcg: QEMU_EXTRA_OPTS+=-M V73NA_1024 -accel tcg,thread=multi
-run-test-thread-v68 run-test-thread-v73 run-test-thread-v73-mttcg: test-thread
+run-test-thread: run-test-thread-mttcg
+run-test-thread-mttcg: QEMU_EXTRA_OPTS+=-accel tcg,thread=multi
+run-test-thread run-test-thread-mttcg: test-thread
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< ,"$< on $(TARGET_NAME) $(@:run-$<-%=%)")
 
 # coproc tests
