@@ -77,7 +77,12 @@ static bool default_mttcg_enabled(void)
 # ifndef TCG_GUEST_DEFAULT_MO
 #  error "TARGET_SUPPORTS_MTTCG without TCG_GUEST_DEFAULT_MO"
 # endif
+    /* QUIC-specific: QTOOL-100119 */
+#   if defined(TARGET_HEXAGON) && !defined(CONFIG_USER_ONLY)
+    return false;
+#   else
     return true;
+#   endif
 #else
     return false;
 #endif

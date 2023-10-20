@@ -1386,8 +1386,9 @@ static int vmdk_open(BlockDriverState *bs, QDict *options, int flags,
     error_setg(&s->migration_blocker, "The vmdk format used by node '%s' "
                "does not support live migration",
                bdrv_get_device_or_node_name(bs));
-    ret = migrate_add_blocker(&s->migration_blocker, errp);
+    ret = migrate_add_blocker(s->migration_blocker, errp);
     if (ret < 0) {
+        error_free(s->migration_blocker);
         goto fail;
     }
 
@@ -2866,7 +2867,8 @@ static void vmdk_close(BlockDriverState *bs)
     vmdk_free_extents(bs);
     g_free(s->create_type);
 
-    migrate_del_blocker(&s->migration_blocker);
+    migrate_del_blocker(s->migration_blocker);
+    error_free(s->migration_blocker);
 }
 
 static int64_t coroutine_fn GRAPH_RDLOCK

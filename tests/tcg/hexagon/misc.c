@@ -243,8 +243,8 @@ uint32_t array[10];
 bool early_exit;
 
 /*
- * Write this as a function because we can't guarantee the compiler will
- * allocate a frame with just the SL2_return_tnew packet.
+ * Write these as functions because we can't guarantee the compiler will
+ * allocate a frame with just the SL2_return_?new packet.
  */
 static void SL2_return_tnew(bool pred);
 asm ("SL2_return_tnew:\n\t"
@@ -254,6 +254,20 @@ asm ("SL2_return_tnew:\n\t"
      "   {\n\t"
      "       p0 = cmp.eq(r0, #1)\n\t"
      "       if (p0.new) dealloc_return:nt\n\t"    /* SL2_return_tnew */
+     "   }\n\t"
+     "   r1 = #0\n\t"
+     "   memw(##early_exit) = r1\n\t"
+     "   dealloc_return\n\t"
+    );
+
+static void SL2_return_fnew(int x);
+asm ("SL2_return_fnew:\n\t"
+     "   allocframe(#0)\n\t"
+     "   r1 = #1\n\t"
+     "   memw(##early_exit) = r1\n\t"
+     "   {\n\t"
+     "       p0 = cmp.eq(r0, #1)\n\t"
+     "       if (!p0.new) dealloc_return:nt\n\t"    /* SL2_return_fnew */
      "   }\n\t"
      "   r1 = #0\n\t"
      "   memw(##early_exit) = r1\n\t"
@@ -318,6 +332,133 @@ void test_l2fetch(void)
     /* These don't do anything in qemu, just make sure they don't assert */
     asm volatile ("l2fetch(r0, r1)\n\t"
                   "l2fetch(r0, r3:2)\n\t");
+}
+
+static int cl0(int x)
+{
+    int retval;
+    asm("%0 = cl0(%1)\n\t" : "=r"(retval) : "r"(x));
+    return retval;
+}
+
+#define extractu(RET, SRC, WIDTH, OFF) \
+    asm("%0 = extractu(%1, #%2, #%3)\n\t" \
+        : "=r"(RET) : "r"(SRC), "i"(WIDTH), "i"(OFF))
+
+static void test_extractu(void)
+{
+    uint32_t res32;
+    uint64_t res64;
+
+    extractu(res32, -1, 0, 10);
+    check32(res32, 0);
+
+    extractu(res32, -1, 31, 31);
+    check32(res32, 1);
+
+    extractu(res64, -1LL, 0, 10);
+    check64(res64, 0);
+
+    extractu(res64, -1LL, 63, 63);
+    check64(res64, 1);
+}
+#define insert(RET, SRC, WIDTH, OFFSET) \
+    asm("%0 = insert(%1, #%2, #%3)\n\t" \
+        : "+r"(RET) : "r"(SRC), "i"(WIDTH), "i"(OFFSET))
+
+static void test_insert(void)
+{
+    uint32_t res;
+
+    res = 0x12345678;
+    insert(res, 0xff, 8, 0);
+    check32(res, 0x123456ff);
+
+    res = 0x12345678;
+    insert(res, 0xff, 0, 0);
+    check32(res, 0x12345678);
+
+    res = 0x12345678;
+    insert(res, 0xff, 1, 31);
+    check32(res, 0x92345678);
+
+    res = 0x12345678;
+    insert(res, 0xff, 2, 31);
+    check32(res, 0x92345678);
+
+    res = 0x12345678;
+    insert(res, 0xff, 31, 31);
+    check32(res, 0x92345678);
+}
+
+#define bitspliti(RET, SRC, BITS) \
+    asm("%0 = bitsplit(%1, #%2)\n\t" \
+        : "=r"(RET) : "r"(SRC), "i"(BITS))
+
+static void test_bitspliti(void)
+{
+    long long res64;
+
+    bitspliti(res64, 0x12345678, 0);
+    check64(res64, 0x1234567800000000ULL);
+
+    bitspliti(res64, 0x12345678, 8);
+    check64(res64, 0x0012345600000078ULL);
+
+    bitspliti(res64, 0x12345678, 31);
+    check64(res64, 0x0000000012345678ULL);
+}
+
+static void test_addipc(void)
+{
+    uint32_t pc, addipc_res;
+
+    /* Normal version */
+    asm("%0 = pc\n\t"
+        "%1 = add(pc, #24)\n\t"
+        : "=r"(pc), "=r"(addipc_res));
+    check32(addipc_res - pc, 28);
+
+    /* Use constant extender */
+    asm("%0 = pc\n\t"
+        "%1 = add(pc, #100)\n\t"
+        : "=r"(pc), "=r"(addipc_res));
+    check32(addipc_res - pc, 104);
+}
+
+static void test_cond_call(void)
+{
+    /*
+     * Make sure that conditional calls don't modify r31 when the
+     * condition is false
+     *
+     * 1 - Set up a frame to preserve the current r31
+     * 2 - Call the test function
+     * 3 - Do a series of contidional calls where the condition is not met
+     * 4 - Return from the test function to ensure r31 not modified
+     * 5 - Deallocate the frame and jump to the end
+     */
+    asm volatile("    allocframe(#0)\n\t"
+                 "    call 1f\n\t"
+                 "    deallocframe\n\t"
+                 "    jump 4f\n\t"
+                 "1:\n\t"
+                 "    p0 = cmp.eq(r0, r0)\n\t"   /* true */
+                 "    p1 = !cmp.eq(r0, r0)\n\t"  /* false */
+                 "    jump 2f\n\t"
+                 "    .word 3f\n\t"              /* Address for callr */
+                 "2:\n\t"
+                 "    r5 = add(pc, #-4)\n\t"
+                 "    r5 = memw(r5)\n\t"         /* Loadd address for callr */
+                 "    if (p1) call 3f\n\t"
+                 "    if (!p0) call 3f\n\t"
+                 "    if (p1) callr r5\n\t"
+                 "    if (!p0) callr r5\n\t"
+                 "    jumpr r31\n\t"
+                 "3:\n\t"                        /* Dummy (never called) */
+                 "    jumpr r31\n\t"
+                 "4:\n\t"                        /* End */
+                 : : : "p0", "p1", "r5");
 }
 
 static inline int32_t ct0(uint32_t x)
@@ -515,6 +656,11 @@ int main()
     SL2_return_tnew(true);
     check32(early_exit, true);
 
+    SL2_return_fnew(false);
+    check32(early_exit, true);
+    SL2_return_fnew(true);
+    check32(early_exit, false);
+
     res64 = creg_pair(5, 7);
     check32((int32_t)res64, 5);
     check32((int32_t)(res64 >> 32), 7);
@@ -542,6 +688,21 @@ int main()
     test_lsbnew();
 
     test_l2fetch();
+
+    res = cl0(0x7fff);
+    check32(res, 17);
+    res = cl0(0);
+    check32(res, 32);
+
+    test_extractu();
+
+    test_insert();
+
+    test_bitspliti();
+
+    test_addipc();
+
+    test_cond_call();
 
     test_count_trailing_zeros_ones();
 

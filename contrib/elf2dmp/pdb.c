@@ -25,10 +25,6 @@
 
 static uint32_t pdb_get_file_size(const struct pdb_reader *r, unsigned idx)
 {
-    if (idx >= r->ds.toc->num_files) {
-        return 0;
-    }
-
     return r->ds.toc->file_size[idx];
 }
 
@@ -94,18 +90,18 @@ uint64_t pdb_resolve(uint64_t img_base, struct pdb_reader *r, const char *name)
 
 static void pdb_reader_ds_exit(struct pdb_reader *r)
 {
-    g_free(r->ds.toc);
+    free(r->ds.toc);
 }
 
 static void pdb_exit_symbols(struct pdb_reader *r)
 {
-    g_free(r->modimage);
-    g_free(r->symbols);
+    free(r->modimage);
+    free(r->symbols);
 }
 
 static void pdb_exit_segments(struct pdb_reader *r)
 {
-    g_free(r->segs);
+    free(r->segs);
 }
 
 static void *pdb_ds_read(const PDB_DS_HEADER *header,
@@ -120,7 +116,10 @@ static void *pdb_ds_read(const PDB_DS_HEADER *header,
 
     nBlocks = (size + header->block_size - 1) / header->block_size;
 
-    buffer = g_malloc(nBlocks * header->block_size);
+    buffer = malloc(nBlocks * header->block_size);
+    if (!buffer) {
+        return NULL;
+    }
 
     for (i = 0; i < nBlocks; i++) {
         memcpy(buffer + i * header->block_size, (const char *)header +
@@ -160,17 +159,16 @@ static void *pdb_ds_read_file(struct pdb_reader* r, uint32_t file_number)
 
 static int pdb_init_segments(struct pdb_reader *r)
 {
+    char *segs;
     unsigned stream_idx = r->segments;
 
-    r->segs = pdb_ds_read_file(r, stream_idx);
-    if (!r->segs) {
+    segs = pdb_ds_read_file(r, stream_idx);
+    if (!segs) {
         return 1;
     }
 
+    r->segs = segs;
     r->segs_size = pdb_get_file_size(r, stream_idx);
-    if (!r->segs_size) {
-        return 1;
-    }
 
     return 0;
 }
@@ -203,7 +201,7 @@ static int pdb_init_symbols(struct pdb_reader *r)
     return 0;
 
 out_symbols:
-    g_free(symbols);
+    free(symbols);
 
     return err;
 }
@@ -260,7 +258,7 @@ static int pdb_reader_init(struct pdb_reader *r, void *data)
 out_sym:
     pdb_exit_symbols(r);
 out_root:
-    g_free(r->ds.root);
+    free(r->ds.root);
 out_ds:
     pdb_reader_ds_exit(r);
 
@@ -271,7 +269,7 @@ static void pdb_reader_exit(struct pdb_reader *r)
 {
     pdb_exit_segments(r);
     pdb_exit_symbols(r);
-    g_free(r->ds.root);
+    free(r->ds.root);
     pdb_reader_ds_exit(r);
 }
 

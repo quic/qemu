@@ -22,6 +22,7 @@
 
 #include "qemu/osdep.h"
 #include "hw/irq.h"
+#include "hw/mips/cpudevs.h"
 #include "qemu/timer.h"
 #include "sysemu/kvm.h"
 #include "internal.h"

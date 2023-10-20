@@ -13,9 +13,8 @@ SRC_PATH=.
 # Don't use implicit rules or variables
 # we have explicit rules for everything
 MAKEFLAGS += -rR
-
 SHELL = bash -o pipefail
-
+CFLAGS += -msse4
 # Usage: $(call quiet-command,command and args,"NAME","args to print")
 # This will run "command and args", and either:
 #  if V=1 just print the whole command and args

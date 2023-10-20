@@ -91,7 +91,6 @@ struct QTestState
 
 static GHookList abrt_hooks;
 static void (*sighandler_old)(int);
-static bool silence_spawn_log;
 
 static int qtest_query_target_endianness(QTestState *s);
 
@@ -337,16 +336,9 @@ void qtest_remove_abrt_handler(void *data)
     }
 }
 
-static const char *qtest_qemu_binary(const char *var)
+static const char *qtest_qemu_binary(void)
 {
     const char *qemu_bin;
-
-    if (var) {
-        qemu_bin = getenv(var);
-        if (qemu_bin) {
-            return qemu_bin;
-        }
-    }
 
     qemu_bin = getenv("QTEST_QEMU_BINARY");
     if (!qemu_bin) {
@@ -389,8 +381,7 @@ static pid_t qtest_create_process(char *cmd)
 }
 #endif /* _WIN32 */
 
-static QTestState *G_GNUC_PRINTF(2, 3) qtest_spawn_qemu(const char *qemu_bin,
-                                                        const char *fmt, ...)
+static QTestState *G_GNUC_PRINTF(1, 2) qtest_spawn_qemu(const char *fmt, ...)
 {
     va_list ap;
     QTestState *s = g_new0(QTestState, 1);
@@ -400,15 +391,14 @@ static QTestState *G_GNUC_PRINTF(2, 3) qtest_spawn_qemu(const char *qemu_bin,
     g_autoptr(GString) command = g_string_new("");
 
     va_start(ap, fmt);
-    g_string_append_printf(command, CMD_EXEC "%s %s", qemu_bin, tracearg);
+    g_string_append_printf(command, CMD_EXEC "%s %s",
+                           qtest_qemu_binary(), tracearg);
     g_string_append_vprintf(command, fmt, ap);
     va_end(ap);
 
     qtest_add_abrt_handler(kill_qemu_hook_func, s);
 
-    if (!silence_spawn_log) {
-        g_test_message("starting QEMU: %s", command->str);
-    }
+    g_test_message("starting QEMU: %s", command->str);
 
 #ifndef _WIN32
     s->qemu_pid = fork();
@@ -441,8 +431,7 @@ static QTestState *G_GNUC_PRINTF(2, 3) qtest_spawn_qemu(const char *qemu_bin,
     return s;
 }
 
-static QTestState *qtest_init_internal(const char *qemu_bin,
-                                       const char *extra_args)
+QTestState *qtest_init_without_qmp_handshake(const char *extra_args)
 {
     QTestState *s;
     int sock, qmpsock, i;
@@ -467,8 +456,7 @@ static QTestState *qtest_init_internal(const char *qemu_bin,
     sock = init_socket(socket_path);
     qmpsock = init_socket(qmp_socket_path);
 
-    s = qtest_spawn_qemu(qemu_bin,
-                         "-qtest unix:%s "
+    s = qtest_spawn_qemu("-qtest unix:%s "
                          "-qtest-log %s "
                          "-chardev socket,path=%s,id=char0 "
                          "-mon chardev=char0,mode=control "
@@ -521,14 +509,9 @@ static QTestState *qtest_init_internal(const char *qemu_bin,
     return s;
 }
 
-QTestState *qtest_init_without_qmp_handshake(const char *extra_args)
+QTestState *qtest_init(const char *extra_args)
 {
-    return qtest_init_internal(qtest_qemu_binary(NULL), extra_args);
-}
-
-QTestState *qtest_init_with_env(const char *var, const char *extra_args)
-{
-    QTestState *s = qtest_init_internal(qtest_qemu_binary(var), extra_args);
+    QTestState *s = qtest_init_without_qmp_handshake(extra_args);
     QDict *greeting;
 
     /* Read the QMP greeting and then do the handshake */
@@ -537,11 +520,6 @@ QTestState *qtest_init_with_env(const char *var, const char *extra_args)
     qobject_unref(qtest_qmp(s, "{ 'execute': 'qmp_capabilities' }"));
 
     return s;
-}
-
-QTestState *qtest_init(const char *extra_args)
-{
-    return qtest_init_with_env(NULL, extra_args);
 }
 
 QTestState *qtest_vinitf(const char *fmt, va_list ap)
@@ -927,7 +905,7 @@ char *qtest_hmp(QTestState *s, const char *fmt, ...)
 
 const char *qtest_get_arch(void)
 {
-    const char *qemu = qtest_qemu_binary(NULL);
+    const char *qemu = qtest_qemu_binary();
     const char *end = strrchr(qemu, '-');
 
     if (!end) {
@@ -1471,26 +1449,13 @@ struct MachInfo {
     char *alias;
 };
 
-static void qtest_free_machine_list(struct MachInfo *machines)
-{
-    if (machines) {
-        for (int i = 0; machines[i].name != NULL; i++) {
-            g_free(machines[i].name);
-            g_free(machines[i].alias);
-        }
-
-        g_free(machines);
-    }
-}
-
 /*
  * Returns an array with pointers to the available machine names.
  * The terminating entry has the name set to NULL.
  */
-static struct MachInfo *qtest_get_machines(const char *var)
+static struct MachInfo *qtest_get_machines(void)
 {
     static struct MachInfo *machines;
-    static char *qemu_var;
     QDict *response, *minfo;
     QList *list;
     const QListEntry *p;
@@ -1499,21 +1464,11 @@ static struct MachInfo *qtest_get_machines(const char *var)
     QTestState *qts;
     int idx;
 
-    if (g_strcmp0(qemu_var, var)) {
-        qemu_var = g_strdup(var);
-
-        /* new qemu, clear the cache */
-        qtest_free_machine_list(machines);
-        machines = NULL;
-    }
-
     if (machines) {
         return machines;
     }
 
-    silence_spawn_log = !g_test_verbose();
-
-    qts = qtest_init_with_env(qemu_var, "-machine none");
+    qts = qtest_init("-machine none");
     response = qtest_qmp(qts, "{ 'execute': 'query-machines' }");
     g_assert(response);
     list = qdict_get_qlist(response, "return");
@@ -1544,8 +1499,6 @@ static struct MachInfo *qtest_get_machines(const char *var)
     qtest_quit(qts);
     qobject_unref(response);
 
-    silence_spawn_log = false;
-
     memset(&machines[idx], 0, sizeof(struct MachInfo)); /* Terminating entry */
     return machines;
 }
@@ -1556,7 +1509,7 @@ void qtest_cb_for_every_machine(void (*cb)(const char *machine),
     struct MachInfo *machines;
     int i;
 
-    machines = qtest_get_machines(NULL);
+    machines = qtest_get_machines();
 
     for (i = 0; machines[i].name != NULL; i++) {
         /* Ignore machines that cannot be used for qtests */
@@ -1572,28 +1525,12 @@ void qtest_cb_for_every_machine(void (*cb)(const char *machine),
     }
 }
 
-char *qtest_resolve_machine_alias(const char *var, const char *alias)
+bool qtest_has_machine(const char *machine)
 {
     struct MachInfo *machines;
     int i;
 
-    machines = qtest_get_machines(var);
-
-    for (i = 0; machines[i].name != NULL; i++) {
-        if (machines[i].alias && g_str_equal(alias, machines[i].alias)) {
-            return g_strdup(machines[i].name);
-        }
-    }
-
-    return NULL;
-}
-
-bool qtest_has_machine_with_env(const char *var, const char *machine)
-{
-    struct MachInfo *machines;
-    int i;
-
-    machines = qtest_get_machines(var);
+    machines = qtest_get_machines();
 
     for (i = 0; machines[i].name != NULL; i++) {
         if (g_str_equal(machine, machines[i].name) ||
@@ -1603,11 +1540,6 @@ bool qtest_has_machine_with_env(const char *var, const char *machine)
     }
 
     return false;
-}
-
-bool qtest_has_machine(const char *machine)
-{
-    return qtest_has_machine_with_env(NULL, machine);
 }
 
 bool qtest_has_device(const char *device)

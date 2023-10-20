@@ -727,12 +727,6 @@ static QemuOptsList qemu_smp_opts = {
             .name = "cpus",
             .type = QEMU_OPT_NUMBER,
         }, {
-            .name = "drawers",
-            .type = QEMU_OPT_NUMBER,
-        }, {
-            .name = "books",
-            .type = QEMU_OPT_NUMBER,
-        }, {
             .name = "sockets",
             .type = QEMU_OPT_NUMBER,
         }, {
@@ -865,7 +859,12 @@ static MachineClass *find_default_machine(GSList *machines)
 
 static void version(void)
 {
-    printf("QEMU emulator version " QEMU_FULL_VERSION "\n"
+    printf("Hexagon QEMU emulator"
+#ifdef QEMU_HEXAGON_BRANCH
+           " (branch " QEMU_HEXAGON_BRANCH ".X)"
+#endif
+           "\nCommit " QEMU_HEXAGON_SHA "\n"
+           "Based on upstream QEMU version " QEMU_FULL_VERSION "\n"
            QEMU_COPYRIGHT "\n");
 }
 
@@ -3027,6 +3026,9 @@ void qemu_init(int argc, char **argv)
                 break;
             case QEMU_OPTION_gdb:
                 add_device_config(DEV_GDB, optarg);
+                if (strstart(optarg, "revcon:", NULL)) {
+                    autostart = 0;
+                }
                 break;
             case QEMU_OPTION_L:
                 if (is_help_option(optarg)) {

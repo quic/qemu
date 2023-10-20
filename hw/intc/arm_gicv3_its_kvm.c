@@ -114,7 +114,8 @@ static void kvm_arm_its_realize(DeviceState *dev, Error **errp)
         GITS_CTLR)) {
         error_setg(&s->migration_blocker, "This operating system kernel "
                    "does not support vITS migration");
-        if (migrate_add_blocker(&s->migration_blocker, errp) < 0) {
+        if (migrate_add_blocker(s->migration_blocker, errp) < 0) {
+            error_free(s->migration_blocker);
             return;
         }
     } else {

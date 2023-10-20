@@ -78,10 +78,12 @@ static const VMStateDescription vmstate_sclpquiesce = {
      }
 };
 
-typedef struct QuiesceNotifier {
+typedef struct QuiesceNotifier QuiesceNotifier;
+
+static struct QuiesceNotifier {
     Notifier notifier;
     SCLPEvent *event;
-} QuiesceNotifier;
+} qn;
 
 static void quiesce_powerdown_req(Notifier *n, void *opaque)
 {
@@ -95,8 +97,6 @@ static void quiesce_powerdown_req(Notifier *n, void *opaque)
 
 static int quiesce_init(SCLPEvent *event)
 {
-    static QuiesceNotifier qn;
-
     qn.notifier.notify = quiesce_powerdown_req;
     qn.event = event;
 

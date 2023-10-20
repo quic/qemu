@@ -23,6 +23,7 @@
 #include "qemu/osdep.h"
 #include "qemu/main-loop.h"
 #include "hw/irq.h"
+#include "hw/mips/cpudevs.h"
 #include "sysemu/kvm.h"
 #include "kvm_mips.h"
 

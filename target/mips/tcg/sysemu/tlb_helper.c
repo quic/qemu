@@ -24,6 +24,7 @@
 #include "exec/exec-all.h"
 #include "exec/cpu_ldst.h"
 #include "exec/log.h"
+#include "hw/mips/cpudevs.h"
 #include "exec/helper-proto.h"
 
 /* TLB management */

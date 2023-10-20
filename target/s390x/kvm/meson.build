@@ -1,8 +1,7 @@
 
 s390x_ss.add(when: 'CONFIG_KVM', if_true: files(
   'pv.c',
-  'kvm.c',
-  'stsi-topology.c'
+  'kvm.c'
 ), if_false: files(
   'stubs.c'
 ))

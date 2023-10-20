@@ -23,9 +23,9 @@
 #include "exec/log.h"
 #include "special-errno.h"
 
-void target_exception_dump(CPUArchState *env, const char *fmt, int code);
-#define EXCP_DUMP(env, fmt, code) \
-    target_exception_dump(env, fmt, code)
+void target_exception_dump(CPUArchState *env, const char *fmt, ...);
+#define EXCP_DUMP(env, fmt, ...) \
+    target_exception_dump(env, fmt,  ## __VA_ARGS__)
 
 void target_cpu_copy_regs(CPUArchState *env, struct target_pt_regs *regs);
 #endif

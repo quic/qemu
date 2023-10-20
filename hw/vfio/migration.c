@@ -872,8 +872,8 @@ static int vfio_migration_init(VFIODevice *vbasedev)
                      NULL;
     migration->vm_state = qdev_add_vm_change_state_handler_full(
         vbasedev->dev, vfio_vmstate_change, prepare_cb, vbasedev);
-    migration_add_notifier(&migration->migration_state,
-                           vfio_migration_state_notifier);
+    migration->migration_state.notify = vfio_migration_state_notifier;
+    add_migration_state_change_notifier(&migration->migration_state);
 
     return 0;
 }
@@ -882,7 +882,7 @@ static void vfio_migration_deinit(VFIODevice *vbasedev)
 {
     VFIOMigration *migration = vbasedev->migration;
 
-    migration_remove_notifier(&migration->migration_state);
+    remove_migration_state_change_notifier(&migration->migration_state);
     qemu_del_vm_change_state_handler(migration->vm_state);
     unregister_savevm(VMSTATE_IF(vbasedev->dev), "vfio", vbasedev);
     vfio_migration_free(vbasedev);
@@ -891,6 +891,8 @@ static void vfio_migration_deinit(VFIODevice *vbasedev)
 
 static int vfio_block_migration(VFIODevice *vbasedev, Error *err, Error **errp)
 {
+    int ret;
+
     if (vbasedev->enable_migration == ON_OFF_AUTO_ON) {
         error_propagate(errp, err);
         return -EINVAL;
@@ -899,7 +901,13 @@ static int vfio_block_migration(VFIODevice *vbasedev, Error *err, Error **errp)
     vbasedev->migration_blocker = error_copy(err);
     error_free(err);
 
-    return migrate_add_blocker(&vbasedev->migration_blocker, errp);
+    ret = migrate_add_blocker(vbasedev->migration_blocker, errp);
+    if (ret < 0) {
+        error_free(vbasedev->migration_blocker);
+        vbasedev->migration_blocker = NULL;
+    }
+
+    return ret;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -986,5 +994,9 @@ void vfio_migration_exit(VFIODevice *vbasedev)
         vfio_migration_deinit(vbasedev);
     }
 
-    migrate_del_blocker(&vbasedev->migration_blocker);
+    if (vbasedev->migration_blocker) {
+        migrate_del_blocker(vbasedev->migration_blocker);
+        error_free(vbasedev->migration_blocker);
+        vbasedev->migration_blocker = NULL;
+    }
 }

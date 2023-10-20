@@ -10,7 +10,9 @@
 #ifndef TARGET_ARM_COMMON_SEMI_TARGET_H
 #define TARGET_ARM_COMMON_SEMI_TARGET_H
 
-#include "target/arm/cpu-qom.h"
+#ifndef CONFIG_USER_ONLY
+#include "hw/arm/boot.h"
+#endif
 
 static inline target_ulong common_semi_arg(CPUState *cs, int argno)
 {

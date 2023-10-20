@@ -18,6 +18,9 @@
 #ifndef HVX_MISC_H
 #define HVX_MISC_H
 
+/* Function provided by Hexagon runtime library */
+float __extendhfsf2(int16_t);
+
 static inline void check(int line, int i, int j,
                          uint64_t result, uint64_t expect)
 {
@@ -39,6 +42,8 @@ typedef union {
     int16_t   h[MAX_VEC_SIZE_BYTES / 2];
     uint8_t  ub[MAX_VEC_SIZE_BYTES / 1];
     int8_t    b[MAX_VEC_SIZE_BYTES / 1];
+    int32_t   sf[MAX_VEC_SIZE_BYTES / 4];
+    int16_t   hf[MAX_VEC_SIZE_BYTES / 2];
 } MMVector;
 
 #define BUFSIZE      16
@@ -47,12 +52,20 @@ typedef union {
 
 MMVector buffer0[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 MMVector buffer1[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
+MMVector sf_buffer0[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
+MMVector sf_buffer1[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
+MMVector hf_buffer0[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
+MMVector hf_buffer1[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 MMVector mask[BUFSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 MMVector output[OUTSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 MMVector expect[OUTSIZE] __attribute__((aligned(MAX_VEC_SIZE_BYTES)));
 
+int v6mpy_ref[BUFSIZE][MAX_VEC_SIZE_BYTES / 4] = {
+#include "v6mpy_ref.h"
+};
+
 #define CHECK_OUTPUT_FUNC(FIELD, FIELDSZ) \
-static inline void check_output_##FIELD(int line, size_t num_vectors) \
+static void check_output_##FIELD(int line, size_t num_vectors) \
 { \
     for (int i = 0; i < num_vectors; i++) { \
         for (int j = 0; j < MAX_VEC_SIZE_BYTES / FIELDSZ; j++) { \
@@ -66,14 +79,26 @@ CHECK_OUTPUT_FUNC(w,  4)
 CHECK_OUTPUT_FUNC(h,  2)
 CHECK_OUTPUT_FUNC(b,  1)
 
-static inline void init_buffers(void)
+static void init_buffers(void)
 {
     int counter0 = 0;
     int counter1 = 17;
+    int sf_counter0 = 0;
+    int sf_counter1 = 17;
+    int hf_counter0 = 0;
+    int hf_counter1 = 17;
     for (int i = 0; i < BUFSIZE; i++) {
         for (int j = 0; j < MAX_VEC_SIZE_BYTES; j++) {
             buffer0[i].b[j] = counter0++;
             buffer1[i].b[j] = counter1++;
+        }
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
+            sf_buffer0[i].sf[j] = sf_counter0++;
+            sf_buffer1[i].sf[j] = sf_counter1++;
+        }
+        for (int j = 0; j < MAX_VEC_SIZE_BYTES / 2; j++) {
+            hf_buffer0[i].hf[j] = hf_counter0++;
+            hf_buffer1[i].hf[j] = hf_counter1++;
         }
         for (int j = 0; j < MAX_VEC_SIZE_BYTES / 4; j++) {
             mask[i].w[j] = (i + j % MASKMOD == 0) ? 0 : 1;

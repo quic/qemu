@@ -291,7 +291,7 @@ void guest_phys_blocks_append(GuestPhysBlockList *list)
     memory_listener_unregister(&g.listener);
 }
 
-static CPUState *find_paging_enabled_cpu(void)
+static CPUState *find_paging_enabled_cpu(CPUState *start_cpu)
 {
     CPUState *cpu;
 
@@ -304,24 +304,26 @@ static CPUState *find_paging_enabled_cpu(void)
     return NULL;
 }
 
-bool qemu_get_guest_memory_mapping(MemoryMappingList *list,
+void qemu_get_guest_memory_mapping(MemoryMappingList *list,
                                    const GuestPhysBlockList *guest_phys_blocks,
                                    Error **errp)
 {
-    ERRP_GUARD();
     CPUState *cpu, *first_paging_enabled_cpu;
     GuestPhysBlock *block;
     ram_addr_t offset, length;
 
-    first_paging_enabled_cpu = find_paging_enabled_cpu();
+    first_paging_enabled_cpu = find_paging_enabled_cpu(first_cpu);
     if (first_paging_enabled_cpu) {
         for (cpu = first_paging_enabled_cpu; cpu != NULL;
              cpu = CPU_NEXT(cpu)) {
-            if (!cpu_get_memory_mapping(cpu, list, errp)) {
-                return false;
+            Error *err = NULL;
+            cpu_get_memory_mapping(cpu, list, &err);
+            if (err) {
+                error_propagate(errp, err);
+                return;
             }
         }
-        return true;
+        return;
     }
 
     /*
@@ -333,7 +335,6 @@ bool qemu_get_guest_memory_mapping(MemoryMappingList *list,
         length = block->target_end - block->target_start;
         create_new_memory_mapping(list, offset, offset, length);
     }
-    return true;
 }
 
 void qemu_get_guest_simple_memory_mapping(MemoryMappingList *list,

@@ -838,11 +838,6 @@ typedef struct GdbCmdParseEntry {
     bool allow_stop_reply;
 } GdbCmdParseEntry;
 
-static inline int startswith(const char *string, const char *pattern)
-{
-  return !strncmp(string, pattern, strlen(pattern));
-}
-
 static int process_string_cmd(const char *data,
                               const GdbCmdParseEntry *cmds, int num_cmds)
 {
@@ -2205,7 +2200,7 @@ void gdb_read_byte(uint8_t ch)
                 /* send ACK reply */
                 reply = '+';
                 gdb_put_buffer(&reply, 1);
-                gdbserver_state.state = gdb_handle_packet(gdbserver_state.line_buf);
+                gdbserver_state.state = gdb_handle_packet(gdbserver_state.line_buf);  
             }
             break;
         default:
@@ -2244,4 +2239,3 @@ void gdb_create_default_process(GDBState *s)
     process->attached = false;
     process->target_xml = NULL;
 }
-

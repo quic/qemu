@@ -1283,9 +1283,7 @@ void pc_basic_device_init(struct PCMachineState *pcms,
             /* connect PIT to output control line of the HPET */
             qdev_connect_gpio_out(hpet, 0, qdev_get_gpio_in(DEVICE(pit), 0));
         }
-        object_property_set_link(OBJECT(pcms->pcspk), "pit",
-                                 OBJECT(pit), &error_fatal);
-        isa_realize_and_unref(pcms->pcspk, isa_bus, &error_fatal);
+        pcspk_init(pcms->pcspk, isa_bus, pit);
     }
 
     /* Super I/O */

@@ -94,7 +94,7 @@ quote_sh() {
     printf "%s" "$1" | sed "s,','\\\\'',g; s,.*,'&',"
 }
 
-error_exit() {
+print_error() {
     (echo
     echo "ERROR: $1"
     while test -n "$2"; do
@@ -102,6 +102,10 @@ error_exit() {
         shift
     done
     echo) >&2
+}
+
+error_exit() {
+    print_error "$@"
     exit 1
 }
 
@@ -182,7 +186,7 @@ cross_compile="no"
 cross_prefix=""
 host_cc="cc"
 EXTRA_CFLAGS=""
-EXTRA_CXXFLAGS=""
+EXTRA_CXXFLAGS="-Wno-undef"
 EXTRA_OBJCFLAGS=""
 EXTRA_LDFLAGS=""
 
@@ -242,10 +246,21 @@ for opt do
   esac
 done
 
+# QUIC-specific
+# We currently get 401 when trying to pull the container image for aarch64
+# cross compiler from docker.io. We should probably use our internal registry
+# instance instea but, for now, let's just skip the container and use a cross
+# compiler from the mounted dirs.
+cross_prefix_aarch64="/pkg/qct/software/llvm/build_tools/gcc-arm-8.3-2019.03-x86_64-aarch64-linux-gnu/bin/aarch64-linux-gnu-"
+# QUIC-end
+
 default_cflags='-O2 -g'
 git_submodules_action="update"
+git="git"
 docs="auto"
 EXESUF=""
+prefix="/usr/local"
+qemu_suffix="qemu"
 system="yes"
 linux_user=""
 bsd_user=""
@@ -254,10 +269,16 @@ subdirs=""
 ninja=""
 python=
 download="enabled"
+bindir="bin"
 skip_meson=no
 use_containers="yes"
 gdb_bin=$(command -v "gdb-multiarch" || command -v "gdb")
 gdb_arches=""
+werror=""
+
+hexagon_lldb_bin=$(command -v "hexagon-lldb")
+assert_target_compiler=no
+qemu_testing_path=
 
 # Don't accept a target_list environment variable.
 unset target_list
@@ -313,6 +334,7 @@ objcopy="${OBJCOPY-${cross_prefix}objcopy}"
 ld="${LD-${cross_prefix}ld}"
 ranlib="${RANLIB-${cross_prefix}ranlib}"
 nm="${NM-${cross_prefix}nm}"
+smbd="$SMBD"
 strip="${STRIP-${cross_prefix}strip}"
 widl="${WIDL-${cross_prefix}widl}"
 windres="${WINDRES-${cross_prefix}windres}"
@@ -363,6 +385,18 @@ else
   targetos=bogus
 fi
 
+# OS specific
+
+case $targetos in
+windows)
+  plugins="no"
+  pie="no"
+;;
+haiku)
+  pie="no"
+;;
+esac
+
 if test ! -z "$cpu" ; then
   # command line argument
   :
@@ -408,6 +442,8 @@ elif check_define __arm__ ; then
   cpu="arm"
 elif check_define __aarch64__ ; then
   cpu="aarch64"
+elif check_define __hexagon__ ; then
+  cpu="hexagon"
 elif check_define __loongarch64 ; then
   cpu="loongarch64"
 else
@@ -515,8 +551,7 @@ case "$cpu" in
     # ??? Only extremely old AMD cpus do not have cmpxchg16b.
     # If we truly care, we should simply detect this case at
     # runtime and generate the fallback to serial emulation.
-    CPU_CFLAGS="-m64 -mcx16"
-    ;;
+    CPU_CFLAGS="-m64 -mcx16 -msse4.2 -mavx" ;;
 esac
 
 if test -n "$host_arch" && {
@@ -578,6 +613,9 @@ done
 
 if test "$targetos" = "windows" ; then
   EXESUF=".exe"
+  prefix="/qemu"
+  bindir=""
+  qemu_suffix=""
 fi
 
 meson_option_build_array() {
@@ -600,10 +638,7 @@ meson_option_build_array() {
 
 meson_options=
 meson_option_add() {
-  local arg
-  for arg; do
-    meson_options="$meson_options $(quote_sh "$arg")"
-  done
+  meson_options="$meson_options $(quote_sh "$1")"
 }
 meson_option_parse() {
   meson_options="$meson_options $(_meson_option_parse "$@")"
@@ -614,20 +649,14 @@ meson_option_parse() {
   fi
 }
 
-meson_add_machine_file() {
-  if test "$cross_compile" = "yes"; then
-    meson_option_add --cross-file "$1"
-  else
-    meson_option_add --native-file "$1"
-  fi
-}
-
 for opt do
   optarg=$(expr "x$opt" : 'x[^=]*=\(.*\)')
   case "$opt" in
   --help|-h) show_help=yes
   ;;
   --version|-V) exec cat "$source_path/VERSION"
+  ;;
+  --prefix=*) prefix="$optarg"
   ;;
   --cross-prefix=*)
   ;;
@@ -648,6 +677,8 @@ for opt do
   --skip-meson) skip_meson=yes
   ;;
   --ninja=*) ninja="$optarg"
+  ;;
+  --smbd=*) smbd="$optarg"
   ;;
   --extra-cflags=*)
   ;;
@@ -697,6 +728,10 @@ for opt do
   ;;
   --static) static="yes"
   ;;
+  --bindir=*) bindir="$optarg"
+  ;;
+  --with-suffix=*) qemu_suffix="$optarg"
+  ;;
   --host=*|--build=*|\
   --disable-dependency-tracking|\
   --sbindir=*|--sharedstatedir=*|\
@@ -716,6 +751,7 @@ for opt do
       default_cflags='-O0 -g'
   ;;
   --disable-tcg) tcg="disabled"
+                 plugins="no"
   ;;
   --enable-tcg) tcg="enabled"
   ;;
@@ -740,15 +776,25 @@ for opt do
   ;;
   --disable-pie) pie="no"
   ;;
-  --enable-cfi) cfi=true
+  --enable-werror) werror="yes"
   ;;
-  --disable-cfi) cfi=false
+  --disable-werror) werror="no"
+  ;;
+  --enable-cfi)
+      cfi="true";
+      meson_option_add -Db_lto=true
+  ;;
+  --disable-cfi) cfi="false"
   ;;
   --disable-download) download="disabled"; git_submodules_action=validate;
   ;;
   --enable-download) download="enabled"; git_submodules_action=update;
   ;;
-  --enable-plugins) plugins="yes"
+  --enable-plugins) if test "$targetos" = "windows"; then
+                        error_exit "TCG plugins not currently supported on Windows platforms"
+                    else
+                        plugins="yes"
+                    fi
   ;;
   --disable-plugins) plugins="no"
   ;;
@@ -759,6 +805,12 @@ for opt do
   --container-engine=*) container_engine="$optarg"
   ;;
   --gdb=*) gdb_bin="$optarg"
+  ;;
+  --hexagon-lldb=*) hexagon_lldb_bin="$optarg"
+  ;;
+  --assert-target-compiler) assert_target_compiler="yes"
+  ;;
+  --qemu-testing-path=*) qemu_testing_path="$optarg"
   ;;
   # everything else has the same name in configure and meson
   --*) meson_option_parse "$opt" "$optarg"
@@ -772,6 +824,11 @@ done
 if ! test -e "$source_path/.git"
 then
     git_submodules_action="validate"
+fi
+
+# test for any invalid configuration combinations
+if test "$plugins" = "yes" -a "$tcg" = "disabled"; then
+    error_exit "Can't enable plugins on non-TCG builds"
 fi
 
 if ! test -f "$source_path/subprojects/keycodemapdb/README" \
@@ -849,6 +906,7 @@ Options: [defaults in brackets after descriptions]
 
 Standard options:
   --help                   print this message
+  --prefix=PREFIX          install in PREFIX [$prefix]
   --target-list=LIST       set target list (default: build all)
 $(echo Available targets: $default_target_list | \
   fold -s -w 53 | sed -e 's/^/                           /')
@@ -871,17 +929,26 @@ Advanced options (experts only):
   --cross-prefix-ARCH=PREFIX cross compiler prefix when building ARCH guest test cases
   --python=PYTHON          use specified python [$python]
   --ninja=NINJA            use specified ninja [$ninja]
+  --smbd=SMBD              use specified smbd [$smbd]
   --static                 enable static build [$static]
+  --bindir=PATH            install binaries in PATH
+  --with-suffix=SUFFIX     suffix for QEMU data inside datadir/libdir/sysconfdir/docdir [$qemu_suffix]
   --without-default-features default all --enable-* options to "disabled"
   --without-default-devices  do not include any device that is not needed to
                            start the emulator (only use if you are including
                            desired devices in configs/devices/)
   --with-devices-ARCH=NAME override default configs/devices
   --enable-debug           enable common debug build options
+  --disable-werror         disable compilation abort on warning
   --cpu=CPU                Build for host CPU [$cpu]
+  --enable-plugins
+                           enable plugins via shared library loading
   --disable-containers     don't use containers for cross-building
   --container-engine=TYPE  which container engine to use [$container_engine]
   --gdb=GDB-path           gdb to use for gdbstub tests [$gdb_bin]
+  --hexagon-lldb=LLDB-path lldb to use for hexagon tests [$hexagon_lldb_bin]
+  --assert-target-compiler abort if no target CC or container image is found [$assert_target_compiler]
+  --qemu-testing-path=path use this custom qemu path when running tests [$qemu_testing_path]
 EOF
   meson_options_help
 cat << EOF
@@ -1001,6 +1068,17 @@ if test -z "$ninja"; then
     fi
 fi
 
+# Consult white-list to determine whether to enable werror
+# by default.  Only enable by default for git builds
+if test -z "$werror" ; then
+    if test -e "$source_path/.git" && \
+        { test "$targetos" = linux || test "$targetos" = "windows"; }; then
+        werror="yes"
+    else
+        werror="no"
+    fi
+fi
+
 if test "$targetos" = "bogus"; then
     # Now that we know that we're not printing the help and that
     # the compiler works (so the results of the check_defines we used
@@ -1009,27 +1087,15 @@ if test "$targetos" = "bogus"; then
     error_exit "Unrecognized host OS (uname -s reports '$(uname -s)')"
 fi
 
-# test for any invalid configuration combinations
-if test "$targetos" = "windows"; then
-  if test "$plugins" = "yes"; then
-    error_exit "TCG plugins not currently supported on Windows platforms"
-  fi
-  plugins="no"
-fi
-if test "$tcg" = "disabled" ; then
-  if test "$plugins" = "yes"; then
-    error_exit "Can't enable plugins on non-TCG builds"
-  fi
-  plugins="no"
-fi
 if test "$static" = "yes" ; then
   if test "$plugins" = "yes"; then
     error_exit "static and plugins are mutually incompatible"
+  else
+    plugins="no"
   fi
-  plugins="no"
 fi
-if test "$plugins" != "no"; then
-  plugins=yes
+test "$plugins" = "" && plugins=yes
+if test "$plugins" = "yes"; then
   subdirs="$subdirs contrib/plugins"
 fi
 
@@ -1044,23 +1110,19 @@ static THREAD int tls_var;
 int main(void) { return tls_var; }
 EOF
 
-if test "$targetos" = windows || test "$targetos" = haiku; then
-  if test "$pie" = "yes"; then
-    error_exit "PIE not available due to missing OS support"
-  fi
-  pie=no
-fi
-
-if test "$pie" != "no"; then
-  if test "$static" = "yes"; then
-    pie_ldflags=-static-pie
-  else
-    pie_ldflags=-pie
-  fi
-  if compile_prog "-Werror -fPIE -DPIE" "$pie_ldflags"; then
+if test "$static" = "yes"; then
+  if test "$pie" != "no" && compile_prog "-Werror -fPIE -DPIE" "-static-pie"; then
     pie="yes"
   elif test "$pie" = "yes"; then
     error_exit "-static-pie not available due to missing toolchain support"
+  else
+    pie="no"
+  fi
+elif test "$pie" != "no"; then
+  if compile_prog "-Werror -fPIE -DPIE" "-pie"; then
+    pie="yes"
+  elif test "$pie" = "yes"; then
+    error_exit "PIE not available due to missing toolchain support"
   else
     echo "Disabling PIE due to missing toolchain support"
     pie="no"
@@ -1099,18 +1161,6 @@ if test "$tcg" = "auto"; then
   fi
 fi
 
-#########################################
-# gdb test
-
-if test -n "$gdb_bin"; then
-    gdb_version=$($gdb_bin --version | head -n 1)
-    if version_ge ${gdb_version##* } 9.1; then
-        gdb_arches=$($python "$source_path/scripts/probe-gdb-support.py" $gdb_bin)
-    else
-        gdb_bin=""
-    fi
-fi
-
 ##########################################
 # big/little endian test
 cat > $TMPC << EOF
@@ -1136,6 +1186,34 @@ EOF
     echo big/little test failed
     exit 1
   fi
+fi
+
+########################################
+# check if ccache is interfering with
+# semantic analysis of macros
+
+unset CCACHE_CPP2
+ccache_cpp2=no
+cat > $TMPC << EOF
+static const int Z = 1;
+#define fn() ({ Z; })
+#define TAUT(X) ((X) == Z)
+#define PAREN(X, Y) (X == Y)
+#define ID(X) (X)
+int main(void)
+{
+    int x = 0, y = 0;
+    x = ID(x);
+    x = fn();
+    fn();
+    if (PAREN(x, y)) return 0;
+    if (TAUT(Z)) return 0;
+    return 0;
+}
+EOF
+
+if ! compile_object "-Werror"; then
+    ccache_cpp2=yes
 fi
 
 ##########################################
@@ -1242,6 +1320,7 @@ probe_target_compiler() {
   container_cross_objcopy=
   container_cross_ranlib=
   container_cross_strip=
+  target=$1
 
   target_arch=${1%%-*}
   case $target_arch in
@@ -1281,6 +1360,10 @@ probe_target_compiler() {
         container_cross_prefix=aarch64-linux-gnu-
         container_cross_cc=${container_cross_prefix}gcc
         ;;
+      alpha)
+        container_image=debian-alpha-cross
+        container_cross_prefix=alpha-linux-gnu-
+        ;;
       arm)
         # We don't have any bigendian build tools so we only use this for ARM
         container_image=debian-armhf-cross
@@ -1295,6 +1378,10 @@ probe_target_compiler() {
         container_cross_prefix=hexagon-unknown-linux-musl-
         container_cross_cc=${container_cross_prefix}clang
         ;;
+      hppa)
+        container_image=debian-hppa-cross
+        container_cross_prefix=hppa-linux-gnu-
+        ;;
       i386)
         container_image=fedora-i386-cross
         container_cross_prefix=
@@ -1302,6 +1389,10 @@ probe_target_compiler() {
       loongarch64)
         container_image=debian-loongarch-cross
         container_cross_prefix=loongarch64-unknown-linux-gnu-
+        ;;
+      m68k)
+        container_image=debian-m68k-cross
+        container_cross_prefix=m68k-linux-gnu-
         ;;
       microblaze)
         container_image=debian-microblaze-cross
@@ -1314,6 +1405,14 @@ probe_target_compiler() {
       mips64)
         container_image=debian-mips64-cross
         container_cross_prefix=mips64-linux-gnuabi64-
+        ;;
+      mipsel)
+        container_image=debian-mipsel-cross
+        container_cross_prefix=mipsel-linux-gnu-
+        ;;
+      mips)
+        container_image=debian-mips-cross
+        container_cross_prefix=mips-linux-gnu-
         ;;
       nios2)
         container_image=debian-nios2-cross
@@ -1329,6 +1428,22 @@ probe_target_compiler() {
         container_cross_prefix=powerpc${target_arch#ppc}-linux-gnu-
         container_cross_cc=${container_cross_prefix}gcc-10
         ;;
+      riscv64)
+        container_image=debian-riscv64-test-cross
+        container_cross_prefix=riscv64-linux-gnu-
+        ;;
+      s390x)
+        container_image=debian-s390x-cross
+        container_cross_prefix=s390x-linux-gnu-
+        ;;
+      sh4)
+        container_image=debian-sh4-cross
+        container_cross_prefix=sh4-linux-gnu-
+        ;;
+      sparc64)
+        container_image=debian-sparc64-cross
+        container_cross_prefix=sparc64-linux-gnu-
+        ;;
       tricore)
         container_image=debian-tricore-cross
         container_cross_prefix=tricore-
@@ -1343,11 +1458,6 @@ probe_target_compiler() {
         # default to the dc232b cpu
         container_cross_prefix=/opt/2020.07/xtensa-dc232b-elf/bin/xtensa-dc232b-elf-
         ;;
-      *)
-        # Debian and GNU architecture names usually match
-        container_image=debian-$target_arch-cross
-        container_cross_prefix=$target_arch-linux-gnu-
-        ;;
     esac
     : ${container_cross_cc:=${container_cross_prefix}gcc}
     : ${container_cross_ar:=${container_cross_prefix}ar}
@@ -1358,6 +1468,13 @@ probe_target_compiler() {
     : ${container_cross_ranlib:=${container_cross_prefix}ranlib}
     : ${container_cross_strip:=${container_cross_prefix}strip}
   done
+
+  case $target in
+    hexagon-linux-user)
+      cross_cc_hexagon=hexagon-linux-clang ;;
+    hexagon-softmmu)
+      cross_cc_hexagon=hexagon-clang ;;
+  esac
 
   try=cross
   case "$target_arch:$cpu" in
@@ -1592,9 +1709,25 @@ echo >> $config_host_mak
 
 echo all: >> $config_host_mak
 
+if test "$targetos" = "windows"; then
+  echo "QEMU_GA_MANUFACTURER=${QEMU_GA_MANUFACTURER-QEMU}" >> $config_host_mak
+  echo "QEMU_GA_DISTRO=${QEMU_GA_DISTRO-Linux}" >> $config_host_mak
+  echo "QEMU_GA_VERSION=${QEMU_GA_VERSION-$(cat "$source_path"/VERSION)}" >> $config_host_mak
+fi
+
 echo "SRC_PATH=$source_path" >> $config_host_mak
 echo "TARGET_DIRS=$target_list" >> $config_host_mak
-echo "GDB=$gdb_bin" >> $config_host_mak
+
+if test -n "$gdb_bin"; then
+    gdb_version=$($gdb_bin --version | head -n 1)
+    if version_ge ${gdb_version##* } 9.1; then
+        echo "HAVE_GDB_BIN=$gdb_bin" >> $config_host_mak
+        gdb_arches=$($python "$source_path/scripts/probe-gdb-support.py" $gdb_bin)
+    else
+        gdb_bin=""
+    fi
+fi
+
 if test "$container" != no; then
     echo "RUNC=$runc" >> $config_host_mak
 fi
@@ -1623,6 +1756,10 @@ if test "$default_targets" = "yes"; then
   echo "CONFIG_DEFAULT_TARGETS=y" >> $config_host_mak
 fi
 
+if test "$ccache_cpp2" = "yes"; then
+  echo "export CCACHE_CPP2=y" >> $config_host_mak
+fi
+
 # contrib/plugins configuration
 echo "# Automatically generated by configure - do not modify" > contrib/plugins/$config_host_mak
 echo "SRC_PATH=$source_path/contrib/plugins" >> contrib/plugins/$config_host_mak
@@ -1638,6 +1775,17 @@ fi
 mkdir -p tests/tcg
 echo "# Automatically generated by configure - do not modify" > $config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
+if test -n "$hexagon_lldb_bin"; then
+    echo "HAVE_HEXAGON_LLDB_BIN=$hexagon_lldb_bin" >> $config_host_mak
+fi
+
+# versioned checked in the main config_host.mak above
+if test -n "$gdb_bin"; then
+    echo "HAVE_GDB_BIN=$gdb_bin" >> $config_host_mak
+fi
+if test "$plugins" = "yes" ; then
+    echo "CONFIG_PLUGIN=y" >> $config_host_mak
+fi
 
 tcg_tests_targets=
 for target in $target_list; do
@@ -1667,22 +1815,25 @@ for target in $target_list; do
       echo "TARGET=$target" >> "$config_target_mak"
       write_target_makefile "build-tcg-tests-$target" >> "$config_target_mak"
       echo "BUILD_STATIC=$build_static" >> "$config_target_mak"
-      echo "QEMU=$PWD/$qemu" >> "$config_target_mak"
+      echo "QEMU=${qemu_testing_path:-$PWD/$qemu}" >> "$config_target_mak"
+      echo "CROSS_PREFIX=$cross_prefix" >> "$config_target_mak"
 
       # will GDB work with these binaries?
       if test "${gdb_arches#*$arch}" != "$gdb_arches"; then
-          echo "GDB=$gdb_bin" >> $config_target_mak
+          echo "HOST_GDB_SUPPORTS_ARCH=y" >> "$config_target_mak"
       fi
 
       echo "run-tcg-tests-$target: $qemu\$(EXESUF)" >> Makefile.prereqs
       tcg_tests_targets="$tcg_tests_targets $target"
+  elif test "$assert_target_compiler" = yes; then
+      error_exit "didn't find cross-compiler or container image for '$target'"
   fi
 done
 
 if test "$tcg" = "enabled"; then
     echo "TCG_TESTS_TARGETS=$tcg_tests_targets" >> config-host.mak
 fi
-)
+) || { test "$assert_target_compiler" = yes && error_exit 'tests/tcg config failed'; }
 
 if test "$skip_meson" = no; then
   cross="config-meson.cross.new"
@@ -1706,29 +1857,6 @@ if test "$skip_meson" = no; then
   test -n "$objcc" && echo "objc_args = [$(meson_quote $OBJCFLAGS $EXTRA_OBJCFLAGS)]" >> $cross
   echo "c_link_args = [$(meson_quote $CFLAGS $LDFLAGS $EXTRA_CFLAGS $EXTRA_LDFLAGS)]" >> $cross
   echo "cpp_link_args = [$(meson_quote $CXXFLAGS $LDFLAGS $EXTRA_CXXFLAGS $EXTRA_LDFLAGS)]" >> $cross
-
-  # Only enable by default for git builds and on select OSes
-  echo "# environment defaults, can still be overridden on " >> $cross
-  echo "# the command line" >> $cross
-  if test -e "$source_path/.git" && \
-      { test "$targetos" = linux || test "$targetos" = "windows"; }; then
-      echo 'werror = true' >> $cross
-  fi
-  echo "[project options]" >> $cross
-  if test "$SMBD" != ''; then
-    echo "smbd = $(meson_quote "$SMBD")" >> $cross
-  fi
-  if test "${QEMU_GA_MANUFACTURER}" != ''; then
-    echo "qemu_ga_manufacturer = $(meson_quote "${QEMU_GA_MANUFACTURER}")" >> $cross
-  fi
-  if test "${QEMU_GA_DISTRO}" != ''; then
-    echo "qemu_ga_distro = $(meson_quote "${QEMU_GA_DISTRO}")" >> $cross
-  fi
-  if test "${QEMU_GA_VERSION}" != ''; then
-    echo "qemu_ga_version = $(meson_quote "${QEMU_GA_VERSION}")" >> $cross
-  fi
-
-  echo >> $cross
   echo "[binaries]" >> $cross
   echo "c = [$(meson_quote $cc $CPU_CFLAGS)]" >> $cross
   test -n "$cxx" && echo "cpp = [$(meson_quote $cxx $CPU_CFLAGS)]" >> $cross
@@ -1736,7 +1864,6 @@ if test "$skip_meson" = no; then
   echo "ar = [$(meson_quote $ar)]" >> $cross
   echo "nm = [$(meson_quote $nm)]" >> $cross
   echo "pkgconfig = [$(meson_quote $pkg_config)]" >> $cross
-  echo "pkg-config = [$(meson_quote $pkg_config)]" >> $cross
   echo "ranlib = [$(meson_quote $ranlib)]" >> $cross
   if has $sdl2_config; then
     echo "sdl2-config = [$(meson_quote $sdl2_config)]" >> $cross
@@ -1762,36 +1889,39 @@ if test "$skip_meson" = no; then
     else
         echo "endian = 'little'" >> $cross
     fi
+    cross_arg="--cross-file config-meson.cross"
 
     native="config-meson.native.new"
     echo "# Automatically generated by configure - do not modify" > $native
     echo "[binaries]" >> $native
     echo "c = [$(meson_quote $host_cc)]" >> $native
     mv $native config-meson.native
-    meson_option_add --native-file
-    meson_option_add config-meson.native
+    cross_arg="$cross_arg --native-file config-meson.native"
+  else
+    cross_arg="--native-file config-meson.cross"
   fi
   mv $cross config-meson.cross
-  meson_add_machine_file config-meson.cross
-  if test -f "$source_path/configs/meson/$targetos.txt"; then
-    meson_add_machine_file $source_path/configs/meson/$targetos.txt
-  fi
 
   rm -rf meson-private meson-info meson-logs
 
+  # Built-in options
   test "$download" = "disabled" && meson_option_add "--wrap-mode=nodownload"
+  test "$bindir" != "bin" && meson_option_add "-Dbindir=$bindir"
   test "$default_feature" = no && meson_option_add -Dauto_features=disabled
   test "$static" = yes && meson_option_add -Dprefer_static=true
   test "$pie" = no && meson_option_add -Db_pie=false
+  test "$werror" = yes && meson_option_add -Dwerror=true
 
   # QEMU options
-  test "$cfi" != false && meson_option_add "-Dcfi=$cfi" "-Db_lto=$cfi"
+  test "$cfi" != false && meson_option_add "-Dcfi=$cfi"
   test "$docs" != auto && meson_option_add "-Ddocs=$docs"
   test -n "${LIB_FUZZING_ENGINE+xxx}" && meson_option_add "-Dfuzzing_engine=$LIB_FUZZING_ENGINE"
   test "$plugins" = yes && meson_option_add "-Dplugins=true"
+  test "$qemu_suffix" != qemu && meson_option_add "-Dqemu_suffix=$qemu_suffix"
+  test "$smbd" != '' && meson_option_add "-Dsmbd=$smbd"
   test "$tcg" != enabled && meson_option_add "-Dtcg=$tcg"
   run_meson() {
-    NINJA=$ninja $meson setup "$@" "$PWD" "$source_path"
+    NINJA=$ninja $meson setup --prefix "$prefix" "$@" $cross_arg "$PWD" "$source_path"
   }
   eval run_meson $meson_options
   if test "$?" -ne 0 ; then

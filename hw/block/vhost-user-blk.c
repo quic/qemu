@@ -405,7 +405,7 @@ static void vhost_user_blk_event(void *opaque, QEMUChrEvent event)
 
 static int vhost_user_blk_realize_connect(VHostUserBlk *s, Error **errp)
 {
-    DeviceState *dev = DEVICE(s);
+    DeviceState *dev = &s->parent_obj.parent_obj;
     int ret;
 
     s->connected = false;
@@ -423,7 +423,7 @@ static int vhost_user_blk_realize_connect(VHostUserBlk *s, Error **errp)
     assert(s->connected);
 
     ret = vhost_dev_get_config(&s->dev, (uint8_t *)&s->blkcfg,
-                               VIRTIO_DEVICE(s)->config_len, errp);
+                               s->parent_obj.config_len, errp);
     if (ret < 0) {
         qemu_chr_fe_disconnect(&s->chardev);
         vhost_dev_cleanup(&s->dev);

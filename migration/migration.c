@@ -447,18 +447,6 @@ static void qemu_start_incoming_migration(const char *uri, Error **errp)
         socket_start_incoming_migration(p ? p : uri, errp);
 #ifdef CONFIG_RDMA
     } else if (strstart(uri, "rdma:", &p)) {
-        if (migrate_compress()) {
-            error_setg(errp, "RDMA and compression can't be used together");
-            return;
-        }
-        if (migrate_xbzrle()) {
-            error_setg(errp, "RDMA and XBZRLE can't be used together");
-            return;
-        }
-        if (migrate_multifd()) {
-            error_setg(errp, "RDMA and multifd can't be used together");
-            return;
-        }
         rdma_start_incoming_migration(p, errp);
 #endif
     } else if (strstart(uri, "exec:", &p)) {
@@ -974,7 +962,16 @@ static void populate_ram_info(MigrationInfo *info, MigrationState *s)
         info->xbzrle_cache->overflow = xbzrle_counters.overflow;
     }
 
-    populate_compress(info);
+    if (migrate_compress()) {
+        info->compression = g_malloc0(sizeof(*info->compression));
+        info->compression->pages = compression_counters.pages;
+        info->compression->busy = compression_counters.busy;
+        info->compression->busy_rate = compression_counters.busy_rate;
+        info->compression->compressed_size =
+                                    compression_counters.compressed_size;
+        info->compression->compression_rate =
+                                    compression_counters.compression_rate;
+    }
 
     if (cpu_throttle_active()) {
         info->has_cpu_throttle_percentage = true;
@@ -1207,7 +1204,7 @@ static void migrate_fd_cleanup(MigrationState *s)
         /* It is used on info migrate.  We can't free it */
         error_report_err(error_copy(s->error));
     }
-    migration_call_notifiers(s);
+    notifier_list_notify(&migration_state_notifiers, s);
     block_cleanup_parameters();
     yank_unregister_instance(MIGRATION_YANK_INSTANCE);
 }
@@ -1311,24 +1308,14 @@ static void migrate_fd_cancel(MigrationState *s)
     }
 }
 
-void migration_add_notifier(Notifier *notify,
-                            void (*func)(Notifier *notifier, void *data))
+void add_migration_state_change_notifier(Notifier *notify)
 {
-    notify->notify = func;
     notifier_list_add(&migration_state_notifiers, notify);
 }
 
-void migration_remove_notifier(Notifier *notify)
+void remove_migration_state_change_notifier(Notifier *notify)
 {
-    if (notify->notify) {
-        notifier_remove(notify);
-        notify->notify = NULL;
-    }
-}
-
-void migration_call_notifiers(MigrationState *s)
-{
-    notifier_list_notify(&migration_state_notifiers, s);
+    notifier_remove(notify);
 }
 
 bool migration_in_setup(MigrationState *s)
@@ -1467,49 +1454,45 @@ int migrate_init(MigrationState *s, Error **errp)
     s->switchover_acked = false;
     s->rdma_migration = false;
     /*
-     * set mig_stats memory to zero for a new migration
+     * set mig_stats compression_counters memory to zero for a
+     * new migration
      */
     memset(&mig_stats, 0, sizeof(mig_stats));
+    memset(&compression_counters, 0, sizeof(compression_counters));
     migration_reset_vfio_bytes_transferred();
 
     return 0;
 }
 
-int migrate_add_blocker_internal(Error **reasonp, Error **errp)
+int migrate_add_blocker_internal(Error *reason, Error **errp)
 {
     /* Snapshots are similar to migrations, so check RUN_STATE_SAVE_VM too. */
     if (runstate_check(RUN_STATE_SAVE_VM) || !migration_is_idle()) {
-        error_propagate_prepend(errp, *reasonp,
+        error_propagate_prepend(errp, error_copy(reason),
                                 "disallowing migration blocker "
                                 "(migration/snapshot in progress) for: ");
-        *reasonp = NULL;
         return -EBUSY;
     }
 
-    migration_blockers = g_slist_prepend(migration_blockers, *reasonp);
+    migration_blockers = g_slist_prepend(migration_blockers, reason);
     return 0;
 }
 
-int migrate_add_blocker(Error **reasonp, Error **errp)
+int migrate_add_blocker(Error *reason, Error **errp)
 {
     if (only_migratable) {
-        error_propagate_prepend(errp, *reasonp,
+        error_propagate_prepend(errp, error_copy(reason),
                                 "disallowing migration blocker "
                                 "(--only-migratable) for: ");
-        *reasonp = NULL;
         return -EACCES;
     }
 
-    return migrate_add_blocker_internal(reasonp, errp);
+    return migrate_add_blocker_internal(reason, errp);
 }
 
-void migrate_del_blocker(Error **reasonp)
+void migrate_del_blocker(Error *reason)
 {
-    if (*reasonp) {
-        migration_blockers = g_slist_remove(migration_blockers, *reasonp);
-        error_free(*reasonp);
-        *reasonp = NULL;
-    }
+    migration_blockers = g_slist_remove(migration_blockers, reason);
 }
 
 void qmp_migrate_incoming(const char *uri, Error **errp)
@@ -2243,7 +2226,7 @@ static int postcopy_start(MigrationState *ms, Error **errp)
      * spice needs to trigger a transition now
      */
     ms->postcopy_after_devices = true;
-    migration_call_notifiers(ms);
+    notifier_list_notify(&migration_state_notifiers, ms);
 
     ms->downtime =  qemu_clock_get_ms(QEMU_CLOCK_REALTIME) - time_at_stop;
 
@@ -3323,7 +3306,7 @@ void migrate_fd_connect(MigrationState *s, Error *error_in)
         rate_limit = migrate_max_bandwidth();
 
         /* Notify before starting migration thread */
-        migration_call_notifiers(s);
+        notifier_list_notify(&migration_state_notifiers, s);
     }
 
     migration_rate_set(rate_limit);

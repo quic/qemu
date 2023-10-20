@@ -1,0 +1,2 @@
+breakpoint set --name return --condition '$r0 == 0xbabebeef' -C 'script print("PASS")' --auto-continue true
+run

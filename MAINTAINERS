@@ -295,7 +295,6 @@ S: Odd Fixes
 F: docs/system/openrisc/cpu-features.rst
 F: target/openrisc/
 F: hw/openrisc/
-F: include/hw/openrisc/
 F: tests/tcg/openrisc/
 
 PowerPC TCG CPUs
@@ -886,7 +885,7 @@ S: Odd Fixes
 F: hw/arm/raspi.c
 F: hw/arm/raspi_platform.h
 F: hw/*/bcm283*
-F: include/hw/arm/rasp*
+F: include/hw/arm/raspi*
 F: include/hw/*/bcm283*
 F: docs/system/arm/raspi.rst
 
@@ -1174,24 +1173,19 @@ F: hw/*/etraxfs_*.c
 
 HP-PARISC Machines
 ------------------
-HP B160L, HP C3700
+HP B160L
 M: Richard Henderson <richard.henderson@linaro.org>
 R: Helge Deller <deller@gmx.de>
 S: Odd Fixes
 F: configs/devices/hppa-softmmu/default.mak
 F: hw/hppa/
-F: hw/input/lasips2.c
 F: hw/net/*i82596*
 F: hw/misc/lasi.c
-F: hw/pci-host/astro.c
 F: hw/pci-host/dino.c
-F: include/hw/input/lasips2.h
 F: include/hw/misc/lasi.h
 F: include/hw/net/lasi_82596.h
-F: include/hw/pci-host/astro.h
 F: include/hw/pci-host/dino.h
 F: pc-bios/hppa-firmware.img
-F: roms/seabios-hppa/
 
 LoongArch Machines
 ------------------
@@ -1328,7 +1322,10 @@ M: Philippe Mathieu-Daudé <philmd@linaro.org>
 R: Jiaxun Yang <jiaxun.yang@flygoat.com>
 S: Odd Fixes
 F: hw/mips/fuloong2e.c
+F: hw/isa/vt82c686.c
 F: hw/pci-host/bonito.c
+F: hw/usb/vt82c686-uhci-pci.c
+F: include/hw/isa/vt82c686.h
 F: include/hw/pci-host/bonito.h
 F: tests/avocado/machine_mips_fuloong2e.py
 
@@ -1340,7 +1337,6 @@ F: hw/intc/loongson_liointc.c
 F: hw/mips/loongson3_bootp.c
 F: hw/mips/loongson3_bootp.h
 F: hw/mips/loongson3_virt.c
-F: include/hw/intc/loongson_liointc.h
 F: tests/avocado/machine_mips_loongson3v.py
 
 Boston
@@ -1714,16 +1710,6 @@ F: hw/s390x/event-facility.c
 F: hw/s390x/sclp*.c
 L: qemu-s390x@nongnu.org
 
-S390 CPU topology
-M: Nina Schoetterl-Glausch <nsg@linux.ibm.com>
-S: Supported
-F: include/hw/s390x/cpu-topology.h
-F: hw/s390x/cpu-topology.c
-F: target/s390x/kvm/stsi-topology.c
-F: docs/devel/s390-cpu-topology.rst
-F: docs/system/s390x/cpu-topology.rst
-F: tests/avocado/s390_topology.py
-
 X86 Machines
 ------------
 PC
@@ -1807,7 +1793,6 @@ F: hw/core/null-machine.c
 F: hw/core/numa.c
 F: hw/cpu/cluster.c
 F: qapi/machine.json
-F: qapi/machine-common.json
 F: qapi/machine-target.json
 F: include/hw/boards.h
 F: include/hw/core/cpu.h
@@ -2495,15 +2480,6 @@ M: Philippe Mathieu-Daudé <philmd@linaro.org>
 S: Maintained
 F: hw/isa/piix4.c
 F: include/hw/southbridge/piix.h
-
-VIA South Bridges (VT82C686B, VT8231)
-M: BALATON Zoltan <balaton@eik.bme.hu>
-M: Philippe Mathieu-Daudé <philmd@linaro.org>
-R: Jiaxun Yang <jiaxun.yang@flygoat.com>
-S: Maintained
-F: hw/isa/vt82c686.c
-F: hw/usb/vt82c686-uhci-pci.c
-F: include/hw/isa/vt82c686.h
 
 Firmware configuration (fw_cfg)
 M: Philippe Mathieu-Daudé <philmd@linaro.org>

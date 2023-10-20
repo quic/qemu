@@ -3191,7 +3191,6 @@ control_w.h: 1820
 cookie.c: 13149
 coprocessor.h: 5194
 coprocessor.S: 7277
-coproc.h: 362
 cops.c: 29453
 cops_ffdrv.h: 21384
 cops.h: 1400

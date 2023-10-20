@@ -120,11 +120,14 @@ static KDDEBUGGER_DATA64 *get_kdbg(uint64_t KernBase, struct pdb_reader *pdb,
         }
     }
 
-    kdbg = g_malloc(kdbg_hdr.Size);
+    kdbg = malloc(kdbg_hdr.Size);
+    if (!kdbg) {
+        return NULL;
+    }
 
     if (va_space_rw(vs, KdDebuggerDataBlock, kdbg, kdbg_hdr.Size, 0)) {
         eprintf("Failed to extract entire KDBG\n");
-        g_free(kdbg);
+        free(kdbg);
         return NULL;
     }
 
@@ -475,7 +478,7 @@ static bool pe_check_pdb_name(uint64_t base, void *start_addr,
     }
 
     if (memcmp(&rsds->Signature, sign_rsds, sizeof(sign_rsds))) {
-        eprintf("CodeView signature is \'%.4s\', \'%.4s\' expected\n",
+        eprintf("CodeView signature is \'%.4s\', \'%s\' expected\n",
                 rsds->Signature, sign_rsds);
         return false;
     }
@@ -640,7 +643,7 @@ int main(int argc, char *argv[])
     }
 
 out_kdbg:
-    g_free(kdbg);
+    free(kdbg);
 out_pdb:
     pdb_exit(&pdb);
 out_pdb_file:
