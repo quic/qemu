@@ -130,7 +130,7 @@
 #endif
 #define SCATTER_OP_WRITE_TO_MEM(TYPE) \
     do { \
-        uintptr_t ra = CPU_MEMOP_PC(env); \
+        ra = CPU_MEMOP_PC(env); \
         for (int i = 0; i < sizeof(MMVector); i += sizeof(TYPE)) { \
             if (test_bit(i, env->vtcm_log.mask)) { \
                 TYPE dst = 0; \
