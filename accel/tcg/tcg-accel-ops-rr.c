@@ -307,11 +307,12 @@ static void *rr_cpu_thread_fn(void *arg)
     return NULL;
 }
 
+static QemuThread *single_tcg_cpu_thread = NULL;
+static QemuCond *single_tcg_halt_cond = NULL;
+
 void rr_start_vcpu_thread(CPUState *cpu)
 {
     char thread_name[VCPU_THREAD_NAME_SIZE];
-    static QemuCond *single_tcg_halt_cond;
-    static QemuThread *single_tcg_cpu_thread;
 
     g_assert(tcg_enabled());
     tcg_cpu_init_cflags(cpu, false);
@@ -338,3 +339,28 @@ void rr_start_vcpu_thread(CPUState *cpu)
         cpu->created = true;
     }
 }
+
+#ifdef CONFIG_POSIX
+static void rr_restore_in_child(void)
+{
+    assert(qemu_in_main_thread());
+
+    if (!single_tcg_cpu_thread) {
+        return;
+    }
+
+    // After a fork, the vCPU thread will not be present in the child. All vCPUs
+    // will need to be reinitialized, so reset the global state.
+
+    g_free(single_tcg_halt_cond);
+    single_tcg_halt_cond = NULL;
+
+    g_free(single_tcg_cpu_thread);
+    single_tcg_cpu_thread = NULL;
+}
+
+static void __attribute__((__constructor__)) rr_init(void)
+{
+    pthread_atfork(NULL, NULL, rr_restore_in_child);
+}
+#endif
