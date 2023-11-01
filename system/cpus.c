@@ -538,7 +538,7 @@ void cpu_thread_signal_destroyed(CPUState *cpu)
 }
 
 
-static bool all_vcpus_paused(void)
+bool all_vcpus_paused(void)
 {
     CPUState *cpu;
 

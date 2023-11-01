@@ -37,6 +37,7 @@ void qemu_init_cpu_loop(void);
 void resume_all_vcpus(void);
 void pause_all_vcpus(void);
 void cpu_stop_current(void);
+bool all_vcpus_paused(void);
 
 extern int icount_align_option;
 
