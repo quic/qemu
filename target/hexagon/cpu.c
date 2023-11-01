@@ -35,6 +35,7 @@
 #include "macros.h"
 #include "sys_macros.h"
 #include "hex_mmu.h"
+#include "hex_snapshot.h"
 #include "qemu/main-loop.h"
 #include "sysemu/cpus.h"
 #include "hex_interrupts.h"
@@ -764,6 +765,12 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 
 #ifndef CONFIG_USER_ONLY
     hex_mmu_realize(env);
+
+    hex_snapshot_realize(env, errp);
+    if (*errp) {
+        return;
+    }
+
     if (cs->cpu_index == 0) {
         env->g_sreg = g_malloc0(sizeof(target_ulong) * NUM_SREGS);
         env->g_gcycle = g_malloc0(sizeof(target_ulong) * NUM_GLOBAL_GCYCLE);

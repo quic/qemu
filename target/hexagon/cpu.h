@@ -431,6 +431,7 @@ typedef struct CPUArchState {
     gchar *lib_search_dir;
     bool ss_pending;
     PMUState pmu;
+    int snapshot_req_pipe[2];
 #endif
 } CPUHexagonState;
 #define mmvecx_t CPUHexagonState

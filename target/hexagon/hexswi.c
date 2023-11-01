@@ -37,6 +37,8 @@
 #include "mmvec/macros_auto.h"
 #ifndef CONFIG_USER_ONLY
 #include "hex_mmu.h"
+#include "hex_snapshot.h"
+#include "sysemu/cpus.h"
 #endif
 #include "sysemu/runstate.h"
 #include <dirent.h>
@@ -96,6 +98,7 @@
 #define SYS_ACCESS          0x105
 #define SYS_FCNTL           0x106
 #define SYS_GETTIMEOFDAY    0x107
+#define SYS_SNAPSHOT        0x160
 #define SYS_OPENDIR         0x180
 #define SYS_CLOSEDIR        0x181
 #define SYS_READDIR         0x182
@@ -995,6 +998,12 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         ARCH_SET_THREAD_REG(env, HEX_REG_R01, MapError(ENOSYS));
         qemu_log_mask(LOG_UNIMP, "PMU stats are bogus on QEMU!\n");
         break;
+
+    case SYS_SNAPSHOT: {
+        hex_snapshot_send_request(env, swi_info);
+        cpu_stop_current();
+        break;
+    }
 
     default:
         printf("error: unknown swi call 0x%x\n", what_swi);

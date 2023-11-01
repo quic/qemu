@@ -169,6 +169,7 @@ hexagon_ss.add(files(
 
 hexagon_softmmu_ss.add(files(
     'hex_mmu.c',
+    'hex_snapshot.c',
     'hex_interrupts.c',
     'monitor.c',
 ))
