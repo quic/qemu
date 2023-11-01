@@ -360,6 +360,7 @@ static void tcg_region_assign(TCGContext *s, size_t curr_region)
 static bool tcg_region_alloc__locked(TCGContext *s)
 {
     if (region.current == region.n) {
+        // Region limit reached.
         return true;
     }
     tcg_region_assign(s, region.current);
@@ -437,7 +438,9 @@ static size_t tcg_n_regions(size_t tb_size, unsigned max_cpus)
      */
     /* Use a single region if all we have is one vCPU thread */
     if (max_cpus == 1 || !qemu_tcg_mttcg_enabled()) {
-        return 1;
+        // One region for the vCPU thread in the parent and one region for the
+        // new one in the child.
+        return 2;
     }
 
     /*
