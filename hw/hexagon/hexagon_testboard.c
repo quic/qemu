@@ -26,6 +26,7 @@
 #include "hw/qdev-properties.h"
 #include "hw/hexagon/hexagon.h"
 #include "hw/timer/qct-qtimer.h"
+#include "hw/misc/qct-shmem.h"
 #include "hw/intc/l2vic.h"
 #include "hw/loader.h"
 #include "qapi/error.h"
@@ -265,6 +266,10 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
                        qdev_get_gpio_in(l2vic_dev, QTMR0_IRQ));
     sysbus_connect_irq(SYS_BUS_DEVICE(qtimer), 1,
                        qdev_get_gpio_in(l2vic_dev, 4));
+
+    QCTShmemState *shmem = QCT_SHMEM(qdev_new(TYPE_QCT_SHMEM));
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(shmem), &error_fatal);
+    sysbus_mmio_map(SYS_BUS_DEVICE(shmem), 0, 0xfca00000);
 
     hexagon_config_table *config_table = cfgTable;
 
