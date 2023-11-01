@@ -1882,7 +1882,7 @@ static void ram_block_add(RAMBlock *new_block, Error **errp)
          * Configure it unless the machine is a qtest server, in which case
          * KVM is not used and it may be forked (eg for fuzzing purposes).
          */
-        if (!qtest_enabled()) {
+        if (!tcg_enabled() && !qtest_enabled()) {
             qemu_madvise(new_block->host, new_block->max_length,
                          QEMU_MADV_DONTFORK);
         }
