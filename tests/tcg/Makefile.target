@@ -130,7 +130,7 @@ else
 # are expected to provide their own build recipes.
 
 ifneq ($(TARGET_NAME), hexagon)
-EXTRA_CFLAGS += -ffreestanding
+EXTRA_CFLAGS += -ffreestanding -fno-stack-protector
 endif
 
 -include $(SRC_PATH)/tests/tcg/minilib/Makefile.target
