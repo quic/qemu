@@ -19,6 +19,8 @@
 
 #define TYPE_ASTRO_IOMMU_MEMORY_REGION "astro-iommu-memory-region"
 
+#define F_EXTEND(addr) ((addr) | MAKE_64BIT_MASK(32, 32))
+
 #include "qemu/osdep.h"
 #include "qemu/module.h"
 #include "qemu/units.h"
@@ -345,6 +347,10 @@ static AddressSpace *elroy_pcihost_set_iommu(PCIBus *bus, void *opaque,
     return &s->astro->iommu_as;
 }
 
+static const PCIIOMMUOps elroy_pcihost_iommu_ops = {
+    .get_address_space = elroy_pcihost_set_iommu,
+};
+
 /*
  * Encoding in IOSAPIC:
  * base_addr == 0xfffa0000, we want to get 0xa0ff0000.
@@ -382,7 +388,7 @@ static void elroy_set_irq(void *opaque, int irq, int level)
         uint32_t ena = bit & ~old_ilr;
         s->ilr = old_ilr | bit;
         if (ena != 0) {
-            stl_be_phys(&address_space_memory, cpu_hpa, val & 63);
+            stl_be_phys(&address_space_memory, F_EXTEND(cpu_hpa), val & 63);
         }
     } else {
         s->ilr = old_ilr & ~bit;
@@ -821,20 +827,21 @@ static void astro_realize(DeviceState *obj, Error **errp)
 
         /* map elroys mmio */
         map_size = LMMIO_DIST_BASE_SIZE / ROPES_PER_IOC;
-        map_addr = (uint32_t) (LMMIO_DIST_BASE_ADDR + rope * map_size);
+        map_addr = F_EXTEND(LMMIO_DIST_BASE_ADDR + rope * map_size);
         memory_region_init_alias(&elroy->pci_mmio_alias, OBJECT(elroy),
                                  "pci-mmio-alias",
-                                 &elroy->pci_mmio, map_addr, map_size);
+                                 &elroy->pci_mmio, (uint32_t) map_addr, map_size);
         memory_region_add_subregion(get_system_memory(), map_addr,
                                  &elroy->pci_mmio_alias);
 
+        /* map elroys io */
         map_size = IOS_DIST_BASE_SIZE / ROPES_PER_IOC;
-        map_addr = (uint32_t) (IOS_DIST_BASE_ADDR + rope * map_size);
+        map_addr = F_EXTEND(IOS_DIST_BASE_ADDR + rope * map_size);
         memory_region_add_subregion(get_system_memory(), map_addr,
                                  &elroy->pci_io);
 
         /* Host memory as seen from the PCI side, via the IOMMU.  */
-        pci_setup_iommu(PCI_HOST_BRIDGE(elroy)->bus, elroy_pcihost_set_iommu,
+        pci_setup_iommu(PCI_HOST_BRIDGE(elroy)->bus, &elroy_pcihost_iommu_ops,
                                  elroy);
     }
 }
