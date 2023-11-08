@@ -490,7 +490,7 @@ S: Supported
 F: include/sysemu/kvm_xen.h
 F: target/i386/kvm/xen*
 F: hw/i386/kvm/xen*
-F: tests/avocado/xen_guest.py
+F: tests/avocado/kvm_xen_guest.py
 
 Guest CPU Cores (other accelerators)
 ------------------------------------
@@ -2309,6 +2309,15 @@ F: hw/virtio/virtio-mem.c
 F: hw/virtio/virtio-mem-pci.h
 F: hw/virtio/virtio-mem-pci.c
 F: include/hw/virtio/virtio-mem.h
+
+virtio-snd
+M: Gerd Hoffmann <kraxel@redhat.com>
+R: Manos Pitsidianakis <manos.pitsidianakis@linaro.org>
+S: Supported
+F: hw/audio/virtio-snd.c
+F: hw/audio/virtio-snd-pci.c
+F: include/hw/audio/virtio-snd.h
+F: docs/system/devices/virtio-snd.rst
 
 nvme
 M: Keith Busch <kbusch@kernel.org>
