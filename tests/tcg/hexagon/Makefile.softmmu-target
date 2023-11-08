@@ -198,6 +198,7 @@ int_range.o: int_range.c filename.h cfgtable.h
 int_range: int_range.o
 fopen: fopen.o
 ftrunc: ftrunc.o
+dirent.o: dirent.c strutils.h
 dirent: dirent.o
 access: access.o
 getcwd: getcwd.o
@@ -218,6 +219,7 @@ sys_reg_mut: sys_reg_mut.o
 memcpy.o: memcpy.c vtcm_common.h mmu.h
 memcpy: memcpy.o
 inf-loop: inf-loop.o
+semihost.o: semihost.c strutils.h
 semihost: semihost.o
 
 $(TESTS) inf-loop:

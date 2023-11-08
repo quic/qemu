@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <dirent.h>
+#include "strutils.h"
 
 /* Defines in order of testing */
 
@@ -274,6 +275,7 @@ int main(int argc, char **argv)
 
     /* READDIR */
     char *expected_files[4] = { ".", "..", "fileA", "fileB" };
+    char *found_files[4];
     const int ERRNO_SENTINEL = 10000; /* invalid errno number */
     errno = ERRNO_SENTINEL;
     for (int i = 0; 1; i++) {
@@ -282,9 +284,17 @@ int main(int argc, char **argv)
         if (!ret) {
             break;
         }
-        assert(i < 4 && !strcmp(dirent.d_name, expected_files[i]));
+        assert(i < 4);
+        found_files[i] = strdup(dirent.d_name);
+        assert(found_files[i]);
     }
     assert(errno == ERRNO_SENTINEL);
+
+    sort_str_arr(found_files, 4);
+    for (int i = 0; i < 4; i++) {
+        assert(!strcmp(found_files[i], expected_files[i]));
+        free(found_files[i]);
+    }
 
     /* CLOSEDIR */
     DIRECT_SWI(HEX_SYS_CLOSEDIR, dir_index);

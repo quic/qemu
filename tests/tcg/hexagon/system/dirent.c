@@ -22,6 +22,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdbool.h>
+#include "strutils.h"
 
 #define ERRNO_SENTINEL 1000 /* An invalid error number */
 
@@ -30,9 +31,12 @@
         exit(1); \
     } while (0)
 
+#define MAX 10
+
 int main(int argc, char **argv)
 {
-    bool first = true;
+    char *found_files[MAX];
+    int n = 0;
     assert(argc == 2);
     DIR *dirp = opendir(argv[1]);
     if (!dirp) {
@@ -53,7 +57,21 @@ int main(int argc, char **argv)
             */
             break;
         }
-        printf("%s%s", first ? "" : " ", dp->d_name);
+        if (n < MAX) {
+            found_files[n] = strdup(dp->d_name);
+            assert(found_files[n]);
+        } else {
+            printf("fatal: cannot list more than %d files\n", MAX);
+            return 1;
+        }
+        n++;
+    }
+
+    sort_str_arr(found_files, n);
+    bool first = true;
+    for (int i = 0; i < n; i++) {
+        printf("%s%s", first ? "" : " ", found_files[i]);
+        free(found_files[i]);
         first = false;
     }
 
