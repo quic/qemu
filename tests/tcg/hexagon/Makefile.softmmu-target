@@ -416,7 +416,7 @@ run-reset-test: inf-loop
 	$(call run-test, $@, \
 		echo "starting qemu through 'expect'"; \
 		{ \
-		  echo "spawn $(QEMU) -monitor stdio $(QEMU_OPTS) $<"; \
+		  echo "spawn $(QEMU) $(QEMU_OPTS) $<"; \
 		  echo 'expect "Starting thread 0"'; \
 		  echo 'expect "Starting thread 1"'; \
 		  echo 'expect "Starting thread 2"'; \
