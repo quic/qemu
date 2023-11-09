@@ -26,6 +26,7 @@ typedef struct SystemState system_t;
 
 #include "fpu/softfloat-types.h"
 
+#include "cpu-qom.h"
 #include "exec/cpu-defs.h"
 #include "mmvec/mmvec.h"
 #include "dma/dma.h"
@@ -53,8 +54,6 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
  * Hexagon processors have a strong memory model.
  */
 #define TCG_GUEST_DEFAULT_MO      (TCG_MO_ALL)
-#include "qom/object.h"
-#include "hw/core/cpu.h"
 #include "hw/registerfields.h"
 
 #define NUM_PREGS 4
@@ -72,8 +71,6 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define VECTOR_UNIT_MAX 4
 #define PARANOID_VALUE (~0)
 
-#define TYPE_HEXAGON_CPU "hexagon-cpu"
-
 #define VTCM_SIZE              0x40000LL
 #define VTCM_OFFSET            0x200000LL
 
@@ -88,17 +85,7 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define CPU_INTERRUPT_SWI      CPU_INTERRUPT_TGT_INT_0
 #endif
 
-#define HEXAGON_CPU_TYPE_SUFFIX "-" TYPE_HEXAGON_CPU
-#define HEXAGON_CPU_TYPE_NAME(name) (name HEXAGON_CPU_TYPE_SUFFIX)
 #define CPU_RESOLVING_TYPE TYPE_HEXAGON_CPU
-
-#define TYPE_HEXAGON_CPU_ANY HEXAGON_CPU_TYPE_NAME("any")
-#define TYPE_HEXAGON_CPU_V66 HEXAGON_CPU_TYPE_NAME("v66")
-#define TYPE_HEXAGON_CPU_V67 HEXAGON_CPU_TYPE_NAME("v67")
-#define TYPE_HEXAGON_CPU_V68 HEXAGON_CPU_TYPE_NAME("v68")
-#define TYPE_HEXAGON_CPU_V69 HEXAGON_CPU_TYPE_NAME("v69")
-#define TYPE_HEXAGON_CPU_V71 HEXAGON_CPU_TYPE_NAME("v71")
-#define TYPE_HEXAGON_CPU_V73 HEXAGON_CPU_TYPE_NAME("v73")
 
 void hexagon_cpu_list(void);
 #define cpu_list hexagon_cpu_list
@@ -447,20 +434,15 @@ typedef struct CPUArchState {
 } CPUHexagonState;
 #define mmvecx_t CPUHexagonState
 
-OBJECT_DECLARE_CPU_TYPE(HexagonCPU, HexagonCPUClass, HEXAGON_CPU)
-
 typedef struct HexagonCPUClass {
-    /*< private >*/
     CPUClass parent_class;
-    /*< public >*/
+
     DeviceRealize parent_realize;
     ResettablePhases parent_phases;
 } HexagonCPUClass;
 
 struct ArchCPU {
-    /*< private >*/
     CPUState parent_obj;
-    /*< public >*/
 
     CPUHexagonState env;
 
