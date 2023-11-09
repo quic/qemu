@@ -693,6 +693,8 @@ static void hexagon_cpu_reset_hold(Object *obj)
 
 static void hexagon_cpu_disas_set_info(CPUState *s, disassemble_info *info)
 {
+    HexagonCPU *hex_cpu = env_archcpu(cpu_env(s));
+    info->target_info = (void *)(uintptr_t)hex_cpu->rev_reg;
     info->print_insn = print_insn_hexagon;
 }
 

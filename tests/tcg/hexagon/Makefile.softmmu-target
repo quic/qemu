@@ -228,6 +228,9 @@ $(TESTS) inf-loop:
 
 # Specific Test Rules
 
+# memcpy insn was removed in v75
+run-memcpy: QEMU_EXTRA_OPTS=-M V73NA_1024
+
 memory: EXTRA_CFLAGS+=-DCHECK_UNALIGNED=1
 
 # TODO: We should see if we can find a way to avoid this:

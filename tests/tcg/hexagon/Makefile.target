@@ -96,7 +96,7 @@ run-hvx-bitmode: hvx_sat
 	$(call run-test, $<, $(QEMU) -cpu any $<, "$< on $(TARGET_NAME) any")
 
 
-PARANOID_OPTS=-cpu any,paranoid-commit-state=true
+PARANOID_OPTS=-cpu v73,paranoid-commit-state=true
 IN_ASM_OPTS=-d in_asm
 run-misc run-usr run-preg_alias run-dual_stores run-pred_stores run-multi_result run-mem_noshuf \
 run-hvx_misc run-scatter_gather run-hvx_histogram run-hvx_sat:

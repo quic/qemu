@@ -1645,6 +1645,7 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
     int nwords;
     Packet pkt;
     int i;
+    HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
 
     nwords = read_packet_words(env, ctx, words);
     if (!nwords) {
@@ -1652,7 +1653,7 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
         return;
     }
 
-    if (decode_packet(nwords, words, &pkt, false) > 0) {
+    if (decode_packet(nwords, words, &pkt, false, hex_cpu->rev_reg) > 0) {
         pkt.pc = ctx->base.pc_next;
         HEX_DEBUG_PRINT_PKT(&pkt);
         ctx->pkt = &pkt;

@@ -24,6 +24,7 @@
 #include "insn.h"
 #include "printinsn.h"
 #include "mmvec/decode_ext_mmvec.h"
+#include "tag_rev_info.h"
 
 #define fZXTN(N, M, VAL) ((VAL) & ((1LL << (N)) - 1))
 
@@ -1021,7 +1022,7 @@ decode_set_slot_number(Packet *pkt)
  */
 
 int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
-                  bool disas_only)
+                  bool disas_only, uint32_t rev)
 {
     int num_insns = 0;
     int words_read = 0;
@@ -1029,6 +1030,7 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     int new_insns = 0;
     int i;
     uint32_t encoding32;
+    uint32_t rev_byte = rev & 0xff;
 
     /* Initialize */
     memset(pkt, 0, sizeof(*pkt));
@@ -1053,6 +1055,16 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         /* Ran out of words! */
         return 0;
     }
+
+    for (i = 0; i < num_insns; i++) {
+        struct tag_rev_info info = tag_rev_info[pkt->insn[i].opcode];
+        if ((info.introduced && rev_byte < info.introduced) ||
+            (info.removed && rev_byte >= info.removed)) {
+            /* invalid packet */
+            return 0;
+        }
+    }
+
     pkt->encod_pkt_size_in_bytes = words_read * 4;
     pkt->pkt_has_hvx = false;
     pkt->pkt_has_coproc = false;
@@ -1112,11 +1124,11 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
 
 /* Used for "-d in_asm" logging */
 int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc,
-                        GString *buf)
+                        GString *buf, uint32_t rev)
 {
     Packet pkt;
 
-    if (decode_packet(nwords, words, &pkt, true) > 0) {
+    if (decode_packet(nwords, words, &pkt, true, rev) > 0) {
         snprint_a_pkt_disas(buf, &pkt, words, pc);
         return pkt.encod_pkt_size_in_bytes;
     } else {
