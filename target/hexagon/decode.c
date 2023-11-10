@@ -1051,6 +1051,7 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     }
 
     pkt->num_insns = num_insns;
+    pkt->encod_pkt_size_in_bytes = words_read * sizeof(*words);
     if (!end_of_packet) {
         /* Ran out of words! */
         return 0;
@@ -1065,7 +1066,6 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         }
     }
 
-    pkt->encod_pkt_size_in_bytes = words_read * 4;
     pkt->pkt_has_hvx = false;
     pkt->pkt_has_coproc = false;
     for (i = 0; i < num_insns; i++) {
@@ -1130,9 +1130,8 @@ int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc,
 
     if (decode_packet(nwords, words, &pkt, true, rev) > 0) {
         snprint_a_pkt_disas(buf, &pkt, words, pc);
-        return pkt.encod_pkt_size_in_bytes;
     } else {
         g_string_assign(buf, "<invalid>");
-        return 0;
     }
+    return pkt.encod_pkt_size_in_bytes;
 }

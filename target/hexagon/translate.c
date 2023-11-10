@@ -1683,6 +1683,9 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
         gen_commit_packet(ctx);
         ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
     } else {
+        pkt.pc = ctx->base.pc_next;
+        ctx->pkt = &pkt;
+        ctx->base.pc_next += pkt.encod_pkt_size_in_bytes;
         gen_exception_end_tb(ctx, HEX_CAUSE_INVALID_PACKET);
     }
 }
