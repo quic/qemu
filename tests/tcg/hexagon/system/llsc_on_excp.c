@@ -42,4 +42,4 @@ static void test_interrupt_cleans_llsc(void)
     }
 }
 
-INVALID_OPCODE_MAIN("LLSC on exception test", test_interrupt_cleans_llsc)
+INVALID_OPCODE_MAIN("LLSC on exception test", test_interrupt_cleans_llsc, 1)

@@ -16,4 +16,17 @@
  */
 
 #include "invalid_opcode.h"
-INVALID_OPCODE_MAIN("Hexagon invalid opcode test", invalid_opcode, 1)
+
+static void run_v68_instruction(void)
+{
+    asm volatile("r0 = dmpoll\n" : : : "r0");
+}
+
+static uint32_t get_rev(void)
+{
+    uint32_t rev;
+    asm volatile("%0 = rev\n" : "=r"(rev));
+    return rev & 0xff;
+}
+
+INVALID_OPCODE_MAIN("Invalid insn for rev", run_v68_instruction, get_rev() < 0x68)

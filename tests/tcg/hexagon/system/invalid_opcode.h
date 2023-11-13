@@ -54,13 +54,14 @@ void my_err_handler_helper(uint32_t ssr)
 
 MAKE_ERR_HANDLER(my_err_handler, my_err_handler_helper)
 
-#define INVALID_OPCODE_MAIN(test_name, test_func) \
+#define INVALID_OPCODE_MAIN(test_name, test_func, exp_fail) \
     int main(void) \
     { \
         puts(test_name); \
+        clear_exception_vector(my_exceptions); \
         INSTALL_ERR_HANDLER(my_err_handler); \
         test_func(); \
-        check32(*my_exceptions, 1 << HEX_CAUSE_INVALID_OPCODE); \
+        check32(*my_exceptions, exp_fail ? 1 << HEX_CAUSE_INVALID_OPCODE : 0); \
         printf("%s : %s\n", ((err) ? "FAIL" : "PASS"), __FILENAME__);\
         return err; \
     }

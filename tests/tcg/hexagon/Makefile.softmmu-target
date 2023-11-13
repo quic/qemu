@@ -64,6 +64,7 @@ TESTS += \
 	tlblock \
 	k0lock \
 	invalid_opcode \
+	invalid_insn_for_rev \
 	sys_atomics \
 	bestwait \
 	ciad-siad \
@@ -139,6 +140,8 @@ tlblock: tlblock.o thread_common.o
 k0lock: k0lock.o thread_common.o
 invalid_opcode.o: invalid_opcode.c invalid_opcode.h
 invalid_opcode: invalid_opcode.o
+invalid_insn_for_rev.o: invalid_insn_for_rev.c invalid_opcode.h
+invalid_insn_for_rev: invalid_insn_for_rev.o
 sys_atomics: sys_atomics.o thread_common.o
 bestwait: bestwait.o thread_common.o
 ciad-siad: ciad-siad.o
@@ -413,6 +416,13 @@ run-semihost: semihost
 	$(call run-test, $<, $(QEMU) --append "arg1 arg2" $(QEMU_OPTS) $< \
 		             > $<.stdout)
 	$(call quiet-command, grep -q "PASS" $<.stdout, "GREP", "PASS")
+
+run-invalid_insn_for_rev: run-invalid_insn_for_rev_0x66 run-invalid_insn_for_rev_0x68
+	@: # do nothing
+run-invalid_insn_for_rev_0x66: QEMU_EXTRA_OPTS=-M V66G_1024
+run-invalid_insn_for_rev_0x68: QEMU_EXTRA_OPTS=-M V68N_1024
+run-invalid_insn_for_rev_0x66 run-invalid_insn_for_rev_0x68: invalid_insn_for_rev
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $<)
 
 ifeq ($(WIN),no)
 run-reset-test: inf-loop
