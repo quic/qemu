@@ -68,6 +68,7 @@ typedef enum {
     v71_rev = 0x8c71,
     v73_rev = 0x8c73,
     v75_rev = 0x8c75,
+    v79_rev = 0x8c79,
 } Rev_t;
 
 /* Config table address bases represent bits [35:16].

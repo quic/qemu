@@ -63,6 +63,8 @@ DEFINE_STD_CPU_INIT_FUNC(v68)
 DEFINE_STD_CPU_INIT_FUNC(v69)
 DEFINE_STD_CPU_INIT_FUNC(v71)
 DEFINE_STD_CPU_INIT_FUNC(v73)
+DEFINE_STD_CPU_INIT_FUNC(v75)
+DEFINE_STD_CPU_INIT_FUNC(v79)
 #endif
 DEFINE_STD_CPU_INIT_FUNC(v67)
 
@@ -1300,6 +1302,8 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
     DEFINE_CPU(TYPE_HEXAGON_CPU_V69,              hexagon_v69_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V71,              hexagon_v71_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V73,              hexagon_v73_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V75,              hexagon_v75_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V79,              hexagon_v79_cpu_init),
 #else
     DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,              hexagon_common_cpu_init),
 #endif
