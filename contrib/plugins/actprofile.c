@@ -200,7 +200,7 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 
             g_string_printf(entry, "{\"name\": \"%s\", \"cat\": \"io\", \"ph\": \"i\","
                                    "\"ts\": %f, \"pid\": 0, \"tid\": %d, \"s\": \"t\" },\n",
-                                   io_time->name, io_time->ts, io_time->cpu);
+                                   io_time->name, to_usec(io_time->ts), io_time->cpu);
             qemu_plugin_outs(entry->str);
         }
     }
