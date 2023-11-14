@@ -2251,8 +2251,8 @@ static void modify_syscfg(CPUHexagonState *env, uint32_t val)
     if (old_en == 0 && new_en == 1) {
         CPU_FOREACH(cs) {
             HexagonCPU *cpu = HEXAGON_CPU(cs);
-            CPUHexagonState *env = &cpu->env;
-            env->t_cycle_count = 0;
+            CPUHexagonState *_env = &cpu->env;
+            _env->t_cycle_count = 0;
         }
     }
 

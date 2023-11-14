@@ -120,8 +120,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     target_ulong what_swi = ARCH_GET_THREAD_REG(env, HEX_REG_R00);
     target_ulong swi_info = ARCH_GET_THREAD_REG(env, HEX_REG_R01);
-    int i = 0;
-    int retval = 1;
 
     HEX_DEBUG_LOG("%s:%d: tid %d, what_swi 0x%x, swi_info 0x%x\n",
                   __func__, __LINE__, env->threadId, what_swi, swi_info);
@@ -137,6 +135,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         HEX_DEBUG_LOG("%s:%d: SYS_GET_CMDLINE\n", __func__, __LINE__);
         target_ulong bufptr;
         target_ulong bufsize;
+        int i;
 
         DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
         DEBUG_MEMORY_READ(swi_info + 4, 4, &bufsize);
@@ -211,7 +210,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         FILE *fp = stdout;
         char c;
-        i = 0;
+        int i = 0;
         rcu_read_lock();
         do {
             DEBUG_MEMORY_READ(swi_info + i, 1, &c);
@@ -248,7 +247,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         }
 
         rcu_read_lock();
-        for (i = 0; i < count; i++) {
+        for (int i = 0; i < count; i++) {
             DEBUG_MEMORY_READ(bufaddr + i, 1, &buf[i]);
         }
         retval = 0;
@@ -300,7 +299,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         retval = 0;
         if (count) {
             retval = read(fd, buf, count);
-            for (i = 0; i < retval; i++) {
+            for (int i = 0; i < retval; i++) {
                 DEBUG_MEMORY_WRITE(bufaddr + i, 1, buf[i]);
             }
         }
@@ -351,7 +350,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
                     __func__, __LINE__);
         }
 
-        i = 0;
+        int i = 0;
         do {
             DEBUG_MEMORY_READ(physicalFilenameAddr + i, 1, &filename[i]);
             i++;
@@ -481,7 +480,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         DEBUG_MEMORY_READ(swi_info, 4, &physicalFilenameAddr);
 
         if (what_swi == SYS_STAT) {
-            i = 0;
+            int i = 0;
             do {
                 DEBUG_MEMORY_READ(physicalFilenameAddr + i, 1, &filename[i]);
                 i++;
@@ -514,7 +513,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         }
         DEBUG_MEMORY_READ(swi_info + 4, 4, &statBufferAddr);
 
-        for (i = 0; i < sizeof(sys_stat); i++) {
+        for (int i = 0; i < sizeof(sys_stat); i++) {
             DEBUG_MEMORY_WRITE(statBufferAddr + i, 1, st_bufptr[i]);
         }
         ARCH_SET_THREAD_REG(env, HEX_REG_R00, rc);
@@ -575,7 +574,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         size4u_t BufferMode;
         int rc;
 
-        i = 0;
+        int i = 0;
 
         DEBUG_MEMORY_READ(swi_info, 4, &FileNameAddr);
         do {
@@ -630,7 +629,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         char buf[BUFSIZ];
         int dir_index = 0;
 
-        i = 0;
+        int i = 0;
         do {
             DEBUG_MEMORY_READ(swi_info + i, 1, &buf[i]);
             i++;
@@ -653,7 +652,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         struct dirent *host_dir_entry = NULL;
         vaddr_t guest_dir_entry;
         int dir_index = swi_info - DIR_INDEX_OFFSET;
-        int i;
 
         dir = g_list_nth_data(env->dir_list, dir_index);
 
@@ -671,7 +669,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         if (host_dir_entry) {
             vaddr_t guest_dir_ptr = guest_dir_entry;
 
-            for (i = 0; i < sizeof(host_dir_entry->d_name); i++) {
+            for (int i = 0; i < sizeof(host_dir_entry->d_name); i++) {
                 DEBUG_MEMORY_WRITE(guest_dir_ptr + i, 1,
                     host_dir_entry->d_name[i]);
                 if (!host_dir_entry->d_name[i]) {
@@ -862,7 +860,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
             ftry++;
         } while ((rc = access(buf, F_OK)) == 0);
 
-        for (i = 0; i <= (int) strlen(buf); i++) {
+        for (int i = 0; i <= (int) strlen(buf); i++) {
             DEBUG_MEMORY_WRITE(bufptr + i, 1, buf[i]);
         }
 
@@ -874,7 +872,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         char buf[BUFSIZ];
         size4u_t bufptr;
-        int buflen, retval;
+        int buflen, retval, i;
 
         DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
         DEBUG_MEMORY_READ(swi_info + 4, 4, &buflen);
@@ -896,7 +894,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         char buf[BUFSIZ];
         char buf2[BUFSIZ];
         size4u_t bufptr, bufptr2;
-        int buflen, buf2len, retval;
+        int buflen, buf2len, retval, i;
 
         DEBUG_MEMORY_READ(swi_info, 4, &bufptr);
         DEBUG_MEMORY_READ(swi_info + 4, 4, &buflen);
@@ -1000,11 +998,10 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         printf("error: unknown swi call 0x%x\n", what_swi);
         CPUState *cs = env_cpu(env);
         cpu_abort(cs, "Hexagon Unsupported swi call 0x%x\n", what_swi);
-        retval = 0;
-        break;
+        return 0;
     }
 
-    return retval;
+    return 1;
 }
 
 
