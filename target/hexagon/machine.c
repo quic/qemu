@@ -126,6 +126,20 @@ const VMStateInfo vmstate_info_hex_tlb_ptr = {
     .put  = put_hex_tlb_ptr,
 };
 
+const VMStateDescription vmstate_pmustate = {
+    .name = "pmu_state",
+    .version_id = 0,
+    .minimum_version_id = 0,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT32(num_packets, PMUState),
+        VMSTATE_UINT32(hvx_packets, PMUState),
+        VMSTATE_VARRAY_UINT32(g_ctrs_off, PMUState, vmstate_num_ctrs, 0,
+                              vmstate_info_uint32, uint32_t),
+        VMSTATE_VARRAY_UINT32(g_events, PMUState, vmstate_num_ctrs, 0,
+                              vmstate_info_uint16, uint16_t),
+        VMSTATE_END_OF_LIST()
+    }
+};
 
 const VMStateDescription vmstate_hexagon_cpu = {
     .name = "cpu",
@@ -193,6 +207,8 @@ const VMStateDescription vmstate_hexagon_cpu = {
 
         VMSTATE_POINTER(env.hex_tlb, HexagonCPU, 0,
                         vmstate_info_hex_tlb_ptr, CPUHexagonTLBContext *),
+
+        VMSTATE_STRUCT(env.pmu, HexagonCPU, 0, vmstate_pmustate, PMUState),
 
         VMSTATE_END_OF_LIST()
     },
