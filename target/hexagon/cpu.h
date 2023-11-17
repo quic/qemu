@@ -474,6 +474,8 @@ struct ArchCPU {
     uint32_t cluster_thread_count;
     gchar *dump_json_file;
     uint32_t l2line_size;
+    uint32_t vmstate_num_g_sreg;
+    uint32_t vmstate_num_g_gcycle;
 };
 
 #ifndef CONFIG_USER_ONLY
