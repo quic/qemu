@@ -19,6 +19,29 @@
 #include "qemu/osdep.h"
 #include "migration/cpu.h"
 #include "cpu.h"
+#include "hex_mmu.h"
+
+static int get_u64_ptr(QEMUFile *f, void *pv, size_t size,
+                       const VMStateField *field)
+{
+    uint64_t *p = pv;
+    *p = qemu_get_be64(f);
+    return 0;
+}
+
+static int put_u64_ptr(QEMUFile *f, void *pv, size_t size,
+                      const VMStateField *field, JSONWriter *vmdesc)
+{
+    qemu_put_be64(f, *((uint64_t *)pv));
+    return 0;
+}
+
+const VMStateInfo vmstate_info_uint64_ptr = {
+    .name = "uint64_t_pointer",
+    .get  = get_u64_ptr,
+    .put  = put_u64_ptr,
+};
+
 
 const VMStateDescription vmstate_hexagon_cpu = {
     .name = "cpu",
@@ -70,6 +93,9 @@ const VMStateDescription vmstate_hexagon_cpu = {
 
         VMSTATE_BOOL(env.vtcm_pending, HexagonCPU),
         VMSTATE_BOOL(env.ss_pending, HexagonCPU),
+
+        VMSTATE_POINTER(env.g_pcycle_base, HexagonCPU, 0,
+                        vmstate_info_uint64_ptr, uint64_t *),
 
         VMSTATE_ARRAY(env.vtmp.ud, HexagonCPU, MAX_VEC_SIZE_BYTES / 8, 0,
                       vmstate_info_uint64, uint64_t),
