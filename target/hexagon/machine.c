@@ -42,6 +42,35 @@ const VMStateInfo vmstate_info_uint64_ptr = {
     .put  = put_u64_ptr,
 };
 
+static int get_mmvector(QEMUFile *f, void *pv, size_t size,
+                        const VMStateField *field)
+{
+    MMVector *v = pv;
+    for (int i = 0; i < MAX_VEC_SIZE_BYTES / 8; i++) {
+        v->ud[i] = qemu_get_be64(f);
+    }
+    return 0;
+}
+
+static int put_mmvector(QEMUFile *f, void *pv, size_t size,
+                        const VMStateField *field, JSONWriter *vmdesc)
+{
+    MMVector *v = pv;
+    for (int i = 0; i < MAX_VEC_SIZE_BYTES / 8; i++) {
+        qemu_put_be64(f, v->ud[i]);
+    }
+    return 0;
+}
+
+static const VMStateInfo vmstate_info_mmvector = {
+    .name = "mmvector",
+    .get  = get_mmvector,
+    .put  = put_mmvector,
+};
+
+#define VMSTATE_MMVECTOR_ARRAY(_f, _s, _n) \
+    VMSTATE_SUB_ARRAY(_f, _s, 0, _n, 0, vmstate_info_mmvector, MMVector)
+
 
 const VMStateDescription vmstate_hexagon_cpu = {
     .name = "cpu",
@@ -96,6 +125,10 @@ const VMStateDescription vmstate_hexagon_cpu = {
 
         VMSTATE_POINTER(env.g_pcycle_base, HexagonCPU, 0,
                         vmstate_info_uint64_ptr, uint64_t *),
+
+        VMSTATE_MMVECTOR_ARRAY(env.VRegs, HexagonCPU, NUM_VREGS),
+        VMSTATE_MMVECTOR_ARRAY(env.future_VRegs, HexagonCPU, VECTOR_TEMPS_MAX),
+        VMSTATE_MMVECTOR_ARRAY(env.tmp_VRegs, HexagonCPU, VECTOR_TEMPS_MAX),
 
         VMSTATE_ARRAY(env.vtmp.ud, HexagonCPU, MAX_VEC_SIZE_BYTES / 8, 0,
                       vmstate_info_uint64, uint64_t),
