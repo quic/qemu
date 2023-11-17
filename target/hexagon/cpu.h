@@ -397,14 +397,15 @@ typedef struct CPUArchState {
     VTCMStoreLog vtcm_log;
     mem_access_info_t mem_access[SLOTS_MAX];
 
-    int status;
+    int32_t status;
     uint8_t bq_on;
 
-    unsigned int timing_on;
+    uint32_t timing_on;
 
     uint64_t pktid;
     processor_t *processor_ptr;
-    unsigned int threadId;
+    uint32_t threadId;
+
     system_t *system_ptr;
     uint64_t t_cycle_count;
     uint64_t *g_pcycle_base;
@@ -413,9 +414,9 @@ typedef struct CPUArchState {
     bool cpu_memop_pc_set;
     hwaddr vtcm_base;
     uint32_t vtcm_size;
-    int memfd_fd;
+    int32_t memfd_fd;
 #ifndef CONFIG_USER_ONLY
-    int slot;                    /* Needed for exception generation */
+    int32_t slot;                    /* Needed for exception generation */
     hex_exception_info einfo;
     systemstate_t systemstate;
     const char *cmdline;
