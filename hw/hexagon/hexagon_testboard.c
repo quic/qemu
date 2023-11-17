@@ -39,6 +39,7 @@
 #include "target/hexagon/internal.h"
 #include "libgen.h"
 #include "sysemu/reset.h"
+#include "sysemu/qtest.h"
 
 #include "machine_configs.h.inc"
 
@@ -98,6 +99,9 @@ static void hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
                 cpu_physical_memory_write(isdb_trusted_flag, &mem, sizeof(mem));
             }
         }
+    } else if (!cpu->vp_mode && !qtest_enabled()) {
+        error_report("kernel image must be given with -kernel");
+        exit(1);
     }
 }
 
