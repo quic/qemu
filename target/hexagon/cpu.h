@@ -286,6 +286,7 @@ typedef enum {
 } hex_lock_state_t;
 
 typedef struct PMUState {
+    uint32_t vmstate_num_ctrs;
     uint32_t *g_ctrs_off;
     uint16_t *g_events;
 
