@@ -71,6 +71,35 @@ static const VMStateInfo vmstate_info_mmvector = {
 #define VMSTATE_MMVECTOR_ARRAY(_f, _s, _n) \
     VMSTATE_SUB_ARRAY(_f, _s, 0, _n, 0, vmstate_info_mmvector, MMVector)
 
+static int get_mmqreg(QEMUFile *f, void *pv, size_t size,
+                      const VMStateField *field)
+{
+    MMQReg *v = pv;
+    for (int i = 0; i < MAX_VEC_SIZE_BYTES / 8 / 8; i++) {
+        v->ud[i] = qemu_get_be64(f);
+    }
+    return 0;
+}
+
+static int put_mmqreg(QEMUFile *f, void *pv, size_t size,
+                      const VMStateField *field, JSONWriter *vmdesc)
+{
+    MMQReg *v = pv;
+    for (int i = 0; i < MAX_VEC_SIZE_BYTES / 8 / 8; i++) {
+        qemu_put_be64(f, v->ud[i]);
+    }
+    return 0;
+}
+
+static const VMStateInfo vmstate_info_mmqreg = {
+    .name = "mmqreg",
+    .get  = get_mmqreg,
+    .put  = put_mmqreg,
+};
+
+#define VMSTATE_MMQREG_ARRAY(_f, _s, _n) \
+    VMSTATE_SUB_ARRAY(_f, _s, 0, _n, 0, vmstate_info_mmqreg, MMQReg)
+
 
 const VMStateDescription vmstate_hexagon_cpu = {
     .name = "cpu",
@@ -132,6 +161,9 @@ const VMStateDescription vmstate_hexagon_cpu = {
 
         VMSTATE_ARRAY(env.vtmp.ud, HexagonCPU, MAX_VEC_SIZE_BYTES / 8, 0,
                       vmstate_info_uint64, uint64_t),
+
+        VMSTATE_MMQREG_ARRAY(env.QRegs, HexagonCPU, NUM_QREGS),
+        VMSTATE_MMQREG_ARRAY(env.future_QRegs, HexagonCPU, NUM_QREGS),
 
         VMSTATE_END_OF_LIST()
     },
