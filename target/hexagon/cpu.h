@@ -293,6 +293,7 @@ typedef enum {
     }
 
 typedef struct PMUState {
+    uint32_t vmstate_num_ctrs;
     uint32_t *g_ctrs_off;
     uint16_t *g_events;
 

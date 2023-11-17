@@ -765,6 +765,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 #ifndef CONFIG_USER_ONLY
     cpu->vmstate_num_g_sreg = NUM_SREGS;
     cpu->vmstate_num_g_gcycle = NUM_GLOBAL_GCYCLE;
+    env->pmu.vmstate_num_ctrs = NUM_PMU_CTRS;
 
     hex_mmu_realize(env);
     if (cs->cpu_index == 0) {
