@@ -322,9 +322,9 @@ struct Einfo {
   uint8_t valid;
   uint8_t type;
   uint8_t cause;
-  uint8_t bvs:1;
-  uint8_t bv0:1;       /* valid for badva0 */
-  uint8_t bv1:1;       /* valid for badva1 */
+  uint8_t bvs;
+  uint8_t bv0;       /* valid for badva0 */
+  uint8_t bv1;       /* valid for badva1 */
   uint32_t badva0;
   uint32_t badva1;
   uint32_t elr;
