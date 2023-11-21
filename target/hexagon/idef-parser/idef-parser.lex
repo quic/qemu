@@ -470,6 +470,7 @@ STRING_LIT               \"(\\.|[^"\\])*\"
                            return VAR; }
 "fatal("{STRING_LIT}")"  { /* Emit no token */ }
 "fHINTJR(RsV)"           { /* Emit no token */ }
+"MARK_LATE_PRED_WRITE("{VAR_ID}")"           { /* Emit no token */ }
 .                        { return yytext[0]; }
 
 %%

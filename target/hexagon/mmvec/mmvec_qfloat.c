@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,9 +14,9 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wmissing-prototypes"
 #if !defined(__clang__)
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 #endif
@@ -24,8 +24,73 @@
 #include "qemu/osdep.h"
 #include "mmvec_qfloat.h"
 #include <math.h>
+#include "mmvec_qfloat.h"
 
-#define UNUSED(var) do { (void)var; } while (0)
+//Rounding mode parameters
+qfrnd_mode_t qfrnd_modes[MAX_RND_MODES] = {
+	//Round to nearest even
+	{ .even_pos_threshold = 0.75,
+	  .odd_neg_threshold  = 0.5,
+	  .rnd_to_pos_neg = false,
+	  .ovf_val32 = MAX_SIG_QF32,
+	  .undf_val32 = 0,
+	  .ovf_val16 = MAX_SIG_QF16,
+	  .undf_val16 = 0,
+          .ieee_pos_overflow = {.x = {.sign = 0, .exp = MAX_BIASED_E_SF, .mant = 0x0}},
+          .ieee_neg_overflow = {.x = {.sign = 1, .exp = MAX_BIASED_E_SF, .mant = 0x0}},
+          .ieee_hf_pos_overflow = {.x = {.sign = 0, .exp = MAX_BIASED_E_HF, .mant = 0x0}},
+          .ieee_hf_neg_overflow = {.x = {.sign = 1, .exp = MAX_BIASED_E_HF, .mant = 0x0}},
+	  .rnd_mode = RND_TO_NEAREST_EVEN
+	},
+	//Round Towards Zero
+	{ .even_pos_threshold = 1.0,
+	  .odd_neg_threshold  = 0.25,
+	  .rnd_to_pos_neg = true,
+	  .ovf_val32 = MAX_SIG_QF32,
+	  .undf_val32 = 0,
+	  .ovf_val16 = MAX_SIG_QF16,
+	  .undf_val16 = 0,
+          .ieee_pos_overflow = {.x = {.sign = 0, .exp = MAX_BIASED_E_SF-1, .mant = MAX_SIG_QF32}},
+          .ieee_neg_overflow = {.x = {.sign = 1, .exp = MAX_BIASED_E_SF-1, .mant = MAX_SIG_QF32}},
+          .ieee_hf_pos_overflow = {.x = {.sign = 0, .exp = MAX_BIASED_E_HF-1, .mant = MAX_SIG_QF16}},
+          .ieee_hf_neg_overflow = {.x = {.sign = 1, .exp = MAX_BIASED_E_HF-1, .mant = MAX_SIG_QF16}},
+	  .rnd_mode = RND_TO_ZERO
+	},
+	//Round Negative Infinity
+	{ .even_pos_threshold = 1.0,
+	  .odd_neg_threshold  = 1.0,
+	  .rnd_to_pos_neg = true,
+	  .ovf_val32 = MAX_SIG_QF32,
+	  .undf_val32 = 0,
+	  .ovf_val16 = MAX_SIG_QF16,
+	  .undf_val16 = 0,
+          .ieee_pos_overflow = {.x = {.sign = 0, .exp = MAX_BIASED_E_SF-1, .mant = MAX_SIG_QF32}},
+          .ieee_neg_overflow = {.x = {.sign = 1, .exp = MAX_BIASED_E_SF, .mant = 0x0}},
+          .ieee_hf_pos_overflow = {.x = {.sign = 0, .exp = MAX_BIASED_E_HF-1, .mant = MAX_SIG_QF16}},
+          .ieee_hf_neg_overflow = {.x = {.sign = 1, .exp = MAX_BIASED_E_HF, .mant = 0x0}},
+	  .rnd_mode = RND_TOWARDS_NEG_INF
+	},
+	//Round Towards Positive Infinity
+	{ .even_pos_threshold = 0.25,
+	  .odd_neg_threshold  = 0.25,
+	  .rnd_to_pos_neg = true,
+	  .ovf_val32 = MAX_SIG_QF32,
+	  .undf_val32 = 0,
+	  .ovf_val16 = MAX_SIG_QF16,
+	  .undf_val16 = 0,
+          .ieee_pos_overflow = {.x = {.sign = 0, .exp = MAX_BIASED_E_SF, .mant = 0x0}},
+          .ieee_neg_overflow = {.x = {.sign = 1, .exp = MAX_BIASED_E_SF-1, .mant = MAX_SIG_QF32}},
+          .ieee_hf_pos_overflow = {.x = {.sign = 0, .exp = MAX_BIASED_E_HF, .mant = 0x0}},
+          .ieee_hf_neg_overflow = {.x = {.sign = 1, .exp = MAX_BIASED_E_HF-1, .mant = MAX_SIG_QF16}},
+	  .rnd_mode = RND_TOWARDS_POS_INF
+	}
+};
+
+int is_double_pos(double f) { return signbit(f) == 0; }
+int is_double_neg(double f) { return ((signbit(f) == 0) ? 0 : 1); }
+int is_unfloat_neg(unfloat u) { return (is_double_neg(u.sig) ^ u.sign); }
+int signum(double val) { return (val > 0) - (val < 0); }
+
 
 //Take one's complement of the mantissa for QF32
 size4s_t negate32(size4s_t in)
@@ -69,13 +134,13 @@ unfloat parse_qf16(size2s_t in)
 {
     unfloat out;
 
-	out.sign = (in>>15) & 0x1;
+    out.sign = (in>>15) & 0x1;
 
     out.exp = (size1s_t)(0x00 | (in & 0x1F));
     out.exp = out.exp - BIAS_QF16;
 
     /*implied LSB=1*/
-    size2s_t signif;
+    size2s_t signif; 
     /*take signif and sign extend, add LSB=1*/
     signif= ((size4s_t)in >> 4) | 1;
 
@@ -87,6 +152,664 @@ unfloat parse_qf16(size2s_t in)
 #endif
     return out;
 }
+
+LREQ_t negate_LREQ(LREQ_t LREQ)
+{
+  LREQ_t neg_LREQ;
+
+  //Flip LRQ bits but keep original E bit
+  neg_LREQ.raw    = ~LREQ.raw & 0xF;
+  neg_LREQ.bits.E = LREQ.bits.E;
+  return neg_LREQ;
+}
+
+double extqf32_pre_rounding(double orig32_mantissa, LREQ_t LREQ) {
+	return round(orig32_mantissa + (LREQ.bits.R * 0.5) + (LREQ.bits.Q * 0.25) + 0.125);
+}
+
+double extqf16_pre_rounding(double orig16_mantissa, LREQ_t LREQ) {
+	return round(orig16_mantissa + (LREQ.bits.R * 0.5) + 0.25);
+}
+
+
+//functions to check for ieee inf, nans and zeros
+int is_unfloat_zero(unfloat u){ return (fabs(u.sig) == 0.0);}
+
+int is_sf_infinity(unfloat u) { return (u.exp >= E_MAX_SF) && (fabs(u.sig) == 1.0);}
+int is_sf_NaN(unfloat u) { return (u.exp >= E_MAX_SF) && (fabs(u.sig) != 1.0);}
+
+int is_hf_infinity(unfloat u) { return (u.exp >= E_MAX_HF) && (fabs(u.sig) == 1.0);}
+int is_hf_NaN(unfloat u) { return (u.exp >= E_MAX_HF) && (fabs(u.sig) != 1.0);}
+
+int is_extqf32_nan(uint64_t in) { return (in == extqf32_pos_nan || in == extqf32_neg_nan || in == extqf32_pos_nan_inexact || in == extqf32_neg_nan_inexact); }
+int is_extqf32_inf(uint64_t in) { return (in == extqf32_pos_inf_exact || in == extqf32_pos_inf_inexact || in == extqf32_neg_inf_exact || in == extqf32_neg_inf_inexact);}
+
+int is_extqf16_nan(uint32_t in) { return (in == extqf16_pos_nan || in == extqf16_neg_nan);} 
+int is_extqf16_inf(uint32_t in) { return (in == extqf16_pos_inf || in == extqf16_neg_inf);}
+
+
+//function to handle infinities and nan for qf16 add
+//use these functions within the check for max exponent - refer macros_def.py
+uint64_t handle_infinity_nan_add(unfloat u, unfloat v, uint64_t pos_nan_val, uint64_t neg_nan_val,\
+	uint64_t pos_inf_val, uint64_t neg_inf_val)
+{
+	bool u_neg, v_neg;
+	uint64_t result;
+
+	u_neg = (is_unfloat_neg(u));
+	v_neg = (is_unfloat_neg(v));
+	
+	//if either of the inputs is a NaN
+        if(u.nan || v.nan)
+        {
+		//+NaN has highest priority, so check if one input is +NaN and return
+		if((!u_neg && u.nan) || (!v_neg && v.nan)) {
+			result = pos_nan_val;
+		} 
+		//If none of the NaN inputs were +NaN, must be -NaN which is 2nd highest priority
+		else {
+			result = neg_nan_val;
+		}
+        }
+	else
+        {
+		//if both operands are infinites and have opposing signs result in nan
+		if(u.inf && v.inf && (u_neg ^ v_neg))
+		{
+			result = pos_nan_val;
+		}
+		else {
+			if((u_neg && u.inf) || (v_neg && v.inf)) {
+				result = neg_inf_val;
+			} else {
+				result = pos_inf_val;
+			}
+		}
+        }
+	return result;
+}
+
+//function to handle infiniteis and nan for 16 bit mpys
+//use within the max exponent condition: same as above
+uint64_t handle_infinity_nan_mpy(unfloat u, unfloat v, uint64_t pos_nan_val, uint64_t neg_nan_val,\
+	uint64_t pos_inf_val, uint64_t neg_inf_val)
+{
+	bool u_neg, v_neg;
+
+	u_neg = is_unfloat_neg(u);
+	v_neg = is_unfloat_neg(v);
+
+  if(u.nan || v.nan) //either one of the inputs is a nan
+  {
+     //result is nan and sign is the xor: usual mpy logic
+     return (u_neg ^ v_neg) ? neg_nan_val : pos_nan_val;
+  }
+  else //implicitly means either one is a infinity
+  {
+     //if one of the operands is a zero and the other a infinity we result in a nan
+     if(u.is_zero || v.is_zero)
+     {
+       return (u_neg ^ v_neg) ? neg_nan_val : pos_nan_val;
+     }
+     return (u_neg ^ v_neg) ? neg_inf_val : pos_inf_val; 
+  }
+}
+
+unfloat parse_hf(size2s_t in)
+{
+    INIT_UNFLOAT(out)
+    hf_t hf = {.raw = in};
+    size2u_t sig; 
+
+    out.exp = hf.x.exp;
+    sig = hf.x.mant;
+
+    /*implied MSB=1*/
+    if(out.exp>0) 
+        sig = (1<<10) | sig;
+
+    out.exp = out.exp - BIAS_HF;
+    if(out.exp<E_MIN_HF)
+        out.exp = E_MIN_HF;
+
+    //Legacy, used for min/max and older functions
+    out.sign = hf.x.sign;
+    out.sig = (double)sig * epsilon_hf;
+    out.inf = is_hf_infinity(out);
+    out.nan = is_hf_NaN(out);
+    out.is_ieee = true;
+    out.is_zero = is_unfloat_zero(out);
+
+    return out;
+}
+
+//Take the magnitude and generate ******positive sig
+unfloat parse_sf(size4s_t in)
+{
+    INIT_UNFLOAT(out)
+    sf_t sf;
+    size4u_t sig; 
+
+    sf.raw = in;
+    
+    out.exp = sf.x.exp; 
+
+    //take signif and sign extend
+    sig = sf.x.mant;
+
+    /*implied MSB=1*/
+    if(out.exp>0) 
+        sig = (1<<23) | sig;
+
+    out.exp = out.exp - BIAS_SF;
+
+    if(out.exp<E_MIN_SF)
+        out.exp = E_MIN_SF;
+
+    out.sign = sf.x.sign;
+    out.sig = (double)sig * epsilon;
+    out.inf = is_sf_infinity(out);
+    out.nan = is_sf_NaN(out);
+    out.is_ieee = true;
+    out.is_zero = is_unfloat_zero(out);
+
+    return out;
+}
+
+unfloat parse_extqf16(uint16_t in, uint8_t in_ext, int coproc_mode)
+{
+	INIT_UNFLOAT(out)
+
+	LREQ_t LREQ = {.bits16.LR = (in_ext & 0x3)};
+  
+	int16_t orig16 = (int16_t)(in); 
+	
+	out.exp = ((uint8_t)(orig16 & 0x1F)) - BIAS_QF16;
+
+ 	//add L bit to at LSB to produce a 11-bit mantissa
+  	int16_t orig16_mantissa = ((orig16 >> 4) & ~0x1) | LREQ.bits.L;
+	//Handles pre-rounding now 
+	double mantissa = extqf16_pre_rounding((double)orig16_mantissa,LREQ);
+
+	//Handle normalization & denormalization next
+	//Handle overflow to IEEE infinity here & underflow to IEEE zero
+	//Because Ext_QF32 number does not necessarily begin with 1.xx, it could be 0.0001xx
+	out.sig = mantissa * epsilon_hf;
+	out.sign = LREQ.bits.R;
+	if(out.sign) out.sig = -out.sig;
+/*
+	if(coproc_mode >= 2) { 
+        out.inf = is_extqf16_inf(out);
+        out.nan = is_extqf16_nan(out);
+    }
+*/
+	out.inf = is_extqf16_inf(((uint32_t)in << 4) | in_ext);
+	out.nan = is_extqf16_nan(((uint32_t)in << 4) | in_ext);
+    out.is_zero = is_unfloat_zero(out);
+
+    return out;
+}
+
+
+
+unfloat parse_extqf32 (uint32_t in, uint8_t in_ext, int coproc_mode) {
+  INIT_UNFLOAT(out)
+  LREQ_t LREQ = {.raw = (in_ext & 0xF)};
+  size4s_t orig32;
+  uint16_t orig32_exponent;  
+  size4s_t orig32_mantissa; 
+  double mantissa;
+  size2s_t exponent;
+  
+
+  orig32 = ((size4s_t)(in)); 
+  orig32_exponent = orig32 & 0xFF;
+
+  //add L bit to at LSB to produce a 24-bit mantissa
+  orig32_mantissa = ((orig32 >> 7) & ~0x1) | LREQ.bits.L; //24 bits
+
+  mantissa = extqf32_pre_rounding((double)orig32_mantissa,LREQ);
+
+  //add E bit at MSB of expoent
+  exponent = (size2s_t) (orig32_exponent | (LREQ.bits.E ? 0x0100 : 0x0));
+
+  //First step, sub 128 to get to IEEE like
+  //Second step, sub 255 for qf32 bias
+  out.exp = ((exponent - 128) & 0x1FF) - 255; //FIXME move to macro
+
+  //How about using float instead of double here ?
+  out.sig = (double) mantissa * epsilon;
+
+  out.sign = LREQ.bits.R;
+  if(out.sign) out.sig = -out.sig;
+  out.inexact = LREQ.bits.R != LREQ.bits.Q; 
+/*
+  if(coproc_mode >= 2) {
+    out.inf = is_extqf32_inf(out);
+    out.nan = is_extqf32_nan(out);
+  }
+*/
+
+  out.inf = is_extqf32_inf(((uint64_t)in << 4) | in_ext);
+  out.nan = is_extqf32_nan(((uint64_t)in << 4) | in_ext);
+  out.is_zero = is_unfloat_zero(out);
+  return out;
+}
+
+double qmod(double sig_s,double modnum) {
+    double R2, R3;
+    //Get remainder from the scaled significand
+    R2 = floor(sig_s/modnum)*modnum;
+    R3 = sig_s - R2;
+    return R3;
+}
+
+int get_inc(qfrnd_mode_t qfrnd, ulp_t ulp) {
+	double cond, threshold;
+	double odd_neg_threshold = qfrnd.odd_neg_threshold;
+	double even_pos_threshold = qfrnd.even_pos_threshold;
+	bool rnd_to_pos_neg = qfrnd.rnd_to_pos_neg;
+
+	if(rnd_to_pos_neg) {
+		cond = ulp.integer < 0.0;
+	} else {
+		cond = qmod(ulp.integer,2.0); 
+	}
+
+	if(cond) {
+		threshold = odd_neg_threshold;
+	} else {
+		threshold = even_pos_threshold;
+	}
+	
+	return ulp.fractional >= threshold;
+}
+
+
+double floor_to_frac(double v, double mod) {
+	double integral;
+	double fractional = modf(v,&integral);
+	int positive = is_double_pos(integral);
+	//Positive case
+	if(positive) {
+		 if(fractional >= mod) integral += mod;
+	}
+	//Negative case
+	else {
+		if(fabs(fractional) <= mod && fractional != 0.0)
+			integral -= mod;
+		else if(fabs(fractional) > mod)
+			integral -= 1;
+	}
+	
+	return integral;
+}
+
+ulp_t ulp_modf(double sig_scaled_in_ulp, int inexact) {
+    ulp_t ulp;
+    double sig_scaled_in_ulp_floorhalf = floor_to_frac(sig_scaled_in_ulp, 0.5);
+    double sig_scaled_in_ulp_modhalf = sig_scaled_in_ulp - sig_scaled_in_ulp_floorhalf;
+    double ulp_rx = sig_scaled_in_ulp_floorhalf - 0.5 * (sig_scaled_in_ulp_modhalf == 0)*(inexact < 0) \
+	+ .25*(sig_scaled_in_ulp_modhalf != 0 || inexact != 0);
+
+    //Split apart fractional and integer of significant, similar to modf but for ulp
+    ulp.fractional = qmod(ulp_rx,1.0);
+    ulp.integer    = floor(ulp_rx);
+    return ulp;
+}
+
+//produce a result in extended QF32 format
+fixed_float_t rnd_sat_extqf_sig(unfloat u, qfrnd_mode_enum_t qfrnd_mode, f_type ft, int e_min, int e_max, int bias, double _epsilon, double _units)
+{
+    fixed_float_t f; //return value of function
+    LREQ_t LREQ = {.raw=0}; //LREQ bits returned in f
+    double scale = 1.0;
+    double sig_scaled;
+    int exp_ovf=0; //overflow on exponent
+    int exp_undf=0; //underflow on exponent
+    int prod_ovf=0; //product overflow 
+
+    //Values used to calculate sig and LREQ
+    uint32_t sig_32 = 0;
+    double sig_scaled_in_ULP;
+    ulp_t ulp;
+    int inc;
+    double ulp_RQ1;
+    double ulp2; 
+    double LRQ;
+
+    //parse out values from unfloat
+    int exp = u.exp;
+    double sig = u.sig;
+    int inexact = u.inexact;
+
+    //Check if sig is out of range before normalization
+    if(fabs(sig) >= 2.0L)
+    {
+        if((sig == 2.0L && inexact < 0) || (sig == -2.0L && inexact >= 0)) {
+           prod_ovf = 0; 
+        } else {
+            prod_ovf = 1;
+        }
+    }
+    
+    //Set scale factor if we need to denormalize
+    if(prod_ovf && (exp < e_max)) {
+      // right-shift result and adjust exponent by 1
+      scale = 0.5;
+      exp += 1;
+    }
+
+    //Example : To do right-shift by 1 bit 
+    //i.e. if operand1 = operand2 = 1.5 => sig = 3.0, prod_ovf=1, sig_scaled should be 1.5
+    sig_scaled = sig * scale;
+
+    //Check for exponent overflow/underflow
+    //Overflow exp is out of range (> E_MAX) or exp is at E_MAX but is not a denorm
+    if((exp > e_max) \
+	|| ((exp == e_max) && (sig_scaled > 1.0L || (sig_scaled == 1.0L && inexact >= 0) || sig_scaled < -1.0L || (sig_scaled == -1.0L && inexact < 0)))) {
+            exp_ovf = 1; // Exponent overflow, make result to infinity
+    } else if((exp < e_min)) {
+        exp_undf = 1; // Exponent underflow, make result to 0
+    }
+
+    //No overflow or underflow, so calculate sig and exponent
+    if(!exp_ovf && !exp_undf) {
+	//Scale sig_scaled to ULP representation
+        sig_scaled_in_ULP = (sig_scaled * _units);
+
+	//Split scaled ulp into integer and fractional component
+        ulp = ulp_modf(sig_scaled_in_ULP, inexact);
+    
+        //Calculate if we need to increment ULP by 0.5 or by 0.25
+        inc = get_inc(qfrnd_modes[qfrnd_mode], ulp);
+
+	//Add 0.5 or 0.25 depending on inc and add 0.125, which is the sticky inexact
+	if(ft == EXTQF32) {
+        	ulp_RQ1 = ulp.integer + inc*0.5 + (inc ^ (ulp.fractional != 0.0))*.25 + 0.125;
+	} else {
+        	ulp_RQ1 = ulp.integer + inc*0.5 + .25;
+	}
+
+	//Before going to 2's place, flip  sign if defer negation is set since sign will affect nearest 2
+        if(u.sign) ulp_RQ1 = -ulp_RQ1;
+	
+	//Calculate ULP to nearest 2s place
+	//floor ulp_RQ1 to get rid of fractional
+	//If floor value is odd number, subtract by 1 to take to nearest even
+        ulp2 = floor(ulp_RQ1) - (qmod(floor(ulp_RQ1),2.0));
+    
+	//Calculate LRQ in float notation
+        LRQ = ulp_RQ1 - ulp2 - 0.125;
+
+	//Extract out LRQ bits from float
+        LREQ.bits.L = floor(LRQ);
+        LREQ.bits.R = (((uint32_t)floor(2.0*LRQ)) % 2);
+        LREQ.bits.Q = (((uint32_t)floor(4.0*LRQ)) % 2);
+
+        sig_32 = ((int32_t)ulp2)>>1;
+        //R and Q bits need to be the same irrespective of sign for the unsymmetrical rounding modes.
+        //the defer neg would have flipped the R and Q bits too. Undoing those here
+        if(u.sign && (LREQ.bits.R != LREQ.bits.Q) && ((qfrnd_mode == RND_TOWARDS_NEG_INF) || (qfrnd_mode == RND_TOWARDS_POS_INF)))
+        {
+           LREQ.bits.R = !LREQ.bits.R;
+           LREQ.bits.Q = !LREQ.bits.Q; 
+        }
+    } else {
+        // overflow to infinity
+        if(exp_ovf) {
+            exp = e_max; 
+            if(qfrnd_mode == RND_TO_ZERO) exp--;
+            if(qfrnd_mode == RND_TOWARDS_NEG_INF && !is_unfloat_neg(u)) exp--;
+            if(qfrnd_mode == RND_TOWARDS_POS_INF && is_unfloat_neg(u)) exp--;
+            if(ft==EXTQF32) {
+                sig_32 = qfrnd_modes[qfrnd_mode].ovf_val32;
+    	    } else if(ft==EXTQF16) {
+                sig_32 = qfrnd_modes[qfrnd_mode].ovf_val16;
+    	    }
+    	    LREQ.bits.L = 0x1; 
+    	    LREQ.bits.Q = 0x1;
+
+    	    //If value was negative, set to -inf
+            if(is_unfloat_neg(u)) { 
+                sig_32 = ~sig_32;
+                LREQ = negate_LREQ(LREQ);
+            }
+        }
+        // underflow to 0
+        else if(exp_undf) {
+            exp = e_min; 
+            if(ft == EXTQF32) {
+                sig_32 = qfrnd_modes[qfrnd_mode].undf_val32;
+    	    } else if(ft == EXTQF16) {
+                sig_32 = qfrnd_modes[qfrnd_mode].undf_val16;
+    	    }
+	    
+            //If we underflow when the sig is 0, we dont have inexactness
+            if(qfrnd_mode == RND_TOWARDS_POS_INF)
+            {
+              LREQ.bits.R = 0x1;
+              LREQ.bits.Q = 0x0;
+            }
+            else if(qfrnd_mode == RND_TOWARDS_NEG_INF)
+            {
+              LREQ.bits.R = 0x0;
+              LREQ.bits.Q = 0x1;
+
+            }
+            else LREQ.bits.Q = 1;
+
+            //If value was negative, set to -0
+            if(is_unfloat_neg(u)) { 
+                 LREQ = negate_LREQ(LREQ);
+                 sig_32 = ~sig_32;
+            }
+        }
+    }
+
+    //Add bias to exponent
+    exp += bias;
+
+    //Produce extra exponent bit
+    //EXTQF32 exponent is 9bit,including 1 extra bit E bit
+    //Not used for 16 bit
+    LREQ.bits.E = (exp >> 8) & 0x1;
+
+    f.exp = exp;
+    f.sig = sig_32;
+    f.LREQ = LREQ;
+    return f;
+}
+
+//produce a 36bit extended QF number
+uint64_t rnd_sat_extqf32 (unfloat u, qfrnd_mode_enum_t qfrnd_mode)
+{
+    fixed_float_t f;
+    uint64_t result;
+
+    //Round and saturate unfloat representation of qfloat operation to qf32
+    f = rnd_sat_extqf_sig(u, qfrnd_mode, EXTQF32, E_MIN_EXTQF32, E_MAX_EXTQF32, BIAS_EXTQF32, EPSILON32, UNITS32);
+    
+    //Setup 32 bit representation of qf32
+    result = ((f.sig << 8) | (f.exp & 0xFF)) & QF32_BITMASK;
+
+    //Append LREQ bits after the LSB of result to produce 36 bit result
+    result = ((result << 4) | (f.LREQ.raw & 0xF)) & EXTQF32_BITMASK;
+    return result;
+}
+
+//produce a 20bit extended QF number
+uint64_t rnd_sat_extqf16 (unfloat u, qfrnd_mode_enum_t qfrnd_mode)
+{
+    fixed_float_t f;
+    uint64_t result;
+
+    //Round and saturate unfloat representation of qfloat operation to qf16
+    f = rnd_sat_extqf_sig(u, qfrnd_mode, EXTQF16, E_MIN_QF16, E_MAX_QF16, BIAS_QF16, epsilon_hf, units_hf);
+    result = ((f.sig << 5) | (f.exp & 0x1F)) & QF16_BITMASK;
+
+    //Append LREQ bits after the LSB of result to produce 36 bit result
+    result = ((result << 2) | (f.LREQ.bits16.LR & 0x3)) & EXTQF16_BITMASK;
+    return result;
+}
+
+
+
+uint32_t conv_unfloat_to_ieee(unfloat u, f_type ft, qfrnd_mode_enum_t qfrnd, double _units, double _epsilon, int max_exp, int sig_int) {
+    uint32_t res;
+    double sig = fabs(u.sig);
+    int minlg = -(max_exp-2) - u.exp;
+    int lgslg0, inc, exp;
+    double sig_scaled_in_ulp, exp_frac;
+    ulp_t ulp;
+
+    //Handle infinity NaN first
+    if(u.nan)
+    {
+      if(is_unfloat_neg(u)) return (ft == EXTQF32) ? ieee_neg_NaN_32 : ieee_neg_NaN_16;
+      else return (ft == EXTQF32) ? ieee_pos_NaN_32 : ieee_pos_NaN_16; 
+    }
+    if(u.inf) {
+      if(is_unfloat_neg(u)) return (ft == EXTQF32) ? ieee_neg_inf_32 : ieee_neg_inf_16;
+      else return (ft == EXTQF32) ? ieee_pos_inf_32 : ieee_pos_inf_16; 
+    }
+
+
+    //on qf inputs rtl flips for every input that has a deferred increment and assumes on defer neg
+    //so the parse fun assumes defer neg whenever the R bit is set
+    //works for symmetical rounding modes like round to even or zero but can't be used
+    //for unsymmetrical ones i.e round to pos inf/neg inf
+    if((qfrnd == RND_TOWARDS_POS_INF || qfrnd == RND_TOWARDS_NEG_INF) && u.sign)
+    {
+       u.sign = !u.sign;
+       u.sig = -u.sig;
+       u.inexact = -u.inexact;
+    }
+
+    if(sig < pow(2,minlg)) { 
+	lgslg0 = minlg;
+    } else {
+	lgslg0 = floor(log2f(sig));
+    }
+    exp = u.exp + lgslg0;
+    sig = u.sig * pow(2,-lgslg0);
+
+    //Check normalized value for overflow
+    //For overflow, 0 case always returns 0/-0
+    //Otherwise, check if exp is greater than max
+    //If exponent is right at max and the sig is a denorm, it's not overflow
+    if((sig != 0.0)
+	&& (exp > max_exp
+	|| ((exp == max_exp) && (sig >= 1.0L || sig < -1.0L))))
+    {
+   	if(is_unfloat_neg(u)) return (ft == EXTQF32) ? qfrnd_modes[qfrnd].ieee_neg_overflow.raw : qfrnd_modes[qfrnd].ieee_hf_neg_overflow.raw;
+	else return (ft == EXTQF32) ? qfrnd_modes[qfrnd].ieee_pos_overflow.raw : qfrnd_modes[qfrnd].ieee_hf_pos_overflow.raw;
+    }
+    
+    //using q bit information on going from normalised to denorm to avoid double round errors
+    //adding the inexact information to avoid double round errors
+    sig_scaled_in_ulp = sig * _units;
+    ulp = ulp_modf(sig_scaled_in_ulp, u.inexact);
+    inc = get_inc(qfrnd_modes[qfrnd], ulp);
+    ulp.integer += inc;
+
+    if(exp > (max_exp-1)) { 
+	exp = max_exp;
+	ulp.integer = pow(2,(sig_int+(ulp.integer==0))) - (ulp.integer==0);
+    }
+    sig = fabs(ulp.integer) * _epsilon; 
+    exp_frac = exp + fabs(sig) - 1;
+    res = (exp_frac + max_exp-1) * _units;
+
+    //Need to jam in sign bit
+    if(is_unfloat_neg(u)) {
+        if(ft == EXTQF32) {
+            res = (res | 0x80000000) & 0xFFFFFFFF;
+        } else {
+            res = (res | 0x8000) & 0xFFFF;
+        }
+    }
+    return res;
+}
+
+
+//FP conversion: extended QF32 to IEEE SF
+size4s_t conv_sf_extqf32 (uint32_t a, uint8_t a_ext, qfrnd_mode_enum_t qfrnd, int coproc_mode) {
+	unfloat u = parse_extqf32(a, a_ext, coproc_mode);
+	return conv_unfloat_to_ieee(u, EXTQF32, qfrnd, UNITS32, EPSILON32, E_MAX_SF, sf_MANTBITS);
+}
+
+size2s_t conv_hf_extqf32 (uint32_t a, uint8_t a_ext, qfrnd_mode_enum_t qfrnd, int coproc_mode) {
+	unfloat u = parse_extqf32(a, a_ext, coproc_mode);
+
+	//Convert unfloat to uint16_t IEEE half precision 
+	return conv_unfloat_to_ieee(u, EXTQF16, qfrnd, UNITS16, EPSILON16, E_MAX_HF, hf_MANTBITS);
+}
+
+size2s_t conv_hf_extqf16 (uint16_t a, uint8_t a_ext, qfrnd_mode_enum_t qfrnd, int coproc_mode) {
+	unfloat u = parse_extqf16(a, a_ext, coproc_mode);
+
+	//Convert unfloat to uint16_t IEEE half precision 
+	return conv_unfloat_to_ieee(u, EXTQF16, qfrnd, UNITS16, EPSILON16, E_MAX_HF, hf_MANTBITS);
+}
+
+void check_mpy_compliance(unfloat a, unfloat b, int size, uint32_t result, uint8_t rext) {
+/*
+  unfloat r;
+  if(size == 16) {
+	r = parse_extqf16(result,rext);
+  } else {
+	r = parse_extqf32(result,rext);
+
+  }
+  //If one input is negative, result should be negative                                      
+  assert((a.sign ^ b.sign) == (is_double_neg(r.sig) ^ r.sign));
+*/
+}
+
+void check_add_compliance(unfloat a, unfloat b, int size, uint32_t result, uint8_t rext) {
+/*
+  unfloat r;
+  if(size == 16) {
+	r = parse_extqf16(result,rext);
+  } else {
+	r = parse_extqf32(result,rext);
+  }
+*/
+//TODO: Add Asserts
+}
+
+void test_ieee_compliance (uint32_t a, uint8_t a_ext, qfrnd_mode_enum_t qfrnd, size4s_t in1, size4s_t in2) {
+/*
+  size4s_t converted_result = conv_sf_extqf32(a,a_ext,qfrnd);
+  
+  //Now do addition in IEEE
+  uint32_t operand_u = in1;
+  uint32_t operand_v = in2;
+  
+  //what if we do double instead of float here ? 
+  float *u_float = (float*)(&operand_u);
+  float *v_float = (float*)(&operand_v);
+  
+  float ieee_result_float = *u_float + *v_float;
+  
+  uint32_t *ieee_result_int = (uint32_t*)(&ieee_result_float);
+  
+  printf("[CHECK_IEEE_COMPLIANCE] EXTQF2IEEE_result:%x, IEEE_result:%x\n", converted_result, (*ieee_result_int));
+*/
+}
+
+//#############################################################################################
+//#############################################################################################
+//#############################################################################################
+//#############################################################################################
+//############################## Old Qfloat Implementation ####################################
+//###############################     NO MANS LAND        #####################################
+//#############################################################################################
+//#############################################################################################
+//#############################################################################################
+
+
 //Take signed int and generate sign, exp and ***signed sig
 unfloat parse_qf32(size4s_t in)
 {
@@ -98,7 +821,7 @@ unfloat parse_qf32(size4s_t in)
     out.exp = out.exp - BIAS_QF32;
 
     /*implied LSB=1*/
-    size4s_t signif;
+    size4s_t signif; 
     /*take signif and sign extend, add LSB=1*/
     signif= ((size8s_t)in >> 7) | 1;
 
@@ -111,89 +834,19 @@ unfloat parse_qf32(size4s_t in)
     return out;
 }
 
-unfloat parse_hf(size2s_t in)
-{
-    unfloat out;
 
-	out.sign = (in>>15) & 0x1;
-    out.exp = (size1s_t)( (0x00 | (in>>10)) & 0x1F);
-
-    size2u_t sig;
-    //take signif and sign extend
-    sig = (size2u_t)(in & 0x3FF);
-
-    /*implied MSB=1*/
-    if(out.exp>0)
-        sig = (1<<10) | sig;
-
-    out.exp = out.exp - BIAS_HF;
-    if(out.exp<E_MIN_HF)
-        out.exp = E_MIN_HF;
-
-    //if(in == 0)
-    //    out.exp = E_MIN_QF16;
-
-    out.sig = (double)sig * epsilon_hf;
-
-    //if(out.sign)
-    //    out.sig = (-1.0)*out.sig;
-
-#ifdef DEBUG_MMVEC_QF
-    printf("[ARCH_HF_parse] in=%x, sign=%d, exp=%d, sig=%10.20f\n", in,out.sign,out.exp,out.sig);
-    printf("[ARCH_HF_parse]exp_d=%d, sig_d=%10.20f\n", ilogb(out.sig),ldexp(out.sig, -ilogb(out.sig)));
-#endif
-    return out;
-}
-//Take the magnitude and generate ******positive sig
-unfloat parse_sf(size4s_t in)
-{
-    unfloat out;
-
-	out.sign = (in>>31) & 0x1;
-    out.exp = (size2s_t)( (0x0000 | (in>>23)) & 0xFF);
-
-    size4u_t sig;
-    //take signif and sign extend
-    sig = (size4u_t)(in & 0x7FFFFF);
-
-    /*implied MSB=1*/
-    if(out.exp>0)
-        sig = (1<<23) | sig;
-
-    out.exp = out.exp - BIAS_SF;
-
-    if(out.exp<E_MIN_SF)
-        out.exp = E_MIN_SF;
-
-    //if(in == 0)
-    //    out.exp = E_MIN_QF32;
-
-    out.sig = (double)sig * epsilon;
-
-#ifdef DEBUG_MMVEC_QF
-    printf("[ARCH_SF_parse] in=%x, sign=%d, exp=%d, sig=%x(%10.30f)\n", in,out.sign,out.exp,sig,out.sig);
-    printf("[ARCH_SF_parse]exp_d=%d, sig_d=%10.20f\n", ilogb(out.sig),ldexp(out.sig, -ilogb(out.sig)));
-#endif
-    return out;
-}
-
-
-size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft);
+//size4u_t rnd_sat_qf_sig(int sign, int* exp_in, double sig, double sig_low, f_type ft)
 size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
 {
     double scale;
     double sig_s;
     double sig_f=0.0;
-    double R1, R2, R3, R_low;
+    double R1, R2, R3;
     int exp_ovf=0;
     int exp_adj=0;
     int exp_undf=0;
     int exp = *exp_in;
     int sign = (sig>=0.0)? 0:1;
-
-#ifndef DEBUG_MMVEC_QF
-    UNUSED(R_low);
-#endif
 
     int prod_ovf=0;
     if(fabs(sig)>=2.0L && sig != -2.0L)
@@ -248,12 +901,6 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
 
     //Get remainder from the scaled significand
     R1 = sig_s*_units;
-    if(sig_low>0.0)
-      R_low = 0.25;
-    else if(sig_low<0.0)
-      R_low = -0.25;
-    else
-      R_low = 0;
 
     //R2 = floor((R1+R_low)/4.0)*4.0;
     //R3 = (R1+R_low) - R2;
@@ -271,7 +918,7 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
     }
     else if(exp == E_MAX)//exp=E_MAX
     {
-        //if(R3-2.0)+sig_low<=0.0
+        //if(R3-2.0)+sig_low<=0.0 
         if((R3==0.0) && (sig_low<0.0))
         {
             sig_f = sig_s + (3.0-R3-4.0)*_epsilon;
@@ -352,13 +999,13 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
     int32_t sig_32_out=0;
 
     int exp_df;
-
+    
     exp_df = (sig_64_org >> 52) & 0x7FF;
     exp_df = exp_df - BIAS_DF;
 
     if(exp_ovf)
     {
-        exp=E_MAX+BIAS;
+        exp=E_MAX+BIAS; 
         if(ft==QF32 || ft==SF)
             sig_32 = (sign-1) & 0x7FFFFF;
         else if(ft==QF16 || ft==HF)
@@ -366,7 +1013,7 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
     }
     else if(exp_undf)
     {
-        exp=E_MIN+BIAS;
+        exp=E_MIN+BIAS; 
         if(ft==QF32 || ft==SF)
             sig_32 = ((-1)*sign) & 0x7FFFFF;
         else if(ft==QF16 || ft==HF)
@@ -406,9 +1053,9 @@ size4s_t rnd_sat_qf_sig(int* exp_in, double sig, double sig_low, f_type ft)
             exp = 0;
             //printf("Squash to zero!\n");
         }
-
+        
     }
-
+ 
 
 #ifdef DEBUG_MMVEC_QF
     printf("[ARCH_QF_rnd_sat]sign=%d exp_in=%d sig=%10.30f sig_low=%10.30f\n",sign, *exp_in, sig, sig_low);
@@ -442,7 +1089,288 @@ size4s_t rnd_sat_qf32(int exp, double sig, double sig_low)
 }
 
 
-size4u_t get_ieee_sig(int *exp, double sig, f_type ft);
+//Take signed sig, produce normalized ieee sf output
+size4u_t rnd_sat_ieee_sig(int* exp_in, double sig, double sig_low, f_type ft)
+{
+    int E_MIN=E_MIN_SF;
+    int E_MAX=E_MAX_SF;
+    int BIAS=BIAS_SF;
+    double _epsilon=epsilon;
+    double _units=units;
+    if(ft==QF32)
+    {
+        E_MIN = E_MIN_QF32;
+        E_MAX = E_MAX_QF32;
+        BIAS = BIAS_QF32;
+        _epsilon = epsilon;
+        _units= units;
+    }
+    else if(ft==QF16)
+    {
+        E_MIN = E_MIN_QF16;
+        E_MAX = E_MAX_QF16;
+        BIAS = BIAS_QF16;
+        _epsilon = epsilon_hf;
+        _units= units_hf;
+    }
+    else if(ft==SF)
+    {
+        E_MIN = E_MIN_SF;
+        E_MAX = E_MAX_SF;
+        BIAS = BIAS_SF;
+        _epsilon = epsilon;
+        _units= units;
+    }
+    else if(ft==HF)
+    {
+        E_MIN = E_MIN_HF;
+        E_MAX = E_MAX_HF;
+        BIAS = BIAS_HF;
+        _epsilon = epsilon_hf;
+        _units= units_hf;
+    }
+
+    //Rounding to the nearest even
+    //Check the last two bits from the 53bit significand of double precision
+    int exp_ovf=0;
+    int exp_adj=0;
+    int exp_undf=0;
+    double scale;
+    double sig_s;
+    double sig_low_s;
+    int exp = *exp_in;
+
+    int prod_ovf=0;
+    if(fabs(sig)>=2.0L)
+        prod_ovf = 1;
+
+    //Set scale factor
+    if((exp == (E_MIN-1)) || (prod_ovf && (exp<E_MAX)))
+        scale = 2.0;
+    else
+        scale =1.0;
+
+    //Scale the significand
+    sig_s = sig/scale;
+    sig_low_s = sig_low/scale;
+
+    double R1, R2, R3, R_low;
+    //sig = [0.0, 4.0)
+    double sig_f = sig_s;
+    //Get remainder from the scaled significand
+    R1 = sig_s*_units;
+    R_low = sig_low_s*_units;
+    R2 = floor((R1+R_low)/2.0)*2.0;
+    R3 = R1 - R2;
+
+    //Check for exp overflow/underflow
+    if(exp>=(E_MAX+1) || (prod_ovf && exp==E_MAX))
+    {
+        exp_ovf=1;
+    }
+    else if(exp<=(E_MIN-2))
+    {
+        exp_undf=1;
+    }
+    else if(exp == E_MAX)//exp=E_MAX_QF32
+    {
+        if(R3<1.0)
+            sig_f = sig_s -R3*_epsilon;
+        else
+            sig_f = sig_s + (1.0-R3)*_epsilon;
+    }
+    else if(!prod_ovf && exp == (E_MIN-1))
+    {
+        exp_adj = 1;
+        if(R3<1.0)
+            sig_f = sig_s -R3*_epsilon;
+        else
+            sig_f = sig_s + (1.0-R3)*_epsilon;
+    }
+    else if(prod_ovf && (exp < E_MAX))
+    {
+        exp_adj = 1;
+        if(R3<1.0)
+            sig_f = sig_s -R3*_epsilon;
+        else
+            sig_f = sig_s + (1.0-R3)*_epsilon;
+    }
+    else// if(!prod_ovf)
+    {
+        if(R3<1.0)
+            sig_f = sig_s -R3*_epsilon;
+        else
+            sig_f = sig_s + (1.0-R3)*_epsilon;
+    }
+
+    //Extract bits from double precision significand
+    uint64_t sig_64_org, sig_64=0;
+    sig_64_org = *(uint64_t *)&sig_f;
+    uint32_t sig_32;
+
+    int exp_d;
+    int exp_ab;
+    
+    exp_d = (sig_64_org >> 52) & 0x7FF;
+    exp_d = exp_d - BIAS_DF;
+    if(exp_ovf)
+    {
+        exp_ab=E_MAX+BIAS; 
+        if(ft==SF)
+            sig_32 = 0x7FFFFF;
+        else
+            sig_32 = 0x3FF;
+    }
+    else if(exp_undf)
+    {
+        exp_ab=E_MIN+BIAS; 
+        sig_32 = 0;
+    }
+    else
+    {
+        exp_ab = exp+BIAS+exp_adj;
+        sig_64 = sig_64_org & 0xFFFFFFFFFFFFF;
+        sig_64 = sig_64<<11;
+        sig_64 = (exp_d>=0)? (sig_64 << exp_d):(sig_64>>abs(exp_d));
+        if(ft==SF)
+        {
+            sig_64 = sig_64 >> 40;
+            sig_32 = sig_64 & 0x7FFFFF;
+        }
+        else
+        {
+            sig_64 = sig_64 >> 50;
+            sig_32 = sig_64 & 0x3FF;
+        }
+    }
+
+#ifdef DEBUG_MMVEC_QF
+    printf("[SF_rnd]prod_ovf=%d exp_adj=%d exp_ovf=%d exp_undf=%d\n",prod_ovf,exp_adj, exp_ovf, exp_undf);
+    printf("[SF_rnd]R1=%10.30f R_low=%10.30f R2=%10.30f R3=%10.30f\n",R1,R_low,R2,R3);
+    printf("[SF_rnd]exp=%d, exp_ab=%d, sig=%10.20f, sig_s=%10.20f, sig_f=%10.20f\n",exp,exp_ab, sig, sig_s, sig_f);
+    printf("[SF_rnd]exp_d=%d sig_64_org=%lx sig_64=%lx sig_32=%x\n",exp_d, sig_64_org, sig_64, sig_32);
+
+    size4s_t signif; 
+    int exp_f;
+    if(ft==SF)
+    {
+        signif = 0x800000 | sig_32;
+        exp_f = exp-BIAS-23;
+    }
+    else
+    {
+        signif = 0x400 | sig_32;
+        exp_f = exp-BIAS-10;
+    }
+
+    int sign = (sig>=0.0)? 0:1;
+    double param = (0-sign)*(double)signif;
+    double final = ldexp(param, exp-BIAS);
+    printf("[SF_rnd_sat] param:%lf, exp_f:%d, ldexp:%10.20f \n",param, exp_f, final);
+#endif
+
+    *exp_in = exp_ab;
+    return sig_32;
+}
+
+
+size4u_t get_ieee_sig_old(int *exp, double sig, f_type ft)
+{
+    //Extract bits from double precision significand
+    uint64_t sig_64_org=0, sig_52=0, sig_53=0;
+    double value = 0.0;
+    int exp_d=0, exp_org=*exp;
+    int E_MIN;
+    E_MIN = (ft==SF)?  E_MIN_SF: E_MIN_HF;
+    uint32_t sig_32=0;
+    size4s_t signif=0; 
+    //int sign = (sig>=0.0)? 0: 1;
+   
+    value = ldexp(sig, exp_org);
+    sig_64_org = *(uint64_t *)&value;
+    exp_d = (sig_64_org >> 52) & 0x7FF;
+    exp_d = exp_d - BIAS_DF;
+    sig_52 = (sig_64_org & 0xFFFFFFFFFFFFF);
+    sig_53 = sig_52     | 0x10000000000000;
+
+    //Check if exp is one less than the MIN
+    //exp_d + BIAS = 0; subnormal
+    //shifting right the excess amount of bits from E_MIN
+    int shift = E_MIN - exp_d;
+
+    int lsb =0;
+    int rem =0;
+    int sticky =0;
+
+
+    if(exp_d <= (E_MIN-1))
+    {
+        sig_53 = sig_53 >> shift;
+    }
+
+    if(shift >=53)
+        sig_53=0;
+
+    if(ft==SF)
+    {
+        signif = sig_53 >> 29;
+        sig_32 = signif & 0x7FFFFF;
+
+        lsb = signif & 1;
+        rem = (sig_53 >>28) & 1;
+        sticky = (sig_53 & 0x7FFFFFF)? 1:0;
+
+        //if(fabs(value) >= SF_MAX)
+        //{
+        //    sig_32 = (1-sign)*0x7FFFFF;
+        //}
+        if((rem==1 && sticky==1) || (lsb==1 && rem==1))
+        {
+            if(sig_32 == 0x7FFFFF)
+            {
+                sig_32 = 0;
+                exp_d = exp_d +1;
+            }
+            else
+                sig_32 = sig_32 +1;
+        }
+    }
+    else
+    {
+        signif = sig_53 >> 42;
+        sig_32 = signif & 0x3FF;
+
+        lsb = signif & 1;
+        rem = (sig_53 >> 41) & 1;
+        sticky = (sig_53 & 0xFFFFFFFFFF)? 1:0;
+
+        //if(fabs(value) >= HF_MAX)
+        //{
+        //    sig_32 = (1-sign)*0x3FF;
+        //}
+        if((rem==1 && sticky==1) || (lsb==1 && rem==1))
+        {
+            if(sig_32 == 0x3FF)
+            {
+                sig_32 = 0;
+                exp_d = exp_d +1;
+            }
+            else
+                sig_32 = sig_32 +1;
+        }
+
+    }
+
+    if(sig ==0.0 && exp_org == (E_MIN-1))
+    {
+        sig_64_org = 0;
+        exp_d = 0;
+        sig_32=0;
+    }
+    *exp = exp_d;
+
+    return sig_32;
+}
 size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
 {
     //Extract bits from double precision significand
@@ -451,12 +1379,10 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
     int exp_d=0, exp_org=*exp;
     int E_MIN;
     E_MIN = (ft==SF)?  E_MIN_SF: E_MIN_HF;
-    double _epsilon;
-    _epsilon = (ft==SF)?  epsilon: epsilon_hf;
     uint32_t sig_32=0;
-    size4s_t signif=0;
+    size4s_t signif=0; 
     //int sign = (sig>=0.0)? 0:1;
-
+   
     value = ldexp(sig, exp_org);
 
     sig_64_org = *(uint64_t *)&value;
@@ -466,20 +1392,9 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
     sig_53 = sig_52     | 0x10000000000000;
 
     //Check if exp is one less than the MIN
+    //exp_d + BIAS = 0; subnormal
     //shifting right the excess amount of bits from E_MIN
     int shift = E_MIN - exp_d;
-
-    int lsb =0;
-    int rem =0;
-    int sticky =0;
-    int sig_f =0;
-#ifndef DEBUG_MMVEC_QF
-    UNUSED(lsb);
-    UNUSED(rem);
-    UNUSED(sticky);
-    UNUSED(sig_f);
-    UNUSED(_epsilon);
-#endif
 
     if(exp_d <= (E_MIN-1))
     {
@@ -495,9 +1410,6 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
         signif = sig_53 >> 29;
         sig_32 = signif & 0x7FFFFF;
 
-        lsb = signif & 1;
-        rem = (sig_53 >>28) & 1;
-        sticky = (sig_53 & 0xFFFFFFF)? 1:0;
 
         R1 = sig_53/pow(2,29);
         R2 = floor(R1/2.0)*2;
@@ -518,22 +1430,17 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
             else
                 sig_32 = sig_32 +1;
         }
-        sig_f = 0x800000 | (sig_32 & 0x7FFFFF);
     }
     else
     {
         signif = sig_53 >> 42;
         sig_32 = signif & 0x3FF;
 
-        lsb = signif & 1;
-        rem = (sig_53 >> 41) & 1;
-        sticky = (sig_53 & 0x1FFFFFFFFFF)? 1:0;
 
         R1 = sig_53/pow(2,42);
         R2 = floor(R1/2.0)*2;
         R3 = R1 - R2;
 
-        //if((rem==1 && sticky==1) || (lsb==1 && rem==1))
         if(fabs(value) >= HF_MAX)
         {
             //sig_32 = (1-sign)*0x3FF;
@@ -549,7 +1456,6 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
             else
                 sig_32 = sig_32 +1;
         }
-        sig_f = 0x400 | (sig_32 & 0x3FF);
 
     }
 
@@ -558,34 +1464,12 @@ size4u_t get_ieee_sig(int *exp, double sig, f_type ft)
         sig_64_org = 0;
         exp_d = 0;
         sig_32=0;
-        sig_f =0;
     }
     *exp = exp_d;
-
-
-
-#ifdef DEBUG_MMVEC_QF
-    int sign = (sig>=0.0)? 0: 1;
-    double param = (double)sig_f*_epsilon;
-    if(sign) param = (-1.0)*param;
-    int exp_f = (exp_d<=E_MIN-1)? E_MIN: exp_d;
-    double final = ldexp(param, exp_f);
-    int exp_1 = (value != 0.0)? ilogb(value): 0;
-    int exp_2 = (exp_1 > E_MIN)? exp_1: E_MIN;
-    double sig_1 = ldexp(value, exp_1-exp_2);
-
-    printf("[IEEE_sig]exp_1=%d, exp_2=%d, sig_1=%10.20f\n",exp_1,exp_2,sig_1);
-    printf("[IEEE_sig]exp_org=%d, sig=%10.20f, value=%10.20f, shift=%d\n",exp_org, sig, value, shift);
-    printf("[IEEE_sig]sign=%d exp_d=%d sig_64_org=%lx sig_52=%lx sig_53=%lx sig_32=%x signif=%x sig_f=%x\n",sign, exp_d, sig_64_org, sig_52, sig_53, sig_32, signif, sig_f);
-    printf("[IEEE_sig]lsb=%d, rem=%d, sticky=%d\n",lsb, rem, sticky);
-    printf("[IEEE_sig] param:%10.20f, exp_d:%d, exp_f:%d, ldexp:%10.20f \n",param, exp_d, exp_f, final);
-    printf("[IEEE_sig]R1=%lf, R2=%lf, R3=%lf\n",R1, R2, R3);
-#endif
 
     return sig_32;
 }
 
-size2s_t rnd_sat_hf_rint(int exp_in, double sig_in);
 size2s_t rnd_sat_hf_rint(int exp_in, double sig_in)
 {
     // normalize and decompose again limiting to EMIN of target
@@ -630,36 +1514,31 @@ size2s_t rnd_sat_hf_rint(int exp_in, double sig_in)
 size2s_t rnd_sat_hf(int exp, double sig)
 {
 
+    hf_t hf = {.raw = 0};
     int sign = (sig>=0.0)? 0:1;
     //size4u_t sig_32=0;//rnd_sat_ieee_sig(&exp, sig, sig_low, SF);
     size4u_t sig_32 = get_ieee_sig(&exp, sig, HF);
 
     //exp is unbiased
-    size2s_t result;
-    if(exp==(E_MIN_HF-1) && sig==0.0)
-    {
-        result = 0;
-    }
-    else if(exp > E_MAX_HF)
-    {
-        result = (sign<<15) | (0x1F << 10) | 0x3FF;
-    }
-    //else if((exp < E_MIN_HF-11) ||((exp == E_MIN_HF-11) && (sig_32 ==0)))
-    //{
-    //    result = (sign<<15);
-    //}
-    else
-    {
+    if(exp==(E_MIN_HF-1) && sig==0.0) {
+        hf.raw = 0;
+    } else if(exp > E_MAX_HF) {
+	hf.x.sign = sign;
+	hf.x.exp = 0x1F;
+	hf.x.mant = 0x3FF;
+    } 
+    else {
         exp = exp + BIAS_HF;
         if(exp < 0)
             exp = 0;
         else if(exp > 31)
             exp = 31;
-        result = (sign<<15) | ((exp & 0x1F) << 10) | sig_32;
+	hf.x.sign = sign;
+	hf.x.exp = exp & 0x1F;
+	hf.x.mant = sig_32 & 0x3FF;
     }
 
-
-    return result;
+    return hf.raw;
 }
 
 
@@ -707,8 +1586,8 @@ size2s_t rnd_sat_qf16(int exp_ab, double sig, double sig_low)
 }
 
 size4s_t mpy_qf32(size4s_t in_a, size4s_t in_b ) {
-	size2s_t exp;
-    double sig;
+	size2s_t exp; 
+    double sig; 
 
     unfloat a, b;
 
@@ -734,8 +1613,8 @@ size4s_t mpy_qf32(size4s_t in_a, size4s_t in_b ) {
 
 size4s_t mpy_qf32_sf(size4s_t in_a, size4s_t in_b ) {
     int sign;
-	size2s_t exp;
-    double sig;
+	size2s_t exp; 
+    double sig; 
     unfloat a, b;
 
     //Get double precision significands and unbiased exp
@@ -758,8 +1637,8 @@ size4s_t mpy_qf32_sf(size4s_t in_a, size4s_t in_b ) {
 }
 
 size4s_t mpy_qf32_mix_sf(size4s_t in_a, size4s_t in_b ) {
-	size2s_t exp;
-    double sig;
+	size2s_t exp; 
+    double sig; 
     unfloat a, b;
 
     //Get double precision significands and unbiased exp
@@ -783,7 +1662,7 @@ size4s_t mpy_qf32_mix_sf(size4s_t in_a, size4s_t in_b ) {
 //QF32 output out of two QF16 muls
 size8s_t mpy_qf32_qf16(size4s_t in_a, size4s_t in_b ) {
 
-    double sig_0, sig_1;
+    double sig_0, sig_1; 
     int exp_0, exp_1;
 
     unfloat u0,u1,v0,v1;
@@ -820,7 +1699,7 @@ size8s_t mpy_qf32_qf16(size4s_t in_a, size4s_t in_b ) {
 //QF32 output out of two HF muls
 size8s_t mpy_qf32_hf(size4s_t in_a, size4s_t in_b ) {
 
-    double sig_0, sig_1;
+    double sig_0, sig_1; 
     int exp_0, exp_1;
 
     unfloat u0,u1,v0,v1;
@@ -862,7 +1741,7 @@ size8s_t mpy_qf32_hf(size4s_t in_a, size4s_t in_b ) {
 //QF32 output out of mix of QF16 and HF muls
 size8s_t mpy_qf32_mix_hf(size4s_t in_a, size4s_t in_b ) {
 
-    double sig_0, sig_1;
+    double sig_0, sig_1; 
     int exp_0, exp_1;
 
     unfloat u0,u1,v0,v1;
@@ -906,8 +1785,8 @@ size8s_t mpy_qf32_mix_hf(size4s_t in_a, size4s_t in_b ) {
 //ITERATOR_INSN_MPY_SLOT(16,vmpy_qf16,"Vd32.qf16=vmpy(Vu32.qf16,Vv32.qf16)",
 //"Vector multiply of qf16 format",
 size2s_t mpy_qf16(size2s_t in_a, size2s_t in_b ) {
-	size1s_t exp;
-    double sig;
+	size1s_t exp; 
+    double sig; 
 
     unfloat a, b;
 
@@ -931,8 +1810,8 @@ size2s_t mpy_qf16(size2s_t in_a, size2s_t in_b ) {
 
 size2s_t mpy_qf16_hf(size2s_t in_a, size2s_t in_b ) {
     int sign;
-	size2s_t exp;
-    double sig;
+	size2s_t exp; 
+    double sig; 
 
     unfloat a, b;
 
@@ -956,8 +1835,8 @@ size2s_t mpy_qf16_hf(size2s_t in_a, size2s_t in_b ) {
 }
 
 size2s_t mpy_qf16_mix_hf(size2s_t in_a, size2s_t in_b ) {
-	size2s_t exp;
-    double sig;
+	size2s_t exp; 
+    double sig; 
     unfloat a, b;
 
     //Get double precision significands and unbiased exp
@@ -979,7 +1858,7 @@ size2s_t mpy_qf16_mix_hf(size2s_t in_a, size2s_t in_b ) {
 }
 
 size4s_t add_qf32(size4s_t in_a, size4s_t in_b ) {
-	size2s_t exp_ab;
+	size2s_t exp_ab; 
 
     unfloat a, b;
 
@@ -1006,7 +1885,7 @@ size4s_t add_qf32(size4s_t in_a, size4s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     sig_ab = sig_a + sig_b;
-    double sig_low;
+    double sig_low; 
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)+sig_b) : ((sig_b-sig_ab)+sig_a);
 	//sig_low = (b.sign)? (-1.0*epsilon): epsilon;
 
@@ -1018,13 +1897,13 @@ size4s_t add_qf32(size4s_t in_a, size4s_t in_b ) {
     size4s_t result;
 
     result = rnd_sat_qf32(exp_ab, sig_ab, sig_low);
-
+    
     return result;
 }
 
 
 size4s_t add_sf(size4s_t in_a, size4s_t in_b ) {
-	size2s_t exp_ab;
+	size2s_t exp_ab; 
 
     unfloat a, b;
 
@@ -1048,7 +1927,7 @@ size4s_t add_sf(size4s_t in_a, size4s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     double sig_ab;
-    double sig_low;
+    double sig_low; 
     if((a.sign ^ b.sign) == 0)
     {
         sig_ab = sig_a + sig_b;
@@ -1077,12 +1956,12 @@ size4s_t add_sf(size4s_t in_a, size4s_t in_b ) {
     printf("[ARCH_add_sf] result:%x \n\n", result);
 #endif
 
-
+    
     return result;
 }
 
 size4s_t add_qf32_mix(size4s_t in_a, size4s_t in_b ) {
-	int exp_ab;
+	int exp_ab; 
 
     unfloat a, b;
 
@@ -1112,7 +1991,7 @@ size4s_t add_qf32_mix(size4s_t in_a, size4s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     sig_ab = sig_a + sig_b;
-    double sig_low;
+    double sig_low; 
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)+sig_b) : ((sig_b-sig_ab)+sig_a);
 	//sig_low = (b.sign)? (-1.0*epsilon): epsilon;
 
@@ -1124,12 +2003,12 @@ size4s_t add_qf32_mix(size4s_t in_a, size4s_t in_b ) {
     size4s_t result;
 
     result = rnd_sat_qf32(exp_ab, sig_ab, sig_low);
-
+    
     return result;
 }
 
 size4s_t sub_qf32(size4s_t in_a, size4s_t in_b ) {
-	size2s_t exp_ab;
+	size2s_t exp_ab; 
 
     unfloat a, b;
 
@@ -1156,9 +2035,9 @@ size4s_t sub_qf32(size4s_t in_a, size4s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     sig_ab = sig_a - sig_b;
-    double sig_low;
+    double sig_low; 
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)-sig_b) : (sig_a -(sig_b+sig_ab));
-	//sig_low = (b.sign)? (-1.0*epsilon): epsilon;
+
 
 #ifdef DEBUG_MMVEC_QF
     printf("[ARCH_sub_qf32] a.exp:%d, b.exp:%d, exp_ab:%d, ilogb(a.sig):%d, ilogb(b.sig):%d\n", a.exp,b.exp,exp_ab, ilogb(a.sig), ilogb(b.sig));
@@ -1169,12 +2048,12 @@ size4s_t sub_qf32(size4s_t in_a, size4s_t in_b ) {
     size4s_t result;
 
     result = rnd_sat_qf32(exp_ab, sig_ab, sig_low);
-
+    
     return result;
 }
 
 size4s_t sub_sf(size4s_t in_a, size4s_t in_b ) {
-	size2s_t exp_ab;
+	size2s_t exp_ab; 
     unfloat a, b;
 
     //Get double precision significands
@@ -1197,7 +2076,7 @@ size4s_t sub_sf(size4s_t in_a, size4s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     double sig_ab;
-    double sig_low;
+    double sig_low; 
     if((a.sign==0) && (b.sign==0))
     {
         sig_ab = sig_a - sig_b;
@@ -1225,12 +2104,12 @@ size4s_t sub_sf(size4s_t in_a, size4s_t in_b ) {
 
     if((a.sign==1) && (b.sign==0))
         result = negate32(result);
-
+    
     return result;
 }
 
 size4s_t sub_qf32_mix(size4s_t in_a, size4s_t in_b ) {
-	size2s_t exp_ab;
+	size2s_t exp_ab; 
 
     unfloat a, b;
 
@@ -1259,7 +2138,7 @@ size4s_t sub_qf32_mix(size4s_t in_a, size4s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     sig_ab = sig_a - sig_b;
-    double sig_low;
+    double sig_low; 
 	//sig_low = (a.exp>b.exp) ? ((sig_ab-sig_a)-sig_b) : ((sig_ab-sig_b)-sig_a);
 	//sig_low = (a.exp>b.exp) ? ((sig_ab-sig_a)+sig_b) : (sig_a-(sig_b+sig_ab));
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)-sig_b) : (sig_a -(sig_b+sig_ab));
@@ -1272,12 +2151,12 @@ size4s_t sub_qf32_mix(size4s_t in_a, size4s_t in_b ) {
     size4s_t result;
 
     result = rnd_sat_qf32(exp_ab, sig_ab, sig_low);
-
+    
     return result;
 }
 //add_qf16
 size2s_t add_qf16(size2s_t in_a, size2s_t in_b ) {
-	size1s_t exp_ab;
+	size1s_t exp_ab; 
     unfloat a, b;
 
     //Get double precision significands
@@ -1303,7 +2182,7 @@ size2s_t add_qf16(size2s_t in_a, size2s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     sig_ab = sig_a + sig_b;
-    double sig_low;
+    double sig_low; 
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)+sig_b) : ((sig_b-sig_ab)+sig_a);
 	//sig_low = (b.sign)? (-1.0*epsilon): epsilon;
 
@@ -1315,12 +2194,12 @@ size2s_t add_qf16(size2s_t in_a, size2s_t in_b ) {
     size2s_t result;
 
     result = rnd_sat_qf16(exp_ab, sig_ab, sig_low);
-
+    
     return result;
 }
 
 size2s_t add_hf(size2s_t in_a, size2s_t in_b ) {
-	size1s_t exp_ab;
+	size1s_t exp_ab; 
     unfloat a, b;
 
     //Get double precision significands
@@ -1343,7 +2222,7 @@ size2s_t add_hf(size2s_t in_a, size2s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     double sig_ab;
-    double sig_low;
+    double sig_low; 
     if((a.sign ^ b.sign) == 0)
     {
         sig_ab = sig_a + sig_b;
@@ -1372,12 +2251,12 @@ size2s_t add_hf(size2s_t in_a, size2s_t in_b ) {
     printf("[ARCH_add_sf] result:%x \n\n", result);
 #endif
 
-
+    
     return result;
 }
 
 size2s_t add_qf16_mix(size2s_t in_a, size2s_t in_b ) {
-	size1s_t exp_ab;
+	size1s_t exp_ab; 
     unfloat a, b;
 
     //Get double precision significands
@@ -1405,7 +2284,7 @@ size2s_t add_qf16_mix(size2s_t in_a, size2s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     sig_ab = sig_a + sig_b;
-    double sig_low;
+    double sig_low; 
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)+sig_b) : ((sig_b-sig_ab)+sig_a);
 	//sig_low = (b.sign)? (-1.0*epsilon): epsilon;
 
@@ -1417,12 +2296,12 @@ size2s_t add_qf16_mix(size2s_t in_a, size2s_t in_b ) {
     size2s_t result;
 
     result = rnd_sat_qf16(exp_ab, sig_ab, sig_low);
-
+    
     return result;
 }
 
 size2s_t sub_qf16(size2s_t in_a, size2s_t in_b ) {
-	size1s_t exp_ab;
+	size1s_t exp_ab; 
 
     unfloat a, b;
 
@@ -1449,10 +2328,11 @@ size2s_t sub_qf16(size2s_t in_a, size2s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     sig_ab = sig_a - sig_b;
-    double sig_low;
+    double sig_low; 
 	//sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)-sig_b) : (sig_a -(sig_b+sig_ab));
 	//sig_low = (a.exp>b.exp) ? ((sig_ab-sig_a)+sig_b) : (sig_a-(sig_b+sig_ab));
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)-sig_b) : (sig_a -(sig_b+sig_ab));
+
 
 #ifdef DEBUG_MMVEC_QF
     printf("[ARCH_sub_qf16] a.exp:%d, b.exp:%d, exp_ab:%d, ilogb(a.sig):%d, ilogb(b.sig):%d\n", a.exp,b.exp,exp_ab, ilogb(a.sig), ilogb(b.sig));
@@ -1463,13 +2343,13 @@ size2s_t sub_qf16(size2s_t in_a, size2s_t in_b ) {
     size2s_t result;
 
     result = rnd_sat_qf16(exp_ab, sig_ab, sig_low);
-
+    
     return result;
 }
 
 
 size2s_t sub_hf(size2s_t in_a, size2s_t in_b ) {
-	size1s_t exp_ab;
+	size1s_t exp_ab; 
 
     unfloat a, b;
 
@@ -1493,7 +2373,7 @@ size2s_t sub_hf(size2s_t in_a, size2s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     double sig_ab;
-    double sig_low;
+    double sig_low; 
     if((a.sign==0) && (b.sign==0))
     {
         sig_ab = sig_a - sig_b;
@@ -1525,7 +2405,7 @@ size2s_t sub_hf(size2s_t in_a, size2s_t in_b ) {
 }
 
 size2s_t sub_qf16_mix(size2s_t in_a, size2s_t in_b ) {
-	size1s_t exp_ab;
+	size1s_t exp_ab; 
 
     unfloat a, b;
 
@@ -1554,7 +2434,7 @@ size2s_t sub_qf16_mix(size2s_t in_a, size2s_t in_b ) {
     sig_b = ldexp(b.sig, b.exp-exp_ab);
 
     sig_ab = sig_a - sig_b;
-    double sig_low;
+    double sig_low; 
 	//sig_low = (a.exp>b.exp) ? ((sig_ab-sig_a)-sig_b) : ((sig_ab-sig_b)-sig_a);
 	//sig_low = (a.exp>b.exp) ? ((sig_ab-sig_a)+sig_b) : (sig_a-(sig_b+sig_ab));
 	sig_low = (a.exp>b.exp) ? ((sig_a-sig_ab)-sig_b) : (sig_a -(sig_b+sig_ab));
@@ -1567,7 +2447,7 @@ size2s_t sub_qf16_mix(size2s_t in_a, size2s_t in_b ) {
     size2s_t result;
 
     result = rnd_sat_qf16(exp_ab, sig_ab, sig_low);
-
+    
     return result;
 }
 
@@ -1595,7 +2475,7 @@ size4s_t conv_sf_w(size4s_t a)
     size4s_t result;
     int exp=0;
     double sig=0.0;
-    if(a !=0)
+    if(a !=0) 
     {
         exp = ilogb(a);
         sig = (double)a/scalbn(1.0, exp);
@@ -1617,7 +2497,7 @@ size4s_t conv_sf_uw(size4u_t a)
     size4s_t result;
     int exp=0;
     double sig=0.0;
-    if(a !=0)
+    if(a !=0) 
     {
         exp = ilogb(a);
         sig = (double)(unsigned)a/scalbn(1.0, exp);
@@ -1655,7 +2535,7 @@ size2s_t conv_hf_h(size2s_t a)
     size2s_t result;
     int exp=0;
     double sig=0.0;
-    if(a !=0)
+    if(a !=0) 
     {
         exp = ilogb(a);
         sig = (double)a/scalbn(1.0, exp);
@@ -1677,7 +2557,7 @@ size2s_t conv_hf_uh(size2u_t a)
     size2s_t result;
     int exp=0;
     double sig=0.0;
-    if(a !=0)
+    if(a !=0) 
     {
         exp = ilogb(a);
         sig = (double)(unsigned)a/scalbn(1.0, exp);
@@ -1734,12 +2614,12 @@ size4s_t conv_hf_w(size8s_t a)
 
     int exp0=0, exp1=0;
     double sig0=0.0, sig1=0.0;
-    if(a0 !=0)
+    if(a0 !=0) 
     {
         exp0 = ilogb(a0);
         sig0 = (double)a0/scalbn(1.0, exp0);
     }
-    if(a1 !=0)
+    if(a1 !=0) 
     {
         exp1 = ilogb(a1);
         sig1 = (double)a1/scalbn(1.0, exp1);
@@ -1772,12 +2652,12 @@ size4s_t conv_hf_uw(size8u_t a)
 
     int exp0=0, exp1=0;
     double sig0=0.0, sig1=0.0;
-    if(a0 !=0)
+    if(a0 !=0) 
     {
         exp0 = ilogb(a0);
         sig0 = (double)(unsigned)a0/scalbn(1.0, exp0);
     }
-    if(a1 !=0)
+    if(a1 !=0) 
     {
         exp1 = ilogb(a1);
         sig1 = (double)(unsigned)a1/scalbn(1.0, exp1);
@@ -1806,9 +2686,9 @@ size4s_t rnd_sat_w(int exp, double sig)
 
     int sign = (sig>=0.0)? 0: 1;
 
-    double R1=0.0;
-    double R2=0.0;
-    double R3=0.0;
+    double R1=0.0; 
+    double R2=0.0; 
+    double R3=0.0; 
     if(exp > 30)
     {
         result = (sign)? W_MIN:W_MAX;
@@ -1844,9 +2724,9 @@ size4u_t rnd_sat_uw(int exp, double sig)
     size4u_t result=0;
     size4u_t W_MAX = 0xffffffff;
 
-    double R1=0.0;
-    double R2=0.0;
-    double R3=0.0;
+    double R1=0.0; 
+    double R2=0.0; 
+    double R3=0.0; 
     if(sig<0.0)
         result = 0;
     else if(exp > 31)
@@ -1881,9 +2761,9 @@ size2s_t rnd_sat_h(int exp, double sig)
 
     int sign = (sig>=0.0)? 0: 1;
 
-    double R1=0.0;
-    double R2=0.0;
-    double R3=0.0;
+    double R1=0.0; 
+    double R2=0.0; 
+    double R3=0.0; 
     if(exp > 14)
     {
         result = (sign)? W_MIN:W_MAX;
@@ -1926,9 +2806,9 @@ size2u_t rnd_sat_uh(int exp, double sig)
     size2u_t result=0;
     size2u_t W_MAX = 0xffff;
 
-    double R1=0.0;
-    double R2=0.0;
-    double R3=0.0;
+    double R1=0.0; 
+    double R2=0.0; 
+    double R3=0.0; 
     if(sig<0.0)
         result = 0;
     else if(exp > 15)
@@ -1963,9 +2843,9 @@ size1s_t rnd_sat_b(int exp, double sig)
 
     int sign = (sig>=0.0)? 0: 1;
 
-    double R1=0.0;
-    double R2=0.0;
-    double R3=0.0;
+    double R1=0.0; 
+    double R2=0.0; 
+    double R3=0.0; 
     if(exp > 6)
     {
         result = (sign)? W_MIN:W_MAX;
@@ -2008,9 +2888,9 @@ size1u_t rnd_sat_ub(int exp, double sig)
     size1u_t result=0;
     size1u_t W_MAX = 0xff;
 
-    double R1=0.0;
-    double R2=0.0;
-    double R3=0.0;
+    double R1=0.0; 
+    double R2=0.0; 
+    double R3=0.0; 
     if(sig<0.0)
         result = 0;
     else if(exp > 7)
@@ -2052,10 +2932,10 @@ size4s_t conv_w_qf32(size4s_t a)
 
 size4s_t conv_w_sf(size4s_t op1)
 {
-    sf_union input;
+    sf_t input;
     size4s_t W_MAX = 0x7fffffff;
     size4s_t W_MIN = 0x80000000;
-    input.i = op1;
+    input.raw = op1; 
     size4s_t  result;
 
     if(isNaNF32(op1) || isInfF32(op1) || (input.f >= (float)W_MAX) || (input.f <= (float)W_MIN))
@@ -2071,7 +2951,7 @@ size4s_t conv_w_sf(size4s_t op1)
         //convert and round to the zero
         result = (int)input.f;
     }
-
+    
 #ifdef DEBUG_MMVEC_QF
     printf("Debug : result =0x%08x\n",result);
 #endif
@@ -2080,11 +2960,11 @@ size4s_t conv_w_sf(size4s_t op1)
 
 size2s_t conv_h_hf(size2s_t op1)
 {
-    sf_union input;
+    sf_t input;
     size4s_t op1_ext = op1;
     size2s_t HW_MAX = 0x7fff;
     size2s_t HW_MIN = 0x8000;
-    input.i = ((op1_ext & 0x8000) << 16) + (((op1_ext & 0x7c00) + 0x1c000) << 13) + ((op1_ext & 0x03ff) << 13); //grabbing sign, exp, and significand and ocnverting to sf32 format
+    input.raw = ((op1_ext & 0x8000) << 16) + (((op1_ext & 0x7c00) + 0x1c000) << 13) + ((op1_ext & 0x03ff) << 13); //grabbing sign, exp, and significand and ocnverting to sf32 format
     size2s_t  result;
 
     if(isNaNF16(op1) || isInfF16(op1) || (input.f >= (float)HW_MAX) || (input.f <= (float)HW_MIN))
@@ -2100,7 +2980,7 @@ size2s_t conv_h_hf(size2s_t op1)
         //convert and round to the zero
         result = (short)input.f;
     }
-
+    
 #ifdef DEBUG_MMVEC_QF
     printf("Debug : result =0x%08x\n",result);
 #endif
@@ -2143,7 +3023,7 @@ size2u_t conv_uh_qf16(size2s_t a)
     return result;
 }
 
-//FP conversion double QF32 to double H
+//FP conversion double QF32 to double H 
 size4s_t conv_h_qf32(size8s_t a)
 {
     size2s_t result0, result1;
@@ -2199,7 +3079,7 @@ size4u_t conv_uh_qf32(size8s_t a)
     return result;
 }
 
-//FP conversion double QF16 to double B
+//FP conversion double QF16 to double B 
 size2s_t conv_b_qf16(size4s_t a)
 {
     size1s_t result0, result1;
@@ -2429,27 +3309,25 @@ size2s_t max_qf16(    size2s_t in_a, size2s_t in_b) { return cmpgt_qf16(    in_b
 
 
 
-size4s_t is_check_zero_sf(size4s_t in_a);
 size4s_t is_check_zero_sf(size4s_t in_a) {
-    return (in_a == 0) || ((in_a & 0xFFFFFFFF) == 0x80000000);
+    return (in_a == 0) || ((in_a & 0xFFFFFFFF) == 0x80000000); 
 }
-size2s_t is_check_zero_hf(size2s_t in_a);
 size2s_t is_check_zero_hf(size2s_t in_a) {
-    return (in_a == 0) || ((in_a & 0xFFFF) == 0x8000);
+    return (in_a == 0) || ((in_a & 0xFFFF) == 0x8000); 
 }
 
-size4s_t max_sf(      size4s_t in_a, size4s_t in_b) {
+size4s_t max_sf(      size4s_t in_a, size4s_t in_b) {    
     if (is_check_zero_sf(in_a) && is_check_zero_sf(in_b) ) {
         return (in_a == 0) ? in_a : in_b;       // Return in_a if it's positive 0, otherwise return the other one
-    }
-    return cmpgt_sf(      in_b, in_a) ? in_b : in_a;
-
+    }    
+    return cmpgt_sf(      in_b, in_a) ? in_b : in_a; 
+    
 }
-size2s_t max_hf(      size2s_t in_a, size2s_t in_b)
-{
+size2s_t max_hf(      size2s_t in_a, size2s_t in_b) 
+{ 
     if (is_check_zero_hf(in_a) && is_check_zero_hf(in_b) ) {
         return (in_a == 0) ? in_a : in_b;
-    }
+    } 
     return cmpgt_hf(      in_b, in_a) ? in_b : in_a;
 }
 
@@ -2460,17 +3338,17 @@ size2s_t max_hf(      size2s_t in_a, size2s_t in_b)
 size4s_t min_qf32(    size4s_t in_a, size4s_t in_b) { return cmpgt_qf32(    in_a, in_b) ? in_b : in_a; }
 size2s_t min_qf16(    size2s_t in_a, size2s_t in_b) { return cmpgt_qf16(    in_a, in_b) ? in_b : in_a; }
 
-size4s_t min_sf(      size4s_t in_a, size4s_t in_b) {
+size4s_t min_sf(      size4s_t in_a, size4s_t in_b) { 
     if (is_check_zero_sf(in_a) && is_check_zero_sf(in_b) ) {
         return (in_a == 0) ? in_b : in_a;
-    }
-    return cmpgt_sf(      in_a, in_b) ? in_b : in_a;
+    } 
+    return cmpgt_sf(      in_a, in_b) ? in_b : in_a; 
 }
-size2s_t min_hf(      size2s_t in_a, size2s_t in_b) {
+size2s_t min_hf(      size2s_t in_a, size2s_t in_b) { 
     if (is_check_zero_hf(in_a) && is_check_zero_hf(in_b) ) {
         return (in_a == 0) ? in_b : in_a;
-    }
-    return cmpgt_hf(      in_a, in_b) ? in_b : in_a;
+    } 
+    return cmpgt_hf(      in_a, in_b) ? in_b : in_a; 
 }
 //size2s_t min_qf16_hf( size2s_t in_a, size2s_t in_b) { return cmpgt_qf16_hf( in_a, in_b) ? in_b : in_a; }
 //size4s_t min_qf32_sf( size4s_t in_a, size4s_t in_b) { return cmpgt_qf32_sf( in_a, in_b) ? in_b : in_a; }
@@ -2561,3 +3439,27 @@ size2s_t min_qf16_hf(size2s_t in_a, size2s_t in_b)
 #endif
     return result;
 }
+
+
+//TODO: is log2 slow?
+double qf_ilogb(double sig, bool is_ieee) {
+	if(is_ieee) return floor(log2(fabs(sig)));
+	else if(is_double_neg(sig)) {
+		return ceil(log2(-sig)) - 1;
+	} else {
+		return floor(log2(sig));
+	}
+}
+
+int get_unfloat_exp(unfloat A, unfloat B, int sub, int e_min) {
+    int result;
+	if (A.exp > B.exp) {
+		result = A.exp + qf_ilogb(A.sig, A.is_ieee) - sub;
+		if (result < B.exp || A.sig == 0.0) result = B.exp;
+	}  else {
+		result = B.exp + qf_ilogb(B.sig, B.is_ieee) - sub;
+		if (result < A.exp || B.sig == 0.0) result = A.exp;
+	}
+	return result;
+}
+

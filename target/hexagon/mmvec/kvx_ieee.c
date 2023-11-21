@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,34 @@ uint32_t shiftRightJam32( uint32_t a, uint_fast16_t dist )
 
 uint_fast8_t countLeadingZeros16( uint16_t a )
 {
-    return clz16(a);
+    uint_fast8_t count;
+    const uint_least8_t countLeadingZeros8[256] = {
+        8, 7, 6, 6, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4,
+        3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    };
+
+    count = 8;
+    if ( 0x100 <= a ) {
+        count = 0;
+        a >>= 8;
+    }
+    count += countLeadingZeros8[a];
+    return count;
+
 }
 
 struct exp8_sig16 normSubnormalF16Sig( uint_fast16_t sig )
@@ -93,13 +120,15 @@ uint32_t fp_mult_sf_sf (uint32_t op1, uint32_t op2)
     float a,b,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("fp_mult_sf_sf");
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF32UI(op1) || isNaNF32UI(op2))
+    if(isNaNF32UI(op1) || isNaNF32UI(op2)) 
        return FP32_DEF_NAN;
 
     u_op1.ui = op1;
@@ -112,7 +141,9 @@ uint32_t fp_mult_sf_sf (uint32_t op1, uint32_t op2)
 
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -131,13 +162,15 @@ uint32_t fp_add_sf_sf (uint32_t op1, uint32_t op2)
     float a,b,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("fp_add_sf_sf");
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF32UI(op1) || isNaNF32UI(op2))
+    if(isNaNF32UI(op1) || isNaNF32UI(op2)) 
        return FP32_DEF_NAN;
 
     u_op1.ui = op1;
@@ -149,7 +182,9 @@ uint32_t fp_add_sf_sf (uint32_t op1, uint32_t op2)
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -168,12 +203,14 @@ uint32_t fp_sub_sf_sf (uint32_t op1, uint32_t op2)
     float a,b,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF32UI(op1) || isNaNF32UI(op2))
+    if(isNaNF32UI(op1) || isNaNF32UI(op2)) 
        return FP32_DEF_NAN;
 
     u_op1.ui = op1;
@@ -185,7 +222,9 @@ uint32_t fp_sub_sf_sf (uint32_t op1, uint32_t op2)
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -224,15 +263,15 @@ uint16_t f32_to_f16 ( uint32_t a)
     (frac & 0x1FF) != 0) : setting the sticky bit required for rounding
     *------------------------------------------------------------------------*/
     frac16 = frac>>9 | ((frac & 0x1FF) != 0);
-
+    
     //If input was a Zero
     if ( ! (exp | frac16) ) {
         return packToF16UI( sign, 0, 0 );
-    }
+    } 
 
     return roundPackToF16( sign, exp - 0x71, frac16 | 0x4000 );
-
-}
+    
+} 
 
 //--------------------------------------------------------------
 //Function to convert FP16 to FP32
@@ -287,12 +326,14 @@ uint16_t fp_mult_hf_hf (uint16_t op1, uint16_t op2)
     uint32_t result_f32;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2)) 
        return FP16_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -308,7 +349,9 @@ uint16_t fp_mult_hf_hf (uint16_t op1, uint16_t op2)
 
     result = f32_to_f16(result_f32);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -332,12 +375,14 @@ uint16_t fp_add_hf_hf (uint16_t op1, uint16_t op2)
     uint32_t result_f32;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2)) 
        return FP16_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -353,7 +398,9 @@ uint16_t fp_add_hf_hf (uint16_t op1, uint16_t op2)
 
     result = f32_to_f16(result_f32);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -377,12 +424,14 @@ uint16_t fp_sub_hf_hf (uint16_t op1, uint16_t op2)
     uint32_t result_f32;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2)) 
        return FP16_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -398,7 +447,9 @@ uint16_t fp_sub_hf_hf (uint16_t op1, uint16_t op2)
 
     result = f32_to_f16(result_f32);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -421,12 +472,14 @@ uint32_t fp_mult_sf_hf (uint16_t op1, uint16_t op2)
     float a,b,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2)) 
        return FP32_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -441,7 +494,9 @@ uint32_t fp_mult_sf_hf (uint16_t op1, uint16_t op2)
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -464,12 +519,14 @@ uint32_t fp_add_sf_hf (uint16_t op1, uint16_t op2)
     float a,b,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2)) 
        return FP32_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -484,7 +541,9 @@ uint32_t fp_add_sf_hf (uint16_t op1, uint16_t op2)
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -507,12 +566,14 @@ uint32_t fp_sub_sf_hf (uint16_t op1, uint16_t op2)
     float a,b,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2)) 
        return FP32_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -527,7 +588,9 @@ uint32_t fp_sub_sf_hf (uint16_t op1, uint16_t op2)
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -550,7 +613,9 @@ uint32_t fp_mult_sf_bf_acc (uint16_t op1, uint16_t op2, uint32_t acc)
     double a,b,facc,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%04x\n",op1);
     printf("Debug : op2 =0x%04x\n",op2);
     printf("Debug : acc =0x%08x\n",acc);
@@ -559,7 +624,7 @@ uint32_t fp_mult_sf_bf_acc (uint16_t op1, uint16_t op2, uint32_t acc)
     op1_f32 = ((uint32_t)op1) << 16;
     op2_f32 = ((uint32_t)op2) << 16;
 
-    if(isNaNF32UI(op1_f32) || isNaNF32UI(op2_f32) || isNaNF32UI(acc))
+    if(isNaNF32UI(op1_f32) || isNaNF32UI(op2_f32) || isNaNF32UI(acc)) 
        return FP32_DEF_NAN;
 
     u_op1.ui = op1_f32;
@@ -574,7 +639,9 @@ uint32_t fp_mult_sf_bf_acc (uint16_t op1, uint16_t op2, uint32_t acc)
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : facc = %f\n",facc);
@@ -626,8 +693,7 @@ uint16_t f16_to_uh( uint16_t op1)
        result = UHW_MAX;
        goto end;
     }
-    //converting a negative floating-point value to
-    //unsigned integer U(h|b) ----> (Vx4Rslt is 0)
+    //converting a negative floating-point value to unsigned integer U(h|b) ----> (Vx4Rslt is 0)
     if(signF16UI(op1))
     {
        result = 0x0;
@@ -641,8 +707,7 @@ uint16_t f16_to_uh( uint16_t op1)
     }
     //out of range FP to integer ------> Vx4Rslt is ±MAX_INT
 
-    //The default float-to-integer conversion in C does not
-    //round to the nearest integer, but instead truncates toward zero.
+    //The default float-to-integer conversion in C does not round to the nearest integer, but instead truncates toward zero.
     op1_f32 = f16_to_f32(op1);
     u_op1.ui = op1_f32;
     a = u_op1.f;
@@ -650,17 +715,21 @@ uint16_t f16_to_uh( uint16_t op1)
     //round to the nearest
     result = (uint16_t) (a + 0.5);
     //Ties to Even
-    if(frac == 0.5)
+    if(frac == 0.5) 
     {
        if((result % 2)) result--;
     }
+
     #ifdef DEBUG
+
     printf("Debug : a      = %f\n",a);
     printf("Debug : a frac = %f\n",frac);
     #endif
+ 
+ end:      
 
- end:
     #ifdef DEBUG
+
     printf("Debug : result =0x%x\n",result);
     #endif
     return result;
@@ -687,8 +756,7 @@ int16_t f16_to_h( uint16_t op1)
        goto end;
     }
 
-    //The default float-to-integer conversion in C does not round
-    //to the nearest integer, but instead truncates toward zero.
+    //The default float-to-integer conversion in C does not round to the nearest integer, but instead truncates toward zero.
     op1_f32 = f16_to_f32(op1);
     u_op1.ui = op1_f32;
     a = u_op1.f;
@@ -709,21 +777,25 @@ int16_t f16_to_h( uint16_t op1)
     //round to the nearest
     result = (a > 0) ? ((int16_t) (a + 0.5)) : ((int16_t) (a - 0.5));
     //Ties to Even
-    if(frac == 0.5)
+    if(frac == 0.5) 
     {
        if((result % 2))
-       {
+       { 
           if(a > 0) result--;
           if(a < 0) result++;
        }
     }
+
     #ifdef DEBUG
+
     printf("Debug : a      = %f\n",a);
     printf("Debug : a frac = %f\n",frac);
     #endif
+ 
+ end:      
 
- end:
     #ifdef DEBUG
+
     printf("Debug : result =0x%04x\n",result);
     #endif
     return result;
@@ -743,8 +815,7 @@ uint8_t f16_to_ub( uint16_t op1)
        result = UBYTE_MAX;
        goto end;
     }
-    //converting a negative floating-point value to
-    //unsigned integer U(h|b) ----> (Vx4Rslt is 0)
+    //converting a negative floating-point value to unsigned integer U(h|b) ----> (Vx4Rslt is 0)
     if(signF16UI(op1))
     {
        result = 0x0;
@@ -756,13 +827,12 @@ uint8_t f16_to_ub( uint16_t op1)
        result = UBYTE_MAX;
        goto end;
     }
-
-    //The default float-to-integer conversion in C does
-    //not round to the nearest integer, but instead truncates toward zero.
+    
+    //The default float-to-integer conversion in C does not round to the nearest integer, but instead truncates toward zero.
     op1_f32 = f16_to_f32(op1);
     u_op1.ui = op1_f32;
     a = u_op1.f;
-
+    
     //out of range FP to integer ------> Vx4Rslt is ±MAX_INT
     if( a  > (float)(UBYTE_MAX))
     {
@@ -774,21 +844,25 @@ uint8_t f16_to_ub( uint16_t op1)
     //round to the nearest
     result = (uint8_t) (a + 0.5);
     //Ties to Even
-    if(frac == 0.5)
+    if(frac == 0.5) 
     {
        if((result % 2))
-       {
+       { 
           if(a > 0) result--;
           if(a < 0) result++;
        }
     }
+
     #ifdef DEBUG
+
     printf("Debug : a      = %f\n",a);
     printf("Debug : a frac = %f\n",frac);
     #endif
+ 
+ end:      
 
- end:
     #ifdef DEBUG
+
     printf("Debug : result =0x%x\n",result);
     #endif
     return result;
@@ -815,8 +889,7 @@ int8_t f16_to_b( uint16_t op1)
        goto end;
     }
 
-    //The default float-to-integer conversion in C does not
-    //round to the nearest integer, but instead truncates toward zero.
+    //The default float-to-integer conversion in C does not round to the nearest integer, but instead truncates toward zero.
     op1_f32 = f16_to_f32(op1);
     u_op1.ui = op1_f32;
     a = u_op1.f;
@@ -837,21 +910,25 @@ int8_t f16_to_b( uint16_t op1)
     //round to the nearest
     result = (a > 0) ? ((int16_t) (a + 0.5)) : ((int16_t) (a - 0.5));
     //Ties to Even
-    if(frac == 0.5)
+    if(frac == 0.5) 
     {
        if((result % 2))
-       {
+       { 
           if(a > 0) result--;
           if(a < 0) result++;
        }
     }
+
     #ifdef DEBUG
+
     printf("Debug : a      = %f\n",a);
     printf("Debug : a frac = %f\n",frac);
     #endif
+ 
+ end:      
 
- end:
     #ifdef DEBUG
+
     printf("Debug : result =0x%04x\n",result);
     #endif
     return result;
@@ -865,7 +942,9 @@ uint16_t uh_to_f16(uint16_t op1)
     uint32_t rslt;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     #endif
 
@@ -874,7 +953,9 @@ uint16_t uh_to_f16(uint16_t op1)
     rslt = u_op1.ui;
     result = f32_to_f16(rslt);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : rslt = 0x%08x\n",rslt);
     printf("Debug : result =0x%04x\n",result);
@@ -891,7 +972,9 @@ uint16_t h_to_f16 (int16_t op1)
     uint32_t rslt;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     #endif
 
@@ -900,7 +983,9 @@ uint16_t h_to_f16 (int16_t op1)
     rslt = u_op1.ui;
     result = f32_to_f16(rslt);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : rslt = 0x%08x\n",rslt);
     printf("Debug : result =0x%04x\n",result);
@@ -917,7 +1002,9 @@ uint16_t ub_to_f16(uint8_t op1)
     uint32_t rslt;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     #endif
 
@@ -926,7 +1013,9 @@ uint16_t ub_to_f16(uint8_t op1)
     rslt = u_op1.ui;
     result = f32_to_f16(rslt);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : rslt = 0x%08x\n",rslt);
     printf("Debug : result =0x%04x\n",result);
@@ -943,7 +1032,9 @@ uint16_t b_to_f16 (int8_t op1)
     uint32_t rslt;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     #endif
 
@@ -952,7 +1043,9 @@ uint16_t b_to_f16 (int8_t op1)
     rslt = u_op1.ui;
     result = f32_to_f16(rslt);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : rslt = 0x%08x\n",rslt);
     printf("Debug : result =0x%04x\n",result);
@@ -984,16 +1077,17 @@ uint32_t fp_vdmpy (uint16_t op1_u,uint16_t op1_l,uint16_t op2_u,uint16_t op2_l)
     float f_op1_u, f_op1_l, f_op2_u, f_op2_l;
     double f_prod_l, f_prod_u, rslt;
     uint32_t result;
+  
 
     #ifdef DEBUG
+
     printf("Debug : op1_u =0x%04x\n",op1_u);
     printf("Debug : op1_l =0x%04x\n",op1_l);
     printf("Debug : op2_u =0x%04x\n",op2_u);
     printf("Debug : op2_l =0x%04x\n",op2_l);
     #endif
 
-    if(isNaNF16UI(op1_u) || isNaNF16UI(op1_l) || isNaNF16UI(op2_u) ||
-       isNaNF16UI(op2_l))
+    if(isNaNF16UI(op1_u) || isNaNF16UI(op1_l) || isNaNF16UI(op2_u) || isNaNF16UI(op2_l)) 
     {   result = FP32_DEF_NAN;
         goto end;
     }
@@ -1011,7 +1105,7 @@ uint32_t fp_vdmpy (uint16_t op1_u,uint16_t op1_l,uint16_t op2_u,uint16_t op2_l)
 
     u_op.ui = op2_l_f32;
     f_op2_l = u_op.f;
-
+  
     u_op.ui = op2_u_f32;
     f_op2_u = u_op.f;
 
@@ -1022,8 +1116,10 @@ uint32_t fp_vdmpy (uint16_t op1_u,uint16_t op1_l,uint16_t op2_u,uint16_t op2_l)
     u_rslt.f = rslt;
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
+     
 
     #ifdef DEBUG
+
     printf("Debug : f_op1_u = %f\n",f_op1_u);
     printf("Debug : f_op1_l = %f\n",f_op1_l);
     printf("Debug : f_op2_u = %f\n",f_op2_u);
@@ -1034,14 +1130,73 @@ uint32_t fp_vdmpy (uint16_t op1_u,uint16_t op1_l,uint16_t op2_u,uint16_t op2_l)
     #endif
 
 end:
+
     #ifdef DEBUG
+
     printf("Debug : result =0x%08x\n",result);
     #endif
     return result;
 }
 
-uint32_t fp_vdmpy_acc_dumb  (uint32_t acc,uint16_t op1_u,uint16_t op1_l,
-    uint16_t op2_u,uint16_t op2_l)
+//uint32_t fp_vdmpy_acc  (uint32_t acc,uint16_t op1_u,uint16_t op1_l,uint16_t op2_u,uint16_t op2_l)
+//{
+//    union ui32_f32 u_op;
+//    union ui32_f32 u_acc;
+//    union ui32_f32 u_rslt;
+//
+//    uint32_t op1_u_f32, op1_l_f32, op2_u_f32, op2_l_f32;
+//    float f_op1_u, f_op1_l, f_op2_u, f_op2_l, f_acc;
+//    double f_prod_l, f_prod_u, rslt;
+//    uint32_t result;
+//  
+//    printf("Debug : op1_u =0x%04x\n",op1_u);
+//    printf("Debug : op1_l =0x%04x\n",op1_l);
+//    printf("Debug : op2_u =0x%04x\n",op2_u);
+//    printf("Debug : op2_l =0x%04x\n",op2_l);
+//    printf("Debug : acc   =0x%08x\n",acc);
+//
+//    op1_u_f32 = f16_to_f32(op1_u);
+//    op1_l_f32 = f16_to_f32(op1_l);
+//    op2_u_f32 = f16_to_f32(op2_u);
+//    op2_l_f32 = f16_to_f32(op2_l);
+//
+//    u_op.ui = op1_u_f32;
+//    f_op1_u = u_op.f;
+//
+//    u_op.ui = op1_l_f32;
+//    f_op1_l = u_op.f;
+//
+//    u_op.ui = op2_l_f32;
+//    f_op2_l = u_op.f;
+//  
+//    u_op.ui = op2_u_f32;
+//    f_op2_u = u_op.f;
+//
+//    u_acc.ui = acc;
+//    f_acc   = u_acc.f;
+//
+//    f_prod_l =  f_op1_l * f_op2_l;
+//    f_prod_u =  f_op1_u * f_op2_u;
+//    rslt     =  f_acc + f_prod_u + f_prod_l;
+//
+//    u_rslt.f = rslt;
+//    result = u_rslt.ui;
+//     
+//    printf("Debug : f_op1_u = %f\n",f_op1_u);
+//    printf("Debug : f_op1_l = %f\n",f_op1_l);
+//    printf("Debug : f_op2_u = %f\n",f_op2_u);
+//    printf("Debug : f_op2_l = %f\n",f_op2_l);
+//    printf("Debug : f_acc   = %f\n",f_acc);
+//    printf("Debug : f_prod_l = %f\n",f_prod_l);
+//    printf("Debug : f_prod_u = %f\n",f_prod_u);
+//    printf("Debug : rslt = %f\n",rslt);
+//    printf("Debug : result =0x%08x\n",result);
+//
+//    return result;
+//}
+//
+
+uint32_t fp_vdmpy_acc_dumb  (uint32_t acc,uint16_t op1_u,uint16_t op1_l,uint16_t op2_u,uint16_t op2_l)
 {
     union ui32_f32 u_op;
     union ui32_f32 u_acc;
@@ -1051,8 +1206,10 @@ uint32_t fp_vdmpy_acc_dumb  (uint32_t acc,uint16_t op1_u,uint16_t op1_l,
     float f_op1_u, f_op1_l, f_op2_u, f_op2_l, f_acc;
     long double f_prod_l, f_prod_u, rslt;
     uint32_t result;
+  
 
     #ifdef DEBUG
+
     printf("Debug : op1_u =0x%04x\n",op1_u);
     printf("Debug : op1_l =0x%04x\n",op1_l);
     printf("Debug : op2_u =0x%04x\n",op2_u);
@@ -1073,7 +1230,7 @@ uint32_t fp_vdmpy_acc_dumb  (uint32_t acc,uint16_t op1_u,uint16_t op1_l,
 
     u_op.ui = op2_l_f32;
     f_op2_l = u_op.f;
-
+  
     u_op.ui = op2_u_f32;
     f_op2_u = u_op.f;
 
@@ -1087,8 +1244,10 @@ uint32_t fp_vdmpy_acc_dumb  (uint32_t acc,uint16_t op1_u,uint16_t op1_l,
     u_rslt.f = rslt;
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
+     
 
     #ifdef DEBUG
+
     printf("Debug : f_op1_u = %f\n",f_op1_u);
     printf("Debug : f_op1_l = %f\n",f_op1_l);
     printf("Debug : f_op2_u = %f\n",f_op2_u);
@@ -1116,12 +1275,14 @@ uint16_t fp_min_hf(uint16_t op1,uint16_t op2)
     uint32_t result_f32;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2)) 
        return FP16_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -1133,9 +1294,8 @@ uint16_t fp_min_hf(uint16_t op1,uint16_t op2)
     b = u_op2.f;
 
     rslt = (a>b) ? b : a;
-    // +0 is evaluated equal to -0 in C. Handeling that case separatly
-    if( (fabs(a) == 0.0f) && (fabs(b) == 0.0f) && (signF16UI(op1) !=
-        signF16UI(op2)) )
+    // +0 is evaluated equal to -0 in C. Handeling that case separatly 
+    if( (fabs(a) == 0.0f) && (fabs(b) == 0.0f) && (signF16UI(op1) != signF16UI(op2)) )
     {
        rslt = signF16UI(op1) ? a : b;
     }
@@ -1144,7 +1304,9 @@ uint16_t fp_min_hf(uint16_t op1,uint16_t op2)
 
     result = f32_to_f16(result_f32);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -1164,12 +1326,14 @@ uint32_t fp_min_sf(uint32_t op1,uint32_t op2)
     float a,b,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF32UI(op1) || isNaNF32UI(op2))
+    if(isNaNF32UI(op1) || isNaNF32UI(op2)) 
        return FP32_DEF_NAN;
 
     u_op1.ui = op1;
@@ -1177,16 +1341,17 @@ uint32_t fp_min_sf(uint32_t op1,uint32_t op2)
     a = u_op1.f;
     b = u_op2.f;
     rslt = (a>b) ? b : a;
-    // +0 is evaluated equal to -0 in C. Handeling that case separatly
-    if( (fabs(a) == 0.0f) && (fabs(b) == 0.0f) &&
-         (signF32UI(op1) != signF32UI(op2)) )
+    // +0 is evaluated equal to -0 in C. Handeling that case separatly 
+    if( (fabs(a) == 0.0f) && (fabs(b) == 0.0f) && (signF32UI(op1) != signF32UI(op2)) )
     {
        rslt = signF32UI(op1) ? a : b;
     }
     u_rslt.f = rslt;
     result = u_rslt.ui;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -1227,12 +1392,14 @@ uint16_t fp_max_hf(uint16_t op1,uint16_t op2)
     uint32_t result_f32;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2)) 
        return FP16_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -1244,9 +1411,8 @@ uint16_t fp_max_hf(uint16_t op1,uint16_t op2)
     b = u_op2.f;
 
     rslt = (a>b) ? a : b;
-    // +0 is evaluated equal to -0 in C. Handeling that case separatly
-    if( (fabs(a) == 0.0f) &&
-        (fabs(b) == 0.0f) && (signF16UI(op1) != signF16UI(op2)) )
+    // +0 is evaluated equal to -0 in C. Handeling that case separatly 
+    if( (fabs(a) == 0.0f) && (fabs(b) == 0.0f) && (signF16UI(op1) != signF16UI(op2)) )
     {
        rslt = signF16UI(op1) ? b : a;
     }
@@ -1255,7 +1421,9 @@ uint16_t fp_max_hf(uint16_t op1,uint16_t op2)
 
     result = f32_to_f16(result_f32);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -1275,12 +1443,14 @@ uint32_t fp_max_sf(uint32_t op1,uint32_t op2)
     float a,b,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%08x\n",op1);
     printf("Debug : op2 =0x%08x\n",op2);
     #endif
 
-    if(isNaNF32UI(op1) || isNaNF32UI(op2))
+    if(isNaNF32UI(op1) || isNaNF32UI(op2)) 
        return FP32_DEF_NAN;
 
     u_op1.ui = op1;
@@ -1288,16 +1458,17 @@ uint32_t fp_max_sf(uint32_t op1,uint32_t op2)
     a = u_op1.f;
     b = u_op2.f;
     rslt = (a>b) ? a : b;
-    // +0 is evaluated equal to -0 in C. Handeling that case separatly
-    if( (fabs(a) == 0.0f) && (fabs(b) == 0.0f) &&
-         (signF32UI(op1) != signF32UI(op2)) )
+    // +0 is evaluated equal to -0 in C. Handeling that case separatly 
+    if( (fabs(a) == 0.0f) && (fabs(b) == 0.0f) && (signF32UI(op1) != signF32UI(op2)) )
     {
        rslt = signF32UI(op1) ? b : a;
     }
     u_rslt.f = rslt;
     result = u_rslt.ui;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : rslt = %f\n",rslt);
@@ -1374,13 +1545,15 @@ uint16_t fp_mult_hf_hf_acc_dumb (uint16_t op1, uint16_t op2, uint16_t acc)
     uint32_t result_f32;
     uint16_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%04x\n",op1);
     printf("Debug : op2 =0x%04x\n",op2);
     printf("Debug : acc =0x%04x\n",acc);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2) || isNaNF16UI(acc))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2) || isNaNF16UI(acc)) 
        return FP16_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -1400,7 +1573,9 @@ uint16_t fp_mult_hf_hf_acc_dumb (uint16_t op1, uint16_t op2, uint16_t acc)
 
     result = f32_to_f16(result_f32);
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : facc = %f\n",facc);
@@ -1424,13 +1599,15 @@ uint32_t fp_mult_sf_hf_acc (uint16_t op1, uint16_t op2, uint32_t acc)
     float a,b,facc,rslt;
     uint32_t result;
 
+
     #ifdef DEBUG
+
     printf("Debug : op1 =0x%04x\n",op1);
     printf("Debug : op2 =0x%04x\n",op2);
     printf("Debug : acc =0x%08x\n",acc);
     #endif
 
-    if(isNaNF16UI(op1) || isNaNF16UI(op2) || isNaNF32UI(acc))
+    if(isNaNF16UI(op1) || isNaNF16UI(op2) || isNaNF32UI(acc)) 
        return FP32_DEF_NAN;
 
     op1_f32 = f16_to_f32(op1);
@@ -1448,7 +1625,9 @@ uint32_t fp_mult_sf_hf_acc (uint16_t op1, uint16_t op2, uint32_t acc)
     result = u_rslt.ui;
     result = isNaNF32UI(result) ? FP32_DEF_NAN : result;
 
+
     #ifdef DEBUG
+
     printf("Debug : a = %f\n",a);
     printf("Debug : b = %f\n",b);
     printf("Debug : facc = %f\n",facc);

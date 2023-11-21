@@ -25,8 +25,10 @@
 #define VTCM_CFG_BASE_OFF 0x38
 #define VTCM_CFG_SIZE_OFF 0x3c
 
-#define in_vtcm_space(ENV, PADDR) \
+#define in_vtcm_space(ENV, PADDR, ...) \
     in_vtcm_space_impl(ENV, PADDR)
+
+typedef CPUHexagonState thread_t;
 
 static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr)
 {

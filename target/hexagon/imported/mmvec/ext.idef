@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2021 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,6 +15,19 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+/*************************************************************************************
+*
+*
+*
+*     HOYA: MULTI MEDIA INSTRUCITONS
+*
+*
+***************************************************************************************/
+
+/*
+ * EJP: FIXME: a lot of this is a mess.  Lots of copypasta.  We should be using more
+ * macros to increase terseness.
+ */
 #ifndef EXTINSN
 #define EXTINSN Q6INSN
 #define __SELF_DEF_EXTINSN 1
@@ -52,7 +65,7 @@ EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_SHIFT_RESOUR
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 #define ITERATOR_INSN_SHIFT3_SLOT(WIDTH,TAG,SYNTAX,DESCR,CODE) \
-EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_VS_3SRC,A_NOTE_SHIFT_RESOURCE,A_NOTE_NOVP,A_NOTE_VA_UNARY),  \
+EXTINSN(V6_##TAG, SYNTAX, ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_VS_3SRC,A_NOTE_SHIFT_RESOURCE,A_NOTE_NOVP,A_NOTE_VA_UNARY,A_RESTRICT_CVI_NOVP,A_NOTE_RESTRICT_CVI_NOVP),  \
 DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
 
 
@@ -110,6 +123,11 @@ DESCR, fHIDE(mmvector_t input;) input = fTMPVDATA(); DO_FOR_EACH_CODE(WIDTH, COD
 
 
 
+#define ITERATOR_INSN_MPY_SLOT_EXP(WIDTH,TAG, SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_NOTE_MPY_RESOURCE,A_EXPERIMENTAL), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
 /******************************************************************************************
 *
 * MMVECTOR MEMORY OPERATIONS
@@ -134,7 +152,7 @@ EXTINSN(V6_##TAG##_npred_ppu,    "if (!" #SYNTAXP "4) " SYNTAXA "(Rx32++Mu2)" NT
 
 #define MMVEC_COND_EACH_EA(TAG,DESCR,ATTRIB,NT,SYNTAXA,SYNTAXB,SYNTAXP,BEH) \
 MMVEC_COND_EACH_EA_TRUE(TAG,DESCR,ATTRIB,NT,SYNTAXA,SYNTAXB,SYNTAXP,BEH) \
-MMVEC_COND_EACH_EA_FALSE(TAG,DESCR,ATTRIB,NT,SYNTAXA,SYNTAXB,SYNTAXP,BEH)
+MMVEC_COND_EACH_EA_FALSE(TAG,DESCR,ATTRIB,NT,SYNTAXA,SYNTAXB,SYNTAXP,BEH) 
 
 
 #define VEC_SCALE(X) X*fVECSIZE()
@@ -155,7 +173,7 @@ DEF_CVI_MAPPING(V6_stunp0, "if (!Pv4) vmemu(Rt32)=Vs32",  "if (!Pv4) vmemu(Rt32+
 
 
 
-
+	
 
 
 /****************************************************************
@@ -187,7 +205,7 @@ MMVEC_COND_EACH_EA(vS32Ub,"Unaligned Vector Store",ATTRIBS(ATTR_VMEMU,A_STORE,A_
 
 MMVEC_EACH_EA(vS32b_new,"Aligned Vector Store New",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_NEW,A_RESTRICT_SINGLE_MEM_FIRST,A_DOTNEWVALUE,A_RESTRICT_SLOT0ONLY),,"vmem","=Os8.new",fSTOREMMV(EA,fNEWVREG(OsN)))
 
-// V65 store release, zero byte store
+// V65 store relase, zero byte store
 MMVEC_EACH_EA(vS32b_srls,"Aligned Vector Scatter Release",ATTRIBS(ATTR_VMEM,A_STORE,A_CVI_SCATTER_RELEASE,A_CVI_NEW,A_RESTRICT_SLOT0ONLY,A_VTCM_ALLBANK_ACCESS,A_NO_XML),,"vmem",":scatter_release",fSTORERELEASE(EA,0))
 
 
@@ -255,7 +273,7 @@ DEF_CVI_MAPPING(V6_ldcpnt0,  "if (Pv4) Vd32.cur=vmem(Rt32):nt", "if (Pv4) Vd32.c
 DEF_CVI_MAPPING(V6_ldtpnt0,  "if (Pv4) Vd32.tmp=vmem(Rt32):nt", "if (Pv4) Vd32.tmp=vmem(Rt32+#0):nt")
 DEF_CVI_MAPPING(V6_ldcnpnt0,  "if (!Pv4) Vd32.cur=vmem(Rt32):nt", "if (!Pv4) Vd32.cur=vmem(Rt32+#0):nt")
 DEF_CVI_MAPPING(V6_ldtnpnt0,  "if (!Pv4) Vd32.tmp=vmem(Rt32):nt", "if (!Pv4) Vd32.tmp=vmem(Rt32+#0):nt")
-
+	
 
 // Stores
 DEF_CVI_MAPPING(V6_stnt0,    "vmem(Rt32):nt=Vs32",     "vmem(Rt32+#0):nt=Vs32")
@@ -282,21 +300,21 @@ DEF_CVI_MAPPING(V6_stnpnt0,  "if (!Pv4) vmem(Rt32):nt=Vs32",     "if (!Pv4) vmem
         VdV.ub[i] = (i+SHIFT>=fVBYTES()) ? VuV.ub[i+SHIFT-fVBYTES()] : VvV.ub[i+SHIFT];\
 	}
 
-EXTINSN(V6_valignb,  "Vd32=valign(Vu32,Vv32,Rt8)",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE,A_NOTE_RT8),"Align Two vectors by Rt8 as control",
-{
-	unsigned shift = RtV & (fVBYTES()-1);
+EXTINSN(V6_valignb,  "Vd32=valign(Vu32,Vv32,Rt8)",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE,A_NOTE_RT8),"Align Two vectors by Rt8 as control", 
+{ 
+	unsigned shift = RtV & (fVBYTES()-1);               
 	VALIGNB(shift)
 })
 EXTINSN(V6_vlalignb, "Vd32=vlalign(Vu32,Vv32,Rt8)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE,A_NOTE_RT8),"Align Two vectors by Rt8 as control",
 {
-	unsigned shift = fVBYTES() - (RtV & (fVBYTES()-1));
+	unsigned shift = fVBYTES() - (RtV & (fVBYTES()-1)); 
 	VALIGNB(shift)
 })
-EXTINSN(V6_valignbi, "Vd32=valign(Vu32,Vv32,#u3)", 	ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),"Align Two vectors by #u3 as control",
-{
+EXTINSN(V6_valignbi, "Vd32=valign(Vu32,Vv32,#u3)", 	ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),"Align Two vectors by #u3 as control",  
+{                                   				
 	VALIGNB(uiV)
 })
-EXTINSN(V6_vlalignbi,"Vd32=vlalign(Vu32,Vv32,#u3)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),"Align Two vectors by #u3 as control",
+EXTINSN(V6_vlalignbi,"Vd32=vlalign(Vu32,Vv32,#u3)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),"Align Two vectors by #u3 as control",  
 {
 	unsigned shift = fVBYTES() - uiV;
 	VALIGNB(shift)
@@ -801,7 +819,7 @@ ITERATOR_INSN_SHIFT_SLOT(32,vrotr,"Vd32.uw=vrotr(Vu32.uw,Vv32.uw)","Vector word 
  * MMVECTOR SHIFT AND PERMUTE
  * ******************************************************************/
 
-ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(32,vasr_into,"Vxx32.w=vasrinto(Vu32.w,Vv32.w)","ASR vector 1 elements and overlay dropping bits to MSB of vector 2 elements",
+ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(32,vasr_into,"Vxx32.w=vasrinto(Vu32.w,Vv32.w)","ASR vector 1 elements and overlay dropping bits to MSB of vector 2 elements", 
     fHIDE(int64_t ) shift = (fSE32_64(VuV.w[i]) << 32);
     fHIDE(int64_t ) mask  = (((fSE32_64(VxxV.v[0].w[i])) << 32) | fZE32_64(VxxV.v[0].w[i]));
     fHIDE(int64_t) lomask = (((fSE32_64(1)) << 32) - 1);
@@ -809,6 +827,9 @@ ITERATOR_INSN_PERMUTE_SLOT_DOUBLE_VEC(32,vasr_into,"Vxx32.w=vasrinto(Vu32.w,Vv32
     fHIDE(int64_t ) result = (count == -0x40) ? 0 : (((count < 0) ? ((shift << -(count)) | (mask & (lomask << -(count)))) : ((shift >> count) | (mask & (lomask >> count)))));
     VxxV.v[1].w[i] = ((result >> 32) & 0xffffffff);
     VxxV.v[0].w[i] = (result & 0xffffffff))
+
+
+
 
 #define NARROWING_SHIFT(ITERSIZE,TAG,DSTM,DSTTYPE,SRCTYPE,SYNOPTS,SATFUNC,RNDFUNC,SHAMTMASK) \
 ITERATOR_INSN_SHIFT_SLOT(ITERSIZE,TAG, \
@@ -832,6 +853,9 @@ NARROWING_SHIFT(32,vasrwhsat,fSETHALF,h,w,:sat,fVSATH,fVNOROUND,0xF)
 NARROWING_SHIFT(32,vasrwhrndsat,fSETHALF,h,w,:rnd:sat,fVSATH,fVROUND,0xF)
 NARROWING_SHIFT(32,vasrwuhrndsat,fSETHALF,uh,w,:rnd:sat,fVSATUH,fVROUND,0xF)
 NARROWING_SHIFT(32,vasrwuhsat,fSETHALF,uh,w,:sat,fVSATUH,fVNOROUND,0xF)
+
+
+
 NARROWING_SHIFT(16,vasrhubsat,fSETBYTE,ub,h,:sat,fVSATUB,fVNOROUND,0x7)
 NARROWING_SHIFT(16,vasrhubrndsat,fSETBYTE,ub,h,:rnd:sat,fVSATUB,fVROUND,0x7)
 NARROWING_SHIFT(16,vasrhbsat,fSETBYTE,b,h,:sat,fVSATB,fVNOROUND,0x7)
@@ -891,8 +915,8 @@ ITERATOR_INSN_SHIFT_SLOT(16,vrounduhub,"Vd32.ub=vround(Vu32.uh,Vv32.uh):sat", "V
 ITERATOR_INSN_SHIFT_SLOT(32,vaslw_acc, "Vx32.w+=vasl(Vu32.w,Rt32)", "Vector shift add word",     VxV.w[i] += (VuV.w[i] << (RtV & (32-1))))
 ITERATOR_INSN_SHIFT_SLOT(32,vasrw_acc, "Vx32.w+=vasr(Vu32.w,Rt32)", "Vector shift add word",     VxV.w[i] += (VuV.w[i] >> (RtV & (32-1))))
 ITERATOR_INSN_SHIFT_SLOT(16,vaslh_acc, "Vx32.h+=vasl(Vu32.h,Rt32)", "Vector shift add halfword", VxV.h[i] += (VuV.h[i] << (RtV & (16-1))))
-ITERATOR_INSN_SHIFT_SLOT(16,vasrh_acc, "Vx32.h+=vasr(Vu32.h,Rt32)", "Vector shift add halfword", VxV.h[i] += (VuV.h[i] >> (RtV & (16-1))))
-
+ITERATOR_INSN_SHIFT_SLOT(16,vasrh_acc, "Vx32.h+=vasr(Vu32.h,Rt32)", "Vector shift add halfword", VxV.h[i] += (VuV.h[i] >> (RtV & (16-1))))    
+    
 /**************************************************************************
 *
 * MMVECTOR ELEMENT-WISE ARITHMETIC
@@ -975,7 +999,7 @@ MMVEC_ABSDIFF(w,"w",        "Word",                 32,  uw,    w)
 ITERATOR_INSN_ANY_SLOT_2SRC(8,vnavgub,      "Vd32.b=vnavg(Vu32.ub,Vv32.ub)",            "Vector Negative Average Unsigned Byte", VdV.b[i] = fVNAVGU(8, VuV.ub[i], VvV.ub[i]))
 ITERATOR_INSN_ANY_SLOT_2SRC(32,vaddcarrysat,"Vd32.w=vadd(Vu32.w,Vv32.w,Qs4):carry:sat", "add w/carry and saturate",              VdV.w[i] = fVSATW(VuV.w[i]+VvV.w[i]+fGETQBIT(QsV,i*4)))
 
-ITERATOR_INSN_ANY_SLOT_2SRC(32,vaddcarry,"Vd32.w=vadd(Vu32.w,Vv32.w,Qx4):carry","add w/carry",
+ITERATOR_INSN_ANY_SLOT_2SRC(32,vaddcarry,"Vd32.w=vadd(Vu32.w,Vv32.w,Qx4):carry","add w/carry", 
 VdV.w[i] = VuV.w[i]+VvV.w[i]+fGETQBIT(QxV,i*4);
 fSETQBITS(QxV,4,0xF,4*i,-fCARRY_FROM_ADD32(VuV.w[i],VvV.w[i],fGETQBIT(QxV,i*4))))
 
@@ -1158,48 +1182,63 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpyhus_acc, "Vxx32.w+=vmpy(Vu32.h,Vv32.uh)
 /* VMPY_QF32 */
 /* multiply qf32 input, produce qf32 output*/
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32,"Vd32.qf32=vmpy(Vu32.qf32,Vv32.qf32)","Vector multiply: qf32 output from qf32 input",
-    fHIDE(unfloat )u = fPARSEQF32(VuV.qf32[i]);
-    fHIDE(unfloat )v = fPARSEQF32(VvV.qf32[i]);
-    VdV.qf32[i] = fRNDSATQF32(u.exp+v.exp, u.sig*v.sig, 0))
+    fHIDE(unfloat )u = fPARSEQF_EXT(32,VuV,i);
+    fHIDE(unfloat )v = fPARSEQF_EXT(32,VvV,i);
+
+    fQFMPY(32,VdV,u,v)
+)
 
 /* VMPY_QF32_SF */
 /* multiply ieee sf input, produce qf32 output*/
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32_sf,"Vd32.qf32=vmpy(Vu32.sf,Vv32.sf)","Vector multiply: qf32 output from IEEE sf input",
     fHIDE(unfloat )u = fPARSESF(VuV.sf[i]);
     fHIDE(unfloat )v = fPARSESF(VvV.sf[i]);
-    VdV.qf32[i] = fRNDSATQF32(u.exp+v.exp, u.sig*v.sig, 0);
-    if(u.sign^v.sign) VdV.qf32[i] = fNEGQF32(VdV.qf32[i]))
 
+    fQFMPY(32,VdV,u,v)
+)
 
+/*
+ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32_mix_sf,"Vd32.qf32=vmpy(Vu32.qf32,Vv32.sf)","Vector multiply: qf32 output from qf32 and IEEE sf input",
+    fHIDE(unfloat )u = fPARSEQF_EXT(32,VuV,i);
+    fHIDE(unfloat )v = fPARSESF(VvV.sf[i]);
+
+    fQFMPY(32,VdV,u,v)
+)
+*/
 /* VMPY_QF16 */
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpy_qf16,"Vd32.qf16=vmpy(Vu32.qf16,Vv32.qf16)","Vector multiply: qf16 output from qf16 inupt",
-    fHIDE(unfloat )u = fPARSEQF16(VuV.qf16[i]);
-    fHIDE(unfloat )v = fPARSEQF16(VvV.qf16[i]);
-    VdV.qf16[i] = fRNDSATQF16(u.exp+v.exp, u.sig*v.sig, 0))
+    fHIDE(unfloat )u = fPARSEQF_EXT(16,VuV,i);
+    fHIDE(unfloat )v = fPARSEQF_EXT(16,VvV,i);
+    fQFMPY(16,VdV,u,v)
+)
 
 /* VMPY_QF16_HF */
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpy_qf16_hf,"Vd32.qf16=vmpy(Vu32.hf,Vv32.hf)","Vector multiply: qf16 output from ieee hf input",
     fHIDE(unfloat )u = fPARSEHF(VuV.hf[i]);
     fHIDE(unfloat )v = fPARSEHF(VvV.hf[i]);
-    VdV.qf16[i] = fRNDSATQF16(u.exp+v.exp, u.sig*v.sig, 0);
-    if(u.sign^v.sign) VdV.qf16[i] = fNEGQF16(VdV.qf16[i]))
+
+    fQFMPY(16,VdV,u,v)
+)
 
 /* VMPY_QF16_with_QF16_HF */
 /* get the magnitude of qf16 before multiply */
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpy_qf16_mix_hf,"Vd32.qf16=vmpy(Vu32.qf16,Vv32.hf)","Vector multiply: qf16 output from mixed input of qf16 and ieee hf",
-    fHIDE(unfloat )u = fPARSEQF16(VuV.qf16[i]);
+    fHIDE(unfloat )u = fPARSEQF_EXT(16,VuV,i);
     fHIDE(unfloat )v = fPARSEHF(VvV.hf[i]);
-    VdV.qf16[i] = fRNDSATQF16(u.exp+v.exp, u.sig*v.sig, 0);
-    if(v.sign) VdV.qf16[i] = fNEGQF16(VdV.qf16[i]))
+
+    fQFMPY(16,VdV,u,v)
+)
 
 /* VMPY_QF32_QF16 */
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32_qf16,"Vdd32.qf32=vmpy(Vu32.qf16,Vv32.qf16)","Vector multiply: double qf32 output from qf16 input",
-    fHIDE(unfloat )u0 = fPARSEQF16(VuV.w[i] & 0xFFFF);
-    fHIDE(unfloat )u1 = fPARSEQF16((VuV.w[i]>>16) & 0xFFFF);
-    fHIDE(unfloat )v0 = fPARSEQF16(VvV.w[i] & 0xFFFF);
-    fHIDE(unfloat )v1 = fPARSEQF16((VvV.w[i]>>16) & 0xFFFF);
-    VddV.v[0].qf32[i] = fRNDSATQF32(u0.exp+v0.exp, u0.sig*v0.sig, 0);
-    VddV.v[1].qf32[i] = fRNDSATQF32(u1.exp+v1.exp, u1.sig*v1.sig, 0))
+    fHIDE(unfloat )u0 = fPARSEQF_EXT(16,VuV,2*i);
+    fHIDE(unfloat )u1 = fPARSEQF_EXT(16,VuV,2*i+1);
+    fHIDE(unfloat )v0 = fPARSEQF_EXT(16,VvV,2*i);
+    fHIDE(unfloat )v1 = fPARSEQF_EXT(16,VvV,2*i+1);
+
+    fQFMPY(32,VddV.v[0],u0,v0)
+    fQFMPY(32,VddV.v[1],u1,v1)
+) 
 
 /* VMPY_QF32_HF */
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32_hf,"Vdd32.qf32=vmpy(Vu32.hf,Vv32.hf)","Vector multiply: double qf32 output from ieee hf input",
@@ -1207,340 +1246,166 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32_hf,"Vdd32.qf32=vmpy(Vu32.hf,Vv32.
     fHIDE(unfloat )u1 = fPARSEHF((VuV.w[i]>>16) & 0xFFFF);
     fHIDE(unfloat )v0 = fPARSEHF(VvV.w[i] & 0xFFFF);
     fHIDE(unfloat )v1 = fPARSEHF((VvV.w[i]>>16) & 0xFFFF);
-    VddV.v[0].qf32[i] = fRNDSATQF32(u0.exp+v0.exp, u0.sig*v0.sig, 0);
-    VddV.v[1].qf32[i] = fRNDSATQF32(u1.exp+v1.exp, u1.sig*v1.sig, 0);
-    if(u0.sign^v0.sign) VddV.v[0].qf32[i] = fNEGQF32(VddV.v[0].qf32[i]);
-    if(u1.sign^v1.sign) VddV.v[1].qf32[i] = fNEGQF32(VddV.v[1].qf32[i]))
+
+    fQFMPY(32,VddV.v[0],u0,v0)
+    fQFMPY(32,VddV.v[1],u1,v1)
+)
 
 /* VMPY_QF32_with_QF16_HF */
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_qf32_mix_hf,"Vdd32.qf32=vmpy(Vu32.qf16,Vv32.hf)","Vector multiply: double qf32 output from mixed input of qf16 and ieee hf",
-    fHIDE(unfloat )u0 = fPARSEQF16(VuV.w[i] & 0xFFFF);
-    fHIDE(unfloat )u1 = fPARSEQF16((VuV.w[i]>>16) & 0xFFFF);
+    fHIDE(unfloat )u0 = fPARSEQF_EXT(16,VuV,2*i);
+    fHIDE(unfloat )u1 = fPARSEQF_EXT(16,VuV,2*i+1);
     fHIDE(unfloat )v0 = fPARSEHF(VvV.w[i] & 0xFFFF);
     fHIDE(unfloat )v1 = fPARSEHF((VvV.w[i]>>16) & 0xFFFF);
-    VddV.v[0].qf32[i] = fRNDSATQF32(u0.exp+v0.exp, u0.sig*v0.sig, 0);
-    VddV.v[1].qf32[i] = fRNDSATQF32(u1.exp+v1.exp, u1.sig*v1.sig, 0);
-    if(v0.sign) VddV.v[0].qf32[i] = fNEGQF32(VddV.v[0].qf32[i]);
-    if(v1.sign) VddV.v[1].qf32[i] = fNEGQF32(VddV.v[1].qf32[i]))
+
+    fQFMPY(32,VddV.v[0],u0,v0)
+    fQFMPY(32,VddV.v[1],u1,v1)
+)
 
 /* VADD_QF32 */
 ITERATOR_INSN_SHIFT_SLOT(32,vadd_qf32,"Vd32.qf32=vadd(Vu32.qf32,Vv32.qf32)","Vector addition of qf32 input",
-    fHIDE(unfloat )u = fPARSEQF32(VuV.qf32[i]);
-    fHIDE(unfloat )v = fPARSEQF32(VvV.qf32[i]);
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_SF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_SF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double ) sig = sig_u + sig_v;
-    fHIDE(double ) sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
-    VdV.qf32[i] = fRNDSATQF32(exp, sig, sig_low))
+    fHIDE(unfloat )u = fPARSEQF_EXT(32,VuV,i);
+    fHIDE(unfloat )v = fPARSEQF_EXT(32,VvV,i);
+
+    fQFADD(32,VdV,u,v)
+
+)
 
 /* VADD_SF */
 ITERATOR_INSN_SHIFT_SLOT(32,vadd_sf,"Vd32.qf32=vadd(Vu32.sf,Vv32.sf)","Vector addition of sf input",
     fHIDE(unfloat )u = fPARSESF(VuV.sf[i]);
     fHIDE(unfloat )v = fPARSESF(VvV.sf[i]);
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_SF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_SF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    //printf("ARCHSIM: u.sign:%d, v.sign:%d, u.sig:%10.30f, v.sig:%10.30f\\n", u.sign, v.sign, u.sig, v.sig);
 
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-
-    //printf("ARCHSIM: u.exp:%d, v.exp:%d, exp:%d, sig_u:%10.30f, sig_v:%10.30f\\n", u.exp, v.exp, exp, sig_u, sig_v);
-
-    fHIDE(double sig;)
-    fHIDE(double sig_low;)
-
-    if((u.sign^v.sign)==0){
-        sig = sig_u + sig_v;
-        sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
-    }
-    else if((u.sign==0) && (v.sign==1))
-    {
-        sig = sig_u - sig_v;
-        sig_low = (u.exp>v.exp) ? (sig_u-sig)-sig_v : sig_u-(sig_v+sig);
-    }
-    else{
-        sig = sig_v - sig_u;
-        sig_low = (v.exp>u.exp) ? (sig_v-sig)-sig_u : sig_v-(sig_u+sig);
-    }
-    VdV.qf32[i] = fRNDSATQF32(exp, sig, sig_low);
-    //printf("ARCHSIM: output:%x\\n", VdV.qf32[i]);
-    if(u.sign && v.sign)   VdV.qf32[i] = fNEGQF32(VdV.qf32[i]))
-
+    fQFADD(32,VdV,u,v)
+    /*fTEST_IEEE_COMPLIANCE(32,VuV.sf[i],VvV.sf[i])*/
+)
+	
 /* VADD_QF32_MIX */
 ITERATOR_INSN_SHIFT_SLOT(32,vadd_qf32_mix,"Vd32.qf32=vadd(Vu32.qf32,Vv32.sf)","Vector addition of mixed qf32 and sf",
-    fHIDE(unfloat )u = fPARSEQF32(VuV.qf32[i]);
+    fHIDE(unfloat )u = fPARSEQF_EXT(32,VuV,i);
     fHIDE(unfloat )v = fPARSESF(VvV.sf[i]);
-    if(v.sign) v.sig = (-1.0)*v.sig;
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_SF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_SF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double) sig = sig_u + sig_v;
-    fHIDE(double) sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
-    VdV.qf32[i] = fRNDSATQF32(exp, sig, sig_low))
+
+    fQFADD(32,VdV,u,v)
+)
+
 
 /* VSUB_QF32 */
 ITERATOR_INSN_SHIFT_SLOT(32,vsub_qf32,"Vd32.qf32=vsub(Vu32.qf32,Vv32.qf32)","Vector subtraction of qf32 input",
-    fHIDE(unfloat )u = fPARSEQF32(VuV.qf32[i]);
-    fHIDE(unfloat )v = fPARSEQF32(VvV.qf32[i]);
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_SF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_SF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double) sig = sig_u - sig_v;
-    fHIDE(double) sig_low = (u.exp>v.exp) ? (sig_u-sig)-sig_v : (sig_u-(sig_v+sig));
-    VdV.qf32[i] = fRNDSATQF32(exp, sig, sig_low))
+    fHIDE(unfloat )u = fPARSEQF_EXT(32,VuV,i);
+    fHIDE(unfloat )v = fPARSEQF_EXT(32,VvV,i);
+
+    v.sign = !v.sign;
+   
+
+    fQFADD(32,VdV,u,v)
+)
 
 /* VSUB_SF */
 ITERATOR_INSN_SHIFT_SLOT(32,vsub_sf,"Vd32.qf32=vsub(Vu32.sf,Vv32.sf)","Vector subtraction of ieee sf input",
     fHIDE(unfloat )u = fPARSESF(VuV.sf[i]);
     fHIDE(unfloat )v = fPARSESF(VvV.sf[i]);
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_SF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_SF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double sig;)
-    fHIDE(double sig_low;)
-    if((u.sign==0) && (v.sign==0)) {
-        sig = sig_u - sig_v;
-        sig_low = (u.exp>v.exp) ? (sig_u-sig)-sig_v : (sig_u-(sig_v+sig));
-    }
-    else if(u.sign ^ v.sign){
-        sig = sig_u + sig_v;
-        sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
-    }
-    else{
-        sig = sig_v - sig_u;
-        sig_low = (v.exp>u.exp) ? (sig_v-sig)-sig_u : sig_v-(sig_u+sig);
-    }
-    VdV.qf32[i] = fRNDSATQF32(exp, sig, sig_low);
-    if((u.sign==1) && (v.sign==0))   VdV.qf32[i] = fNEGQF32(VdV.qf32[i]))
+    
+    v.sign = !v.sign;
 
+    fQFADD(32,VdV,u,v)
+)
+	
 /* VSUB_QF32_MIX */
 ITERATOR_INSN_SHIFT_SLOT(32,vsub_qf32_mix,"Vd32.qf32=vsub(Vu32.qf32,Vv32.sf)","Vector subtraction of mixed qf32 input and sf",
-    fHIDE(unfloat )u = fPARSEQF32(VuV.qf32[i]);
+    fHIDE(unfloat )u = fPARSEQF_EXT(32,VuV,i);
     fHIDE(unfloat )v = fPARSESF(VvV.sf[i]);
-    if(v.sign) v.sig = (-1.0)*v.sig;
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_SF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_SF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double ) sig = sig_u - sig_v;
-    fHIDE(double) sig_low = (u.exp>v.exp) ? (sig_u-sig)-sig_v : (sig_u-(sig_v+sig));
-    VdV.qf32[i] = fRNDSATQF32(exp, sig, sig_low))
+
+    v.sign = !v.sign;
+
+    fQFADD(32,VdV,u,v)
+) 
 
 /* VADD_QF16 */
 ITERATOR_INSN_SHIFT_SLOT(16,vadd_qf16,"Vd32.qf16=vadd(Vu32.qf16,Vv32.qf16)","Vector addition of qf16 input",
-    fHIDE(unfloat )u = fPARSEQF16(VuV.qf16[i]);
-    fHIDE(unfloat )v = fPARSEQF16(VvV.qf16[i]);
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_HF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_HF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double) sig = sig_u + sig_v;
-    fHIDE(double) sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
-    VdV.qf16[i] = fRNDSATQF16(exp, sig, sig_low))
+    fHIDE(unfloat )u = fPARSEQF_EXT(16,VuV,i);
+    fHIDE(unfloat )v = fPARSEQF_EXT(16,VvV,i);
 
+    fQFADD(16,VdV,u,v)
+)
+	
 /* VADD_HF */
 ITERATOR_INSN_SHIFT_SLOT(16,vadd_hf,"Vd32.qf16=vadd(Vu32.hf,Vv32.hf)","Vector addition of hf input",
     fHIDE(unfloat )u = fPARSEHF(VuV.hf[i]);
     fHIDE(unfloat )v = fPARSEHF(VvV.hf[i]);
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_HF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_HF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
 
-    fHIDE(double sig;)
-    fHIDE(double sig_low;)
-
-    if((u.sign^v.sign)==0){
-        sig = sig_u + sig_v;
-        sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
-    }
-    else if((u.sign==0) && (v.sign==1))
-    {
-        sig = sig_u - sig_v;
-        sig_low = (u.exp>v.exp) ? (sig_u-sig)-sig_v : sig_u-(sig_v+sig);
-    }
-    else{
-        sig = sig_v - sig_u;
-        sig_low = (v.exp>u.exp) ? (sig_v-sig)-sig_u : sig_v-(sig_u+sig);
-    }
-    VdV.qf16[i] = fRNDSATQF16(exp, sig, sig_low);
-    if(u.sign && v.sign)
-        VdV.qf16[i] = fNEGQF16(VdV.qf16[i]))
+    fQFADD(16,VdV,u,v)
+)
 
 /* VADD_QF16_MIX */
 ITERATOR_INSN_SHIFT_SLOT(16,vadd_qf16_mix,"Vd32.qf16=vadd(Vu32.qf16,Vv32.hf)","Vector addition of mixed qf16 and hf",
-    fHIDE(unfloat )u = fPARSEQF16(VuV.qf16[i]);
+    fHIDE(unfloat )u = fPARSEQF_EXT(16,VuV,i);
     fHIDE(unfloat )v = fPARSEHF(VvV.hf[i]);
-    if(v.sign)  v.sig = (-1.0)*v.sig;
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_HF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_HF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double) sig = sig_u + sig_v;
-    fHIDE(double) sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
-    VdV.qf16[i] = fRNDSATQF16(exp, sig, sig_low))
+
+    fQFADD(16,VdV,u,v)
+)
 
 /* VSUB_QF16 */
 ITERATOR_INSN_SHIFT_SLOT(16,vsub_qf16,"Vd32.qf16=vsub(Vu32.qf16,Vv32.qf16)","Vector subtraction of qf16 input",
-    fHIDE(unfloat )u = fPARSEQF16(VuV.qf16[i]);
-    fHIDE(unfloat )v = fPARSEQF16(VvV.qf16[i]);
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_HF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_HF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double) sig = sig_u - sig_v;
-    fHIDE(double) sig_low = (u.exp>v.exp) ? (sig_u-sig)-sig_v : (sig_u-(sig_v+sig));
-    VdV.qf16[i] = fRNDSATQF16(exp, sig, sig_low))
+    fHIDE(unfloat )u = fPARSEQF_EXT(16,VuV,i);
+    fHIDE(unfloat )v = fPARSEQF_EXT(16,VvV,i);
+
+    v.sign = !v.sign;
+
+    fQFADD(16,VdV,u,v)
+)
 
 /* VSUB_HF */
 ITERATOR_INSN_SHIFT_SLOT(16,vsub_hf,"Vd32.qf16=vsub(Vu32.hf,Vv32.hf)","Vector subtraction of hf input",
     fHIDE(unfloat )u = fPARSEHF(VuV.hf[i]);
     fHIDE(unfloat )v = fPARSEHF(VvV.hf[i]);
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_HF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_HF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double sig;)
-    fHIDE(double sig_low;)
-    if((u.sign==0) && (v.sign==0)) {
-        sig = sig_u - sig_v;
-        sig_low = (u.exp>v.exp) ? (sig_u-sig)-sig_v : (sig_u-(sig_v+sig));
-    }
-    else if(u.sign ^ v.sign){
-        sig = sig_u + sig_v;
-        sig_low = (u.exp>v.exp) ? (sig_u-sig)+sig_v : (sig_v-sig)+sig_u;
-    }
-    else{
-        sig = sig_v - sig_u;
-        sig_low = (v.exp>u.exp) ? (sig_v-sig)-sig_u : sig_v-(sig_u+sig);
-    }
-    VdV.qf16[i] = fRNDSATQF16(exp, sig, sig_low);
-    if((u.sign==1) && (v.sign==0))
-        VdV.qf16[i] = fNEGQF16(VdV.qf16[i]))
+
+    v.sign = !v.sign;
+
+    fQFADD(16,VdV,u,v)
+)
 
 
 /* VSUB_QF16_MIXED */
 ITERATOR_INSN_SHIFT_SLOT(16,vsub_qf16_mix,"Vd32.qf16=vsub(Vu32.qf16,Vv32.hf)","Vector subtraction of mixed qf16 and hf",
-    fHIDE(unfloat )u = fPARSEQF16(VuV.qf16[i]);
+    fHIDE(unfloat )u = fPARSEQF_EXT(16,VuV,i);
     fHIDE(unfloat )v = fPARSEHF(VvV.hf[i]);
-    if(v.sign)  v.sig = (-1.0)*v.sig;
-    fHIDE(size2s_t exp=0;)
-    if (u.exp>v.exp) {
-        exp = u.exp+((u.sig==0.0)? (-(FRAC_HF+1)):ilogb(u.sig));
-        if (exp<v.exp) exp = v.exp;
-    } else {
-        exp = v.exp+((v.sig==0.0)? (-(FRAC_HF+1)):ilogb(v.sig));
-        if (exp<u.exp) exp = u.exp;
-    }
-    fHIDE(double ) sig_u = ldexp(u.sig, u.exp-exp);
-    fHIDE(double ) sig_v = ldexp(v.sig, v.exp-exp);
-    fHIDE(double) sig = sig_u - sig_v;
-    fHIDE(double) sig_low = (u.exp>v.exp) ? (sig_u-sig)-sig_v : (sig_u-(sig_v+sig));
-    VdV.qf16[i] = fRNDSATQF16(exp, sig, sig_low))
 
-// FP Convert QF32/W/UW to ieee SF
+    v.sign = !v.sign;
+
+    fQFADD(16,VdV,u,v)
+)
+
+// FP Convert QF32/W/UW to ieee SF 
 ITERATOR_INSN_SHIFT_SLOT(32,vconv_sf_qf32,"Vd32.sf=Vu32.qf32","Vector conversion of qf32 format to ieee SF",
-    fHIDE(unfloat )u = fPARSEQF32(VuV.qf32[i]);
-    VdV.sf[i] = fRNDSATSF(u.exp, u.sig))
+    VdV.sf[i] = fCONVERT_QF32_TO_SF(VuV.qf32[i],get_extended_bits(thread,0,&VuV,i,32))
+)
 
-// FP Convert QF16/H/UH to ieee HF
+// FP Convert QF16/H/UH to ieee HF 
 ITERATOR_INSN_SHIFT_SLOT(16,vconv_hf_qf16,"Vd32.hf=Vu32.qf16","Vector conversion of qf16 format to ieee HF",
-    fHIDE(unfloat )u = fPARSEQF16(VuV.qf16[i]);
-    VdV.hf[i] = fRNDSATHF(u.exp, u.sig))
+    VdV.hf[i] = fCONVERT_QF16_TO_HF(VuV.qf16[i],get_extended_bits(thread,0,&VuV,i,16))
+)
 
 // FP Convert double QF32 to two packed ieee HF in one vector
 ITERATOR_INSN_SHIFT_SLOT(32,vconv_hf_qf32,"Vd32.hf=Vuu32.qf32","Vector conversion of double qf32 to ieee HF",
-    fHIDE(unfloat )u0 = fPARSEQF32(VuuV.v[0].qf32[i]);
-    fHIDE(unfloat )u1 = fPARSEQF32(VuuV.v[1].qf32[i]);
-    VdV.hf[2*i] = fRNDSATHF(u0.exp, u0.sig);
-    VdV.hf[2*i+1] = fRNDSATHF(u1.exp, u1.sig))
+    VdV.hf[2*i]   = fCONVERT_QF32_TO_HF(VuuV.v[0].qf32[i], get_extended_bits(thread,0,&VuuV.v[0],i,32));
+    VdV.hf[2*i+1] = fCONVERT_QF32_TO_HF(VuuV.v[1].qf32[i], get_extended_bits(thread,0,&VuuV.v[1],i,32));
+)
 
-// FP Convert IEEE FP32 to int word
+// FP Convert IEEE FP32 to int word 
 ITERATOR_INSN_SHIFT_SLOT(32, vconv_w_sf,"Vd32.w=Vu32.sf","Vector conversion of sf32 format to int w",
-    VdV.w[i] = conv_w_sf(VuV.sf[i]))
+    VdV.w[i] = conv_w_sf(VuV.sf[i])) 
 
-// FP Convert IEEE FP16 to int halfword
+// FP Convert IEEE FP16 to int halfword 
 ITERATOR_INSN_SHIFT_SLOT(16, vconv_h_hf,"Vd32.h=Vu32.hf","Vector conversion of hf16 format to int hw",
-    VdV.h[i] = conv_h_hf(VuV.hf[i]))
+    VdV.h[i] = conv_h_hf(VuV.hf[i])) 
 
-// Int Convert word to IEEE FP32
+// Int Convert word to IEEE FP32 
 ITERATOR_INSN_SHIFT_SLOT(32, vconv_sf_w,"Vd32.sf=Vu32.w","Vector conversion of int w format to sf32",
-    VdV.sf[i] = conv_sf_w(VuV.w[i]))
+    VdV.sf[i] = conv_sf_w(VuV.w[i])) 
 
 // Int Convert halfword to EEE FP16
 ITERATOR_INSN_SHIFT_SLOT(16, vconv_hf_h,"Vd32.hf=Vu32.h","Vector conversion of int hw format to hf16",
-    VdV.hf[i] = conv_hf_h(VuV.h[i]))
+    VdV.hf[i] = conv_hf_h(VuV.h[i])) 
 
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpyih,     "Vd32.h=vmpyi(Vu32.h,Vv32.h)",  "Vector by Vector Halfword Multiply", VdV.h[i]  = fMPY16SS(VuV.h[i], VvV.h[i]))
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpyih_acc, "Vx32.h+=vmpyi(Vu32.h,Vv32.h)", "Vector by Vector Halfword Multiply", VxV.h[i] += fMPY16SS(VuV.h[i], VvV.h[i]))
@@ -1741,7 +1606,7 @@ EXTINSN(V6_veq##TYPE##_and, "Qx4&=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRI
 EXTINSN(V6_veq##TYPE##_or,  "Qx4|=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_CVI_VA_2SRC,A_NOTE_ANY_RESOURCE), DESCR" equalto with predicate-or", \
 	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ==, N, SRC, MASK, WIDTH)) \
 EXTINSN(V6_veq##TYPE##_xor, "Qx4^=vcmp.eq(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_CVI_VA_2SRC,A_NOTE_ANY_RESOURCE), DESCR" equalto with predicate-xor", \
-	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, ==, N, SRC, MASK, WIDTH))
+	VCMP(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, ==, N, SRC, MASK, WIDTH)) 
 
 
 MMVEC_CMP(w,"w","","Vector Word Compare ", fVELEM(32), 0xF, 4, w)
@@ -1762,7 +1627,7 @@ MMVEC_CMPEQMAP(ub,"ub","b")
 { \
        for(fHIDE(int) i = 0; i < fVBYTES(); i += WIDTH) { \
         fHIDE(int) VAL = fCMPGT_QF32(VuV.SRC[i/WIDTH],VvV.SRC[i/WIDTH]) ? MASK : 0 ;\
-    fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
+		fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
     } \
 }
 
@@ -1770,7 +1635,7 @@ MMVEC_CMPEQMAP(ub,"ub","b")
 { \
        for(fHIDE(int) i = 0; i < fVBYTES(); i += WIDTH) { \
         fHIDE(int) VAL = fCMPGT_QF16(VuV.SRC[i/WIDTH],VvV.SRC[i/WIDTH]) ? MASK : 0 ;\
-    fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
+		fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
     } \
 }
 
@@ -1778,7 +1643,7 @@ MMVEC_CMPEQMAP(ub,"ub","b")
 { \
        for(fHIDE(int) i = 0; i < fVBYTES(); i += WIDTH) { \
         fHIDE(int) VAL = fCMPGT_SF(VuV.SRC[i/WIDTH],VvV.SRC[i/WIDTH]) ? MASK : 0 ;\
-    fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
+		fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
     } \
 }
 
@@ -1786,7 +1651,7 @@ MMVEC_CMPEQMAP(ub,"ub","b")
 { \
        for(fHIDE(int) i = 0; i < fVBYTES(); i += WIDTH) { \
         fHIDE(int) VAL = fCMPGT_HF(VuV.SRC[i/WIDTH],VvV.SRC[i/WIDTH]) ? MASK : 0 ;\
-    fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
+		fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
     } \
 }
 
@@ -1794,7 +1659,7 @@ MMVEC_CMPEQMAP(ub,"ub","b")
 { \
        for(fHIDE(int) i = 0; i < fVBYTES(); i += WIDTH) { \
         fHIDE(int) VAL = fCMPGT_QF32_SF(VuV.SRC1[i/WIDTH],VvV.SRC2[i/WIDTH]) ? MASK : 0 ;\
-    fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
+		fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
     } \
 }
 
@@ -1802,7 +1667,7 @@ MMVEC_CMPEQMAP(ub,"ub","b")
 { \
        for(fHIDE(int) i = 0; i < fVBYTES(); i += WIDTH) { \
         fHIDE(int) VAL = fCMPGT_QF16_HF(VuV.SRC1[i/WIDTH],VvV.SRC2[i/WIDTH]) ? MASK : 0 ;\
-    fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
+		fSETQBITS(DEST,WIDTH,MASK,i,ASRC ASRCOP VAL); \
     } \
 }
 
@@ -1824,7 +1689,7 @@ EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRI
 EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-xor", \
 	VCMPGT_QF32(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, ">", N, SRC, MASK, WIDTH)) \
 EXTINSN(V6_vgt##TYPE##_or, "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-or", \
-	VCMPGT_QF32(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC, MASK, WIDTH))
+	VCMPGT_QF32(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC, MASK, WIDTH)) 
 
 /* Vector QF16 compare */
 #define MMVEC_CMPGT_QF16(TYPE,TYPE2,DESCR,N,MASK,WIDTH,SRC) \
@@ -1833,7 +1698,7 @@ EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRI
 EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-xor", \
 	VCMPGT_QF16(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, ">", N, SRC, MASK, WIDTH)) \
 EXTINSN(V6_vgt##TYPE##_or, "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-or", \
-	VCMPGT_QF16(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC, MASK, WIDTH))
+	VCMPGT_QF16(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC, MASK, WIDTH)) 
 
 /* Vector SF compare */
 #define MMVEC_CMPGT_SF(TYPE,TYPE2,DESCR,N,MASK,WIDTH,SRC) \
@@ -1864,7 +1729,7 @@ EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRI
 EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-xor", \
 	VCMPGT_QF32_SF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, ">", N, SRC1, SRC2, MASK, WIDTH)) \
 EXTINSN(V6_vgt##TYPE##_or, "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-or", \
-	VCMPGT_QF32_SF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC1, SRC2, MASK, WIDTH))
+	VCMPGT_QF32_SF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC1, SRC2, MASK, WIDTH)) 
 
 
 // Vector QF16_HF compare
@@ -1874,7 +1739,7 @@ EXTINSN(V6_vgt##TYPE##_and, "Qx4&=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRI
 EXTINSN(V6_vgt##TYPE##_xor, "Qx4^=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-xor", \
 	VCMPGT_QF16_HF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), ^, ">", N, SRC1, SRC2, MASK, WIDTH)) \
 EXTINSN(V6_vgt##TYPE##_or, "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE3 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_NOTE_ANY_RESOURCE), DESCR" greater than with predicate-or", \
-	VCMPGT_QF16_HF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC1, SRC2, MASK, WIDTH))
+	VCMPGT_QF16_HF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC1, SRC2, MASK, WIDTH)) 
 
 
 /* Vector BF compare */
@@ -1887,6 +1752,8 @@ EXTINSN(V6_vgt##TYPE##_or, "Qx4|=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIB
 	VCMPGT_BF(QxV, fGETQBITS(QxV,WIDTH,MASK,i), |, ">", N, SRC, MASK, WIDTH)) \
 EXTINSN(V6_vgt##TYPE, "Qd4=vcmp.gt(Vu32." TYPE2 ",Vv32." TYPE2 ")", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_CVI_VA_2SRC,A_NOTE_ANY_RESOURCE), DESCR" greater than", \
 	VCMPGT_BF(QdV, , , ">", N, SRC, MASK, WIDTH))
+
+
 MMVEC_CMPGT_SF(sf,"sf","Vector sf Compare ", fVELEM(32), 0xF, 4, sf)
 MMVEC_CMPGT_HF(hf,"hf","Vector hf Compare ", fVELEM(16), 0x3, 2, hf)
 MMVEC_CMPGT_BF(bf,"bf","Vector bf Compare ", fVELEM(16), 0x3, 2, bf)
@@ -1914,6 +1781,75 @@ EXTINSN(V6_pred_scalar2v2, "Qd4=vsetq2(Rt32)",         ATTRIBS(A_EXTENSION,A_CVI
     for(i = 0; i < fVBYTES(); i++) fSETQBIT(QdV,i,(i <= ((RtV-1) & (fVBYTES()-1))) ? 1 : 0);
 })
 
+
+/***************************************************
+* VMPY scalar inputs
+***************************************************/
+/*
+ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_rt_qf32, "Vd32.qf32=vmpy(Vu32.qf32,Rt32.sf)","Qfloat32 multiply with scalar and qf32 input",
+    fHIDE(unfloat )u = fPARSEQF_EXT(32,VuV,i);
+    fHIDE(unfloat )v = fPARSESF(RtV);
+
+    fQFMPY(32,VdV,u,v)
+)
+*/
+ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32,vmpy_rt_sf, "Vd32.qf32=vmpy(Vu32.sf,Rt32.sf)", "Qfloat32 multiply with scalar and sf input",
+    fHIDE(unfloat )u = fPARSESF(VuV.sf[i]);
+    fHIDE(unfloat )v = fPARSESF(RtV);
+
+    fQFMPY(32,VdV,u,v)
+)
+
+ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpy_rt_qf16,"Vd32.qf16=vmpy(Vu32.qf16,Rt32.hf)", "Qfloat16 multiply with scalar and qf16 input",
+
+    fHIDE(unfloat )u = fPARSEQF_EXT(16,VuV,i);
+    fHIDE(unfloat )v = fPARSEHF((RtV >> ((i%2)*16)) & 0xFFFF);
+    fQFMPY(16,VdV,u,v)
+)
+
+ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(16,vmpy_rt_hf, "Vd32.qf16=vmpy(Vu32.hf,Rt32.hf)", "Qfloat16 multiply with scalar and hf input",
+    fHIDE(unfloat )u = fPARSEHF(VuV.hf[i]);
+    fHIDE(unfloat )v = fPARSEHF((RtV >> ((i%2)*16)) & 0xFFFF);
+
+    fQFMPY(16,VdV,u,v)
+)
+
+
+/***************************************************
+* Save/Restore extended bits
+***************************************************/
+EXTINSN(V6_get_qfext_oracc, "Vx32|=vgetqfext(Vu32.x,Rt32)",         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_XQFLOAT,A_HVX_FLT,A_NOTE_MPY_RESOURCE),   "Store with extended bits of a vreg into QReg",
+{
+   fHIDE(int i;)
+    fVFOREACH(8, i) {
+	VxV.ub[i]  |= fGETQFEXT_BIT(VuV,i) ? fGETUBYTE(i % 4, RtV) : 0;
+    }
+})
+
+EXTINSN(V6_get_qfext, "Vd32=vgetqfext(Vu32.x,Rt32)",         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_HVX_FLT,A_XQFLOAT,A_NOTE_MPY_RESOURCE),   "Store with extended bits of a vreg into QReg",
+{
+   fHIDE(int i;)
+    fVFOREACH(8, i) {
+	VdV.ub[i]  = fGETQFEXT_BIT(VuV,i) ? fGETUBYTE(i % 4, RtV) : 0;
+    }
+})
+
+EXTINSN(V6_set_qfext, "Vd32.x=vsetqfext(Vu32,Rt32)",         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_HVX_FLT,A_XQFLOAT,A_NOTE_MPY_RESOURCE),   "Load extended bits of Vreg using QReg",
+{
+   fHIDE(int i;)
+   fVFOREACH(8, i) {
+	fSETQFEXT_BIT(VdV,i,((VuV.ub[i] & fGETUBYTE(i % 4, RtV)) != 0) ? 1 : 0);
+    }
+})
+
+EXTINSN(V6_vmerge_qf, "Vd32=vmerge(Vu32.x,Vv32.w)",         ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_HVX_FLT,A_XQFLOAT,A_NOTE_SHIFT_RESOURCE),   "Merge 32 bit word and 4 bit extended bits",
+{
+   fHIDE(int i;)
+    fVFOREACH(32, i) {
+	VdV.uw[i]   = VvV.uw[i];
+	VdV.ext[i]   = VuV.ext[i];
+    }
+})
 
 ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, shuffeqw, "Qd4.h=vshuffe(Qs4.w,Qt4.w)","Shrink Predicate", fSETQBIT(QdV,i, (i & 2) ? fGETQBIT(QsV,i-2) : fGETQBIT(QtV,i) ) )
 ITERATOR_INSN_ANY_SLOT_DOUBLE_VEC(8, shuffeqh, "Qd4.b=vshuffe(Qs4.h,Qt4.h)","Shrink Predicate", fSETQBIT(QdV,i, (i & 1) ? fGETQBIT(QsV,i-1) : fGETQBIT(QtV,i) ) )
@@ -2183,17 +2119,17 @@ ITERATOR_INSN_PERMUTE_SLOT(16, vshuffb, "Vd32.b=vshuff(Vu32.b)","Deal Halfwords"
 EXTINSN(V6_extractw, "Rd32=vextract(Vu32,Rs32)",
 ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VA,A_RESTRICT_NOPACKET,A_CVI_EXTRACT,A_CVI_VA_2SRC,A_NOTE_NOPACKET,A_MEMLIKE,A_RESTRICT_SLOT0ONLY),
 "Extract an element from a vector to scalar",
-fHIDE(warn("RdN=%d VuN=%d RsN=%d RsV=0x%08x widx=%d",RdN,VuN,RsN,RsV,((RsV & (fVBYTES()-1)) >> 2));)
-RdV = VuV.uw[ (RsV & (fVBYTES()-1)) >> 2];
+fHIDE(warn("RdN=%d VuN=%d RsN=%d RsV=0x%08x widx=%d",RdN,VuN,RsN,RsV,((RsV & (fVBYTES()-1)) >> 2));) 
+RdV = VuV.uw[ (RsV & (fVBYTES()-1)) >> 2]; 
 fHIDE(warn("RdV=0x%08x",RdV);))
 
 DEF_CVI_MAPPING(V6_extractw_alt,"Rd32.w=vextract(Vu32,Rs32)","Rd32=vextract(Vu32,Rs32)")
 
 EXTINSN(V6_vinsertwr, "Vx32.w=vinsert(Rt32)", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VX,A_CVI_LATE,A_NOTE_MPY_RESOURCE), "Insert Word Scalar into Vector", VxV.uw[0] = RtV;)
 
-ITERATOR_INSN_MPY_SLOT_LATE(32,lvsplatw, "Vd32=vsplat(Rt32)",   "Replicates scalar across words in vector",  VdV.uw[i] = RtV)
-ITERATOR_INSN_MPY_SLOT_LATE(16,lvsplath, "Vd32.h=vsplat(Rt32)", "Replicates scalar across halves in vector", VdV.uh[i] = RtV)
-ITERATOR_INSN_MPY_SLOT_LATE(8, lvsplatb, "Vd32.b=vsplat(Rt32)", "Replicates scalar across bytes in vector",  VdV.ub[i] = RtV)
+ITERATOR_INSN_MPY_SLOT_LATE(32,lvsplatw, "Vd32=vsplat(Rt32)",   "Replicates scalar accross words in vector",  VdV.uw[i] = RtV)
+ITERATOR_INSN_MPY_SLOT_LATE(16,lvsplath, "Vd32.h=vsplat(Rt32)", "Replicates scalar accross halves in vector", VdV.uh[i] = RtV)
+ITERATOR_INSN_MPY_SLOT_LATE(8, lvsplatb, "Vd32.b=vsplat(Rt32)", "Replicates scalar accross bytes in vector",  VdV.ub[i] = RtV)
 
 
 DEF_CVI_MAPPING(V6_vassignp,"Vdd32=Vuu32","Vdd32=vcombine(Vuu.H32,Vuu.L32)")
@@ -2214,6 +2150,10 @@ EXTINSN(V6_vcombine_tmp, "Vdd32.tmp=vcombine(Vu32,Vv32)",    ATTRIBS(A_EXTENSION
            VddV.v[0].ub[i] = VvV.ub[i];
            VddV.v[1].ub[i] = VuV.ub[i];
     }
+    fVFOREACH(32, i) {
+           VddV.v[0].ext[i] = VvV.ext[i];
+           VddV.v[1].ext[i] = VuV.ext[i];
+    }
 })
 
 
@@ -2223,6 +2163,7 @@ EXTINSN(V6_vassign_tmp, "Vd32.tmp=Vu32",    ATTRIBS(A_EXTENSION,A_CVI,A_CVI_REMA
    fHIDE(int i;)
     fVFOREACH(32, i) {
            VdV.w[i]=VuV.w[i];
+           VdV.ext[i]=VuV.ext[i];
     }
 })
 
@@ -2239,14 +2180,12 @@ EXTINSN(V6_vdelta, "Vd32=vdelta(Vu32,Vv32)",    ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
 {
     fHIDE(int offset;)
     fHIDE(int k;)
-    fHIDE(mmvector_t tmp;)
-    tmp = VuV;
     for (offset=fVBYTES(); (offset>>=1)>0; ) {
         for (k = 0; k<fVBYTES(); k++) {
-            VdV.ub[k] = (VvV.ub[k]&offset) ? tmp.ub[k^offset] : tmp.ub[k];
+            VdV.ub[k] = (VvV.ub[k]&offset) ? VuV.ub[k^offset] : VuV.ub[k];
         }
         for (k = 0; k<fVBYTES(); k++) {
-            tmp.ub[k] = VdV.ub[k];
+            VuV.ub[k] = VdV.ub[k];
         }
     }
 })
@@ -2255,16 +2194,14 @@ EXTINSN(V6_vdelta, "Vd32=vdelta(Vu32,Vv32)",    ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
 EXTINSN(V6_vrdelta, "Vd32=vrdelta(Vu32,Vv32)",  ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VP,A_NOTE_PERMUTE_RESOURCE),
 "Forward Benes Butterfly network ",
 {
-    fHIDE(int offset;)
+	fHIDE(int offset;)
     fHIDE(int k;)
-    fHIDE(mmvector_t tmp;)
-    tmp = VuV;
     for (offset=1; offset<fVBYTES(); offset<<=1){
         for (k = 0; k<fVBYTES(); k++) {
-            VdV.ub[k] = (VvV.ub[k]&offset) ? tmp.ub[k^offset] : tmp.ub[k];
+            VdV.ub[k] = (VvV.ub[k]&offset) ? VuV.ub[k^offset] : VuV.ub[k];
         }
         for (k = 0; k<fVBYTES(); k++) {
-            tmp.ub[k] = VdV.ub[k];
+            VuV.ub[k] = VdV.ub[k];
         }
     }
 })
@@ -2290,13 +2227,16 @@ ITERATOR_INSN_SHIFT_SLOT(16,vpopcounth,"Vd32.h=vpopcount(Vu32.h)",   "Count Lead
 	fUARCH_NOTE_PUMP_4X(); \
 	fHIDE(int lane;) \
 	fHIDE(mmvector_t tmp;) \
+	SET_DEFAULT_EXTENDED(tmp) \
 	fVFOREACH(128, lane) { \
 		for (fHIDE(int )i=0; i<128/8; ++i) { \
 			unsigned char value = INPUTVEC.ub[(128/8)*lane+i]; \
 			unsigned char regno = value>>3; \
 			unsigned char element = value & 7; \
+			int vreg_idx = (128/16)*lane+(element);\
 			READ_EXT_VREG(regno,tmp,0); \
-			tmp.uh[(128/16)*lane+(element)]++; \
+			tmp.uh[vreg_idx]++; \
+			tmp.uw_ext[vreg_idx/8] = V_EXTENDED_WORDVAL; \
 			WRITE_EXT_VREG(regno,tmp,EXT_NEW); \
 		} \
 	}
@@ -2305,13 +2245,18 @@ ITERATOR_INSN_SHIFT_SLOT(16,vpopcounth,"Vd32.h=vpopcount(Vu32.h)",   "Count Lead
 	fUARCH_NOTE_PUMP_4X(); \
 	fHIDE(int lane;) \
 	fHIDE(mmvector_t tmp;) \
+	SET_DEFAULT_EXTENDED(tmp) \
 	fVFOREACH(128, lane) { \
 		for (fHIDE(int )i=0; i<128/8; ++i) { \
 			unsigned char value = INPUTVEC.ub[(128/8)*lane+i]; \
 			unsigned char regno = value>>3; \
 			unsigned char element = value & 7; \
+			int vreg_idx = (128/16)*lane+(element);\
 			READ_EXT_VREG(regno,tmp,0); \
-			if (fGETQBIT(QVAL,128/8*lane+i)) tmp.uh[(128/16)*lane+(element)]++; \
+			if (fGETQBIT(QVAL,128/8*lane+i)) {\
+				tmp.uh[vreg_idx]++; \
+				tmp.uw_ext[vreg_idx/8] = V_EXTENDED_WORDVAL; \
+			} \
 			WRITE_EXT_VREG(regno,tmp,EXT_NEW); \
 		} \
 	}
@@ -2329,25 +2274,32 @@ EXTINSN(V6_vhistq, "vhist(Qv4)",ATTRIBS(A_EXTENSION,A_CVI,A_CVI_4SLOT,A_CVI_REQU
 
 
 #if 1
-#define WHIST(EL,MASK,BSHIFT,COND,SATF) \
+#define WHIST(EL,MASK,BSHIFT,BCOND,QCOND,SATF) \
 	fHIDE(unsigned int) bucket = fGETUBYTE(0,input.h[i]); \
-	fHIDE(unsigned int) weight = fGETUBYTE(1,input.h[i]); \
+	fHIDE(unsigned int) weight = 0;\
 	fHIDE(unsigned int) vindex = (bucket >> 3) & 0x1F; \
 	fHIDE(unsigned int) elindex = ((i>>BSHIFT) & (~MASK)) | ((bucket>>BSHIFT) & MASK); \
 	fHIDE(mmvector_t tmp;) \
+	SET_DEFAULT_EXTENDED(tmp) \
 	READ_EXT_VREG(vindex,tmp,0); \
-	COND tmp.EL[elindex] = SATF(tmp.EL[elindex] + weight); \
+	BCOND {\
+		weight = fGETUBYTE(1,input.h[i]); \
+	}\
+	QCOND { \
+		tmp.EL[elindex] = SATF(tmp.EL[elindex] + weight); \
+		tmp.uw_ext[elindex/(8>>BSHIFT)] = V_EXTENDED_WORDVAL; \
+	} \
 	WRITE_EXT_VREG(vindex,tmp,EXT_NEW); \
 	fUARCH_NOTE_PUMP_2X();
 
-ITERATOR_INSN_VHISTLIKE(16,vwhist256,"vwhist256","vector weighted histogram halfword counters", WHIST(uh,7,0,,))
-ITERATOR_INSN_VHISTLIKE(16,vwhist256q,"vwhist256(Qv4)","vector weighted histogram halfword counters", WHIST(uh,7,0,if (fGETQBIT(QvV,2*i)),))
-ITERATOR_INSN_VHISTLIKE(16,vwhist256_sat,"vwhist256:sat","vector weighted histogram halfword counters", WHIST(uh,7,0,,fVSATUH))
-ITERATOR_INSN_VHISTLIKE(16,vwhist256q_sat,"vwhist256(Qv4):sat","vector weighted histogram halfword counters", WHIST(uh,7,0,if (fGETQBIT(QvV,2*i)),fVSATUH))
-ITERATOR_INSN_VHISTLIKE(16,vwhist128,"vwhist128","vector weighted histogram word counters", WHIST(uw,3,1,,))
-ITERATOR_INSN_VHISTLIKE(16,vwhist128q,"vwhist128(Qv4)","vector weighted histogram word counters", WHIST(uw,3,1,if (fGETQBIT(QvV,2*i)),))
-ITERATOR_INSN_VHISTLIKE(16,vwhist128m,"vwhist128(#u1)","vector weighted histogram word counters", WHIST(uw,3,1,if ((bucket & 1) == uiV),))
-ITERATOR_INSN_VHISTLIKE(16,vwhist128qm,"vwhist128(Qv4,#u1)","vector weighted histogram word counters", WHIST(uw,3,1,if (((bucket & 1) == uiV) && fGETQBIT(QvV,2*i)),))
+ITERATOR_INSN_VHISTLIKE(16,vwhist256,"vwhist256","vector weighted histogram halfword counters", WHIST(uh,7,0,,,))
+ITERATOR_INSN_VHISTLIKE(16,vwhist256q,"vwhist256(Qv4)","vector weighted histogram halfword counters", WHIST(uh,7,0,,if (fGETQBIT(QvV,2*i)),))
+ITERATOR_INSN_VHISTLIKE(16,vwhist256_sat,"vwhist256:sat","vector weighted histogram halfword counters", WHIST(uh,7,0,,,fVSATUH))
+ITERATOR_INSN_VHISTLIKE(16,vwhist256q_sat,"vwhist256(Qv4):sat","vector weighted histogram halfword counters", WHIST(uh,7,0,,if (fGETQBIT(QvV,2*i)),fVSATUH))
+ITERATOR_INSN_VHISTLIKE(16,vwhist128,"vwhist128","vector weighted histogram word counters", WHIST(uw,3,1,,,))
+ITERATOR_INSN_VHISTLIKE(16,vwhist128q,"vwhist128(Qv4)","vector weighted histogram word counters", WHIST(uw,3,1,,if (fGETQBIT(QvV,2*i)),))
+ITERATOR_INSN_VHISTLIKE(16,vwhist128m,"vwhist128(#u1)","vector weighted histogram word counters", WHIST(uw,3,1,if ((bucket & 1) == uiV),,))
+ITERATOR_INSN_VHISTLIKE(16,vwhist128qm,"vwhist128(Qv4,#u1)","vector weighted histogram word counters", WHIST(uw,3,1, if ((bucket & 1) == uiV), if (fGETQBIT(QvV,2*i)),))
 
 
 #endif
@@ -2684,6 +2636,14 @@ EXTINSN(V6_vscattermhw , "vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(A_EXTENSIO
 })
 
 
+ITERATOR_INSN_MPY_SLOT_EXP(32, v10mpyubs10, "Vdd32.w=v10mpy(Vuu32.ub,Vvv32.b,#u1)", "",
+
+)
+ITERATOR_INSN_MPY_SLOT_EXP(32, v10mpyubs10_vxx, "Vxx32.w+=v10mpy(Vuu32.ub,Vvv32.b,#u1)", "",
+
+)
+
+
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_VX_FWD(32, v6mpyvubs10_vxx, "Vxx32.w+=v6mpy(Vuu32.ub,Vvv32.b,#u2):v", "",
     fHIDE(size2s_t c00;)
     fGET10BIT(c00, VvvV.v[0].uw[i], 0)
@@ -2691,7 +2651,7 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_VX_FWD(32, v6mpyvubs10_vxx, "Vxx32.w+=v6mpy(Vu
     fGET10BIT(c01, VvvV.v[0].uw[i], 1)
     fHIDE(size2s_t c02;)
     fGET10BIT(c02, VvvV.v[0].uw[i], 2)
-
+    
 	fHIDE(size2s_t c10;)
     fGET10BIT(c10, VvvV.v[1].uw[i], 0)
     fHIDE(size2s_t c11;)
@@ -2700,56 +2660,56 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_VX_FWD(32, v6mpyvubs10_vxx, "Vxx32.w+=v6mpy(Vu
     fGET10BIT(c12, VvvV.v[1].uw[i], 2)
 
     if (uiV == 0) {
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c10);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c11);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c12);
-
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c00);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c02);
-
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c10);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c11);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c12);
+		
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c00);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c02);
+		
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c10);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c11);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c12);
-
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c11);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c12);
+		
     } else if (uiV == 1) {
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c00);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c01);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c02);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c00);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c01);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c02);
 
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c10);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c11);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c12);
-
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c11);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c12);
+		
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c00);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c02);
-
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c02);
+		
     } else if (uiV == 2) {
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c10);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c12);
-
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c12);
+		
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c00);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c01);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c01);
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c02);
-
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c10);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c11);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c12);
-
+		
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c10);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c11);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c12);
+		
     } else if (uiV == 3) {
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c00);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c01);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c02);
-
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c00);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c01);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c02);
+		
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c10);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c12);
-
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c12);
+		
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c00);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c01);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c02);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c01);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c02);
     }
 )
 ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_VX_FWD(32, v6mpyhubs10_vxx, "Vxx32.w+=v6mpy(Vuu32.ub,Vvv32.b,#u2):h", "",
@@ -2768,55 +2728,55 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC_VX_FWD(32, v6mpyhubs10_vxx, "Vxx32.w+=v6mpy(Vu
 
     if (uiV == 0) {
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c10);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c11);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c12);
-
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c11);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c12);
+		
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c00);
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c02);
 
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c10);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c11);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c12);
-
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c10);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c11);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c12);
+		
     } else if (uiV == 1) {
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c00);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c01);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c02);
-
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c00);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c01);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c02);
+		
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c10);
-		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c11);
+		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c11);	
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c12);
-
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c00);
+		
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c00);
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c02);
-
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c02);
+		
     }  else if (uiV == 2) {
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c10);
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c12);
-
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c00);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c01);
-	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c02);
-
+		
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c00);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c01);
+    	VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c02);
+				
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c10);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c11);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c12);
-
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c11);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c12);
+		
 	} else if (uiV == 3) {
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c00);
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c01);
 		VxxV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c02);
-
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c10);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c12);
-
+		
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c10);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c12);
+    	
 		VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c00);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c01);
-	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c02);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c01);
+    	VxxV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c02);
     }
 )
 
@@ -2835,59 +2795,59 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32, v6mpyvubs10, "Vdd32.w=v6mpy(Vuu32.ub,Vvv32
     fHIDE(short c12;)
     fGET10BIT(c12, VvvV.v[1].uw[i], 2)
 
-
+	
 
     if (uiV == 0) {
 		VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c10);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c11);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c12);
-
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c00);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c02);
-
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c11);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c12);
+		
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c00);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c02);
+		
 		VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c10);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c11);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c12);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c11);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c12);
 
     }  else if (uiV == 1) {
 		VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c00);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c01);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c02);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c01);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c02);
 
 		VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c10);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c11);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c12);
-
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c11);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c12);
+		
 		VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c00);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c02);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c02);	
 
     }  else if (uiV == 2) {
 		VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c10);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c12);
-
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c12);
+		
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c00);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c01);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c01);
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c02);
-
-	VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c10);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c11);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c12);
-
+		
+    	VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c10);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c11);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c12);
+		
     } else if (uiV == 3) {
-	VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c00);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c01);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c02);
-
+    	VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c00);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c01);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c02);
+		
 		VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c10);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c12);
-
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c12);
+		
 		VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c00);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c01);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c02);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c01);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c02);
     }
 )
 
@@ -2907,57 +2867,170 @@ ITERATOR_INSN_MPY_SLOT_DOUBLE_VEC(32, v6mpyhubs10, "Vdd32.w=v6mpy(Vuu32.ub,Vvv32
 
     if (uiV == 0) {
 		VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c10);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c11);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c12);
-
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c11);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c12);
+		
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c00);
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c02);
 
-	VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c10);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c11);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c12);
-
+    	VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c10);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c11);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c12);
+		
     }  else if (uiV == 1) {
-	VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c00);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c01);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c02);
-
+    	VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c00);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c01);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c02);
+		
 		VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(3,VuuV.v[1].uw[i]), c10);
-		VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c11);
+		VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c11);	
 		VddV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c12);
-
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c00);
+		
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[1].uw[i]), c00);
 		VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c01);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c02);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c02);
 
     }  else if (uiV == 2) {
 		VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c10);
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c12);
-
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c00);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c01);
-	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c02);
-
+		
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c00);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c01);
+    	VddV.v[1].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c02);
+				
 		VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c10);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c11);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c12);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c11);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c12);
 
 	} else if (uiV == 3) {
 		VddV.v[1].w[i]  = fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c00);
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c01);
 		VddV.v[1].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c02);
-
-	VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c10);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c12);
-
+		
+    	VddV.v[0].w[i]  = fMPY16US(fGETUBYTE(1,VuuV.v[1].uw[i]), c10);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(3,VuuV.v[0].uw[i]), c11);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(1,VuuV.v[0].uw[i]), c12);
+    	
 		VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[1].uw[i]), c00);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c01);
-	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c02);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(2,VuuV.v[0].uw[i]), c01);
+    	VddV.v[0].w[i] += fMPY16US(fGETUBYTE(0,VuuV.v[0].uw[i]), c02);
     }
 )
+
+
+/* KVX - FP8 Instructions */
+
+// Two pipes: P2 & P3, two outputs, 16-bit output
+#define ITERATOR_INSN_FP8_DOUBLE_16(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_HVX_FP8,A_CVI,A_CVI_VX_DV,A_NOTE_MPYDV_RESOURCE,A_HVX_IEEE_FP_OUT_16), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+// Single pipe, 8-bit output
+#define ITERATOR_INSN_FP8(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_HVX_FP8,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_OUT_8), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+#define ITERATOR_INSN_FP8_LATE(WIDTH,TAG,SYNTAX,DESCR,CODE) \
+EXTINSN(V6_##TAG, SYNTAX, \
+ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_HVX_FP8,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_OUT_8,A_CVI_LATE), \
+DESCR, DO_FOR_EACH_CODE(WIDTH, CODE))
+
+// neg, abs, min, max
+ITERATOR_INSN_FP8_LATE(8, vfneg_f8, "Vd32.f8=vfneg(Vu32.f8)", "Vector FP8 neg: f8",          VdV.f8[i] = fp_neg_8f(VuV.f8[i]))
+ITERATOR_INSN_FP8_LATE(8, vabs_f8,  "Vd32.f8=vabs(Vu32.f8)", "Vector FP8 abs: f8",           VdV.f8[i] = fp_abs_8f(VuV.f8[i]))
+ITERATOR_INSN_FP8_LATE(8, vfmin_f8, "Vd32.f8=vfmin(Vu32.f8,Vv32.f8)", "Vector FP8 min: f8",  VdV.f8[i] = fp_min_8f(VuV.f8[i], VvV.f8[i]))
+ITERATOR_INSN_FP8_LATE(8, vfmax_f8,  "Vd32.f8=vfmax(Vu32.f8,Vv32.f8)", "Vector FP8 max: f8", VdV.f8[i] = fp_max_8f(VuV.f8[i], VvV.f8[i]))
+
+/*
+// split upper/lower
+
+//addition - widening
+ITERATOR_INSN_FP8_DOUBLE_16(32, vadd_hf_f8,    "Vdd32.hf=vadd(Vu32.f8,Vv32.f8)",  "Vector FP8 add: f8 widen to hf",
+    VddV.v[0].hf[2*i] = fp_add_8f_8f(VuV.f8[4*i], VvV.f8[4*i]);
+    VddV.v[0].hf[2*i+1] = fp_add_8f_8f(VuV.f8[4*i+1], VvV.f8[4*i+1]);
+    VddV.v[1].hf[2*i] = fp_add_8f_8f(VuV.f8[4*i+2], VvV.f8[4*i+2]);
+    VddV.v[1].hf[2*i+1] = fp_add_8f_8f(VuV.f8[4*i+3], VvV.f8[4*i+3]))
+
+//subtraction - widening
+ITERATOR_INSN_FP8_DOUBLE_16(32, vsub_hf_f8,    "Vdd32.hf=vsub(Vu32.f8,Vv32.f8)",  "Vector FP8 sub: f8 widen to hf",
+    VddV.v[0].hf[2*i] = fp_sub_8f_8f(VuV.f8[4*i], VvV.f8[4*i]);
+    VddV.v[0].hf[2*i+1] = fp_sub_8f_8f(VuV.f8[4*i+1], VvV.f8[4*i+1]);
+    VddV.v[1].hf[2*i] = fp_sub_8f_8f(VuV.f8[4*i+2], VvV.f8[4*i+2]);
+    VddV.v[1].hf[2*i+1] = fp_sub_8f_8f(VuV.f8[4*i+3], VvV.f8[4*i+3]))
+
+//multiply - widening
+ITERATOR_INSN_FP8_DOUBLE_16(32, vmpy_hf_f8,    "Vdd32.hf=vmpy(Vu32.f8,Vv32.f8)", "Vector FP8 mul: f8 widen to hf",
+    VddV.v[0].hf[2*i] = fp_mult_8f_8f(VuV.f8[4*i], VvV.f8[4*i]);
+    VddV.v[0].hf[2*i+1] = fp_mult_8f_8f(VuV.f8[4*i+1], VvV.f8[4*i+1]);
+    VddV.v[1].hf[2*i] = fp_mult_8f_8f(VuV.f8[4*i+2], VvV.f8[4*i+2]);
+    VddV.v[1].hf[2*i+1] = fp_mult_8f_8f(VuV.f8[4*i+3], VvV.f8[4*i+3]))
+
+//multply - accumulation - widening
+ITERATOR_INSN_FP8_DOUBLE_16(32, vmpy_hf_f8_acc,"Vxx32.hf+=vmpy(Vu32.f8,Vv32.f8)", "Vector FP8 fma: f8 widen to hf",
+    fCVI_VX_NO_TMP_LD(); 
+    VxxV.v[0].hf[2*i] = fp_mult_8f_8f_acc(VuV.f8[4*i], VvV.f8[4*i], VxxV.v[0].hf[2*i]);
+    VxxV.v[0].hf[2*i+1] = fp_mult_8f_8f_acc(VuV.f8[4*i+1], VvV.f8[4*i+1], VxxV.v[0].hf[2*i+1]);
+    VxxV.v[1].hf[2*i] = fp_mult_8f_8f_acc(VuV.f8[4*i+2], VvV.f8[4*i+2], VxxV.v[1].hf[2*i]);
+    VxxV.v[1].hf[2*i+1] = fp_mult_8f_8f_acc(VuV.f8[4*i+3], VvV.f8[4*i+3], VxxV.v[1].hf[2*i+1]))
+
+//cvt : fp8->fp16 
+ITERATOR_INSN_FP8_DOUBLE_16(32, vcvt_hf_f8, "Vdd32.hf=vcvt(Vu32.f8)", "Vector cvt to fp16: f8 widen to hf",
+    VddV.v[0].hf[2*i] = f8_to_f16(VuV.f8[4*i]);
+    VddV.v[0].hf[2*i+1] = f8_to_f16(VuV.f8[4*i+1]);
+    VddV.v[1].hf[2*i] = f8_to_f16(VuV.f8[4*i+2]);
+    VddV.v[1].hf[2*i+1] = f8_to_f16(VuV.f8[4*i+3]);)
+*/
+
+/* split even/odd */
+
+//addition - widening
+ITERATOR_INSN_FP8_DOUBLE_16(32, vadd_hf_f8,    "Vdd32.hf=vadd(Vu32.f8,Vv32.f8)",  "Vector FP8 add: f8 widen to hf",
+    VddV.v[0].hf[2*i] = fp_add_8f_8f(VuV.f8[4*i], VvV.f8[4*i]);
+    VddV.v[0].hf[2*i+1] = fp_add_8f_8f(VuV.f8[4*i+2], VvV.f8[4*i+2]);
+    VddV.v[1].hf[2*i] = fp_add_8f_8f(VuV.f8[4*i+1], VvV.f8[4*i+1]);
+    VddV.v[1].hf[2*i+1] = fp_add_8f_8f(VuV.f8[4*i+3], VvV.f8[4*i+3]))
+
+//subtraction - widening
+ITERATOR_INSN_FP8_DOUBLE_16(32, vsub_hf_f8,    "Vdd32.hf=vsub(Vu32.f8,Vv32.f8)",  "Vector FP8 sub: f8 widen to hf",
+    VddV.v[0].hf[2*i] = fp_sub_8f_8f(VuV.f8[4*i], VvV.f8[4*i]);
+    VddV.v[0].hf[2*i+1] = fp_sub_8f_8f(VuV.f8[4*i+2], VvV.f8[4*i+2]);
+    VddV.v[1].hf[2*i] = fp_sub_8f_8f(VuV.f8[4*i+1], VvV.f8[4*i+1]);
+    VddV.v[1].hf[2*i+1] = fp_sub_8f_8f(VuV.f8[4*i+3], VvV.f8[4*i+3]))
+
+//multiply - widening
+ITERATOR_INSN_FP8_DOUBLE_16(32, vmpy_hf_f8,    "Vdd32.hf=vmpy(Vu32.f8,Vv32.f8)", "Vector FP8 mul: f8 widen to hf",
+    VddV.v[0].hf[2*i] = fp_mult_8f_8f(VuV.f8[4*i], VvV.f8[4*i]);
+    VddV.v[0].hf[2*i+1] = fp_mult_8f_8f(VuV.f8[4*i+2], VvV.f8[4*i+2]);
+    VddV.v[1].hf[2*i] = fp_mult_8f_8f(VuV.f8[4*i+1], VvV.f8[4*i+1]);
+    VddV.v[1].hf[2*i+1] = fp_mult_8f_8f(VuV.f8[4*i+3], VvV.f8[4*i+3]))
+
+//multply - accumulation - widening
+ITERATOR_INSN_FP8_DOUBLE_16(32, vmpy_hf_f8_acc,"Vxx32.hf+=vmpy(Vu32.f8,Vv32.f8)", "Vector FP8 fma: f8 widen to hf",
+    fCVI_VX_NO_TMP_LD(); 
+    VxxV.v[0].hf[2*i] = fp_mult_8f_8f_acc(VuV.f8[4*i], VvV.f8[4*i], VxxV.v[0].hf[2*i]);
+    VxxV.v[0].hf[2*i+1] = fp_mult_8f_8f_acc(VuV.f8[4*i+2], VvV.f8[4*i+2], VxxV.v[0].hf[2*i+1]);
+    VxxV.v[1].hf[2*i] = fp_mult_8f_8f_acc(VuV.f8[4*i+1], VvV.f8[4*i+1], VxxV.v[1].hf[2*i]);
+    VxxV.v[1].hf[2*i+1] = fp_mult_8f_8f_acc(VuV.f8[4*i+3], VvV.f8[4*i+3], VxxV.v[1].hf[2*i+1]))
+    
+//cvt : fp8->fp16 
+ITERATOR_INSN_FP8_DOUBLE_16(32, vcvt_hf_f8, "Vdd32.hf=vcvt(Vu32.f8)", "Vector cvt to fp16: f8 widen to hf",
+    VddV.v[0].hf[2*i] = f8_to_f16(VuV.f8[4*i]);
+    VddV.v[0].hf[2*i+1] = f8_to_f16(VuV.f8[4*i+2]);
+    VddV.v[1].hf[2*i] = f8_to_f16(VuV.f8[4*i+1]);
+    VddV.v[1].hf[2*i+1] = f8_to_f16(VuV.f8[4*i+3]))
+
+
+//cvt : fp16->fp8
+ITERATOR_INSN_FP8(32, vcvt_f8_hf,  "Vd32.f8=vcvt(Vu32.hf,Vv32.hf)", "Vector cvt to fp8: hf narrow to f8",
+    VdV.f8[4*i]   = f16_to_f8(VuV.hf[2*i], get_usr_reg_fpsat_field(thread));
+    VdV.f8[4*i+1] = f16_to_f8(VvV.hf[2*i], get_usr_reg_fpsat_field(thread));
+    VdV.f8[4*i+2] = f16_to_f8(VuV.hf[2*i+1], get_usr_reg_fpsat_field(thread)); 
+    VdV.f8[4*i+3] = f16_to_f8(VvV.hf[2*i+1], get_usr_reg_fpsat_field(thread)))
+
 
 /* KVX - IEEE FP Instructions */
 
@@ -3024,7 +3097,7 @@ ITERATOR_INSN_IEEE_FP_32(32, vdmpy_sf_hf,     "Vd32.sf=vdmpy(Vu32.hf,Vv32.hf)", 
 
 
 ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_hf_acc,"Vxx32.sf+=vmpy(Vu32.hf,Vv32.hf)", "Vector IEEE fma: hf widen to sf",
-    fCVI_VX_NO_TMP_LD();
+    fCVI_VX_NO_TMP_LD(); 
     VxxV.v[0].sf[i] = fp_mult_sf_hf_acc(VuV.hf[2*i], VvV.hf[2*i], VxxV.v[0].sf[i]);
     VxxV.v[1].sf[i] = fp_mult_sf_hf_acc(VuV.hf[2*i+1], VvV.hf[2*i+1], VxxV.v[1].sf[i]))
 
@@ -3058,6 +3131,19 @@ ITERATOR_INSN_IEEE_FP_DOUBLE_16(32,  vcvt_hf_b,  "Vdd32.hf=vcvt(Vu32.b)",  "Vect
     VddV.v[1].hf[2*i]   = b_to_f16(VuV.b[4*i+2]);
     VddV.v[1].hf[2*i+1] = b_to_f16(VuV.b[4*i+3]))
 
+//Changed swizzled elements
+ITERATOR_INSN_IEEE_FP_DOUBLE_16(32,  vcvt2_hf_ub, "Vdd32.hf=vcvt2(Vu32.ub)", "Vector IEEE cvt2 from int: ub widen to hf",
+    VddV.v[0].hf[2*i]   = ub_to_f16(VuV.ub[4*i]);
+    VddV.v[0].hf[2*i+1] = ub_to_f16(VuV.ub[4*i+2]);
+    VddV.v[1].hf[2*i]   = ub_to_f16(VuV.ub[4*i+1]);
+    VddV.v[1].hf[2*i+1] = ub_to_f16(VuV.ub[4*i+3]))
+
+ITERATOR_INSN_IEEE_FP_DOUBLE_16(32,  vcvt2_hf_b,  "Vdd32.hf=vcvt2(Vu32.b)",  "Vector IEEE cvt2 from int: b widen to hf",
+    VddV.v[0].hf[2*i]   = b_to_f16(VuV.b[4*i]);
+    VddV.v[0].hf[2*i+1] = b_to_f16(VuV.b[4*i+2]);
+    VddV.v[1].hf[2*i]   = b_to_f16(VuV.b[4*i+1]);
+    VddV.v[1].hf[2*i+1] = b_to_f16(VuV.b[4*i+3]))
+
 ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vcvt_sf_hf, "Vdd32.sf=vcvt(Vu32.hf)", "Vector IEEE cvt: hf widen to sf",
     VddV.v[0].sf[i] = f16_to_f32(VuV.hf[2*i]);
     VddV.v[1].sf[i] = f16_to_f32(VuV.hf[2*i+1]))
@@ -3084,6 +3170,19 @@ ITERATOR_INSN_IEEE_FP_16_32(32, vcvt_b_hf,  "Vd32.b=vcvt(Vu32.hf,Vv32.hf)", "Vec
     VdV.b[4*i+2] = f16_to_b(VvV.hf[2*i]);
     VdV.b[4*i+3] = f16_to_b(VvV.hf[2*i+1]))
 
+//Changed swizzled elements
+ITERATOR_INSN_IEEE_FP_16_32(32, vcvt2_ub_hf, "Vd32.ub=vcvt2(Vu32.hf,Vv32.hf)", "Vector cvt2 to int: hf narrow to ub",
+    VdV.ub[4*i]   = f16_to_ub(VuV.hf[2*i]);
+    VdV.ub[4*i+1] = f16_to_ub(VvV.hf[2*i]);
+    VdV.ub[4*i+2] = f16_to_ub(VuV.hf[2*i+1]);
+    VdV.ub[4*i+3] = f16_to_ub(VvV.hf[2*i+1]))
+
+ITERATOR_INSN_IEEE_FP_16_32(32, vcvt2_b_hf,  "Vd32.b=vcvt2(Vu32.hf,Vv32.hf)", "Vector cvt2 to int: hf narrow to b",
+    VdV.b[4*i]   = f16_to_b(VuV.hf[2*i]);
+    VdV.b[4*i+1] = f16_to_b(VvV.hf[2*i]);
+    VdV.b[4*i+2] = f16_to_b(VuV.hf[2*i+1]);
+    VdV.b[4*i+3] = f16_to_b(VvV.hf[2*i+1]))
+
 #define ITERATOR_INSN_IEEE_FP_16_32_LATE(WIDTH,TAG,SYNTAX,DESCR,CODE) \
 EXTINSN(V6_##TAG, SYNTAX, \
 ATTRIBS(A_EXTENSION,A_HVX_IEEE_FP,A_NOTE_HVX_IEEE_FP,A_CVI,A_CVI_VX,A_HVX_IEEE_FP_OUT_16,A_HVX_IEEE_FP_OUT_32,A_CVI_LATE), \
@@ -3108,16 +3207,16 @@ ITERATOR_INSN_IEEE_FP_16_32_LATE(32, vfmax_sf,  "Vd32.sf=vfmax(Vu32.sf,Vv32.sf)"
 //Mpy/MAC (BF16,BF16)->(FP32,FP32) (double-vector output)
 //convert (FP32,FP32)->BF16
 
-ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vadd_sf_bf,     "Vdd32.sf=vadd(Vu32.bf,Vv32.bf)",  "Vector IEEE add: bf widen to sf",
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vadd_sf_bf,     "Vdd32.sf=vadd(Vu32.bf,Vv32.bf)",  "Vector IEEE add: bf widen to sf", 
 	VddV.v[0].sf[i] = fp_add_sf_bf(VuV.bf[2*i], VvV.bf[2*i]);
 	VddV.v[1].sf[i] = fp_add_sf_bf(VuV.bf[2*i+1], VvV.bf[2*i+1]); fBFLOAT())
-ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vsub_sf_bf,     "Vdd32.sf=vsub(Vu32.bf,Vv32.bf)",  "Vector IEEE sub: bf widen to sf",
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vsub_sf_bf,     "Vdd32.sf=vsub(Vu32.bf,Vv32.bf)",  "Vector IEEE sub: bf widen to sf", 
 	VddV.v[0].sf[i] = fp_sub_sf_bf(VuV.bf[2*i], VvV.bf[2*i]);
 	VddV.v[1].sf[i] = fp_sub_sf_bf(VuV.bf[2*i+1], VvV.bf[2*i+1]); fBFLOAT())
-ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_bf,     "Vdd32.sf=vmpy(Vu32.bf,Vv32.bf)",  "Vector IEEE mul: hf widen to sf",
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_bf,     "Vdd32.sf=vmpy(Vu32.bf,Vv32.bf)",  "Vector IEEE mul: hf widen to sf", 
 	VddV.v[0].sf[i] = fp_mult_sf_bf(VuV.bf[2*i], VvV.bf[2*i]);
 	VddV.v[1].sf[i] = fp_mult_sf_bf(VuV.bf[2*i+1], VvV.bf[2*i+1]); fBFLOAT())
-ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_bf_acc, "Vxx32.sf+=vmpy(Vu32.bf,Vv32.bf)", "Vector IEEE fma: hf widen to sf",
+ITERATOR_INSN_IEEE_FP_DOUBLE_32(32, vmpy_sf_bf_acc, "Vxx32.sf+=vmpy(Vu32.bf,Vv32.bf)", "Vector IEEE fma: hf widen to sf", 
 	VxxV.v[0].sf[i] = fp_mult_sf_bf_acc(VuV.bf[2*i], VvV.bf[2*i], VxxV.v[0].sf[i]);
 	VxxV.v[1].sf[i] = fp_mult_sf_bf_acc(VuV.bf[2*i+1], VvV.bf[2*i+1], VxxV.v[1].sf[i]); fCVI_VX_NO_TMP_LD(); fBFLOAT())
 ITERATOR_INSN_IEEE_FP_16(32, vcvt_bf_sf,            "Vd32.bf=vcvt(Vu32.sf,Vv32.sf)",   "Vector IEEE cvt: sf to bf",
@@ -3125,10 +3224,10 @@ ITERATOR_INSN_IEEE_FP_16(32, vcvt_bf_sf,            "Vd32.bf=vcvt(Vu32.sf,Vv32.s
     VdV.bf[2*i+1] = sf_to_bf(VvV.sf[i]); fBFLOAT())
 
 
-
 //Min/max BF16->BF16
 ITERATOR_INSN_IEEE_FP_16_32_LATE(16, vmax_bf, "Vd32.bf=vmax(Vu32.bf,Vv32.bf)", "Vector IEEE max: bf", VdV.bf[i] = fp_max_bf(VuV.bf[i], VvV.bf[i]); fBFLOAT())
 ITERATOR_INSN_IEEE_FP_16_32_LATE(16, vmin_bf, "Vd32.bf=vmin(Vu32.bf,Vv32.bf)", "Vector IEEE max: bf", VdV.bf[i] = fp_min_bf(VuV.bf[i], VvV.bf[i]); fBFLOAT())
+
 
 
 EXTINSN(V6_vscattermhwq,  "if (Qs4) vscatter(Rt32,Mu2,Vvv32.w).h=Vw32", ATTRIBS(A_EXTENSION,A_CVI,A_CVI_SCATTER,A_CVI_VA_DV,A_CVI_VM,A_EA_PAGECROSS,A_MEMSIZE_2B,A_CVI_GATHER_ADDR_4B,A_VTCM_ALLBANK_ACCESS,A_MEMLIKE,A_NOTE_ANY2_RESOURCE), "Scatter halfwords conditional",
@@ -3180,7 +3279,7 @@ DEF_CVI_MAPPING(V6_vscattermwhq_alt,  "if (Qs4) vscatter(Rt32,Mu2,Vvv32.w)=Vw32.
 DEF_CVI_MAPPING(V6_vscattermhq_alt,  "if (Qs4) vscatter(Rt32,Mu2,Vv32.h)=Vw32.h",  "if (Qs4) vscatter(Rt32,Mu2,Vv32.h).h=Vw32")
 
 
-EXTINSN(V6_vprefixqb,"Vd32.b=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE),  "parallel prefix sum of Q into byte",
+EXTINSN(V6_vprefixqb,"Vd32.b=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE,A_RESTRICT_CVI_NOVP,A_NOTE_RESTRICT_CVI_NOVP),  "parallel prefix sum of Q into byte",
 {
     fHIDE(int i;)
     fHIDE(size1u_t acc = 0;)
@@ -3189,8 +3288,8 @@ EXTINSN(V6_vprefixqb,"Vd32.b=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
         VdV.ub[i] = acc;
     }
     } )
-EXTINSN(V6_vprefixqh,"Vd32.h=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE),  "parallel prefix sum of Q into halfwords",
-{
+EXTINSN(V6_vprefixqh,"Vd32.h=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE,A_RESTRICT_CVI_NOVP,A_NOTE_RESTRICT_CVI_NOVP),  "parallel prefix sum of Q into halfwords",
+{   
     fHIDE(int i;)
     fHIDE(size2u_t acc = 0;)
     fVFOREACH(16, i) {
@@ -3199,8 +3298,8 @@ EXTINSN(V6_vprefixqh,"Vd32.h=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
         VdV.uh[i] = acc;
     }
     } )
-EXTINSN(V6_vprefixqw,"Vd32.w=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE),  "parallel prefix sum of Q into words",
-{
+EXTINSN(V6_vprefixqw,"Vd32.w=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_VS,A_CVI_EARLY,A_NOTE_SHIFT_RESOURCE,A_RESTRICT_CVI_NOVP,A_NOTE_RESTRICT_CVI_NOVP),  "parallel prefix sum of Q into words",
+{ 
     fHIDE(int i;)
     fHIDE(size4u_t acc = 0;)
     fVFOREACH(32, i) {
@@ -3213,9 +3312,6 @@ EXTINSN(V6_vprefixqw,"Vd32.w=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
     } )
 
 
-
-
-
 /******************************************************************************
  DEBUG Vector/Register Printing
  ******************************************************************************/
@@ -3223,9 +3319,14 @@ EXTINSN(V6_vprefixqw,"Vd32.w=prefixsum(Qv4)",   ATTRIBS(A_EXTENSION,A_CVI,A_CVI_
 #define PRINT_VU(TYPE, TYPE2, COUNT)\
     int i;  \
     size4u_t vec_len = fVBYTES();\
-    fprintf(stdout,"V%2d: ",VuN);  \
+    fprintf(stdout,"V%2d:     ",VuN);  \
     for (i=0;i<vec_len>>COUNT;i++) {         \
         fprintf(stdout,TYPE2 " ", VuV.TYPE[i]); \
+    };  \
+    fprintf(stdout,"\\n");  \
+    fprintf(stdout,"V_ext%2d: ",VuN);  \
+    for (i=0;i<32;i++) {         \
+        fprintf(stdout,"%08x ", VuV.ext[i]); \
     };  \
     fprintf(stdout,"\\n");  \
 	fflush(stdout);\

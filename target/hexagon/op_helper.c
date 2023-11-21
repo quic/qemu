@@ -2705,6 +2705,7 @@ void HELPER(check_vtcm_memcpy)(CPUHexagonState *env, uint32_t dst, uint32_t src,
     printf("ERROR: bogus helper: " #tag "\n")
 
 #include "mmvec/kvx_ieee.h"
+#include "mmvec/kvx_fp8.h"
 #include "helper_funcs_generated.c.inc"
 
 

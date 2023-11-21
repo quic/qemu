@@ -35,6 +35,14 @@ typedef struct SystemState system_t;
 #include "coproc_rpc.h"
 #include "max.h"
 
+typedef enum {
+        RND_TO_NEAREST_EVEN,
+        RND_TO_ZERO,
+        RND_TOWARDS_NEG_INF,
+        RND_TOWARDS_POS_INF,
+	MAX_RND_MODES
+} qfrnd_mode_enum_t;
+
 extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
 #include "reg_fields.h"
@@ -230,6 +238,10 @@ typedef struct {
     uint8_t valid:1;
     uint8_t log_as_tag:1;
     uint8_t no_deriveumaptr:1;
+    /* Flag to tell if we want to use aligned or unaligned mem address */
+    uint8_t use_aligned_address:1;
+    /* Flag to tell if you are using coproc range insns */
+    uint8_t is_coproc_range:1;
 } mem_access_info_t;
 
 #ifndef CONFIG_USER_ONLY
@@ -384,6 +396,7 @@ typedef struct CPUArchState {
 
     VStoreLog vstore[VSTORES_MAX];
     target_ulong vstore_pending[VSTORES_MAX];
+    bool gather_issued;
     bool vtcm_pending;
     VTCMStoreLog vtcm_log;
     mem_access_info_t mem_access[SLOTS_MAX];
@@ -424,6 +437,8 @@ typedef struct CPUArchState {
     bool ss_pending;
 #endif
     target_ulong next_PC;
+    qfrnd_mode_enum_t qfrnd_mode;
+    int qfcoproc_mode;
 } CPUHexagonState;
 #define mmvecx_t CPUHexagonState
 

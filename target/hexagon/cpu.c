@@ -633,6 +633,12 @@ static void hexagon_cpu_reset_hold(Object *obj)
     memset(env->gpr, 0, sizeof(target_ulong) * TOTAL_PER_THREAD_REGS);
     memset(env->pred, 0, sizeof(target_ulong) * NUM_PREGS);
     memset(env->VRegs, 0, sizeof(MMVector) * NUM_VREGS);
+    for (int i = 0; i < NUM_VREGS; i++) {
+        env->VRegs[i].ud_ext[0] = V_EXTENDED_DWORDVAL;
+        env->VRegs[i].ud_ext[1] = V_EXTENDED_DWORDVAL;
+        env->VRegs[i].ud_ext[2] = V_EXTENDED_DWORDVAL;
+        env->VRegs[i].ud_ext[3] = V_EXTENDED_DWORDVAL;
+    }
     memset(env->QRegs, 0, sizeof(MMQReg) * NUM_QREGS);
     memset(env->vstore_pending, 0, sizeof(target_ulong) * VSTORES_MAX);
     env->t_cycle_count = 0;

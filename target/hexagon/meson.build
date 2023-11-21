@@ -157,6 +157,7 @@ hexagon_ss.add(files(
     'mmvec/system_ext_mmvec.c',
     'mmvec/mmvec_qfloat.c',
     'mmvec/kvx_ieee.c',
+    'mmvec/kvx_fp8.c',
     'int16_emu.c',
     'system.c',
     'arch_options_calc.c',

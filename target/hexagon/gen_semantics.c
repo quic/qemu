@@ -93,19 +93,6 @@ int main(int argc, char *argv[])
  * The important part here is the attributes.  Whenever an instruction
  * invokes a macro, we add the macro's attributes to the instruction.
  */
-#define DEF_MACRO(MNAME, BEH, ATTRS) \
-    fprintf(outfile, "MACROATTRIB( \\\n" \
-                     "    \"%s\", \\\n" \
-                     "    \"\"\"%s\"\"\", \\\n" \
-                     "    \"%s\" \\\n" \
-                     ")\n", \
-            #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS));
-#include "imported/macros.def"
-#undef DEF_MACRO
-
-/*
- * Process the macros for HVX
- */
 #define DEF_MACRO(MNAME, PARAMS, SDESC, LDESC, BEH, ATTRS) \
     fprintf(outfile, "MACROATTRIB( \\\n" \
                      "    \"%s\", \\\n" \
@@ -113,6 +100,7 @@ int main(int argc, char *argv[])
                      "    \"%s\" \\\n" \
                      ")\n", \
             #MNAME, STRINGIZE(BEH), STRINGIZE(ATTRS));
+#include "imported/macros.def"
 #include "imported/allext_macros.def"
 #undef DEF_MACRO
 

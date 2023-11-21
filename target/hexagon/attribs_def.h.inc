@@ -25,6 +25,7 @@ DEF_ATTRIB(CONDMAPPING, "Not real -- mapped based on values", "", "")
 DEF_ATTRIB(EXTENSION, "Extension instruction", "", "")
 DEF_ATTRIB(SHARED_EXTENSION, "Shared extension instruction", "", "")
 DEF_ATTRIB(CABAC,"Cabac Instruction. Used in conjuction with QDSP6_CABAC_PRESENT","","")
+DEF_ATTRIB(EXPERIMENTAL,"This may not work correctly not supported by RTL.","","")
 
 DEF_ATTRIB(PRIV, "Not available in user or guest mode", "", "")
 DEF_ATTRIB(GUEST, "Not available in user mode", "", "")
@@ -142,6 +143,9 @@ DEF_ATTRIB(CVI_VX_ACC_FWD, "VX Accumulator Forwarding", "", "")
 
 DEF_ATTRIB(CVI_VX_NO_TMP_LD,"VX Accumulator renaming not allowed from tmp load instruction","","")
 
+/* new attribute required in QDSP6_70970 */
+DEF_ATTRIB(RESTRICT_CVI_NOVP,"Instructions with this attribute are assigned to the original shift unit and can not be assigned to the shift/permute unit","","")
+
 DEF_ATTRIB(CVI_GATHER_ADDR_2B, "CVI Scatter/Gather address is halfword", "", "")
 DEF_ATTRIB(CVI_GATHER_ADDR_4B, "CVI Scatter/Gather address is word", "", "")
 
@@ -158,6 +162,7 @@ DEF_ATTRIB(COPROC_CU_SCALAR, "", "", "")
 
 DEF_ATTRIB(COPROC_FLT, "", "", "")
 DEF_ATTRIB(HVX_FLT, "This a floating point HVX instruction.", "", "")
+DEF_ATTRIB(XQFLOAT, "This a extended qfloat instruction.", "", "")
 
 DEF_ATTRIB(VTCM_ALLBANK_ACCESS, "This instruction allocates in all VTCM schedulers due to a region access.", "", "")
 DEF_ATTRIB(XUMINOR, "XU minor SMTable instruction", "", "")
@@ -376,6 +381,10 @@ DEF_ATTRIB(NOTE_TMP_NO_VX, "The tmp load instruction destination register cannot
 
 DEF_ATTRIB(NOTE_NO_ECC, "ECC is not supported for scatter and gather instructions. Enabling ECC with unprotected access instructions result in undetermined behavior.", "", "")
 
+/* FP8 instructions */
+DEF_ATTRIB(HVX_FP8, "HVX FP8 extension instruction","","")
+DEF_ATTRIB(HVX_IEEE_FP_OUT_8, "HVX IEEE FP extension instruction: 8-bit output","","")
+
 /* Restrictions to make note of */
 DEF_ATTRIB(RESTRICT_LOOP_LA, "Cannot be in the last packet of a loop", "", "")
 DEF_ATTRIB(RESTRICT_NEEDS_MEMLD, "Must be grouped with a load", "", "")
@@ -403,6 +412,7 @@ DEF_ATTRIB(RESTRICT_LATEPRED, "Predicate can not be used as a .new.", "", "")
 DEF_ATTRIB(PAIR_1OF2, "For assembler", "", "")
 DEF_ATTRIB(PAIR_2OF2, "For assembler", "", "")
 DEF_ATTRIB(NOTE_MX_PAIR, "Weights and Activations need to be paired in a packet.", "", "")
+DEF_ATTRIB(NOTE_RESTRICT_CVI_NOVP,"This instruction cannot use the permute/shift resource","","")
 
 /* Performance based preferences */
 DEF_ATTRIB(PREFER_SLOT3, "Complex XU prefering slot3", "", "")
