@@ -141,6 +141,26 @@ const VMStateDescription vmstate_pmustate = {
     }
 };
 
+const VMStateDescription vmstate_hex_exception_info = {
+    .name = "hex_exception_info",
+    .version_id = 0,
+    .minimum_version_id = 0,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT8(valid, hex_exception_info),
+        VMSTATE_UINT8(type, hex_exception_info),
+        VMSTATE_UINT8(cause, hex_exception_info),
+        VMSTATE_UINT8(bvs, hex_exception_info),
+        VMSTATE_UINT8(bv0, hex_exception_info),
+        VMSTATE_UINT8(bv1, hex_exception_info),
+        VMSTATE_UINT32(badva0, hex_exception_info),
+        VMSTATE_UINT32(badva1, hex_exception_info),
+        VMSTATE_UINT32(elr, hex_exception_info),
+        VMSTATE_UINT16(diag, hex_exception_info),
+        VMSTATE_UINT16(de_slotmask, hex_exception_info),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 const VMStateDescription vmstate_hexagon_cpu = {
     .name = "cpu",
     .version_id = 0,
@@ -209,6 +229,8 @@ const VMStateDescription vmstate_hexagon_cpu = {
                         vmstate_info_hex_tlb_ptr, CPUHexagonTLBContext *),
 
         VMSTATE_STRUCT(env.pmu, HexagonCPU, 0, vmstate_pmustate, PMUState),
+        VMSTATE_STRUCT(env.einfo, HexagonCPU, 0, vmstate_hex_exception_info,
+                       hex_exception_info),
 
         VMSTATE_END_OF_LIST()
     },
