@@ -161,6 +161,19 @@ const VMStateDescription vmstate_hex_exception_info = {
     }
 };
 
+const VMStateDescription vmstate_mem_log = {
+    .name = "mem_log",
+    .version_id = 0,
+    .minimum_version_id = 0,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT32(va, MemLog),
+        VMSTATE_UINT8(width, MemLog),
+        VMSTATE_UINT32(data32, MemLog),
+        VMSTATE_UINT64(data64, MemLog),
+        VMSTATE_END_OF_LIST()
+    }
+};
+
 const VMStateDescription vmstate_hexagon_cpu = {
     .name = "cpu",
     .version_id = 0,
@@ -235,6 +248,8 @@ const VMStateDescription vmstate_hexagon_cpu = {
         VMSTATE_STRUCT(env.pmu, HexagonCPU, 0, vmstate_pmustate, PMUState),
         VMSTATE_STRUCT(env.einfo, HexagonCPU, 0, vmstate_hex_exception_info,
                        hex_exception_info),
+        VMSTATE_STRUCT_ARRAY(env.mem_log_stores, HexagonCPU, STORES_MAX, 0,
+                             vmstate_mem_log, MemLog),
 
         VMSTATE_END_OF_LIST()
     },
