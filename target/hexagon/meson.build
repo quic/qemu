@@ -481,7 +481,7 @@ if host_os != 'windows'
   rpclib_dir = 'subprojects/rpclib'
   cmake = import('cmake')
   cmake_opts = cmake.subproject_options()
-  cmake_opts.append_compile_args('cpp', ['-Wno-class-memaccess', '-Wno-unused-but-set-variable'] + qemu_cflags)
+  cmake_opts.append_compile_args('cpp', ['-Wno-class-memaccess', '-Wno-unused-but-set-variable', '-fPIC'] + qemu_cflags)
   rpclib_proj = cmake.subproject('rpclib', options:cmake_opts)
   rpclib_dep = rpclib_proj.dependency('rpc')
   hexagon_ss.add(rpclib_dep)
@@ -492,7 +492,7 @@ if host_os != 'windows'
   rpclib_dep = declare_dependency(
       link_args : ['-L' + rpclib_dir_abs_lib, '-l' + rpclib] + qemu_ldflags,
       include_directories : rpclib_dir_inc)
-  coproc_rpc = static_library('coproc_rpc', 'coproc_rpc.cpp',dependencies : [rpclib_dep])
+  coproc_rpc = static_library('coproc_rpc', 'coproc_rpc.cpp',dependencies : [rpclib_dep], pic: true)
 endif
 
 target_arch += {'hexagon': hexagon_ss}
