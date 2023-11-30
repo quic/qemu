@@ -162,7 +162,7 @@ the instruction.  This makes it easy to override the instruction semantics with
 functions from tcg-op-gvec.h.  Here's the override for this instruction.
     #define fGEN_TCG_V6_vaddw(SHORTCODE) \
         tcg_gen_gvec_add(MO_32, VdV_off, VuV_off, VvV_off, \
-                         sizeof(MMVector), sizeof(MMVector))
+                         VECTOR_SIZE_BYTE, VECTOR_SIZE_BYTE)
 
 Finally, we notice that the override doesn't use the TCGv_ptr variables, so
 we don't generate them when an override is present.  Here is what we generate

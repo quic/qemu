@@ -908,13 +908,13 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
         for (i = 0; i < VECTOR_TEMPS_MAX; i++) {
             intptr_t offset = offsetof(CPUHexagonState, future_VRegs[i]);
             tcg_gen_gvec_dup_i32(MO_32, offset,
-                                 sizeof(MMVector), sizeof(MMVector),
+                                 VECTOR_SIZE_BYTE, VECTOR_SIZE_BYTE,
                                  tcg_constant_tl(PARANOID_VALUE));
         }
         for (i = 0; i < VECTOR_TEMPS_MAX; i++) {
             intptr_t offset = offsetof(CPUHexagonState, tmp_VRegs[i]);
             tcg_gen_gvec_dup_i32(MO_32, offset,
-                                 sizeof(MMVector), sizeof(MMVector),
+                                 VECTOR_SIZE_BYTE, VECTOR_SIZE_BYTE,
                                  tcg_constant_tl(PARANOID_VALUE));
         }
         for (i = 0; i < NUM_QREGS; i++) {
@@ -933,7 +933,7 @@ static void gen_start_packet(CPUHexagonState *env, DisasContext *ctx)
                              sizeof(MMVectorPair), sizeof(MMVectorPair),
                              tcg_constant_tl(PARANOID_VALUE));
         tcg_gen_gvec_dup_i32(MO_32, offsetof(CPUHexagonState, vtmp),
-                             sizeof(MMVector), sizeof(MMVector),
+                             VECTOR_SIZE_BYTE, VECTOR_SIZE_BYTE,
                              tcg_constant_tl(PARANOID_VALUE));
         tcg_gen_gvec_dup_i32(MO_32, offsetof(CPUHexagonState, qtmp),
                              sizeof(MMQReg), sizeof(MMQReg),

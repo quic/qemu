@@ -40,7 +40,7 @@ typedef Insn insn_t;
 
 void mem_gather_store(CPUHexagonState *env, target_ulong vaddr, int slot)
 {
-    size_t size = sizeof(MMVector);
+    size_t size = VECTOR_SIZE_BYTE;
 
     env->vstore_pending[slot] = 1;
     env->vstore[slot].va   = vaddr;
