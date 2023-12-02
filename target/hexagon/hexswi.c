@@ -1078,6 +1078,13 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 
     CPU_MEMOP_PC_SET_ON_EXCEPTION(env);
 
+    uint32_t ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    if (GET_SSR_FIELD(SSR_EX, ssr) == 1) {
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_DIAG, env->cause_code);
+        env->cause_code = HEX_CAUSE_DOUBLE_EXCEPT;
+        cs->exception_index = HEX_EVENT_PRECISE;
+    }
+
     switch (cs->exception_index) {
     case HEX_EVENT_TRAP0:
         HEX_DEBUG_LOG("\ttid = %u, trap0, pc = 0x%x, elr = 0x%x, "
@@ -1214,6 +1221,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             /* env->sreg[HEX_SREG_BADVA] is set when the exception is raised */
             break;
 
+        case HEX_CAUSE_DOUBLE_EXCEPT:
         case HEX_CAUSE_PRIV_USER_NO_SINSN:
         case HEX_CAUSE_PRIV_USER_NO_GINSN:
         case HEX_CAUSE_INVALID_OPCODE:
