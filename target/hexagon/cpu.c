@@ -337,8 +337,20 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     mcc->parent_realize(dev, errp);
 }
 
+#if !defined(CONFIG_USER_ONLY)
+static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
+{
+    g_assert_not_reached();
+}
+#endif
+
+
 static void hexagon_cpu_init(Object *obj)
 {
+#if !defined(CONFIG_USER_ONLY)
+    HexagonCPU *cpu = HEXAGON_CPU(obj);
+    qdev_init_gpio_in(DEVICE(cpu), hexagon_cpu_set_irq, 8);
+#endif
 }
 
 #include "hw/core/tcg-cpu-ops.h"
