@@ -1386,6 +1386,14 @@ probe_target_compiler() {
     : ${container_cross_strip:=${container_cross_prefix}strip}
   done
 
+  case $target in
+#   hexagon-linux-user)
+#     cross_cc_hexagon=hexagon-linux-clang ;;
+    hexagon-softmmu)
+      cross_cc_hexagon=hexagon-clang ;;
+  esac
+
+
   try=cross
   # For softmmu/roms we might be able to use the host compiler
   if [ "${1%softmmu}" != "$1" ]; then
