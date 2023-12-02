@@ -244,6 +244,7 @@ decodetree_trans_funcs_generated = custom_target(
     command: [python, files('gen_trans_funcs.py'), semantics_generated, '@OUTPUT@'],
 )
 hexagon_ss.add(decodetree_trans_funcs_generated)
+hexagon_softmmu_ss = ss.source_set()
 
 hexagon_ss.add(files(
     'cpu.c',
@@ -261,6 +262,10 @@ hexagon_ss.add(files(
     'mmvec/decode_ext_mmvec.c',
     'mmvec/system_ext_mmvec.c',
 ))
+
+hexagon_softmmu_ss.add(files(
+    'machine.c',
+ ))
 
 #
 # Step 4.5
@@ -398,3 +403,4 @@ analyze_funcs_generated = custom_target(
 hexagon_ss.add(analyze_funcs_generated)
 
 target_arch += {'hexagon': hexagon_ss}
+target_system_arch += {'hexagon': hexagon_softmmu_ss}
