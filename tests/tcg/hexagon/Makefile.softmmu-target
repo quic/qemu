@@ -100,6 +100,7 @@ TESTS += \
 	hvx-multi \
 	memcpy \
 	semihost \
+	double_ex \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -224,6 +225,8 @@ memcpy: memcpy.o
 inf-loop: inf-loop.o
 semihost.o: semihost.c strutils.h
 semihost: semihost.o
+double_ex.o: double_ex.c filename.h
+double_ex: double_ex.o
 
 $(TESTS) inf-loop:
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
