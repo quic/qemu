@@ -27,6 +27,7 @@
 #include "tcg/tcg.h"
 #include "exec/gdbstub.h"
 #include "trace.h"
+#include "hw/hexagon/hexagon.h"
 
 #if !defined(CONFIG_USER_ONLY)
 #include "migration/vmstate.h"
@@ -233,7 +234,7 @@ static target_ulong read_p3_0(CPUHexagonState *env)
     return control_reg;
 }
 
-static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
+static void print_reg_(FILE *f, CPUHexagonState *env, int regnum, bool json)
 {
     target_ulong value;
 
@@ -244,9 +245,23 @@ static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
                             : env->gpr[regnum];
     }
 
-    qemu_fprintf(f, "  %s = 0x" TARGET_FMT_lx "\n",
-                 hexagon_regnames[regnum], value);
+    const char *fmt = json
+              ? "    \"%s\": 0x" TARGET_FMT_lx ",\n"
+              : "  %s = 0x" TARGET_FMT_lx "\n";
+    qemu_fprintf(f, fmt, hexagon_regnames[regnum],
+                 value);
 }
+
+static void print_reg(FILE *f, CPUHexagonState *env, int regnum)
+{
+    print_reg_(f, env, regnum, false);
+}
+
+static void print_reg_json(FILE *f, CPUHexagonState *env, int regnum)
+{
+    print_reg_(f, env, regnum, true);
+}
+
 
 #ifndef CONFIG_USER_ONLY
 static target_ulong get_badva(CPUHexagonState *env)
@@ -337,7 +352,7 @@ void hexagon_debug_qreg(CPUHexagonState *env, int regnum)
     print_qreg(stdout, env, regnum, false);
 }
 
-static void hexagon_dump(CPUHexagonState *env, FILE *f, int flags)
+void hexagon_dump(CPUHexagonState *env, FILE *f, int flags)
 {
     HexagonCPU *cpu = env_archcpu(env);
 
@@ -443,6 +458,70 @@ static void hexagon_dump(CPUHexagonState *env, FILE *f, int flags)
     }
 }
 
+void hexagon_dump_json(CPUHexagonState *env_)
+{
+
+    HexagonCPU *cpu = env_archcpu(env_);
+    if (!cpu->dump_json_file) {
+        return;
+    }
+
+    FILE *f = fopen(cpu->dump_json_file, "w");
+
+    qemu_fprintf(f, "{\n");
+    qemu_fprintf(f, "  \"time_sec_utc\": %f,\n",
+        difftime(time(NULL), (time_t) 0));
+    qemu_fprintf(f, "  \"threads\": {\n");
+
+    CPUState *cs = NULL;
+    CPU_FOREACH(cs) {
+        cpu = HEXAGON_CPU(cs);
+        CPUHexagonState *env = &cpu->env;
+
+        qemu_fprintf(f, "    \"%d\": {\n", cs->cpu_index);
+        for (int i = 0; i < 32; i++) {
+            print_reg_json(f, env, i);
+        }
+        print_reg_json(f, env, HEX_REG_SA0);
+        print_reg_json(f, env, HEX_REG_LC0);
+        print_reg_json(f, env, HEX_REG_SA1);
+        print_reg_json(f, env, HEX_REG_LC1);
+
+#ifdef CONFIG_USER_ONLY
+        print_reg_json(f, env, HEX_REG_M0);
+        print_reg_json(f, env, HEX_REG_M1);
+        print_reg_json(f, env, HEX_REG_USR);
+        print_reg_json(f, env, HEX_REG_P3_0_ALIASED);
+        print_reg_json(f, env, HEX_REG_GP);
+        print_reg_json(f, env, HEX_REG_UGP);
+        print_reg_json(f, env, HEX_REG_PC);
+#else
+        print_reg_json(f, env, HEX_REG_P3_0_ALIASED);
+        print_reg_json(f, env, HEX_REG_M0);
+        print_reg_json(f, env, HEX_REG_M1);
+        print_reg_json(f, env, HEX_REG_USR);
+        print_reg_json(f, env, HEX_REG_PC);
+        print_reg_json(f, env, HEX_REG_UGP);
+        print_reg_json(f, env, HEX_REG_GP);
+
+        print_reg_json(f, env, HEX_REG_CS0);
+        print_reg_json(f, env, HEX_REG_CS1);
+
+        print_reg_json(f, env, HEX_REG_UPCYCLELO);
+        print_reg_json(f, env, HEX_REG_UPCYCLEHI);
+        print_reg_json(f, env, HEX_REG_FRAMELIMIT);
+        print_reg_json(f, env, HEX_REG_FRAMEKEY);
+        print_reg_json(f, env, HEX_REG_PKTCNTLO);
+        print_reg_json(f, env, HEX_REG_PKTCNTHI);
+        print_reg_json(f, env, HEX_REG_UTIMERLO);
+        print_reg_json(f, env, HEX_REG_UTIMERHI);
+#endif
+        qemu_fprintf(f, "     },\n");
+    }
+    qemu_fprintf(f, "  },\n");
+    qemu_fprintf(f, "}\n");
+    fclose(f);
+}
 
 static void hexagon_dump_state(CPUState *cs, FILE *f, int flags)
 {
@@ -479,17 +558,6 @@ static void hexagon_cpu_synchronize_from_tb(CPUState *cs,
     tcg_debug_assert(!(cs->tcg_cflags & CF_PCREL));
     env->gpr[HEX_REG_PC] = tb->pc;
 }
-
-#if !defined(CONFIG_USER_ONLY)
-static bool hexagon_cpu_has_work(CPUState *cs)
-{
-    HexagonCPU *cpu = HEXAGON_CPU(cs);
-    CPUHexagonState *env = &cpu->env;
-
-    return hexagon_thread_is_enabled(env) &&
-        (cs->interrupt_request & (CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI));
-}
-#endif
 
 static void hexagon_restore_state_to_opc(CPUState *cs,
                                          const TranslationBlock *tb,
@@ -598,10 +666,11 @@ static void hexagon_cpu_reset_hold(Object *obj)
     env->greg[HEX_GREG_GPMUCNT6] = INVALID_REG_VAL;
     env->greg[HEX_GREG_GPMUCNT7] = INVALID_REG_VAL;
 
-    env->k0_lock_state = HEX_LOCK_UNLOCKED;
-    env->tlb_lock_state = HEX_LOCK_UNLOCKED;
-    env->ss_pending = false;
+    ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_UNLOCKED);
+    ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_UNLOCKED);
+    ATOMIC_STORE(env->ss_pending, false);
 
+    hex_mmu_reset(env);
     hexagon_cpu_soft_reset(env);
     ARCH_SET_THREAD_REG(env, HEX_REG_PC, cpu->boot_addr);
 #endif
@@ -611,6 +680,39 @@ static void hexagon_cpu_disas_set_info(CPUState *s, disassemble_info *info)
 {
     info->print_insn = print_insn_hexagon;
 }
+
+static const rev_features_t rev_features_v68 = {
+};
+
+static const options_struct options_struct_v68 = {
+    .l2tcm_base  = 0,  /* FIXME - Should be l2tcm_base ?? */
+};
+
+static const arch_proc_opt_t arch_proc_opt_v68 = {
+    .vtcm_size = VTCM_SIZE,
+    .vtcm_offset = VTCM_OFFSET,
+    .dmadebugfile = NULL,
+    .pmu_enable = 0,
+    .dmadebug_verbosity = 0,
+    .xfp_inexact_enable = 1,
+    .xfp_cvt_frac = 13,
+    .xfp_cvt_int = 3,
+    .QDSP6_DMA_PRESENT     = 1,
+    .QDSP6_DMA_EXTENDED_VA_PRESENT = 0,
+    .QDSP6_VX_PRESENT = 1,
+    .QDSP6_VX_CONTEXTS = VECTOR_UNIT_MAX,
+    .QDSP6_VX_MEM_ENTRIES = 2048,
+    .QDSP6_VX_VEC_SZ = 1024,
+};
+
+static struct ProcessorState ProcessorStateV68 = {
+    .features = &rev_features_v68,
+    .options = &options_struct_v68,
+    .arch_proc_options = &arch_proc_opt_v68,
+    .runnable_threads_max = 0,
+    .thread_system_mask = 0,
+    .timing_on = 0,
+};
 
 static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 {
@@ -644,6 +746,11 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
     env->threadId = cs->cpu_index;
+    env->processor_ptr = &ProcessorStateV68;
+    env->processor_ptr->runnable_threads_max = cpu->cluster_thread_count;
+    env->processor_ptr->thread_system_mask   = (1 << cpu->cluster_thread_count) - 1;
+    env->processor_ptr->thread[env->threadId] = env;
+    env->system_ptr = NULL;
 
 #ifndef CONFIG_USER_ONLY
     hex_mmu_realize(env);
@@ -683,6 +790,14 @@ bool hexagon_thread_is_enabled(CPUHexagonState *env) {
     return E_bit;
 }
 
+static bool hexagon_cpu_has_work(CPUState *cs)
+{
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+    CPUHexagonState *env = &cpu->env;
+
+    return hexagon_thread_is_enabled(env) &&
+        (cs->interrupt_request & (CPU_INTERRUPT_HARD | CPU_INTERRUPT_SWI));
+}
 
 static void hexagon_cpu_set_irq(void *opaque, int irq, int level)
 {
@@ -1003,15 +1118,6 @@ static void hexagon_cpu_class_init(ObjectClass *c, void *data)
 #endif
 #ifdef CONFIG_TCG
     cc->tcg_ops = &hexagon_tcg_ops;
-#endif
-}
-
-unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
-{
-#if !defined(CONFIG_USER_ONLY)
-    g_assert_not_reached();
-#else
-    return MMU_USER_IDX;
 #endif
 }
 

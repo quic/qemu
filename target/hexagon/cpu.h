@@ -18,14 +18,21 @@
 #ifndef HEXAGON_CPU_H
 #define HEXAGON_CPU_H
 
+/* Forward declaration needed by some of the header files */
+struct CPUArchState;
+typedef struct CPUArchState CPUHexagonState;
+typedef struct ProcessorState processor_t;
+typedef struct SystemState system_t;
+
 #include "fpu/softfloat-types.h"
 
 #include "cpu-qom.h"
 #include "exec/cpu-defs.h"
-#include "hex_regs.h"
 #include "mmvec/mmvec.h"
 #include "hw/hexagon/hexagon.h"
+#include "max.h"
 
+extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
 #include "reg_fields.h"
 typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
@@ -35,6 +42,8 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 #define SREG_WRITES_MAX 64
 #define NUM_TLB_REGS(PROC) NUM_TLB_ENTRIES
 #endif
+
+#include "hex_regs.h"
 
 #define TARGET_LONG_BITS 32
 
@@ -79,6 +88,56 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 void hexagon_cpu_list(void);
 #define cpu_list hexagon_cpu_list
 
+typedef struct {
+  int unused;
+} rev_features_t;
+
+enum mem_access_types {
+    access_type_INVALID = 0,
+    access_type_unknown = 1,
+    access_type_load = 2,
+    access_type_store = 3,
+    access_type_fetch = 4,
+    access_type_dczeroa = 5,
+    access_type_dccleana = 6,
+    access_type_dcinva = 7,
+    access_type_dccleaninva = 8,
+    access_type_icinva = 9,
+    access_type_ictagr = 10,
+    access_type_ictagw = 11,
+    access_type_icdatar = 12,
+    access_type_dcfetch = 13,
+    access_type_l2fetch = 14,
+    access_type_l2cleanidx = 15,
+    access_type_l2cleaninvidx = 16,
+    access_type_l2tagr = 17,
+    access_type_l2tagw = 18,
+    access_type_dccleanidx = 19,
+    access_type_dcinvidx = 20,
+    access_type_dccleaninvidx = 21,
+    access_type_dctagr = 22,
+    access_type_dctagw = 23,
+    access_type_k0unlock = 24,
+    access_type_l2locka = 25,
+    access_type_l2unlocka = 26,
+    access_type_l2kill = 27,
+    access_type_l2gclean = 28,
+    access_type_l2gcleaninv = 29,
+    access_type_l2gunlock = 30,
+    access_type_synch = 31,
+    access_type_isync = 32,
+    access_type_pause = 33,
+    access_type_load_phys = 34,
+    access_type_load_locked = 35,
+    access_type_store_conditional = 36,
+    access_type_barrier = 37,
+    access_type_memcpy_load = 39,
+    access_type_memcpy_store = 40,
+    access_type_udma_load = 51,
+    access_type_udma_store = 52,
+    access_type_unpause = 53,
+    NUM_CORE_ACCESS_TYPES
+};
 
 typedef struct {
     target_ulong va;
@@ -97,6 +156,74 @@ typedef struct {
 #endif
 } VStoreLog;
 
+struct dma_state;
+typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *);
+
+typedef struct arch_proc_opt {
+    int pmu_enable;
+    FILE *dmadebugfile;
+    int dmadebug_verbosity;
+    int xfp_inexact_enable;
+    int xfp_cvt_frac;
+    int xfp_cvt_int;
+    uint64_t vtcm_size;
+    uint64_t vtcm_offset;
+    int vtcm_original_mem_entries;
+    int QDSP6_DMA_PRESENT;
+    int QDSP6_DMA_EXTENDED_VA_PRESENT;
+    int QDSP6_VX_PRESENT;
+    int QDSP6_VX_CONTEXTS;
+    int QDSP6_VX_MEM_ENTRIES;
+    int QDSP6_VX_VEC_SZ;
+} arch_proc_opt_t;
+
+typedef struct {
+    uint64_t l2tcm_base;
+} options_struct;
+
+struct ProcessorState {
+    const rev_features_t *features;
+    const options_struct *options;
+    const arch_proc_opt_t *arch_proc_options;
+    target_ulong runnable_threads_max;
+    target_ulong thread_system_mask;
+    CPUHexagonState *thread[THREADS_MAX];
+
+    /* Useful information of the DMA engine per thread. */
+    struct dma_adapter_engine_info *dma_engine_info[THREADS_MAX];
+    struct dma_state *dma[DMA_MAX]; /* same as dma_t */
+    dma_insn_checker_ptr dma_insn_checker[DMA_MAX];
+    uint64_t monotonic_pcycles; /* never reset */
+
+    int timing_on;
+};
+
+#include "xlate_info.h"
+
+typedef struct {
+    target_ulong vaddr;
+    target_ulong bad_vaddr;
+    uint64_t paddr;
+    uint32_t range;
+    uint64_t lddata;
+    uint64_t stdata;
+    int cancelled;
+    int tnum;
+    int size;
+    enum mem_access_types type;
+    unsigned char cdata[512];
+    uint32_t width;
+    uint32_t page_cross_base;
+    uint32_t page_cross_sum;
+    uint16_t slot;
+    uint8_t check_page_crosses;
+    xlate_info_t xlate_info;
+    uint8_t is_dealloc:1;
+    uint8_t is_memop:1;
+    uint8_t valid:1;
+    uint8_t log_as_tag:1;
+    uint8_t no_deriveumaptr:1;
+} mem_access_info_t;
 
 #ifndef CONFIG_USER_ONLY
 #define HEX_CPU_MODE_USER    1
@@ -150,6 +277,12 @@ typedef enum {
     HEX_LOCK_OWNER          = 2
 } hex_lock_state_t;
 
+#define ATOMIC_LOAD(VAR) (__atomic_load_n(&(VAR), __ATOMIC_SEQ_CST), (VAR))
+#define ATOMIC_STORE(VAR, VAL)                              \
+    {                                                       \
+        __atomic_store_n(&(VAR), (VAL), __ATOMIC_SEQ_CST);  \
+        smp_mb(); /* multiple hw threads access this VAR */ \
+    }
 #define ATOMIC_EXCHANGE(VAR_ADDR, NEW, OLD)                             \
     {                                                                   \
         OLD = __atomic_exchange_n((VAR_ADDR), (NEW), __ATOMIC_SEQ_CST); \
@@ -167,6 +300,22 @@ typedef enum {
     }
 
 
+struct Einfo {
+  uint8_t valid;
+  uint8_t type;
+  uint8_t cause;
+  uint8_t bvs:1;
+  uint8_t bv0:1;       /* valid for badva0 */
+  uint8_t bv1:1;       /* valid for badva1 */
+  uint32_t badva0;
+  uint32_t badva1;
+  uint32_t elr;
+  uint16_t diag;
+  uint16_t de_slotmask;
+};
+typedef struct Einfo hex_exception_info;
+typedef struct Instruction Insn;
+typedef unsigned systemstate_t;
 
 typedef struct CPUArchState {
     target_ulong gpr[TOTAL_PER_THREAD_REGS];
@@ -213,7 +362,7 @@ typedef struct CPUArchState {
     MMVector future_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
     MMVector tmp_VRegs[VECTOR_TEMPS_MAX] QEMU_ALIGNED(16);
 
-    //VRegMask VRegs_updated_tmp;
+    VRegMask VRegs_updated_tmp;
 
     MMQReg QRegs[NUM_QREGS] QEMU_ALIGNED(16);
     MMQReg future_QRegs[NUM_QREGS] QEMU_ALIGNED(16);
@@ -229,17 +378,24 @@ typedef struct CPUArchState {
     target_ulong vstore_pending[VSTORES_MAX];
     bool vtcm_pending;
     VTCMStoreLog vtcm_log;
+    mem_access_info_t mem_access[SLOTS_MAX];
 
     int status;
+    uint8_t bq_on;
 
     unsigned int timing_on;
 
+    uint64_t pktid;
+    processor_t *processor_ptr;
     unsigned int threadId;
+    system_t *system_ptr;
     uint64_t t_cycle_count;
     uint64_t *g_pcycle_base;
     /* Used by cpu_{ld,st}* calls down in TCG code. Set by top level helpers. */
     uintptr_t cpu_memop_pc;
     bool cpu_memop_pc_set;
+    hwaddr vtcm_base;
+    uint32_t vtcm_size;
     int memfd_fd;
 #ifndef CONFIG_USER_ONLY
     int slot;                    /* Needed for exception generation */
@@ -295,6 +451,7 @@ struct ArchCPU {
     bool paranoid_commit_state;
     bool short_circuit;
     uint32_t cluster_thread_count;
+    gchar *dump_json_file;
     uint32_t l2line_size;
 };
 
@@ -309,7 +466,7 @@ uint32_t hexagon_get_sys_pcycle_count_high(CPUHexagonState *env);
 #include "cpu_bits.h"
 
 #define cpu_signal_handler cpu_hexagon_signal_handler
-int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
+extern int cpu_hexagon_signal_handler(int host_signum, void *pinfo, void *puc);
 
 FIELD(TB_FLAGS, IS_TIGHT_LOOP, 0, 1)
 FIELD(TB_FLAGS, MMU_INDEX, 1, 3)
@@ -348,8 +505,6 @@ static inline bool rev_implements_64b_hvx(CPUHexagonState *env)
     HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
     return (hex_cpu->rev_reg & 255) <= (v66_rev & 255);
 }
-
-unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 
 static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, vaddr *pc,
                                         uint64_t *cs_base, uint32_t *flags)
@@ -464,8 +619,9 @@ typedef HexagonCPU ArchCPU;
 
 void hexagon_translate_init(void);
 void hexagon_cpu_soft_reset(CPUHexagonState *env);
+void hexagon_dump_json(CPUHexagonState *env);
 
-void hexagon_cpu_do_interrupt(CPUState *cpu);
+extern void hexagon_cpu_do_interrupt(CPUState *cpu);
 void register_trap_exception(CPUHexagonState *env, int type, int imm,
                              target_ulong PC);
 
