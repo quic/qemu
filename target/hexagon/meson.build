@@ -150,6 +150,7 @@ hexagon_ss.add(files(
     'fma_emu.c',
     'mmvec/decode_ext_mmvec.c',
     'mmvec/system_ext_mmvec.c',
+    'mmvec/mmvec_qfloat.c',
 ))
 
 hexagon_softmmu_ss.add(files(
