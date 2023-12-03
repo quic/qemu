@@ -137,6 +137,7 @@ hexagon_softmmu_ss = ss.source_set()
 
 hexagon_ss.add(files(
     'cpu.c',
+    'hexswi.c',
     'translate.c',
     'op_helper.c',
     'gdbstub.c',
