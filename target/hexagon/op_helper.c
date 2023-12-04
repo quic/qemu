@@ -298,7 +298,7 @@ void HELPER(commit_hvx_stores)(CPUHexagonState *env)
                     clear_bit(i, env->vtcm_log.mask);
                     env->vtcm_log.data.ub[i] = 0;
 #ifndef CONFIG_USER_ONLY
-                    env->vtcm_log.offsets.ub[i] = 0;
+                    fVARRAY_ELEMENT_ACCESS(env->vtcm_log.offsets, ub, i) = 0;
 #endif
                 }
 

@@ -79,59 +79,9 @@ typedef struct {
     
 } MMVector;
 
-typedef union {
-    struct {
-        union {
-            uint64_t ud[2*MAX_VEC_SIZE_BYTES/8];
-            int64_t  d[2*MAX_VEC_SIZE_BYTES/8];
-            uint32_t uw[2*MAX_VEC_SIZE_BYTES/4];
-            int32_t  w[2*MAX_VEC_SIZE_BYTES/4];
-            uint16_t uh[2*MAX_VEC_SIZE_BYTES/2];
-            int16_t  h[2*MAX_VEC_SIZE_BYTES/2];
-            uint8_t ub[2*MAX_VEC_SIZE_BYTES/1];
-            int8_t  b[2*MAX_VEC_SIZE_BYTES/1];
-            int8_t  f8[2*MAX_VEC_SIZE_BYTES/1];
-            int32_t qf32[MAX_VEC_SIZE_BYTES/4];
-            int16_t qf16[MAX_VEC_SIZE_BYTES/2];
-            int32_t sf[MAX_VEC_SIZE_BYTES/4];
-            int16_t hf[MAX_VEC_SIZE_BYTES/2];
-            int16_t bf[MAX_VEC_SIZE_BYTES/2];
-        };
-        union {
-            uint64_t ud_ext[2*MAX_VEC_SIZE_BYTES/64];
-            uint32_t uw_ext[2*MAX_VEC_SIZE_BYTES/32];
-            uint8_t    ext[2*MAX_VEC_SIZE_BYTES/8];
-        };
-    };
+typedef struct {
     MMVector v[2];
 } MMVectorPair;
-
-typedef union {
-    struct {
-        union {
-            uint64_t ud[4*MAX_VEC_SIZE_BYTES/8];
-            int64_t  d[4*MAX_VEC_SIZE_BYTES/8];
-            uint32_t uw[4*MAX_VEC_SIZE_BYTES/4];
-            int32_t  w[4*MAX_VEC_SIZE_BYTES/4];
-            uint16_t uh[4*MAX_VEC_SIZE_BYTES/2];
-            int16_t  h[4*MAX_VEC_SIZE_BYTES/2];
-            uint8_t ub[4*MAX_VEC_SIZE_BYTES/1];
-            int8_t  b[4*MAX_VEC_SIZE_BYTES/1];
-            int8_t  f8[4*MAX_VEC_SIZE_BYTES/1];
-            int32_t qf32[MAX_VEC_SIZE_BYTES/4];
-            int16_t qf16[MAX_VEC_SIZE_BYTES/2];
-            int32_t sf[MAX_VEC_SIZE_BYTES/4];
-            int16_t hf[MAX_VEC_SIZE_BYTES/2];
-            int16_t bf[MAX_VEC_SIZE_BYTES/2];
-        };
-        union {
-            uint64_t ud_ext[2*MAX_VEC_SIZE_BYTES/64];
-            uint32_t uw_ext[2*MAX_VEC_SIZE_BYTES/32];
-            uint8_t    ext[2*MAX_VEC_SIZE_BYTES/8];
-        };
-    };
-    MMVector v[4];
-} MMVectorQuad;
 
 typedef union {
 	uint64_t ud[MAX_VEC_SIZE_BYTES/8/8];

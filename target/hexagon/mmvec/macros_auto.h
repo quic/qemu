@@ -158,7 +158,7 @@
 #define fSTOREMMVNQU_AL(EA,ALIGNMENT,LEN,SRC,MASK) { size4u_t size1 = ALIGNMENT-((EA)&(ALIGNMENT-1)); size4u_t size2; mmvector_t maskvec; int i; for (i = 0; i < fVECSIZE(); i++) maskvec.ub[i] = fGETQBIT(MASK,i); if (size1>LEN) size1 = LEN; size2 = LEN-size1; mem_store_vector_oddva(thread, insn, EA+size1, EA+fVECSIZE(), 1, size2, &SRC.ub[size1], &maskvec.ub[size1], 1, fUSE_LOOKUP_ADDRESS()); mem_store_vector_oddva(thread, insn, EA, EA, 0, size1, SRC.ub, &maskvec.ub[0], 1, fUSE_LOOKUP_ADDRESS_BY_REV(thread->processor_ptr)); }
 #define fSTOREMMVNQU(EA,SRC,MASK) { thread->last_pkt->pkt_has_vtcm_access = 0; thread->last_pkt->pkt_access_count = 0; if ( (EA & (fVECSIZE()-1)) == 0) { thread->last_pkt->double_access = 0; fSTOREMMVNQ_AL(EA,fVECSIZE(),fVECSIZE(),SRC,MASK); } else { thread->last_pkt->double_access = 1; thread->last_pkt->pkt_has_vmemu_access = 1; fSTOREMMVNQU_AL(EA,fVECSIZE(),fVECSIZE(),SRC,MASK); } }
 #define fVFOREACH(WIDTH,VAR) for (VAR = 0; VAR < fVELEM(WIDTH); VAR++)
-#define fVARRAY_ELEMENT_ACCESS(ARRAY,TYPE,INDEX) ARRAY.v[(INDEX) / (fVECSIZE()/(sizeof(ARRAY.TYPE[0])))].TYPE[(INDEX) % (fVECSIZE()/(sizeof(ARRAY.TYPE[0])))]
+#define fVARRAY_ELEMENT_ACCESS(ARRAY,TYPE,INDEX) ARRAY.v[(INDEX) / (fVECSIZE()/(sizeof(ARRAY.v[0].TYPE[0])))].TYPE[(INDEX) % (fVECSIZE()/(sizeof(ARRAY.v[0].TYPE[0])))]
 #define fVNEWCANCEL(REGNUM) do { THREAD2STRUCT->VRegs_select &= ~(1<<(REGNUM)); } while (0)
 #define fTMPVDATA() mmvec_vtmp_data(thread)
 #define fVSATDW(U,V) fVSATW( ( ( ((long long)U)<<32 ) | fZXTN(32,64,V) ) )

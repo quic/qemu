@@ -110,7 +110,7 @@ void mem_vector_scatter_init(thread_t* thread, insn_t * insn, vaddr_t base_vaddr
 
     int i = 0;
     for(i = 0; i < fVECSIZE(); i++) {
-        mmvecx->vtcm_log.offsets.ub[i] = 0; // Mark invalid
+        fVARRAY_ELEMENT_ACCESS(mmvecx->vtcm_log.offsets, ub, i) = 0; // Mark invalid
         mmvecx->vtcm_log.data.ub[i] = 0;
         //mmvecx->vtcm_log.mask.ub[i] = 0;
         mmvecx->vtcm_log.pa[i] = 0;
@@ -165,7 +165,7 @@ void mem_vector_gather_init(thread_t* thread, Insn * insn, vaddr_t base_vaddr,  
 
     int i = 0;
     for(i = 0; i < 2*fVECSIZE(); i++) {
-        mmvecx->vtcm_log.offsets.ub[i] = 0x0;
+        fVARRAY_ELEMENT_ACCESS(mmvecx->vtcm_log.offsets, ub, i) = 0x0;
     }
     for(i = 0; i < fVECSIZE(); i++) {
         mmvecx->vtcm_log.data.ub[i] = 0;
@@ -212,7 +212,8 @@ void mem_vector_scatter_finish(thread_t* thread, insn_t * insn, int op)
     mmvecx->vtcm_log.size = fVECSIZE();
 
 
-    memcpy(thread->mem_access[slot].cdata, &mmvecx->vtcm_log.offsets.ub[0], 256);
+    memcpy(thread->mem_access[slot].cdata, &mmvecx->vtcm_log.offsets.v[0].ub[0], 128);
+    memcpy(&thread->mem_access[slot].cdata[128], &mmvecx->vtcm_log.offsets.v[1].ub[0], 128);
 
 
 
@@ -240,8 +241,8 @@ void mem_vector_gather_finish(thread_t* thread, insn_t * insn)
         }
     }
 #endif
-
-	memcpy(thread->mem_access[slot].cdata, &mmvecx->vtcm_log.offsets.ub[0], 256);
+    memcpy(thread->mem_access[slot].cdata, &mmvecx->vtcm_log.offsets.v[0].ub[0], 128);
+    memcpy(&thread->mem_access[slot].cdata[128], &mmvecx->vtcm_log.offsets.v[1].ub[0], 128);
 
 
 }

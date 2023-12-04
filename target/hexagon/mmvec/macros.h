@@ -62,8 +62,8 @@
 #else
 #define LOG_VTCM_BANK(VAL, MASK, IDX) \
     do { \
-        env->vtcm_log.offsets.uh[IDX]  = (VAL & 0xFFF); \
-        env->vtcm_log.offsets.uh[IDX] |= ((MASK & 0xF) << 12) ; \
+        fVARRAY_ELEMENT_ACCESS(env->vtcm_log.offsets, uh, IDX)  = (VAL & 0xFFF); \
+        fVARRAY_ELEMENT_ACCESS(env->vtcm_log.offsets, uh, IDX) |= ((MASK & 0xF) << 12) ; \
     } while (0)
 #endif
 
@@ -125,7 +125,7 @@
 #else
 #define CLEAR_OFFSETS(IDX) \
     do { \
-        env->vtcm_log.offsets.ub[IDX] = 0; \
+        fVARRAY_ELEMENT_ACCESS(env->vtcm_log.offsets, ub, IDX) = 0; \
     } while (0)
 #endif
 #define SCATTER_OP_WRITE_TO_MEM(TYPE) \
