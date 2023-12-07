@@ -146,10 +146,7 @@ coproc_build:
 
 .base-check-tcg:
   extends: .after-build
-  variables:
-    EXPORT_COPROC: "true"
   script:
-    - if test "${EXPORT_COPROC}" == "true"; then export QEMU_HEXAGON_COPROC=$PWD; fi
     - make -C $builddir -j check-tcg V=1 OVERRIDE_OPTS="$OVERRIDE_OPTS"
   artifacts:
     when: on_failure
@@ -159,7 +156,6 @@ coproc_build:
 .base-check:
   extends: .after-build
   script:
-    - export QEMU_HEXAGON_COPROC=$PWD
     - make -C $builddir -j check
   artifacts:
     when: on_failure
@@ -171,7 +167,6 @@ coproc_build:
   script:
     - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-qurt-tests.git
-    - export QEMU_HEXAGON_COPROC=$PWD
     - qemu-qurt-tests/run_tests.sh $builddir/qemu-system-hexagon
 
 .base-sival-tests:
@@ -179,8 +174,26 @@ coproc_build:
   script:
     - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-sival-tests.git
-    - export QEMU_HEXAGON_COPROC=$PWD
     - qemu-sival-tests/run_tests.sh $builddir/qemu-system-hexagon
+
+# The idea behind this job template is to simulate the default install
+# structure from qpm, allowing future jobs that execute qemu-system-hexagon to
+# have it find the coproc through its default path logic.
+#
+# It must NOT be extended directly, but rather referenced through the
+# "!reference" keyword.
+.hex-and-coproc:
+  script:
+    - |
+      if test -z "${BUILDDIR}"; then
+        echo "BUG - .hex-and-coproc requires BUILDDIR to be defined"
+        exit 1
+      fi
+      mkdir -p ${BUILDDIR}/Tools/QEMUHexagon/bin
+      mkdir -p ${BUILDDIR}/Tools/QEMUCoprocPlugin
+      mv $HEX_COPROC_BIN ${BUILDDIR}/Tools/QEMUCoprocPlugin/
+      mv ${BUILDDIR}/qemu-system-hexagon ${BUILDDIR}/Tools/QEMUHexagon/bin
+      ln -s $(realpath ${BUILDDIR}/Tools/QEMUHexagon/bin/qemu-system-hexagon) ${BUILDDIR}/
 
 ##################################################################
 #    Jobs
@@ -195,6 +208,13 @@ checkpatch:
 hexagon_build:
   extends: .base-build
   variables: { CONFIG_CMD: $HEX_CONFIG_CMD }
+hexagon_and_coproc_build:
+  needs: [hexagon_build, coproc_build]
+  variables: { BUILDDIR: hexagon_build }
+  script: !reference [.hex-and-coproc, script]
+  artifacts:
+    paths: [ $BUILDDIR ]
+    expire_in: 1 day
 hexagon_install:
   needs: [hexagon_build]
   extends: .base-install
@@ -202,21 +222,21 @@ hexagon_tarball:
   needs: [hexagon_install]
   extends: .base-tarball
 hexagon_check-tcg:
-  needs: [hexagon_build, coproc_build]
+  needs: [hexagon_and_coproc_build]
   extends: .base-check-tcg
 hexagon_check-tcg-MTTCG:
-  needs: [hexagon_build, coproc_build]
+  needs: [hexagon_and_coproc_build]
   extends: .base-check-tcg
   variables: { OVERRIDE_OPTS: "-accel tcg,thread=multi" }
 hexagon_check:
-  needs: [hexagon_build, coproc_build]
+  needs: [hexagon_and_coproc_build]
   extends: .base-check
 hexagon_qurt-tests:
   extends: .base-qurt-tests
-  needs: [hexagon_build, coproc_build]
+  needs: [hexagon_and_coproc_build]
 hexagon_sival-tests:
   extends: .base-sival-tests
-  needs: [hexagon_build, coproc_build]
+  needs: [hexagon_and_coproc_build]
 hexagon_publish:
   tags: [publish_runner]
   variables:
@@ -265,8 +285,6 @@ hexagon-win_check-tcg:
   # the build dir in this mingw64/wine setup.
   needs: [hexagon-win_build, hexagon-win_install]
   extends: .base-check-tcg
-  variables:
-    EXPORT_COPROC: "false"
 hexagon-win_tarball:
   image: $CI_REGISTRY/qqvp/containers/qqvp-dev-win:latest
   needs: [hexagon-win_install]
@@ -283,21 +301,28 @@ hexagon-mac_build:
 san-hexagon_build:
   extends: .base-build
   variables: { CONFIG_CMD: "$HEX_CONFIG_CMD --enable-sanitizers" }
+san-hexagon_and_coproc_build:
+  needs: [san-hexagon_build, coproc_build]
+  variables: { BUILDDIR: san-hexagon_build }
+  script: !reference [.hex-and-coproc, script]
+  artifacts:
+    paths: [ $BUILDDIR ]
+    expire_in: 1 day
 san-hexagon_install:
   needs: [san-hexagon_build]
   extends: .base-install
 san-hexagon_check-tcg:
-  needs: [san-hexagon_build, coproc_build]
+  needs: [san-hexagon_and_coproc_build]
   extends: .base-check-tcg
 san-hexagon_check:
-  needs: [san-hexagon_build, coproc_build]
+  needs: [san-hexagon_and_coproc_build]
   extends: .base-check
 san-hexagon_qurt-tests:
   extends: .base-qurt-tests
-  needs: [san-hexagon_build, coproc_build]
+  needs: [san-hexagon_and_coproc_build]
 san-hexagon_sival-tests:
   extends: .base-sival-tests
-  needs: [san-hexagon_build, coproc_build]
+  needs: [san-hexagon_and_coproc_build]
 
 no-idef-parser-hexagon_build:
   extends: .base-build
@@ -305,6 +330,16 @@ no-idef-parser-hexagon_build:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
+no-idef-parser-hexagon_and_coproc_build:
+  needs: [no-idef-parser-hexagon_build, coproc_build]
+  variables: { BUILDDIR: no-idef-parser-hexagon_build }
+  script: !reference [.hex-and-coproc, script]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  artifacts:
+    paths: [ $BUILDDIR ]
+    expire_in: 1 day
 no-idef-parser-hexagon_install:
   needs: [no-idef-parser-hexagon_build]
   extends: .base-install
@@ -312,13 +347,13 @@ no-idef-parser-hexagon_install:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
 no-idef-parser-hexagon_check-tcg:
-  needs: [no-idef-parser-hexagon_build, coproc_build]
+  needs: [no-idef-parser-hexagon_and_coproc_build]
   extends: .base-check-tcg
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
 no-idef-parser-hexagon_check:
-  needs: [no-idef-parser-hexagon_build, coproc_build]
+  needs: [no-idef-parser-hexagon_and_coproc_build]
   extends: .base-check
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -339,7 +374,7 @@ aarch64_check:
 
 test_hexagon_perf:
   extends: .after-build
-  needs: [hexagon_build, coproc_build]
+  needs: [hexagon_and_coproc_build]
   tags:
      - performance-hardware
   # We'll execute a smaller subset of tests, fewer iters for routine
@@ -358,7 +393,6 @@ test_hexagon_perf:
     - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-perf.git
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-benchmarks.git
-    - export QEMU_HEXAGON_COPROC=$PWD
     - res=0 ;
       for mode in default mttcg; do
           cfg=${PERF_TEST_CFG} ;
