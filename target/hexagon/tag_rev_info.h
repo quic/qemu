@@ -109,23 +109,23 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [M8_mxmem_2x2] = { .introduced = 0x73, .removed = 0x0 },
     [M8_mxmem_bias] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_blk_dm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmem_blk_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmem_blk_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmem_blk_sm_act_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_blk_sm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_cm] = { .introduced = 0x73, .removed = 0x0 },
-    /* [M8_mxmem_cm_deep] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [M8_mxmem_deep] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmem_cm_deep] = { .introduced = 0x79, .removed = 0x0 },
+    [M8_mxmem_deep] = { .introduced = 0x79, .removed = 0x0 },
     /* [M8_mxmem_deep_f8] = { .introduced = 0x81, .removed = 0x0 }, */
     [M8_mxmem_dm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
     /* [M8_mxmem_f8] = { .introduced = 0x81, .removed = 0x0 }, */
-    /* [M8_mxmem_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmem_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmem_sm_act_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_sm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_st_bias] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_wei_b] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_wei_b1] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_wei_c] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmem_wei_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmem_wei_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmem_wei_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_wei_n] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmem_wei_n_2x] = { .introduced = 0x73, .removed = 0x0 },
@@ -135,7 +135,7 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [M8_mxmema_wei_b] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmema_wei_b1] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmema_wei_c] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmema_wei_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmema_wei_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmema_wei_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmema_wei_n] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmema_wei_n_2x] = { .introduced = 0x73, .removed = 0x0 },
@@ -143,13 +143,13 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [M8_mxmema_wei_sc] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmema_wei_sm] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemd_blk_dm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmemd_blk_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmemd_blk_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmemd_blk_sm_act_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemd_blk_sm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdi_wei_b] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdi_wei_b1] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdi_wei_c] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmemdi_wei_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmemdi_wei_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmemdi_wei_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdi_wei_n] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdi_wei_n_2x] = { .introduced = 0x73, .removed = 0x0 },
@@ -159,7 +159,7 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [M8_mxmemdp_wei_b] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdp_wei_b1] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdp_wei_c] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmemdp_wei_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmemdp_wei_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmemdp_wei_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdp_wei_n] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdp_wei_n_2x] = { .introduced = 0x73, .removed = 0x0 },
@@ -169,7 +169,7 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [M8_mxmemdr_wei_b] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdr_wei_b1] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdr_wei_c] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmemdr_wei_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmemdr_wei_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmemdr_wei_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdr_wei_n] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdr_wei_n_2x] = { .introduced = 0x73, .removed = 0x0 },
@@ -177,13 +177,13 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [M8_mxmemdr_wei_sc] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemdr_wei_sm] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmems_blk_dm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmems_blk_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmems_blk_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmems_blk_sm_act_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmems_blk_sm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmems_wei_b] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmems_wei_b1] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmems_wei_c] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmems_wei_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmems_wei_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmems_wei_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmems_wei_n] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmems_wei_n_2x] = { .introduced = 0x73, .removed = 0x0 },
@@ -191,7 +191,7 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [M8_mxmems_wei_sc] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmems_wei_sm] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemu_blk_dm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
-    /* [M8_mxmemu_blk_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [M8_mxmemu_blk_sm_act_f8] = { .introduced = 0x79, .removed = 0x0 },
     [M8_mxmemu_blk_sm_act_hf] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxmemu_blk_sm_act_ub] = { .introduced = 0x68, .removed = 0x0 },
     [M8_mxswap] = { .introduced = 0x68, .removed = 0x0 },

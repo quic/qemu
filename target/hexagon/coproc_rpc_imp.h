@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <utility>
 
+#define RPC_VERSION 2
 #define GS_Process_Server_Port "GS_Process_Server_Port"
 #define GS_Process_Server_Port_Len 22
 #define DECIMAL_PORT_NUM_STR_LEN 20
@@ -286,6 +287,20 @@ class RemoteRPC {
         is_client_connected.wait(
             ul, [&]() { return (cport > 0 || cancel_waiting); });
         ul.unlock();
+
+        try {
+            int coproc_version = client->call("get_rpc_version").template as<int>();
+            if (coproc_version != RPC_VERSION) {
+                std::cout << "FATAL: coproc RPC version is "
+                          << coproc_version << " and this QEMU requires "
+                          << RPC_VERSION << "." << std::endl;
+                exit(1);
+            }
+        } catch (rpc::rpc_error &e) {
+            std::cout << "FATAL: failed to query coproc RPC version.\n"
+                      << "Your coproc binary might be too old." << std::endl;
+            exit(1);
+        }
     }
 
     void wait_server()
