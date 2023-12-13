@@ -103,6 +103,7 @@ TESTS += \
 	memcpy \
 	semihost \
 	double_ex \
+	qfloat_test \
 	$()
 
 CFLAGS+=-G0 -O2
@@ -158,6 +159,7 @@ swi2: swi2.o thread_common.o
 swi_wait.o: swi_wait.c util.h thread_common.h
 swi_wait: swi_wait.o util.o thread_common.o
 udma: udma.o
+qfloat_test: qfloat_test.o
 
 ifeq ($(WIN),no)
 invalid_coproc.o: invalid_coproc.c mmu.h
@@ -257,6 +259,8 @@ hvx-multi-asm.o: ASFLAGS+= -mhvx
 
 vtcm_error.o: CFLAGS += -mhvx
 pmu.o: CFLAGS += -mhvx
+
+qfloat_test.o: EXTRA_CFLAGS+= -mhvx -mv79
 
 ifeq ($(WIN),no)
 hvx_nocoproc.o: CFLAGS+= -O2 -mhvx
@@ -386,6 +390,10 @@ run-coproc_conv_fp16: coproc_conv_fp16
 run-invalid_coproc:QEMU_EXTRA_OPTS=-M virt_coproc
 run-invalid_coproc:invalid_coproc
 endif # no WIN
+
+run-qfloat_test: qfloat_test
+	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< >_$@.out ,"$< on $(TARGET_NAME)")
+	diff --strip-trailing-cr -q $(HEXAGON_SYSTEM_SRC)/qfloat.out.ref _$@.out
 
 run-fopen: fopen
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< -append dummy.so,"$< on $(TARGET_NAME)")
