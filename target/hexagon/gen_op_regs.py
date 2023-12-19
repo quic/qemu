@@ -79,7 +79,7 @@ def main():
             rregs = []
             wregs = []
             regids = ""
-            for regtype, regid, _, numregs in regs:
+            for regtype, regid, _, numregs, _ in regs:
                 if hex_common.is_read(regid):
                     if regid[0] not in regids:
                         regids += regid[0]

@@ -91,6 +91,19 @@ static const char * const hexagon_prednames[] = {
   "p0", "p1", "p2", "p3"
 };
 
+void gen_mmvec_ext_init(intptr_t offset, bool is_pair)
+{
+    intptr_t ud_ext_offset = offsetof(MMVector, ud_ext[0]);
+    TCGv_i64 ext_init_val = tcg_constant_i64(V_EXTENDED_DWORDVAL);
+    for (int i = 0; i < (is_pair ? 2 : 1); i++) {
+        intptr_t vec_off = i * sizeof(MMVector);
+        tcg_gen_st_i64(ext_init_val, tcg_env, offset + vec_off + ud_ext_offset);
+        tcg_gen_st_i64(ext_init_val, tcg_env, offset + vec_off + ud_ext_offset + 8);
+        tcg_gen_st_i64(ext_init_val, tcg_env, offset + vec_off + ud_ext_offset + 16);
+        tcg_gen_st_i64(ext_init_val, tcg_env, offset + vec_off + ud_ext_offset + 24);
+    }
+}
+
 intptr_t ctx_future_vreg_off(DisasContext *ctx, int regnum,
                           int num, bool alloc_ok)
 {
@@ -113,6 +126,7 @@ intptr_t ctx_future_vreg_off(DisasContext *ctx, int regnum,
         ctx->future_vregs_num[ctx->future_vregs_idx + i] = regnum ^ i;
     }
     ctx->future_vregs_idx += num;
+    gen_mmvec_ext_init(offset, num == 2);
     g_assert(ctx->future_vregs_idx <= VECTOR_TEMPS_MAX);
     return offset;
 }
@@ -135,6 +149,7 @@ intptr_t ctx_tmp_vreg_off(DisasContext *ctx, int regnum,
         ctx->tmp_vregs_num[ctx->tmp_vregs_idx + i] = regnum ^ i;
     }
     ctx->tmp_vregs_idx += num;
+    gen_mmvec_ext_init(offset, num == 2);
     g_assert(ctx->tmp_vregs_idx <= VECTOR_TEMPS_MAX);
     return offset;
 }

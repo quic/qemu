@@ -128,6 +128,8 @@ typedef struct DisasContext {
     TCGv mult_reg_written;
 } DisasContext;
 
+void gen_mmvec_ext_init(intptr_t offset, bool is_pair);
+
 #ifndef CONFIG_USER_ONLY
 static inline void ctx_log_greg_write(DisasContext *ctx, int rnum)
 {

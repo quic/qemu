@@ -89,7 +89,7 @@ def uniquify(seq):
     return [x for x in seq if x not in seen and not seen_add(x)]
 
 
-regre = re.compile(r"((?<!DUP)[MNORCPQXSGVZA])([stuvwxyzdefg]+)([.]?[LlHh]?)(\d+S?)")
+regre = re.compile(r"((?<!DUP)[MNORCPQXSGVZA])([stuvwxyzdefg]+)([.]?[LlHh]?)(\d+S?)[.]?(qf16|qf32|)")
 immre = re.compile(r"[#]([rRsSuUm])(\d+)(?:[:](\d+))?")
 reg_or_immre = re.compile(
     r"(((?<!DUP)[MNRCOPQXSGVZA])([stuvwxyzdefg]+)"

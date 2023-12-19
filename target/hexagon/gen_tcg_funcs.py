@@ -60,8 +60,13 @@ def genptr_decl_writable(f, tag, regtype, regid, regno):
     else:
         hex_common.bad_register(regtype, regid)
 
+def gen_mmvec_clear_extended(f, tag, regtype, regid, subtype):
+    if (regtype == "V" and hex_common.is_written(regid) and
+        not subtype.startswith("qf")):
+        pair = str(hex_common.is_pair(regid)).lower()
+        f.write(f"    gen_mmvec_ext_init({regtype}{regid}V_off, {pair});\n")
 
-def genptr_decl(f, tag, regtype, regid, regno):
+def genptr_decl(f, tag, regtype, regid, regno, subtype):
     regN = f"{regtype}{regid}N"
     if regtype == "R":
         if regid in {"ss", "tt"}:
@@ -165,6 +170,8 @@ def genptr_decl(f, tag, regtype, regid, regno):
                 )
         else:
             hex_common.bad_register(regtype, regid)
+        if regid not in {"x", "xx", "y", "yy"}: # These will be reset later
+            gen_mmvec_clear_extended(f, tag, regtype, regid, subtype)
     elif regtype == "Q":
         if regid in {"d", "e", "x"}:
             f.write(f"    const int {regtype}{regid}N = " f"insn->regno[{regno}];\n")
@@ -256,12 +263,12 @@ def genptr_decl_new(f, tag, regtype, regid, regno):
         hex_common.bad_register(regtype, regid)
 
 
-def genptr_decl_opn(f, tag, regtype, regid, i):
+def genptr_decl_opn(f, tag, regtype, regid, i, subtype):
     if hex_common.is_pair(regid):
-        genptr_decl(f, tag, regtype, regid, i)
+        genptr_decl(f, tag, regtype, regid, i, subtype)
     elif hex_common.is_single(regid):
         if hex_common.is_old_val(regtype, regid, tag):
-            genptr_decl(f, tag, regtype, regid, i)
+            genptr_decl(f, tag, regtype, regid, i, subtype)
         elif hex_common.is_new_val(regtype, regid, tag):
             genptr_decl_new(f, tag, regtype, regid, i)
         else:
@@ -278,7 +285,7 @@ def genptr_decl_imm(f, immlett):
     f.write(f"    int {hex_common.imm_name(immlett)} = insn->immed[{i}];\n")
 
 
-def genptr_src_read(f, tag, regtype, regid):
+def genptr_src_read(f, tag, regtype, regid, subtype):
     if regtype == "R":
         if regid in {"ss", "tt", "xx", "yy"}:
             f.write(
@@ -345,6 +352,7 @@ def genptr_src_read(f, tag, regtype, regid):
             f.write("        sizeof(MMVector), sizeof(MMVector));\n")
         else:
             hex_common.bad_register(regtype, regid)
+        gen_mmvec_clear_extended(f, tag, regtype, regid, subtype)
     elif regtype == "Q":
         if regid in {"s", "t", "u", "v"}:
             if not hex_common.skip_qemu_helper(tag):
@@ -394,12 +402,12 @@ def genptr_src_read_new(f, regtype, regid):
         hex_common.bad_register(regtype, regid)
 
 
-def genptr_src_read_opn(f, regtype, regid, tag):
+def genptr_src_read_opn(f, regtype, regid, tag, subtype):
     if hex_common.is_pair(regid):
-        genptr_src_read(f, tag, regtype, regid)
+        genptr_src_read(f, tag, regtype, regid, subtype)
     elif hex_common.is_single(regid):
         if hex_common.is_old_val(regtype, regid, tag):
-            genptr_src_read(f, tag, regtype, regid)
+            genptr_src_read(f, tag, regtype, regid, subtype)
         elif hex_common.is_new_val(regtype, regid, tag):
             genptr_src_read_new(f, regtype, regid)
         else:
@@ -599,21 +607,21 @@ def gen_tcg_func(f, tag, regs, imms):
     i = 0
 
     ## Declare all the operands (regs and immediates)
-    for regtype, regid in regs:
-        genptr_decl_opn(f, tag, regtype, regid, i)
+    for regtype, regid, _, _, subtype in regs:
+        genptr_decl_opn(f, tag, regtype, regid, i, subtype)
         i += 1
     for immlett, bits, immshift in imms:
         genptr_decl_imm(f, immlett)
 
     ## Read all the inputs
-    for regtype, regid in regs:
+    for regtype, regid, _, _, subtype in regs:
         if hex_common.is_read(regid):
-            genptr_src_read_opn(f, regtype, regid, tag)
+            genptr_src_read_opn(f, regtype, regid, tag, subtype)
 
     if hex_common.is_idef_parser_enabled(tag):
         declared = []
         ## Handle registers
-        for regtype, regid in regs:
+        for regtype, regid, *_ in regs:
             if hex_common.is_pair(regid) or (
                 hex_common.is_single(regid)
                 and hex_common.is_old_val(regtype, regid, tag)
@@ -656,7 +664,7 @@ def gen_tcg_func(f, tag, regs, imms):
         f.write(f"    gen_helper_{tag}(")
         i = 0
         ## If there is a scalar result, it is the return type
-        for regtype, regid in regs:
+        for regtype, regid, *_ in regs:
             if hex_common.is_written(regid):
                 if hex_common.is_hvx_reg(regtype):
                     continue
@@ -668,19 +676,19 @@ def gen_tcg_func(f, tag, regs, imms):
         i = 1
         ## For conditional instructions, we pass in the destination register
         if "A_CONDEXEC" in hex_common.attribdict[tag]:
-            for regtype, regid in regs:
+            for regtype, regid, *_ in regs:
                 if hex_common.is_writeonly(regid) and not hex_common.is_hvx_reg(
                     regtype
                 ):
                     gen_helper_call_opn(f, tag, regtype, regid, i)
                     i += 1
-        for regtype, regid in regs:
+        for regtype, regid, *_ in regs:
             if hex_common.is_written(regid):
                 if not hex_common.is_hvx_reg(regtype):
                     continue
                 gen_helper_call_opn(f, tag, regtype, regid, i)
                 i += 1
-        for regtype, regid in regs:
+        for regtype, regid, *_ in regs:
             if hex_common.is_read(regid):
                 if hex_common.is_hvx_reg(regtype) and hex_common.is_readwrite(regid):
                     continue
@@ -704,7 +712,7 @@ def gen_tcg_func(f, tag, regs, imms):
         f.write(");\n")
 
     ## Write all the outputs
-    for regtype, regid in regs:
+    for regtype, regid, *_ in regs:
         if hex_common.is_written(regid):
             genptr_dst_write_opn(f, regtype, regid, tag)
 
@@ -742,7 +750,7 @@ def main():
     is_idef_parser_enabled = len(sys.argv) > 7
     if is_idef_parser_enabled:
         hex_common.read_idef_parser_enabled_file(sys.argv[6])
-    tagregs = hex_common.get_tagregs()
+    tagregs = hex_common.get_tagregs(full=True)
     tagimms = hex_common.get_tagimms()
 
     output_file = sys.argv[-1]

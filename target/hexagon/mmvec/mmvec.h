@@ -50,7 +50,7 @@ typedef uint32_t VRegMask; // at least NUM_VREGS bits
 typedef uint32_t QRegMask; // at least NUM_QREGS bits
 
 // Use software vector length?
-#define VECTOR_SIZE_BYTE    (fVECSIZE())
+#define VECTOR_SIZE_BYTE    MAX_VEC_SIZE_BYTES
 
 typedef struct {
     union {
