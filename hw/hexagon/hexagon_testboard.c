@@ -61,11 +61,26 @@ static void hex_symbol_callback(const char *st_name, int st_info,
     }
 }
 
+static Rev_t rev_from_rev_byte(int byte)
+{
+    switch (byte) {
+    case 0x66: return v66_rev;
+    case 0x67: return v67_rev;
+    case 0x68: return v68_rev;
+    case 0x69: return v69_rev;
+    case 0x71: return v71_rev;
+    case 0x73: return v73_rev;
+    case 0x75: return v75_rev;
+    case 0x79: return v79_rev;
+    default: return unknown_rev;
+    }
+}
 
-static void hexagon_load_kernel(HexagonCPU *cpu)
+static void hexagon_load_kernel(HexagonCPU *cpu, Rev_t *rev)
 {
     uint64_t pentry;
     long kernel_size;
+    int elf_rev_byte, rev_byte;
 
     kernel_size = load_elf_ram_sym(hexagon_binfo.kernel_filename, NULL, NULL,
                       NULL, &pentry, NULL, NULL,
@@ -78,13 +93,29 @@ static void hexagon_load_kernel(HexagonCPU *cpu)
         exit(1);
     }
 
+    rev_byte = *rev & 0xff;
+    elf_rev_byte = hexagon_binfo.kernel_elf_flags & 0xff;
+
+    if (*rev == unknown_rev) {
+        *rev = rev_from_rev_byte(elf_rev_byte);
+        if (*rev == unknown_rev) {
+            error_report("could not identify binary revision: 0x%02x",
+                         elf_rev_byte);
+            exit(1);
+        }
+    } else if (rev_byte != elf_rev_byte) {
+        warn_report("using v%02x cpu but binary is for v%02x",
+                     rev_byte, elf_rev_byte);
+    }
+
     qdev_prop_set_uint32(DEVICE(cpu), "exec-start-addr", pentry);
 }
 
-static void hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
+static void hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu,
+                                   Rev_t *rev)
 {
     if (machine->kernel_filename) {
-        hexagon_load_kernel(cpu);
+        hexagon_load_kernel(cpu, rev);
         if (isdb_secure_flag || isdb_trusted_flag) {
             /* By convention these flags are at offsets 0x30 and 0x34 */
             uint32_t  mem;
@@ -102,6 +133,8 @@ static void hexagon_init_bootstrap(MachineState *machine, HexagonCPU *cpu)
     } else if (!cpu->vp_mode && !qtest_enabled()) {
         error_report("kernel image must be given with -kernel");
         exit(1);
+    } else {
+        *rev = glue(HEXAGON_LATEST_REV, _rev);
     }
 }
 
@@ -251,9 +284,6 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
         qdev_prop_set_uint32(DEVICE(cpu), "thread-count", machine->smp.cpus);
         qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr",
             cfgExtensions->cfgbase);
-        if (cpu->rev_reg == 0) {
-            qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
-        }
         qdev_prop_set_uint32(DEVICE(cpu), "l2vic-base-addr",
             cfgExtensions->l2vic_base);
         qdev_prop_set_uint32(DEVICE(cpu), "qtimer-base-addr",
@@ -277,7 +307,10 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
         env->vtcm_size = vtcm_size;
         env->memfd_fd = memfd_fd;
         if (i == 0) {
-            hexagon_init_bootstrap(machine, cpu);
+            if (cpu->rev_reg) {
+                rev = cpu->rev_reg;
+            }
+            hexagon_init_bootstrap(machine, cpu, &rev);
             cpu_0 = cpu;
 
             GString *argv = g_string_new(machine->kernel_filename);
@@ -290,6 +323,8 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
                 qdev_prop_set_string(DEVICE(cpu), "usefs", cpu_0->usefs);
             }
         }
+
+        qdev_prop_set_uint32(DEVICE(cpu), "dsp-rev", rev);
 
         if (!qdev_realize_and_unref(DEVICE(cpu), NULL, errp)) {
             return;
@@ -539,10 +574,16 @@ static void v75na_1024_config_init(MachineState *machine)
         &v75na_1024_extensions);
 }
 
-static void v75na_1024_nocoproc_config_init(MachineState *machine)
+static void virt_nocoproc_config_init(MachineState *machine)
 {
-    hexagon_common_init(machine, v75_rev, &v75na_1024_nocoproc_cfgtable,
+    hexagon_common_init(machine, unknown_rev, &v75na_1024_nocoproc_cfgtable,
         &v75na_1024_nocoproc_extensions);
+}
+
+static void virt_coproc_config_init(MachineState *machine)
+{
+    hexagon_common_init(machine, unknown_rev, &v75na_1024_cfgtable,
+        &v75na_1024_extensions);
 }
 
 static void v75na_1024_linux_config_init(MachineState *machine)
@@ -585,7 +626,7 @@ static void virt_init(ObjectClass *oc, void *data)
     MachineClass *mc = MACHINE_CLASS(oc);
 
     mc->desc = "Hexagon Virt";
-    mc->init = v75na_1024_nocoproc_config_init;
+    mc->init = virt_nocoproc_config_init;
     mc->is_default = true;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
@@ -599,7 +640,7 @@ static void virt_coproc_init(ObjectClass *oc, void *data)
     MachineClass *mc = MACHINE_CLASS(oc);
 
     mc->desc = "Hexagon Virt COPROC";
-    mc->init = v75na_1024_config_init;
+    mc->init = virt_coproc_config_init;
     mc->is_default = false;
     mc->block_default_type = IF_SCSI;
     mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;

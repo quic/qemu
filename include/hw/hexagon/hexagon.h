@@ -61,6 +61,7 @@ typedef enum {
 } HexagonL1WritePolicy;
 
 typedef enum {
+    unknown_rev = 0,
     v66_rev = 0xa666,
     v67_rev = 0x2667,
     v68_rev = 0x8d68,
@@ -70,6 +71,7 @@ typedef enum {
     v75_rev = 0x8c75,
     v79_rev = 0x8c79,
 } Rev_t;
+#define HEXAGON_LATEST_REV v79
 
 /* Config table address bases represent bits [35:16].
  */

@@ -29,6 +29,7 @@
 #include "dma/dma.h"
 #include "trace.h"
 #include "hw/hexagon/hexagon.h"
+#include "macros.h"
 
 #if !defined(CONFIG_USER_ONLY)
 #include "migration/vmstate.h"
@@ -1299,7 +1300,6 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_init = hexagon_cpu_class_init,
     },
 #ifdef CONFIG_USER_ONLY
-    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,              hexagon_v67_cpu_init), /* Default to v67 */
     DEFINE_CPU(TYPE_HEXAGON_CPU_V66,              hexagon_v66_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V68,              hexagon_v68_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V69,              hexagon_v69_cpu_init),
@@ -1307,10 +1307,9 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
     DEFINE_CPU(TYPE_HEXAGON_CPU_V73,              hexagon_v73_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V75,              hexagon_v75_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V79,              hexagon_v79_cpu_init),
-#else
-    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,              hexagon_common_cpu_init),
 #endif
     DEFINE_CPU(TYPE_HEXAGON_CPU_V67,              hexagon_v67_cpu_init),
+    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,              hexagon_common_cpu_init),
 };
 
 DEFINE_TYPES(hexagon_cpu_type_infos)

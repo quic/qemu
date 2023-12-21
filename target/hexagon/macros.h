@@ -18,6 +18,9 @@
 #ifndef HEXAGON_MACROS_H
 #define HEXAGON_MACROS_H
 
+#define glue3(a, b, c) _glue3(a, b, c)
+#define _glue3(a, b, c) a ## b ## c
+
 #include "cpu.h"
 #include "hex_regs.h"
 #include "reg_fields.h"
