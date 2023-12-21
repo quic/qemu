@@ -1022,7 +1022,7 @@ decode_set_slot_number(Packet *pkt)
  */
 
 int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
-                  bool disas_only, uint32_t rev)
+                  bool disas_only, uint32_t rev, uint32_t pc)
 {
     int num_insns = 0;
     int words_read = 0;
@@ -1050,6 +1050,7 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
         words_read++;
     }
 
+    pkt->pc = pc;
     pkt->num_insns = num_insns;
     pkt->encod_pkt_size_in_bytes = words_read * sizeof(*words);
     if (!end_of_packet) {
@@ -1058,12 +1059,30 @@ int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
     }
 
     for (i = 0; i < num_insns; i++) {
-        struct tag_rev_info info = tag_rev_info[pkt->insn[i].opcode];
+        int opcode = pkt->insn[i].opcode;
+        struct tag_rev_info info = tag_rev_info[opcode];
         if ((info.introduced && rev_byte < info.introduced) ||
             (info.removed && rev_byte >= info.removed)) {
+
+            g_autoptr(GString) err = g_string_new("");
+            g_string_append_printf(err,
+                    "error: running v%02x but insn '%s' (pc 0x%08"PRIx32") was",
+                    rev_byte, opcode_names[opcode], pc);
+            if (info.introduced) {
+                g_string_append_printf(err,
+                        " introduced at v%02x", info.introduced);
+            }
+            if (info.removed) {
+                g_string_append_printf(err, " %sremoved at v%02x",
+                        info.introduced ? "and " : "",
+                        info.removed);
+            }
+            error_report_once("%s", err->str);
+
             /* invalid packet */
             return 0;
         }
+        pc += 4;
     }
 
     pkt->pkt_has_hvx = false;
@@ -1128,7 +1147,7 @@ int disassemble_hexagon(uint32_t *words, int nwords, bfd_vma pc,
 {
     Packet pkt;
 
-    if (decode_packet(nwords, words, &pkt, true, rev) > 0) {
+    if (decode_packet(nwords, words, &pkt, true, rev, pc) > 0) {
         snprint_a_pkt_disas(buf, &pkt, words, pc);
     } else {
         g_string_assign(buf, "<invalid>");

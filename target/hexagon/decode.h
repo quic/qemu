@@ -27,5 +27,5 @@ extern void decode_init(void);
 extern void decode_send_insn_to(Packet *packet, int start, int newloc);
 
 extern int decode_packet(int max_words, const uint32_t *words, Packet *pkt,
-                  bool disas_only, uint32_t rev);
+                  bool disas_only, uint32_t rev, uint32_t pc);
 #endif
