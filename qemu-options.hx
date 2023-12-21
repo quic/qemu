@@ -4086,9 +4086,13 @@ DEF("fw_cfg", HAS_ARG, QEMU_OPTION_fwcfg,
 SRST
 ``-fw_cfg [name=]name,file=file``
     Add named fw\_cfg entry with contents from file file.
+    If the filename contains comma, you must double it (for instance,
+    "file=my,,file" to use file "my,file").
 
 ``-fw_cfg [name=]name,string=str``
     Add named fw\_cfg entry with contents from string str.
+    If the string contains comma, you must double it (for instance,
+    "string=my,,string" to use file "my,string").
 
     The terminating NUL character of the contents of str will not be
     included as part of the fw\_cfg item data. To insert contents with
@@ -5223,6 +5227,18 @@ SRST
         other options.
 
         The ``share`` boolean option is on by default with memfd.
+
+    ``-object iommufd,id=id[,fd=fd]``
+        Creates an iommufd backend which allows control of DMA mapping
+        through the ``/dev/iommu`` device.
+
+        The ``id`` parameter is a unique ID which frontends (such as
+        vfio-pci of vdpa) will use to connect with the iommufd backend.
+
+        The ``fd`` parameter is an optional pre-opened file descriptor
+        resulting from ``/dev/iommu`` opening. Usually the iommufd is shared
+        across all subsystems, bringing the benefit of centralized
+        reference counting.
 
     ``-object rng-builtin,id=id``
         Creates a random number generator backend which obtains entropy
