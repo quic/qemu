@@ -202,14 +202,14 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [S2_storew_rl_st_vi] = { .introduced = 0x68, .removed = 0x0 },
     [S4_stored_rl_at_vi] = { .introduced = 0x68, .removed = 0x0 },
     [S4_stored_rl_st_vi] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_get_qfext] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [V6_get_qfext_oracc] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [V6_set_qfext] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_get_qfext] = { .introduced = 0x79, .removed = 0x0 },
+    [V6_get_qfext_oracc] = { .introduced = 0x79, .removed = 0x0 },
+    [V6_set_qfext] = { .introduced = 0x79, .removed = 0x0 },
     [V6_v6mpyhubs10] = { .introduced = 0x68, .removed = 0x0 },
     [V6_v6mpyhubs10_vxx] = { .introduced = 0x68, .removed = 0x0 },
     [V6_v6mpyvubs10] = { .introduced = 0x68, .removed = 0x0 },
     [V6_v6mpyvubs10_vxx] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vabs_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vabs_f8] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vabs_hf] = { .introduced = 0x68, .removed = 0x0 },
     /* [V6_vabs_qf16_hf] = { .introduced = 0x81, .removed = 0x0 }, */
     /* [V6_vabs_qf16_qf16] = { .introduced = 0x81, .removed = 0x0 }, */
@@ -217,7 +217,7 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     /* [V6_vabs_qf32_sf] = { .introduced = 0x81, .removed = 0x0 }, */
     [V6_vabs_sf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vadd_hf] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vadd_hf_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vadd_hf_f8] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vadd_hf_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vadd_qf16] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vadd_qf16_mix] = { .introduced = 0x68, .removed = 0x0 },
@@ -247,16 +247,16 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [V6_vconv_sf_qf32] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vconv_sf_w] = { .introduced = 0x73, .removed = 0x0 },
     [V6_vconv_w_sf] = { .introduced = 0x73, .removed = 0x0 },
-    /* [V6_vcvt2_b_hf] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [V6_vcvt2_hf_b] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [V6_vcvt2_hf_ub] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [V6_vcvt2_ub_hf] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vcvt2_b_hf] = { .introduced = 0x79, .removed = 0x0 },
+    [V6_vcvt2_hf_b] = { .introduced = 0x79, .removed = 0x0 },
+    [V6_vcvt2_hf_ub] = { .introduced = 0x79, .removed = 0x0 },
+    [V6_vcvt2_ub_hf] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vcvt_b_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vcvt_bf_sf] = { .introduced = 0x73, .removed = 0x0 },
-    /* [V6_vcvt_f8_hf] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vcvt_f8_hf] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vcvt_h_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vcvt_hf_b] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vcvt_hf_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vcvt_hf_f8] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vcvt_hf_h] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vcvt_hf_sf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vcvt_hf_ub] = { .introduced = 0x68, .removed = 0x0 },
@@ -274,13 +274,13 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     /* [V6_veqsf_and] = { .introduced = 0x81, .removed = 0x0 }, */
     /* [V6_veqsf_or] = { .introduced = 0x81, .removed = 0x0 }, */
     /* [V6_veqsf_xor] = { .introduced = 0x81, .removed = 0x0 }, */
-    /* [V6_vfmax_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vfmax_f8] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vfmax_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vfmax_sf] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vfmin_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vfmin_f8] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vfmin_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vfmin_sf] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vfneg_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vfneg_f8] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vfneg_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vfneg_sf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vgtbf] = { .introduced = 0x73, .removed = 0x0 },
@@ -302,12 +302,12 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [V6_vmax_bf] = { .introduced = 0x73, .removed = 0x0 },
     [V6_vmax_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vmax_sf] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vmerge_qf] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vmerge_qf] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vmin_bf] = { .introduced = 0x73, .removed = 0x0 },
     [V6_vmin_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vmin_sf] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vmpy_hf_f8] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [V6_vmpy_hf_f8_acc] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vmpy_hf_f8] = { .introduced = 0x79, .removed = 0x0 },
+    [V6_vmpy_hf_f8_acc] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vmpy_hf_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vmpy_hf_hf_acc] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vmpy_qf16] = { .introduced = 0x68, .removed = 0x0 },
@@ -318,9 +318,9 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     [V6_vmpy_qf32_mix_hf] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vmpy_qf32_qf16] = { .introduced = 0x68, .removed = 0x0 },
     [V6_vmpy_qf32_sf] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vmpy_rt_hf] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [V6_vmpy_rt_qf16] = { .introduced = 0x79, .removed = 0x0 }, */
-    /* [V6_vmpy_rt_sf] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vmpy_rt_hf] = { .introduced = 0x79, .removed = 0x0 },
+    [V6_vmpy_rt_qf16] = { .introduced = 0x79, .removed = 0x0 },
+    [V6_vmpy_rt_sf] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vmpy_sf_bf] = { .introduced = 0x73, .removed = 0x0 },
     [V6_vmpy_sf_bf_acc] = { .introduced = 0x73, .removed = 0x0 },
     [V6_vmpy_sf_hf] = { .introduced = 0x68, .removed = 0x0 },
@@ -352,7 +352,7 @@ const struct tag_rev_info tag_rev_info[XX_LAST_OPCODE] = {
     /* [V6_vrmpyznb_rx] = { .introduced = 0x0, .removed = 0x68 }, */
     /* [V6_vrmpyznb_rx_acc] = { .introduced = 0x0, .removed = 0x68 }, */
     [V6_vsub_hf] = { .introduced = 0x68, .removed = 0x0 },
-    /* [V6_vsub_hf_f8] = { .introduced = 0x79, .removed = 0x0 }, */
+    [V6_vsub_hf_f8] = { .introduced = 0x79, .removed = 0x0 },
     [V6_vsub_hf_hf] = { .introduced = 0x68, .removed = 0x0 },
     /* [V6_vsub_hf_mix] = { .introduced = 0x81, .removed = 0x0 }, */
     [V6_vsub_qf16] = { .introduced = 0x68, .removed = 0x0 },
