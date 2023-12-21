@@ -1838,6 +1838,8 @@ EXTINSN(V6_set_qfext, "Vd32.x=vsetqfext(Vu32,Rt32)",         ATTRIBS(A_EXTENSION
 {
    fHIDE(int i;)
    fVFOREACH(8, i) {
+	/* Not explicitly stated at the spec, but this insn should clear the main bits. */
+	VdV.ub[i] = 0;
 	fSETQFEXT_BIT(VdV,i,((VuV.ub[i] & fGETUBYTE(i % 4, RtV)) != 0) ? 1 : 0);
     }
 })
