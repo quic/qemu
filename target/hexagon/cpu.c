@@ -1124,7 +1124,9 @@ static bool hexagon_tlb_fill(CPUState *cs, vaddr address, int size,
                                env->gpr[HEX_REG_PC], retaddr);
         }
     }
-
+    if (probe) {
+        return false;
+    }
     raise_tlbmiss_exception(cs, address, slot, access_type);
     do_raise_exception(env, cs->exception_index,
                        env->gpr[HEX_REG_PC], retaddr);
