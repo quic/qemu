@@ -114,6 +114,7 @@ typedef struct DisasContext {
     bool ss_pending;
     bool short_circuit;
     bool has_hvx_helper;
+    bool need_next_pc;
     TCGv new_value[TOTAL_PER_THREAD_REGS];
     TCGv new_pred_value[NUM_PREGS];
     TCGv pred_written;
@@ -304,6 +305,7 @@ extern TCGv hex_vstore_pending[VSTORES_MAX];
 extern TCGv hex_slot;
 extern TCGv hex_imprecise_exception;
 #endif
+extern TCGv hex_next_PC;
 
 void gen_exception(int excp, target_ulong PC);
 void gen_exception_end_tb(DisasContext *ctx, int excp);
