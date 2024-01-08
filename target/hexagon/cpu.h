@@ -87,9 +87,6 @@ typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
 
 #define CPU_RESOLVING_TYPE TYPE_HEXAGON_CPU
 
-void hexagon_cpu_list(void);
-#define cpu_list hexagon_cpu_list
-
 typedef struct {
   int unused;
 } rev_features_t;

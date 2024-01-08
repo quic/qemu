@@ -320,7 +320,7 @@ hexagon_ss.add(analyze_funcs_generated)
 #)
 #hexagon_ss.add(coproc_cases_generated)
 
-if targetos != 'windows'
+if host_os != 'windows'
   rpclib_dir = 'subprojects/rpclib'
   cmake = import('cmake')
   cmake_opts = cmake.subproject_options()
