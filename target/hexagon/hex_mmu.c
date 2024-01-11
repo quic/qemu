@@ -533,7 +533,7 @@ static inline void print_thread_states(const char *str)
 void hex_tlb_lock(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_lock: %d\n", env->threadId);
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
@@ -563,7 +563,7 @@ void hex_tlb_lock(CPUHexagonState *env)
 void hex_tlb_unlock(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_unlock: %d\n", env->threadId);
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     /* Nothing to do if the TLB isn't locked by this thread */

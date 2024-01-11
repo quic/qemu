@@ -653,7 +653,7 @@ static void hexagon_clear_last_irq(CPUHexagonState *env, uint32_t offset)
 
 void HELPER(ciad)(CPUHexagonState *env, uint32_t mask)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     uint32_t ipendad;
     uint32_t iad;
 
@@ -669,7 +669,7 @@ void HELPER(ciad)(CPUHexagonState *env, uint32_t mask)
 
 void HELPER(siad)(CPUHexagonState *env, uint32_t mask)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     uint32_t ipendad;
     uint32_t iad;
 
@@ -1691,7 +1691,7 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 #if HEX_DEBUG
 static void print_thread(const char *str, CPUState *cs)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     HexagonCPU *cpu = HEXAGON_CPU(cs);
@@ -1735,7 +1735,7 @@ static void hex_k0_lock(CPUHexagonState *env)
 {
     HEX_DEBUG_LOG("Before hex_k0_lock: %d\n", env->threadId);
     print_thread_states("\tThread");
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
@@ -1763,7 +1763,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
 {
     HEX_DEBUG_LOG("Before hex_k0_unlock: %d\n", env->threadId);
     print_thread_states("\tThread");
-    qemu_mutex_lock_iothread();
+    bql_lock();
 
     /* Nothing to do if the k0 isn't locked by this thread */
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
@@ -1772,7 +1772,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
         qemu_log_mask(LOG_GUEST_ERROR,
             "thread %d attempted to unlock k0 without having the lock\n",
             env->threadId);
-        qemu_mutex_unlock_iothread();
+        bql_unlock();
         return;
     }
 
@@ -1827,7 +1827,7 @@ static void hex_k0_unlock(CPUHexagonState *env)
         cpu_resume(cs);
     }
 
-    qemu_mutex_unlock_iothread();
+    bql_unlock();
     HEX_DEBUG_LOG("After hex_k0_unlock: %d\n", env->threadId);
     print_thread_states("\tThread");
 }
@@ -2023,7 +2023,7 @@ void cancel_slot(CPUHexagonState *env, uint32_t slot)
 #ifndef CONFIG_USER_ONLY
 void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     uint32_t modectl;
     uint32_t thread_enabled_mask;
     CPUState *cpu;
@@ -2053,7 +2053,7 @@ void HELPER(iassignw)(CPUHexagonState *env, uint32_t src)
 uint32_t HELPER(iassignr)(CPUHexagonState *env, uint32_t src)
 
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     uint32_t modectl;
     uint32_t thread_enabled_mask;
     uint32_t intbitpos;
@@ -2155,7 +2155,7 @@ static inline QEMU_ALWAYS_INLINE uint32_t sreg_read(CPUHexagonState *env,
                                                     uint32_t reg)
 {
     if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
-        const bool exception_context = qemu_mutex_iothread_locked();
+        const bool exception_context = bql_locked();
         LOCK_IOTHREAD(exception_context);
         const uint32_t vid = hexagon_find_last_irq(env, reg);
         ARCH_SET_SYSTEM_REG(env, reg, vid);
@@ -2355,7 +2355,7 @@ static inline QEMU_ALWAYS_INLINE void sreg_write(CPUHexagonState *env,
 
 {
     if ((reg == HEX_SREG_VID) || (reg == HEX_SREG_VID1)) {
-        const bool exception_context = qemu_mutex_iothread_locked();
+        const bool exception_context = bql_locked();
         LOCK_IOTHREAD(exception_context);
         hexagon_set_vid(env, (reg == HEX_SREG_VID) ? L2VIC_VID_0 : L2VIC_VID_1,
                         val);
@@ -2372,7 +2372,7 @@ static inline QEMU_ALWAYS_INLINE void sreg_write(CPUHexagonState *env,
         hexagon_set_sys_pcycle_count_high(env, val);
     } else if (!handle_pmu_sreg_write(env, reg, val)) {
         if (reg >= HEX_SREG_GLB_START) {
-            const bool exception_context = qemu_mutex_iothread_locked();
+            const bool exception_context = bql_locked();
             LOCK_IOTHREAD(exception_context);
             ARCH_SET_SYSTEM_REG(env, reg, val);
             UNLOCK_IOTHREAD(exception_context);
@@ -2453,7 +2453,7 @@ static void resched(CPUHexagonState *env);
 
 void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     CPUState *cs;
 
     g_assert(env->processor_ptr->thread_system_mask != 0);
@@ -2478,7 +2478,7 @@ void HELPER(setprio)(CPUHexagonState *env, uint32_t thread, uint32_t prio)
 
 void HELPER(setimask)(CPUHexagonState *env, uint32_t pred, uint32_t imask)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     CPUState *cs;
 
     g_assert(env->processor_ptr->thread_system_mask != 0);
@@ -2519,7 +2519,7 @@ typedef struct {
 
 static inline QEMU_ALWAYS_INLINE void resched(CPUHexagonState *env)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     uint32_t schedcfg;
     uint32_t schedcfg_en;
     int int_number;
@@ -2602,7 +2602,7 @@ void HELPER(nmi)(CPUHexagonState *env, uint32_t thread_mask)
  */
 static uint32_t get_ready_count(CPUHexagonState *env)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     uint32_t ready_count = 0;

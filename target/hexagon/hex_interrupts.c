@@ -227,7 +227,7 @@ bool hex_check_interrupts(CPUHexagonState *env)
     bool int_handled = false;
     bool ssr_ex = get_ssr_ex(env);
     int max_ints;
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     bool schedcfgen;
 
     /* Early exit if nothing pending */
@@ -293,7 +293,7 @@ bool hex_check_interrupts(CPUHexagonState *env)
 
 void hex_clear_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     if (mask == 0) {
         return;
     }
@@ -309,7 +309,7 @@ void hex_clear_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
 
 void hex_raise_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     if (mask == 0) {
         return;
     }
@@ -325,7 +325,7 @@ void hex_raise_interrupts(CPUHexagonState *env, uint32_t mask, uint32_t type)
 
 void hex_interrupt_update(CPUHexagonState *env)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     CPUState *cs;
     LOCK_IOTHREAD(exception_context);
 

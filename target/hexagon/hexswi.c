@@ -115,7 +115,7 @@ static int MapError(int ERR)
 static int sim_handle_trap_functional(CPUHexagonState *env)
 
 {
-    g_assert(qemu_mutex_iothread_locked());
+    g_assert(bql_locked());
 
     target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
     target_ulong what_swi = ARCH_GET_THREAD_REG(env, HEX_REG_R00);
@@ -1008,7 +1008,7 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
 static int sim_handle_trap(CPUHexagonState *env)
 
 {
-    g_assert(qemu_mutex_iothread_locked());
+    g_assert(bql_locked());
 
     int retval = 0;
     target_ulong what_swi = ARCH_GET_THREAD_REG(env, HEX_REG_R00);
@@ -1064,7 +1064,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     HEX_DEBUG_LOG("%s: tid %d, event 0x%x, cause 0x%x\n",

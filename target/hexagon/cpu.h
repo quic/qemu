@@ -307,11 +307,11 @@ typedef struct PMUState {
 
 #define LOCK_IOTHREAD(VAR)          \
     if (!(VAR)) {                   \
-        qemu_mutex_lock_iothread(); \
+        bql_lock(); \
     }
 #define UNLOCK_IOTHREAD(VAR)          \
     if (!(VAR)) {                     \
-        qemu_mutex_unlock_iothread(); \
+        bql_unlock(); \
     }
 
 

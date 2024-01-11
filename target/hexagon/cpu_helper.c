@@ -337,7 +337,7 @@ void hexagon_touch_memory(CPUHexagonState *env, uint32_t start_addr,
 static void set_enable_mask(CPUHexagonState *env)
 
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     const uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
@@ -350,7 +350,7 @@ static void set_enable_mask(CPUHexagonState *env)
 static uint32_t clear_enable_mask(CPUHexagonState *env)
 
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     const uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
@@ -364,7 +364,7 @@ static uint32_t clear_enable_mask(CPUHexagonState *env)
 static void set_wait_mode(CPUHexagonState *env)
 
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     const uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
@@ -377,7 +377,7 @@ static void set_wait_mode(CPUHexagonState *env)
 void hexagon_wait_thread(CPUHexagonState *env, target_ulong PC)
 
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     if (qemu_loglevel_mask(LOG_GUEST_ERROR) &&
@@ -426,7 +426,7 @@ static void hexagon_resume_thread(CPUHexagonState *env, uint32_t ei)
 
 void hexagon_resume_threads(CPUHexagonState *current_env, uint32_t mask)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     CPUState *cs;
     CPUHexagonState *env;
     bool found;
@@ -645,7 +645,7 @@ const char *get_exe_mode_str(CPUHexagonState *env)
 
 int get_exe_mode(CPUHexagonState *env)
 {
-    g_assert(qemu_mutex_iothread_locked());
+    g_assert(bql_locked());
 
     target_ulong modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
     uint32_t thread_enabled_mask = GET_FIELD(MODECTL_E, modectl);
@@ -675,7 +675,7 @@ int get_exe_mode(CPUHexagonState *env)
 void clear_wait_mode(CPUHexagonState *env)
 
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     const uint32_t modectl = ARCH_GET_SYSTEM_REG(env, HEX_SREG_MODECTL);
@@ -687,7 +687,7 @@ void clear_wait_mode(CPUHexagonState *env)
 
 void hexagon_ssr_set_cause(CPUHexagonState *env, uint32_t cause)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
 
@@ -705,7 +705,7 @@ static MMQReg QRegs[VECTOR_UNIT_MAX][NUM_QREGS];
 
 void hexagon_modify_ssr(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
-    const bool exception_context = qemu_mutex_iothread_locked();
+    const bool exception_context = bql_locked();
     LOCK_IOTHREAD(exception_context);
 
     bool old_EX = GET_SSR_FIELD(SSR_EX, old);
