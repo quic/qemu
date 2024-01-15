@@ -571,6 +571,7 @@ static void hexagon_restore_state_to_opc(CPUState *cs,
 #if !defined(CONFIG_USER_ONLY)
 void hexagon_cpu_soft_reset(CPUHexagonState *env)
 {
+    BQL_LOCK_GUARD();
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR, 0);
     hexagon_ssr_set_cause(env, HEX_CAUSE_RESET);
 

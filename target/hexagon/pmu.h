@@ -60,17 +60,17 @@ static inline int pmu_committed_pkt_thread(int event)
 }
 
 #define pmu_lock() \
-    bool __needs_pmu_lock = !qemu_mutex_iothread_locked(); \
+    bool __needs_pmu_lock = !bql_locked(); \
     do { \
         if (__needs_pmu_lock) { \
-            qemu_mutex_lock_iothread(); \
+            bql_lock(); \
         } \
     } while (0)
 
 #define pmu_unlock() \
     do { \
         if (__needs_pmu_lock) { \
-            qemu_mutex_unlock_iothread(); \
+            bql_unlock(); \
         } \
     } while (0)
 
