@@ -305,15 +305,6 @@ typedef struct PMUState {
     }
 #endif
 
-#define LOCK_IOTHREAD(VAR)          \
-    if (!(VAR)) {                   \
-        bql_lock(); \
-    }
-#define UNLOCK_IOTHREAD(VAR)          \
-    if (!(VAR)) {                     \
-        bql_unlock(); \
-    }
-
 
 struct Einfo {
   uint8_t valid;

@@ -1064,8 +1064,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 {
     HexagonCPU *cpu = HEXAGON_CPU(cs);
     CPUHexagonState *env = &cpu->env;
-    const bool exception_context = bql_locked();
-    LOCK_IOTHREAD(exception_context);
+    BQL_LOCK_GUARD();
 
     HEX_DEBUG_LOG("%s: tid %d, event 0x%x, cause 0x%x\n",
       __func__, env->threadId, cs->exception_index, env->cause_code);
@@ -1294,7 +1293,6 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
     }
 
     cs->exception_index = HEX_EVENT_NONE;
-    UNLOCK_IOTHREAD(exception_context);
 }
 
 void register_trap_exception(CPUHexagonState *env, int traptype, int imm,
