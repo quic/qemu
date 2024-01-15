@@ -303,16 +303,6 @@ typedef struct PMUState {
 } PMUState;
 #endif
 
-#define LOCK_IOTHREAD(VAR)          \
-    if (!(VAR)) {                   \
-        qemu_mutex_lock_iothread(); \
-    }
-#define UNLOCK_IOTHREAD(VAR)          \
-    if (!(VAR)) {                     \
-        qemu_mutex_unlock_iothread(); \
-    }
-
-
 struct Einfo {
   uint8_t valid;
   uint8_t type;
