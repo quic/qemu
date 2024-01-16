@@ -621,6 +621,47 @@ static void v75na_1024_init(ObjectClass *oc, void *data)
     mc->default_ram_size = 4 * GiB;
 }
 
+static void v79na_1_config_init(MachineState *machine)
+{
+    hexagon_common_init(machine, v79_rev, &v79na_1_cfgtable,
+        &v79na_1_extensions);
+}
+
+static void v79na_1_linux_config_init(MachineState *machine)
+{
+    syscfg_is_linux = true;
+
+    v79na_1_config_init(machine);
+}
+
+static void v79na_1_linux_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon Linux V79NA_1";
+    mc->init = v79na_1_linux_config_init;
+    mc->is_default = false;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    mc->default_cpus = 8;
+    mc->max_cpus = THREADS_MAX;
+    mc->default_ram_size = 4 * GiB;
+}
+
+static void v79na_1_init(ObjectClass *oc, void *data)
+{
+    MachineClass *mc = MACHINE_CLASS(oc);
+
+    mc->desc = "Hexagon V79NA_1";
+    mc->init = v79na_1_config_init;
+    mc->is_default = false;
+    mc->block_default_type = IF_SCSI;
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    mc->default_cpus = 8;
+    mc->max_cpus = THREADS_MAX;
+    mc->default_ram_size = 4 * GiB;
+}
+
 static void virt_init(ObjectClass *oc, void *data)
 {
     MachineClass *mc = MACHINE_CLASS(oc);
@@ -678,6 +719,14 @@ static const TypeInfo hexagon_machine_types[] = {
         .name = MACHINE_TYPE_NAME("V75_Linux"),
         .parent = TYPE_MACHINE,
         .class_init = v75na_1024_linux_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("V79NA_1"),
+        .parent = TYPE_MACHINE,
+        .class_init = v79na_1_init,
+    }, {
+        .name = MACHINE_TYPE_NAME("V79_Linux"),
+        .parent = TYPE_MACHINE,
+        .class_init = v79na_1_linux_init,
     }, {
         .name = MACHINE_TYPE_NAME("V66_Linux"),
         .parent = TYPE_MACHINE,
