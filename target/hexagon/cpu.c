@@ -47,6 +47,12 @@
 
 #define INVALID_REG_VAL (0xababababULL)
 
+uint8_t hexagon_rev_byte(CPUHexagonState *env)
+{
+    HexagonCPU *hex_cpu = container_of(env, HexagonCPU, env);
+    return hex_cpu->rev_reg & 0xff;
+}
+
 static void hexagon_common_cpu_init(Object *obj)
 {
 }

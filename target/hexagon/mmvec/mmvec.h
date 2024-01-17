@@ -153,6 +153,11 @@ static inline void set_extqfloat_coproc_mode(CPUHexagonState *thread, int mode)
 #define MMVECX_LOG_MEM_GATHER(VA,PA,WIDTH,DATA,SLOT)
 #define MMVECX_LOG_MEM_SCATTER(VA,PA,WIDTH,DATA,SLOT)
 
+#define V_EXTENDED_DWORDVAL 0x0A0A0A0A0A0A0A0A
+#define V_EXTENDED_WORDVAL  0x0A0A0A0A
+#define V_EXTENDED_HWORDVAL 0x0A0A
+#define V_EXTENDED_BYTEVAL  0x0A
+
 static inline void set_extended_bits(MMVector *v, int i, int size, uint8_t val) {
         if(size==32) {
                 v->ext[i] = val;
@@ -170,9 +175,11 @@ static inline void set_extended_bits(MMVector *v, int i, int size, uint8_t val) 
         }
 }
 
-static inline uint8_t get_extended_bits(void *unused, bool use_opt, MMVector *v, int i, int size) {
-        //TODO: REMOVE! This is just a backdoor for debugging before we get a new intruction
-        //if (use_opt && thread->processor_ptr->arch_proc_options->ext_bits != 0xA) return thread->processor_ptr->arch_proc_options->ext_bits;
+static inline uint8_t get_extended_bits(CPUHexagonState *env, bool use_opt, MMVector *v, int i, int size) {
+        if (hexagon_rev_byte(env) < 0x79) {
+            /* extended bits were introduced in v79 */
+            return V_EXTENDED_BYTEVAL;
+        }
         if(size==32) {
                 return v->ext[i];
         } else {
@@ -190,10 +197,5 @@ static inline uint8_t get_extended_bits(void *unused, bool use_opt, MMVector *v,
 }
 
 uint32_t get_usr_reg_fpsat_field(CPUHexagonState *thread);
-
-#define V_EXTENDED_DWORDVAL 0x0A0A0A0A0A0A0A0A
-#define V_EXTENDED_WORDVAL  0x0A0A0A0A
-#define V_EXTENDED_HWORDVAL 0x0A0A
-#define V_EXTENDED_BYTEVAL  0x0A
 
 #endif

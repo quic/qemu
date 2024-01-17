@@ -26,6 +26,9 @@ typedef struct SystemState system_t;
 
 #include "fpu/softfloat-types.h"
 
+
+uint8_t hexagon_rev_byte(CPUHexagonState *env);
+
 #include "cpu-qom.h"
 #include "exec/cpu-defs.h"
 #include "mmvec/mmvec.h"
