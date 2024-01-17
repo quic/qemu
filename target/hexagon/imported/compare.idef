@@ -586,7 +586,7 @@ Q6INSN(A4_tlbmatch,"Pd4=tlbmatch(Rss32,Rt32)",ATTRIBS(A_NOTE_LATEPRED,A_RESTRICT
     MASK = 0x07ffffff;
     TLBLO = fGETUWORD(0,RssV);
     TLBHI = fGETUWORD(1,RssV);
-    SIZE = fMIN(6,fCL1_4(~fBREV_4(TLBLO)));
+    SIZE = fMIN(fTLBMATCH_MIN_SIZE(),fCL1_4(~fBREV_4(TLBLO)));
     MASK &= (0xffffffff << 2*SIZE);
     PdV = f8BITSOF(fGETBIT(31,TLBHI) && ((TLBHI & MASK) == (RtV & MASK)));
 	fHIDE(MARK_LATE_PRED_WRITE(PdN))

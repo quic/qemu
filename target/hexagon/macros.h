@@ -760,4 +760,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fIN_DEBUG_MODE(TNUM) \
     0    /* FIXME */
 
+#define fTLBMATCH_MIN_SIZE() (hexagon_rev_byte(thread) < 0x79 ? 6 : 9)
+
 #endif
