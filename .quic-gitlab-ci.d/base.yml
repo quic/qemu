@@ -241,17 +241,20 @@ hexagon_publish:
   tags: [publish_runner]
   variables:
     PUBLISH_PATH: /prj/qct/llvm/target/vp_qemu_llvm/qemu_builds/
+    QEMU_RELPATH: Tools/QEMUHexagon
+    COPROC_RELPATH: Tools/QEMUCoprocPlugin
     MAX_PUBLISH_NR: 90 # 3 months
   needs: [hexagon_install, coproc_build]
   script:
     - |
       installdir="$(echo $CI_JOB_NAME | cut -d_ -f1)_install"
       cp quic/RELEASE-NOTES.txt $installdir
-      cp $HEX_COPROC_BIN $installdir/bin/
       rel_publishdir="build-$(date +%Y%m%d)"
       publishdir="$PUBLISH_PATH/$rel_publishdir"
       rm -rf "$PUBLISH_PATH/build-latest" "$publishdir"
-      mv $installdir "$publishdir"
+      mkdir -p "$publishdir/${QEMU_RELPATH}" "$publishdir/${COPROC_RELPATH}"
+      mv $installdir/* "$publishdir/${QEMU_RELPATH}/"
+      cp $HEX_COPROC_BIN "$publishdir/${COPROC_RELPATH}/"
       ln -s $rel_publishdir "$PUBLISH_PATH/build-latest"
       nr="$(ls "$PUBLISH_PATH" | wc -l)"
       if test $nr -gt $(($MAX_PUBLISH_NR + 1))
