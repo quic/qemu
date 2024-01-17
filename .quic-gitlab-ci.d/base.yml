@@ -435,3 +435,44 @@ test_hexagon_perf:
     when: always
     paths: [ "perf-results-default.json", "perf-results-mttcg.json" ]
     expire_in: 4 days
+
+test_hexagon_perf_ml:
+  extends: .after-build
+  needs: [hexagon_and_coproc_build]
+  tags:
+     - performance-hardware
+  # We'll execute a smaller subset of tests, fewer iters for routine
+  # commits/MRs.  In a nightly build we can run a comprehensive test.
+  before_script:
+    -   PERF_TEST_CFG="${PWD}/.quic-gitlab-ci.d/hex_nn_v3.py" ;
+        PERF_TEST_ITERS="1" ;
+        if [[ "${CI_PIPELINE_SOURCE}" == "schedule" ]] || [[ "${CI_PIPELINE_SOURCE}" == "web" ]]; then
+            PERF_TEST_ITERS="3";
+        fi
+  script:
+    - echo test for perf - if this fails, check qqvp-dev kernel ver and perf host sysctl ;
+      perf stat /bin/true
+    - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-perf.git
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-hexagon-benchmarks.git
+    - ./qemu-hexagon-perf/customer_test_suite.py
+          --bench-dir ./qemu-hexagon-benchmarks/
+          --qemu-user-bin-dir ${PWD}/hexagon_build/
+          --qemu-bin-dir ${PWD}/hexagon_build/
+          --output-file ./perf-results-hex_nn.json
+          --test-cfg ${PERF_TEST_CFG}
+          --iters ${PERF_TEST_ITERS}
+          --inspector none
+          --sys-args="-accel tcg,thread=multi"
+  artifacts:
+    when: always
+    paths: [ "perf-results-hex_nn.json",  ]
+    expire_in: 7 days
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: always
+#   QTOOL-111617: nightlies disabled for now
+#   - if: $CI_PIPELINE_SOURCE == "schedule"
+#     when: always
+    - when: manual
+      allow_failure: true
