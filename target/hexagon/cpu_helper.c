@@ -388,6 +388,9 @@ void hexagon_wait_thread(CPUHexagonState *env, target_ulong PC)
      */
     if ((cs->exception_index != HEX_EVENT_NONE) ||
         (cpu_has_work(cs))) {
+        qemu_log_mask(CPU_LOG_INT,
+            "%s: thread %d skipping WAIT mode, have some work\n",
+            __func__, env->threadId);
         return;
     }
     set_wait_mode(env);
