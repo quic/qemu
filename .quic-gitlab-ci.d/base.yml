@@ -144,6 +144,16 @@ coproc_build:
     - web
     - schedules
 
+# A small job only to make sure we keep artifacts for tags forever
+.base-tarball-tag:
+  script:
+    - echo OK
+  artifacts:
+    paths: [ $TARBALLS_PATH ]
+    expire_in: never
+  only:
+    - tags
+
 .base-check-tcg:
   extends: .after-build
   script:
@@ -221,6 +231,9 @@ hexagon_install:
 hexagon_tarball:
   needs: [hexagon_install]
   extends: .base-tarball
+hexagon_tarball_tag:
+  needs: [hexagon_tarball]
+  extends: .base-tarball-tag
 hexagon_check-tcg:
   needs: [hexagon_and_coproc_build]
   extends: .base-check-tcg
@@ -294,6 +307,9 @@ hexagon-win_tarball:
   extends: .base-tarball
   variables:
     TARBALL_PREFIX: "windows-x86_64-"
+hexagon-win_tarball_tag:
+  needs: [hexagon-win_tarball]
+  extends: .base-tarball-tag
 
 hexagon-mac_build:
   tags:
