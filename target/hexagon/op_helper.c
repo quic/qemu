@@ -1767,8 +1767,9 @@ static void hex_k0_unlock(CPUHexagonState *env)
     if ((GET_SYSCFG_FIELD(SYSCFG_K0LOCK, syscfg) == 0) ||
         (ATOMIC_LOAD(env->k0_lock_state) != HEX_LOCK_OWNER)) {
         qemu_log_mask(LOG_GUEST_ERROR,
-            "thread %d attempted to unlock k0 without having the lock\n",
-            env->threadId);
+            "thread %d attempted to unlock k0 without having the lock, k0_lock state = %d\n",
+            env->threadId, ATOMIC_LOAD(env->k0_lock_state));
+        g_assert (ATOMIC_LOAD(env->k0_lock_state) != HEX_LOCK_WAITING);
         bql_unlock();
         return;
     }
