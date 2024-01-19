@@ -26,6 +26,7 @@
 #include <hexagon_standalone.h>
 
 static int err;
+static uint32_t rev;
 
 #include "../hvx_misc.h"
 
@@ -41,12 +42,14 @@ static void test_future_qf32(void)
         : "v0", "v1", "memory");
 
     for (int i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
-        expect[0].uw[i] = 0x0000007f; /* reference from sim */
+        /* reference from sim */
+        expect[0].uw[i] = rev < 0x79 ? 0x7fffffff : 0x0000007f;
     }
 
     check_output_w(__LINE__, 1);
 }
 
+#if __HEXAGON_ARCH__ >= 79
 static void test_ext_bits_reset_on_copy(void)
 {
     asm volatile(
@@ -78,6 +81,7 @@ static void test_ext_bits_reset_on_copy(void)
 
     check_output_w(__LINE__, 4);
 }
+#endif
 
 static void test_ext_bits_reset_multiple_insns(void)
 {
@@ -106,6 +110,7 @@ static void test_ext_bits_reset_multiple_insns(void)
     check_output_w(__LINE__, 1);
 }
 
+#if __HEXAGON_ARCH__ >= 79
 static void test_ext_bits_reset_interleaved_qf(void)
 {
     asm volatile(
@@ -131,13 +136,48 @@ static void test_ext_bits_reset_interleaved_qf(void)
 
     check_output_w(__LINE__, 1);
 }
+#endif
+
+/*
+ * Some qfloat instructions like vsub have changed between v75 and v79,
+ * let's ensure qemu can simulate both correctly.
+ */
+static void test_qfloat_semantics_per_revision(void)
+{
+    asm volatile(
+        "r0 = #0xffffff80\n"
+        "v0 = vsplat(r0)\n"
+        "r1 = #0xfde1d91d\n"
+        "v1 = vsplat(r1)\n"
+
+        "v2.qf32=vsub(v1.qf32, v0.qf32)\n"
+        "vmemu(%0) = v2\n"
+        :
+        : "r"(output)
+        : "r0", "r1", "v0", "v1", "v2", "memory");
+
+    for (int i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
+        /* reference from the sim */
+        expect[0].uw[i] = rev < 0x79 ? 0x3fffff69 : 0x7fffff68;
+    }
+
+    check_output_w(__LINE__, 1);
+}
 
 int main()
 {
+    asm volatile("%0 = rev\n" : "=r"(rev));
+    rev &= 0xff;
+    assert(rev == 0x75 || rev == 0x79);
+
     test_future_qf32();
+#if __HEXAGON_ARCH__ >= 79
+    /* These tests use instructions that are not available before v79 */
     test_ext_bits_reset_on_copy();
-    test_ext_bits_reset_multiple_insns();
     test_ext_bits_reset_interleaved_qf();
+#endif
+    test_ext_bits_reset_multiple_insns();
+    test_qfloat_semantics_per_revision();
     puts(err ? "FAIL" : "PASS");
     return err ? 1 : 0;
 }

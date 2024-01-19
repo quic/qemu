@@ -76,7 +76,8 @@ TESTS += \
 	swi_wait \
 	udma \
 	hvx_64b \
-	hvx_ext \
+	hvx_ext-0x75 \
+	hvx_ext-0x79 \
 	neg-unaligned \
 	neg-vtcm_error \
 	pendalot \
@@ -193,8 +194,12 @@ hvx-multi.o: hvx-multi.c
 hvx-multi: hvx-multi.o hvx-multi-asm.o
 hvx_64b.o: hvx_64b.c mmu.h
 hvx_64b: hvx_64b.o
-hvx_ext.o: hvx_ext.c ../hvx_misc.h
-hvx_ext: hvx_ext.o
+hvx_ext-0x75.o: hvx_ext.c ../hvx_misc.h
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+hvx_ext-0x75: hvx_ext-0x75.o
+hvx_ext-0x79.o: hvx_ext.c ../hvx_misc.h
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+hvx_ext-0x79: hvx_ext-0x79.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
 pendalot.o: pendalot.c filename.h cfgtable.h
@@ -253,7 +258,8 @@ standalone_%: LDFLAGS+= -lc -lstandalone -mhvx -fvectorize
 
 standalone_vec.o: CFLAGS+= -mv69 -O2 -mhvx  -fvectorize
 hvx_64b.o: CFLAGS+= -O2 -mhvx
-hvx_ext.o: EXTRA_CFLAGS+= -O2 -mhvx -mv79
+hvx_ext-0x75.o: EXTRA_CFLAGS+= -O2 -mhvx -mv75
+hvx_ext-0x79.o: EXTRA_CFLAGS+= -O2 -mhvx -mv79
 hvx-multi.o: CFLAGS+= -O2 -mhvx
 hvx-multi-asm.o: ASFLAGS+= -mhvx
 
@@ -394,6 +400,9 @@ endif # no WIN
 run-qfloat_test: qfloat_test
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS) $< >_$@.out ,"$< on $(TARGET_NAME)")
 	diff --strip-trailing-cr -q $(HEXAGON_SYSTEM_SRC)/qfloat.out.ref _$@.out
+
+run-hvx_ext-0x75: QEMU_EXTRA_OPTS=-M V75NA_1024
+run-hvx_ext-0x79: QEMU_EXTRA_OPTS=-M V79NA_1
 
 run-fopen: fopen
 	$(call run-test, $<, $(QEMU) $(QEMU_OPTS)  $< -append dummy.so,"$< on $(TARGET_NAME)")
