@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2023 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2024 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,19 +15,18 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * Top level instruction definition file
- */
-
 #include "mappings.idef"
-#include "null.idef"
-#include "ldst.idef"
-#include "mpy.idef"
-#include "semantics_auto.idef"
-#include "float.idef"
-#include "shift.idef"
-#include "system.idef"
-#include "subinsns.idef"
-#include "16bit.idef"
-#include "allext.idef"
-#include "shared_ext.idef"
+
+#define STRINGIZE(X) #X
+
+#define Q6INSN(TAG, BEH, ATTRIBS, DESCR, SEM) \
+	Q6INSN_REV(HEXAGON_REV, #TAG, BEH, #ATTRIBS, DESCR, STRINGIZE(SEM)) \
+	Q6INSN_REV_END
+
+#define HEXAGON_REV 75
+#include "mmvec/ext-v75.idef"
+#undef HEXAGON_REV
+
+#define HEXAGON_REV 79
+#include "mmvec/ext-v79.idef"
+#undef HEXAGON_REV

@@ -126,6 +126,7 @@ typedef struct DisasContext {
      * written multiple times in this packet.
      */
     TCGv mult_reg_written;
+    int rev;
 } DisasContext;
 
 void gen_mmvec_ext_init(intptr_t offset, bool is_pair);

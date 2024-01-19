@@ -24,15 +24,15 @@
 *
 ***************************************************************************************/
 
-/*
- * EJP: FIXME: a lot of this is a mess.  Lots of copypasta.  We should be using more
- * macros to increase terseness.
- */
 #ifndef EXTINSN
 #define EXTINSN Q6INSN
 #define __SELF_DEF_EXTINSN 1
 #endif
 
+/*
+ * EJP: FIXME: a lot of this is a mess.  Lots of copypasta.  We should be using more
+ * macros to increase terseness.
+ */
 #ifndef NO_MMVEC
 
 #define DO_FOR_EACH_CODE(WIDTH, CODE) \
@@ -3376,6 +3376,9 @@ EXTINSN(V6_ppred,   "ppred(Qs4)",   ATTRIBS(A_EXTENSION,A_CVI,A_VDBG,A_FAKEINSN)
 #undef ATTR_VMEM
 #undef ATTR_VMEMU
 #undef ATTR_VMEM_NT
+#undef ITERATOR_INSN_SHIFT3_SLOT
+#undef WHIST
+#undef PRINT_VU
 
 #endif /* NO_MMVEC */
 

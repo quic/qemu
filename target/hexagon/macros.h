@@ -30,6 +30,12 @@
 #define PCALIGN_MASK (PCALIGN - 1)
 
 #ifdef QEMU_GENERATE
+#define HEXAGON_REV_BYTE() (ctx->rev)
+#else
+#define HEXAGON_REV_BYTE() (hexagon_rev_byte(env))
+#endif
+
+#ifdef QEMU_GENERATE
 #define GET_FIELD(RES, FIELD, REGIN) \
     tcg_gen_extract_tl(RES, REGIN, reg_field_info[FIELD].offset, \
                                    reg_field_info[FIELD].width)
