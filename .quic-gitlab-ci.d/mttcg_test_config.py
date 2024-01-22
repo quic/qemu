@@ -81,6 +81,8 @@
         "qemu-args": [
             "-M",
             "virt_coproc",
+            "-cpu",
+            "v73",
             "-append",
             "pickle_driver.elf --pickle_in "
             "{test_name}.pickle --in_bhwd "
@@ -102,6 +104,8 @@
         "qemu-args": [
             "-M",
             "virt_coproc",
+            "-cpu",
+            "v73",
             "-append",
             "pickle_driver.elf --pickle_in "
             "{test_name}.pickle --in_bhwd "
@@ -120,6 +124,8 @@
         "qemu-args": [
             "-M",
             "virt_coproc",
+            "-cpu",
+            "v73",
             "-append",
             "pickle_driver.elf "
             "--pickle_in "
