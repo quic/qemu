@@ -28,8 +28,8 @@
 #define MAX_INT_NUM (8)
 #define ALL_INTERRUPTS_MASK (0xff)
 
-static const int WAIT_THREAD_COUNT = 3;
-static const int TOTAL_THREAD_COUNT = 1 + WAIT_THREAD_COUNT;
+#define WAIT_THREAD_COUNT 3
+#define TOTAL_THREAD_COUNT (1 + WAIT_THREAD_COUNT)
 /* volatile because it tracks when interrupts have been processed */
 volatile int ints_by_irq[MAX_INT_NUM]; /* volatile required here */
 volatile int ints_by_tid[TOTAL_THREAD_COUNT]; /* volatile required here */
