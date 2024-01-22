@@ -535,7 +535,7 @@ static inline void print_thread_states(const char *str)
  * tlblock insn.  The insn tlblock only advances the PC
  * after the lock is acquired, similar to k0lock.
  */
-void hex_tlb_lock(CPUHexagonState *env, int32_t advance_pc)
+void hex_tlb_lock(CPUHexagonState *env)
 {
     qemu_log_mask(CPU_LOG_MMU, "hex_tlb_lock: %d\n", env->threadId);
     BQL_LOCK_GUARD();
@@ -544,8 +544,10 @@ void hex_tlb_lock(CPUHexagonState *env, int32_t advance_pc)
     uint8_t tlb_lock = GET_SYSCFG_FIELD(SYSCFG_TLBLOCK, syscfg);
     if (tlb_lock) {
         if (ATOMIC_LOAD(env->tlb_lock_state) == HEX_LOCK_OWNER) {
-            env->next_PC += advance_pc;
-            qemu_log_mask(CPU_LOG_MMU, "Already the owner\n");
+            qemu_log_mask(CPU_LOG_MMU | LOG_GUEST_ERROR,
+                "tlblock issued at PC:0x%x when already the owner\n",
+                env->next_PC);
+            env->next_PC += 4;
             return;
         }
         qemu_log_mask(CPU_LOG_MMU, "\tWaiting\n");
@@ -554,7 +556,7 @@ void hex_tlb_lock(CPUHexagonState *env, int32_t advance_pc)
         cpu_interrupt(cs, CPU_INTERRUPT_HALT);
     } else {
         qemu_log_mask(CPU_LOG_MMU, "\tAcquired\n");
-        env->next_PC += advance_pc;
+        env->next_PC += 4;
         ATOMIC_STORE(env->tlb_lock_state, HEX_LOCK_OWNER);
         SET_SYSCFG_FIELD(env, SYSCFG_TLBLOCK, 1);
     }

@@ -62,6 +62,7 @@ TESTS += \
 	mmu_cacheops \
 	badva \
 	tlblock \
+	tlb-miss-tlblock \
 	k0lock \
 	invalid_opcode \
 	invalid_insn_for_rev \
@@ -231,8 +232,11 @@ double_ex: double_ex.o
 $(TESTS) inf-loop:
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
 
-
 # Specific Test Rules
+
+tlb-miss-tlblock: tlb-miss-tlblock.o
+	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ \
+	-nostartfiles  -Wl,-Ttext,0x9b800000 -Wl,-entry,0x9b800000
 
 # memcpy insn was removed in v75
 run-memcpy: QEMU_EXTRA_OPTS=-M V73NA_1024
