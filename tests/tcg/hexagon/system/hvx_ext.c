@@ -164,6 +164,73 @@ static void test_qfloat_semantics_per_revision(void)
     check_output_w(__LINE__, 1);
 }
 
+static void test_qfloat_with_cur(void)
+{
+    memset(buffer0, 0xff, sizeof(buffer0));
+    asm volatile(
+        "r0 = #0x11111111\n"
+        "v10 = vsplat(r0)\n"
+
+        "r1 = #0xffffff80\n"
+        "v1 = vsplat(r1)\n"
+
+        /* tweak ext bits */
+        "v0.x = vsetqfext(v10, r0)\n"
+        "v2 = vmerge(v0.x, v1.w)\n"
+
+        "{\n"
+        "    v2.cur = vmem(%0++#0)\n"
+        "    v3.qf32=vsub(v2.qf32, v1.qf32)\n"
+        "}\n"
+        "vmemu(%1) = v3\n"
+        :
+        : "r"(buffer0), "r"(output)
+        : "r0", "r1", "v0", "v1", "v2", "v3", "v10", "memory");
+
+    for (int i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
+        /* reference from the sim */
+        expect[0].uw[i] = 0x800000e7;
+    }
+
+    check_output_w(__LINE__, 1);
+}
+
+static void test_qfloat_with_tmp(void)
+{
+    memset(buffer0, 0xff, sizeof(buffer0));
+    asm volatile(
+        "r0 = #0x11111111\n"
+        "v10 = vsplat(r0)\n"
+
+        "r1 = #0xffffff80\n"
+        "v1 = vsplat(r1)\n"
+
+        /* tweak ext bits */
+        "v0.x = vsetqfext(v10, r0)\n"
+        "v2 = vmerge(v0.x, v1.w)\n"
+
+        "{\n"
+        "    v3.tmp = vmem(%0++#0)\n"
+        "    v3.qf32=vsub(v2.qf32, v1.qf32)\n"
+        "    v4 = v3\n"
+        "}\n"
+        "vmemu(%1) = v3\n"
+
+        "v10 = vgetqfext(v3.x, r0)\n"
+        "vmemu(%2) = v10\n"
+        :
+        : "r"(buffer0), "r"(&output[0]), "r"(&output[1])
+        : "r0", "r1", "v0", "v1", "v2", "v3", "v4", "v10", "memory");
+
+    for (int i = 0; i < MAX_VEC_SIZE_BYTES / 4; i++) {
+        /* reference from the sim */
+        expect[0].uw[i] = 0x00000080;
+        expect[1].uw[i] = 0x00111111; /* tmp should not reset v3's ext bitsd */
+    }
+
+    check_output_w(__LINE__, 2);
+}
+
 int main()
 {
     asm volatile("%0 = rev\n" : "=r"(rev));
@@ -175,6 +242,8 @@ int main()
     /* These tests use instructions that are not available before v79 */
     test_ext_bits_reset_on_copy();
     test_ext_bits_reset_interleaved_qf();
+    test_qfloat_with_cur();
+    test_qfloat_with_tmp();
 #endif
     test_ext_bits_reset_multiple_insns();
     test_qfloat_semantics_per_revision();
