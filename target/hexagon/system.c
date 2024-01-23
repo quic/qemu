@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2024 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,12 +39,15 @@
 //#include "iic.h"
 //#include "uarch/uarch.h"
 
-//#define thread_t CPUHexagonState
 
+#ifdef VERIFICATION
+#include "ver_external_api.h"
+#include "ver_exec.h"
+#endif
 
-#ifdef ZEBU_CHECKSUM_TRACE
-#include "zebu_external_api.h"
-#include "zebu_exec.h"
+#ifdef EMU_CHECKSUM_TRACE
+#include "emu_external_api.h"
+#include "emu_exec.h"
 #endif
 
 
@@ -58,6 +61,14 @@
 
 //#include "clade_if.h"
 //#include "clade2_if.h"
+//#include "mmvec/mmvec.h"
+//#include "cacheability_auto.h"
+
+//#include "arch_options_calc.h"
+
+
+//#include "q6v_system.c"
+
 
 #define TLBGUESSIDX(VA) ( ((VA>>12)^(VA>>22)) & (MAX_TLB_GUESS_ENTRIES-1))
 
@@ -94,31 +105,31 @@ int hex_get_page_size(thread_t *thread, size4u_t vaddr, int width)
 
 paddr_t
 mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
-				enum mem_access_types mtype, int type_for_xlate)
+                               enum mem_access_types mtype, int type_for_xlate)
 {
-	mem_access_info_t *maptr = &thread->mem_access[slot];
+       mem_access_info_t *maptr = &thread->mem_access[slot];
 
 
 #ifdef FIXME
-	maptr->is_memop = 0;
-	maptr->log_as_tag = 0;
-	maptr->no_deriveumaptr = 0;
-	maptr->is_dealloc = 0;
-	maptr->dropped_z = 0;
+       maptr->is_memop = 0;
+       maptr->log_as_tag = 0;
+       maptr->no_deriveumaptr = 0;
+       maptr->is_dealloc = 0;
+       maptr->dropped_z = 0;
 
         hex_exception_info einfo;
 #endif
 
-	/* The basic stuff */
+       /* The basic stuff */
 #ifdef FIXME
-	maptr->bad_vaddr = maptr->vaddr = vaddr;
+       maptr->bad_vaddr = maptr->vaddr = vaddr;
 #else
-	maptr->vaddr = vaddr;
+       maptr->vaddr = vaddr;
 #endif
-	maptr->width = width;
-	maptr->type = mtype;
+       maptr->width = width;
+       maptr->type = mtype;
 #ifdef FIXME
-	maptr->tnum = thread->threadId;
+       maptr->tnum = thread->threadId;
 #endif
     maptr->cancelled = 0;
     maptr->valid = 1;
@@ -126,27 +137,27 @@ mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
     int page_size = hex_get_page_size(thread, vaddr, width);
     maptr->size = 31 - clz32(page_size);
 
-	/* Attributes of the packet that are needed by the uarch */
+       /* Attributes of the packet that are needed by the uarch */
     maptr->slot = slot;
     maptr->paddr = vaddr;
     xlate_info_t *xinfo = &(maptr->xlate_info);
     memset(xinfo,0,sizeof(*xinfo));
     xinfo->size = maptr->size;
 
-	return (maptr->paddr);
+       return (maptr->paddr);
 }
 
 paddr_t
 mem_init_access_unaligned(thread_t *thread, int slot, size4u_t vaddr, size4u_t realvaddr, int size,
-	enum mem_access_types mtype, int type_for_xlate)
+       enum mem_access_types mtype, int type_for_xlate)
 {
-	paddr_t ret;
-	mem_access_info_t *maptr = &thread->mem_access[slot];
-	ret = mem_init_access(thread,slot,vaddr,1,mtype,type_for_xlate);
-	maptr->vaddr = realvaddr;
-	maptr->paddr -= (vaddr-realvaddr);
-	maptr->width = size;
-	return ret;
+       paddr_t ret;
+       mem_access_info_t *maptr = &thread->mem_access[slot];
+       ret = mem_init_access(thread,slot,vaddr,1,mtype,type_for_xlate);
+       maptr->vaddr = realvaddr;
+       maptr->paddr -= (vaddr-realvaddr);
+       maptr->width = size;
+       return ret;
 }
 
 int sys_xlate_dma(thread_t *thread, size8u_t va, int access_type,
@@ -172,58 +183,59 @@ int sys_xlate_dma(thread_t *thread, size8u_t va, int access_type,
 void
 mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, int slot)
 {
-	FATAL_REPLAY;
+       FATAL_REPLAY;
 
-	mem_access_info_t *maptr = &thread->mem_access[slot];
+       mem_access_info_t *maptr = &thread->mem_access[slot];
 
 
-	maptr->is_memop = 0;
-	maptr->log_as_tag = 0;
-	maptr->no_deriveumaptr = 0;
-	maptr->is_dealloc = 0;
-	//maptr->dropped_z = 0;
+       maptr->is_memop = 0;
+       maptr->log_as_tag = 0;
+       maptr->no_deriveumaptr = 0;
+       maptr->is_dealloc = 0;
+       //maptr->dropped_z = 0;
 
         // hex_exception_info einfo = {0};
 
         /* The basic stuff */
-	maptr->bad_vaddr = maptr->vaddr = vaddr;
-	maptr->width = width;
-	maptr->type = access_type_store;
-	maptr->tnum = thread->threadId;
+       maptr->bad_vaddr = maptr->vaddr = vaddr;
+       maptr->width = width;
+       maptr->type = access_type_store;
+       maptr->tnum = thread->threadId;
     maptr->cancelled = 0;
     maptr->valid = 1;
 
-	/* Attributes of the packet that are needed by the uarch */
+       /* Attributes of the packet that are needed by the uarch */
     maptr->slot = slot;
 #if 0
     maptr->bp = GET_SSR_FIELD(SSR_BP);
     maptr->xe = GET_SSR_FIELD(SSR_XE);
     maptr->xa = GET_SSR_FIELD(SSR_XA);
 
-	/* For trace in the uarch */
-	maptr->pc_va = thread->Regs[REG_PC];
+       /* For trace in the uarch */
+       maptr->pc_va = thread->Regs[REG_PC];
 
 
-	// Different here, we're not going to take an exception on dmlink, but the dmwait
-	// if this packet has an exception, don't log the store
-	if(sys_xlate_dma(thread,vaddr,TYPE_STORE,access_type_store, slot, width-1, &maptr->xlate_info, &einfo)==0) {
-		SYSVERWARN("not doing dmlink store due to potential exception");
-		if (!thread->processor_ptr->options->testgen_mode) {
-			MEMTRACE_ST(thread, thread->Regs[REG_PC], vaddr, 0, width, DWRITE, data);
-		}
-		return;
-	}
+       // Different here, we're not going to take an exception on dmlink, but the dmwait
+       // if this packet has an exception, don't log the store
+       if(sys_xlate_dma(thread,vaddr,TYPE_STORE,access_type_store, slot, width-1, &maptr->xlate_info, &einfo)==0) {
+               SYSVERWARN("not doing dmlink store due to potential exception");
+               if (!thread->processor_ptr->options->testgen_mode) {
+                       MEMTRACE_ST(thread, thread->Regs[REG_PC], vaddr, 0, width, DWRITE, data);
+               }
+               return;
+       }
 
-	maptr->paddr = maptr->xlate_info.pa;
+       maptr->paddr = maptr->xlate_info.pa;
 #else
   maptr->paddr = vaddr;
 #endif
 
-	thread->mem_access[slot].stdata = data;
+       thread->mem_access[slot].stdata = data;
 
-	LOG_MEM_STORE(vaddr,maptr->paddr, width, data, slot);
+       LOG_MEM_STORE(vaddr,maptr->paddr, width, data, slot);
 
 }
+
 
 #define warn(...)
 #define env thread
@@ -235,18 +247,19 @@ mem_dmalink_store(thread_t * thread, size4u_t vaddr, int width, size8u_t data, i
 #define PRECISE_CAUSE_REG_WRITE_CONFLICT    HEX_CAUSE_REG_WRITE_CONFLICT
 #define PRECISE_CAUSE_DOUBLE_EXCEPT         HEX_CAUSE_DOUBLE_EXCEPT
 
+
 #ifndef CONFIG_USER_ONLY
 static
-bool is_du_badva_affecting_exception(int type, int cause)
+int is_du_badva_affecting_exception(int type, int cause)
 {
 	if (type == EXCEPT_TYPE_TLB_MISS_RW) {
-		return true;
+		return 1;
 	}
 	if ((type == EXCEPT_TYPE_PRECISE) && (cause >= 0x20)
 		&& (cause <= 0x28)) {
-		return true;
+		return 1;
 	}
-	return false;
+	return (0);
 }
 
 static
@@ -262,7 +275,11 @@ raise_coproc_ldst_exception(thread_t *env, size4u_t de_slotmask,
     do_raise_exception(env, cs->exception_index, PC, 0);
 }
 
-static
+void
+register_exception_info(thread_t * thread, size4u_t type, size4u_t cause,
+						size4u_t badva0, size4u_t badva1, size4u_t bvs,
+						size4u_t bv0, size4u_t bv1, size4u_t elr,
+						size4u_t diag, size4u_t de_slotmask);
 void
 register_exception_info(thread_t * thread, size4u_t type, size4u_t cause,
 						size4u_t badva0, size4u_t badva1, size4u_t bvs,
@@ -272,14 +289,19 @@ register_exception_info(thread_t * thread, size4u_t type, size4u_t cause,
 #ifdef VERIFICATION
 	warn("Oldtype=%d oldcause=0x%x newtype=%d newcause=%x de_slotmask=%x diag=%x", thread->einfo.type, thread->einfo.cause, type, cause, de_slotmask, diag);
 #endif
-	if ((EXCEPTION_DETECTED)
+	warn("Oldtype=%d oldcause=0x%x newtype=%d newcause=%x de_slotmask=%x diag=%x", thread->einfo.type, thread->einfo.cause, type, cause, de_slotmask, diag);
+        if ((EXCEPTION_DETECTED)
+                 && (thread->einfo.type == 0x0B)) { // EXCEPT_TYPE_FPTRAP
+                 warn("FP Exception has higher priority than multi write / bad cacheability");
+       }
+       else if ((EXCEPTION_DETECTED)
 		&& (thread->einfo.type == EXCEPT_TYPE_TLB_MISS_RW)
 		&& ((type == EXCEPT_TYPE_PRECISE)
-			&& ((cause == 0x28) || (cause == 0x29)))) {
+			&& ((cause == 0x26) || (cause == 0x27) || (cause == 0x28) || (cause == 0x29)))) {
 		warn("Footnote in v2 System Architecture Spec 5.1 says: TLB miss RW has higher priority than multi write / bad cacheability");
-	}
-
-	else if ((EXCEPTION_DETECTED) && (thread->einfo.cause == PRECISE_CAUSE_BIU_PRECISE) && (cause == PRECISE_CAUSE_REG_WRITE_CONFLICT)) {
+	} 
+	
+	else if ((EXCEPTION_DETECTED) && (thread->einfo.cause == PRECISE_CAUSE_BIU_PRECISE) && ((cause == PRECISE_CAUSE_REG_WRITE_CONFLICT)||(cause == PRECISE_CAUSE_DOUBLE_EXCEPT))) {
 		warn("RTL Takes Multi-write before BIU, overwriting BIU");
 		thread->einfo.type = type;
 		thread->einfo.cause = cause;
@@ -289,14 +311,14 @@ register_exception_info(thread_t * thread, size4u_t type, size4u_t cause,
 		thread->einfo.bv0 = bv0;
 		thread->einfo.bv1 = bv1;
 		thread->einfo.elr = elr;
-		thread->einfo.diag = diag;
+		thread->einfo.diag = diag;		
 	} else if ((EXCEPTION_DETECTED) && (thread->einfo.bv1 && bv0)  &&
-			/*We've already seen a slot1 exception */
+			/*We've already seen a slot1 exception */ 
 			   is_du_badva_affecting_exception(thread->einfo.type,
 							   thread->einfo.cause)
 			   && is_du_badva_affecting_exception(type, cause)) {
 
-		/* We've already seen a slot1 D-side exception, so only
+		/* We've already seen a slot1 D-side exception, so only 
 		   need to record the BADVA0 info */
 		thread->einfo.badva0 = badva0;
 		thread->einfo.bv0 = bv0;
@@ -343,25 +365,28 @@ register_exception_info(thread_t * thread, size4u_t type, size4u_t cause,
 	}
 }
 
-static
+void
+register_error_exception(thread_t * thread, size4u_t error_code,
+						 size4u_t badva0, size4u_t badva1, size4u_t bvs,
+						 size4u_t bv0, size4u_t bv1, size4u_t slotmask);
 void
 register_error_exception(thread_t * thread, size4u_t error_code,
 						 size4u_t badva0, size4u_t badva1, size4u_t bvs,
 						 size4u_t bv0, size4u_t bv1, size4u_t slotmask)
 {
     target_ulong ssr = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_SSR);
-	/*warn("Error exception detected, tnum=%d code=0x%x pc=0x%x badva0=0x%x badva1=0x%x, bvs=%x, Pcycle=%lld msg=%s\n", thread->threadId, error_code, thread->Regs[REG_PC], badva0, badva1, bvs, thread->processor_ptr->monotonic_pcycles, thread->exception_msg ? thread->exception_msg : "");*/
-	/*thread->exception_msg = NULL;*/
-	if ((error_code > HEX_CAUSE_DOUBLE_EXCEPT)
+	//warn("Error exception detected, tnum=%d code=0x%x pc=0x%x badva0=0x%x badva1=0x%x, bvs=%x, Pcycle=%lld msg=%s\n", thread->threadId, error_code, thread->Regs[REG_PC], badva0, badva1, bvs, thread->processor_ptr->monotonic_pcycles, thread->exception_msg ? thread->exception_msg : "");
+	//thread->exception_msg = NULL;
+	if ((error_code > PRECISE_CAUSE_DOUBLE_EXCEPT)
 		&& GET_SSR_FIELD(SSR_EX, ssr)) {
-		/*warn("Double Exception...");*/
+		//warn("Double Exception...");
 		register_exception_info(thread, EXCEPT_TYPE_PRECISE,
-								HEX_CAUSE_DOUBLE_EXCEPT,
-								ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA0),
-								ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1),
-								GET_SSR_FIELD(SSR_BVS, ssr),
-								GET_SSR_FIELD(SSR_V0, ssr),
-								GET_SSR_FIELD(SSR_V1, ssr),
+                                HEX_CAUSE_DOUBLE_EXCEPT,
+                                ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA0),
+                                ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1),
+                                GET_SSR_FIELD(SSR_BVS, ssr),
+                                GET_SSR_FIELD(SSR_V0, ssr),
+                                GET_SSR_FIELD(SSR_V1, ssr),
 								thread->Regs[REG_PC], error_code,
 								slotmask);
 		return;
@@ -370,7 +395,7 @@ register_error_exception(thread_t * thread, size4u_t error_code,
 	register_exception_info(thread, EXCEPT_TYPE_PRECISE, error_code,
 							badva0, badva1, bvs, bv0, bv1,
 							thread->Regs[REG_PC],
-							ARCH_GET_SYSTEM_REG(thread, HEX_SREG_DIAG),
+                            ARCH_GET_SYSTEM_REG(thread, HEX_SREG_DIAG),
 							0);
 }
 #endif
@@ -378,7 +403,7 @@ register_error_exception(thread_t * thread, size4u_t error_code,
 void register_coproc_ldst_exception(thread_t * thread, int slot, size4u_t badva)
 {
 #ifndef CONFIG_USER_ONLY
-	/*warn("Coprocessor LDST Exception, tnum=%d npc=%x\n", thread->threadId, thread->Regs[REG_PC]);*/
+	//warn("Coprocessor LDST Exception, tnum=%d npc=%x\n", thread->threadId, thread->Regs[REG_PC]);
 	if (slot == 0) {
 		register_error_exception(thread, HEX_CAUSE_COPROC_LDST,
 			 badva,
@@ -387,7 +412,7 @@ void register_coproc_ldst_exception(thread_t * thread, int slot, size4u_t badva)
 			 1 /* set bv0 */,
 			 0 /* clear bv1 */, 1<<slot);
 	} else {
-		register_error_exception(thread, HEX_CAUSE_COPROC_LDST,
+		register_error_exception(thread,HEX_CAUSE_COPROC_LDST,
 			ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA0),
 			badva,
 			1 /* select 1 */,
@@ -399,4 +424,3 @@ void register_coproc_ldst_exception(thread_t * thread, int slot, size4u_t badva)
     g_assert_not_reached();
 #endif
 }
-

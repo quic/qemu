@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2024 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -101,9 +101,10 @@ typedef uint32_t (*dma_insn_checker_ptr)(struct dma_state *dma);
 #define DMA_CACHE_ALLOCATION_NONE 0
 #define DMA_CACHE_ALLOCATION_WR_ONLY 1
 #define DMA_CACHE_ALLOCATION_RD_ONLY 2
-#define DMA_CACHE_ALLOCATION_RD_WR 3
+#define DMA_CACHE_ALLOCATION_RD_WR 3 
 
 #define DMA_MAX_REG 13
+
 
 typedef struct dma_state {
     int num;                          // DMA instance identification index (num).
@@ -147,7 +148,7 @@ typedef struct dm3_reg_t {
       uint32_t ubwc_mask:8;
       uint32_t ubwc_range:8;
       uint32_t ubwc_support_enable:1;
-      uint32_t reserved2:7;
+      uint32_t reserved2:7;    
     };
     uint32_t val;
   };
@@ -160,7 +161,7 @@ typedef struct udma_ctx_t {
     uint32_t int_status;                // Internal State Machine
     uint32_t ext_status;                // External (M0) State machine status.
     uint32_t dma_tick_count;
-
+                                      
     uint32_t desc_new;                  // New descriptor to be processed
     // Timing mode support
     uint32_t timing_on;                 // for timing, 0 for non-timing
@@ -177,8 +178,8 @@ typedef struct udma_ctx_t {
     uint32_t desc_restart;
     uint32_t pause_va;
     uint32_t pause_va_valid;
-    uint32_t uwbc_a_en;
-    // DM2 Cfg
+    uint32_t ubwc_a_en; 
+    // DM2 Cfg 
     dm2_reg_t dm2;
     dm3_reg_t dm3;
 
@@ -186,22 +187,20 @@ typedef struct udma_ctx_t {
     dma_decoded_descriptor_t active;
     dma_decoded_descriptor_t target;  // For verif - precise pause
 
-
+    
     uint32_t pc; // archsim debug/tracing
 
 	// timing model
 	uarch_dma_engine_inst_t * uarch_dma_engine;				// Timing model instance (Data Prefetch Unit)
-
+	
 } udma_ctx_t;
 
 
 
 
-#ifndef ARCH_FUNCTION_DECL
 #define ARCH_FUNCTION_DECL(rval, fname, ...) \
 rval fname(__VA_ARGS__);\
 rval fname##_##debug(__VA_ARGS__);
-#endif
 
 
 #define VERIF_DMASTEP_DESC_DONE 0

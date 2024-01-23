@@ -1,5 +1,5 @@
 /*
- *  Copyright(c) 2019-2020 Qualcomm Innovation Center, Inc. All Rights Reserved.
+ *  Copyright(c) 2019-2024 Qualcomm Innovation Center, Inc. All Rights Reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
-
 
 /*
  * DMA engine adapter between Hexagon ArchSim and User DMA engine.
@@ -37,6 +36,7 @@
 #if 1
 //#define PRINTF(DMA, ...)  printf(__VA_ARGS__)
 #define PRINTF(...)
+#define DMA_STALL_SET(STALLTYPE,INSNCHECKER)
 #else
 #define PRINTF(DMA, ...) \
 { \
@@ -47,8 +47,6 @@
 		fflush(fp);\
 	}\
 }
-#endif
-
 #ifdef VERIFICATION
 #define DMA_STALL_SET(STALLTYPE,INSNCHECKER) {                             \
 	thread->status |= EXEC_STATUS_REPLAY;                                    \
@@ -57,7 +55,17 @@
 	thread->processor_ptr->dma_insn_checker[thread->threadId] = INSNCHECKER; \
 	}
 #else
-#define DMA_STALL_SET(STALLTYPE,INSNCHECKER)
+#define DMA_STALL_SET(STALLTYPE,INSNCHECKER) {                             \
+	STALLDEBUG("Set stall: tnum=%d cyc=%lld %s",                             \
+		thread->threadId,                                                      \
+		thread->processor_ptr->monotonic_pcycles,                              \
+		stall_names[STALLTYPE]);                                               \
+	thread->status |= EXEC_STATUS_REPLAY;                                    \
+	thread->staller = staller_dmainsn;                                       \
+	thread->stall_type = STALLTYPE;                                          \
+	thread->processor_ptr->dma_insn_checker[thread->threadId] = INSNCHECKER; \
+	}
+#endif
 #endif
 
 #define warn(...)
@@ -72,6 +80,7 @@
 #else
 #define CALL_DMA_CMD(NAME, ...) \
 	{NAME(__VA_ARGS__); }
+
 #endif
 
 /* defines to reduce compare differences */
@@ -82,7 +91,6 @@
 #define PRECISE_CAUSE_PRIV_NO_WRITE   HEX_CAUSE_PRIV_NO_WRITE
 #define PRECISE_CAUSE_PRIV_NO_UREAD   HEX_CAUSE_PRIV_NO_UREAD
 #define PRECISE_CAUSE_PRIV_NO_READ    HEX_CAUSE_PRIV_NO_READ
-
 
 //! Function pointer type of DMA instruction (command) implementation.
 typedef size4u_t (*dma_adapter_cmd_impl_t)(thread_t*, size4u_t, size4u_t, dma_insn_checker_ptr*);
@@ -116,6 +124,44 @@ dma_adapter_cmd_impl_t dma_adapter_cmd_impl_tab[DMA_CMD_UND] = {
     [DMA_CMD_RESUME]   = &dma_adapter_cmd_resume,            /* dmresume */
     [DMA_CMD_TLBSYNCH] = &dma_adapter_cmd_tlbsynch,          /* dmtlbsynch */
 };
+
+#if 0
+size4u_t pmu_event_mapping[DMA_PMU_NUM] = {
+	tudma_active, //DMA_PMU_ACTIVE, 
+	tudma_stall_dfetch, //DMA_PMU_STALL_DESC_FETCH, 
+	tudma_stall_sync_response, //DMA_PMU_STALL_SYNC_RESP,
+	tudma_stall_tlb_miss, //DMA_PMU_STALL_TLB_MISS,
+	tudma_tlb_miss, //DMA_PMU_TLB_MISS,
+	tudma_pause, //DMA_PMU_PAUSE_CYCLES,
+	tudma_dmpoll_cycles, //DMA_PMU_DMPOLL_CYCLES,
+	tudma_dmwait_cycles, //DMA_PMU_DMWAIT_CYCLES,
+	tudma_dmsyncht_cycles, //DMA_PMU_SYNCHT_CYCLES,
+	tudma_dmtlbsynch_cycles, //DMA_PMU_TLBSYNCH_CYCLES,
+	tudma_desciptor_done,//DMA_PMU_DESC_DONE,
+	tudma_dlbc_fetch,//DMA_PMU_DLBC_FETCH,	
+	tudma_dlbc_fetch_cycle,//	DMA_PMU_DLBC_FETCH_CYCLES,
+	tudma_unaligned_descriptor,//DMA_PMU_UNALIGNED_DESCRIPTOR,
+	tudma_ordering_descriptor,//DMA_PMU_ORDERING_DESCRIPTOR,
+	tudma_padding_descriptor,//DMA_PMU_PADDING_DESCRIPTOR,
+	tudma_unaligned_rd,//DMA_PMU_UNALIGNED_RD,
+	tudma_unaligned_wr,//DMA_PMU_UNALIGNED_WR,
+	tudma_cycles_coherent_rd,//DMA_PMU_COHERENT_RD_CYCLES,
+	tudma_cycles_coherent_wr,//DMA_PMU_COHERENT_WR_CYCLES,
+	tudma_cycles_noncoherent_rd,//DMA_PMU_NONCOHERENT_RD_CYCLES,
+	tudma_cycles_noncoherent_wr,//DMA_PMU_NONCOHERENT_WR_CYCLES,
+	tudma_cycles_vtcm_rd,//DMA_PMU_VTCM_RD_CYCLES,
+	tudma_cycles_vtcm_wr,//DMA_PMU_VTCM_WR_CYCLES,
+	pudma_rd_buf_lvl_low,//DMA_PMU_RD_BUFFER_LEVEL_LOW,
+	pudma_rd_buf_lvl_half,//DMA_PMU_RD_BUFFER_LEVEL_HALF,
+	pudma_rd_buf_lvl_high,//DMA_PMU_RD_BUFFER_LEVEL_HIGH,
+	pudma_rd_buf_lvl_full,//DMA_PMU_RD_BUFFER_LEVEL_FULL,
+	tudma_dmstart,
+	tudma_dmlink,
+	tudma_dmresume
+};
+#endif
+size4u_t dma_adapter_cmd_latency[DMA_INSN_LATENCY_NUM] = { 0 };
+
 
 
 //! Address range that can be serviced by the memory subsystem.
@@ -202,17 +248,50 @@ struct dma_addr_range_t* dma_adapter_find_mem(paddr_t paddr) {
 	return mem;
 }
 
+#if 0
+static inline thread_t* dma_adapter_retrieve_thread(dma_t *dma) {
+	return ((dma_adapter_engine_info_t *)dma->owner)->owner;
+}
+#endif
+thread_t* dma_adapter_retrieve_thread(dma_t *dma) {
+	return ((dma_adapter_engine_info_t *)dma->owner)->owner;
+}
+
 static inline dma_adapter_engine_info_t* dma_retrieve_dma_adapter(dma_t *dma) {
 	return (dma_adapter_engine_info_t *)dma->owner;
 }
+
+#if 0
+static int staller_dmainsn(thread_t *thread) {
+	dma_t *dma = thread->processor_ptr->dma[thread->threadId];
+  if (thread->processor_ptr->dma_insn_checker[thread->threadId] == NULL) { return 0; }
+
+	// This staller will check if a thread 0's DMA instruction is done with its
+  // job or not. The DMA engine should know if the instruction completes the
+  // job. Thus this adapter is instruction-agnostic - whatever a DMA instruction
+  // is given, if the instruction has its own latency to model, this staller
+  // will call the engine to check it via the instruction checker.
+  int release = (*(thread->processor_ptr->dma_insn_checker[thread->threadId]))(dma);
+  if (release == 1) {
+		// Let's finish stalling!
+		thread->status &= ~EXEC_STATUS_REPLAY;
+
+    // Do not forget removing the instruction completion checker!
+    // Otherwise, another staller will be set again successively.
+		thread->processor_ptr->dma_insn_checker[thread->threadId] = NULL;
+		return 1;
+	}
+	return 0;
+}
+#endif
 
 //! Function to request stalling. The DMA engine calls this function to stall
 //! an instruction stream.
 static int dma_adapter_set_staller(dma_t *dma, dma_insn_checker_ptr insn_checker) {
 	thread_t* thread __attribute__((unused)) = dma_adapter_retrieve_thread(dma);
-#ifdef VERIFICATION
+#ifdef VERIFICATION		
 	PRINTF(dma, "DMA %d Tick %8lli: ADAPTER  dma_adapter_set_staller. ", dma->num,  (long long int)dma_get_tick_count(dma));
-#endif
+#endif	
 	// Set up a staller per thread.
 	DMA_STALL_SET(dmainsn, insn_checker);
 
@@ -228,30 +307,30 @@ int dma_adapter_in_monitor_mode(dma_t *dma) {
 #ifdef CONFIG_USER_ONLY
   return 0;
 #else
-	return sys_in_monitor_mode(dma_adapter_retrieve_thread(dma));
+    return sys_in_monitor_mode(dma_adapter_retrieve_thread(dma));
 #endif
 }
 int dma_adapter_in_guest_mode(dma_t *dma) {
 #ifdef CONFIG_USER_ONLY
   return 0;
 #else
-	return sys_in_guest_mode(dma_adapter_retrieve_thread(dma));
+    return sys_in_guest_mode(dma_adapter_retrieve_thread(dma));
 #endif
 }
 int dma_adapter_in_user_mode(dma_t *dma) {
 #ifdef CONFIG_USER_ONLY
-  return 1;
+  return 0;
 #else
-	return sys_in_user_mode(dma_adapter_retrieve_thread(dma));
+    return sys_in_user_mode(dma_adapter_retrieve_thread(dma));
 #endif
 }
 int dma_adapter_in_debug_mode(dma_t *dma) {
-#ifdef VERIFICATION
-	thread_t* thread = dma_adapter_retrieve_thread(dma);
+	thread_t* thread __attribute__((unused)) = dma_adapter_retrieve_thread(dma);
+#ifdef VERIFICATION		
 	if (fIN_DEBUG_MODE(thread->threadId)) {
 		PRINTF(dma, "DMA %d: ADAPTER thread->debug_mode=%d ISDST=%llx ",dma->num, thread->debug_mode, (fREAD_GLOBAL_REG_FIELD(ISDBST,ISDBST_DEBUGMODE) & 1<<thread->threadId));
 	}
-#endif
+#endif	
 	return fIN_DEBUG_MODE(thread->threadId);
 }
 
@@ -260,7 +339,8 @@ FILE * dma_adapter_debug_log(dma_t *dma) {
 	return thread->processor_ptr->arch_proc_options->dmadebugfile;
 }
 FILE * uarch_dma_adapter_debug_log(dma_t *dma) {
-	return (FILE *)0;}
+return (FILE *)0;
+}
 int dma_adapter_debug_verbosity(dma_t *dma) {
 	thread_t* thread = dma_adapter_retrieve_thread(dma);
 	return thread->processor_ptr->arch_proc_options->dmadebug_verbosity;
@@ -269,8 +349,7 @@ int dma_adapter_debug_verbosity(dma_t *dma) {
 
 void do_callback(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info, int callback_state);
 void do_callback(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info, int callback_state) {
-#if 0
-
+#if 0	
 	thread_t * thread = dma_adapter_retrieve_thread(dma);
 
 	dma_descriptor_callback_info_t info = {0};
@@ -284,8 +363,8 @@ void do_callback(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info,
 	info.desc_id = id;
 	// Translate a VA.
 	xlate_info_t xlate_task;   // Storage to get a PA returned back.
-	hex_exception_info e_info;     // Storage to retrieve an exception if it occurs.
-
+	exception_info e_info;     // Storage to retrieve an exception if it occurs.
+  
 	sys_xlate(thread, desc_va, TYPE_LOAD, access_type_load, 0, 4-1, &xlate_task, &e_info);
 	info.desc_pa = xlate_task.pa;
 
@@ -302,13 +381,13 @@ void do_callback(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info,
 		info.dst_offset = (uint32_t)get_dma_desc_dstwidthoffset((void*)desc_info);
 		info.hlen = (uint32_t)get_dma_desc_srcwidthoffset((void*)desc_info) - (uint32_t)get_dma_desc_srcwidthoffset((void*)desc_info);
 		info.vlen = (uint32_t)get_dma_desc_roiheight((void*)desc_info);
-
-		info.desc2d_type =  (uint32_t)((HEXAGON_DmaDescriptor2D_t*)desc_info)->type;
-		info.src_upper = (uint32_t)((HEXAGON_DmaDescriptor2D_t*)desc_info)->srcUpperAddr;
-		info.dst_upper = (uint32_t)((HEXAGON_DmaDescriptor2D_t*)desc_info)->dstUpperAddr;
+		
+		info.desc2d_type =  (uint32_t)((HEXAGON_DmaDescriptor2D_t*)desc_info)->type; 
+		info.src_upper = (uint32_t)((HEXAGON_DmaDescriptor2D_t*)desc_info)->srcUpperAddr; 
+		info.dst_upper = (uint32_t)((HEXAGON_DmaDescriptor2D_t*)desc_info)->dstUpperAddr; 
 	}
 
-	if (thread->processor_ptr->options->dma_callback) {
+	if (thread->processor_ptr->options->dma_callback) { 
 			thread->processor_ptr->options->dma_callback(thread->system_ptr, thread->processor_ptr, &info);
 	}
 #endif
@@ -321,7 +400,7 @@ void dma_adapter_set_target_descriptor(thread_t *thread, uint32_t dm0,  uint32_t
 
 
 int dma_adapter_match_tlb_entry (dma_t *dma, uint64_t entry, uint32_t asid, uint32_t va ) {
-	return 0;
+    return 0;
 }
 
 
@@ -334,21 +413,36 @@ int dma_adapter_descriptor_start(dma_t *dma, uint32_t id, uint32_t desc_va, uint
 int dma_adapter_descriptor_end(dma_t *dma, uint32_t id, uint32_t desc_va, uint32_t *desc_info, int pause, int exception) {
 	//PRINTF(dma, "DMA %d: ADAPTER  dma_adapter_descriptor_end : desc_va = 0x%x id=%d", dma->num, desc_va, id);
 	int callback_state = DMA_DESC_STATE_DONE;
-	callback_state = (pause) ? DMA_DESC_STATE_PAUSE : callback_state;
-	callback_state = (exception) ? DMA_DESC_STATE_EXCEPT : callback_state;
+	callback_state = (pause) ? DMA_DESC_STATE_PAUSE : callback_state; 
+	callback_state = (exception) ? DMA_DESC_STATE_EXCEPT : callback_state; 
 	do_callback(dma, id, desc_va, desc_info, callback_state);
 	return 0;
 }
+
+#if 0
+int dma_adapter_log_xact(dma_t * dma, uint32_t desc_va, uint32_t pc, uint32_t va, uint64_t pa, uint32_t len, uint32_t is_read, uint32_t is_desc, uint32_t is_bypass, void * callback, void * entry) {
+	thread_t *thread = dma_adapter_retrieve_thread(dma);
+	processor_t* proc = thread->processor_ptr;
+	mem_access_info_t ma = {0};
+	ma.pc_va = pc;
+	ma.paddr = pa;
+	ma.vaddr = va;
+	ma.range = desc_va;	// reusing maptr memer
+	ma.width = len;
+	ma.type = is_read ? access_type_udma_load : access_type_udma_store;
+	ma.tnum = dma->num;
+    ma.valid = 1;
+	return proc->uarch.uarch_udma_if_log_ptr(proc, &ma, is_desc, is_bypass, callback, entry);
+}
+#endif
 
 
 uint32_t dma_adapter_xlate_desc_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_memaccess_info_t * dma_memaccess_info) {
 
 	// Translate a VA.
 	xlate_info_t xlate_task;   // Storage to get a PA returned back.
-        hex_exception_info e_info = {
-            0
-        }; // Storage to retrieve an exception if it occurs.
-        thread_t * thread = dma_adapter_retrieve_thread(dma);
+	hex_exception_info e_info = {0};     // Storage to retrieve an exception if it occurs.
+	thread_t * thread = dma_adapter_retrieve_thread(dma);
 
 	uint32_t ret = sys_xlate_dma(thread, (uint32_t)va, TYPE_DMA_FETCH,  access_type_load,  0, 0, &xlate_task, &e_info, 0, 0, 0, 0);
 
@@ -358,7 +452,7 @@ uint32_t dma_adapter_xlate_desc_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_me
 	perm->u = xlate_task.pte_u;
 	perm->w = xlate_task.pte_w;
 	perm->r = xlate_task.pte_r;
-	perm->x = xlate_task.pte_x;
+	perm->x = xlate_task.pte_x;	
 
 	dma_memtype_t * memtype = &dma_memaccess_info->memtype;
 	memtype->vtcm = xlate_task.memtype.vtcm;
@@ -381,13 +475,13 @@ uint32_t dma_adapter_xlate_desc_va(dma_t *dma, uint32_t va, uint64_t* pa, dma_me
 	if (ret == 0) {
 		dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
 		dma_info->einfo = e_info;
-
+	
 		warn("DMA %d: ADAPTER  exception on translation of descriptor for VA=%x badva0=%x badva1=%x cause=%x cccc=%x U:%x R:%x W:%x X:%x jtlbidx=%d", dma->num, va, dma_info->einfo.badva0, dma_info->einfo.badva1, dma_info->einfo.cause, xlate_task.cccc, perm->u, perm->r, perm->w, perm->x, xlate_task.jtlbidx);
-		PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER exception on descriptor fetch=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d va=0x%x PA=%llx", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), dma_info[dma->num].einfo.cause, xlate_task.jtlbidx , memtype->invalid_cccc, memtype->invalid_dma, (unsigned int)va, (long long int)pa);
+		PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER exception on descriptor fetch=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d va=0x%x PA=%llx", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), dma_info[dma->num].einfo.cause, xlate_task.jtlbidx , memtype->invalid_cccc, memtype->invalid_dma, (unsigned int)va, (long long int)pa);		
 	}
 
-
-
+	
+	
 	return ret;
 }
 
@@ -395,12 +489,12 @@ void dma_adapter_mask_badva(dma_t *dma, uint32_t mask) {
 	dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
 	dma_info->einfo.badva0 &= mask;
 }
-
-
+ 
+ 
 uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memaccess_info_t * dma_memaccess_info, uint32_t width, uint32_t store, uint32_t extended_va, uint32_t except_vtcm, uint32_t is_dlbc, uint32_t is_forget) {
-
+	
 	// Decode Access type
-
+	
 	uint32_t access_type = TYPE_LOAD;
 	uint32_t maptr_type = access_type_load;
 	if (store) {
@@ -410,10 +504,8 @@ uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memacce
 
 	// Translate a VA.
 	xlate_info_t xlate_task;   // Storage to get a PA returned back.
-        hex_exception_info e_info = {
-            0
-        }; // Storage to retrieve an exception if it occurs.
-        thread_t * thread = dma_adapter_retrieve_thread(dma);
+	hex_exception_info e_info = {0};      // Storage to retrieve an exception if it occurs.
+	thread_t * thread = dma_adapter_retrieve_thread(dma);
 
 	uint32_t ret = sys_xlate_dma(thread, va, access_type, maptr_type, 0, width-1, &xlate_task, &e_info, extended_va, except_vtcm, is_dlbc, is_forget);
 	// If an exception occurs, keep it for future.
@@ -426,7 +518,7 @@ uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memacce
 	perm->u = xlate_task.pte_u;
 	perm->w = xlate_task.pte_w;
 	perm->r = xlate_task.pte_r;
-	perm->x = xlate_task.pte_x;
+	perm->x = xlate_task.pte_x;	
 
 	dma_memtype_t * memtype = &dma_memaccess_info->memtype;
 	memtype->vtcm = xlate_task.memtype.vtcm;
@@ -436,7 +528,7 @@ uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memacce
 	memtype->l2vic = xlate_task.memtype.l2vic;
 	memtype->invalid_cccc = xlate_task.memtype.invalid_cccc;
 	memtype->invalid_dma = xlate_task.memtype.invalid_dma || xlate_task.memtype.invalid_cccc;
-
+	
 	dma_memaccess_info->exception = (ret == 0);
 #if 0
 	dma_memaccess_info->jtlb_idx   = dma_memaccess_info->exception ? -1 : xlate_task.jtlbidx;
@@ -453,11 +545,11 @@ uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memacce
 		dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
 		dma_info->einfo = e_info;
 
-		PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER %s Exception Encountered: VA=0x%llx (38-bit=%x) PA=0x%llx size=%d. cause=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d U:%x R:%x W:%x X:%x",dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), (store) ? "WR" : "RD",
+		PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER %s Exception Encountered: VA=0x%llx (38-bit=%x) PA=0x%llx size=%d. cause=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d U:%x R:%x W:%x X:%x",dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), (store) ? "WR" : "RD", 
 		(long long int)va, extended_va, (long long int)*pa, width, dma_info->einfo.cause, xlate_task.jtlbidx , memtype->invalid_cccc, memtype->invalid_dma,
 		perm->u, perm->w, perm->r, perm->x);
-
-		warn("DMA %d: ADAPTER %s Exception Encountered: VA=0x%llx (38-bit=%x) PA=0x%llx size=%d cause=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d U:%x R:%x W:%x X:%x",dma->num, (store) ? "WR" : "RD",
+	
+		warn("DMA %d: ADAPTER %s Exception Encountered: VA=0x%llx (38-bit=%x) PA=0x%llx size=%d cause=%x jtlbidx=%d invalid cccc=%d memory_invalid=%d U:%x R:%x W:%x X:%x",dma->num, (store) ? "WR" : "RD", 
 		(long long int)va, extended_va, (long long int)*pa, width, dma_info->einfo.cause, xlate_task.jtlbidx , memtype->invalid_cccc, memtype->invalid_dma,
 		perm->u, perm->w, perm->r, perm->x);
 
@@ -466,10 +558,10 @@ uint32_t dma_adapter_xlate_va(dma_t *dma, uint64_t va, uint64_t* pa, dma_memacce
 			dma_memaccess_info->va = GET_DMA_LDST_ERROR_BADVA(extended_va, va);
 		}
 
-	}
-	//else
+	} 
+	//else 
 	//{
-	//	PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER using tlb entry=%d memtype->vtcm=%d excpet_vtcm=%d invalid=%d",  dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), xlate_task.jtlbidx, memtype->vtcm,except_vtcm, memtype->invalid_dma);
+	//	PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER using tlb entry=%d memtype->vtcm=%d excpet_vtcm=%d invalid=%d",  dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), xlate_task.jtlbidx, memtype->vtcm,except_vtcm, memtype->invalid_dma); 
     //
 	//}
 
@@ -481,10 +573,10 @@ int dma_adapter_register_error_exception(dma_t *dma, uint32_t va) {
 #if 0
 	thread_t * thread = dma_adapter_retrieve_thread(dma);
 	dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
-	hex_exception_info e_info;
+	exception_info e_info;
 	register_dma_error_exception(thread, &e_info, va);
 	dma_info->einfo = e_info;
-	warn("DMA %d: Registering DMA error exception cause=%x badva=%x", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), e_info.cause, va);
+	warn("DMA %d: Registering DMA error exception cause=%x badva=%x", dma->num, ARCH_GET_PCYCLES(thread->processor_ptr), e_info.cause, va); 
 #endif
 	return 0;
 };
@@ -493,18 +585,18 @@ void dma_adapter_force_dma_error(thread_t *thread, uint32_t badva, uint32_t synd
 	dma_t *dma = thread->processor_ptr->dma[thread->threadId];
 	dma_force_error(dma, badva, syndrome);
 	//PRINTF(dma, "DMA %d: ADAPTER  forcing DMA error for badva=%x syndrome=%d", dma->num, badva, syndrome);
-	//warn("DMA %d: ADAPTER  forcing DMA error for badva=%x syndrome=%d", dma->num, badva, syndrome);
+	//warn("DMA %d: ADAPTER  forcing DMA error for badva=%x syndrome=%d", dma->num, badva, syndrome);	
 }
 
 int dma_adapter_register_perm_exception(dma_t *dma, uint32_t va,  dma_access_rights_t access_rights, int store) {
 
 	thread_t * thread = dma_adapter_retrieve_thread(dma);
 	dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
-        hex_exception_info e_info;
+	hex_exception_info e_info;
 
-        e_info.valid = 1;
+	e_info.valid = 1;
 	e_info.type = EXCEPT_TYPE_PRECISE;
-
+	
 
 	if (store) {
 		e_info.cause = (access_rights.w)  ?  PRECISE_CAUSE_PRIV_NO_UWRITE : PRECISE_CAUSE_PRIV_NO_WRITE;
@@ -514,7 +606,7 @@ int dma_adapter_register_perm_exception(dma_t *dma, uint32_t va,  dma_access_rig
 
 	e_info.badva0 = va;
 #if !defined(CONFIG_USER_ONLY)
-	e_info.badva1 = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1);
+    e_info.badva1 = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1);
 #endif
 	e_info.bv0 = 1;
 	e_info.bv1 = 0;
@@ -587,6 +679,12 @@ static void memwrite(thread_t *thread, mem_access_info_t *memaptr)
     }
 }
 
+#if 0
+int dma_test_gen_mode(dma_t *dma) {
+	thread_t * thread = dma_adapter_retrieve_thread(dma);
+	return thread->processor_ptr->options->testgen_mode;
+}
+#endif
 int dma_adapter_memread(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *dst, int width) {
 	mem_access_info_t macc_task;
 	thread_t * thread = dma_adapter_retrieve_thread(dma);
@@ -595,23 +693,24 @@ int dma_adapter_memread(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *dst, int 
 	macc_task.width = 1;
   while (width > 0) {
     (*dst) = memread(thread, &macc_task, 0);
- #ifdef VERIFICATION
+ #ifdef VERIFICATION 	
  		//PRINTF(dma, "DMA ADAPTER:  %d: callback for DREAD at %llx byte=%x",thread->threadId, macc_task.paddr, (*dst));
-		if (thread->processor_ptr->options->sim_memory_callback && thread->processor_ptr->options->testgen_mode) {
+		if (thread->processor_ptr->options->sim_memory_callback && thread->processor_ptr->options->testgen_mode) { 
 			//PRINTF(dma, "DMA ADAPTER:  %d: callback for DREAD at %llx byte=%x",thread->threadId, macc_task.paddr, (*dst));
-    		thread->processor_ptr->options->sim_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId,macc_task.vaddr,macc_task.paddr,1,DREAD,(*dst));
+    		thread->processor_ptr->options->sim_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId,macc_task.vaddr,macc_task.paddr,1,DREAD,(*dst)); 
   		}
 #endif
     macc_task.vaddr++;
     macc_task.paddr++;
     dst++;
     width--;
-
+		
   }
 
 //	return ((*dst) != 0xdeadbeef);
 	return 1;
 }
+
 
 int dma_adapter_memwrite(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *src, int width) {
 	mem_access_info_t macc_task;
@@ -619,15 +718,15 @@ int dma_adapter_memwrite(dma_t *dma, uint32_t va, uint64_t pa, uint8_t *src, int
 	macc_task.vaddr = va;
 	macc_task.paddr = pa;
 	macc_task.width = 1;
-
+	
 	while (width > 0) {
-		macc_task.stdata = (*src);
+		macc_task.stdata = (*src);  
 		memwrite(thread, &macc_task);
-#ifdef VERIFICATION
+#ifdef VERIFICATION		
 		//PRINTF(dma, "DMA ADAPTER:  %d: callback for DWRITE at %llx byte=%x",thread->threadId, macc_task.paddr, (*src));
 		if (thread->processor_ptr->options->sim_memory_callback && thread->processor_ptr->options->testgen_mode) { \
 			//PRINTF(dma, "DMA ADAPTER:  %d: callback for DWRITE at %llx byte=%x",thread->threadId, macc_task.paddr, (*src));
-    	thread->processor_ptr->options->sim_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId,macc_task.vaddr,macc_task.paddr,1,DWRITE,(*src));
+    	thread->processor_ptr->options->sim_memory_callback(thread->system_ptr,thread->processor_ptr, thread->threadId,macc_task.vaddr,macc_task.paddr,1,DWRITE,(*src)); 
   	}
 #endif
 		macc_task.vaddr++;
@@ -649,14 +748,14 @@ dma_t *dma_adapter_init(processor_t *proc, int dmanum) {
 		              __FILE__, __LINE__, "cannot create dma");
 		return NULL;
 	}
-
+	
 	if ((dma_adapter = (dma_adapter_engine_info_t *) calloc(1, sizeof(dma_adapter_engine_info_t))) == NULL) {
 		sim_err_fatal(proc->system_ptr, proc, 0, (char *) __FUNCTION__,
 		              __FILE__, __LINE__, "cannot create dma_adapter");
 		return NULL;
 	}
 
-
+	
 
   // Set up other arguments.
 	dma->num = dmanum;
@@ -681,22 +780,31 @@ dma_t *dma_adapter_init(processor_t *proc, int dmanum) {
 		return NULL;
 	}
 
+#if 0
+	dma_adapter_cmd_latency[DMA_INSN_LATENCY_DMSTART]  = ARCHOPT(udma_dmstart_latency);
+	dma_adapter_cmd_latency[DMA_INSN_LATENCY_DMRESUME] = ARCHOPT(udma_dmresume_latency); 
+	dma_adapter_cmd_latency[DMA_INSN_LATENCY_DMLINK]   = ARCHOPT(udma_dmlink_latency);
+	dma_adapter_cmd_latency[DMA_INSN_LATENCY_DMPAUSE]  = ARCHOPT(udma_dmpause_latency);
+	dma_adapter_cmd_latency[DMA_INSN_LATENCY_DMPOLL]   = ARCHOPT(udma_dmpoll_latency);
+	dma_adapter_cmd_latency[DMA_INSN_LATENCY_DMWAIT]   = ARCHOPT(udma_dmwait_latency);
+#endif
+
 
 	return dma;
 }
 void dma_adapter_tlb_invalidate(thread_t *thread, int tlb_idx, uint64_t tlb_entry_old, uint64_t tlb_entry_new) {
 	//dma_t *dma = NULL; // This is a global invalidate so it should go to all DMA's
 	//uint32_t tlb_asid = GET_FIELD(PTE_ASID, tlb_entry_old);
-
+	
     g_assert(thread->processor_ptr->runnable_threads_max > 0);
-	// On TLB Write, single the dma's that the tlbw entry has been erased.
+	// On TLB Write, single the dma's that the tlbw entry has been erased. 
 	// timing model will flush it self if it can't translate
 	//if (proc->timing_on) {
 		dma_t *dma = thread->processor_ptr->dma[0];
-		//PRINTF(dma, "DMA X: Tick %8lli: TLBW invalidate for tlb[%d]=%llx new entry: %llx from tnum=%d", ARCH_GET_PCYCLES(thread->processor_ptr), tlb_idx, (long long int)tlb_entry_old, (long long int)tlb_entry_new,   thread->threadId);
+		//PRINTF(dma, "DMA X: Tick %8lli: TLBW invalidate for tlb[%d]=%llx new entry: %llx from tnum=%d", ARCH_GET_PCYCLES(thread->processor_ptr), tlb_idx, (long long int)tlb_entry_old, (long long int)tlb_entry_new,   thread->threadId);	  
 		for (int tnum = 0; tnum < thread->processor_ptr->runnable_threads_max; tnum++) {
 			dma = thread->processor_ptr->dma[tnum];
-
+	
 			if (thread->processor_ptr->timing_on) {
 				dma_arch_tlbw(dma, tlb_idx);
 			}
@@ -731,7 +839,7 @@ int dma_adapter_pop_desc_queue(dma_t *dma, desc_tracker_entry_t * entry ) {
 	desc_tracker_release(proc, dma->num, entry);
 	return 1;
 }
-uint64_t dma_adapter_get_pcycle(dma_t *dma){
+uint64_t dma_adapter_get_pcycle(dma_t *dma){ 
 	thread_t* thread __attribute__((unused)) = dma_adapter_retrieve_thread(dma);
 	return ARCH_GET_PCYCLES(thread->processor_ptr);
 }
@@ -762,17 +870,15 @@ int dma_adapter_pop_desc_queue_done(dma_t *dma) {
 		int idx = queue_peek(proc, dma->num, &dma_info->desc_queue);
 		int pop = 0;
 		pop = (idx>=0);
-		if ( pop ) {
-			pop &= (dma_info->desc_entries[idx]->desc.state == DMA_DESC_DONE) || (dma_info->desc_entries[idx]->desc.state ==  DMA_DESC_EXCEPT_ERROR);
-		}
-		// If it's exception running, we're going to keep that descriptor
+		pop &= (dma_info->desc_entries[idx]->desc.state == DMA_DESC_DONE) || (dma_info->desc_entries[idx]->desc.state ==  DMA_DESC_EXCEPT_ERROR);
+		// If it's exception running, we're going to keep that descriptor 	
 		if ( pop ) {
 			idx = queue_pop(proc, dma->num, &dma_info->desc_queue);
-
+			
 			PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER releasing descriptor va=%x id=%lli desc.state=%d pause=%d", dma->num, ARCH_GET_PCYCLES(proc), dma_info->desc_entries[idx]->desc.va, dma_info->desc_entries[idx]->id, dma_info->desc_entries[idx]->desc.state,  dma_info->desc_entries[idx]->desc.pause);
 
 
-			// Update Descriptor
+			// Update Descriptor	
 			CALL_DMA_CMD(dma_update_descriptor_done,dma, &dma_info->desc_entries[idx]->desc);
 
 			desc_tracker_release(proc, dma->num, dma_info->desc_entries[idx]);
@@ -785,20 +891,20 @@ int dma_adapter_pop_desc_queue_done(dma_t *dma) {
 			//	PRINTF(dma, "DMA %d: Tick: %lli ADAPTER not releasing descriptor va=%x id=%lli desc.state=%d due to exception, but updating", dma->num, ARCH_GET_PCYCLES(proc), dma_info->desc_entries[idx]->desc.va, dma_info->desc_entries[idx]->id, dma_info->desc_entries[idx]->desc.state);
 			//	dma_update_descriptor_done(dma, &dma_info->desc_entries[idx]->desc);
 			//}
-
+			
 			done = 0;
 		}
 
 	}
 
-
+	
 	if (is_empty && !dma_in_error(dma)) {
 		PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER stopping DMA since we are done with all the descriptors in the chain.", dma->num, ARCH_GET_PCYCLES(proc));
 		CALL_DMA_CMD(dma_stop,dma);
 	} else if (is_empty && !dma_in_error(dma)){
 		PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER. We're done with all the descriptors in chain, but in exception mode. can't go to idle.", dma->num, ARCH_GET_PCYCLES(proc));
 	}
-
+    
 	return is_empty;
 }
 
@@ -811,12 +917,12 @@ int dma_adapter_pop_desc_queue_pause(dma_t *dma) {
 	while (done) {
 		int idx = queue_peek(proc, dma->num, &dma_info->desc_queue);
 		int pop = 0;
-		pop = (idx>=0);
+		pop = (idx>=0); 	
 		if ( pop ) {
 			idx = queue_pop(proc, dma->num, &dma_info->desc_queue);
 			PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER cmd_pause releasing descriptor va=%x id=%lli desc.state=%d pause=%d", dma->num, ARCH_GET_PCYCLES(proc), dma_info->desc_entries[idx]->desc.va, dma_info->desc_entries[idx]->id, dma_info->desc_entries[idx]->desc.state,  dma_info->desc_entries[idx]->desc.pause);
 
-			// Update Descriptor
+			// Update Descriptor	
 			CALL_DMA_CMD(dma_update_descriptor_done,dma, &dma_info->desc_entries[idx]->desc);
 			desc_tracker_release(proc, dma->num, dma_info->desc_entries[idx]);
 			dma_info->desc_entries[idx] = NULL;
@@ -828,7 +934,7 @@ int dma_adapter_pop_desc_queue_pause(dma_t *dma) {
 	}
 	if (is_empty && !dma_in_error(dma)) {
 		CALL_DMA_CMD(dma_stop,dma);
-	}
+	} 
 
 	return is_empty;
 }
@@ -871,28 +977,30 @@ void arch_dma_cycle(processor_t *proc, int dmanum) {
 
 void arch_dma_cycle_no_desc_step(processor_t *proc, int dmanum) {
 	dma_t *dma = proc->dma[dmanum];
-	CALL_DMA_CMD(dma_tick,dma, 0);
+	CALL_DMA_CMD(dma_tick,dma, 0);	
 	desc_tracker_cycle(proc, dmanum);
 }
 void arch_dma_tick_until_stop(processor_t *proc, int dmanum) {
 	dma_t *dma = proc->dma[dmanum];
-	uint32_t status = 0;
+	uint32_t status = 0;	
+#ifdef VERIFICATION
 	uint32_t ticks = 0;
+#endif		
 	while(!status) {
 #ifdef VERIFICATION
 		status = dma_tick_debug(dma, 1);	// status == 0 running, status == 1, stopped for some reason
-#else
-			status = dma_tick(dma, 1);
-#endif
 		ticks++;
+#else
+        status = dma_tick(dma, 1); 
+#endif	
 	}
 
 #ifdef VERIFICATION
 	thread_t * thread=proc->thread[0]; // for warn
 	warn("DMA %d: ADAPTER  arch_verif_dma_step ticks=%u", dmanum, ticks);
 	PRINTF(dma, "DMA %d: Tick %lli: ADAPTER arch_verif_dma_step ticks=%u", dma->num, ARCH_GET_PCYCLES(proc), ticks);
-#endif
-
+#endif		
+	
 }
 
 
@@ -903,8 +1011,8 @@ void arch_dma_tick_until_stop(processor_t *proc, int dmanum) {
 static int dma_adapter_report_exception(dma_t *dma) {
 	thread_t* thread = dma_adapter_retrieve_thread(dma);
 	dma_adapter_engine_info_t * dma_info = dma_retrieve_dma_adapter(dma);
-
-	warn("DMA %d: ADAPTER  report_exception PC=%x Syndrome=%d for badva=%x", dma->num, thread->Regs[REG_PC], dma->error_state_reason, dma_info->einfo.badva0);
+	
+	warn("DMA %d: ADAPTER  report_exception PC=%x Syndrome=%d for badva=%x", dma->num, thread->Regs[REG_PC], dma->error_state_reason, dma_info->einfo.badva0);	
 	PRINTF(dma, "DMA %d: Tick %8lli: ADAPTER  report_exception for badva=%x",dma->num, thread->processor_ptr->monotonic_pcycles, dma_info->einfo.badva0 );
 
 	// If an exception occurred while DMA operations just after DMSTART
@@ -914,14 +1022,14 @@ static int dma_adapter_report_exception(dma_t *dma) {
 	// elr should be adjusted to be a PC of DMPOLL or DMWAIT.
 	dma_info->einfo.elr = thread->Regs[REG_PC];
 #if !defined(CONFIG_USER_ONLY)
-	dma_info->einfo.badva1 = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1);
+    dma_info->einfo.badva1 = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_BADVA1);
 #endif
-
+	
 	// Take an owner thread an exception.
 	//register_einfo(thread, &dma_info->einfo);
 
 	INC_TSTAT(tudma_tlb_miss);
-
+	
 	return 0;
 }
 
@@ -946,18 +1054,19 @@ size4u_t dma_adapter_cmd_start(thread_t *thread, size4u_t new_dma, size4u_t dumm
 		if (new_dma != 0) {
 #ifndef CONFIG_USER_ONLY
             uint32_t ssr = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_SSR);
-			fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width,
+                       fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width,
                 reg_field_info[SSR_ASID].offset,
                 (GET_SSR_FIELD(SSR_ASID, ssr)));
             ARCH_SET_SYSTEM_REG(thread, HEX_SREG_SSR, ssr);
 #else
-            g_assert_not_reached();
+        g_assert_not_reached();
 #endif
 		}
 	}
 
 	// We should relay the instruction completeness checker.
 	(*insn_checker) = report.insn_checker;
+
 	return 0;
 }
 
@@ -967,7 +1076,7 @@ size4u_t dma_adapter_cmd_link(thread_t *thread, size4u_t tail, size4u_t new_dma,
 	dma_t *dma = thread->processor_ptr->dma[thread->threadId];
 	dma_cmd_report_t report = {.excpt = 0, .insn_checker = NULL};
 	dma->pc = thread->Regs[REG_PC];
-
+	 
 	CALL_DMA_CMD(dma_cmd_link, dma, tail, new_dma, thread->mem_access[0].paddr, thread->mem_access[0].xlate_info.memtype.invalid_dma, &report);
 
 	if (report.excpt == 1) {
@@ -978,7 +1087,7 @@ size4u_t dma_adapter_cmd_link(thread_t *thread, size4u_t tail, size4u_t new_dma,
 		if (new_dma != 0) {
 #ifndef CONFIG_USER_ONLY
             uint32_t ssr = ARCH_GET_SYSTEM_REG(thread, HEX_SREG_SSR);
-			fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width,
+                       fINSERT_BITS(ssr, reg_field_info[SSR_ASID].width,
                 reg_field_info[SSR_ASID].offset,
                 (GET_SSR_FIELD(SSR_ASID, ssr)));
             ARCH_SET_SYSTEM_REG(thread, HEX_SREG_SSR, ssr);
@@ -1010,7 +1119,7 @@ size4u_t dma_adapter_cmd_poll(thread_t *thread, size4u_t dummy1,
 		return thread->dmpoll_hint_val;
 	}
 #endif
-
+		
 	CALL_DMA_CMD(dma_cmd_poll, dma, &dst, &report);
 
 	if (report.excpt == 1) {
@@ -1078,9 +1187,14 @@ size4u_t dma_adapter_cmd_pause(thread_t *thread, size4u_t dummy1,
 	// We should relay the instruction completeness checker.
 	(*insn_checker) = report.insn_checker;
 
+#ifdef VERIFICATION
+	dma_adapter_pop_desc_queue_pause(dma);
+#else
 	if (report.excpt) {
 		dma_adapter_pop_desc_queue_pause(dma);
 	}
+#endif
+
 	return dst;
 }
 
@@ -1094,7 +1208,7 @@ size4u_t dma_adapter_cmd_resume(thread_t *thread, size4u_t arg1, size4u_t dummy,
 
 	if ((arg1& ~0x3)==0) {
 		warn("DMA %d: dmresume with Rs32=%x is a nop", dma->num, arg1);
-	}
+	}	
 
 	CALL_DMA_CMD(dma_cmd_resume, dma, arg1, &report);
 
@@ -1113,9 +1227,9 @@ void dma_adapter_set_dmreg(processor_t *proc, uint32_t tnum, uint32_t addr, uint
 	if(thread == NULL) return;
 	dma_adapter_cmd_cfgwr(thread, addr, val, NULL);
 }
-size4u_t dma_adapter_cmd_cfgrd(thread_t *thread,
-                               size4u_t index,
-                               size4u_t dummy2,
+size4u_t dma_adapter_cmd_cfgrd(thread_t *thread, 
+                               size4u_t index, 
+                               size4u_t dummy2, 
                                dma_insn_checker_ptr *insn_checker)
 {
 	// Obtain a current DMA instance from a thread ID.
@@ -1145,8 +1259,8 @@ void dma_adapter_snapshot_flush(processor_t * proc) {
 }
 
 size4u_t dma_adapter_cmd_cfgwr(thread_t *thread,
-                               size4u_t index,
-                               size4u_t val,
+                               size4u_t index, 
+                               size4u_t val, 
                                dma_insn_checker_ptr *insn_checker)
 {
 	// Obtain a current DMA instance from a thread ID.
@@ -1164,7 +1278,7 @@ size4u_t dma_adapter_cmd_cfgwr(thread_t *thread,
 	} else {
     	CALL_DMA_CMD(dma_cmd_cfgwr, dma, index, val, &report);
 	}
-
+   
 
 	// We should relay the instruction completeness checker.
 	if (insn_checker)
@@ -1186,7 +1300,7 @@ void dma_adapter_set_dm5(dma_t *dma, uint32_t addr) {
 size4u_t dma_adapter_cmd(thread_t *thread, dma_cmd_t opcode,
                          size4u_t arg1, size4u_t arg2) {
 #if 0
-	hex_exception_info einfo = {0};     // Storage to retrieve an exception if it occurs.
+	exception_info einfo = {0};     // Storage to retrieve an exception if it occurs.
 	/* Check if DMA is present. If there is none, just do a noop */
 	if(!thread->processor_ptr->arch_proc_options->QDSP6_DMA_PRESENT) {
 		if(!sys_in_monitor_mode(thread)) {
@@ -1198,6 +1312,7 @@ size4u_t dma_adapter_cmd(thread_t *thread, dma_cmd_t opcode,
 #endif
 	// Obtain a current DMA instance from a thread ID.
 	dma_t *dma = thread->processor_ptr->dma[thread->threadId];
+    g_assert(thread->processor_ptr->dma[thread->threadId]);
 	size4u_t ret_val = 0;
 
 	if (opcode < DMA_CMD_UND) {
@@ -1210,15 +1325,14 @@ size4u_t dma_adapter_cmd(thread_t *thread, dma_cmd_t opcode,
 			// completeness checker back.
 			dma_insn_checker_ptr insn_checker = NULL;
 
-                g_assert(thread->processor_ptr->dma[thread->threadId]);
 			ret_val = (*impl)(thread, arg1, arg2, &insn_checker);
-
+			
 			// If the engine gave us an instruction completeness checker, let's set up
 			// a staller.
-      		if (insn_checker != NULL) {
-        		dma_adapter_set_staller(dma, insn_checker);
+      		if (insn_checker != NULL) {		
+        		dma_adapter_set_staller(dma, insn_checker);			
       		}
-		}
+		} 
 	}
 
 	return ret_val;
@@ -1257,20 +1371,59 @@ void dma_adapter_pmu_increment(dma_t *dma, int event, int increment) {
 	INC_TSTATN(pmu_event_mapping[event], increment);
 	if ((event == 0) && (thread->timing_on)){
 		//dma_adapter_active_uarch_callback(dma, 0);
+		
 		}
 	}
 }
 int dma_adapter_get_insn_latency(dma_t *dma, int index) {
-	return 0;
+	return 0; 
 }
 
 void dma_adapter_active_uarch_callback(dma_t *dma, int lvl) {
+#if 0
+	thread_t* thread = dma_adapter_retrieve_thread(dma);
+
+	if (thread->processor_ptr->arch_proc_options->uarch_udma_active_level ==  lvl) {
+		CALLBACK(thread->processor_ptr->options->sim_active_callback, thread->processor_ptr->system_ptr, thread->processor_ptr, dma->num, UARCH_UDMA_ACTIVE);
+	}
+#endif
+}
+
+size8u_t dma_adapter_get_pa(dma_t *dma, size8u_t entry, size8u_t vaddr ){
+#if 0
+     thread_t* thread = dma_adapter_retrieve_thread(dma);
+     processor_t * proc = thread->processor_ptr;
+     return compute_pa_from_tlb_entry(proc, entry, (size4u_t) vaddr);
+#endif
+     return 0;
+ }
+// For uarch parameters
+int dma_adapter_get_ju_latency(dma_t *dma) {
+#if 0
+	thread_t* thread = dma_adapter_retrieve_thread(dma);
+	return thread->processor_ptr->arch_proc_options->udma_ju_request_latency;
+#endif
+     return 0;
+}
+int dma_adapter_get_startup_latency(dma_t *dma) {
+#if 0
+	thread_t* thread = dma_adapter_retrieve_thread(dma);
+	return thread->processor_ptr->arch_proc_options->udma_startup_latency;
+#endif
+     return 0;
+}
+int  dma_adapter_get_prefetch_depth(dma_t *dma) {
+#if 0
+	thread_t* thread = dma_adapter_retrieve_thread(dma);
+	return thread->processor_ptr->arch_proc_options->udma_prefetch_depth;
+#endif
+     return 0;
 }
 
 dma_t * dma_adapter_get_dma(processor_t * proc, int dnum) {
 	return proc->dma[dnum];
 }
 
-int dma_adapter_uwbc_ap_en(dma_t *dma) {
-    return 0;
+int dma_adapter_ubwc_ap_en(dma_t *dma) {
+	return 0; 
 }

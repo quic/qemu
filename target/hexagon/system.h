@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 Qualcomm Innovation Center, Inc. All Rights Reserved. */
+/* Copyright (c) 2019-2024 Qualcomm Innovation Center, Inc. All Rights Reserved. */
 
 #ifndef _SYSTEM_H
 #define _SYSTEM_H
@@ -7,6 +7,7 @@
 #define LOG_MEM_STORE(...)
 
 /* FIXME: Use the mem_access_types instead */
+
 #define TYPE_LOAD 'L'
 #define TYPE_STORE 'S'
 #define TYPE_FETCH 'F'
@@ -18,9 +19,8 @@
 #include "sys_macros.h"
 #include "xlate_info.h"
 #include "iclass.h"
-//#include "memwrap.h"
-
 #define thread_t CPUHexagonState
+#include "arch_options_calc.h"
 
 #define TCM_UPPER_BOUND 0x400000
 #define L2VIC_UPPER_BOUND 0x10000
@@ -32,7 +32,23 @@
 	((0 != get_fastl2vic_base((PROC))) &&											\
 	 ((PADDR) >= get_fastl2vic_base((PROC))) &&								\
 	 ((PADDR) < get_fastl2vic_base((PROC)) + L2VIC_UPPER_BOUND))
+	 
+	 
+#ifdef CLADE
+#define CLADE_RANGE(PROC, PADDR, WIDTH)																\
+	 (clade_isclade((PROC), (PADDR), (WIDTH)))
 
+#define CLADE_REG_RANGE(PROC, PADDR, WIDTH)														\
+	 (clade_iscladereg((PROC), (PADDR), (WIDTH)))
+#endif
+
+#ifdef CLADE2
+#define CLADE2_RANGE(PROC, PADDR, WIDTH)																\
+	 (clade2_isclade2((PROC), (PADDR), (WIDTH)))
+
+#define CLADE2_REG_RANGE(PROC, PADDR, WIDTH)														\
+	 (clade2_isclade2reg((PROC), (PADDR), (WIDTH)))
+#endif
 
 #define VERIFY_EXTENSIVELY(PROC, A)              \
     if(!((PROC)->options->dont_verify_extensively)) { A; }
@@ -46,10 +62,8 @@
 int hex_get_page_size(thread_t *thread, size4u_t vaddr, int width);
 paddr_t mem_init_access(thread_t * thread, int slot, size4u_t vaddr, int width,
 		enum mem_access_types mtype, int type_for_xlate);
-
-paddr_t mem_init_access_unaligned(thread_t * thread, int slot, size4u_t vaddr,
-        size4u_t realvaddr, int size, enum mem_access_types mtype,
-        int type_for_xlate);
+paddr_t mem_init_access_unaligned(thread_t * thread, int slot, size4u_t vaddr, size4u_t realvaddr, int size,
+		enum mem_access_types mtype, int type_for_xlate);
 
 int sys_xlate_dma(thread_t *thread, size8u_t va, int access_type,
                   int maptr_type, int slot, size4u_t align_mask,
@@ -64,4 +78,5 @@ void register_coproc_ldst_exception(thread_t * thread, int slot,
     size4u_t badva);
 int check_coproc_page_cross(thread_t* thread, vaddr_t base,
     int length, int page_size);
+
 #endif
