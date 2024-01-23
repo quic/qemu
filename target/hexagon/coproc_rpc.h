@@ -18,7 +18,7 @@
 #ifndef HEX_COPROC_RPC_H
 #define HEX_COPROC_RPC_H
 
-int hexagon_coproc_rpclib_init(const char *cpu_coproc_path);
+int hexagon_coproc_rpclib_init(const char *cpu_coproc_path, int hex_rev);
 int hexagon_coproc_rpclib_call(const void *args);
 
 #endif

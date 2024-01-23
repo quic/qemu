@@ -835,8 +835,9 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
 #if !defined(_WIN32)
             const char *coproc_path = get_coproc_path(env);
             if (coproc_path) {
+                int hex_rev = cpu->rev_reg;
                 if (ATOMIC_LOAD(hexagon_coproc_available)) {
-                    if (hexagon_coproc_rpclib_init(coproc_path) == 1) {
+                    if (hexagon_coproc_rpclib_init(coproc_path, hex_rev) == 1) {
                         g_assert_not_reached();
                     }
                 }

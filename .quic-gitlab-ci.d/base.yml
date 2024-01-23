@@ -58,7 +58,7 @@ variables:
 
   HEX_COPROC_PROJ: qemu/quic-qemu-plugins
   HEX_COPROC_BIN: coproc_rpc_remote
-  HEX_COPROC_SHA: c040888ffe3341c137168166db35121f0b8b5f02
+  HEX_COPROC_SHA: 25a93032940d202721f9abe17cc358583bfd1793
 
   TARBALLS_PATH: tarball-artifacts
 

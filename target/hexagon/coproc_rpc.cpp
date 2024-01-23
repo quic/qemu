@@ -44,8 +44,8 @@ void rpc_exit_handler(void)
     }
 }
 
-extern "C" int hexagon_coproc_rpclib_init(const char *coproc_path);
-int hexagon_coproc_rpclib_init(const char *coproc_path)
+extern "C" int hexagon_coproc_rpclib_init(const char *coproc_path, int hex_rev);
+int hexagon_coproc_rpclib_init(const char *coproc_path, int hex_rev)
 {
     char coproc_full_name[4096];
 
@@ -61,7 +61,7 @@ int hexagon_coproc_rpclib_init(const char *coproc_path)
         return ERROR;
     }
 
-    local_rpc = static_cast<void * >(new RemoteRPC(coproc_full_name));
+    local_rpc = static_cast<void * >(new RemoteRPC(coproc_full_name, hex_rev));
     static_cast<RemoteRPC * >(local_rpc)->init();
     atexit(rpc_exit_handler);
     return OK;

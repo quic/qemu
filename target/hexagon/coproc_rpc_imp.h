@@ -39,7 +39,7 @@
 #include <unistd.h>
 #include <utility>
 
-#define RPC_VERSION 2
+#define RPC_VERSION 3
 #define GS_Process_Server_Port "GS_Process_Server_Port"
 #define GS_Process_Server_Port_Len 22
 #define DECIMAL_PORT_NUM_STR_LEN 20
@@ -183,9 +183,9 @@ typedef uint64_t hwaddr;
 
 class RemoteRPC {
   public:
-    RemoteRPC(std::string p_exec_path = "")
-        : sport(0), cport(0), exec_path(p_exec_path), stop_server(false),
-            cancel_waiting(false)
+    RemoteRPC(std::string p_exec_path = "", int hex_rev = 0)
+        : sport(0), cport(0), exec_path(p_exec_path), hexagon_revision(hex_rev),
+          stop_server(false), cancel_waiting(false)
     {
     }
 
@@ -301,6 +301,11 @@ class RemoteRPC {
                       << "Your coproc binary might be too old." << std::endl;
             exit(1);
         }
+
+        if (!client->call("set_hexagon_revision", hexagon_revision).template as<int>()) {
+            /* Error already reported. */
+            exit(1);
+        }
     }
 
     void wait_server()
@@ -351,6 +356,7 @@ class RemoteRPC {
     unsigned short sport;
     unsigned short cport;
     std::string exec_path;
+    int hexagon_revision;
     pid_t m_child_pid;
     std::atomic_bool stop_server;
     std::atomic_bool cancel_waiting;
