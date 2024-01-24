@@ -177,7 +177,8 @@ coproc_build:
   script:
     - QQVP_PROJECT_URL="$(eval "$GITLAB_URL")/$CI_PROJECT_ROOT_NAMESPACE"
     - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@${QQVP_PROJECT_URL}/testing/qemu-qurt-tests.git
-    - qemu-qurt-tests/run_tests.sh $builddir/qemu-system-hexagon
+    - qemu-qurt-tests/run_tests.sh $builddir/qemu-system-hexagon nspv68
+    - qemu-qurt-tests/run_tests.sh $builddir/qemu-system-hexagon nspv79NA_1
 
 .base-sival-tests:
   extends: .after-build
