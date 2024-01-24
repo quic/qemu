@@ -107,6 +107,7 @@ TESTS += \
 	qfloat_test \
 	$()
 
+
 CFLAGS+=-G0 -O2
 
 CRT_OBJS=boot.o
@@ -238,8 +239,9 @@ semihost.o: semihost.c strutils.h
 semihost: semihost.o
 double_ex.o: double_ex.c filename.h
 double_ex: double_ex.o
+k0locklock: k0locklock.o
 
-$(TESTS) inf-loop:
+$(TESTS) inf-loop k0locklock:
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # Specific Test Rules
@@ -471,7 +473,17 @@ run-reset-test: inf-loop
 		} | expect, \
 	"reset through monitor")
 
-EXTRA_RUNS += run-reset-test
+run-k0locklock-test: k0locklock
+	$(call run-test, $@, \
+		echo "starting qemu through 'expect'"; \
+		{ \
+		  echo "spawn timeout 5 $(QEMU) -d guest_errors $(QEMU_OPTS) $<"; \
+		  echo 'expect "Double k0lock at PC"'; \
+		  echo 'send "quit\r"'; \
+		} | expect, \
+	"done")
+
+EXTRA_RUNS += run-reset-test run-k0locklock-test
 
 ifneq ($(HAVE_HEXAGON_LLDB_BIN),)
 

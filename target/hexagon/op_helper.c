@@ -49,6 +49,7 @@
 #include "mmvec/macros.h"
 #include "translate.h"
 #include "coproc.h"
+#include "trace.h"
 
 #define SF_BIAS        127
 #define SF_MANTBITS    23
@@ -1732,50 +1733,71 @@ static void print_thread_states(const char *str)
 
 static void hex_k0_lock(CPUHexagonState *env)
 {
-    HEX_DEBUG_LOG("Before hex_k0_lock: %d\n", env->threadId);
+    trace_hexagon_k0_lock_info(env->threadId, "Before hex_k0_lock");
     BQL_LOCK_GUARD();
     print_thread_states("\tThread");
+    trace_hexagon_k0_lock(env->threadId, env->next_PC, env->k0_lock_count);
+    g_assert((env->k0_lock_count == 0) || (env->k0_lock_count == 1));
 
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     if (GET_SYSCFG_FIELD(SYSCFG_K0LOCK, syscfg)) {
-        if (ATOMIC_LOAD(env->k0_lock_state) == HEX_LOCK_OWNER) {
+        if (ATOMIC_LOAD(env->k0_lock_state) == HEX_LOCK_QUEUED) {
             env->next_PC += 4;
-            HEX_DEBUG_LOG("Already the owner\n");
+            env->k0_lock_count++;
+            ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_OWNER);
+            SET_SYSCFG_FIELD(env, SYSCFG_K0LOCK, 1);
+            trace_hexagon_k0_lock_info(env->threadId,
+                                       "queued thread waiting gets lock\n");
             return;
         }
-        HEX_DEBUG_LOG("\tWaiting\n");
+        if (ATOMIC_LOAD(env->k0_lock_state) == HEX_LOCK_OWNER) {
+            qemu_log_mask(LOG_GUEST_ERROR,
+                          "Double k0lock at PC: 0x%x, thread may hang\n",
+                          env->next_PC);
+            env->next_PC += 4;
+            CPUState *cs = env_cpu(env);
+            cpu_interrupt(cs, CPU_INTERRUPT_HALT);
+            return;
+        }
+        trace_hexagon_k0_lock_info(env->threadId, "Waiting for k0lock");
         ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_WAITING);
         CPUState *cs = env_cpu(env);
         cpu_interrupt(cs, CPU_INTERRUPT_HALT);
     } else {
-        HEX_DEBUG_LOG("\tAcquired\n");
+        trace_hexagon_k0_lock_info(env->threadId, "Acquired k0lock");
         env->next_PC += 4;
+        env->k0_lock_count++;
         ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_OWNER);
         SET_SYSCFG_FIELD(env, SYSCFG_K0LOCK, 1);
     }
 
-    HEX_DEBUG_LOG("After hex_k0_lock: %d\n", env->threadId);
+    trace_hexagon_k0_lock_info(env->threadId, "After hex_k0_lock\n");
     print_thread_states("\tThread");
 }
 
 static void hex_k0_unlock(CPUHexagonState *env)
 {
-    HEX_DEBUG_LOG("Before hex_k0_unlock: %d\n", env->threadId);
+    trace_hexagon_k0_lock_info(env->threadId, "Before hex_k0_unlock");
     bql_lock();
     print_thread_states("\tThread");
+    trace_hexagon_k0_lock(env->threadId, env->next_PC, env->k0_lock_count);
+    g_assert((env->k0_lock_count == 0) || (env->k0_lock_count == 1));
 
     /* Nothing to do if the k0 isn't locked by this thread */
     uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
     if ((GET_SYSCFG_FIELD(SYSCFG_K0LOCK, syscfg) == 0) ||
         (ATOMIC_LOAD(env->k0_lock_state) != HEX_LOCK_OWNER)) {
         qemu_log_mask(LOG_GUEST_ERROR,
-            "thread %d attempted to unlock k0 without having the lock, k0_lock state = %d\n",
-            env->threadId, ATOMIC_LOAD(env->k0_lock_state));
+                      "thread %d attempted to unlock k0 without having the "
+                      "lock, k0_lock state = %d\n",
+                      env->threadId, ATOMIC_LOAD(env->k0_lock_state));
         g_assert (ATOMIC_LOAD(env->k0_lock_state) != HEX_LOCK_WAITING);
         bql_unlock();
         return;
     }
 
+    trace_hexagon_k0_lock_info(env->threadId, "Unlocking k0lock");
+    env->k0_lock_count--;
     ATOMIC_STORE(env->k0_lock_state, HEX_LOCK_UNLOCKED);
     SET_SYSCFG_FIELD(env, SYSCFG_K0LOCK, 0);
 
@@ -1820,16 +1842,16 @@ static void hex_k0_unlock(CPUHexagonState *env)
     }
     if (unlock_thread) {
         cs = env_cpu(unlock_thread);
-
         print_thread("\tWaiting thread found", cs);
-        ATOMIC_STORE(unlock_thread->k0_lock_state, HEX_LOCK_OWNER);
+        trace_hexagon_k0_lock_info(unlock_thread->threadId, "Will get the next k0lock");
+        ATOMIC_STORE(unlock_thread->k0_lock_state, HEX_LOCK_QUEUED);
         SET_SYSCFG_FIELD(unlock_thread, SYSCFG_K0LOCK, 1);
         cpu_interrupt(cs, CPU_INTERRUPT_K0_UNLOCK);
     }
 
     print_thread_states("\tThread");
     bql_unlock();
-    HEX_DEBUG_LOG("After hex_k0_unlock: %d\n", env->threadId);
+    trace_hexagon_k0_lock_info(env->threadId, "After hex_k0_unlock\n");
 }
 #endif
 
