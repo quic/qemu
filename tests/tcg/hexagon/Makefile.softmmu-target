@@ -107,6 +107,8 @@ TESTS += \
 	qfloat_test \
 	$()
 
+TESTS = k0lock
+
 
 CFLAGS+=-G0 -O2
 
@@ -240,8 +242,9 @@ semihost: semihost.o
 double_ex.o: double_ex.c filename.h
 double_ex: double_ex.o
 k0locklock: k0locklock.o
+tlblocklock: tlblocklock.o
 
-$(TESTS) inf-loop k0locklock:
+$(TESTS) inf-loop k0locklock tlblocklock:
 	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) $^ -o $@ $(LDFLAGS)
 
 # Specific Test Rules
@@ -483,7 +486,17 @@ run-k0locklock-test: k0locklock
 		} | expect, \
 	"done")
 
-EXTRA_RUNS += run-reset-test run-k0locklock-test
+run-tlblocklock-test: tlblocklock
+	$(call run-test, $@, \
+		echo "starting qemu through 'expect'"; \
+		{ \
+		  echo "spawn timeout 5 $(QEMU) -d guest_errors $(QEMU_OPTS) $<"; \
+		  echo 'expect "Double tlblock at PC"'; \
+		  echo 'send "quit\r"'; \
+		} | expect, \
+	"done")
+
+EXTRA_RUNS += run-reset-test run-k0locklock-test run-tlblocklock-test
 
 ifneq ($(HAVE_HEXAGON_LLDB_BIN),)
 

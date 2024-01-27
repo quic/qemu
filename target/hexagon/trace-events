@@ -5,3 +5,5 @@ hexagon_ssr_xa(int htid, int oldctx, int newctx) "HTID: %d: OLD: ssr_XA: 0x%x, N
 # op-helper.c
 hexagon_k0_lock(int htid, unsigned int pc, int k0lock) "tid: %d: pc: 0x%x, k0_lock_count %d"
 hexagon_k0_lock_info(int htid, const char *info) "tid: %d: %s"
+hexagon_tlb_lock(int htid, unsigned int pc, int k0lock) "tid: %d: pc: 0x%x, k0_lock_count %d"
+hexagon_tlb_lock_info(int htid, const char *info) "tid: %d: %s"
