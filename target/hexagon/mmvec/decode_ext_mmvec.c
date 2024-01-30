@@ -91,7 +91,6 @@ check_new_value(Packet * packet)
     const char *dststr = NULL;
     uint16_t def_opcode;
     char letter;
-    int def_regnum;
 
     for (i = 1; i < packet->num_insns; i++) {
         uint16_t use_opcode = packet->insn[i].opcode;
@@ -138,7 +137,6 @@ check_new_value(Packet * packet)
             	packet->invalid_new_target = 1;*/
             }
             if ((dststr == NULL)  && GET_ATTRIB(def_opcode, A_CVI_GATHER)) {
-                def_regnum = 0;
                 packet->insn[i].regno[use_regidx] = def_oreg;
                 packet->insn[i].new_value_producer_slot = packet->insn[def_idx].slot;
             } else {
@@ -146,7 +144,7 @@ check_new_value(Packet * packet)
                     /* still not there, we have a bad packet */
                     g_assert_not_reached();
                 }
-                def_regnum = packet->insn[def_idx].regno[dststr - reginfo];
+                int def_regnum = packet->insn[def_idx].regno[dststr - reginfo];
                 /* Now patch up the consumer with the register number */
                 packet->insn[i].regno[use_regidx] = def_regnum ^ def_oreg;
                 /* special case for (Vx,Vy) */

@@ -260,7 +260,6 @@ DEF_ATTRIB(IMPLICIT_WRITES_SYSCFG_TLBLOCK, "May wr", "", "MREG.SYSCFG.TLBLOCK")
 DEF_ATTRIB(IMPLICIT_WRITES_SYSCFG_GCA, "May write", "", "MREG.SYSCFG.GCA")
 DEF_ATTRIB(IMPLICIT_READS_SYSCFG_GCA, "May read", "MREG.SYSCFG.GCA", "")
 DEF_ATTRIB(IMPLICIT_WRITES_USR, "May write USR", "", "")
-DEF_ATTRIB(WRITES_PRED_REG, "Writes a predicate register", "", "")
 
 /* Other things the instruction does */
 DEF_ATTRIB(ACC, "Has a multiply", "", "")

@@ -1665,10 +1665,10 @@ static void decode_and_translate_packet(CPUHexagonState *env, DisasContext *ctx)
         return;
     }
 
-    if (decode_packet(nwords, words, &pkt, false,
+    ctx->pkt = &pkt;
+    if (decode_packet(ctx, nwords, words, &pkt, false,
                       hex_cpu->rev_reg, ctx->base.pc_next) > 0) {
         HEX_DEBUG_PRINT_PKT(&pkt);
-        ctx->pkt = &pkt;
 
 #ifndef CONFIG_USER_ONLY
         if (check_for_attrib(&pkt, A_PRIV)) {
