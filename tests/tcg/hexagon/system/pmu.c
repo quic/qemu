@@ -196,19 +196,19 @@ static inline void pmu_stop(void)
 }
 
 #define PE_SSR_BIT 24
-static void config_gpmu(bool enable)
+static void toggle_ssr_pe(bool enable)
 {
     if (enable) {
         asm volatile(
                 "r0 = ssr\n"
                 "r0 = setbit(r0, #%0)\n"
-                "ssr = r0"
+                "ssr = r0\n"
                 : : "i"(PE_SSR_BIT) : "r0");
     } else {
         asm volatile(
                 "r0 = ssr\n"
-                "r0 = clrbit(r0, #0)\n"
-                "ssr = r0"
+                "r0 = clrbit(r0, #%0)\n"
+                "ssr = r0\n"
                 : : "i"(PE_SSR_BIT) : "r0");
     }
 }
@@ -266,7 +266,7 @@ static void test_config_with_pmu_enabled(int start_offset)
     check_range(0, SREG, start_offset, start_offset + 15);
 }
 
-static void test_threaded_pkt_count(enum regtype type, bool enable_gpmu)
+static void test_threaded_pkt_count(enum regtype type, bool set_ssr_pe)
 {
     pmu_reset();
 
@@ -285,9 +285,9 @@ static void test_threaded_pkt_count(enum regtype type, bool enable_gpmu)
     pmu_config(0, COMMITTED_PKT_T0);
     work(0);
 
-    config_gpmu(enable_gpmu);
+    toggle_ssr_pe(set_ssr_pe);
     for (int i = 0; i < NUM_PMU_CTRS; i++) {
-        if (type == GREG && !enable_gpmu) {
+        if (type == GREG && !set_ssr_pe) {
             check_range(i, type, 0, 0);
         } else {
             check_range(i, type, BASE_WORK_COUNT * (i + 1),
@@ -315,7 +315,7 @@ static void test_threaded_pkt_count(enum regtype type, bool enable_gpmu)
             : \
             : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7")
 
-static void test_paired_access(enum regtype type, bool enable_gpmu)
+static void test_paired_access(enum regtype type, bool set_ssr_pe)
 {
     uint32_t v[NUM_PMU_CTRS];
     pmu_reset();
@@ -350,14 +350,14 @@ static void test_paired_access(enum regtype type, bool enable_gpmu)
     work(0);
 
     if (type == GREG) {
-        config_gpmu(enable_gpmu);
+        toggle_ssr_pe(set_ssr_pe);
         GET_PMU_BY_PAIRS(v, "g27:26", "g29:28", "g17:16", "g19:18");
     } else {
         GET_PMU_BY_PAIRS(v, "s49:48", "s51:50", "s45:44", "s47:46");
     }
 
     for (int i = 0; i < NUM_PMU_CTRS; i++) {
-        if (type == GREG && !enable_gpmu) {
+        if (type == GREG && !set_ssr_pe) {
             check_range(i, type, 0, 0);
         } else {
             int off = i % 2 ? 1000 : 0;
@@ -383,7 +383,7 @@ static void test_gpmucnt(void)
     test_paired_access(GREG, true);
 
     /* gpmucnt writes should be ignored. */
-    config_gpmu(1);
+    toggle_ssr_pe(1);
     pmu_reset();
     asm volatile(
         "r0 = #2\n"
