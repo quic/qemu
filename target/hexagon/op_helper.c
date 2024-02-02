@@ -2190,7 +2190,7 @@ static inline QEMU_ALWAYS_INLINE uint32_t sreg_read(CPUHexagonState *env,
             return ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA1);
         }
         return ARCH_GET_SYSTEM_REG(env, HEX_SREG_BADVA0);
-    } else if (IS_PMU_REG(reg)) {
+    } else if (IS_PMU_SREG(reg)) {
         return hexagon_get_pmu_counter(env, reg);
     }
     return ARCH_GET_SYSTEM_REG(env, reg);
@@ -2364,7 +2364,7 @@ static bool handle_pmu_sreg_write(CPUHexagonState *env, uint32_t reg,
         pmu_unlock();
         ARCH_SET_SYSTEM_REG(env, reg, val);
         return true;
-    } else if (IS_PMU_REG(reg)) {
+    } else if (IS_PMU_SREG(reg)) {
         hexagon_set_pmu_counter(env, reg, val);
         return true;
     }
