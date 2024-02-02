@@ -856,14 +856,13 @@ uint32_t hexagon_get_pmu_event_stats(int event)
     return ret;
 }
 
-uint32_t hexagon_get_pmu_counter(CPUHexagonState *cur_env, uint32_t reg)
+uint32_t hexagon_get_pmu_counter(CPUHexagonState *cur_env, int index)
 {
     uint32_t ret;
-    int index;
     int event;
 
+    g_assert(index >= 0 && index < NUM_PMU_CTRS);
     pmu_lock();
-    index = pmu_index_from_sreg(reg);
     event = cur_env->pmu.g_events[index];
     ret = cur_env->pmu.g_ctrs_off[index] + hexagon_get_pmu_event_stats(event);
     pmu_unlock();

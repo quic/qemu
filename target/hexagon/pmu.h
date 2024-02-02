@@ -56,8 +56,21 @@ static inline unsigned int pmu_index_from_sreg(int reg)
     if (reg >= HEX_SREG_PMUCNT0) {
         return reg - HEX_SREG_PMUCNT0;
     }
+    /* pmu regs are divided in two chuncks: one starting at 0, the other at 4 */
     return 4 + reg - HEX_SREG_PMUCNT4;
 }
+
+#ifndef CONFIG_USER_ONLY
+static inline unsigned int pmu_index_from_greg(int reg)
+{
+    g_assert(IS_PMU_GREG(reg));
+    if (reg >= HEX_GREG_GPMUCNT0) {
+        return reg - HEX_GREG_GPMUCNT0;
+    }
+    /* pmu regs are divided in two chuncks: one starting at 0, the other at 4 */
+    return 4 + reg - HEX_GREG_GPMUCNT4;
+}
+#endif
 
 static inline int pmu_committed_pkt_thread(int event)
 {

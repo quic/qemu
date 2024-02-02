@@ -44,6 +44,7 @@
 #endif
 #include "opcodes.h"
 #include "coproc.h"
+#include "pmu.h"
 
 #define INVALID_REG_VAL (0xababababULL)
 
@@ -1294,14 +1295,11 @@ uint32_t hexagon_greg_read(CPUHexagonState *env, uint32_t reg)
     case HEX_GREG_GPMUCNT1:
     case HEX_GREG_GPMUCNT2:
     case HEX_GREG_GPMUCNT3:
-        off = reg - HEX_GREG_GPMUCNT0;
-        return ssr_pe ? hexagon_get_pmu_counter(env, HEX_SREG_PMUCNT0 + off) : 0;
     case HEX_GREG_GPMUCNT4:
     case HEX_GREG_GPMUCNT5:
     case HEX_GREG_GPMUCNT6:
     case HEX_GREG_GPMUCNT7:
-        off = reg - HEX_GREG_GPMUCNT4;
-        return ssr_pe ? hexagon_get_pmu_counter(env, HEX_SREG_PMUCNT4 + off) : 0;
+        return ssr_pe ? hexagon_get_pmu_counter(env, pmu_index_from_greg(reg)) : 0;
     default:
         return 0;
     }
