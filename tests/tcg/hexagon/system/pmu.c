@@ -54,12 +54,18 @@
 
 DECLARE_GET_PMU(get_pmu_counter, pmucnt)
 DECLARE_GET_PMU(get_gpmu_counter, gpmucnt)
+/*
+ * TODO: ideally, we would want to use upmucnt0, upmucnt1, ..., but the
+ * compiler doesn't know these names yet, so we use c20, c21, ...
+ */
+DECLARE_GET_PMU(get_upmu_counter, c2)
 
 static int err;
 
 enum regtype {
     SREG,
     GREG,
+    CREG,
 };
 
 const char *regtype_to_str(enum regtype type)
@@ -67,6 +73,7 @@ const char *regtype_to_str(enum regtype type)
     switch (type) {
     case SREG: return "sys";
     case GREG: return "greg";
+    case CREG: return "upmucnt";
     }
     printf("unknown reg type %d\n", type);
     abort();
@@ -102,6 +109,7 @@ static inline uint32_t get_counter(int regnum, enum regtype type)
     switch (type) {
     case SREG: return get_pmu_counter(regnum);
     case GREG: return get_gpmu_counter(regnum);
+    case CREG: return get_upmu_counter(regnum);
     }
     printf("unknown reg type %d\n", type);
     abort();
@@ -287,7 +295,7 @@ static void test_threaded_pkt_count(enum regtype type, bool set_ssr_pe)
 
     toggle_ssr_pe(set_ssr_pe);
     for (int i = 0; i < NUM_PMU_CTRS; i++) {
-        if (type == GREG && !set_ssr_pe) {
+        if (type != SREG && !set_ssr_pe) {
             check_range(i, type, 0, 0);
         } else {
             check_range(i, type, BASE_WORK_COUNT * (i + 1),
@@ -352,12 +360,15 @@ static void test_paired_access(enum regtype type, bool set_ssr_pe)
     if (type == GREG) {
         toggle_ssr_pe(set_ssr_pe);
         GET_PMU_BY_PAIRS(v, "g27:26", "g29:28", "g17:16", "g19:18");
+    } else if (type == CREG) {
+        toggle_ssr_pe(set_ssr_pe);
+        GET_PMU_BY_PAIRS(v, "c21:20", "c23:22", "c25:24", "c27:26");
     } else {
         GET_PMU_BY_PAIRS(v, "s49:48", "s51:50", "s45:44", "s47:46");
     }
 
     for (int i = 0; i < NUM_PMU_CTRS; i++) {
-        if (type == GREG && !set_ssr_pe) {
+        if (type != SREG && !set_ssr_pe) {
             check_range(i, type, 0, 0);
         } else {
             int off = i % 2 ? 1000 : 0;
@@ -398,6 +409,39 @@ static void test_gpmucnt(void)
         : : : "r0");
     for (int i = 0; i < NUM_PMU_CTRS; i++) {
         check_range(i, GREG, 0, 0);
+    }
+}
+
+static void test_upmucnt(void)
+{
+    /* upmucnt should be 0 if SSR:PE is 0 */
+    pmu_reset();
+    test_threaded_pkt_count(CREG, false);
+    pmu_reset();
+    test_paired_access(CREG, false);
+
+    /* gpmucnt should alias the sys pmucnts if SSR:PE is 1 */
+    pmu_reset();
+    test_threaded_pkt_count(CREG, true);
+    pmu_reset();
+    test_paired_access(CREG, true);
+
+    /* gpmucnt writes should be ignored. */
+    toggle_ssr_pe(1);
+    pmu_reset();
+    asm volatile(
+        "r0 = #2\n"
+        "c20 = r0\n"
+        "c21 = r0\n"
+        "c22 = r0\n"
+        "c23 = r0\n"
+        "c24 = r0\n"
+        "c25 = r0\n"
+        "c26 = r0\n"
+        "c27 = r0\n"
+        : : : "r0");
+    for (int i = 0; i < NUM_PMU_CTRS; i++) {
+        check_range(i, CREG, 0, 0);
     }
 }
 
@@ -477,6 +521,7 @@ int main()
     test_threaded_pkt_count(SREG, false);
     test_paired_access(SREG, false);
     test_gpmucnt();
+    test_upmucnt();
     test_config_from_another_thread();
     test_hvx_packets();
     test_event_change();

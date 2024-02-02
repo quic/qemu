@@ -269,7 +269,7 @@ hvx-multi.o: CFLAGS+= -O2 -mhvx
 hvx-multi-asm.o: ASFLAGS+= -mhvx
 
 vtcm_error.o: CFLAGS += -mhvx
-pmu.o: CFLAGS += -mhvx
+pmu.o: EXTRA_CFLAGS += -mhvx -mv79
 
 qfloat_test.o: EXTRA_CFLAGS+= -mhvx -mv79
 

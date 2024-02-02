@@ -45,10 +45,11 @@ enum {
  * The gregs are also ordered like that, but there are other regs between 7 and 0.
  */
 #define IS_PMU_SREG(REG) ((REG) >= HEX_SREG_PMUCNT4 && (REG) <= HEX_SREG_PMUCNT3)
+#define IS_PMU_CREG(REG) ((REG) >= HEX_REG_UPMUCNT0 && (REG) <= HEX_REG_UPMUCNT7)
 #define IS_PMU_GREG(REG) \
     (((REG) >= HEX_GREG_GPMUCNT4 && (REG) <= HEX_GREG_GPMUCNT7) || \
      ((REG) >= HEX_GREG_GPMUCNT0 && (REG) <= HEX_GREG_GPMUCNT3))
-#define IS_PMU_REG(REG) (IS_PMU_SREG(REG) || IS_PMU_GREG(REG))
+#define IS_PMU_REG(REG) (IS_PMU_SREG(REG) || IS_PMU_GREG(REG) || IS_PMU_CREG(REG))
 
 static inline unsigned int pmu_index_from_sreg(int reg)
 {

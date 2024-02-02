@@ -36,6 +36,7 @@
 #ifndef CONFIG_USER_ONLY
 #include "gen_tcg_sys.h"
 #endif
+#include "pmu.h"
 #include "reg_fields.h"
 #include "genptr.h"
 
@@ -83,6 +84,14 @@ const target_ulong reg_immut_masks[TOTAL_PER_THREAD_REGS] = {
     [HEX_REG_UPCYCLEHI] = IMMUTABLE,
     [HEX_REG_UTIMERLO] = IMMUTABLE,
     [HEX_REG_UTIMERHI] = IMMUTABLE,
+    [HEX_REG_UPMUCNT0] = IMMUTABLE,
+    [HEX_REG_UPMUCNT1] = IMMUTABLE,
+    [HEX_REG_UPMUCNT2] = IMMUTABLE,
+    [HEX_REG_UPMUCNT3] = IMMUTABLE,
+    [HEX_REG_UPMUCNT4] = IMMUTABLE,
+    [HEX_REG_UPMUCNT5] = IMMUTABLE,
+    [HEX_REG_UPMUCNT6] = IMMUTABLE,
+    [HEX_REG_UPMUCNT7] = IMMUTABLE,
 };
 
 static inline void gen_masked_reg_write(TCGv new_val, TCGv cur_val,
@@ -413,7 +422,8 @@ static inline void gen_read_ctrl_reg(DisasContext *ctx, const int reg_num,
     } else if ((reg_num == HEX_REG_PKTCNTLO)
             || (reg_num == HEX_REG_PKTCNTHI)
             || (reg_num == HEX_REG_UTIMERLO)
-            || (reg_num == HEX_REG_UTIMERHI) ) {
+            || (reg_num == HEX_REG_UTIMERHI)
+            || IS_PMU_CREG(reg_num)) {
         gen_helper_creg_read(dest, tcg_env, tcg_constant_tl(reg_num));
     } else {
         tcg_gen_mov_tl(dest, hex_gpr[reg_num]);
@@ -433,7 +443,7 @@ static inline void gen_read_ctrl_reg_pair(DisasContext *ctx, const int reg_num,
     } else if ((reg_num == HEX_REG_PKTCNTLO)
             || (reg_num == HEX_REG_UTIMERLO)
             || (reg_num == HEX_REG_UPCYCLELO)
-            ) {
+            || IS_PMU_CREG(reg_num)) {
         gen_helper_creg_read_pair(dest, tcg_env, tcg_constant_i32(reg_num));
     } else {
         tcg_gen_concat_i32_i64(dest,

@@ -2121,9 +2121,20 @@ static void hexagon_read_timer(CPUHexagonState *env, uint32_t *low,
     cpu_physical_memory_read(high_addr, high, sizeof(*high));
 }
 
-uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
+static inline bool ssr_ce_enabled(CPUHexagonState *env)
+{
+    target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+    return GET_SSR_FIELD(SSR_CE, ssr);
+}
+
+static uint32_t creg_read(CPUHexagonState *env, uint32_t reg)
 {
     uint32_t low, high;
+    if (IS_PMU_CREG(reg)) {
+        target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
+        int ssr_pe = GET_SSR_FIELD(SSR_PE, ssr);
+        return ssr_pe ? hexagon_get_pmu_counter(env, reg - HEX_REG_UPMUCNT0) : 0;
+    }
     switch (reg) {
     case HEX_REG_PKTCNTLO:
         low = env->exec_ctr_pkt;
@@ -2134,9 +2145,9 @@ uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
         ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTHI, high);
         return high;
     case HEX_REG_UPCYCLELO:
+        return ssr_ce_enabled(env) ? hexagon_get_sys_pcycle_count_low(env) : 0;
     case HEX_REG_UPCYCLEHI:
-        /* These are handled directly by gen_read_ctrl_reg(). */
-        g_assert_not_reached();
+        return ssr_ce_enabled(env) ? hexagon_get_sys_pcycle_count_high(env) : 0;
     case HEX_REG_UTIMERLO:
         hexagon_read_timer(env, &low, &high);
         return low;
@@ -2148,21 +2159,16 @@ uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
     }
     return 0;
 }
+
+uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
+{
+    return creg_read(env, reg);
+}
+
 uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
 {
-    uint32_t low = 0, high = 0;
-    if (reg == HEX_REG_UPCYCLELO) {
-        target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
-        int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
-        return ssr_ce ? hexagon_get_sys_pcycle_count(env) : 0;
-    } else if (reg == HEX_REG_UTIMERLO) {
-        hexagon_read_timer(env, &low, &high);
-        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
-        ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERHI, high);
-        return low | (uint64_t)high << 32;
-    } else {
-        g_assert_not_reached();
-    }
+    return  (uint64_t)creg_read(env, reg) |
+           (((uint64_t)creg_read(env, reg + 1)) << 32);
 }
 
 static inline QEMU_ALWAYS_INLINE uint32_t sreg_read(CPUHexagonState *env,
