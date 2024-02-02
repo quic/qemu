@@ -28,8 +28,32 @@
 #define ERR (1 + TOLERANCE)
 
 #define NUM_PMU_CTRS 8
-static uint32_t get_pmu_counter(int index);
-static uint32_t get_gpmu_counter(int index);
+
+#define _DECLARE_GET_PMU_CASE(ID, BASE) \
+    case ID: asm volatile("%0 = " #BASE #ID "\n" : "=r"(counter)); break
+
+#define DECLARE_GET_PMU(NAME, BASE) \
+    static uint32_t NAME(int index) \
+    { \
+        uint32_t counter; \
+        switch (index) { \
+        _DECLARE_GET_PMU_CASE(0, BASE); \
+        _DECLARE_GET_PMU_CASE(1, BASE); \
+        _DECLARE_GET_PMU_CASE(2, BASE); \
+        _DECLARE_GET_PMU_CASE(3, BASE); \
+        _DECLARE_GET_PMU_CASE(4, BASE); \
+        _DECLARE_GET_PMU_CASE(5, BASE); \
+        _DECLARE_GET_PMU_CASE(6, BASE); \
+        _DECLARE_GET_PMU_CASE(7, BASE); \
+        default: \
+            printf("ERROR at line %d: invalid counter index %d\n", __LINE__, index); \
+            abort(); \
+        } \
+        return counter; \
+    }
+
+DECLARE_GET_PMU(get_pmu_counter, pmucnt)
+DECLARE_GET_PMU(get_gpmu_counter, gpmucnt)
 
 static int err;
 
@@ -38,15 +62,26 @@ enum regtype {
     GREG,
 };
 
+const char *regtype_to_str(enum regtype type)
+{
+    switch (type) {
+    case SREG: return "sys";
+    case GREG: return "greg";
+    }
+    printf("unknown reg type %d\n", type);
+    abort();
+}
+
 static inline void __check_val_range(uint32_t val,
                                      int regnum, enum regtype type,
                                      uint32_t lo, uint32_t hi,
                                      int line)
 {
     if (val < lo || val > hi) {
+
         printf("ERROR at line %d: %s counter %u outside"
                " [%"PRIu32", %"PRIu32"] range (%"PRIu32")\n",
-               line, (type == GREG ? "greg" : "sys"), regnum, lo, hi, val);
+               line, regtype_to_str(type), regnum, lo, hi, val);
         err = 1;
     }
 }
@@ -57,21 +92,26 @@ static inline void __check_val(uint32_t val, int regnum, enum regtype type,
     if (val != exp) {
         printf("ERROR at line %d: %s counter %u has value %"PRIu32", "
                "expected %"PRIu32"\n",
-               line, (type == GREG ? "greg" : "sys"), regnum, val, exp);
+               line, regtype_to_str(type), regnum, val, exp);
         err = 1;
     }
 }
 
+static inline uint32_t get_counter(int regnum, enum regtype type)
+{
+    switch (type) {
+    case SREG: return get_pmu_counter(regnum);
+    case GREG: return get_gpmu_counter(regnum);
+    }
+    printf("unknown reg type %d\n", type);
+    abort();
+}
+
 #define check_range(regnum, regtype, lo, hi) \
-    __check_val_range(regtype == GREG ? \
-                      get_gpmu_counter(regnum) : \
-                      get_pmu_counter(regnum), \
-                      regnum, regtype, lo, hi, __LINE__)
+    __check_val_range(get_counter(regnum, regtype), regnum, regtype, lo, hi, __LINE__)
+
 #define check(regnum, regtype, exp) \
-   __check_val(regtype == GREG ? \
-               get_gpmu_counter(regnum) : \
-               get_pmu_counter(regnum), \
-               regnum, regtype, exp, __LINE__)
+   __check_val(get_counter(regnum, regtype), regnum, regtype, exp, __LINE__)
 
 #define check_val_range(val, regnum, regtype, lo, hi) \
     __check_val_range(val, regnum, regtype, lo, hi, __LINE__)
@@ -155,41 +195,6 @@ static inline void pmu_stop(void)
         : : "i"(PM_SYSCFG_BIT) : "r1");
 }
 
-static uint32_t get_pmu_counter(int index)
-{
-    uint32_t counter;
-    switch (index) {
-    case 0:
-        asm volatile ("%0 = pmucnt0\n" : "=r"(counter));
-        break;
-    case 1:
-        asm volatile ("%0 = pmucnt1\n" : "=r"(counter));
-        break;
-    case 2:
-        asm volatile ("%0 = pmucnt2\n" : "=r"(counter));
-        break;
-    case 3:
-        asm volatile ("%0 = pmucnt3\n" : "=r"(counter));
-        break;
-    case 4:
-        asm volatile ("%0 = pmucnt4\n" : "=r"(counter));
-        break;
-    case 5:
-        asm volatile ("%0 = pmucnt5\n" : "=r"(counter));
-        break;
-    case 6:
-        asm volatile ("%0 = pmucnt6\n" : "=r"(counter));
-        break;
-    case 7:
-        asm volatile ("%0 = pmucnt7\n" : "=r"(counter));
-        break;
-    default:
-        printf("ERROR at line %d: invalid counter index %d\n", __LINE__, index);
-        abort();
-    }
-    return counter;
-}
-
 #define PE_SSR_BIT 24
 static void config_gpmu(bool enable)
 {
@@ -206,41 +211,6 @@ static void config_gpmu(bool enable)
                 "ssr = r0"
                 : : "i"(PE_SSR_BIT) : "r0");
     }
-}
-
-static uint32_t get_gpmu_counter(int index)
-{
-    uint32_t counter;
-    switch (index) {
-    case 0:
-        asm volatile ("%0 = gpmucnt0\n" : "=r"(counter));
-        break;
-    case 1:
-        asm volatile ("%0 = gpmucnt1\n" : "=r"(counter));
-        break;
-    case 2:
-        asm volatile ("%0 = gpmucnt2\n" : "=r"(counter));
-        break;
-    case 3:
-        asm volatile ("%0 = gpmucnt3\n" : "=r"(counter));
-        break;
-    case 4:
-        asm volatile ("%0 = gpmucnt4\n" : "=r"(counter));
-        break;
-    case 5:
-        asm volatile ("%0 = gpmucnt5\n" : "=r"(counter));
-        break;
-    case 6:
-        asm volatile ("%0 = gpmucnt6\n" : "=r"(counter));
-        break;
-    case 7:
-        asm volatile ("%0 = gpmucnt7\n" : "=r"(counter));
-        break;
-    default:
-        printf("ERROR at line %d: invalid counter index %d\n", __LINE__, index);
-        abort();
-    }
-    return counter;
 }
 
 static void pmu_reset(void)
@@ -326,6 +296,25 @@ static void test_threaded_pkt_count(enum regtype type, bool enable_gpmu)
     }
 }
 
+#define GET_PMU_BY_PAIRS(V, P1, P2, P3, P4) \
+        asm volatile( \
+            "r1:0 = " P1 "\n" \
+            "r3:2 = " P2 "\n" \
+            "r5:4 = " P3 "\n" \
+            "r7:6 = " P4 "\n" \
+            "%0 = r0\n" \
+            "%1 = r1\n" \
+            "%2 = r2\n" \
+            "%3 = r3\n" \
+            "%4 = r4\n" \
+            "%5 = r5\n" \
+            "%6 = r6\n" \
+            "%7 = r7\n" \
+            : "=r"(V[0]), "=r"(V[1]), "=r"(V[2]), "=r"(V[3]), "=r"(V[4]), \
+              "=r"(V[5]), "=r"(V[6]), "=r"(V[7]) \
+            : \
+            : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7")
+
 static void test_paired_access(enum regtype type, bool enable_gpmu)
 {
     uint32_t v[NUM_PMU_CTRS];
@@ -362,41 +351,9 @@ static void test_paired_access(enum regtype type, bool enable_gpmu)
 
     if (type == GREG) {
         config_gpmu(enable_gpmu);
-        asm volatile(
-            "r1:0 = g27:26\n"
-            "r3:2 = g29:28\n"
-            "r5:4 = g17:16\n"
-            "r7:6 = g19:18\n"
-            "%0 = r0\n"
-            "%1 = r1\n"
-            "%2 = r2\n"
-            "%3 = r3\n"
-            "%4 = r4\n"
-            "%5 = r5\n"
-            "%6 = r6\n"
-            "%7 = r7\n"
-            : "=r"(v[0]), "=r"(v[1]), "=r"(v[2]), "=r"(v[3]), "=r"(v[4]),
-              "=r"(v[5]), "=r"(v[6]), "=r"(v[7])
-            :
-            : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7");
+        GET_PMU_BY_PAIRS(v, "g27:26", "g29:28", "g17:16", "g19:18");
     } else {
-        asm volatile(
-            "r1:0 = s49:48\n"
-            "r3:2 = s51:50\n"
-            "r5:4 = s45:44\n"
-            "r7:6 = s47:46\n"
-            "%0 = r0\n"
-            "%1 = r1\n"
-            "%2 = r2\n"
-            "%3 = r3\n"
-            "%4 = r4\n"
-            "%5 = r5\n"
-            "%6 = r6\n"
-            "%7 = r7\n"
-            : "=r"(v[0]), "=r"(v[1]), "=r"(v[2]), "=r"(v[3]), "=r"(v[4]),
-              "=r"(v[5]), "=r"(v[6]), "=r"(v[7])
-            :
-            : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7");
+        GET_PMU_BY_PAIRS(v, "s49:48", "s51:50", "s45:44", "s47:46");
     }
 
     for (int i = 0; i < NUM_PMU_CTRS; i++) {
