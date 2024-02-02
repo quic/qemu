@@ -100,7 +100,7 @@ void do_raise_exception(CPUHexagonState *env, uint32_t exception,
 #else
     qemu_log_mask(CPU_LOG_INT, "%s: 0x%08x, @ %08" PRIx32 ", tbl = %d\n",
                   __func__, exception, PC,
-                  env->gpr[HEX_REG_QEMU_CPU_TB_CNT]);
+                  env->exec_ctr_tb);
 
     ASSERT_DIRECT_TO_GUEST_UNSET(env, exception);
 #endif
@@ -429,9 +429,9 @@ void HELPER(debug_commit_end)(CPUHexagonState *env, uint32_t this_PC,
     HEX_DEBUG_LOG("Exec counters: pkt = " TARGET_FMT_lx
                   ", insn = " TARGET_FMT_lx
                   ", hvx = " TARGET_FMT_lx "\n",
-                  env->gpr[HEX_REG_QEMU_PKT_CNT],
-                  env->gpr[HEX_REG_QEMU_INSN_CNT],
-                  env->gpr[HEX_REG_QEMU_HVX_CNT]);
+                  env->exec_ctr_pkt,
+                  env->exec_ctr_insn,
+                  env->exec_ctr_hvx);
 
 }
 
@@ -2126,7 +2126,7 @@ uint32_t HELPER(creg_read)(CPUHexagonState *env, uint32_t reg)
     uint32_t low, high;
     switch (reg) {
     case HEX_REG_PKTCNTLO:
-        low = ARCH_GET_THREAD_REG(env, HEX_REG_QEMU_PKT_CNT);
+        low = env->exec_ctr_pkt;
         ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTLO, low);
         return low;
     case HEX_REG_PKTCNTHI:
@@ -2155,12 +2155,6 @@ uint64_t HELPER(creg_read_pair)(CPUHexagonState *env, uint32_t reg)
         target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
         int ssr_ce = GET_SSR_FIELD(SSR_CE, ssr);
         return ssr_ce ? hexagon_get_sys_pcycle_count(env) : 0;
-    } else if (reg == HEX_REG_PKTCNTLO) {
-        low = ARCH_GET_THREAD_REG(env, HEX_REG_QEMU_PKT_CNT);
-        high = 0;
-        ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTLO, low);
-        ARCH_SET_THREAD_REG(env, HEX_REG_PKTCNTHI, high);
-        return low | (uint64_t)high << 32;
     } else if (reg == HEX_REG_UTIMERLO) {
         hexagon_read_timer(env, &low, &high);
         ARCH_SET_THREAD_REG(env, HEX_REG_UTIMERLO, low);
@@ -2645,13 +2639,13 @@ void HELPER(cpu_limit)(CPUHexagonState *env, target_ulong PC,
     BQL_LOCK_GUARD();
     uint32_t ready_count = get_ready_count(env);
 
-    env->gpr[HEX_REG_QEMU_CPU_TB_CNT]++;
+    env->exec_ctr_tb++;
 
     if (ready_count > 1 &&
-        env->gpr[HEX_REG_QEMU_CPU_TB_CNT] >= HEXAGON_TB_EXEC_PER_CPU_MAX) {
+        env->exec_ctr_tb >= HEXAGON_TB_EXEC_PER_CPU_MAX) {
         env->gpr[HEX_REG_PC] = next_PC;
         raise_exception(env, EXCP_YIELD, next_PC);
-        env->gpr[HEX_REG_QEMU_CPU_TB_CNT] = 0;
+        env->exec_ctr_tb = 0;
     }
     env->last_cpu = env->threadId;
 }

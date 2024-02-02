@@ -300,6 +300,11 @@ extern TCGv_ptr hex_g_sreg_ptr;
 extern TCGv hex_g_sreg[NUM_SREGS];
 #endif
 extern TCGv_i64 hex_cycle_count;
+extern TCGv_i32 hex_exec_ctr_pkt;
+extern TCGv_i32 hex_exec_ctr_insn;
+extern TCGv_i32 hex_exec_ctr_hvx;
+extern TCGv_i32 hex_exec_ctr_coproc;
+extern TCGv_i32 hex_exec_ctr_tb;
 extern TCGv hex_vstore_addr[VSTORES_MAX];
 extern TCGv hex_vstore_size[VSTORES_MAX];
 extern TCGv hex_vstore_pending[VSTORES_MAX];

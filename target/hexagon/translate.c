@@ -80,6 +80,11 @@ TCGv_i32 hex_pmu_num_packets;
 TCGv ss_pending;
 TCGv_i32 hex_pmu_hvx_packets;
 #endif
+TCGv_i32 hex_exec_ctr_pkt;
+TCGv_i32 hex_exec_ctr_insn;
+TCGv_i32 hex_exec_ctr_hvx;
+TCGv_i32 hex_exec_ctr_coproc;
+TCGv_i32 hex_exec_ctr_tb;
 TCGv_i64 hex_cycle_count;
 TCGv hex_vstore_addr[VSTORES_MAX];
 TCGv hex_vstore_size[VSTORES_MAX];
@@ -191,14 +196,10 @@ static void gen_pmu_counters(DisasContext *ctx)
 
 static void gen_exec_counters(DisasContext *ctx)
 {
-    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_PKT_CNT],
-                    hex_gpr[HEX_REG_QEMU_PKT_CNT], ctx->num_packets);
-    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_INSN_CNT],
-                    hex_gpr[HEX_REG_QEMU_INSN_CNT], ctx->num_insns);
-    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_HVX_CNT],
-                    hex_gpr[HEX_REG_QEMU_HVX_CNT], ctx->num_hvx_insns);
-    tcg_gen_addi_tl(hex_gpr[HEX_REG_QEMU_COPROC_CNT],
-                    hex_gpr[HEX_REG_QEMU_COPROC_CNT], ctx->num_coproc_insns);
+    tcg_gen_addi_tl(hex_exec_ctr_pkt, hex_exec_ctr_pkt, ctx->num_packets);
+    tcg_gen_addi_tl(hex_exec_ctr_insn, hex_exec_ctr_insn, ctx->num_insns);
+    tcg_gen_addi_tl(hex_exec_ctr_hvx, hex_exec_ctr_hvx, ctx->num_hvx_insns);
+    tcg_gen_addi_tl(hex_exec_ctr_coproc, hex_exec_ctr_coproc, ctx->num_coproc_insns);
 
     /*
      * Increment cycle count in order to model PCYCLE (global sreg)
@@ -1451,7 +1452,7 @@ static void gen_cpu_limit_init(void)
     TCGLabel *skip_reinit = gen_new_label();
 
     tcg_gen_brcond_tl(TCG_COND_EQ, hex_last_cpu, hex_thread_id, skip_reinit);
-    tcg_gen_movi_tl(hex_gpr[HEX_REG_QEMU_CPU_TB_CNT], 0);
+    tcg_gen_movi_tl(hex_exec_ctr_tb, 0);
     gen_set_label(skip_reinit);
 }
 #endif
@@ -1937,6 +1938,17 @@ void hexagon_translate_init(void)
             offsetof(CPUHexagonState, t_cycle_count), "t_cycle_count");
     hex_new_value_usr = tcg_global_mem_new(tcg_env,
         offsetof(CPUHexagonState, new_value_usr), "new_value_usr");
+
+    hex_exec_ctr_pkt = tcg_global_mem_new_i32(tcg_env,
+            offsetof(CPUHexagonState, exec_ctr_pkt), "exec_ctr_pkt");
+    hex_exec_ctr_insn = tcg_global_mem_new_i32(tcg_env,
+            offsetof(CPUHexagonState, exec_ctr_insn), "exec_ctr_insn");
+    hex_exec_ctr_hvx = tcg_global_mem_new_i32(tcg_env,
+            offsetof(CPUHexagonState, exec_ctr_hvx), "exec_ctr_hvx");
+    hex_exec_ctr_coproc = tcg_global_mem_new_i32(tcg_env,
+            offsetof(CPUHexagonState, exec_ctr_coproc), "exec_ctr_coproc");
+    hex_exec_ctr_tb = tcg_global_mem_new_i32(tcg_env,
+            offsetof(CPUHexagonState, exec_ctr_tb), "exec_ctr_tb");
 
     for (i = 0; i < NUM_PREGS; i++) {
         hex_pred[i] = tcg_global_mem_new(tcg_env,

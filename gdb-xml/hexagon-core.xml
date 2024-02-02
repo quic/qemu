@@ -68,9 +68,9 @@
   <reg name="framekey"         bitsize="32" offset="196" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="49"/>
   <reg name="pktcountlo"       bitsize="32" offset="200" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="50"/>
   <reg name="pktcounthi"       bitsize="32" offset="204" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="51"/>
-  <reg name="pkt_cnt"          bitsize="32" offset="208" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="52"/>
-  <reg name="insn_cnt"         bitsize="32" offset="212" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="53"/>
-  <reg name="hvx_cnt"          bitsize="32" offset="216" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="54"/>
+  <reg name="c20"              bitsize="32" offset="236" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="59"/>
+  <reg name="c21"              bitsize="32" offset="236" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="59"/>
+  <reg name="c22"              bitsize="32" offset="236" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="59"/>
   <reg name="c23"              bitsize="32" offset="220" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="55"/>
   <reg name="c24"              bitsize="32" offset="224" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="56"/>
   <reg name="c25"              bitsize="32" offset="228" encoding="uint" format="hex" group="Thread Registers" dwarf_regnum="57"/>

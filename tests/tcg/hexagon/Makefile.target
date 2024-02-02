@@ -35,7 +35,6 @@ invalid_vhist: $(HEX_SRC)/invalid_vhist.S
 HEX_TESTS = first
 HEX_TESTS += invalid_immext
 HEX_TESTS += invalid_vhist
-HEX_TESTS += exec_counters
 HEX_TESTS += hex_sigsegv
 HEX_TESTS += misc
 HEX_TESTS += usr
