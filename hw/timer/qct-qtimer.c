@@ -28,6 +28,7 @@
 #include "qemu/timer.h"
 #include "sysemu/runstate.h"
 #include "qapi/error.h"
+#include "trace.h"
 
 #define HEX_TIMER_DEBUG 0
 #define HEX_TIMER_LOG(...) \
@@ -164,6 +165,8 @@ static void hex_timer_update(QCTHextimerState *s)
 {
     /* Update interrupts.  */
     int level = s->int_level && (s->control & QCT_QTIMER_CNTP_CTL_ENABLE);
+    trace_qtimer_interrupt();
+
     qemu_set_irq(s->irq, level);
 }
 
@@ -185,6 +188,7 @@ static MemTxResult hex_timer_read(void *opaque,
     }
     QCTHextimerState *s = &qct_s->timer[frame];
 
+    trace_qtimer_read(offset);
 
     // This is the case where we have 2 views, but the second one is not implemented
     if (view && !(qct_s->cnttid & (0x4 << (frame*4)))) {
@@ -322,8 +326,7 @@ static MemTxResult hex_timer_write(void *opaque,
     }
     QCTHextimerState *s = &qct_s->timer[frame];
 
-
-    HEX_TIMER_LOG("\ta timer write: %" PRIu64 ", %" PRIu64 "\n", offset, value);
+    trace_qtimer_write(offset, value);
 
     // This is the case where we have 2 views, but the second one is not implemented
     if (view && !(qct_s->cnttid & (0x4 << (frame*4)))) {
