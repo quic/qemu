@@ -2523,11 +2523,6 @@ void HELPER(stop)(CPUHexagonState *env)
     hexagon_stop_thread(env);
 }
 
-typedef struct {
-    CPUState *cs;
-    CPUHexagonState *env;
-} thread_entry;
-
 static inline QEMU_ALWAYS_INLINE void resched(CPUHexagonState *env)
 {
     uint32_t schedcfg;
