@@ -22,11 +22,7 @@
 #include "exec/cpu_ldst.h"
 #include "exec/exec-all.h"
 
-#ifdef CONFIG_USER_ONLY
-#define CPU_MMU_INDEX(ENV) MMU_USER_IDX
-#else
-#define CPU_MMU_INDEX(ENV) cpu_mmu_index((ENV), false)
-#endif
+#define CPU_MMU_INDEX(ENV) cpu_mmu_index(env_cpu(ENV), false)
 
 void cancel_slot(CPUHexagonState *env, uint32_t slot);
 

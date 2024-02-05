@@ -46,7 +46,6 @@ typedef enum {
 	MAX_RND_MODES
 } qfrnd_mode_enum_t;
 
-extern unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch);
 #ifndef CONFIG_USER_ONLY
 #include "reg_fields.h"
 typedef struct CPUHexagonTLBContext CPUHexagonTLBContext;
@@ -544,7 +543,7 @@ static inline void cpu_get_tb_cpu_state(CPUHexagonState *env, vaddr *pc,
                                     reg_field_info[SYSCFG_PCYCLEEN].width);
 
     hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, MMU_INDEX,
-                           cpu_mmu_index(env, false));
+                           cpu_mmu_index(env_cpu(env), false));
 
     if (pcycle_enabled) {
         hex_flags = FIELD_DP32(hex_flags, TB_FLAGS, PCYCLE_ENABLED, 1);

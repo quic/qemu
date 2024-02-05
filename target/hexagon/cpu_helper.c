@@ -44,27 +44,6 @@
 #include "sysemu/runstate.h"
 #include "trace.h"
 
-
-unsigned cpu_mmu_index(CPUHexagonState *env, bool ifetch)
-{
-#ifndef CONFIG_USER_ONLY
-    uint32_t syscfg = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SYSCFG);
-    uint8_t mmuen = GET_SYSCFG_FIELD(SYSCFG_MMUEN, syscfg);
-    if (!mmuen) {
-        return MMU_KERNEL_IDX;
-    }
-
-    int cpu_mode = get_cpu_mode(env);
-    if (cpu_mode == HEX_CPU_MODE_MONITOR) {
-        return MMU_KERNEL_IDX;
-    } else if (cpu_mode == HEX_CPU_MODE_GUEST) {
-        return MMU_GUEST_IDX;
-    }
-#endif
-
-    return MMU_USER_IDX;
-}
-
 uint64_t hexagon_get_sys_pcycle_count(CPUHexagonState *env)
 {
     uint64_t cycles = 0;
@@ -154,7 +133,7 @@ void hexagon_read_memory_block(CPUHexagonState *env, target_ulong addr,
     int byte_count, unsigned char *dstbuf)
 
  {
-    unsigned mmu_idx = cpu_mmu_index(env, false);
+    unsigned mmu_idx = cpu_mmu_index(env_cpu(env), false);
 
     /* handle small sizes */
     if (hexagon_read_memory_small(env,
@@ -188,7 +167,7 @@ void hexagon_read_memory(CPUHexagonState *env, target_ulong vaddr,
     int size, void *retptr)
 
 {
-    unsigned mmu_idx = cpu_mmu_index(env, false);
+    unsigned mmu_idx = cpu_mmu_index(env_cpu(env), false);
     target_ulong paddr = vaddr;
 
     if (hexagon_read_memory_small(env,
@@ -206,7 +185,7 @@ int hexagon_read_memory_locked(CPUHexagonState *env, target_ulong vaddr,
     int ret = 0;
 
     if (size == 4 || size == 8) {
-        unsigned mmu_idx = cpu_mmu_index(env, false);
+        unsigned mmu_idx = cpu_mmu_index(env_cpu(env), false);
         target_ulong paddr = vaddr;
 
         if (hexagon_read_memory_small(env,
@@ -269,7 +248,7 @@ void hexagon_write_memory_block(CPUHexagonState *env, target_ulong addr,
     int byte_count, unsigned char *srcbuf)
 
 {
-    unsigned mmu_idx = cpu_mmu_index(env, false);
+    unsigned mmu_idx = cpu_mmu_index(env_cpu(env), false);
 
     /* handle small sizes */
     if (hexagon_write_memory_small(env,
@@ -304,7 +283,7 @@ void hexagon_write_memory(CPUHexagonState *env, target_ulong vaddr,
 
 {
     paddr_t paddr = vaddr;
-    unsigned mmu_idx = cpu_mmu_index(env, false);
+    unsigned mmu_idx = cpu_mmu_index(env_cpu(env), false);
 
     if (hexagon_write_memory_small(env,
         paddr, size, (unsigned char *)&data, mmu_idx) == true)

@@ -59,7 +59,7 @@ static inline bool in_vtcm_space_impl(thread_t *thread, paddr_t paddr)
     int size;
     int32_t excp;
     if (hex_tlb_find_match(thread, paddr, MMU_DATA_LOAD, &phys, &prot, &size,
-         &excp, cpu_mmu_index(thread, false))) {
+         &excp, cpu_mmu_index(env_cpu(thread), false))) {
         if ((excp != HEX_EVENT_PRECISE) &&
             (phys >= vtcm_base && phys < (vtcm_base + vtcm_size))) {
             return true;
