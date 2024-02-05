@@ -290,7 +290,6 @@ extern TCGv_i64 hex_store_val64[STORES_MAX];
 extern TCGv hex_llsc_addr;
 extern TCGv hex_llsc_val;
 extern TCGv_i64 hex_llsc_val_i64;
-extern TCGv hex_cpu_memop_pc_set;
 extern TCGv hex_VRegs_updated;
 #ifndef CONFIG_USER_ONLY
 extern TCGv hex_greg[NUM_GREGS];
