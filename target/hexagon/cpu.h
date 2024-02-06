@@ -22,7 +22,6 @@
 struct CPUArchState;
 typedef struct CPUArchState CPUHexagonState;
 typedef struct ProcessorState processor_t;
-typedef struct SystemState system_t;
 
 #include "fpu/softfloat-types.h"
 
@@ -421,7 +420,6 @@ typedef struct CPUArchState {
     processor_t *processor_ptr;
     uint32_t threadId;
 
-    system_t *system_ptr;
     uint64_t t_cycle_count;
     uint32_t exec_ctr_pkt;
     uint32_t exec_ctr_insn;

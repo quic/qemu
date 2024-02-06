@@ -817,7 +817,6 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
     env->processor_ptr->dma[env->threadId] = dma_adapter_init(
         env->processor_ptr,
         env->threadId);
-    env->system_ptr = NULL;
 
 #ifndef CONFIG_USER_ONLY
     cpu->vmstate_num_g_sreg = NUM_SREGS;
