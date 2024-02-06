@@ -527,11 +527,23 @@ static bool pkt_may_do_io(Packet *pkt)
 #endif
 
 #ifndef CONFIG_USER_ONLY
+
+/* Rd = Ss or Rdd = Sss */
+#define IS_SREG_TRANSFER(OP) ((OP) == Y4_tfrscpp || (OP) == Y2_tfrscrr)
+
+/* Rd = Cs or Rdd = Css */
+#define IS_CREG_TRANSFER(OP) ((OP) == A4_tfrcpp || (OP) == A2_tfrcrr)
+
+/* Rd = Gs or Rdd = Gss */
+#define IS_GREG_TRANSFER(OP) ((OP) == G4_tfrgcpp || (OP) == G4_tfrgcrr)
+
 static bool pkt_has_pmu_read(Packet *pkt)
 {
     for (int i = 0; i < pkt->num_insns; i++) {
         Insn *insn = &pkt->insn[i];
-        if (insn->opcode == Y2_tfrscrr && IS_PMU_REG(insn->regno[1])) {
+        if ((IS_SREG_TRANSFER(insn->opcode) ||
+             IS_CREG_TRANSFER(insn->opcode) ||
+             IS_GREG_TRANSFER(insn->opcode)) && IS_PMU_REG(insn->regno[1])) {
             return true;
         }
     }
