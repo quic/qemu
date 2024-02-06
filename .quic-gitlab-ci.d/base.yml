@@ -216,6 +216,13 @@ checkpatch:
   script: .quic-gitlab-ci.d/checkpatch.sh $TARGET_REF $SOURCE_REF
   allow_failure: true
 
+hexagon_build_ug:
+  script:
+    - make -C quic/user_guide/ html latexpdf
+  artifacts:
+    paths: [ quic/user_guide/_build/html, quic/user_guide/_build/latex ]
+    expire_in: 2 days
+
 hexagon_build:
   extends: .base-build
   variables: { CONFIG_CMD: $HEX_CONFIG_CMD }
@@ -258,7 +265,7 @@ hexagon_publish:
     QEMU_RELPATH: Tools/QEMUHexagon
     COPROC_RELPATH: Tools/QEMUCoprocPlugin
     MAX_PUBLISH_NR: 90 # 3 months
-  needs: [hexagon_install, coproc_build]
+  needs: [hexagon_install, coproc_build, hexagon_build_ug]
   script:
     - |
       installdir="$(echo $CI_JOB_NAME | cut -d_ -f1)_install"
@@ -268,6 +275,10 @@ hexagon_publish:
       rm -rf "$PUBLISH_PATH/build-latest" "$publishdir"
       mkdir -p "$publishdir/${QEMU_RELPATH}" "$publishdir/${COPROC_RELPATH}"
       mv $installdir/* "$publishdir/${QEMU_RELPATH}/"
+      ug_dir="$publishdir/${QEMU_RELPATH}/user_guide"
+      mkdir -p "$ug_dir/pdf"
+      mv quic/user_guide/_build/html "$ug_dir/"
+      mv quic/user_guide/_build/latex/qualcommhexagonqemu-vpuserguide.pdf "$ug_dir/pdf/"
       cp $HEX_COPROC_BIN "$publishdir/${COPROC_RELPATH}/"
       ln -s $rel_publishdir "$PUBLISH_PATH/build-latest"
       nr="$(ls "$PUBLISH_PATH" | wc -l)"
