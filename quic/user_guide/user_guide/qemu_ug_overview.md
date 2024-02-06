@@ -60,13 +60,12 @@ You should now be able to open CMD or PowerShell and run
 
 Some Hexagon DSP configurations utilize a separate coprocessor plugin.
 The coprocessor plugin provides emulation support for additional
-instructions that are not a part of the Hexagon core. The
-QEMU_HEXAGON_COPROC environment variable must be set to the location
-of this binary plugin. In Linux, this can be done with
-
-:::{code-block}
-export QEMU_HEXAGON_COPROC=<path to coprocessor plugin>
-:::
+instructions that are not a part of the Hexagon core. QEMU will automatically
+look for the coprocessor plugin at the directory `../../QEMUCoprocPlugin/`,
+relative to the QEMU binary itself. This is the default path where the
+coprocessor is installed through QPM. Alternatively, you can use the CLI
+arguments `-cpu any,coproc=<path>` to specify where the coprocessor directory
+is located, or choose a machine that does not include a coprocessor.
 
 ## Required platform libraries
 
