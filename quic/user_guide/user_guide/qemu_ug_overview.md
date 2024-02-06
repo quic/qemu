@@ -1,4 +1,4 @@
-# Overview 
+# Overview
 
 This document describes the Qualcomm® Hexagon™ QEMU-VP utility, which
 is an emulator that decodes and translates the instructions of a DSP
@@ -28,22 +28,33 @@ QEMU interface matches the Hexagon simulator interface.
 
 ## Host system requirements
 
-Releases of QEMU are provided for Linux. Starting with QEMU Hexagon
-10.0, the Linux binaries will work on Ubuntu 20.
+Releases of QEMU are provided for Linux and Windows 10 or 11. Starting with
+QEMU Hexagon 10.0, the Linux binaries will work on Ubuntu 20.
 
-:::{note} An experimental release is also provided for Windows 
-x86-64. This is a work-in-progress version with no semi-hosting or 
-coprocessor support. The following dynamic libraries (DLLs) will also 
-need to be installed: glib-2, libpixman-1, and libwinpthread-1. These 
-libraries and their dependencies can be downloaded from:
+### Windows dependencies
 
-- https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-glib2-2.74.6-1-any.pkg.tar.zst
-- https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-pixman-0.40.0-2-any.pkg.tar.zst
-- https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-gettext-0.21.1-2-any.pkg.tar.zst
-- https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-pcre2-10.39-1-any.pkg.tar.zst
-- https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-libiconv-1.17-3-any.pkg.tar.zst
+1. First download and install msys2: [https://www.msys2.org/](https://www.msys2.org/)
+2. On a msys2 shell, install the dependencies:
+```
+pacman -S mingw-w64-x86_64-libwinpthread-git mingw-w64-x86_64-glib2 \
+          mingw-w64-x86_64-pixman mingw-w64-x86_64-libpng \
+          mingw-w64-x86_64-gettext mingw-w64-x86_64-pcre2 \
+          mingw-w64-x86_64-libiconv
+```
+3. Set up the Windows PATH variable to include the mingw directory when looking for DLLs:
+    1. Open the Windows menu and search for "system variables", then click on
+       "Edit the system environment variables".
+    2. Click on the "Environment Variables" button at the bottom.
+    3. At the bottom section, look for the "PATH" entry. Select it and hit "edit"
+    4. Add two new entries:
+    ```
+    C:\msys64\mingw64\bin
+    C:\msys64\mingw64\lib
+    ```
+    And hit "OK" in all the windows to save.
 
-::: 
+You should now be able to open CMD or PowerShell and run
+`qemu-system-hexagon --help`.
 
 ## Coprocessor plugin
 
