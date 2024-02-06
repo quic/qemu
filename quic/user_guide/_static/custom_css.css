@@ -1,0 +1,366 @@
+/*=============================================================================*/
+
+/*  Copyright (c) 2020-2021 Qualcomm Technologies, Inc.*/
+/*  All Rights Reserved.*/
+/*  Confidential and Proprietary - Qualcomm Technologies, Inc.*/
+
+/*=============================================================================*/
+
+@import url('https://fonts.googleapis.com/css?family=Roboto+Flex');
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono');
+@import url('fonts/QualcommNextFont/WEB-23-MARCH-18/fonts.css');
+
+/* Display content in entire screen available*/
+.wy-nav-content {
+    max-width: 100% !important;
+    /* New Addition */
+    background: white;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+/* Center text in table headers*/
+.wy-table-responsive table th{
+    text-align: center !important;
+}
+
+.wy-table-responsive table td, .wy-table-responsive table th{
+    white-space: normal !important;
+}
+
+/* If a table overflows from screen, display a scroll bar*/
+.wy-table-responsive {
+    overflow: auto !important;
+}
+
+.rst-content .function dt{
+    display: block !important;
+    overflow: auto !important;
+    max-width: fit-content !important;
+}
+
+.rst-content .simple dt{
+    display: table !important;
+}
+
+.rst-content .type dt code.descname, .rst-content .class .member dt code.descname{
+    padding-left: 8px !important;
+}
+
+/*Workaround to remove injected name from "Doxyfile.in PREDEFINED" for unnamed unions in documentation*/
+.rst-content .class .union dt code.descname, .rst-content .class .union dd em{
+    display: none !important;
+}
+
+.rst-content .class .union dd div dt code.descname{
+    display: inline !important;
+}
+/*End of Workaround*/
+
+.rst-content .docutils.literal.notranslate, .rst-content .docutils.literal.notranslate span.pre{
+    background: none !important;
+    border: none !important;
+    color: black !important;
+    font-family: Courier, monospace !important;
+    font-size: 100% !important;
+}
+
+/*Define Colors*/
+
+.red {
+    color:red;
+}
+
+.green {
+    color:green;
+}
+
+/* BEGIN CES UPDATES. DO NOT CHANGE THE ORDER OF THESE ELEMENTS */
+
+:root {
+    --nav-color: #F2F5F7;
+    --primary-color: #3253DC;
+    --primary-text-color: rgba(0, 0, 0, 0.95);
+    --grey-text-color: #737373;
+    --warning-banner-color: #FAC633;
+    --warning-background-color: #FFEEC6;
+    --white-svg-filter: invert(100%) sepia(100%) saturate(8%) hue-rotate(192deg) brightness(119%) contrast(119%);
+    --sidenav-text-color: rgba(0,0,0, 0.55);
+}
+
+.highlight > pre {
+    font-family: "Roboto Mono" !important;
+    background-color: #FBFCFC;
+}
+
+body {
+    font-family: "Roboto Flex";
+}
+
+/* Font weight here must be < 500 to prevent Qualcomm Next Font large top margin bug */
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Qualcomm Next";
+    font-weight: 500;
+}
+
+h1 {
+    font-size: 36px;
+}
+
+/* Font weight here must be < 500 to prevent Qualcomm Next Font large top margin bug */
+h1 .highlighted, h2 .highlighted, h3 .highlighted {
+    font-weight: 500 !important;
+}
+
+div[role=main]{
+    color: var(--primary-text-color) !important;
+}
+
+.wy-side-nav-search .icon.icon-home {
+    color: var(--primary-color);
+}
+
+.wy-side-nav-search {
+    background-color: var(--nav-color);
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+}
+
+.wy-side-nav-search input[type=text] {
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    -webkit-box-shadow: none;
+	-moz-box-shadow: none;
+	box-shadow: none;
+}
+
+div.version {
+    color: #929495 !important;
+    font-size: 14px;
+}
+
+.wy-side-scroll {
+    background-color: var(--nav-color);
+}
+
+.wy-side-scroll li > a {
+    color: var(--sidenav-text-color);
+}
+
+.wy-menu-vertical li.current>a, .wy-menu-vertical li.on a {
+    font-weight: normal;
+}
+
+.wy-menu-vertical li.toctree-l2 a {
+    color: var(--sidenav-text-color);
+}
+
+.wy-menu.wy-menu-vertical ul > li > a:hover {
+    color: var(--primary-color) !important;
+    background-color: #F0F0F0 !important;
+}
+
+.wy-side-scroll ul > li  ul *{
+    background-color: #E9ECEE !important;
+    border: #E9ECEE !important;
+}
+
+.wy-side-scroll a.current {
+    color: #FFFFFF !important;
+    background-color: var(--primary-color) !important;
+}
+
+a.current .toctree-expand {
+    background-color: var(--primary-color) !important;
+    color: #a3a3a3 !important;
+}
+
+.reference.internal.current:hover span {
+    background-color: initial !important;
+}
+
+.wy-breadcrumbs {
+    color: #ababab;
+}
+
+.wy-breadcrumbs a:visited {
+    color: inherit;
+}
+
+.wy-nav-content a.reference.internal, .wy-nav-content a.reference.internal:visited,
+.external.reference {
+    color: var(--primary-color);
+}
+
+ul.wy-breadcrumbs >li:not(:first-child) a {
+    color: var(--primary-text-color) !important;
+}
+
+ul.wy-breadcrumbs >li:not(:has(a)) {
+    color: var(--primary-text-color);
+}
+
+i.fa.fa-bars:before {
+    content: '';
+    background:url('lucide/menu.svg');
+    filter: var(--white-svg-filter);
+    background-size: cover;
+    display: inline-block;
+    width:23px;
+    height:23px;
+    vertical-align: -15%
+}
+
+.icon.icon-home:before {
+    content: '';
+    background:url('lucide/home.svg');
+    filter: invert(79%) sepia(5%) saturate(0%) hue-rotate(174deg) brightness(86%) contrast(92%);
+    background-size:cover;
+    display: inline-block;
+    width:20px;
+    height:20px;
+    vertical-align: -15%
+}
+
+.wy-side-nav-search .icon.icon-home:before {
+    filter: invert(29%) sepia(30%) saturate(5101%) hue-rotate(220deg) brightness(89%) contrast(95%);
+}
+
+.rst-content .admonition-title:before {
+    content: '';
+    background:url('lucide/alert-circle.svg');
+    filter: var(--white-svg-filter);
+    background-size:cover;
+    display: inline-block;
+    width:20px;
+    height:20px;
+    vertical-align: -15%
+}
+
+.fa.fa-arrow-circle-left:before {
+    content: '';
+    background:url('lucide/chevron-left.svg');
+    filter: var(--white-svg-filter);
+    background-size:cover;
+    display: inline-block;
+    width:20px;
+    height:20px;
+    vertical-align: -30%
+}
+
+.fa.fa-arrow-circle-right:before {
+    content: '';
+    background:url('lucide/chevron-right.svg');
+    filter: var(--white-svg-filter);
+    background-size:cover;
+    display: inline-block;
+    width:20px;
+    height:20px;
+    vertical-align: -30%
+}
+
+.btn.btn-neutral {
+    color: white !important;
+    background: var(--primary-color) !important;
+    border-radius: 4px;
+    padding: 8px 12px 8px 12px;
+    -webkit-box-shadow: none;
+	-moz-box-shadow: none;
+	box-shadow: none;
+    border: none;
+
+}
+
+.btn.btn-neutral:hover {
+    background: #1E3BAE !important;
+}
+
+footer {
+    color: var(--grey-text-color) !important;
+    padding-bottom: min(50px, 5%);
+}
+
+footer > a {
+    color: var(--primary-color);
+}
+
+div.wy-nav-content {
+    height: 100vh;
+    padding: 2.45em 2.45em;
+}
+
+.wy-nav-side {
+    background: var(--nav-color);
+    border-right: 1px solid rgba(0,0,0,0.08) !important;
+}
+
+.admonition-title {
+    background: #4076FF !important;
+    font-weight: 560 !important;
+}
+.admonition.note {
+    background: #DEE7FF;
+}
+
+.wy-menu-vertical li.toctree-l1.current>a {
+    border: none !important;
+}
+
+.toctree-expand {
+    color: var(--grey-text-color) !important;
+}
+
+.wy-menu-vertical li.current>a span.toctree-expand {
+
+}
+
+.toctree-expand:active {
+    background-color: var(--primary-color) !important;
+}
+
+.headerlink {
+    color: var(--primary-color) !important;
+}
+
+.admonition.warning {
+    background-color: var(--warning-background-color);
+}
+
+.admonition.warning .admonition-title {
+    background-color: var(--warning-banner-color) !important;
+    color: var(--primary-text-color) !important;
+}
+
+.rst-content .admonition.warning .admonition-title:before {
+    content: '';
+    background:url('lucide/alert-circle.svg');
+    filter: var(--primary-text-color);
+    background-size:cover;
+    display: inline-block;
+    width:20px;
+    height:20px;
+    vertical-align: -15%
+}
+
+
+/* Begin Mobile Styles */
+nav.wy-nav-top {
+    background-color: var(--primary-color);
+}
+
+.section#home P {
+    color: var(--grey-text-color);
+}
+
+/* Begin Customized Tools Table Styles */
+td > p {
+    text-align: left;
+}
+
+td > p:has(a) {
+    text-align: left;
+}
+
+.rst-content table.docutils td:first-child, .rst-content table.docutils th:first-child, .rst-content table.field-list td:first-child, .rst-content table.field-list th:first-child, .wy-table td:first-child, .wy-table th:first-child {
+    border-left-width: 1px;
+}
