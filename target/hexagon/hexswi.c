@@ -188,11 +188,9 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
     {
         FILE *fp = stdout;
         char c;
-        rcu_read_lock();
         DEBUG_MEMORY_READ(swi_info, 1, &c);
         fprintf(fp, "%c", c);
         fflush(fp);
-        rcu_read_unlock();
     }
     break;
 
@@ -211,14 +209,12 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         FILE *fp = stdout;
         char c;
         int i = 0;
-        rcu_read_lock();
         do {
             DEBUG_MEMORY_READ(swi_info + i, 1, &c);
             fprintf(fp, "%c", c);
             i++;
         } while (c);
         fflush(fp);
-        rcu_read_unlock();
         break;
     }
 
@@ -246,7 +242,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
                 __func__, count);
         }
 
-        rcu_read_lock();
         for (int i = 0; i < count; i++) {
             DEBUG_MEMORY_READ(bufaddr + i, 1, &buf[i]);
         }
@@ -262,7 +257,6 @@ static int sim_handle_trap_functional(CPUHexagonState *env)
         } else {
             ARCH_SET_THREAD_REG(env, HEX_REG_R00, count - retval);
         }
-        rcu_read_unlock();
         free(buf);
     }
     break;
