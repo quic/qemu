@@ -1677,6 +1677,9 @@ echo "SRC_PATH=$source_path" >> tests/tcg/$config_host_mak
 if test -n "$hexagon_lldb_bin"; then
     echo "HAVE_HEXAGON_LLDB_BIN=$hexagon_lldb_bin" >> tests/tcg/$config_host_mak
 fi
+if test "$plugins" = "yes" ; then
+    echo "CONFIG_PLUGIN=y" >> tests/tcg/$config_host_mak
+fi
 
 tcg_tests_targets=
 for target in $target_list; do

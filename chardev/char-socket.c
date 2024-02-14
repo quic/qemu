@@ -378,6 +378,10 @@ static void tcp_chr_free_connection(Chardev *chr)
                                  char_socket_yank_iochannel,
                                  QIO_CHANNEL(s->sioc));
     }
+
+    if (s->ioc) {
+        qio_channel_close(s->ioc, NULL);
+    }
     object_unref(OBJECT(s->sioc));
     s->sioc = NULL;
     object_unref(OBJECT(s->ioc));
@@ -1517,7 +1521,7 @@ static void qemu_chr_parse_socket(QemuOpts *opts, ChardevBackend *backend,
         };
     } else {
         addr->type = SOCKET_ADDRESS_TYPE_FD;
-        addr->u.fd.data = g_new(String, 1);
+        addr->u.fd.data = g_new(FdSocketAddress, 1);
         addr->u.fd.data->str = g_strdup(fd);
     }
     sock->addr = addr;

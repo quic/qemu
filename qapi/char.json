@@ -501,6 +501,8 @@
 ##
 # @ChardevFileWrapper:
 #
+# @data: Configuration info for file chardevs
+#
 # Since: 1.4
 ##
 { 'struct': 'ChardevFileWrapper',
@@ -508,6 +510,8 @@
 
 ##
 # @ChardevHostdevWrapper:
+#
+# @data: Configuration info for device and pipe chardevs
 #
 # Since: 1.4
 ##
@@ -517,6 +521,8 @@
 ##
 # @ChardevSocketWrapper:
 #
+# @data: Configuration info for (stream) socket chardevs
+#
 # Since: 1.4
 ##
 { 'struct': 'ChardevSocketWrapper',
@@ -524,6 +530,8 @@
 
 ##
 # @ChardevUdpWrapper:
+#
+# @data: Configuration info for datagram socket chardevs
 #
 # Since: 1.5
 ##
@@ -533,6 +541,8 @@
 ##
 # @ChardevCommonWrapper:
 #
+# @data: Configuration shared across all chardev backends
+#
 # Since: 2.6
 ##
 { 'struct': 'ChardevCommonWrapper',
@@ -540,6 +550,8 @@
 
 ##
 # @ChardevMuxWrapper:
+#
+# @data: Configuration info for mux chardevs
 #
 # Since: 1.5
 ##
@@ -549,6 +561,8 @@
 ##
 # @ChardevStdioWrapper:
 #
+# @data: Configuration info for stdio chardevs
+#
 # Since: 1.5
 ##
 { 'struct': 'ChardevStdioWrapper',
@@ -556,6 +570,8 @@
 
 ##
 # @ChardevSpiceChannelWrapper:
+#
+# @data: Configuration info for spice vm channel chardevs
 #
 # Since: 1.5
 ##
@@ -566,6 +582,8 @@
 ##
 # @ChardevSpicePortWrapper:
 #
+# @data: Configuration info for spice port chardevs
+#
 # Since: 1.5
 ##
 { 'struct': 'ChardevSpicePortWrapper',
@@ -574,6 +592,8 @@
 
 ##
 # @ChardevQemuVDAgentWrapper:
+#
+# @data: Configuration info for qemu vdagent implementation
 #
 # Since: 6.1
 ##
@@ -584,6 +604,8 @@
 ##
 # @ChardevDBusWrapper:
 #
+# @data: Configuration info for DBus chardevs
+#
 # Since: 7.0
 ##
 { 'struct': 'ChardevDBusWrapper',
@@ -593,6 +615,8 @@
 ##
 # @ChardevVCWrapper:
 #
+# @data: Configuration info for virtual console chardevs
+#
 # Since: 1.5
 ##
 { 'struct': 'ChardevVCWrapper',
@@ -600,6 +624,8 @@
 
 ##
 # @ChardevRingbufWrapper:
+#
+# @data: Configuration info for ring buffer chardevs
 #
 # Since: 1.5
 ##
@@ -610,6 +636,8 @@
 # @ChardevBackend:
 #
 # Configuration info for the new chardev backend.
+#
+# @type: backend type
 #
 # Since: 1.4
 ##
