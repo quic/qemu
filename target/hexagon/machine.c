@@ -210,7 +210,6 @@ const VMStateDescription vmstate_hexagon_cpu = {
 
         VMSTATE_UINT32(env.last_cpu, HexagonCPU),
         VMSTATE_UINT32(env.exe_arch, HexagonCPU),
-        VMSTATE_UINT32(env.vtcm_size, HexagonCPU),
         VMSTATE_UINT32(env.timing_on, HexagonCPU),
         VMSTATE_UINT32(env.threadId, HexagonCPU),
         VMSTATE_UINT32(env.tlb_lock_state, HexagonCPU),
