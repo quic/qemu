@@ -125,6 +125,7 @@ static Property hexagon_cpu_properties[] = {
     DEFINE_PROP_BOOL("isdben-dfd-enable", HexagonCPU, isdben_dfd_enable, false),
     DEFINE_PROP_BOOL("isdben-trusted", HexagonCPU, isdben_trusted, false),
     DEFINE_PROP_BOOL("isdben-secure", HexagonCPU, isdben_secure, false),
+    DEFINE_PROP_BOOL("hexagon-vm", HexagonCPU, hexagon_vm, false),
     DEFINE_PROP_STRING("dump-json-reg-file", HexagonCPU, dump_json_file),
 #endif
     DEFINE_PROP_UINT32("dsp-rev", HexagonCPU, rev_reg, 0),
@@ -571,11 +572,17 @@ static void hexagon_restore_state_to_opc(CPUState *cs,
 #if !defined(CONFIG_USER_ONLY)
 void hexagon_cpu_soft_reset(CPUHexagonState *env)
 {
+    CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_SSR, 0);
     hexagon_ssr_set_cause(env, HEX_CAUSE_RESET);
 
     target_ulong evb = ARCH_GET_SYSTEM_REG(env, HEX_SREG_EVB);
     ARCH_SET_THREAD_REG(env, HEX_REG_PC, evb);
+
+    if (cpu->hexagon_vm) {
+        ARCH_SET_SYSTEM_REG(env, HEX_SREG_IMASK, 0xffffffff);
+    }
 }
 #endif
 

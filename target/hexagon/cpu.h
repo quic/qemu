@@ -458,6 +458,7 @@ struct ArchCPU {
     bool isdben_dfd_enable;
     bool isdben_trusted;
     bool isdben_secure;
+    bool hexagon_vm;
 #endif
     uint32_t rev_reg;
     bool lldb_compat;

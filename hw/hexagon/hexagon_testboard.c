@@ -180,6 +180,7 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
         CPUHexagonState *env = &cpu->env;
         qemu_register_reset(do_cpu_reset, cpu);
 
+        qdev_prop_set_bit(DEVICE(cpu), "hexagon-vm", true);
         qdev_prop_set_uint32(DEVICE(cpu), "thread-count", machine->smp.cpus);
         qdev_prop_set_uint32(DEVICE(cpu), "config-table-addr",
             cfgExtensions->cfgbase);

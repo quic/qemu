@@ -1026,6 +1026,15 @@ static void set_addresses(CPUHexagonState *env,
     target_ulong pc_offset, target_ulong exception_index)
 
 {
+    CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+
+    if (cpu->hexagon_vm) {
+        ARCH_SET_SYSTEM_REG(env, HEX_GREG_GELR,
+                ARCH_GET_THREAD_REG(env, HEX_REG_PC) + pc_offset);
+
+        g_assert(ARCH_GET_THREAD_REG(env, HEX_REG_PC) > 0x200);
+    }
     ARCH_SET_SYSTEM_REG(env, HEX_SREG_ELR,
         ARCH_GET_THREAD_REG(env, HEX_REG_PC) + pc_offset);
     ARCH_SET_THREAD_REG(env, HEX_REG_PC,
@@ -1096,6 +1105,7 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
             env->cause_code);
 
         if (env->cause_code == 0) {
+            fprintf(stderr, "\tTRAP0 cause code 0\n");
             sim_handle_trap(env);
         }
 
@@ -1301,6 +1311,8 @@ void hexagon_cpu_do_interrupt(CPUState *cs)
 void register_trap_exception(CPUHexagonState *env, int traptype, int imm,
                              target_ulong PC)
 {
+    QEMU_IOTHREAD_LOCK_GUARD();
+
     HEX_DEBUG_LOG("%s:\n\ttid = %d, pc = 0x%" PRIx32
                   ", traptype %d, "
                   "imm %d\n",
@@ -1309,6 +1321,19 @@ void register_trap_exception(CPUHexagonState *env, int traptype, int imm,
                   traptype, imm);
 
     CPUState *cs = env_cpu(env);
+    HexagonCPU *cpu = HEXAGON_CPU(cs);
+
+    if (cpu->hexagon_vm) {
+        ASSERT_DIRECT_TO_GUEST_UNSET(env, cs->exception_index);
+        SET_SYSTEM_FIELD(env, HEX_GREG_GSR, GSR_CAUSE, imm);
+        /*
+        ARCH_SET_SYSTEM_REG(env, HEX_GREG_GELR, env->gpr[HEX_REG_PC] + sizeof(int32_t));
+        uint32_t pc = ARCH_GET_SYSTEM_REG(env, HEX_SREG_GEVB) + (imm * sizeof(int32_t));
+        */
+        env->gpr[HEX_REG_PC] = PC + 4; /* HACK FIXME */
+        return;
+    }
+
     /* assert(cs->exception_index == HEX_EVENT_NONE); */
 
     cs->exception_index = (traptype == 0) ? HEX_EVENT_TRAP0 : HEX_EVENT_TRAP1;

@@ -1688,6 +1688,12 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
     hexagon_modify_ssr(env, new, old);
 }
+
+static void modify_syscfg(CPUHexagonState *env, uint32_t val);
+void HELPER(modify_syscfg)(CPUHexagonState *env, uint32_t new)
+{
+    modify_syscfg(env, new);
+}
 #endif
 
 

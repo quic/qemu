@@ -135,4 +135,9 @@
         tcg_gen_extrh_i64_i32(ctx->t_sreg_new_value[HEX_SREG_SGP1], tmp); \
     } while (0)
 
+#define fGEN_TCG_J2_trap1(SHORTCODE) \
+    do { \
+        gen_vminst(ctx, uiV); \
+    } while (0)
+
 #endif
