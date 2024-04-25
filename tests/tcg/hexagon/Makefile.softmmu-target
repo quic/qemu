@@ -193,8 +193,6 @@ pcycle.o: pcycle.c ../hex_test.h
 pcycle: pcycle.o
 neg-framelimit: framelimit.o
 neg-float_excp: float_excp.o
-hvx-multi.o: hvx-multi.c
-hvx-multi: hvx-multi.o hvx-multi-asm.o
 hvx_64b.o: hvx_64b.c mmu.h
 hvx_64b: hvx_64b.o
 hvx_ext-0x75.o: hvx_ext.c ../hvx_misc.h
@@ -206,8 +204,8 @@ hvx_ext-0x79: hvx_ext-0x79.o
 neg-unaligned: unaligned.o
 neg-vtcm_error: vtcm_error.o
 pendalot.o: pendalot.c filename.h cfgtable.h
-hvx-multi.o: hvx-multi.c
-hvx-multi: hvx-multi.o hvx-multi-asm.o
+hvx-multi.o: hvx-multi.c ../hvx_misc.h
+hvx-multi: hvx-multi.o
 pendalot: pendalot.o
 vid-group.o : vid-group.c thread_common.h filename.h cfgtable.h
 vid-group: vid-group.o thread_common.o
@@ -268,7 +266,6 @@ hvx_64b.o: CFLAGS+= -O2 -mhvx
 hvx_ext-0x75.o: EXTRA_CFLAGS+= -O2 -mhvx -mv75
 hvx_ext-0x79.o: EXTRA_CFLAGS+= -O2 -mhvx -mv79
 hvx-multi.o: CFLAGS+= -O2 -mhvx
-hvx-multi-asm.o: ASFLAGS+= -mhvx
 
 vtcm_error.o: CFLAGS += -mhvx
 pmu.o: EXTRA_CFLAGS += -mhvx -mv79
