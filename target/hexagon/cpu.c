@@ -770,16 +770,22 @@ static const char *get_coproc_path(CPUHexagonState *env)
         return g_strdup(cpu->coproc_path);
     }
 
-    /* fallback to expected install path */
-    const char *coproc_install_path = get_coproc_relative_install_path();
-    if (coproc_install_path) {
-        return coproc_install_path;
-    }
+    if (cpu->vp_mode) {
+        warn_report("WARNING: Hexagon COPROC is disabled on DSP%d.",
+                    cpu->subsystem_id);
+        return NULL;
+    } else {
+        /* fallback to expected install path */
+        const char *coproc_install_path = get_coproc_relative_install_path();
+        if (coproc_install_path) {
+            return coproc_install_path;
+        }
 
-    error_report("WARNING: Hexagon COPROC path not found:"
-        " Either choose a machine with no coproc or specify its"
-        " path through the -cpu coproc=<path> command line option.");
-    return NULL;
+        error_report("WARNING: Hexagon COPROC path not found:"
+            " Either choose a machine with no coproc or specify its"
+            " path through the -cpu coproc=<path> command line option.");
+        return NULL;
+    }
 }
 #endif
 
@@ -842,7 +848,7 @@ static void hexagon_cpu_realize(DeviceState *dev, Error **errp)
             if (coproc_path) {
                 int hex_rev = cpu->rev_reg;
                 if (hexagon_coproc_rpclib_init(coproc_path, hex_rev) == 1) {
-                    g_assert_not_reached();
+                    exit(1);
                 }
                 g_free((void *)coproc_path);
             }
