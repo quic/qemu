@@ -117,7 +117,7 @@ Virtual Instructions
    * - vmnewmap
      - set new virtual memory map
      - 0xb
-     - r0 contains logical address of new segment table, r1 =Type of translations
+     - r0 contains logical address of new segment table, r1 = type of translations: 0 indicates a logical address of a zero-terminated linear list, 1 indicates a set of page tables.
      - r0 contains 0 on success, otherwise negative error code
    * - vmcache
      - VM cache control: not modeled

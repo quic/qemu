@@ -2708,6 +2708,147 @@ void HELPER(check_vtcm_memcpy)(CPUHexagonState *env, uint32_t dst, uint32_t src,
     }
 }
 
+
+typedef enum {
+    HEXVM_ENTRY_DIRECTORY,
+    HEXVM_ENTRY_TABLE,
+    HEXVM_ENTRY_INVALID,
+} HexVMPTEEntryType;
+
+typedef struct {
+    HexVMPTEEntryType entry_type;
+    uint32_t page_size_bytes;
+    uint32_t l2_entries;
+    uint32_t addr_start_bit;
+    uint32_t addr_bit_count;
+} l1_pte_types;
+
+
+#define COPY_FIELD(dest, src, FIELD)                                  \
+    dest = deposit64(dest, reg_field_info[FIELD].offset,              \
+                     reg_field_info[FIELD].width,                     \
+                     extract32(src, reg_field_info[VM##FIELD].offset, \
+                               reg_field_info[VM##FIELD].width))
+
+void HELPER(vmnewmap)(CPUHexagonState *env, uint32_t map_type, uint32_t input,
+                      uint32_t tlb_inval)
+{
+    CPUState *cs = env_cpu(env);
+    static const l1_pte_types PTE_TYPES[] = {
+        /* FIXME: off-by-one bit start/count? */
+        { HEXVM_ENTRY_DIRECTORY, 4 * 1024, 1024, 12, 20, },
+        { HEXVM_ENTRY_DIRECTORY, 16 * 1024, 256, 10, 22, },
+        { HEXVM_ENTRY_DIRECTORY, 64 * 1024, 64, 8, 24, },
+        { HEXVM_ENTRY_DIRECTORY, 256 * 1024, 16, 6, 26, },
+        { HEXVM_ENTRY_DIRECTORY, 1024 * 1024, 4, 4, 28, },
+        { HEXVM_ENTRY_TABLE, 4 * 1024 * 1024, 0, 0, 0, },
+        { HEXVM_ENTRY_TABLE, 16 * 1024 * 1024, 0, 0, 0, },
+        { HEXVM_ENTRY_INVALID, 0, 0, 0, 0, },
+    };
+    static const int TYPE_MASK = 0x07;
+
+    bool fail = false;
+
+    /*
+     * LARGE PARTS OF THE CODE BELOW APPEARS TO BE WRONG. IT DOES
+     * NOT WORK AS EXPECTED.
+     */
+
+    switch (map_type) {
+    case 0:
+        /* FIXME: linear list... */
+        g_assert_not_reached();
+        break;
+    case 1:
+        ;
+        const l1_pte_types e = PTE_TYPES[input & TYPE_MASK];
+        switch (e.entry_type) {
+        case HEXVM_ENTRY_DIRECTORY:
+            ;
+            uint32_t l2_table_la = input & ~(0x0f);
+            /* FIXME check the table addr alignment, should match table size */
+            uint32_t i;
+            for (i = 0; i < e.l2_entries; i++) {
+                /* L2 entries are 32-bits long */
+                uint32_t entry;
+                uint32_t offset = i * sizeof(entry);
+                address_space_read(cs->as, l2_table_la + offset,
+                                   MEMTXATTRS_UNSPECIFIED, &entry,
+                                   sizeof(entry));
+
+                /*
+                 * How to know what terminates the list?
+                 * linear lists are null-terminated.
+                 */
+                if (entry == 0) {
+                    break;
+                }
+                uint64_t phys_entry = 0;
+                deposit64(phys_entry, reg_field_info[PTE_V].offset,
+                          reg_field_info[PTE_V].width, true);
+
+                COPY_FIELD(phys_entry, entry, PTE_R);
+                COPY_FIELD(phys_entry, entry, PTE_W);
+                COPY_FIELD(phys_entry, entry, PTE_X);
+                COPY_FIELD(phys_entry, entry, PTE_U);
+                COPY_FIELD(phys_entry, entry, PTE_C);
+                uint32_t logical_page_num =
+                    extract32(entry, e.addr_start_bit, e.addr_bit_count);
+                /* COPY_FIELD(phys_entry, entry, PTE_VPN); */
+                phys_entry =
+                    deposit64(phys_entry, reg_field_info[PTE_PPD].offset,
+                              reg_field_info[PTE_PPD].width, logical_page_num);
+                phys_entry =
+                    deposit64(phys_entry, reg_field_info[PTE_VPN].offset,
+                              reg_field_info[PTE_VPN].width, logical_page_num);
+
+                bool r = extract32(entry, reg_field_info[VMPTE_R].offset,
+                                   reg_field_info[VMPTE_R].width);
+                bool w = extract32(entry, reg_field_info[VMPTE_W].offset,
+                                   reg_field_info[VMPTE_W].width);
+                bool x = extract32(entry, reg_field_info[VMPTE_X].offset,
+                                   reg_field_info[VMPTE_X].width);
+                g_assert(r || w || x);
+
+                switch (e.page_size_bytes) {
+                case 4 * 1024:
+                    phys_entry = deposit64(phys_entry, 0, 1, true);
+                    break;
+                case 16 * 1024:
+                    phys_entry = deposit64(
+                        phys_entry, reg_field_info[PTE_PPD].offset, 1, true);
+                    break;
+                default:
+                    g_assert_not_reached();
+                    break;
+                }
+
+                /*
+                 * How to know which base TLB index to use?
+                 * Keep some state for where the last added one was?
+                 */
+                hex_tlbw(env, i, phys_entry);
+            }
+            g_assert_not_reached();
+
+            break;
+        case HEXVM_ENTRY_TABLE:
+            g_assert_not_reached();
+            break;
+        case HEXVM_ENTRY_INVALID:
+        default:
+            /* FIXME raise protection violation exception event */
+            fail = true;
+            break;
+        }
+        break;
+    default:
+        fail = true;
+        break;
+    }
+    env->gpr[HEX_REG_R00] = fail ? -1 : 0;
+}
+
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */
 #define fatal(...) g_assert_not_reached();

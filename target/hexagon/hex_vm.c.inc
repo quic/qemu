@@ -43,8 +43,7 @@ static inline void gen_vmsetie(void)
 
     TCGv new_syscfg = tcg_temp_new();
     tcg_gen_deposit_tl(new_syscfg, hex_g_sreg[HEX_SREG_SYSCFG],
-                       hex_gpr[HEX_REG_R00],
-                       reg_field_info[SYSCFG_GIE].offset,
+                       hex_gpr[HEX_REG_R00], reg_field_info[SYSCFG_GIE].offset,
                        reg_field_info[SYSCFG_GIE].width);
     gen_helper_modify_syscfg(tcg_env, new_syscfg);
     tcg_gen_mov_tl(hex_gpr[HEX_REG_R00], old_ie);
@@ -96,7 +95,8 @@ static inline void gen_vmyield(void)
 }
 static inline void gen_vmnewmap(void)
 {
-    /* g_assert_not_reached(); HACK FIXME */
+    gen_helper_vmnewmap(tcg_env, hex_gpr[HEX_REG_R01], hex_gpr[HEX_REG_R00],
+                        hex_gpr[HEX_REG_R02]);
 }
 static inline void gen_vmclrmap(void)
 {
@@ -142,18 +142,14 @@ static inline void gen_vmintop(void)
                        local_en);
     tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_LOCDIS,
                        local_dis);
-    tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_GET,
-                       get);
+    tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_GET, get);
     tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_AFFINITY,
                        affinity);
-    tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_PEEK,
-                       peek);
+    tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_PEEK, peek);
     tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_STATUS,
                        status);
-    tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_POST,
-                       post);
-    tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_CLEAR,
-                       clear);
+    tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_POST, post);
+    tcg_gen_brcondi_tl(TCG_COND_EQ, hex_gpr[HEX_REG_R00], VMINTOP_CLEAR, clear);
 
     TCGv irq_mask = tcg_temp_new();
     TCGv set_mask = tcg_temp_new();
@@ -286,8 +282,7 @@ static inline void gen_vmrte(void)
                        reg_field_info[GSR_IE].offset,
                        reg_field_info[GSR_IE].width);
     tcg_gen_deposit_tl(hex_g_sreg[HEX_SREG_SYSCFG], hex_g_sreg[HEX_SREG_SYSCFG],
-                       gsr_ie,
-                       reg_field_info[SYSCFG_GIE].offset,
+                       gsr_ie, reg_field_info[SYSCFG_GIE].offset,
                        reg_field_info[SYSCFG_GIE].width);
 
     TCGv gsr_um = tcg_temp_new();
