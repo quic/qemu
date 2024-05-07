@@ -306,8 +306,7 @@ static inline void gen_vmrte(void)
 
 static inline void gen_vmgetinfo(void)
 {
-    /* FIXME */
-    tcg_gen_movi_tl(hex_gpr[HEX_REG_R00], 0);
+    gen_helper_vmgetinfo(hex_gpr[HEX_REG_R00], tcg_env, hex_gpr[HEX_REG_R00]);
 }
 static inline void gen_vmtimerop(void)
 {

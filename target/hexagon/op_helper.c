@@ -2709,6 +2709,7 @@ void HELPER(check_vtcm_memcpy)(CPUHexagonState *env, uint32_t dst, uint32_t src,
 }
 
 
+#if !defined(CONFIG_USER_ONLY)
 typedef enum {
     HEXVM_ENTRY_DIRECTORY,
     HEXVM_ENTRY_TABLE,
@@ -2848,6 +2849,80 @@ void HELPER(vmnewmap)(CPUHexagonState *env, uint32_t map_type, uint32_t input,
     }
     env->gpr[HEX_REG_R00] = fail ? -1 : 0;
 }
+
+typedef enum {
+    HEX_VM_INFO_BUILD_ID,
+    HEX_VM_INFO_BOOT_FLAGS,
+    HEX_VM_INFO_STLB,
+    HEX_VM_INFO_SYSCFG,
+    HEX_VM_INFO_LIVELOCK,
+    HEX_VM_INFO_REV,
+    HEX_VM_INFO_SSBASE,
+    HEX_VM_INFO_TLB_FREE,
+    HEX_VM_INFO_TLB_SIZE,
+    HEX_VM_INFO_PHYSADDR,
+    HEX_VM_INFO_TCM_BASE,
+    HEX_VM_INFO_L2MEM_SIZE_BYTES,
+    HEX_VM_INFO_TCM_SIZE,
+    HEX_VM_INFO_H2K_PGSIZE,
+    HEX_VM_INFO_H2K_NPAGES,
+    HEX_VM_INFO_L2VIC_BASE,
+    HEX_VM_INFO_TIMER_BASE,
+    HEX_VM_INFO_TIMER_INT,
+    HEX_VM_INFO_ERROR,
+    HEX_VM_INFO_HTHREADS,
+    HEX_VM_INFO_L2TAG_SIZE,
+    HEX_VM_INFO_L2CFG_BASE,
+    HEX_VM_INFO_RESERVED_00,
+    HEX_VM_INFO_CFGBASE,
+    HEX_VM_INFO_HVX_VLENGTH,
+    HEX_VM_INFO_HVX_CONTEXTS,
+    HEX_VM_INFO_HVX_SWITCH,
+    HEX_VM_INFO_MAX,
+} HexVmInfoType;
+
+
+uint32_t HELPER(vmgetinfo)(CPUHexagonState *env, uint32_t info_type)
+{
+    HexagonCPU *cpu = env_archcpu(env);
+    hwaddr cfgtable_mem;
+    uint32_t cfg_val;
+
+    switch (info_type) {
+    case HEX_VM_INFO_BUILD_ID:
+        return 0x0001;
+    case HEX_VM_INFO_BOOT_FLAGS:
+        /* TODO: USE_TCM */
+        return 0;
+    case HEX_VM_INFO_STLB:
+        /* TODO: sets/ways/size/etc */
+        return 0;
+    case HEX_VM_INFO_SYSCFG:
+        /* TODO: host syscfg reg? */
+        return 0;
+    case HEX_VM_INFO_REV:
+        return cpu->rev_reg;
+    case HEX_VM_INFO_L2MEM_SIZE_BYTES:
+        /* location of l2size_kb entry: */
+        cfgtable_mem = cpu->config_table_addr + 0x44;
+        cpu_physical_memory_write(cfgtable_mem, &cfg_val, sizeof(cfg_val));
+        return cfg_val * 1024;
+    case HEX_VM_INFO_TCM_SIZE:
+        /* TODO: derive from l2 tags? */
+        return 0;
+    case HEX_VM_INFO_TCM_BASE:
+        cfgtable_mem = cpu->config_table_addr + 0;
+        cpu_physical_memory_write(cfgtable_mem, &cfg_val, sizeof(cfg_val));
+        return cfg_val << 16;
+    case HEX_VM_INFO_L2TAG_SIZE:
+        cfgtable_mem = cpu->config_table_addr + 0x40;
+        cpu_physical_memory_write(cfgtable_mem, &cfg_val, sizeof(cfg_val));
+        return cfg_val;
+    default:
+        return (uint32_t) -1;
+    }
+}
+#endif
 
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */

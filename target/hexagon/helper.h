@@ -53,6 +53,7 @@ DEF_HELPER_2(start, void, env, i32)
 DEF_HELPER_1(stop, void, env)
 
 DEF_HELPER_4(vmnewmap, void, env, i32, i32, i32)
+DEF_HELPER_2(vmgetinfo, i32, env, i32)
 #endif
 
 DEF_HELPER_5(check_vtcm_memcpy, void, env, i32, i32, i32, i32)
