@@ -280,6 +280,15 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
         sizeof(*config_table), cfgExtensions->cfgbase, &address_space_memory);
 }
 
+static void init_mc(MachineClass *mc)
+{
+    mc->block_default_type = IF_SCSI;
+    mc->default_ram_size = 4 * GiB;
+    mc->is_default = false;
+    mc->max_cpus = THREADS_MAX;
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+}
+
 /* ----------------------------------------------------------------- */
 /* Core-specific configuration settings are defined below this line. */
 /* Config table values defined in machine_configs.h.inc              */
@@ -297,12 +306,9 @@ static void v66g_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V66G_1024";
     mc->init = v66g_1024_config_init;
-    mc->is_default = false;
-    mc->block_default_type = IF_SCSI;
-    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    init_mc(mc);
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V66;
     mc->default_cpus = 4;
-    mc->max_cpus = THREADS_MAX;
-    mc->default_ram_size = 4 * GiB;
 }
 
 
@@ -335,12 +341,9 @@ static void v68n_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V68N_1024";
     mc->init = v68n_1024_config_init;
-    mc->is_default = false;
-    mc->block_default_type = IF_SCSI;
-    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    init_mc(mc);
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V68;
     mc->default_cpus = 6;
-    mc->max_cpus = THREADS_MAX;
-    mc->default_ram_size = 4 * GiB;
 }
 
 static void v68g_1024_h2_init(MachineState *machine)
@@ -356,9 +359,10 @@ static void v68g_h2_init(ObjectClass *oc, void *data)
     MachineClass *mc = MACHINE_CLASS(oc);
     mc->init = v68g_1024_h2_init;
     mc->desc = "Hexagon H2 V68G_1024";
+    init_mc(mc);
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V68;
 
     mc->default_cpus = 4;
-    mc->max_cpus = THREADS_MAX;
 }
 
 
@@ -374,12 +378,9 @@ static void v69na_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V69NA_1024";
     mc->init = v69na_1024_config_init;
-    mc->is_default = false;
-    mc->block_default_type = IF_SCSI;
-    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    init_mc(mc);
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V69;
     mc->default_cpus = 6;
-    mc->max_cpus = THREADS_MAX;
-    mc->default_ram_size = 4 * GiB;
 }
 
 static void v73na_1024_config_init(MachineState *machine)
@@ -400,12 +401,10 @@ static void SA8775P_cdsp0_init(ObjectClass *oc, void *data)
 
     mc->desc = "SA8775P CDSP0";
     mc->init = SA8775P_cdsp0_config_init;
-    mc->is_default = false;
-    mc->block_default_type = IF_SCSI;
-    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    init_mc(mc);
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V73;
     mc->default_cpus = 6;
     mc->max_cpus = 6;
-    mc->default_ram_size = 4 * GiB;
 }
 
 static void SA8540P_cdsp0_config_init(MachineState *machine)
@@ -420,12 +419,10 @@ static void SA8540P_cdsp0_init(ObjectClass *oc, void *data)
 
     mc->desc = "SA8540P CDSP0";
     mc->init = SA8540P_cdsp0_config_init;
-    mc->is_default = false;
-    mc->block_default_type = IF_SCSI;
-    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    init_mc(mc);
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V69;
     mc->default_cpus = 6;
     mc->max_cpus = 6;
-    mc->default_ram_size = 4 * GiB;
 }
 
 static void v73na_1024_linux_config_init(MachineState *machine)
@@ -441,12 +438,9 @@ static void v73na_1024_linux_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon Linux V73NA_1024";
     mc->init = v73na_1024_linux_config_init;
-    mc->is_default = false;
-    mc->block_default_type = IF_SCSI;
-    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    init_mc(mc);
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V73;
     mc->default_cpus = 6;
-    mc->max_cpus = THREADS_MAX;
-    mc->default_ram_size = 4 * GiB;
 }
 
 static void v73na_1024_init(ObjectClass *oc, void *data)
@@ -455,12 +449,15 @@ static void v73na_1024_init(ObjectClass *oc, void *data)
 
     mc->desc = "Hexagon V73NA_1024";
     mc->init = v73na_1024_config_init;
-    mc->is_default = false;
-    mc->block_default_type = IF_SCSI;
-    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    init_mc(mc);
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V73;
     mc->default_cpus = 6;
-    mc->max_cpus = THREADS_MAX;
-    mc->default_ram_size = 4 * GiB;
+}
+
+static void virt_config_init(MachineState *machine)
+{
+    hexagon_common_init(machine, v73_rev, &v73na_1024_cfgtable,
+        &v73na_1024_extensions);
 }
 
 static void virt_init(ObjectClass *oc, void *data)
@@ -468,13 +465,11 @@ static void virt_init(ObjectClass *oc, void *data)
     MachineClass *mc = MACHINE_CLASS(oc);
 
     mc->desc = "Hexagon Virt";
-    mc->init = v73na_1024_config_init;
+    mc->init = virt_config_init;
+    init_mc(mc);
     mc->is_default = true;
-    mc->block_default_type = IF_SCSI;
-    mc->default_cpu_type = TYPE_HEXAGON_CPU_ANY;
+    mc->default_cpu_type = TYPE_HEXAGON_CPU_V73;
     mc->default_cpus = 6;
-    mc->max_cpus = THREADS_MAX;
-    mc->default_ram_size = 4 * GiB;
 }
 
 static const TypeInfo hexagon_machine_types[] = {
