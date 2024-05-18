@@ -23,11 +23,6 @@ import string
 import hex_common
 
 
-def _line():
-    f = sys._getframe().f_back
-    return "[{f.f_code.co_filename}:{f.f_lineno}]"
-
-
 ##
 ## Helpers for gen_tcg_func
 ##
