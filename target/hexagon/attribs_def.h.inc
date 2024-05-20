@@ -126,6 +126,12 @@ DEF_ATTRIB(CRSLOT23, "Can execute in slot 2 or slot 3 (CR)", "", "")
 DEF_ATTRIB(IT_NOP, "nop instruction", "", "")
 DEF_ATTRIB(IT_EXTENDER, "constant extender instruction", "", "")
 
+/* Exceptions the instruction can generate */
+
+DEF_ATTRIB(EXCEPTION_TLB, "Can generate a TLB Miss Exception", "", "")
+DEF_ATTRIB(EXCEPTION_ACCESS, "Can generate Access Violation Exception", "", "")
+DEF_ATTRIB(EXCEPTION_SWI, "Software Interrupt (trap) exception", "", "")
+
 
 /* Restrictions to make note of */
 DEF_ATTRIB(RESTRICT_COF_MAX1, "One change-of-flow per packet", "", "")
