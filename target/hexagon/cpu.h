@@ -26,6 +26,11 @@
 #include "mmvec/mmvec.h"
 #include "hw/registerfields.h"
 
+/*
+ * Hexagon processors have a strong memory model.
+ */
+#define TCG_GUEST_DEFAULT_MO      (TCG_MO_ALL)
+
 #define NUM_PREGS 4
 #define TOTAL_PER_THREAD_REGS 64
 
