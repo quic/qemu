@@ -26,6 +26,7 @@
 #include "tcg/tcg.h"
 #include "exec/gdbstub.h"
 
+static void hexagon_v66_cpu_init(Object *obj) { }
 static void hexagon_v67_cpu_init(Object *obj) { }
 static void hexagon_v68_cpu_init(Object *obj) { }
 static void hexagon_v69_cpu_init(Object *obj) { }
@@ -215,8 +216,6 @@ static void hexagon_dump(CPUHexagonState *env, FILE *f, int flags)
     qemu_fprintf(f, "  cs0 = 0x00000000\n");
     qemu_fprintf(f, "  cs1 = 0x00000000\n");
 #else
-    print_reg(f, env, HEX_REG_CAUSE);
-    print_reg(f, env, HEX_REG_BADVA);
     print_reg(f, env, HEX_REG_CS0);
     print_reg(f, env, HEX_REG_CS1);
 #endif
@@ -373,6 +372,7 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_size = sizeof(HexagonCPUClass),
         .class_init = hexagon_cpu_class_init,
     },
+    DEFINE_CPU(TYPE_HEXAGON_CPU_V66,              hexagon_v66_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V67,              hexagon_v67_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V68,              hexagon_v68_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V69,              hexagon_v69_cpu_init),
