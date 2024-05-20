@@ -633,7 +633,6 @@ static inline TCGv gen_read_ireg(TCGv result, TCGv val, int shift)
 #define fCONSTLL(A) A##LL
 #define fECHO(A) (A)
 
-#define fTRAP(TRAPTYPE, IMM) helper_raise_exception(env, HEX_EXCP_TRAP0)
 #define fPAUSE(IMM)
 
 #define fALIGN_REG_FIELD_VALUE(FIELD, VAL) \
