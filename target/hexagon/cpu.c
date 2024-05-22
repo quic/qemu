@@ -55,13 +55,11 @@ static void hexagon_common_cpu_init(Object *obj)
         hexagon_common_cpu_init(obj); \
     }
 
-#ifdef CONFIG_USER_ONLY
 DEFINE_STD_CPU_INIT_FUNC(v66)
 DEFINE_STD_CPU_INIT_FUNC(v68)
 DEFINE_STD_CPU_INIT_FUNC(v69)
 DEFINE_STD_CPU_INIT_FUNC(v71)
 DEFINE_STD_CPU_INIT_FUNC(v73)
-#endif
 DEFINE_STD_CPU_INIT_FUNC(v67)
 
 static void hexagon_cpu_list_entry(gpointer data, gpointer user_data)
@@ -1214,17 +1212,12 @@ static const TypeInfo hexagon_cpu_type_infos[] = {
         .class_size = sizeof(HexagonCPUClass),
         .class_init = hexagon_cpu_class_init,
     },
-#ifdef CONFIG_USER_ONLY
     DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,              hexagon_v67_cpu_init), /* Default to v67 */
     DEFINE_CPU(TYPE_HEXAGON_CPU_V66,              hexagon_v66_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V68,              hexagon_v68_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V69,              hexagon_v69_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V71,              hexagon_v71_cpu_init),
     DEFINE_CPU(TYPE_HEXAGON_CPU_V73,              hexagon_v73_cpu_init),
-#else
-    DEFINE_CPU(TYPE_HEXAGON_CPU_ANY,              hexagon_common_cpu_init),
-#endif
-    DEFINE_CPU(TYPE_HEXAGON_CPU_V67,              hexagon_v67_cpu_init),
 };
 
 DEFINE_TYPES(hexagon_cpu_type_infos)
