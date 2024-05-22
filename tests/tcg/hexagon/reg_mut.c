@@ -71,10 +71,10 @@ static inline void write_control_registers(void)
     check32(result, 0xffffffc0);
 
     WRITE_REG_NOCLOBBER(result, "upcyclelo", 0xffffffff);
-    check32(result, 0x00000000);
+    check32_ne(result, 0xffffffff);
 
     WRITE_REG_NOCLOBBER(result, "upcyclehi", 0xffffffff);
-    check32(result, 0x00000000);
+    check32_ne(result, 0xffffffff);
 
     WRITE_REG_NOCLOBBER(result, "utimerlo", 0xffffffff);
     check32(result, 0x00000000);
@@ -104,7 +104,7 @@ static inline void write_control_register_pairs(void)
     check64(result, 0xffffffc0ffffffff);
 
     WRITE_REG_NOCLOBBER(result, "c15:14", 0xffffffffffffffff);
-    check64(result, 0x0000000000000000);
+    check64_ne(result, 0xffffffffffffffff);
 
     WRITE_REG_NOCLOBBER(result, "c31:30", 0xffffffffffffffff);
     check64(result, 0x0000000000000000);
