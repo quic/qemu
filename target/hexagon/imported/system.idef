@@ -66,3 +66,31 @@ Q6INSN(Y5_l2fetch,"l2fetch(Rs32,Rtt32)",ATTRIBS(A_RESTRICT_SLOT0ONLY),"L2 Cache 
            fGETUHALF(2,RttV), /*stride*/
            fGETUHALF(3,RttV)); /*flags*/
 })
+
+/********************************************/
+/* Supervisor Reg Management                */
+/********************************************/
+
+
+Q6INSN(Y2_crswap0,"crswap(Rx32,sgp0)",ATTRIBS(A_PRIV), "Swap system general pointer 0 with GPR",
+{fHIDE(size4s_t tmp;) tmp = RxV; RxV = READ_SGP0(); WRITE_SGP0(tmp);})
+Q6INSN(Y4_crswap1,"crswap(Rx32,sgp1)",ATTRIBS(A_PRIV), "Swap system general pointer 1 with GPR",
+{fHIDE(size4s_t tmp;) tmp = RxV; RxV = READ_SGP1(); WRITE_SGP1(tmp);})
+
+Q6INSN(Y4_crswap10,"crswap(Rxx32,sgp1:0)",ATTRIBS(A_PRIV), "Swap system general purpose 0/1 with GPR Pair",
+{fHIDE(size8s_t tmp;) tmp = RxxV; RxxV=READ_SGP10(); WRITE_SGP10(tmp);})
+
+Q6INSN(Y2_tfrscrr,"Rd32=Ss128",ATTRIBS(A_PRIV),"Transfer Supervisor Reg to GPR", {RdV=SsV;})
+Q6INSN(Y2_tfrsrcr,"Sd128=Rs32",ATTRIBS(A_PRIV),"Transfer GPR to Supervisor Reg", {SdV=RsV;})
+Q6INSN(Y4_tfrscpp,"Rdd32=Sss128",ATTRIBS(A_PRIV),"Transfer Supervisor Reg to GPR", {RddV=SssV;})
+Q6INSN(Y4_tfrspcp,"Sdd128=Rss32",ATTRIBS(A_PRIV),"Transfer GPR to Supervisor Reg", {SddV=RssV;})
+
+Q6INSN(G4_tfrgcrr,"Rd32=Gs32",ATTRIBS(A_GUEST),"Transfer Guest Reg to GPR", {RdV=GsV;})
+Q6INSN(G4_tfrgrcr,"Gd32=Rs32",ATTRIBS(A_GUEST),"Transfer GPR to Guest Reg", {GdV=RsV;})
+Q6INSN(G4_tfrgcpp,"Rdd32=Gss32",ATTRIBS(A_GUEST),"Transfer Guest Reg to GPR", {RddV=GssV;})
+Q6INSN(G4_tfrgpcp,"Gdd32=Rss32",ATTRIBS(A_GUEST),"Transfer GPR to Guest Reg", {GddV=RssV;})
+
+
+
+Q6INSN(Y2_setprio,"setprio(Pt4,Rs32)",ATTRIBS(A_PRIV),"Change TID Prio of another thread",
+{fPREDUSE_TIMING();WRITE_PRIO(PtV & thread->processor_ptr->thread_system_mask,RsV); })
