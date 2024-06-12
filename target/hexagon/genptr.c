@@ -344,12 +344,20 @@ static void gen_read_sreg_pair(TCGv_i64 dst, int reg_num)
 
 static void gen_read_greg(TCGv dst, int reg_num)
 {
-    gen_helper_greg_read(dst, tcg_env, tcg_constant_tl(reg_num));
+    if (reg_num <= HEX_GREG_G3) {
+        tcg_gen_mov_tl(dst, hex_greg[reg_num]);
+    } else {
+        gen_helper_greg_read(dst, tcg_env, tcg_constant_tl(reg_num));
+    }
 }
 
 static void gen_read_greg_pair(TCGv_i64 dst, int reg_num)
 {
-    gen_helper_greg_read_pair(dst, tcg_env, tcg_constant_tl(reg_num));
+    if (reg_num == HEX_GREG_G0 || reg_num == HEX_GREG_G2) {
+        tcg_gen_concat_i32_i64(dst, hex_greg[reg_num], hex_greg[reg_num + 1]);
+    } else {
+        gen_helper_greg_read_pair(dst, tcg_env, tcg_constant_tl(reg_num));
+    }
 }
 #endif
 

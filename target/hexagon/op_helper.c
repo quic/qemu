@@ -2412,16 +2412,16 @@ void HELPER(sreg_write_pair)(CPUHexagonState *env, uint32_t reg, uint64_t val)
 uint32_t HELPER(greg_read)(CPUHexagonState *env, uint32_t reg)
 
 {
+    /* Check should be done before calling this helper */
+    g_assert(reg > HEX_GREG_G3);
     return hexagon_greg_read(env, reg);
 }
 
 uint64_t HELPER(greg_read_pair)(CPUHexagonState *env, uint32_t reg)
 
 {
-    if (reg == HEX_GREG_G0 || reg == HEX_GREG_G2) {
-        return (uint64_t)(env->greg[reg]) |
-               (((uint64_t)(env->greg[reg + 1])) << 32);
-    }
+    /* Check should be done before calling this helper */
+    g_assert(reg > HEX_GREG_G3);
     switch (reg) {
     case HEX_GREG_GPCYCLELO: {
         target_ulong ssr = ARCH_GET_SYSTEM_REG(env, HEX_SREG_SSR);
