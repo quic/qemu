@@ -280,7 +280,8 @@ void hex_mmu_off(CPUHexagonState *env)
 
 void hex_mmu_mode_change(CPUHexagonState *env)
 {
-    qemu_log_mask(CPU_LOG_MMU, "Hexagon mode change!\n");
+    qemu_log_mask(CPU_LOG_MMU, "Hexagon mode change: new mode is %s\n",
+                  get_sys_str(env));
     CPUState *cs = env_cpu(env);
     tlb_flush(cs);
 }
