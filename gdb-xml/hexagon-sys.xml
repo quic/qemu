@@ -95,7 +95,7 @@
   <reg name="rsv12"      bitsize="32" offset="4720" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="191" />
   <reg name="rsv13"      bitsize="32" offset="4724" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="192" />
   <reg name="rsv14"      bitsize="32" offset="4728" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="193" />
-  <reg name="rsv15,"     bitsize="32" offset="4732" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="194" />
+  <reg name="rsv15"      bitsize="32" offset="4732" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="194" />
   <reg name="gpmucnt4"   bitsize="32" offset="4736" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="195" />
   <reg name="gpmucnt5"   bitsize="32" offset="4740" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="196" />
   <reg name="gpmucnt6"   bitsize="32" offset="4744" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="197" />
