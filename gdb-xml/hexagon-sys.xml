@@ -80,10 +80,33 @@
   <reg name="rsv61"      bitsize="32" offset="4660" encoding="uint" format="hex" group="System Registers" dwarf_regnum="196" />
   <reg name="rsv62"      bitsize="32" offset="4664" encoding="uint" format="hex" group="System Registers" dwarf_regnum="197" />
   <reg name="rsv63"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
-  <reg name="g0"         bitsize="32" offset="4672" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="179" />
-  <reg name="g1"         bitsize="32" offset="4676" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="180" />
-  <reg name="g2"         bitsize="32" offset="4680" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="181" />
-  <reg name="g3"         bitsize="32" offset="4684" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="182" />
+  <reg name="commit1t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="commit2t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="commit3t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="commit4t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="commit5t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="commit6t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="pcycle1t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="pcycle2t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="pcycle3t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="pcycle4t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="pcycle5t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="pcycle6t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="stfinst"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="isdbcmd"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="isdbver"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="brkptinfo"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="rgdr3"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="commit7t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="commit8t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="pcycle7t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="pcycle8t"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+  <reg name="rsv85"      bitsize="32" offset="4668" encoding="uint" format="hex" group="System Registers" dwarf_regnum="198" />
+
+  <reg name="gelr"   altname="g0" bitsize="32" offset="4672" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="179" />
+  <reg name="gsr"    altname="g1" bitsize="32" offset="4676" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="180" />
+  <reg name="gosp"   altname="g2" bitsize="32" offset="4680" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="181" />
+  <reg name="gbadva" altname="g3" bitsize="32" offset="4684" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="182" />
   <reg name="rsv4"       bitsize="32" offset="4688" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="183" />
   <reg name="rsv5"       bitsize="32" offset="4692" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="184" />
   <reg name="rsv6"       bitsize="32" offset="4696" encoding="uint" format="hex" group="Guest Registers"  dwarf_regnum="185" />
