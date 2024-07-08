@@ -10,3 +10,4 @@ config HEX_VIRT
     select VIRTIO_MMIO
     select VIRTIO_RNG
     select PL031
+    select PL011

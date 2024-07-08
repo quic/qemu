@@ -27,6 +27,7 @@
 #include "hw/hexagon/hexagon.h"
 #include "hw/timer/qct-qtimer.h"
 #include "hw/intc/l2vic.h"
+#include "hw/char/pl011.h"
 #include "hw/loader.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
@@ -240,6 +241,9 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
         qdev_get_gpio_in(DEVICE(cpu), 7), /* IRQ 7, 23, 0xc7 */
         NULL);
     sysbus_mmio_map(SYS_BUS_DEVICE(l2vic_dev), 1, cfgTable->fastl2vic_base);
+
+    /* for linux dts you must add 32 to these values */
+    pl011_create(0x10000000, qdev_get_gpio_in(dev, 15), serial_hd(0));
 
     /*
      * This is tightly with the IRQ selected must match the value below
