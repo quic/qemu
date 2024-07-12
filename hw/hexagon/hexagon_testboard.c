@@ -243,7 +243,18 @@ static void hexagon_common_init(MachineState *machine, Rev_t rev,
     sysbus_mmio_map(SYS_BUS_DEVICE(l2vic_dev), 1, cfgTable->fastl2vic_base);
 
     /* for linux dts you must add 32 to these values */
-    pl011_create(0x10000000, qdev_get_gpio_in(dev, 15), serial_hd(0));
+    pl011_create(0x10000000, qdev_get_gpio_in(l2vic_dev, 15), serial_hd(0));
+
+    /* TODO: We should confine these virtios to `virt` machines. */
+    /*
+     * TODO: We can/should create an array of these which
+     * can be populated at the cmdline.
+     */
+    sysbus_create_simple("virtio-mmio", 0x11000000,
+            qdev_get_gpio_in(l2vic_dev, 18));
+
+    sysbus_create_simple("virtio-mmio", 0x12000000,
+            qdev_get_gpio_in(l2vic_dev, 19));
 
     /*
      * This is tightly with the IRQ selected must match the value below

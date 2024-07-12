@@ -1,6 +1,11 @@
+config HEX_VIRT
+    depends on DRAGON
+    select VIRTIO_MMIO
+
 config DRAGON
     bool
     imply PTIMER
+    depends on TCG
     select L2VIC  # Vector PIC
     depends on TCG
     select PL011
