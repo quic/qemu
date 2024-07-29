@@ -2,3 +2,11 @@ config DRAGON
     bool
     imply PTIMER
     select L2VIC  # Vector PIC
+    depends on TCG
+    select PL011
+
+config HEX_VIRT
+    depends on DRAGON
+    select VIRTIO_MMIO
+    select VIRTIO_RNG
+    select PL031
