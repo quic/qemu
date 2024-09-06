@@ -20,6 +20,30 @@
  */
 
 
+/********************************************/
+/* Power Management / Thread on/off         */
+/********************************************/
+Q6INSN(Y2_stop,"stop(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_NOPACKET),"Stop thread(s)",{
+    fHIDE(RsV=RsV;)
+    if (!fIN_DEBUG_MODE_NO_ISDB(fGET_TNUM())) fCLEAR_RUN_MODE(fGET_TNUM());
+})
+
+Q6INSN(Y4_nmi,"nmi(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_NOPACKET,A_NO_TIMING_LOG),"Raise NMI on thread(s)",{
+    fDO_NMI(RsV);
+})
+
+Q6INSN(Y2_start,"start(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_NOPACKET),"Start thread(s)",fSTART(RsV);)
+
+Q6INSN(Y2_wait,"wait(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_NOPACKET,A_NO_TIMING_LOG),"Make thread(s) wait",{
+    fHIDE(RsV=RsV;)
+    if (!fIN_DEBUG_MODE(fGET_TNUM())) fSET_WAIT_MODE(fGET_TNUM());
+	fIN_DEBUG_MODE_WARN(fGET_TNUM());
+})
+
+Q6INSN(Y2_resume,"resume(Rs32)",ATTRIBS(A_PRIV,A_RESTRICT_NOPACKET),"Make thread(s) stop waiting",fRESUME(RsV);)
+
+Q6INSN(Y2_break,"brkpt",ATTRIBS(A_RESTRICT_NOPACKET),"Breakpoint",{fBREAK();})
+
 
 /********************************************/
 /* User->OS interface                       */
@@ -30,8 +54,22 @@ Q6INSN(J2_trap0,"trap0(#u8)",ATTRIBS(A_COF),
     fTRAP(0,uiV);
 )
 
+Q6INSN(J2_trap1,"trap1(Rx32,#u8)",ATTRIBS(A_COF,A_RESTRICT_NOPACKET),
+"Trap to Operating System",
+)
+
 Q6INSN(J2_pause,"pause(#u8)",ATTRIBS(A_COF),
 "Enter low-power state for #u8 cycles",{fPAUSE(uiV);})
+Q6INSN(J2_rte,  "rte", ATTRIBS(A_PRIV,A_NO_TIMING_LOG),
+"Return from Exception",
+{
+fHIDE(if((thread->timing_on) && (thread->status & EXEC_STATUS_REPLAY)) { return; })
+fHIDE(HEX_CALLBACK(thread->processor_ptr->options->rte_callback,
+      thread->system_ptr,thread->processor_ptr,
+      thread->threadId,0);)
+fCLEAR_RTE_EX();
+fBRANCH(fREAD_ELR(),COF_TYPE_RTE);})
+
 
 Q6INSN(Y2_icinva,"icinva(Rs32)",ATTRIBS(A_ICOP,A_ICFLUSHOP),"Instruction Cache Invalidate Address",{fEA_REG(RsV); fICINVA(EA);})
 
