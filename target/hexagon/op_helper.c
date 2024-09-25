@@ -1688,6 +1688,12 @@ void HELPER(modify_ssr)(CPUHexagonState *env, uint32_t new, uint32_t old)
 {
     hexagon_modify_ssr(env, new, old);
 }
+
+static void modify_syscfg(CPUHexagonState *env, uint32_t val);
+void HELPER(modify_syscfg)(CPUHexagonState *env, uint32_t new)
+{
+    modify_syscfg(env, new);
+}
 #endif
 
 
@@ -2701,6 +2707,222 @@ void HELPER(check_vtcm_memcpy)(CPUHexagonState *env, uint32_t dst, uint32_t src,
         }
     }
 }
+
+
+#if !defined(CONFIG_USER_ONLY)
+typedef enum {
+    HEXVM_ENTRY_DIRECTORY,
+    HEXVM_ENTRY_TABLE,
+    HEXVM_ENTRY_INVALID,
+} HexVMPTEEntryType;
+
+typedef struct {
+    HexVMPTEEntryType entry_type;
+    uint32_t page_size_bytes;
+    uint32_t l2_entries;
+    uint32_t addr_start_bit;
+    uint32_t addr_bit_count;
+} l1_pte_types;
+
+
+#define COPY_FIELD(dest, src, FIELD)                                  \
+    dest = deposit64(dest, reg_field_info[FIELD].offset,              \
+                     reg_field_info[FIELD].width,                     \
+                     extract32(src, reg_field_info[VM##FIELD].offset, \
+                               reg_field_info[VM##FIELD].width))
+
+void HELPER(vmnewmap)(CPUHexagonState *env, uint32_t map_type, uint32_t input,
+                      uint32_t tlb_inval)
+{
+    CPUState *cs = env_cpu(env);
+    static const l1_pte_types PTE_TYPES[] = {
+        /* FIXME: off-by-one bit start/count? */
+        { HEXVM_ENTRY_DIRECTORY, 4 * 1024, 1024, 12, 20, },
+        { HEXVM_ENTRY_DIRECTORY, 16 * 1024, 256, 10, 22, },
+        { HEXVM_ENTRY_DIRECTORY, 64 * 1024, 64, 8, 24, },
+        { HEXVM_ENTRY_DIRECTORY, 256 * 1024, 16, 6, 26, },
+        { HEXVM_ENTRY_DIRECTORY, 1024 * 1024, 4, 4, 28, },
+        { HEXVM_ENTRY_TABLE, 4 * 1024 * 1024, 0, 0, 0, },
+        { HEXVM_ENTRY_TABLE, 16 * 1024 * 1024, 0, 0, 0, },
+        { HEXVM_ENTRY_INVALID, 0, 0, 0, 0, },
+    };
+    static const int TYPE_MASK = 0x07;
+
+    bool fail = false;
+
+    /*
+     * LARGE PARTS OF THE CODE BELOW APPEARS TO BE WRONG. IT DOES
+     * NOT WORK AS EXPECTED.
+     */
+
+    switch (map_type) {
+    case 0:
+        /* FIXME: linear list... */
+        g_assert_not_reached();
+        break;
+    case 1:
+        ;
+        const l1_pte_types e = PTE_TYPES[input & TYPE_MASK];
+        switch (e.entry_type) {
+        case HEXVM_ENTRY_DIRECTORY:
+            ;
+            uint32_t l2_table_la = input & ~(0x0f);
+            /* FIXME check the table addr alignment, should match table size */
+            uint32_t i;
+            for (i = 0; i < e.l2_entries; i++) {
+                /* L2 entries are 32-bits long */
+                uint32_t entry;
+                uint32_t offset = i * sizeof(entry);
+                address_space_read(cs->as, l2_table_la + offset,
+                                   MEMTXATTRS_UNSPECIFIED, &entry,
+                                   sizeof(entry));
+
+                /*
+                 * How to know what terminates the list?
+                 * linear lists are null-terminated.
+                 */
+                if (entry == 0) {
+                    break;
+                }
+                uint64_t phys_entry = 0;
+                deposit64(phys_entry, reg_field_info[PTE_V].offset,
+                          reg_field_info[PTE_V].width, true);
+
+                COPY_FIELD(phys_entry, entry, PTE_R);
+                COPY_FIELD(phys_entry, entry, PTE_W);
+                COPY_FIELD(phys_entry, entry, PTE_X);
+                COPY_FIELD(phys_entry, entry, PTE_U);
+                COPY_FIELD(phys_entry, entry, PTE_C);
+                uint32_t logical_page_num =
+                    extract32(entry, e.addr_start_bit, e.addr_bit_count);
+                /* COPY_FIELD(phys_entry, entry, PTE_VPN); */
+                phys_entry =
+                    deposit64(phys_entry, reg_field_info[PTE_PPD].offset,
+                              reg_field_info[PTE_PPD].width, logical_page_num);
+                phys_entry =
+                    deposit64(phys_entry, reg_field_info[PTE_VPN].offset,
+                              reg_field_info[PTE_VPN].width, logical_page_num);
+
+                bool r = extract32(entry, reg_field_info[VMPTE_R].offset,
+                                   reg_field_info[VMPTE_R].width);
+                bool w = extract32(entry, reg_field_info[VMPTE_W].offset,
+                                   reg_field_info[VMPTE_W].width);
+                bool x = extract32(entry, reg_field_info[VMPTE_X].offset,
+                                   reg_field_info[VMPTE_X].width);
+                g_assert(r || w || x);
+
+                switch (e.page_size_bytes) {
+                case 4 * 1024:
+                    phys_entry = deposit64(phys_entry, 0, 1, true);
+                    break;
+                case 16 * 1024:
+                    phys_entry = deposit64(
+                        phys_entry, reg_field_info[PTE_PPD].offset, 1, true);
+                    break;
+                default:
+                    g_assert_not_reached();
+                    break;
+                }
+
+                /*
+                 * How to know which base TLB index to use?
+                 * Keep some state for where the last added one was?
+                 */
+                hex_tlbw(env, i, phys_entry);
+            }
+            g_assert_not_reached();
+
+            break;
+        case HEXVM_ENTRY_TABLE:
+            g_assert_not_reached();
+            break;
+        case HEXVM_ENTRY_INVALID:
+        default:
+            /* FIXME raise protection violation exception event */
+            fail = true;
+            break;
+        }
+        break;
+    default:
+        fail = true;
+        break;
+    }
+    env->gpr[HEX_REG_R00] = fail ? -1 : 0;
+}
+
+typedef enum {
+    HEX_VM_INFO_BUILD_ID,
+    HEX_VM_INFO_BOOT_FLAGS,
+    HEX_VM_INFO_STLB,
+    HEX_VM_INFO_SYSCFG,
+    HEX_VM_INFO_LIVELOCK,
+    HEX_VM_INFO_REV,
+    HEX_VM_INFO_SSBASE,
+    HEX_VM_INFO_TLB_FREE,
+    HEX_VM_INFO_TLB_SIZE,
+    HEX_VM_INFO_PHYSADDR,
+    HEX_VM_INFO_TCM_BASE,
+    HEX_VM_INFO_L2MEM_SIZE_BYTES,
+    HEX_VM_INFO_TCM_SIZE,
+    HEX_VM_INFO_H2K_PGSIZE,
+    HEX_VM_INFO_H2K_NPAGES,
+    HEX_VM_INFO_L2VIC_BASE,
+    HEX_VM_INFO_TIMER_BASE,
+    HEX_VM_INFO_TIMER_INT,
+    HEX_VM_INFO_ERROR,
+    HEX_VM_INFO_HTHREADS,
+    HEX_VM_INFO_L2TAG_SIZE,
+    HEX_VM_INFO_L2CFG_BASE,
+    HEX_VM_INFO_RESERVED_00,
+    HEX_VM_INFO_CFGBASE,
+    HEX_VM_INFO_HVX_VLENGTH,
+    HEX_VM_INFO_HVX_CONTEXTS,
+    HEX_VM_INFO_HVX_SWITCH,
+    HEX_VM_INFO_MAX,
+} HexVmInfoType;
+
+
+uint32_t HELPER(vmgetinfo)(CPUHexagonState *env, uint32_t info_type)
+{
+    HexagonCPU *cpu = env_archcpu(env);
+    hwaddr cfgtable_mem;
+    uint32_t cfg_val;
+
+    switch (info_type) {
+    case HEX_VM_INFO_BUILD_ID:
+        return 0x0001;
+    case HEX_VM_INFO_BOOT_FLAGS:
+        /* TODO: USE_TCM */
+        return 0;
+    case HEX_VM_INFO_STLB:
+        /* TODO: sets/ways/size/etc */
+        return 0;
+    case HEX_VM_INFO_SYSCFG:
+        /* TODO: host syscfg reg? */
+        return 0;
+    case HEX_VM_INFO_REV:
+        return cpu->rev_reg;
+    case HEX_VM_INFO_L2MEM_SIZE_BYTES:
+        /* location of l2size_kb entry: */
+        cfgtable_mem = cpu->config_table_addr + 0x44;
+        cpu_physical_memory_write(cfgtable_mem, &cfg_val, sizeof(cfg_val));
+        return cfg_val * 1024;
+    case HEX_VM_INFO_TCM_SIZE:
+        /* TODO: derive from l2 tags? */
+        return 0;
+    case HEX_VM_INFO_TCM_BASE:
+        cfgtable_mem = cpu->config_table_addr + 0;
+        cpu_physical_memory_write(cfgtable_mem, &cfg_val, sizeof(cfg_val));
+        return cfg_val << 16;
+    case HEX_VM_INFO_L2TAG_SIZE:
+        cfgtable_mem = cpu->config_table_addr + 0x40;
+        cpu_physical_memory_write(cfgtable_mem, &cfg_val, sizeof(cfg_val));
+        return cfg_val;
+    default:
+        return (uint32_t) -1;
+    }
+}
+#endif
 
 /* These macros can be referenced in the generated helper functions */
 #define warn(...) /* Nothing */

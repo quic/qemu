@@ -557,6 +557,11 @@ static bool need_next_PC(DisasContext *ctx)
                 GET_ATTRIB(opcode, A_HWLOOP1_END)) {
                 return true;
             }
+#if !defined(CONFIG_USER_ONLY)
+            if (ctx->has_hexagon_vm && opcode == J2_trap1) {
+                return true;
+            }
+#endif
         }
     }
     /*
@@ -1688,6 +1693,7 @@ static void hexagon_tr_init_disas_context(DisasContextBase *dcbase,
     ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->gen_cacheop_exceptions = hex_cpu->cacheop_exceptions;
     ctx->pmu_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PMU_ENABLED);
+    ctx->has_hexagon_vm = hex_cpu->hexagon_vm;
 #endif
     ctx->pcycle_enabled = FIELD_EX32(hex_flags, TB_FLAGS, PCYCLE_ENABLED);
     ctx->hvx_coproc_enabled = FIELD_EX32(hex_flags, TB_FLAGS, HVX_COPROC_ENABLED);

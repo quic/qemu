@@ -67,6 +67,7 @@ typedef struct DisasContext {
     int sreg_log_idx;
     bool need_cpu_limit;
     bool pmu_enabled;
+    bool has_hexagon_vm;
     TCGv t_sreg_new_value[NUM_SREGS];
     TCGv greg_new_value[NUM_GREGS];
 #endif

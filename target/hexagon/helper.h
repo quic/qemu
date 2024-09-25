@@ -51,6 +51,9 @@ DEF_HELPER_2(nmi, void, env, i32)
 DEF_HELPER_3(setprio, void, env, i32, i32)
 DEF_HELPER_2(start, void, env, i32)
 DEF_HELPER_1(stop, void, env)
+
+DEF_HELPER_4(vmnewmap, void, env, i32, i32, i32)
+DEF_HELPER_2(vmgetinfo, i32, env, i32)
 #endif
 
 DEF_HELPER_5(check_vtcm_memcpy, void, env, i32, i32, i32, i32)
@@ -148,6 +151,7 @@ DEF_HELPER_2(greg_read, i32, env, i32)
 DEF_HELPER_2(greg_read_pair, i64, env, i32)
 DEF_HELPER_1(inc_gcycle_xt, void, env)
 DEF_HELPER_3(modify_ssr, void, env, i32, i32)
+DEF_HELPER_2(modify_syscfg, void, env, i32)
 DEF_HELPER_1(pending_interrupt, void, env)
 DEF_HELPER_3(raise_stack_overflow, void, env, i32, i32)
 DEF_HELPER_1(resched, void, env)
