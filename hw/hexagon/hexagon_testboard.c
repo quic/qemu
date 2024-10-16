@@ -515,7 +515,7 @@ static const TypeInfo hexagon_machine_types[] = {
         .parent = TYPE_MACHINE,
         .class_init = SA8775P_cdsp0_init,
     }, {
-        .name = MACHINE_TYPE_NAME("virt"),
+        .name = MACHINE_TYPE_NAME("virt_"),
         .parent = TYPE_MACHINE,
         .class_init = virt_init,
     },
